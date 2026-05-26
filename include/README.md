@@ -6,4 +6,4 @@ Directory for public .h files (including API declarations).
 
 The declarations and documentation for the litetest API and framework.
 
-For definitions of (non-inline) functions, see litetest.c in ../src.
+For the definitions of (non-inline) functions, see litetest.c in ../src.
