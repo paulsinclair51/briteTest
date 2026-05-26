@@ -1,5 +1,35 @@
 /**
- * @file litetest.c
+ * @file /paulsinclair51/src/litetest.c
+ *
+ * @mainpage litetest Function Definitions
+ * 
+ * @brief Provide (non-inline) function definitions for the litetest
+ *        API and framework.d
+ * 
+ *        For an overview of the litetest API and framework, see
+ *        @ref README.md "README.md" in the /paulsinclair51/litetest
+ *        repository. See the header @ref /paulsinclair51/include/litetest.h
+ *        "litetest.h" in the include directory for the complete
+ *        definition and documentation.
+ * 
+ * @copyright Copyright (c) 2026 paulsinclair51
+ * SPDX-License-Identifier: MIT
+ * For license details, see @ref LICENSE "LICENSE" in the
+ * paulsinclair51/lubtype repository root.
+ *  
+ * @section Usage
+ * 
+ *  Compile and link this file as a shared library (e.g., using -fPIC
+ *  and -shared flags with gcc) to create a shared  library that can
+ *  be used by other applications. The resulting shared library should
+ *  be named according to the conventions of your platform (e.g.,
+ *  liblitetest.so on Linux, litetest.dll on Windows, or  liblitetest.dylib
+ *  on macOS) and placed in a location where it can be found by the
+ *  dynamic linker at runtime.
+ *
+ * Alternatively, compile and link this file into the test executable
+ * (for example into executable test_litetest on Linux or test_libtests.exe
+ * for Windows).
  */
 
 #include "litetest.h"
