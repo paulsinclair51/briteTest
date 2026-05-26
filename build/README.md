@@ -1,4 +1,4 @@
-# Build Artifacts
+# Build
 Directory for object files, binaries, and temporary files.
 
-Normally these files aer added to .gitignore.
+Normally these artifact files are added to .gitignore.
