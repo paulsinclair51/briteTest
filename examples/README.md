@@ -1,2 +1,5 @@
-# Examples
-No sample test suites, sample runners, or usage exmples currently avaailable.
+# examples
+
+Directory for sample test suites, sample runners, amd usage exmples,
+
+Currently none avaailable.
