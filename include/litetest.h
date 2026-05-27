@@ -10,12 +10,18 @@
  * 
  * - `result_t` counters.
  * 
- * - A reusable signal-guard mechanism based on sigsetjmp/siglongjmp
- *   used for testing an assertion expression or running a function.
+ * - A tewt macros with reusable signal-guard mechanism based on sigsetjmp/siglongjmp
+ *   to capture faults:
  * 
- * - `TEST(assert_expr)` with fault recovery.
+ * - `TEST(assert_expr)`
  * 
- * - `RUN(func, inject)` with fault recovery.
+ * - `RUN(func, inject)`
+ * 
+ * - `RUN_AND_MERGE(func1, func2, inject)`.
+ *
+ * - `FAIL(inject)`
+ *
+ * - `FAULT(inject)`
  * 
  * - Helper functions for the test orchestrator (e.g., PATH parsing,
  *   open/close reports).
@@ -323,7 +329,7 @@ void install_guard_internal(internal_guard_t *new_guard);
 void restore_guard_internal(void);
 
 /**
- * @name test_run_internal
+ * @name run_internal
  * 
  * @brief Internal function used by the RUN macro: runs func
  *        capturing a fault, if one occurs, with a guard.
@@ -339,12 +345,14 @@ void restore_guard_internal(void);
  *         (result_t){0, 0, SIZE_MAX, 0, 0} if a fault occurs.
  */
 
-result_t test_run_internal
+result_t run_internal
 ( result_t (*func)(char), const char inject, const char * const func_name );
+
+result_t merge_internal(result_t a, result_t b);
 
 /** @} */
 
-/**
+/
  * @section GuardFunction GuardFunctions
  * 
  * The guard functions provide status about the guard mechanism, such as the 
@@ -381,29 +389,23 @@ result_t test_run_internal
   { return internal_guard ? internal_guard->active : -1; }
 
 /**
- * @section RUN and TEST Macros
+ * @section Test Macros
  * 
- * The RUN and TEST macros provide a convenient interface for
- * running test functions and evaluating test assertions with
+ * The test macros (TEST, RUN, RUN_AND_MERGE, FAIL, and FAULT
+ * provide a convenient interface for running tests with
  * built-in fault recovery using the guard infrastructure:
  * 
- * - Typically, the test orchestrator uses the RUN macro to
- *   execute the test function in a test module and does not use
- *   the TEST macro.
+ * - Typically, the test orchestrator uses the RUN and RUN_AND_MERGE
+ *   macros to oexecute the test function in a test module and does not use
+ *   the other 3 macros. The TEST, FAIL, and FAULT macros may be used in the
+ *   test orchestrator, but it is more common for test category modules to
+ *   use these macros.
  * 
- *   The TEST macro may be used to evaluate a test assertion
- *   expression directly in the test orchestrator, but it is
- *   more common for test modules to use the TEST macro and
- *   integrating with report generation may present challenges
- *   for the test orchestrator logic.
- * 
- * - Typically, test modules use the TEST macro to evaluate
- *   individual test assertions.
- * 
- *   A test module may also use the RUN macro to execute a
- *   function for a test that can not reasonably be expressed
+ * - Typically, test modules use the TEST, FAIL, and FAULT macros.
+ *   A test module may also use the RUN and RUN_AND_MERGE macros
+ *   for a test that can not reasonably be expressed
  *   as a single assertion, such as a test that involves
- *   multiple steps or requires setup and teardown.
+ *   multiple steps, looping, or requires setup and teardown.
  */
 
 /**
@@ -433,23 +435,61 @@ result_t test_run_internal
  *       of SIZE_MAX for the fault count allows the caller to distinguish between
  *       a function-level fault and faults counted by the function itself.
  * 
- * @example In the orchestrator module (e,g., test_lubtype.c) to
- *          run the test function in a test module (e.g., test_count.c):
+ * @example In the orchestrator module (e,g., test_litetest.c) to
+ *          run the test function in a test module (e.g., test_guards.c):
  *
  * @code
- result_t result = RUN(test_count, inject);
- * @endcode
- *
- * @example In a test module (e.g., test_charclass.c) to run
- *          a function for a test that can not be reasonably
- *          expressed as a single assertion using the TEST macro:
- *
- * @code
- result_t result = RUN(test_isXalpha, inject);
+ RUN(test_guards, inject);
  * @endcode
  */
 
-#define RUN(func, inject) test_run_internal(func, inject, #func)
+#define RUN(func, inject) \
+  result_t func(char inject); \
+  result_t result = run_internal(func, inject, #func);
+
+/**
+ * @name RUN_AND_MREGE
+ * 
+ * @brief A macro to run two unction with a function-level guard and
+          merge their results.
+ *
+ * After setting up a guard to capture a fault (SIGABRT, SIGSEGV,
+ * or SIGBUS), calls the function pointed to by parameter func1
+ * with parameter inject, calls the function pointed to by parameter
+ * func2 and merges their results. If a fault occurs, siglongjmps back to
+ * the guard point.
+ *
+ * @param func1 Pointer to function 1.
+ * @param func2 Pointer to function 2.
+ * @param inject Flag to pass to the function.
+ *               0: normal run.
+ *               1: enable inject fail/fault tests, if any, in the function.
+ * 
+ * @return If no signal, the merged result from the test functions.
+ *         If signal caught, (result_t){0, 0, SIZE_MAX, 0, 0}.
+ * 
+ * @note If a fault is captured, a message is printed to stderr
+ *       including the function name, file name, and line number
+ *       for debugging purposes.
+ * 
+ * @note A fault is considered a fault in the testing framework or in the use of the
+ *       testing framework, rather than a fault in the feature being tested. The use
+ *       of SIZE_MAX for the fault count allows the caller to distinguish between
+ *       a function-level fault and faults counted by the function itself.
+ * 
+ * @example In the orchestrator module (e,g., test_litetest.c) to
+ *          run the 2 test functions (e.g., test_guards_1.c and
+ *          test_guards_2.c) and merge their results:
+ *
+ * @code
+ result_t result = RUN_AND_MERGE(test_guards_1, test_guards_2, inject);
+ * @endcode
+ */
+
+#define RUN(func, inject) \
+  result_t func1(char inject); \
+  result_t func2(char inject); \
+  run_internal(func, inject, #func);
 
 /**
  * @name TEST
@@ -533,14 +573,16 @@ int parse_args
 ( const int argc, const char *const *const argv,
   char *const dir_path, char *const filename
 );
+
 int is_writable_dir(char *dirpath, char *path);
-result_t merge_results(result_t a, result_t b);
+
 void write_category
 ( FILE * const report,
   const size_t index,
   const char *label,
   result_t result
 );
+
 const char *category_label_with_inject_tag
 ( const char *base_label,
   result_t result,
@@ -548,6 +590,7 @@ const char *category_label_with_inject_tag
   char *label_buf,
   size_t label_buf_len
 );
+
 FILE *open_report(const char *report_path, const char *report_title);
 int close_report
 ( FILE *report,
@@ -556,10 +599,11 @@ int close_report
   char inject,
   const char *note
 );
+
 void get_current_time(char *current_time, size_t size);
 
 /**
- * @def RUN_AND_REPORT
+ * @def REPORT
  * 
  * @brief Macro to execute a test category and record its result in the test
  *        report.
@@ -574,7 +618,7 @@ void get_current_time(char *current_time, size_t size);
  * @note If result_expr has a category-level fault (fault == SIZE_MAX), the
  */
 
-#define RUN_AND_REPORT(label, result_expr) \
+#define REPORT(label, result_expr) \
   do \
   { ++cat_id; \
     result_t result = (result_expr); \
