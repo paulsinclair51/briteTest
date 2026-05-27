@@ -312,13 +312,16 @@ void install_guard_internal(internal_guard_t *new_guard);
 void restore_guard_internal(void);
 
 /**
- * @name run_internal
+ * @name tests_internal
  * 
  * @brief Internal function used by the RUN macro: runs func
  *        capturing a fault, if one occurs, with a guard.
  * 
  * @param func Pointer to the test function to run, which takes a
  *             char inject parameter and returns a result_t.
+ * @param merge Flag to indicate merge results.
+ *              0: don't merge.
+ *              1: merge.
  * @param inject Flag to pass to the test function.
  *                 0: normal run.
  *                 1: enable inject fail/fault tests, if any, in the function.
@@ -328,10 +331,10 @@ void restore_guard_internal(void);
  *         (result_t){0, 0, SIZE_MAX, 0, 0} if a fault occurs.
  */
 
-result_t run_internal
-( result_t (*func)(char), const char inject, const char * const func_name );
-
-result_t merge_internal(result_t a, result_t b);
+result_t tests_internal
+( result_t (*func)(char),
+  const char merge, const char inject,
+  const char * const func_name );
 
 /** @} */
 
@@ -374,18 +377,18 @@ result_t merge_internal(result_t a, result_t b);
 /**
  * @section Test Macros
  * 
- * The test macros (TEST, RUN, RUN_AND_MERGE, FAIL, and FAULT
+ * The test macros (TEST, TRSTS, TESTSMERGE, TESTFAIL, and TESTFAULT
  * provide a convenient interface for running tests with
- * built-in fault recovery using the guard infrastructure:
+ * built-in fault recovery using the multi-levrl guard infrastructure:
  * 
- * - Typically, the test orchestrator uses the RUN and RUN_AND_MERGE
+ * - Typically, the test orchestrator uses the TESTS and TESTSMERGE
  *   macros to oexecute the test function in a test module and does not use
- *   the other 3 macros. The TEST, FAIL, and FAULT macros may be used in the
+ *   the other 3 macros. The TEST, TESTFAIL, and TESTFAULT macros may be used in the
  *   test orchestrator, but it is more common for test category modules to
  *   use these macros.
  * 
- * - Typically, test modules use the TEST, FAIL, and FAULT macros.
- *   A test module may also use the RUN and RUN_AND_MERGE macros
+ * - Typically, test modules use the TEST, TESTFAIL, and TESTFAULT macros.
+ *   A test module may also use the TESTS and TESTSMERGE macros
  *   for a test that can not reasonably be expressed
  *   as a single assertion, such as a test that involves
  *   multiple steps, looping, or requires setup and teardown.
@@ -407,8 +410,8 @@ result_t merge_internal(result_t a, result_t b);
  *               0: normal run.
  *               1: enable inject fail/fault tests, if any, in the function.
  * 
- * @return If no signal, result_t result from test function.
- *         If signal caught, (result_t){0, 0, SIZE_MAX, 0, 0}.
+ * @note If no signal, result_t result from test function is used.
+ *       If signal caught, (result_t){0, 0, SIZE_MAX, 0, 0} is used.
  * 
  * @note If a fault is captured, a message is printed to stderr
  *       including the function name, file name, and line number
@@ -423,18 +426,18 @@ result_t merge_internal(result_t a, result_t b);
  *          run the test function in a test module (e.g., test_guards.c):
  *
  * @code
- RUN(test_guards, inject);
+ TESTS(test_guards, inject);
  * @endcode
  */
 
-#define RUN(func, inject) \
+#define TESTS(func, inject) \
   result_t func(char inject); \
-  result_t result = tests_internal(func, inject, #func);
+  tests_internal(func, 0, inject, #func);
 
 /**
- * @name TESTSMREGE
+ * @name TESTSMERGE
  * 
- * @brief A macro to run two Sunctions each with alf guard and
+ * @brief A macro to run two functions each with a guard and
           merge their results.
  *
  * After setting up a guard to capture a fault (SIGABRT, SIGSEGV,
@@ -449,8 +452,8 @@ result_t merge_internal(result_t a, result_t b);
  *               0: normal run.
  *               1: enable inject fail/fault tests, if any, in the function.
  * 
- * @return If no signal, the merged result from the test functions.
- *         If signal caught, (result_t){0, 0, SIZE_MAX, 0, 0}.
+ * @botr If no signal, the merged result from the test functions is used.
+ *         If signal caught, (result_t){0, 0, SIZE_MAX, 0, 0} is used.
  * 
  * @note If a fault is captured, a message is printed to stderr
  *       including the function name, file name, and line number
@@ -466,14 +469,15 @@ result_t merge_internal(result_t a, result_t b);
  *          test_guards_2.c) and merge their results:
  *
  * @code
- result_t result = RUN_AND_MERGE(test_guards_1, test_guards_2, inject);
+ result_t result = TESTSMERGE(test_guards_1, test_guards_2, inject);
  * @endcode
  */
 
-#define RUN(func, inject) \
+#define TESTSMERGE(func1, func2, inject) \
   result_t func1(char inject); \
+  tests_internal(func1, 0, inject, #func1);
   result_t func2(char inject); \
-  run_internal(func, inject, #func);
+  tests_internal(func2, 1, inject, #func2);
 
 /**
  * @name TEST
