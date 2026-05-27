@@ -18,7 +18,7 @@ The test framework is defined in [litetest.h](litetest.h). Key points:
    - INJECT_FAULT
 2. Provides the following orchestrator macros.
    - OPEN_REPORT
-   - REPORT(<t>) where <t> is a test macro.
+   - REPORT(t) where t is a test macro.
    - CLOSE_REPORT
 3. Each test.<cat>.c file has a `result_t test_<cat>(char inject)` function.
    - The file may define other functions, macros, types, and variables for implementing tests.
