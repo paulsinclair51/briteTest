@@ -15,13 +15,13 @@
  * 
  * - `TEST(assert_expr)`
  * 
- * - `RUN(func, inject)`
+ * - `TESTS(func, inject)`
  * 
- * - `RUN_AND_MERGE(func1, func2, inject)`.
+ * - `TESTSMERGE(func1, func2, inject)`.
  *
- * - `FAIL(inject)`
+ * - `TESTFAIL(inject)
  *
- * - `FAULT(inject)`
+ * - `TESTFAULT(inject)`
  * 
  * - Helper functions for the test orchestrator (e.g., PATH parsing,
  *   open/close reports).
@@ -36,9 +36,6 @@
 
 /**
  * @section HeaderUsage Header Usage
- *
- * The API is header-only, but non-static function body definitions
- * are emitted only when the macro TEST_ORCHESTRATOR is defined.
  * 
  * In the test orchestration source file (for example, test_lubtype.c)
  * include the following:
@@ -58,10 +55,11 @@
  * include the following:
  *
  * @code
+ * #undef TEST_ORCESTRATOR
  * #include "litetest.h"
  * @endcode
  * 
- * Use the TEST and RUN macros and result_t type defined in this header in the test
+ * Use test macros in the test
  * modules.
  *
  * @section BuildTestExecutable Build the test executable
@@ -79,32 +77,17 @@
  * fault (i.e., segmentation fault, bus error, or abort) during
  * test execution.
  * 
- * @example Test-Level and Category-Level Guarding
+ * A test macro wraps a guard around its argument, enabling
+ * detection of a fault not handled at a lower level
+ * by the argument rather than aborting.
+ * This allows counting pass, fail,
+ * and fault without aborting due to a fault.
  * 
- * - Test-Level Guarding (in test modules)
- * 
- *     The TEST macro wraps a guard around individual
- *     test assert expressions that return an int value, enabling
- *     fine-grained detection of faults at the
- *     test level rather than crashing the entire test category.
- *     This allows counting pass (result non-zero), fail (result 0),
- *     and fault (test did not complete due to a fault).
- *
- * - Category-Level Guarding (in test orchestrator)
- * 
- *     The RUN macro wraps a guard around individual test category
- *     function calls that return a result_t value, enabling
- *     detection of fault at the category level. These faults
- *     are counted category-level faults.
- * 
- *     These faults represent a fault in the use of the testing
- *     framework or in the testing framework itself, and not in
- *     the feature being tested.
- * 
- * @note Test-level guarding is expected to handle most faults,
- *       so category-level faults are rare but detection is provided
- *       for defensive programming (for instance, if a test category
- *       function causes a fault outside of a TEST).
+ * A fault detected by TESTS or TESTSMERGE represent a fault
+ * in the use of the testing
+ * framework or in the testing framework itself, and not in
+ * the feature being tested.Such a fault is expected to be
+ * rare but guarding is provided to avoid an abort if it does.
  */
 
 #if !defined(LITETEST_H)
@@ -171,10 +154,10 @@ typedef struct
  * @section Guard Infrastructure
  * 
  * The guard infrastructure provides a mechanism to catch signals such as SIGSEGV,
- * SIGABRT, and SIGBUS that may occur during the evaluation of test assertions or
- * the execution of test functions. It uses sigsetjmp and siglongjmp to return control
+ * SIGABRT, and SIGBUS that may occur during the evaluation of test macros
+ * It uses sigsetjmp and siglongjmp to return control
  * to a known point in the code when a signal is caught, allowing the test framework
- * to count faults and continue running other tests instead of crashing the entire
+ * to count faults and continue running other tests instead of aborting the entire
  * test suite.
  * 
  * Type and and static variable names are prefixed with  "internal_".
@@ -409,14 +392,15 @@ result_t merge_internal(result_t a, result_t b);
  */
 
 /**
- * @name RUN
+ * @name TESTS
  * 
- * @brief A macro to run a function with a function-level guard.
+ * @brief A macro to run a function with a guard.
  *
- * After setting up a guard to capture a fault (SIGABRT, SIGSEGV,
+ * After saving the current guard, setting up a new current guard to capture a fault (SIGABRT, SIGSEGV,
  * or SIGBUS), calls the function pointed to by parameter func
- * with parameter inject. If a fault occurs, siglongjmps back to
- * the guard point.
+ * with parameter inject. If a fault occurs this level, siglongjmps back to
+ * the guard point, the result is saved and added to total. Then the saved
+ * guard is set as the current guard.
  *
  * @param func Pointer to function.
  * @param inject Flag to pass to the function.
@@ -445,12 +429,12 @@ result_t merge_internal(result_t a, result_t b);
 
 #define RUN(func, inject) \
   result_t func(char inject); \
-  result_t result = run_internal(func, inject, #func);
+  result_t result = tests_internal(func, inject, #func);
 
 /**
- * @name RUN_AND_MREGE
+ * @name TESTSMREGE
  * 
- * @brief A macro to run two unction with a function-level guard and
+ * @brief A macro to run two Sunctions each with alf guard and
           merge their results.
  *
  * After setting up a guard to capture a fault (SIGABRT, SIGSEGV,
