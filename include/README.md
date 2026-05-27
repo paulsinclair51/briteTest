@@ -2,6 +2,9 @@
 
 Directory for public .h files (including API declarations).
 
+Copyright (c) 2026 paulsinclair51
+SPDX-License-Identifier: MIT For license details, see the LICENSE file in the paulsinclair51/lubtype repository root.
+
 ## litetest.h
 
 The declarations and documentation for the litetest API and framework.
