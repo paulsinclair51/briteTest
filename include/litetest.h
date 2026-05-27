@@ -89,6 +89,7 @@
  * the feature being tested.Such a fault is expected to be
  * rare but guarding is provided to avoid an abort if it does.
  */
+#pragma once
 
 #if !defined(LITETEST_H)
 #define LITETEST_H
@@ -111,6 +112,238 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+
+// Allow functions to be invoked from C++.
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+#if defined(TOK_PASTE) || defined(INTERNAL_TOK_PASTE)
+#error "litetest.h: A TOK_PASTE or INTERNAL_TOK_PASTE " \
+       "macro is unexpectedly already defined. " \
+       "#undef before including litetest.h."
+#endif // defined macros
+
+#if defined(TOK_STRINGIFY) || defined(INTERNAL_TOK_STRINGIFY)
+#error "litetest.h: A TOK_STRINGIFY or INTERNAL_TOK_STRINGIFY " \
+       "macro is unexpectedly already defined. " \
+       "#undef before including litetest.h."
+#endif // defined macros
+
+/**
+ * @section UtilityMacros Utility Macros
+ */
+
+/**
+ * @defgroup Paste Paste
+ * @name TOK_PASTE
+ * @brief Macro for pasting two expanded tokens together.
+ * @param a First token,
+ * @param b Second token.
+ * @return The result of pasting the expanded values of the
+ *         two tokens together to form a single token.
+ * 
+ * @note Tokens a and b must each expand to a single token.
+ * 
+ * @note Macro INTERNAL_TOK_PASTE is provided to
+ *       implement expanding the tokens for TOK_PASTE.
+ *       It is not intended for direct use.
+ * 
+ * @note A compile error is raised if either of these 
+ *       macros are already defined before including this
+ *       header.
+ * @{
+ */
+
+// Paste tokens without expanding.
+#define INTERNAL_TOK_PASTE(a, b) a##b
+// Expand tokens before pasting.
+#define TOK_PASTE(a, b) INTERNAL_TOK_PASTE(a, b)
+
+/** @} */
+
+/**
+ * @defgroup Stringify Stringify
+ * @name TOK_STRINGIFY
+ * @brief Macro for stringifying a token.
+ * @param s Token.
+ * @return The result of stringifying the expanded token
+ *         as a string literal.
+ * 
+ * @note Token s must expand to a single token.
+ * 
+ * @note Macro INTERNAL_TOK_STRINGIFY is provided to
+ *       implement expanding the token for TOK_STRINGIFY.
+ *       It is not intended for direct use.
+ * 
+ * @note A compile error is raised if either of these macros
+ *       are already defined before including this header.
+ * @{
+ */
+
+// Stringify token without expanding.
+#define INTERNAL_TOK_STRINGIFY(s) #s
+// Expand token before stringifying.
+#define TOK_STRINGIFY(s) INTERNAL_TOK_STRINGIFY(s)
+
+/** @} */
+
+/**
+ * @defgroup StaticAssert Static Assert
+ * @name LT_STATIC_ASSERT
+ * @brief Compile-time (static) assertion macro.
+ * @param cond Condition to be asserted.
+ * @param msg A single token (message) to be displayed if
+ *            the assertion fails.
+ * @return Compiler error if the assertion fails. Otherwise,
+ *         a type is defined which can be ignored and a compiler
+ *         error is not raised.
+ *
+ * @note A compile error is raised if this macro is already
+ *       defined before including this header.
+ * 
+ * @example
+ *   LT_STATIC_ASSERT(sizeof(int) == 4, int_must_be_4_bytes);
+ * 
+ * Expands (C99) if true (and the type is not already defined) to:
+ *   typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[1];
+ *   // Assertion satisfied; compiler error not raised.
+ *   // The defined type can be ignored.
+ *
+ * Or if false to:
+ *   typedef char LUB_STATIC_ASSERT_int_must_be_4_bytes[-1];
+ *   // Assertion fails; compiler error raised due to
+ *   // invalid typedef statement.
+ * @{
+ */
+
+#if defined(LT_STATIC_ASSERT)
+#error "litetest.h: A LT_STATIC_ASSERT macro is "\
+       "unexpectedly already defined. " \
+       "#undef before including litetest.h."
+#endif // defined macro
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+// C11 and later: use the built‑in assertion macro.
+#define LT_STATIC_ASSERT(cond, msg) _Static_assert(cond, #msg)
+#else
+// C99: typedef with invalid negative array size if assertion not satisfied.
+#define LT_STATIC_ASSERT(cond, msg) \
+  typedef char LUB_PASTE(LUB_STATIC_ASSERT_, msg)[(cond) ? 1 : -1]
+#endif
+
+/** @} */
+
+/**
+ * @section VersioningMacros Versioning Macros
+ */
+
+/**
+ * @defgroup LUBAPIVersioning LUB API Versioning
+ * @name LUB_VERSION_MAJOR, LUB_VERSION_MINOR, LUB_VERSION_PATCH,
+ *       LUB_VERSION, LUB_VERSION_NUM, LUB_VERSION_HEX, 
+ *       LUB_VERSION_EQ, LUB_VERSION_AT_LEAST
+ * @brief Versioning macros for the LUB API (lubtype.h):
+ * 
+ * LUB_VERSION_MAJOR
+ *    Major version number, incremented for incompatible API changes.
+ *    Numeric form, e.g., 1 for major version 1.
+ * 
+ * LUB_VERSION_MINOR
+ *    Minor version number, incremented for backward-compatible additions.
+ *    Numeric form, e.g., 0 for minor version 0,
+ *    or 22 for minor version 22.
+ * 
+ * LUB_VERSION_PATCH
+ *    Patch version number, incremented for bug fixes or internal improvements.
+ *    Numeric form, e.g., 0 for patch version 0,
+ *    or 12 for patch version 12.
+ * 
+ * LUB_VERSION
+ *    String form, e.g., "1.0.0" for major version 1, minor
+ *    version 0, patch version 0.
+ * 
+ * LUB_VERSION_NUM
+ *    uint32_t form MMmmpp for comparisons, e.g., 10000 for
+ *    version 1.0.0, 10200 for version 1.2.0, or 11212 for version 1.12.12.
+ * 
+ * LUB_VERSION_HEX
+ *    Hexadecimal form 0xMMmmpp for display/debugging, e.g.,
+ *    0x010000 for version 1.0.0, 0x010200 for version 1.2.0,
+ *    or 0x011212 for version 1.12.12.
+ * 
+ * LUB_VERSION_EQ(maj,min,pat)
+ *    True if current version is exactly maj.min.pat
+ *
+ * LUB_VERSION_AT_LEAST(maj,min,pat)
+ *    True if current version is at least maj.min.pat.
+ *
+ * @note A compiler error is raised if any of the versioning macros
+ *       are already defined before including lubtype.h.
+ *
+ * @note The naming conventions, error semantics, and safety guarantees
+ *       are part of the documented and stable API and will not change without a
+ *       major version increment.
+ * @{
+ */
+
+#if defined(LUB_VERSION_MAJOR) || defined(LUB_VERSION_MINOR) || \
+    defined(LUB_VERSION_PATCH) || \
+    defined(LUB_VERSION) || \
+    defined(LUB_VERSION_NUM) || defined(LUB_VERSION_HEX) || \
+    defined(LUB_VERSION_EQ) || defined(LUB_VERSION_AT_LEAST)
+#error "lubtype.h: A LUB_VERSION_* macro is unexpectedly " \
+       "already defined. #undef before including lubtype.h."
+#endif // defined macros
+
+// LUB API version major, minor, patch.
+#define LUB_VERSION_MAJOR 1
+#define LUB_VERSION_MINOR 0
+#define LUB_VERSION_PATCH 0
+
+#if defined(LUB_DEFINITIONS)
+
+// Ensure major version is greater than 0.
+LUB_STATIC_ASSERT((uint32_t)LUB_VERSION_MAJOR, major_version_not_zero);
+
+// Ensure version components fit in the encoding fields.
+LUB_STATIC_ASSERT((uint32_t)LUB_VERSION_MAJOR <= 99, major_fits_in_field);
+LUB_STATIC_ASSERT((uint32_t)LUB_VERSION_MINOR <= 99, minor_fits_in_field);
+LUB_STATIC_ASSERT((uint32_t)LUB_VERSION_PATCH <= 99, patch_fits_in_field);
+
+#endif // LUB_DEFINITIONS
+
+// LUB API version string in "major.minor.patch" format.
+#define LUB_VERSION \
+  (LUB_STRINGIFY(LUB_VERSION_MAJOR) "." \
+   LUB_STRINGIFY(LUB_VERSION_MINOR) "." \
+   LUB_STRINGIFY(LUB_VERSION_PATCH))
+
+// LUB API version as an integer for comparisons.
+#define LUB_VERSION_NUM \
+    ((uint32_t)LUB_VERSION_MAJOR * 10000 + \
+     (uint32_t)LUB_VERSION_MINOR * 100 + \
+     (uint32_t)LUB_VERSION_PATCH)
+
+// LUB API version encoded as 0xMMmmpp (major, minor, patch) for display/debug.
+#define LUB_VERSION_HEX \
+    (((uint32_t)LUB_VERSION_MAJOR << 16) | \
+     ((uint32_t)LUB_VERSION_MINOR << 8) | \
+     (uint32_t)LUB_VERSION_PATCH)
+
+// True if the current LUB API version is the specified version.
+#define LUB_VERSION_EQ(maj, min, pat) \
+    (LUB_VERSION_NUM == (uint32_t)(maj) * 10000 + \
+                        (uint32_t)(min) * 100 + \
+                        (uint32_t)(pat))
+
+// True if the current LUB API version is at least the specified version.
+#define LUB_VERSION_AT_LEAST(maj, min, pat) \
+    (LUB_VERSION_NUM >=  (uint32_t)(maj) * 10000 + \
+                         (uint32_t)(min) * 100 + \
+                         (uint32_t)(pat))
+
+/** @} */ // End of Versioning.
 
 /**
  * @section Limits
@@ -663,6 +896,10 @@ void get_current_time(char *current_time, size_t size);
  */
 
 #endif // defined(TEST_ORCHESTRATOR)
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif // !defined(LITETEST_H)
 
