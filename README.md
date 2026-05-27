@@ -20,15 +20,17 @@ The test framework is defined in [litetest.h](litetest.h). Key points:
    - OPEN_REPORT
    - REPORT(<t>) where <t> is a test macro.
    - CLOSE_REPORT
-3: Each test.<cat>.c file has a `result_t test_<cat>(char inject)` function.
-   - The file may define functions for implementing tests.
-   - The function includes a test list of RUN, MERGE_RUN, INJECT_FAIL, and INJECT_FAULT macro refernces.
-4. The `main` function in the orchestrator.<teestsuite>.c file, contains OPEN_REPORT followed by a list of REPORT macro referneces wrapped around a test macro reference (e.g., REPORT(RUN(func, inject), REPORT(RUN_MERGE)func1, func2, inject), and followed by CLOSE_REPORt.
-5. The test macros provide signal handlers (`SIGSEGV`, `SIGABRT`, `SIGBUS`) to capture faults. Faults are counted as a `fault` rather than aborting execution, allowing the testing to continue.
+3. Each test.<cat>.c file has a `result_t test_<cat>(char inject)` function.
+   - The file may define other functions, macros, types, and variables for implementing tests.
+   - The test_<cat function includes a test list of RUN, MERGE_RUN, INJECT_FAIL, and INJECT_FAULT macro refernces.
+4. The orchestrator.<testsuite>.c file has a `main`function.
+   - The file may define other functions, macros, types, and variables for implementing the orchestrator.
+   - The  function `main` contains OPEN_REPORT followed by a list of REPORT macro references wrapped around a test macro reference (e.g., REPORT(RUN(func, inject), REPORT(RUN_MERGE(func1, func2, inject), and followed by CLOSE_REPORt.
+6. The test macros provide signal handlers (`SIGSEGV`, `SIGABRT`, `SIGBUS`) to capture faults. Faults are counted as a `fault` rather than aborting execution, allowing the testing to continue.
 
 ## Adding a New Category Test Module
 
-1. Create `test_<cat>.c` that defines function test_<cat>. Specify tests in the function using the TEST or RUN macros.
+1. Create `test_<cat>.c` that defines function test_<cat>. Specify tests in the function using the test macros (TEST, RUN, RUN_AND_MERGE, INJECT_FAIL, and INJECT_FAULT.
 2. In `test_<test_suite>.c:
 a. Add a declare of the new test category function in the function declaraion section:
    `result_t test_<cat>(const char inject);`
