@@ -1,8 +1,9 @@
 /**
- * @file paulsinclair51/LiteTest/tests/test_guards1.c
+ * @file paulsinclair51/LiteTest/tests/guard1_tests.c
  
  * @brief Test guard related functions and macros declared in
-          /paulsinclair51/LiteTest/include/litetest.h (e.g., TEST, TESTS).
+          /paulsinclair51/LiteTest/include/litetest.h (e.g.,
+          LT_TEST, LT_ASSERT).
  *
  * @copyright Copyright (c) 2026 paulsinclair51
  * SPDX-License-Identifier: MIT
@@ -10,20 +11,19 @@
  * paulsinclair51/LiteTest GitHub repository.
  */
 
-#define TEST_MODULE test_guards1
+#define TEST_MODULE guard1_tests
 #include "litetest.h"
 
-// Test LiteTest guard related functions.
-
-DECLARE_FUNC(test_guards1)
+DECLARE_FUNC(guard1_tests)
 { 
-  INIT_TEST;
+  LT_INIT_TEST;
  
-  TEST(!strcmp("dummy" == "dummy");
-  TEST_FAIL;
-  TEST(!strcmp("dummy" == "dummy");
-  TEST_FAIL;
-  TEST(!strcmp("dummy" == "dummy");
+  LT_ASSERT(!strcmp("dummy" == "dummy");
+  LT_ASSERT_FAIL;
+  LT_TEST(!strcmp("dummy" == "dummy");
+  LT_ASSERT_FAIL;
+  LT_ASSERT(!strcmp("dummy" == "dummy");
 
-  RETURN_RESULT;
+  LT_RETURN_RESULT;
+
 }
