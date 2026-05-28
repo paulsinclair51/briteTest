@@ -1,8 +1,9 @@
 /**
- * @file paulsinclair51/LiteTest/tests/guards2_tests.c
+ * @file paulsinclair51/LiteTest/tests/guard2_tests.c
  
  * @brief Test guard related functions and macros declared in
-          /paulsinclair51/LiteTest/include/litetest.h (e.g., TEST, TESTS).
+          /paulsinclair51/LiteTest/include/litetest.h (e.g.,
+          LT_INTI_TEST, LT_RETURN_RESULT).
  *
  * @copyright Copyright (c) 2026 paulsinclair51
  * SPDX-License-Identifier: MIT
