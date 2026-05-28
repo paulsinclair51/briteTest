@@ -1,5 +1,5 @@
 /**
- * @file paulsinclair51/LiteTest/test/test_guards2.c
+ * @file paulsinclair51/LiteTest/tests/test_guards2.c
  
  * @brief Test guard related functions and macros declared in
           /paulsinclair51/LiteTest/include/litetest.h (e.g., TEST, TESTS).
@@ -15,7 +15,7 @@
 
 // Test LiteTest guard related functions.
 
-DECLARE_FUNC(guards2)
+DECLARE_FUNC(test_guards2)
 { 
   INIT_TEST;
  
