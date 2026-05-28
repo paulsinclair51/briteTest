@@ -13,16 +13,14 @@
 #define TEST_ORCHESTRATOR test_litetest
 #include "litetest.h"
 
-// Test LiteTest.
-
 DECLARE_MAIN
 { 
   PARSE_ARGS;
   
   OPEN_REPORT("LiteTest");
  
-  WRITE_RESULTS(test_orchestrator), "Orchestrator");
-  WRITE_RESULTS(TESTS2(test_guards1, test_guards2), "Guards 1 and 2";
+  WRITE_RESULTS(TESTS(test_orchestrator), "Orchestrator");
+  WRITE_RESULTS(TESTS2(test_guards1, test_guards2), "Guards 1 and 2");
 
   CLOSE_REPORT;
 
