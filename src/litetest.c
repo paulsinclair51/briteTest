@@ -3,10 +3,10 @@
  *
  * @mainpage litetest Function Definitions
  * 
- * @brief Provide (non-inline) function definitions for the litetest
- *        API and framework.d
+ * @brief This header provides (non-inline) function definitions for the LiteTest
+ *        API and framework.
  * 
- *        For an overview of the litetest API and framework, see
+ *        For an overview of the LiteTest API and framework, see
  *        @ref README.md "README.md" in the /paulsinclair51/litetest
  *        repository. See the header @ref /paulsinclair51/include/litetest.h
  *        "litetest.h" in the include directory for the complete
@@ -16,51 +16,44 @@
  * SPDX-License-Identifier: MIT
  * For license details, see @ref LICENSE "LICENSE" in the
  * paulsinclair51/lubtype repository root.
- *  
+ *
  * @section Usage
- * 
- *  Compile and link this file as a shared library (e.g., using -fPIC
- *  and -shared flags with gcc) to create a shared  library that can
- *  be used by other applications. The resulting shared library should
- *  be named according to the conventions of your platform (e.g.,
- *  liblitetest.so on Linux, litetest.dll on Windows, or  liblitetest.dylib
- *  on macOS) and placed in a location where it can be found by the
- *  dynamic linker at runtime.
+ *
+ * Compile and link this file as a shared library (e.g., using -fPIC
+ * and -shared flags with gcc) to create a shared  library that can
+ * be used by other applications. The resulting shared library should
+ * be named according to the conventions of your platform (e.g.,
+ * liblitetest.so on Linux, litetest.dll on Windows, or  liblitetest.dylib
+ * on macOS) and placed in a location where it can be found by the
+ * dynamic linker at runtime.
  *
  * Alternatively, compile and link this file into the test executable
- * (for example into executable test_litetest on Linux or test_libtests.exe
+ * (for example into executable test_litetest on Linux or test_litetest.exe
  * for Windows).
  */
 
 #include "litetest.h"
 
-internal_guard_t *internal_guard = NULL;
-internal_saved_guard_t saved_guards[MAX_GUARD_LEVEL] = { 0 };
-size_t internal_num_saved_guards = 0;
+litetest_guard_t *litetest_guard = NULL;
+litetest_saved_guard_t saved_guards[MAX_GUARD_LEVEL] = { 0 };
+size_t litetest_num_saved_guards = 0;
 
-char internal_run_id = 0;
-result_t internal_total = {0, 0, 0, 0, 0};
-char *internal_executable_name = NULL;
-const char internal_default_path_msg[] =
+char *litetest_executable_name = NULL;
+const char litetest_default_path_msg[] =
   "PATH: A directory path, test report file name, or test report file path.\n"
   "      (optional quoted or as needed).\n\n"
   "      If PATH is a path to an existing directory (with or without a trailing\n"
-  "      separator), the test report and the inject test report are written\n"
-  "      in that directory with default names.\n\n"
+  "      separator), the test report is written\n"
+  "      in that directory with a default name.\n\n"
   "      If PATH is a file name (not ending with a separator), the test\n"
   "      report is written with that file name in the current working directory (./).\n"
-  "      The inject test report is also written in the current working directory"
-  "      with a default name based on specified file name.\n\n"
   "      If PATH is a file path, the test report is written to that file.\n"
-  "      The inject test report is written to the same directory\n"
-  "      as the test report with a default name based on the file name\n"
-  "      in the file path.\n\n"
   "      An already existing report file is overwritten.\n\n";
-const char *path_msg = NULL;
+const char *lt_path_msg = NULL;
 
-void install_guard_internal(internal_guard_t *new_guard)
-{ if (internal_num_saved_guards >= MAX_GUARD_LEVEL) { abort(); }
-  internal_saved_guard_t *saved_guard = &saved_guards[internal_num_saved_guards++];
+void litetest_install_guard(internal_guard_t *new_guard)
+{ if (litetest_num_saved_guards >= MAX_GUARD_LEVEL) { abort(); }
+  litetest_saved_guard_t *saved_guard = &saved_guards[litetest_num_saved_guards++];
   saved_guard->guard = internal_guard;
   saved_guard->segv_handler = signal(SIGSEGV, new_guard->handler);
   saved_guard->abrt_handler = signal(SIGABRT, new_guard->handler);
@@ -69,11 +62,11 @@ void install_guard_internal(internal_guard_t *new_guard)
       saved_guard->abrt_handler == SIG_ERR ||
       saved_guard->bus_handler == SIG_ERR)
   { abort(); }
-  internal_guard = new_guard;
+  litetest_guard = new_guard;
 }
 
-void restore_guard_internal(void)
-{ if (!internal_num_saved_guards) { abort(); }
+void litetest_restore_guard(void)
+{ if (!litetest_num_saved_guards) { abort(); }
   internal_num_saved_guards--;
   internal_saved_guard_t *saved_guard = &saved_guards[internal_num_saved_guards];
   if (signal(SIGSEGV, saved_guard->segv_handler) == SIG_ERR ||
