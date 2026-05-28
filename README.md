@@ -1,5 +1,5 @@
-# litetest
-An application programming interface (API) and testing framework for use
+# LiteTest
+LiteTest is an application programming interface (API) and testing framework for use
 by a test orchestrator and its test category modules
 
 Copyright (c) 2026 paulsinclair51
@@ -7,25 +7,29 @@ SPDX-License-Identifier: MIT For license details, see the LICENSE file in the pa
 
 ## Overview
 
-A compact, POSIX‑aware C testing framework designed for orchestrators and modular test categories. It’s intentionally minimal, signal‑safe, and built for embedding into other C projects.
+LiteTest is a compact, POSIX‑aware C/C++ testing framework designed for orchestrators and
+modular test categories. It’s intentionally minimal, signal‑safe, and built for embedding into
+other C/C++ projects.
 
 The test framework is defined in [litetest.h](litetest.h). Key points:
 1. Provides the following test macros:
    - TEST(<assert_expr) where <assert_expre> is an expression that returns nonzero if test passed and 0 if test failed.
-   - RUN(func, inject) where function has the signature resuLt_t <funcname>(char inject),
-   - MERGE_RUN(func1, func2, inject)
-   - INGECT_FAIL
-   - INJECT_FAULT
+   - TESTS(func, inject) where function has the signature resuLt_t <funcname>(char inject),
+   - TESTSMERGE(func1, func2, inject)
+   - TEST_FAIL(inject)
+   - TEST_FAULT(inject)
 2. Provides the following orchestrator macros.
    - OPEN_REPORT
-   - REPORT(t) where t is a test macro.
+   - WRITE_CATEGORY(t, catname) where t is a TEST* macro and catname is string for category name.
    - CLOSE_REPORT
-3. Each test.<cat>.c file has a `result_t test_<cat>(char inject)` function.
+3, Provides the following test module macros:
+   RETURN_RESULT
+4. Each test.<cat>.c file has a `lt…result_t test_<cat>(char inject)` function.
    - The file may define other functions, macros, types, and variables for implementing tests.
    - The test_<cat function includes a test list of RUN, MERGE_RUN, INJECT_FAIL, and INJECT_FAULT macro refernces.
-4. The orchestrator.<testsuite>.c file has a `main`function.
+5. The test.<testsuite>.c file has a `main`function.
    - The file may define other functions, macros, types, and variables for implementing the orchestrator.
-   - The  function `main` contains OPEN_REPORT followed by a list of REPORT macro references wrapped around a test macro reference (e.g., REPORT(RUN(func, inject), REPORT(RUN_MERGE(func1, func2, inject), and followed by CLOSE_REPORt.
+   - The  function `main` contains OPEN_REPORT followed by a list of REPORT macro references wrapped around a TEST* macro reference (e.g., REPORT(TEST(func, inject), REPORT(TESTS_MERGE(func1, func2, inject), and followed by CLOSE_REPORt.
 6. The test macros provide signal handlers (`SIGSEGV`, `SIGABRT`, `SIGBUS`) to capture faults. Faults are counted as a `fault` rather than aborting execution, allowing the testing to continue.
 
 ## Adding a New Category Test Module
