@@ -1,5 +1,5 @@
 /**
- * @file paulsinclair51/LiteTest/test/test_guards1.c
+ * @file paulsinclair51/LiteTest/tests/test_guards1.c
  
  * @brief Test guard related functions and macros declared in
           /paulsinclair51/LiteTest/include/litetest.h (e.g., TEST, TESTS).
