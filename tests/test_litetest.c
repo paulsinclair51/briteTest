@@ -1,8 +1,9 @@
 /**
  * @file paulsinclair51/LiteTest/tests/test_litetest.c
- 
+ *
  * @brief Test guard related functions and macros declared in
-          /paulsinclair51/LiteTest/include/litetest.h (e.g., TEST, TESTS).
+ *        /paulsinclair51/LiteTest/include/litetest.h (e.g.,
+ *        LT_OPEN_REPORT, LT_TEST, LT_WRITE_RESULT).
  *
  * @copyright Copyright (c) 2026 paulsinclair51
  * SPDX-License-Identifier: MIT
@@ -15,13 +16,13 @@
 
 LT_DECLARE_MAIN
 { 
-  LT_PARSE_ARGS;
+  LT_PARSE_ARGS ("LiteTest_test_report.txt";
   
   LT_OPEN_REPORT("LiteTest");
  
-  LT_WRITE_RESULTS(TEST(test_orchestrator), "Orchestrator");
+  LT_WRITE_RESULT(TEST(test_orchestrator), "Orchestrator");
   LT_TEST(test_guards1);
-  LT_WRITE_RESULTS((TEST(test_guards2), "Guards 1 and 2");
+  LT_WRITE_RESULT((TEST(test_guards2), "Guards 1 and 2");
 
   LT_CLOSE_REPORT;
 
