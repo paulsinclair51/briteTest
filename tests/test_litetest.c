@@ -10,7 +10,7 @@
  * paulsinclair51/LiteTest GitHub repository.
  */
 
-#define TEST_ORCHESTRATOR(test_litetest)
+#define TEST_ORCHESTRATOR test_litetest
 #include "litetest.h"
 
 // Test LiteTest.
