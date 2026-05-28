@@ -10,7 +10,7 @@
  * paulsinclair51/LiteTest GitHub repository.
  */
 
-#define TEST_MODULE orchestrator
+#define TEST_MODULE test_orchestrator
 #include "litetest.h"
 
 // Test LiteTest guard related functions.
