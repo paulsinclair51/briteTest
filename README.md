@@ -12,46 +12,57 @@ modular test categories. It’s intentionally minimal, signal‑safe, and built 
 other C/C++ projects.
 
 The API and test framework is defined in [litetest.h](litetest.h) and [litetest.h](litetest.c). Key points:
+
 1. Provides the following test and assert macros:
+
    - LT_TEST(func)
    - LT_ASSERT(assert_expr)
    - LT_ASSERT_FAIL
    - LT_ASSERT_FAULT
-2. Provides the following orchestrator macros.
+
+3. Provides the following orchestrator macros.
+
    - LT_DECLARE_MAIN(testsuite)
    - LT_OPEN_REPORT("reporttitle")
    - LT_WRITE_RESULT([t], "categoryname")
    - LT_CLOSE_REPORT
    - LT_RETURN_STATUS
-3, Provides the following test module macros:
+
+3, Provides the following test function macros:
+
    - LT_DECLARE_FUNC(func)
-   - LT_INTI_TEST;
+   - LT_INIT_TEST;
    - LT_RETURN_RESULT
-4. Each test module test.<func>.c file has an func function as its primary function.
-   - The file may define static functions, macros, types, and variables for implementing tests.
-   - The test_<cat function includes a test list of RUN, MERGE_RUN, INJECT_FAIL, and INJECT_FAULT macro refernces.
-5. The test.<testsuite>.c file has a `main`function.
-   - The file may define other static functions, macros, types, and variables for implementing the orchestrator.
-   - The  function `main` contains OPEN_REPORT followed by a list of REPORT macro references wrapped around a TEST* macro
-     reference (e.g., WRITE_RESULT(TEST(func), REPORT(TESTS_MERGE(func1, func2), followed by CLOSE_REPORT and RETURN_RESULT.
-6. The test macros provide signal handlers (`SIGSEGV`, `SIGABRT`, `SIGBUS`) to capture faults. Faults are counted as a `fault` rather than aborting execution, allowing the testing to continue.
 
-## Adding a New Category Test Module
+4. Utility functions:
 
-1. Create `test_<cat>.c` that defines function test_<cat>. Specify tests in the function using the test macros (TEST, RUN, RUN_AND_MERGE, INJECT_FAIL, and INJECT_FAULT.
-2. In `test_<test_suite>.c:
-a. Add a declare of the new test category function in the function declaraion section:
-   `result_t test_<cat>(const char inject);`
-b. Add a call in the write_report section:
-   WRITE_RESULT(<catname",  TESTS(test_<fun>, inject));
-6. Add the source to `TEST_SOURCES` in the Makefile (compiled once).
+   - lt_current_guard_level, lt_current_result, lt_current_total, etc.
+
+5. The test and assert macros provide signal handlers (`SIGSEGV`,
+`SIGABRT`, `SIGBUS`) to capture faults. Faults are counted as a `fault`
+rather than aborting execution, allowing testing to continue.
+
+6. The orchestrator (main) function and the optional test functions (func) may be defined
+in a single module (.c file) or split across multiple modules. When there is one or more
+test functions, the recommended best practice is to place the main function in one module
+and each test function in its own module.
    
-## Merging Results of SubCategory Test Modules
+## Orchestrator
 
-To merge the results of runs of two subcategory test modules for the result of the category:
 
-  `MERGERUN_AND_REPORT("<category name>",
-				              test_<cat_1>, test_<cat_2>, inject)));`
+
+To merge the results of subcategory test and assert functions for the result
+in the orchestration (main) function:
+
+  `{`LT_TEST(func);` | `LT_ASSERT(asser_expr);`}...`
+  `LT_WRITE_RESULT(, "categoryname")`
+
+or
+
+  `{`LT_TEST(func);` | `LT_ASSERT(asser_expr);`}...`
+  `LT_WRITE_RESULT(`LT_TEST(func);` | `LT_ASSERT(asser_expr);`, "categoryname")`
+
+  
 
 To merge the results of three subcategory test modules for the result of the category:
 
