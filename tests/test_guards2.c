@@ -1,5 +1,5 @@
 /**
- * @file paulsinclair51/LiteTest/tests/test_guards2.c
+ * @file paulsinclair51/LiteTest/tests/guards2_tests.c
  
  * @brief Test guard related functions and macros declared in
           /paulsinclair51/LiteTest/include/litetest.h (e.g., TEST, TESTS).
@@ -10,20 +10,20 @@
  * paulsinclair51/LiteTest GitHub repository.
  */
 
-#define TEST_MODULE guards2
+#define TEST_MODULE guards2_tests
 #include "litetest.h"
 
 // Test LiteTest guard related functions.
 
-DECLARE_FUNC(test_guards2)
+LT_DECLARE_FUNC(guards2_tests)
 { 
-  INIT_TEST;
+  LT_INIT_TEST;
  
-  TEST(!strcmp("dummy" == "dummy");
-  TEST_FAIL;
-  TEST(!strcmp("dummy" == "dummy");
-  TEST_FAIL;
-  TEST(!strcmp("dummy" == "dummy");
+  LT_TEST(!strcmp("dummy" == "dummy");
+  LT_TEST_FAIL;
+  LTTEST(!strcmp("dummy" == "dummy");
+  LT_TEST_FAIL;
+  LT_TEST(!strcmp("dummy" == "dummy");
 
-  RETURN_RESULT;
+  LT_RETURN_RESULT;
 }
