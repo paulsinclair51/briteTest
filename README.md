@@ -13,23 +13,29 @@ other C/C++ projects.
 
 The test framework is defined in [litetest.h](litetest.h). Key points:
 1. Provides the following test macros:
-   - TEST(<assert_expr) where <assert_expre> is an expression that returns nonzero if test passed and 0 if test failed.
-   - TESTS(func, inject) where function has the signature resuLt_t <funcname>(char inject),
-   - TESTSMERGE(func1, func2, inject)
-   - TEST_FAIL(inject)
-   - TEST_FAULT(inject)
+   - TEST(<assert_expr)
+   - TESTS(func)
+   - TESTS2(func1, func2)
+   - TESTS3(func1, func2, func3)
+   - TESTS4(func1, func2, func3, func4)
+   - TEST_FAIL
+   - TEST_FAULT
 2. Provides the following orchestrator macros.
-   - OPEN_REPORT
-   - WRITE_CATEGORY(t, catname) where t is a TEST* macro and catname is string for category name.
+   - DECLARE_MAIN(testsuite)
+   - OPEN_REPORT("reporttitle")
+   - WRITE_RESULT(t, "categoryname")
    - CLOSE_REPORT
+   - RETURN_STATUS
 3, Provides the following test module macros:
+   DECLARE_FUNC(func)
    RETURN_RESULT
-4. Each test.<cat>.c file has a `lt…result_t test_<cat>(char inject)` function.
-   - The file may define other functions, macros, types, and variables for implementing tests.
+4. Each test module test.<func>.c file has an func function as its primary function.
+   - The file may define static functions, macros, types, and variables for implementing tests.
    - The test_<cat function includes a test list of RUN, MERGE_RUN, INJECT_FAIL, and INJECT_FAULT macro refernces.
 5. The test.<testsuite>.c file has a `main`function.
-   - The file may define other functions, macros, types, and variables for implementing the orchestrator.
-   - The  function `main` contains OPEN_REPORT followed by a list of REPORT macro references wrapped around a TEST* macro reference (e.g., REPORT(TEST(func, inject), REPORT(TESTS_MERGE(func1, func2, inject), and followed by CLOSE_REPORt.
+   - The file may define other static functions, macros, types, and variables for implementing the orchestrator.
+   - The  function `main` contains OPEN_REPORT followed by a list of REPORT macro references wrapped around a TEST* macro
+     reference (e.g., WRITE_RESULT(TEST(func), REPORT(TESTS_MERGE(func1, func2), followed by CLOSE_REPORT and RETURN_RESULT.
 6. The test macros provide signal handlers (`SIGSEGV`, `SIGABRT`, `SIGBUS`) to capture faults. Faults are counted as a `fault` rather than aborting execution, allowing the testing to continue.
 
 ## Adding a New Category Test Module
@@ -39,7 +45,7 @@ The test framework is defined in [litetest.h](litetest.h). Key points:
 a. Add a declare of the new test category function in the function declaraion section:
    `result_t test_<cat>(const char inject);`
 b. Add a call in the write_report section:
-   RUN_AND_REPORT("<category name>",  RUN(test_<cat>, inject));
+   WRITE_RESULT(<catname",  TESTS(test_<fun>, inject));
 6. Add the source to `TEST_SOURCES` in the Makefile (compiled once).
    
 ## Merging Results of SubCategory Test Modules
