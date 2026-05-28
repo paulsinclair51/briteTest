@@ -1,7 +1,7 @@
 /**
  * @file /paulsinclair51/include/litetest.h
  * 
- * @brief A reusale, portable, robust, and lightweight test API and framework.
+ * @brief A reusable, portable, robust, and lightweight test API and framework.
  *
  * This header is included by test modules and a test orchestrator for
  * testing, e.g., a feature, API, or a project implementation. It provides
@@ -297,7 +297,7 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
  */
 
 /**
- * @defgroup LiteTestVersionMacros LiteTest Versioning Macros
+ * @defgroup LiteTestVersionMacros LiteTest Version Macros
  *
  * @name LT_VERSION_MAJOR, LT_VERSION_MINOR, LT_VERSION_PATCH,
  *       LT_VERSION, LT_VERSION_NUM, LT_VERSION_HEX, 
@@ -613,9 +613,9 @@ void litetest_install_guard(litetest_guard_t *new_guard);
 void litetest_restore_guard(void);
 
 /**
- * @name tests_internal
+ * @name lite_test_tests
  * 
- * @brief Internal function used by the RUN macro: runs func
+ * @brief Internal function used by the TESTS macro: runs func
  *        capturing a fault, if one occurs, with a guard.
  * 
  * @param func Pointer to the test function to run, which takes a
@@ -632,7 +632,7 @@ void litetest_restore_guard(void);
  *         (lt_result_t){0, 0, SIZE_MAX, 0, 0} if a fault occurs.
  */
 
-lt_result_t tests_internal
+lt_result_t litetest_tests
 ( lt_result_t (*func)(char),
   const char merge, const char inject,
   const char * const func_name );
@@ -660,11 +660,11 @@ lt_result_t tests_internal
  *         of nested guards currently installed.
  */
 
- static inline size_t guard_level(void)
+ static inline size_t lt_guard_level(void)
  { return internal_num_saved_guards + (internal_guard ? 1 : 0); }
 
 /**
- * @name  is_current_guard_active
+ * @name  lt_is_current_guard_active
  * @brief Check if the current guard is active.
  * 
  * @return 1 if the current guard is active
@@ -672,27 +672,26 @@ lt_result_t tests_internal
  *        -1 if there is no current guard.
  */
 
-  static inline int is_current_guard_active(void)
-  { return internal_guard ? internal_guard->active : -1; }
+  static inline int lt_is_current_guard_active(void)
+  { return litetest_guard ? litetest_guard->active : -1; }
 
 /**
- * @section Test Macros
+ * @section TEST Macros
  * 
- * The test macros (TEST, TRSTS, TESTSMERGE, TESTFAIL, and TESTFAULT
+ * The test macros (TEST, TRSTS, TESTS_MERGE[n], TEST_FAIL, and TEST_FAULT
  * provide a convenient interface for running tests with
- * built-in fault recovery using the multi-levrl guard infrastructure:
+ * built-in fault recovery using the multi-level guard infrastructure:
  * 
- * - Typically, the test orchestrator uses the TESTS and TESTSMERGE
- *   macros to oexecute the test function in a test module and does not use
- *   the other 3 macros. The TEST, TESTFAIL, and TESTFAULT macros may be used in the
- *   test orchestrator, but it is more common for test category modules to
- *   use these macros.
+ * - Typically, the test orchestrator uses one of the TESTS[_MERGE[n]]
+ *   macros to execute the test function in a test module. The TEST, TEST_FAIL,
+ *   and TEST_FAULT macros may be used in the test orchestrator, but it is
+ *   more common for test category modules to  use these macros.
  * 
- * - Typically, test modules use the TEST, TESTFAIL, and TESTFAULT macros.
- *   A test module may also use the TESTS and TESTSMERGE macros
- *   for a test that can not reasonably be expressed
- *   as a single assertion, such as a test that involves
- *   multiple steps, looping, or requires setup and teardown.
+ * - Typically, test modules use the TEST, TEST_FAIL, and TEST_FAULT macros.
+ *   A test module may also use the TESTS[_MERGE[n]] macros for a test that
+ *   can not reasonably be expressed as a single assertion, as a single
+ *   assertion, such as a test that involves multiple steps, looping, or
+ *   requires setup and teardown.
  */
 
 /**
@@ -720,41 +719,43 @@ lt_result_t tests_internal
  * 
  * @note A fault is considered a fault in the testing framework or in the use of the
  *       testing framework, rather than a fault in the feature being tested. The use
- *       of SIZE_MAX for the fault count allows the caller to distinguish between
+ *       of SIZE_MAX for the fault count allows the macro to distinguish between
  *       a function-level fault and faults counted by the function itself.
  * 
  * @example In the orchestrator module (e,g., test_litetest.c) to
- *          run the test function in a test module (e.g., test_guards.c):
+ *          run the test function in a test module (e.g., test_orchestrator.c):
  *
  * @code
- TESTS(test_guards, inject);
+ TESTS(test_arg_handlers, inject);
  * @endcode
  */
 
 #define TESTS(func, inject) \
-  lt_result_t func(char inject); \
-  tests_internal(func, 0, inject, #func);
+   { t_result_t func(char inject); \
+     litetest_tests(func, 0, inject, #func); }
 
 /**
- * @name TESTSMERGE
+ * @name TESTS_MERGE, TESTS_MERGE3, TESTS_MERGE4
  * 
- * @brief A macro to run two functions each with a guard and
-          merge their results.
+ * @brief Macros to run two, three, or four functions each with a guard and
+ * merge their results.
  *
  * After setting up a guard to capture a fault (SIGABRT, SIGSEGV,
  * or SIGBUS), calls the function pointed to by parameter func1
  * with parameter inject, calls the function pointed to by parameter
- * func2 and merges their results. If a fault occurs, siglongjmps back to
- * the guard point.
+ * func2 and merges their results, etc. If a fault occurs for a call,
+ * siglongjmps back to the guard point.
  *
  * @param func1 Pointer to function 1.
  * @param func2 Pointer to function 2.
+ * @param func3 Pointer to function 3 (for TESTS_MERGE3 and TESTS_MERGE4).
+ * @param func4 Pointer to function 4 (for TESTS_MERGE4).
  * @param inject Flag to pass to the function.
  *               0: normal run.
  *               1: enable inject fail/fault tests, if any, in the function.
  * 
- * @botr If no signal, the merged result from the test functions is used.
- *         If signal caught, (lt_result_t){0, 0, SIZE_MAX, 0, 0} is used.
+ * @botr If no signal, the result from the test function is merged.
+ *         If signal caught, (lt_result_t){0, 0, SIZE_MAX, 0, 0} is merged.
  * 
  * @note If a fault is captured, a message is printed to stderr
  *       including the function name, file name, and line number
@@ -762,7 +763,7 @@ lt_result_t tests_internal
  * 
  * @note A fault is considered a fault in the testing framework or in the use of the
  *       testing framework, rather than a fault in the feature being tested. The use
- *       of SIZE_MAX for the fault count allows the caller to distinguish between
+ *       of SIZE_MAX for the fault count allows the macro to distinguish between
  *       a function-level fault and faults counted by the function itself.
  * 
  * @example In the orchestrator module (e,g., test_litetest.c) to
@@ -770,15 +771,36 @@ lt_result_t tests_internal
  *          test_guards_2.c) and merge their results:
  *
  * @code
- lt_result_t result = TESTSMERGE(test_guards_1, test_guards_2, inject);
+ TESTS_MERGE(test_guards_1, test_guards_2, inject)
  * @endcode
  */
 
-#define TESTSMERGE(func1, func2, inject) \
-  lt_result_t func1(char inject); \
-  tests_internal(func1, 0, inject, #func1);
-  lt_result_t func2(char inject); \
-  tests_internal(func2, 1, inject, #func2);
+#define TESTS_MERGE(func1, func2, inject) \
+   {  { lt_result_t func1(char inject); \
+        tests_internal(func1, 0, inject, #func1); }
+      { lt_result_t func2(char inject); \
+        tests_internal(func2, 1, inject, #func2); } \
+   }
+
+#define TESTS_MERGE3(func1, func2, func3, inject) \
+   {  { lt_result_t func1(char inject); \
+        tests_internal(func1, 0, inject, #func1); }
+      { lt_result_t func2(char inject); \
+        tests_internal(func2, 1, inject, #func2); } \
+      { lt_result_t func3(char inject); \
+        tests_internal(func3, 1, inject, #func2); } \
+}
+
+#define TESTS_MERGE3(func1, func2, func3, inject) \
+   {  { lt_result_t func1(char inject); \
+        tests_internal(func1, 0, inject, #func1); }
+      { lt_result_t func2(char inject); \
+        tests_internal(func2, 1, inject, #func2); } \
+      { lt_result_t func3(char inject); \
+        tests_internal(func3, 1, inject, #func3); } \
+      { lt_result_t func4(char inject); \
+        tests_internal(func4, 1, inject, #func4); } \
+}			
 
 /**
  * @name TEST
