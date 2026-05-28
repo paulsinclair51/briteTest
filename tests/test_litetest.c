@@ -20,7 +20,7 @@ DECLARE_MAIN
   OPEN_REPORT("LiteTest");
  
   WRITE_RESULTS(TESTS(test_orchestrator), "Orchestrator");
-  WRITE_RESULTS(TESTS2(test_guards1, test_guards2), "Guards 1 and 2");
+  TESTS(test_guards1); WRITE_RESULTS(test_guards2), "Guards 1 and 2");
 
   CLOSE_REPORT;
 
