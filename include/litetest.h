@@ -613,10 +613,31 @@ void litetest_install_guard(litetest_guard_t *new_guard);
 void litetest_restore_guard(void);
 
 /**
- * @name lite_test_tests
+ * @name litetest_result
+ * 
+ * @brief Internal static variable in which to save result by TEST
+ *        and TESTS[_MERGE[n]] macros. Value used by TESTS_MERGE[n]
+ *        macros to merge results and by WRITE_CATEOGORY_RESULTS.
+ */
+
+static lt_result_t litetest_result;
+
+/**
+ * @name litetest_total
+ * 
+ * @brief Internal static variable in which to total results by TEST
+ *        and TESTS[_MERGE[n]]macros and sed by CLOSE_REPORT if
+ *        variable is in orchestrator module.
+ */
+
+static lt_result_t litetst_totol;
+
+ * @name litetest_tests
  * 
  * @brief Internal function used by the TESTS macro: runs func
  *        capturing a fault, if one occurs, with a guard.
+ *        Saves the result internally and adds the result
+ *        to the internal total.
  * 
  * @param func Pointer to the test function to run, which takes a
  *             char inject parameter and returns a lt_result_t.
@@ -788,7 +809,7 @@ lt_result_t litetest_tests
       { lt_result_t func2(char inject); \
         tests_internal(func2, 1, inject, #func2); } \
       { lt_result_t func3(char inject); \
-        tests_internal(func3, 1, inject, #func2); } \
+        tests_internal(func3, 1, inject, #func3); } \
 }
 
 #define TESTS_MERGE3(func1, func2, func3, inject) \
@@ -804,12 +825,15 @@ lt_result_t litetest_tests
 
 /**
  * @name TEST
- * @brief Test an assert expression with fault recovery.
  *
- * Evaluates assert_expr and updates test_result counters for pass/fail/fault.
- * If assert_expr is true, increments pass count; if false, increments fail count
- * and prints a message to stderr. If a signal occurs during evaluation, increments
- * fault count and prints a message to stderr.
+ * @brief Evaluates assert_expr with a fault guard and updates the internal
+ * static variable litetest_total for pass/fail/fault:
+ *
+ * - If assert_expr is true (not zero), increments pass count.
+   - If false, increments fail count.
+   - IF fault, incremenet fault count.
+   
+ * For fail and fault, prints a message to stderr.
  *
  * @param assert_expr The expression to evaluate as a test assertion.
  *
@@ -819,7 +843,7 @@ lt_result_t litetest_tests
  *       including the expression, file name, and line number for debugging purposes.
  * 
  *
- * @example In a test module (e.g., test.func.c):
+ * @example In a test module (e.g., test_guard_2.c):
  * 
  * @code
  lt_result_t test_count(const char inject)
@@ -855,7 +879,7 @@ lt_result_t litetest_tests
 
 #if defined(TEST_ORCHESTRATOR)
 
-extern char internal_run_id;
+static char litetest_runid;
 extern lt_result_t internal_total;
 extern char *internal_executable_name;
 extern const char internal_default_path_msg[];
