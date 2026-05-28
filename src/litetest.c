@@ -1,7 +1,7 @@
 /**
  * @file /paulsinclair51/src/litetest.c
  *
- * @mainpage litetest Function Definitions
+ * @mainpage LiteTest Function Definitions
  * 
  * @brief This header provides (non-inline) function definitions for the LiteTest
  *        API and framework.
@@ -15,7 +15,7 @@
  * @copyright Copyright (c) 2026 paulsinclair51
  * SPDX-License-Identifier: MIT
  * For license details, see @ref LICENSE "LICENSE" in the
- * paulsinclair51/lubtype repository root.
+ * paulsinclair51/LiteTest repository root.
  *
  * @section Usage
  *
