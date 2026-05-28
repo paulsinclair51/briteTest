@@ -12,21 +12,21 @@ modular test categories. It’s intentionally minimal, signal‑safe, and built 
 other C/C++ projects.
 
 The API and test framework is defined in [litetest.h](litetest.h) and [litetest.h](litetest.c). Key points:
-1. Provides the following test macros:
+1. Provides the following test and assert macros:
    - LT_TEST(func)
    - LT_ASSERT(assert_expr)
    - LT_ASSERT_FAIL
-   - LY_ASSERT_FAULT
+   - LT_ASSERT_FAULT
 2. Provides the following orchestrator macros.
    - LT_DECLARE_MAIN(testsuite)
    - LT_OPEN_REPORT("reporttitle")
-   - LT_WRITE_RESULT(t, "categoryname")
+   - LT_WRITE_RESULT([t], "categoryname")
    - LT_CLOSE_REPORT
    - LT_RETURN_STATUS
 3, Provides the following test module macros:
-   DECLARE_FUNC(func)
-
-   RETURN_RESULT
+   - LT_DECLARE_FUNC(func)
+   - LT_INTI_TEST;
+   - LT_RETURN_RESULT
 4. Each test module test.<func>.c file has an func function as its primary function.
    - The file may define static functions, macros, types, and variables for implementing tests.
    - The test_<cat function includes a test list of RUN, MERGE_RUN, INJECT_FAIL, and INJECT_FAULT macro refernces.
