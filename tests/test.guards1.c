@@ -10,12 +10,12 @@
  * paulsinclair51/LiteTest GitHub repository.
  */
 
-#define TEST_MODULE guards1
+#define TEST_MODULE test_guards1
 #include "litetest.h"
 
 // Test LiteTest guard related functions.
 
-DECLARE_FUNC(guards1)
+DECLARE_FUNC(test_guards1)
 { 
   INIT_TEST;
  
