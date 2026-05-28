@@ -1,7 +1,8 @@
 /**
  * @file /paulsinclair51/include/litetest.h
  * 
- * @brief A reusable, portable, robust, and lightweight test API and framework.
+ * @brief LiteTest is a reusable, portable, robust, and lightweight
+ * test API and framework.
  *
  * This header is included by test modules and a test orchestrator for
  * testing, e.g., a feature, API, or a project implementation. It provides
