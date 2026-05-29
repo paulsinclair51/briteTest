@@ -1,58 +1,94 @@
 # LiteTest
-LiteTest is an application programming interface (API) and testing framework for use
-by a test orchestrator and its test category modules
+
+LiteTest is a C/C++ application programming interface (API) and testing framework for use
+by a test orchestrator (main) function and optional test functions.
+
+LiteTest is intentionally lightweight, signal‑safe (POSIX-aware), and built for embedding into
+other C/C++ projects. The APi is designed to be easy to use while still providing
+comprehensive testing functionality and customization.  
 
 Copyright (c) 2026 paulsinclair51
 SPDX-License-Identifier: MIT For license details, see the LICENSE file in the paulsinclair51/lubtype repository root.
 
 ## Overview
 
-LiteTest is a compact, POSIX‑aware C/C++ testing framework designed for orchestrators and
-modular test categories. It’s intentionally minimal, signal‑safe, and built for embedding into
-other C/C++ projects.
+The API and test framework is defined in [litetest.h](litetest.h) and [litetest.h](litetest.c).
 
-The API and test framework is defined in [litetest.h](litetest.h) and [litetest.h](litetest.c). Key points:
+Key points:
 
-1. Provides the following test and assert macros:
+1. An executable is built from the orchestrator (main) function, optional
+test functions (func), litetest.c, and litetest.h plus modules from the
+feature/projecdt/API to be tested.
+   
+2. The executable generates a report file of results grouped into categories with
+pass/fail/fault counts for one or more categories plus totals for the categories.
+For fail and faults, error messages are written to stdout (which is
+concatenated to the report and then the stdout file is removed).
+
+3. The orchestrator (main) function and optional test functions (func) may be defined
+in a single module (.c file) or split across multiple modules. When there is one or more
+test functions, the recommended best practice is to place the orchestrator main function
+in one module and each test function in its own module.
+   
+4. Provides the following test and assert macros:
 
    - LT_TEST(func)
    - LT_ASSERT(assert_expr)
    - LT_ASSERT_FAIL
    - LT_ASSERT_FAULT
+  
+   These macros provide multi-level signal handling (`SIGSEGV`,
+   `SIGABRT`, `SIGBUS`) to capture faults. Faults are counted as a `fault`
+    rather than aborting execution within the orchestrator (main),
+    test function (func), or assert_exprr allowing testing to continue
+    and a test report to be generated.
 
-3. Provides the following orchestrator macros.
+5. Provides the following orchestrator (main) macros.
 
    - LT_DECLARE_MAIN(testsuite)
+   - LT_INIT_TEST
+   - LT_PARSE_ARGS
    - LT_OPEN_REPORT("reporttitle")
    - LT_WRITE_RESULT([t], "categoryname")
    - LT_CLOSE_REPORT
    - LT_RETURN_STATUS
 
-3, Provides the following test function macros:
+5, Provides the following test function (func) macros:
 
    - LT_DECLARE_FUNC(func)
-   - LT_INIT_TEST;
+   - LT_INIT_TEST
    - LT_RETURN_RESULT
 
-4. Utility functions:
+5. Utility functions, e.g.:
 
-   - lt_current_guard_level, lt_current_result, lt_current_total, etc.
+   - lt_current_guard_level, lt_current_result, lt_current_total
+  
+## Modules (.c files)
 
-5. The test and assert macros provide signal handlers (`SIGSEGV`,
-`SIGABRT`, `SIGBUS`) to capture faults. Faults are counted as a `fault`
-rather than aborting execution, allowing testing to continue.
+Include litetest.h and any needed feature/project/API/standard include files
+in a module containing orchestrator (main) function or test fucntion (func).
 
-6. The orchestrator (main) function and the optional test functions (func) may be defined
-in a single module (.c file) or split across multiple modules. When there is one or more
-test functions, the recommended best practice is to place the main function in one module
-and each test function in its own module.
-   
-## Orchestrator
+For example:
 
+// Includes for feature/project/APi.
+#include "lubtype.h"  // API for lubtype API.
+#include
 
+## Orchestrator (main) Function
 
-To merge the results of subcategory test and assert functions for the result
-in the orchestration (main) function:
+LT_DECLARE_MAIN(testsuite);
+
+LT_INIT_TEST;
+LT_PARSE_ARGS;
+LT_OPEN_REPORT("reporttitle");
+LT_WRITE_RESULT([t], "categoryname");
+LT_CLOSE_REPORT;
+
+Optional typedefs, variable, functions, code etc. may be
+added to customize or support the testing. Added code may
+use utility function 
+
+   - LT_RETURN_STATUS
 
   `{`LT_TEST(func);` | `LT_ASSERT(asser_expr);`}...`
   `LT_WRITE_RESULT(, "categoryname")`
