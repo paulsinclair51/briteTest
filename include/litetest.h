@@ -6,7 +6,7 @@
  *
  * This header is included by test modules and a test orchestrator for
  * testing, e.g., a feature, API, or a project implementation. It provides
- * declarations, definitions (other than non-inline definition, and the
+ * declarations, definitions (other than non-inline fumction definition), and the
  * definitve Doxygen documentation for LiteTest (see README.md in the
  * root directory for an overview of LiteTest).
  *
@@ -19,29 +19,26 @@
  * 
  * 1. Domain-specific test macros with a multi-level signal-guard mechanism
  *    based on sigsetjmp/siglongjmp to capture faults:
- *    - `TEST(assert_expr)`
- *    - `TESTS(func1, inject)`
- *    - `TESTS_MERGE(func1, func2, inject)`
- *    - `TESTS_MERGE3(func1, func2, func3, inject)`
- *    - `TESTS_MERGE4(func1, func2, func3, func4, inject)`
- *    - `TEST_FAIL(inject)`
- *    - `TEST_FAULT(inject)`
+ *    - `LT_ASSERT(assert_expr)`
+ *    - `LT_TEST(func)`
+ *    - `LT_ASSERT_FAIL`
+ *    - `LT_ASSERT_FAULT`
  *
  * 2. Domain-specific reporting macros (for use in test orchestrator):
  *    - `OPEN_REPORT`
  *    - `CLOSE_REPORT`
- *    - `CATEGORY_REPORT`
+ *    - `WRITE_RESULT`
  *
  * 3. Miscellanous functions, macros, typedefs, and variables with names prefixed
  *    with lt_* or  LT_*; see @ref NamingConventions). For example, lt_executablename,
- *    lt_lt_result_t, lt_dirpath, lt_path_usage, and LT_MAX_PATH_LEN.
+ *    lt_result_t, lt_dirpath, lt_path_usage, and LT_MAX_PATH_LEN.
  * 
  * This header requires POSIX.1-2008 for signal handling and sigsetjmp/siglongjmp.
  * 
  * @copyright Copyright (c) 2026 paulsinclair51
  * SPDX-License-Identifier: MIT
- * For license details, see @ref ../LICENSE "LICENSE" in the
- * paulsinclair51/lubtype repository root.
+ * See @ref ../LICENSE "LICENSE" in the
+ * repository root for details.
  */
 
 /**
@@ -51,9 +48,6 @@
  * include the following:
  *
  * @code
-#if !defined(TEST_ORCHESTRATOR)
-#define TEST_ORCHESTRATOR
-#endif
 #include "litetest.h"
  * @endcode
  *
@@ -94,11 +88,8 @@
  * 
  * Public API:
  *
- * 1. Unprefixed domain-specific macros:
-      TEST, TESTS, TESTS_MERGE, TESTS_MERGE3, TESTS_MERGE4,
-	  TEST_FAIL, TEST_FAULT, OPEN_REPORT, CLOSE_REPORT, WRITE_RESULTS.
- * 2. Public functions, typedefs, and variables: lt_*
-   3. Public macros, constants, and enum values:  LT_*
+ * 1. lt_* - Public functions, typedefs, and variables.
+ * 2. LT_* - Public macros, constants, and enum values.
  * 
  * Internal and private to the API:
  *
@@ -109,16 +100,16 @@
  * namespace isolation, and predictable behavior when LiteTest is embedded
  * into a larger C/C++ project.
  *
- * @example Prefixed Public API Names
+ * @example Public API Names
  * 1. Utility macros: LT_TOK_PASTE, LT_TOK_STR, LT_RESULT, LT_TOTAL
  *    LT_STATIC_ASSERT
  * 2. Version macros: LT_VERSION, LT_VERSION_EQ, LT_VERSION_AT_LEAST
  * 4. Uitlity functions: lt_current_guard_level.
  *
- * @example Prefixed Public typedef Name\\
+ * @example Public typedef Name
  * lt_result_t
  *
- * @example Prefixed Private Variable Names
+ * @example Private Variable Names
  * litetest_result, litetest_total
  */
 
@@ -136,11 +127,11 @@
  * argument rather than aborting. This allows counting pass,
  * fail, and fault without aborting due to a fault.
  * 
- * A fault detected by TESTS or TESTS_MERGE[n] represent a fault
+ * A fault detected by LT_TEST represents a fault
  * in the use of the testing framework or in the testing framework
  * itself, and not in the feature being tested. Such a fault is
- * expected to be rare but guarding is provided to avoid an abort
- * if it does.
+ * expected to be rare but guarding avoids an abort trminating
+ * execution.
  */
 
 #pragma once
@@ -173,14 +164,14 @@ extern "C" {
  * @section UtilityMacros Utility Macros
  */
 
-#if defined(LT_TOK_PASTE) || defined(LITETEST_TOK_PASTE)
-#error "litetest.h: A LT_TOK_PASTE or LITETEST_TOK_PASTE " \
+#if defined(LT_TOK_PASTE) || defined(LITETEST_TOK_PASTE_INTRRNAL)
+#error "litetest.h: A LT_TOK_PASTE or LITETEST_TOK_PASTE_INTRRNAL " \
        "macro is unexpectedly already defined. " \
        "#undef before including litetest.h."
 #endif // defined macros
 
-#if defined(LT_TOK_STR) || defined(LITETEST_TOK_STR)
-#error "litetest.h: A LT_TOK_STR or LITETEST_TOK_STR " \
+#if defined(LT_TOK_STR) || defined(LITETEST_TOK_STR_INTERNAL)
+#error "litetest.h: A LT_TOK_STR or LITETEST_TOK_STR_INTERNAL " \
        "macro is unexpectedly already defined. " \
        "#undef before including litetest.h."
 #endif // defined macros
