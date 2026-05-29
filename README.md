@@ -86,7 +86,7 @@ test_compare.c, et.). Currently, this repository is private.
 
 ### Example Self-Test of LiteTest API and Framwork
 
-Since self-test just include this file:
+Since self-test, just include this file:
 
 ```c
 #include "litetest.h"
