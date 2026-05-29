@@ -154,17 +154,13 @@ Specify static if the above defintion of the function specifies static.
 
 ### RUN
 
-## Example Self-Test litetest API and Framework
-
-
-
 ## Example Test lubtype API
 
 /paulsinclair5/lubtype/test provides an example with a test orchestrator
 (test_lubtype.c) and test categories (test.charclass.c, test_count.c,
-test_compare.c, et.)
+test_compare.c, et.). Currently, repository is private.
 
-## Building and Running
+## Building and Executing
 
 ### Linux / macOS
 
