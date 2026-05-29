@@ -7,6 +7,9 @@ LiteTest is intentionally lightweight, signal‑safe (POSIX-aware), and built fo
 other C/C++ projects. The APi is designed to be easy to use while still providing
 comprehensive testing functionality and customization.  
 
+The API and framework do not implement the actual tests/asserts; these must be provided
+as part of implementing the test executable.
+
 Copyright (c) 2026 paulsinclair51
 SPDX-License-Identifier: MIT For license details, see the LICENSE file in the paulsinclair51/lubtype repository root.
 
@@ -68,49 +71,75 @@ in one module and each test function in its own module.
 Include litetest.h and any needed feature/project/API/standard include files
 in a module containing orchestrator (main) function or test fucntion (func).
 
-For example:
+For example to test the lubtype API:
 
-// Includes for feature/project/APi.
-#include "lubtype.h"  // API for lubtype API.
-#include
+```c
+#include "lubtype.h"
+#include "litetest.h"
+```
+
+For example, to have LiteTest test itself:
+
+```c
+#include "litetest.h"
+```
+
+See the tests directory in this repository for an implementation
+of tests to self-test the LiteTest API and framework.
 
 ## Orchestrator (main) Function
 
-LT_DECLARE_MAIN(testsuite);
+```c
+LT_DECLARE_MAIN(testsuite)
+{
+  LT_INIT_TEST;
+  LT_PARSE_ARGS;
+  LT_OPEN_REPORT("reporttitle");
 
-LT_INIT_TEST;
-LT_PARSE_ARGS;
-LT_OPEN_REPORT("reporttitle");
-LT_WRITE_RESULT([t], "categoryname");
-LT_CLOSE_REPORT;
+  // Tests
+  [[LT_TEST(func); | LT_ASSERT(asser_expr);]...
+  LT_WRITE_RESULT([LT_TEST(func) | LT_ASSERT(asser_expr)], "categoryname")]...
+
+  LT_CLOSE_REPORT;
+}
+```
+
+Results are accumulated up to the LT_WRITE_RESULT and then reset.
+Totals are accumalated across all the tests.
 
 Optional typedefs, variable, functions, code etc. may be
 added to customize or support the testing. Added code may
-use utility function 
+use utility functions.
 
-   - LT_RETURN_STATUS
+To have a forward reference to the orchestrator (main) function:
 
-  `{`LT_TEST(func);` | `LT_ASSERT(asser_expr);`}...`
-  `LT_WRITE_RESULT(, "categoryname")`
+```c
+LT_DECLARE_MAIN(testsuite);
+```
 
-or
+## Test Function (func)
 
-  `{`LT_TEST(func);` | `LT_ASSERT(asser_expr);`}...`
-  `LT_WRITE_RESULT(`LT_TEST(func);` | `LT_ASSERT(asser_expr);`, "categoryname")`
+```c
+[static] LT_DECLARE_FUNC(func)
+{
+  LT_INIT_TEST;
 
-  
+  // Tests
+  [LT_TEST(func); | LT_ASSERT(asser_expr);]...
 
-To merge the results of three subcategory test modules for the result of the category:
+  LT_RETURN_RESULT;
+}
+```
 
-  `MERGERUN_AND_REPORT("<category name>",
-				          MERGE(
-                  MERGE(RUN(test_<cat_1>, inject),
-                        RUN(test_<cat_2>, inject)},
-								            RUN(test_<cat_3>, inject));`
+Specify static if the function is only referenced in the same module.
 
-Continue pattern to merge more results.
+To have a forward reference to the test test function (func):
 
-## Orchestor API
+```c
+[static] LT_DECLARE_FUNC(func);
+```
+
+Specify static if the above defintion of the function specifies static.
 
 ## Testing with a Guard
 
