@@ -82,9 +82,9 @@
 /**
  * @section NameConventions Naming Conventions
  *
- * LiteTest uses the following naming conventions:
+ * LiteTest - Repository name (case-jnsensitive.
  *
- * File naming: litetest.h and litetest.c (lowercase for portability).
+ * litetest.h and litetest.c - filenames
  * 
  * Public API:
  *
@@ -93,24 +93,27 @@
  * 
  * Internal and private to the API:
  *
- * 1. Internal functions, typedefs, and variables: litetest_*
- * 2. Internal macros, constants, and enum values: LITETEST_*
+ * 1. litetest_* * functions, typedefs, and variables.
+ * 2. LITETEST_* - Internal macros, constants, and enum values.
  *
  * These conventions are designed to provide a clean public API, strong
  * namespace isolation, and predictable behavior when LiteTest is embedded
  * into a larger C/C++ project.
  *
  * @example Public API Names
+ *
  * 1. Utility macros: LT_TOK_PASTE, LT_TOK_STR, LT_RESULT, LT_TOTAL
  *    LT_STATIC_ASSERT
  * 2. Version macros: LT_VERSION, LT_VERSION_EQ, LT_VERSION_AT_LEAST
  * 4. Uitlity functions: lt_current_guard_level.
  *
  * @example Public typedef Name
+ *
  * lt_result_t
  *
  * @example Private Variable Names
- * litetest_result, litetest_total
+ *
+ * litetest_result_internal, litetest_total_internal
  */
 
 /**
@@ -122,15 +125,15 @@
  * fault (i.e., segmentation fault, bus error, or abort) during
  * test execution.
  * 
- * A test macro wraps a guard around its argument, enabling
- * detection of a fault not handled at a lower level  by the
+ * A test/assert macro wraps a guard around its argument, enabling
+ * detection of a fault not handled at a lower level by the
  * argument rather than aborting. This allows counting pass,
  * fail, and fault without aborting due to a fault.
  * 
- * A fault detected by LT_TEST represents a fault
+ * A fault detected by LT_TEST represents a fault 
  * in the use of the testing framework or in the testing framework
  * itself, and not in the feature being tested. Such a fault is
- * expected to be rare but guarding avoids an abort trminating
+ * expected to be rare but guarding avoids an abort terminating
  * execution.
  */
 
@@ -143,7 +146,7 @@
 
 #include <stdlib.h>
 #include <ctype.h>
-#include <limits.h>
+#include <limits.h>ì
 #include <setjmp.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -165,7 +168,7 @@ extern "C" {
  */
 
 #if defined(LT_TOK_PASTE) || defined(LITETEST_TOK_PASTE_INTRRNAL)
-#error "litetest.h: A LT_TOK_PASTE or LITETEST_TOK_PASTE_INTRRNAL " \
+#error "litetest.h: A LT_TOK_PASTE or LITETEST_TOK_PASTE_INTERNAL " \
        "macro is unexpectedly already defined. " \
        "#undef before including litetest.h."
 #endif // defined macros
@@ -197,7 +200,7 @@ extern "C" {
  * 
  * @note Tokens a and b must each expand to a single token.
  * 
- * @note Macro LITETEST_TOK_PASTE is defined to implement expanding
+ * @note Macro LITETEST_TOK_PASTE_INTERNAL is defined to implement expanding
  *       the tokens for LT_TOK_PASTE. It is not intended for direct use.
  * 
  * @note A preprocessor error is raised if either of these macros
@@ -208,7 +211,7 @@ extern "C" {
 // Paste tokens without expanding.
 #define LITETEST_TOK_PASTE(t1, t2) a##b
 // Expand tokens before pasting.
-#define LT_TOK_PASTE(t1, t2) LITETEST_TOK_PASTE(t1, t2)
+#define LT_TOK_PASTE(t1, t2) LITETEST_TOK_PASTE_INTERNAL(t1, t2)
 
 /** @} */
 
@@ -226,7 +229,7 @@ extern "C" {
  * 
  * @note Token s must expand to a single token.
  * 
- * @note Macro LITETEST_TOK_STR is defined to implement expanding
+ * @note Macro LITETEST_TOK_STR_INTERNAL is defined to implement expanding
  *       the token for TOK_STR. It is not intended for direct use.
  * 
  * @note A preprocessor error is raised if either of these macros
@@ -235,9 +238,9 @@ extern "C" {
  */
 
 // Stringify token without expanding.
-#define LITETEST_TOK_STR(t) #s
+#define LITETEST_TOK_STR_INTERNAL(t) #s
 // Expand token before stringifying.
-#define LT_TOK_STR(t) LITETEST_TOK_STR(t)
+#define LT_TOK_STR(t) LITETEST_TOK_STR_INTERNAL(t)
 
 /** @} */
 
@@ -246,7 +249,8 @@ extern "C" {
  *
  * @brief Compile-time (static) assertion macro.
  *
- * @param cond Condition to be asserted.
+ * @param cond Condition to be asserted. Condition must be such that it
+ *              csn be evaluated at compile-time.
  * @param msg A single token (message) to be displayed if
  *            the assertion fails.
  *
@@ -446,11 +450,27 @@ typedef struct
   size_t injected_fault;
 } lt_result_t;
 
+typedef struct
+{ size_t category_id;
+  size_t num_results_merged;
+  size_t pass;
+  size_t fail;
+  size_t fault;
+  size_t injected_fail;
+  size_t injected_fault;
+  size_t total_pass;
+  size_t total_fail;
+  size_t total_fault;
+  size_t total_injected_fail;
+  size_t total_injected_fault;
+} lt_state_t;
+
 /**
  * @section Guard Infrastructure
  * 
  * The guard infrastructure provides a mechanism to catch signals such as SIGSEGV,
- * SIGABRT, and SIGBUS that may occur during the evaluation of TEST* macros
+ * SIGABRT, and SIGBUS that may occur during the evaluation of LT_TEST
+ * and LT_ASSERT* macros.
  * It uses sigsetjmp and siglongjmp to return control
  * to a known point in the code when a signal is caught, allowing the test framework
  * to count faults and continue running other tests instead of aborting the entire
@@ -459,30 +479,30 @@ typedef struct
  * Type, function, and static variable names are prefixed with  "litetest_".
  * 
  * The guard infrastructure is not intended to be used directly by test
- * modules or the test orchestrator, but is used by the TEST* macros.
+ * functions or the orchestrator.
  */
 
 /**
- * @name litetest_sighandler_t
+ * @name litetest_sighandler_internal_t
  * 
  * @brief Type for signal handlers used in the guard infrastructure.
  *
- * @details litetest_sighandler_t type is defined as a pointer to a function that takes
+ * @details litetest_sighandler_internal_t type is defined as a pointer to a function that takes
  * an int signal number as a parameter and returns void. This type is used for the
  * handler function pointer in the guard structure and for saving/restoring signal
- * handlers in the guard installation and restoration functions.
+ * handlers in the guard install and restore functions.
  * 
- * The litetest_sighandler_t type ensures that the guard mechanism can properly
+ * The litetest_sighandler_internal_t type ensures that the guard mechanism can properly
  * manage signal handlers for SIGSEGV, SIGABRT, and SIGBUS.
  * 
- * The use of litetest_sighandler_t allows the guard mechanism to be flexible and compatible
+ * The use of litetest_sighandler_internal_t allows the guard mechanism to be flexible and compatible
  * with the signal handling conventions of this framework.
  */
 
-typedef void (*litetest_sighandler_t)(int);
+typedef void (*litetest_sighandler_interal_t)(int);
 
 /**
- * @name litetest_guard_t
+ * @name litetest_guard_internal_t
  * 
  * @brief Structure for a guard used to capture signals and manage
  *        state for fault recovery.
@@ -492,21 +512,21 @@ typedef struct
 { void (*handler)(int sig);
   sigjmp_buf env;
   volatile sig_atomic_t active;
-} litetest_guard_t;
+} litetest_guard_internal_internal_t;
 
 /**
- * @name litetest_saved_guard_t
+ * @name litetest_saved_guard_internal_t
  * 
  * @brief Structure for saving the current guard when a guard 
  *        at a lower level is installed.
  */
 
 typedef struct
-{ litetest_guard_t *guard;
-  litetest_sighandler_t segv_handler;
-  litetest_sighandler_t abrt_handler;
-  litetest_sighandler_t bus_handler;
-} litetest_saved_guard_t;
+{ litetest_guard_internal_t *guard;
+  litetest_sighandler_internal_t segv_handler;
+  litetest_sighandler_internal_t abrt_handler;
+  litetest_sighandler_internal_t bus_handler;
+} litetest_saved_guard_internal_t;
 
 /**
  * @name litetest_guard
@@ -515,11 +535,11 @@ typedef struct
  *        and fault recovery.
  * 
  * @note Current guard is accessible internally by the guard
- *       infrastructure in the orchestrator and test modules.
+ *       infrastructure in the orchestrator and test functions.
  *       It is defined only in the orchestrator module.
  */
 
-extern litetest_guard_t *litetest_guard;
+extern litetest_guard__internal_t *litetest_guard_internal;
 
 /**
  * @name litetest_saved_guards, litetest_num_saved_guards
@@ -538,7 +558,7 @@ extern size_t litetest_num_saved_guards;
 /** @} */
 
 /**
- * @name litetest_guardhandler
+ * @name litetest_guardhandler_internal
  * 
  * @brief Captures signals and siglongjmps back to the guard point.
  * 
@@ -557,16 +577,18 @@ extern size_t litetest_num_saved_guards;
  * and the testing framework to handle the results appropriately.
  */
 
-static inline void litetest_guard_handler(int sig)
-{ if (litetest_guard && litetest_guard->active)
-  { litetest_guard->active = 0; siglongjmp(litetest_guard->env, sig ? sig : 1); }
+static inline void litetest_guard_handler_internal(int sig)
+{ if (litetest_guard_internal && litetest_guard_internal->active)
+  { litetest_guard_internal->active = 0;
+    siglongjmp(litetest_guard_interrnal->env, sig ? sig : 1); 
+  }
 
   /* Fault outside of active guard or misuse of guard framework. */
   abort();
 }
 
 /**
- * @name litetest_install_guard
+ * @name litetest_install_guard_internal
  * 
  * @brief Install a new guard and save the current guard.
  * 
@@ -578,10 +600,10 @@ static inline void litetest_guard_handler(int sig)
  * signal handling.
  */
 
-void litetest_install_guard(litetest_guard_t *new_guard);
+void litetest_install_guard_internal(litetest_guard_t *new_guard);
 
 /**
- * @name litetest_restore_guard
+ * @name litetest_restore_guard_interna
  * 
  * @brief Restore the previous guard.
  * 
@@ -602,13 +624,15 @@ void litetest_install_guard(litetest_guard_t *new_guard);
  * function ensures that the correct guard is restored in a last-in-first-out manner.
  */
 
-void litetest_restore_guard(void);
+void litetest_restore_guard_internal(void);
 
 /**
- * @name litetest_result
+ * @name litetest_current_state_internal
  * 
- * @brief Internal static variable in which to save result by TEST
- *        and TESTS[_MERGE[n]] macros. Value used by TESTS_MERGE[n]
+ * @brief Internal static pointer to the current state in which to
+ * accumalate
+ * results to save result by LT_TEST
+ *        and LT_ASSERT macros. Value used 
  *        macros to merge results and by WRITE_CATEOGORY_RESULTS.
  */
 
