@@ -71,28 +71,30 @@ function in one module and each test function in its own module.
 Include litetest.h and any needed feature/project/API/standard include files
 in a module containing orchestrator (main) function or test fucntion (func).
 
-For example to test the lubtype API:
+### Example Test lubtype API
+
+Include these two files:
 
 ```c
 #include "lubtype.h"
 #include "litetest.h"
 ```
-### Example Test lubtype API
 
 /paulsinclair5/lubtype/test provides an example with a test orchestrator
 (test_lubtype.c) and test categories (test.charclass.c, test_count.c,
-test_compare.c, et.). Currently, repository is private.
-For example, to have LiteTest test itself:
+test_compare.c, et.). Currently, this repository is private.
+
+### Example Self-Test of LiteTest API and Framwork
+
+Since self-test just include this file:
 
 ```c
 #include "litetest.h"
 ```
 
-### Example
-
 /paulsinclair51/litetest/tests provides an implementation using the API and framework
 to self-test the LiteTest API and framework. The implmeementation consists of
-test orchestrator (main) function (defined in test_litetest.c) with two test
+a test orchestrator (main) function (defined in test_litetest.c) with two test
 categories:
 
 - "Orchestrator" (test_orchestrator.c defines the test_orchestrator function).
