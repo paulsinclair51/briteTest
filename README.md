@@ -10,6 +10,8 @@ comprehensive testing functionality and customization.
 The API and framework do not implement the actual tests/asserts; these must be provided
 as part of implementing the test executable.
 
+*Tip: To view this README.md file with formatting applied, Ctrl-Shift-V or see [Viewing Formatted README](#viewing-formatted-readme).
+
 Copyright (c) 2026 paulsinclair51
 SPDX-License-Identifier: MIT For license details, see the LICENSE file in the paulsinclair51/lubtype repository root.
 
@@ -178,10 +180,11 @@ From the /paulsinclair51/FileTest root directory:
 ```sh
 make -C tests run
 
-The Makefile builds and executes the exectable (writing the report
-to the /paulsinclair51/LiteTest/reports as .txt file).
+The Makefile builds and executes the executable test_litetest writing the test report
+to the /paulsinclair51/LiteTest/reports directory as LiteTest_test_report.txt file).
 
-The executable can then be executed directly (see Executable Usage).
+The executable can then be executed directly (see
+[Executable Usage](#executable-usage-readme)).
 
 To build with gcc instead of clang:
 
