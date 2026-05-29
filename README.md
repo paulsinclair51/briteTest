@@ -1,39 +1,41 @@
 # LiteTest
 
 LiteTest is a lightweight C/C++ application programming interface (API) and testing framework
-designed for use by a test orchestrator (main) function and optional test functions. It is intentionally minimal, signal‑safe, and suitable for embedding into
-other C/C++ projects. The API is designed to be easy to use while still providing
-comprehensive testing harness functionality and customization.  
+designed for a test orchestrator (`main`) function and optional test functions. It is POSIX-aware, signal‑safe, and suitable for embedding into
+other C/C++ projects. The API and framework is intentionally minimal while still providing 
+comprehensive testing capabilites.  
 
-The framework does not implement the actual tests or assertions itself; these must be included
-in the test executable.
-
-* Tip: To preview this README.md file with formatting applied, Ctrl-Shift-V or,
-for a side-by-s9de view, Ctrl+K then V.
+LiteTest does not implement the actual tests or assertions itself; these must supplied
+by the test executable.
 
 Copyright (c) 2026 paulsinclair51
-SPDX-License-Identifier: MIT For license details, see the LICENSE file in the paulsinclair51/lubtype repository root.
+SPDX-License-Identifier: MIT
+See the LICENSE file in the repository root for details.
 
 ## Overview
 
 The API and test framework is defined in [litetest.c](litetest.c) and [litetest.h](litetest.h).
 
-Key points:
+### Key Points
 
 1. A test executable is built from:
 
    - The orchestrator (`main`) function.
-   - Optional test functions, `litetest.c`, and `litetest.h`.
-   - Modules and include files from the feature/project/API being tested.
+
+   - Optional test functions.
+
+   - `litetest.c`, and `litetest.h`.
+
+   - Modules and include files from the feature/project/API under test.
    
-2. The executable generates a report file with results grouped into categories, including
+2. The executable produces a report grouped by category, including
 pass/fail/fault counts per category and totals across all categories.
 
-3. For fail and faults, error messages are written to `stdout`. This output is concatenated
-into the report, and the rmporary `stdout` file is removed.
+3. Failures and faults write error messages to `stdout`. This output is appended
+to the report, and the rmporary `stdout` file is removed.
 
-4. The orchestrator (`main`) function and test functions may be defined
-in a single module or split across multiple modules. Best practice: place
+4. The orchestrator and test functions may be reside
+in one module or multiple modules. **Recommended**: place
 the orchestrator in one module and each test function in its own module.
    
 ### Test and Assert Macros
@@ -45,8 +47,8 @@ the orchestrator in one module and each test function in its own module.
   
 These macros provide multi-level signal handling (`SIGSEGV`,
 `SIGABRT`, `SIGBUS`) to capture faults. Faults are counted
-without aborting execution, allowing testing to continue
-and a complete test report to be generated.
+without aborting execution, allowing test suite to continue
+and produce a complete test report.
 
 ### Orchestrator (`main`) Macros
 
@@ -68,14 +70,16 @@ and a complete test report to be generated.
 
 Exmaples include:
 
-- lt_current_guard_level, lt_current_result, lt_current_total
+- lt_current_guard_level
+- lt_current_result
+- lt_current_total
 
-See [litetest.h](litetest.h) for documention on provide utitily functions.
+See [litetest.h](litetest.h) for documention on the provided utitily functions.
   
 ## Modules (.c files)
 
-Modules using the LiteTest API typedefs, macros or functions must include `litetest.h` and
-any required project header files.
+Modules containing the orchestrator or test functions must include `litetest.h` and
+any required project headers.
 
 ### lubtype Testing Example
 
