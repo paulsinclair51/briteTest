@@ -77,12 +77,18 @@ For example to test the lubtype API:
 #include "lubtype.h"
 #include "litetest.h"
 ```
+### Example Test lubtype API
 
+/paulsinclair5/lubtype/test provides an example with a test orchestrator
+(test_lubtype.c) and test categories (test.charclass.c, test_count.c,
+test_compare.c, et.). Currently, repository is private.
 For example, to have LiteTest test itself:
 
 ```c
 #include "litetest.h"
 ```
+
+### Example
 
 /paulsinclair51/litetest/tests provides an implementation using the API and framework
 to self-test the LiteTest API and framework. The implmeementation consists of
@@ -147,18 +153,6 @@ To have a forward reference to the test test function (func):
 ```
 
 Specify static if the above defintion of the function specifies static.
-
-## Testing with a Guard
-
-### TEST
-
-### RUN
-
-## Example Test lubtype API
-
-/paulsinclair5/lubtype/test provides an example with a test orchestrator
-(test_lubtype.c) and test categories (test.charclass.c, test_count.c,
-test_compare.c, et.). Currently, repository is private.
 
 ## Building and Executing
 
