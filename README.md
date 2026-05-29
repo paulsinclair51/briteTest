@@ -69,7 +69,7 @@ function in one module and each test function in its own module.
 ## Modules (.c files)
 
 Include litetest.h and any needed feature/project/API/standard include files
-in a module containing orchestrator (main) function or test fucntion (func).
+in a module containing orchestrator (main) function or test fuunction (func).
 
 ### Example Test lubtype API
 
@@ -156,7 +156,16 @@ To have a forward reference to the test test function (func):
 
 Specify static if the above defintion of the function specifies static.
 
-## Building and Executing
+## Building the LiteTest SeLf-Test Executable
+
+The LiteTest repository root directory contains a Makefile to build
+and execute the exectable test_litetest to self-test LiteTest.
+
+Npte: For other test executables, modify a copy of the this MakeFile to
+build the test executable using the modules and includes needed for that
+project/featuer/API. For another example, see the Makefile in the repository
+/paulsinclair51/lubtype/Makefile (currently private) to build and execute
+va test of the lubtype API.
 
 ### Linux / macOS
 
@@ -164,20 +173,15 @@ This is the primary supported and currently validated test environment.
 In practice, Linux is the canonical path for running the test suite,
 including GitHub Codespaces.
 
-From this directory:
-
-```sh
-make
-make run
-./test_lubtype --help
-```
-
-Or from the repository root:
+From the /paulsinclair51/FileTest root directory:
 
 ```sh
 make -C tests run
-./tests/test_lubtype --help
-```
+
+The Makefile builds and executes the exectable (writing the report
+to the /paulsinclair51/LiteTest/reports as .txt file).
+
+The executable can then be executed directly (see Executable Usage).
 
 To build with gcc instead of clang:
 
@@ -187,11 +191,11 @@ make -C tests CC=gcc run
 
 ### Windows (POSIX Toolchain)
 
-From this directory:
+From the /paulsinclair51/LiteTest root directory:
 
 ```powershell
-./build_test_<api>.ps1
-.\test_<api>.exe
+./build_test_litetest>.ps1
+.\test_litetest>.exe
 ```
 
 On Windows, the test runner currently requires a POSIX-capable C toolchain
@@ -200,8 +204,8 @@ Use a toolchain such as MSYS2 UCRT64 or Clang64 and ensure `cc`, `clang`,
 or `gcc` is on `PATH` before running the PowerShell script.
 
 Windows build documentation and the helper script
-`build_test_lubtype.ps1` are provided for convenience, but this Windows
-path has not been tested in this repository because the required toolchain
+`build_test_litetest.ps1` are provided for convenience, but this Windows
+path has not been tested yet because the required toolchain
 has not been set up in the current environment.
 
 A tested setup is MSYS2 UCRT64 with these packages installed:
@@ -218,28 +222,28 @@ If you prefer Clang, MSYS2 Clang64 is also suitable with the corresponding
 Clang toolchain packages, as long as `cc`, `clang`, or `gcc` resolves to the
 POSIX-capable compiler in that environment.
 
-### Makefile Targets
-
-| Target  | Description                              |
-|---------|------------------------------------------|
-| `all`   | Build the `test_<api>` executable      |
-| `run`   | Build and run the test suite             |
-| `clean` | Remove object files and the executable   |
-
-By default, running the test suite writes `<api>_test_report.txt` and `<api>pe_test_report-i.txt` in the current working directory. You can control the output location with the optional PATH argument (see below).
-
-### Executable Usage
+## Executable Usage
 
 To execute the tests, run the test executable:
 
 `test_<test> [-i] [PATH]`
 
-1. If `PATH` is a file path to an existing or nonexistent file, the test report is written to that file.
-2. If `PATH` is a directory path (with or without a trailing separator) to an existing directory, the report is written to the file in that directory with a default filename.
-3. If `PATH` is omitted, the test report is written to the file in the current working directory with a default filename.
-4. The default filename is <test>_test_report.txt or <test>_test_report-i.txt if the -i option is specified.
-5. The -i options indicates to inject fails/fault tests to verify test report formatting when fails and faults occur.
-6. An existing report file is overwritten.
+1. PATH specifies a file path or a directory pathe. It may be optionall quoted (with ") or is required to be quoted if it contains spaces or other characters that requiring the path to be quoted.
+
+2. If `PATH` is a file path to an existing or nonexistent file, the test report is written to that file.
+
+3. If `PATH` is a directory path (with or without a trailing separator) to an existing directory, the report is written to the file in that directory with a default filename.
+
+4. If `PATH` is omitted, the test report is written to the file in the current working directory with a default filename.
+
+5. The default filename is <test>_test_report.txt.
+
+6. The -i options indicates to execute fail/fault asserts to verify test
+report formatting when fails and faults occur.
+
+7. An existing report file is overwritten.
+
+### Help Option
 
 You can display usage information at any time with the `--help` or `-h` option:
 
@@ -247,6 +251,10 @@ You can display usage information at any time with the `--help` or `-h` option:
 ./test_lubtype [-h | --help]
 ```
 This prints a summary of all command-line options and usage details.
+
+## Example Report
+
+todo.
 
 ## Viewing Formatted README
 
