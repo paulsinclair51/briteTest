@@ -56,7 +56,7 @@ function in one module and each test function in its own module.
    - LT_CLOSE_REPORT
    - LT_RETURN_STATUS
 
-5, The API provides the following test function (func) macros:
+5. The API provides the following test function (func) macros:
 
    - LT_DECLARE_FUNC(func)
    - LT_INIT_TEST
