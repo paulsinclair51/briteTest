@@ -62,7 +62,7 @@ function in one module and each test function in its own module.
    - LT_INIT_TEST
    - LT_RETURN_RESULT
 
-5. The API proivdes utility functions, e.g.:
+6. The API proivdes utility functions, e.g.:
 
    - lt_current_guard_level, lt_current_result, lt_current_total
   
