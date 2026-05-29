@@ -1,8 +1,8 @@
 /**
  * @file /paulsinclair51/include/litetest.h
  * 
- * @brief LiteTest is a reusable, portable, robust, and lightweight
- * test API and framework.
+ * @brief LiteTest is a lightweight, portable, robust, and
+ * customizable testing API and framework.
  *
  * This header is included by test modules and a test orchestrator for
  * testing, e.g., a feature, API, or a project implementation. It provides
@@ -17,20 +17,19 @@
  * 
  * The LiteTest API includes:
  * 
- * 1. Domain-specific test macros with a multi-level signal-guard mechanism
+ * 1. Macros with a multi-level signal-guard mechanism
  *    based on sigsetjmp/siglongjmp to capture faults:
- *    - `LT_ASSERT(assert_expr)`
  *    - `LT_TEST(func)`
+ *    - `LT_ASSERT(assert_expr)`
  *    - `LT_ASSERT_FAIL`
  *    - `LT_ASSERT_FAULT`
  *
- * 2. Domain-specific reporting macros (for use in test orchestrator):
+ * 2. Macros for use in a test orchestrator:
  *    - `OPEN_REPORT`
  *    - `CLOSE_REPORT`
  *    - `WRITE_RESULT`
  *
- * 3. Miscellanous functions, macros, typedefs, and variables with names prefixed
- *    with lt_* or  LT_*; see @ref NamingConventions). For example, lt_executablename,
+ * 3. Miscellanous functions, macros, typedefs, and variables. For example, lt_executablename,
  *    lt_result_t, lt_dirpath, lt_path_usage, and LT_MAX_PATH_LEN.
  * 
  * This header requires POSIX.1-2008 for signal handling and sigsetjmp/siglongjmp.
@@ -52,7 +51,7 @@
  * @endcode
  *
  * Use the orchestrator macros, variables and functions in the test orchestrator
- * logic plus the TESTS[MREGE[n]] macros to execute test modules.
+ * logic plus the LT_TEST macro to execute test functions.
  * 
  * In the test* modules (e.g., test_guards_1.c, test_guards_2.c, and
  * test_orchestrator.c):
@@ -62,15 +61,14 @@
  #include "litetest.h"
  * @endcode
  *
- * Use the TEST, TEST_FAIL, and TEST_FAULT macros in the test modules to
- * execute a test.
+ * Use the LT_TEST, LT_ASSERT_FAIL, and LT_ASSERT_FAULT macros in
+ * the test function to execute tests.
  *
- * @note Other veriations are possible. e.g., using the other test macros
- *       in the test orchestrator and test modules.
+ * @note Other veriations are possible in the test orchestrator and test functions.
  */
 
 /**
- * @section BuildTestExecutable Build the test executable
+ * @section BuildingTestExecutable Building a Test Executable
  * 
  * - Linux/macOS: make
  * 
@@ -84,16 +82,16 @@
  *
  * LiteTest - Repository name (case-jnsensitive.
  *
- * litetest.h and litetest.c - filenames
+ * litetest.h and litetest.c - filenames.
  * 
  * Public API:
  *
- * 1. lt_* - Public functions, typedefs, and variables.
- * 2. LT_* - Public macros, constants, and enum values.
+ * 1. lt_* - functions, typedefs, and variables.
+ * 2. LT_* - macros, constants, and enum values.
  * 
- * Internal and private to the API:
+ * Internal and private to the LiteTest framework:
  *
- * 1. litetest_* * functions, typedefs, and variables.
+ * 1. litetest_* - functions, typedefs, and variables.
  * 2. LITETEST_* - Internal macros, constants, and enum values.
  *
  * These conventions are designed to provide a clean public API, strong
@@ -120,9 +118,8 @@
  *
  * @section FaultGuarding Fault Guarding
  *
- * The test framework uses multi-level (up to 32 levels) fault 
- * guarding to catch unexpected termination due to a
- * fault (i.e., segmentation fault, bus error, or abort) during
+ * The test framework uses multi-level (up to 32) fault 
+ * guarding to handle faults (i.e., segmentation fault, bus error, or abort) during
  * test execution.
  * 
  * A test/assert macro wraps a guard around its argument, enabling
@@ -537,7 +534,7 @@ typedef struct
 /**
  * @name litetest_saved_guard_internal_t
  * 
- * @brief Structure for saving the current guard when a guard 
+ * @brief Structure for saving the current guard and when a guard 
  *        at a lower level is installed.
  */
 
@@ -546,34 +543,35 @@ typedef struct
   litetest_sighandler_internal_t segv_handler;
   litetest_sighandler_internal_t abrt_handler;
   litetest_sighandler_internal_t bus_handler;
+  lt_state_t state;
 } litetest_saved_guard_internal_t;
 
 /**
- * @name litetest_guard
+ * @name litetest_current_guard_internal
  * 
  * @brief Pointer to the current guard used for signal handling
  *        and fault recovery.
  * 
  * @note Current guard is accessible internally by the guard
  *       infrastructure in the orchestrator and test functions.
- *       It is defined only in the orchestrator module.
+ *       It is defined only for the orchestrator function.
  */
 
-extern litetest_guard__internal_t *litetest_guard_internal;
+extern litetest_guard_internal_t *litetest_current_guard_internal;
 
 /**
- * @name litetest_saved_guards, litetest_num_saved_guards
+ * @name litetest_saved_guards_internal, litetest_num_saved_guards_internal
  * 
  * @brief Array of saved guards and the number of saved guards.
  * 
  * @note These are accessible internally by the guard infrastructure
- *       in the orchestrator and test modules. It is defined only
- *       in the orchestrator module.
+ *       in the orchestrator and test functions. It is defined only
+ *       for the orchestrator function.
  * @{
  */
 
-extern litetest_saved_guard_t litetest_saved_guards[MAX_GUARD_LEVEL];
-extern size_t litetest_num_saved_guards;
+extern litetest_saved_guard_internal_t litetest_saved_guards_internal[MAX_GUARD_LEVEL];
+extern size_t litetest_num_saved_guards_internal;
 
 /** @} */
 
@@ -603,14 +601,14 @@ static inline void litetest_guard_handler_internal(int sig)
     siglongjmp(litetest_guard_interrnal->env, sig ? sig : 1); 
   }
 
-  /* Fault outside of active guard or misuse of guard framework. */
+  // Fault outside of active guard or misuse of guard framework.
   abort();
 }
 
 /**
  * @name litetest_install_guard_internal
  * 
- * @brief Install a new guard and save the current guard.
+ * @brief Install a new guard after saving the current guard.
  * 
  * @param new_guard Pointer to a new guard.
  * 
@@ -620,96 +618,73 @@ static inline void litetest_guard_handler_internal(int sig)
  * signal handling.
  */
 
-void litetest_install_guard_internal(litetest_guard_t *new_guard);
+void litetest_install_guard_internal(litetest_guard_internal_t *new_guard);
 
 /**
- * @name litetest_restore_guard_interna
+ * @name litetest_restore_guard_internal
  * 
  * @brief Restore the previous guard.
- * 
+ *
  * On error (no saved guard), raises abort using abort() for
  * POSIX/C behavior to terminate the program without causing
  * an infinite loop through signal handling.
- * 
+ *
  * @note This function restores the previous guard by checking if
  * there are any saved guards. If there are no saved guards, it raises a SIGABRT
  * to indicate a fatal error in the testing framework. If there is a saved guard,
  * it restores the signal handlers for SIGSEGV, SIGABRT, and SIGBUS to their
  * previous handlers and sets the current guard to the saved guard.
- * 
+ *
  * @note This function is designed to be called after a guard has
  * been used to ensure that the previous guard is properly restored.
- * 
+ *
  * @note The guard mechanism allows for nested guards, and the restore_guard_internal
  * function ensures that the correct guard is restored in a last-in-first-out manner.
  */
 
 void litetest_restore_guard_internal(void);
 
-/**
- * @name litetest_current_state_internal
+ * @name litetest_test_internal
  * 
- * @brief Internal static pointer to the current state in which to
- * accumalate
- * results to save result by LT_TEST
- *        and LT_ASSERT macros. Value used 
- *        macros to merge results and by WRITE_CATEOGORY_RESULTS.
- */
-
-static lt_result_t litetest_result;
-
-/**
- * @name litetest_total
- * 
- * @brief Internal static variable in which to total results by TEST
- *        and TESTS[_MERGE[n]]macros and sed by CLOSE_REPORT if
- *        variable is in orchestrator module.
- */
-
-static lt_result_t litetst_totol;
-
- * @name litetest_tests
- * 
- * @brief Internal function used by the TESTS macro: runs func
+ * @brief Internal function used by the LT_TEST macro: ezexutes func
  *        capturing a fault, if one occurs, with a guard.
  *        Saves the result internally and adds the result
  *        to the internal total.
  * 
- * @param func Pointer to the test function to run, which takes a
- *             char inject parameter and returns a lt_result_t.
- * @param merge Flag to indicate merge results.
- *              0: don't merge.
- *              1: merge.
- * @param inject Flag to pass to the test function.
- *                 0: normal run.
+ * @param func Pointer to a function to execute, which takes a
+ *             char inject parameter and returns a lt_result_t value.
+ * @param inject Flag to pass to function.
+ *                 0: normal execution.
  *                 1: enable inject fail/fault tests, if any, in the function.
- * @param func_name Name of the function being run, used for error messages.
+ * @param func_name Name of the function being executed that is used for error messages.
  * 
- * @return lt_result_t result from test function or
+ * @return lt_result_t result from function or
  *         (lt_result_t){0, 0, SIZE_MAX, 0, 0} if a fault occurs.
  */
 
-lt_result_t litetest_tests
+lt_result_t litetest_tests_internal
 ( lt_result_t (*func)(char),
-  const char merge, const char inject,
-  const char * const func_name );
+  const char inject,
+  const char * const func_name
+);
 
 /** @} */
 
 /
- * @section GuardFunction GuardFunctions
+ * @section GuardAPIFunctionS Guard API Functions
  * 
- * The guard functions provide status about the guard mechanism, such as the 
+ * The guard functions provide a public API fot the guard mechanism status, such as the 
  * current guard level and whether the current guard is active.
  */
 
 /**
- * @name lt_current_guard_level
+ * @name lt_guard_level
  * 
- * @brief Get the current guard level (number of nested guards).
+ * @brief Get the guard level indicating the 
+ *        number of nested guards and nested LT_TEST and LT_ASSERT* macros.
  * 
- *        The guard level can be used for debugging, informational purposes to
- *        understand the depth of nested guards, or for checking against
+ *        The guard level can be used for debugging, informational purposes, to
+ *        determine the depth of nested guards, or for checking against
  *        the maximum guard level (MAX_GUARD_LEVEL).
  * 
  * @return 0 if there are no installed guards.
@@ -718,7 +693,8 @@ lt_result_t litetest_tests
  */
 
  static inline size_t lt_guard_level(void)
- { return internal_num_saved_guards + (internal_guard ? 1 : 0); }
+ { return litetest_num_saved_guards_internal + 
+          (litetest_current_guard_internal ? 1 : 0); }
 
 /**
  * @name  lt_is_current_guard_active
@@ -730,7 +706,7 @@ lt_result_t litetest_tests
  */
 
   static inline int lt_is_current_guard_active(void)
-  { return litetest_guard ? litetest_guard->active : -1; }
+  { return litetest_guard_internal ? litetest_guard_internal->active : -1; }
 
 /**
  * @section TEST Macros
