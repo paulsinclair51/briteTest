@@ -4,7 +4,7 @@ LiteTest is a C/C++ application programming interface (API) and testing framewor
 by a test orchestrator (main) function and optional test functions.
 
 LiteTest is intentionally lightweight, signal‑safe (POSIX-aware), and built for embedding into
-other C/C++ projects. The APi is designed to be easy to use while still providing
+other C/C++ projects. The API is designed to be easy to use while still providing
 comprehensive testing functionality and customization.  
 
 The API and framework do not implement the actual tests/asserts; these must be provided
