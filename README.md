@@ -259,7 +259,7 @@ This prints a summary of all command-line options and usage details.
 
 todo.
 
-## Exmpe Test Report for -i Option
+## Example Test Report for -i Option
 
 todo.
 
