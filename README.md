@@ -23,17 +23,17 @@ Key points:
 test functions (func), litetest.c, and litetest.h plus modules and include
 files from the feature/projecdt/API to be tested.
    
-3. The executable generates a report file of results grouped into categories with
+2. The executable generates a report file of results grouped into categories with
 pass/fail/fault counts foe each category plus totals across categories.
 For fail and faults, error messages are written to stdout (which is concatenated
 to the report and then the stdout file is removed).
 
-4. The orchestrator (main) function and optional test functions (func) may be defined
+3. The orchestrator (main) function and optional test functions (func) may be defined
 in a single module (.c file) or split across multiple modules. When there is one or more
 test functions, the recommended best practice is to place the orchestrator (main)
 function in one module and each test function in its own module.
    
-6. The API provides the following test and assert macros:
+4. The API provides the following test and assert macros:
 
    - LT_TEST(func)
    - LT_ASSERT(assert_expr)
@@ -46,7 +46,7 @@ function in one module and each test function in its own module.
     test function (func), or assert_exprr allowing testing to continue
     and a test report to be generated.
 
-7. The API provides the following orchestrator (main) macros.
+5. The API provides the following orchestrator (main) macros.
 
    - LT_DECLARE_MAIN(testsuite)
    - LT_INIT_TEST
@@ -56,13 +56,13 @@ function in one module and each test function in its own module.
    - LT_CLOSE_REPORT
    - LT_RETURN_STATUS
 
-5. The API provides the following test function (func) macros:
+6. The API provides the following test function (func) macros:
 
    - LT_DECLARE_FUNC(func)
    - LT_INIT_TEST
    - LT_RETURN_RESULT
 
-6. The API proivdes utility functions, e.g.:
+7. The API proivdes utility functions, e.g.:
 
    - lt_current_guard_level, lt_current_result, lt_current_total
   
