@@ -1,7 +1,8 @@
 # LiteTest
 
 LiteTest is a lightweight C/C++ application programming interface (API) and testing framework
-designed for a test orchestrator (`main`) function and optional test functions. It is POSIX-aware, signal‑safe, and suitable for embedding into
+designed for a test orchestrator (`main`) function and optional test functions. It is
+POSIX-aware, signal‑safe, and suitable for embedding into
 other C/C++ projects. The API and framework is intentionally minimal while still providing 
 comprehensive testing capabilites.  
 
@@ -30,9 +31,7 @@ The API and test framework is defined in [litetest.c](litetest.c) and [litetest.
    
 2. The executable produces a report grouped by category, including
 pass/fail/fault counts per category and totals across all categories.
-
-3. Failures and faults write error messages to `stdout`. This output is appended
-to the report, and the rmporary `stdout` file is removed.
+Error messages for fails and faults are appeneded to the report.
 
 4. The orchestrator and test functions may be reside
 in one module or multiple modules. **Recommended**: place
@@ -45,15 +44,15 @@ the orchestrator in one module and each test function in its own module.
 - LT_ASSERT_FAIL
 - LT_ASSERT_FAULT
   
-These macros provide multi-level signal handling (`SIGSEGV`,
+These macros provide multi-level (up to 32) signal handling (`SIGSEGV`,
 `SIGABRT`, `SIGBUS`) to capture faults. Faults are counted
 without aborting execution, allowing test suite to continue
 and produce a complete test report.
 
 ### Orchestrator (`main`) Macros
 
-- LT_DECLARE_MAIN(testsuite)
-- LT_INIT_TEST
+- LT_DECLARE_MAIN
+- LT_INIT_TEST(testsuite)
 - LT_PARSE_ARGS
 - LT_OPEN_REPORT("reporttitle")
 - LT_WRITE_RESULT([t], "categoryname")
@@ -68,7 +67,7 @@ and produce a complete test report.
 
 ### Utility Functions
 
-Exmaples include:
+Examples include:
 
 - lt_current_guard_level
 - lt_current_result
@@ -133,7 +132,7 @@ LT_DECLARE_MAIN(testsuite)
 ```
 
 Results accumulated until `LT_WRITE_RESULT` and then reset.
-Totals are accumulate across all tests and asserts.
+Totals are accumulated across all tests and asserts.
 
 Optional typedefs, variable, functions, code etc. may be
 added to customize or support the testing. Added code may
