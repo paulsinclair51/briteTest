@@ -120,8 +120,8 @@
  *
  * @section FaultGuarding Fault Guarding
  *
- * The test framework uses a multi-level fault (up to 32 levels)
- * guarding approach to catch unexpected termination due to a
+ * The test framework uses multi-level (up to 32 levels) fault 
+ * guarding to catch unexpected termination due to a
  * fault (i.e., segmentation fault, bus error, or abort) during
  * test execution.
  * 
@@ -133,7 +133,7 @@
  * A fault detected by LT_TEST represents a fault 
  * in the use of the testing framework or in the testing framework
  * itself, and not in the feature being tested. Such a fault is
- * expected to be rare but guarding avoids an abort terminating
+ * expected to be rare but guarding avoids a fault terminating
  * execution.
  */
 
@@ -190,7 +190,8 @@ extern "C" {
  *
  * @name LT_TOK_PASTE
  *
- * @brief Macro for pasting two expanded tokens together.
+ * @brief Macro for pasting two expanded tokens togethe using the
+ *        C/C++ preprocessor operator ##,
  *
  * @param t1 First token, 
  * @param t2 Second token.
@@ -198,10 +199,11 @@ extern "C" {
  * @return The result of pasting the expanded values of the
  *         two tokens together to form a single token.
  * 
- * @note Tokens a and b must each expand to a single token.
+ * @note Tokens t1 and t2 must each expand to a single token.
  * 
  * @note Macro LITETEST_TOK_PASTE_INTERNAL is defined to implement expanding
  *       the tokens for LT_TOK_PASTE. It is not intended for direct use.
+ *.      Instead use the ## operator.
  * 
  * @note A preprocessor error is raised if either of these macros
  *       are already defined before including this header.
@@ -209,8 +211,11 @@ extern "C" {
  */
 
 // Paste tokens without expanding.
-#define LITETEST_TOK_PASTE(t1, t2) a##b
+
+#define LITETEST_TOK_PASTE_INTERNAL(t1, t2) a##b
+
 // Expand tokens before pasting.
+
 #define LT_TOK_PASTE(t1, t2) LITETEST_TOK_PASTE_INTERNAL(t1, t2)
 
 /** @} */
@@ -220,17 +225,19 @@ extern "C" {
  *
  * @name LT_TOK_STR
  *
- * @brief Macro for stringifying an expanded token.
+ * @brief Macro for stringifying an expanded token using the
+ *        C/C++ preprocessor operator #,
  *
  * @param t Token.
  *
  * @return The result of stringifying the expanded value of
  *         token t as a string literal.
  * 
- * @note Token s must expand to a single token.
+ * @note Token t must expand to a single token.
  * 
  * @note Macro LITETEST_TOK_STR_INTERNAL is defined to implement expanding
- *       the token for TOK_STR. It is not intended for direct use.
+ *       the token for LT_TOK_STR. It is not intended for direct use.
+ *       Instead use the # operator.
  * 
  * @note A preprocessor error is raised if either of these macros
  *       are already defined before including this header.
@@ -250,7 +257,7 @@ extern "C" {
  * @brief Compile-time (static) assertion macro.
  *
  * @param cond Condition to be asserted. Condition must be such that it
- *              csn be evaluated at compile-time.
+ *             csn be evaluated at compile-time.
  * @param msg A single token (message) to be displayed if
  *            the assertion fails.
  *
@@ -280,12 +287,17 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
  */
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+
 // C11 and later: use the built‑in assertion macro.
 #define LT_STATIC_ASSERT(cond, msg) _Static_assert(cond, #msg)
+
 #else
+
 // C99: typedef with invalid negative array size if assertion not satisfied.
+
 #define LT_STATIC_ASSERT(cond, msg) \
     typedef char LT_TOK_PASTE(LT_STATIC_ASSERT_, msg)[(cond) ? 1 : -1]
+
 #endif
 
 /**
@@ -301,9 +313,12 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
  *
  * @brief Version macros for LiteTest (litetest.h and litetest.c):
  *
- * Increment LT_VERSION_MAJOR for incompatible API changes.
- * Increment LT_VERSION_MINOR for backward-compatible additions.
- * Increment LT_VERSION_PATCH for bug fixes or internal improvements.
+ * Increment:
+ *
+ * - LT_VERSION_MAJOR for incompatible API changes.
+ * - LT_VERSION_MINOR for backward-compatible additions.
+ * - LT_VERSION_PATCH for bug fixes or internal improvements.
+
  * Do not modify the other version macros.
  *
  * Incompatible API changes: The naming conventions, error semantics, and safety guarantees
@@ -355,10 +370,10 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
        "already defined. #undef before including lubtype.h."
 #endif // defined macros
 
-// Define current LiteTest version major, minor, patch.
-// Increment major version for incompatible API changes.
-// Increment minor version for backward-compatible additions.
-// Increment patch version for bug fixes or internal improvements.
+// Define current LiteTest version major, minor, patch. Inrement:
+// - Major version for incompatible API changes.
+// - Minor version for backward-compatible additions.
+// - Patch version for bug fixes or internal improvements.
  
 #define LT_VERSION_MAJOR 1
 #define LT_VERSION_MINOR 0
@@ -419,15 +434,15 @@ LT_STATIC_ASSERT((uint32_t)LT_VERSION_PATCH <= 99, patch_fits_in_field);
  * @brief Maximum values for path length, filename length,
  *        and guard levels.
  *
- * @note The limit of 32 guaard levels in unlikely to be ever
- *       eceeded if there are 2 or more tests at each level.
+ * @note The limit of 32 levels in unlikely to be
+ *       eceeded if there are 2 or more TEST/ASSERT* macros at each level.
  *       It is expected that a level will generally have 2 or
- *       more tests per level.
+ *       more per level.
  */
 
-#define LT_MAX_PATH_LEN ((size_T)4096)
+#define LT_MAX_PATH_LEN      ((size_T)4096)
 #define LT_MAX_FILENAME_LEN  ((size_T)255)
-#define LT_MAX_GUARD_LEVEL ((size_T)32)
+#define LT_MAX_GUARD_LEVEL   ((size_T)32)
 
 /**
  * @section result_t Result Type
@@ -435,8 +450,8 @@ LT_STATIC_ASSERT((uint32_t)LT_VERSION_PATCH <= 99, patch_fits_in_field);
 
 /**
  * @name lt_result_t
- * @brief Type for result counters returned by a test function and for
- *        accumulating results across multiple test functions.
+ *
+ * @brief Type for result counters returned by a test function,
  * 
  * @note A test function with a fault returns a result with the fault count
  *       set to SIZE_MAX to indicate a function-level fault.
@@ -450,8 +465,15 @@ typedef struct
   size_t injected_fault;
 } lt_result_t;
 
+/**
+ * @name lt_state_t
+ *
+ * @brief Type for maintaining the state of the LiteTest framework.
+ */
+
 typedef struct
-{ size_t category_id;
+{ size_t current_guard_level;
+  size_t category_id;
   size_t num_results_merged;
   size_t pass;
   size_t fail;
@@ -468,18 +490,16 @@ typedef struct
 /**
  * @section Guard Infrastructure
  * 
- * The guard infrastructure provides a mechanism to catch signals such as SIGSEGV,
+ * The internal guard infrastructure provides a mechanism to catch signals such as SIGSEGV,
  * SIGABRT, and SIGBUS that may occur during the evaluation of LT_TEST
  * and LT_ASSERT* macros.
+ *
  * It uses sigsetjmp and siglongjmp to return control
  * to a known point in the code when a signal is caught, allowing the test framework
  * to count faults and continue running other tests instead of aborting the entire
  * test suite.
  * 
- * Type, function, and static variable names are prefixed with  "litetest_".
- * 
- * The guard infrastructure is not intended to be used directly by test
- * functions or the orchestrator.
+ * @note The internal guard infrastructure is not intended to be used directly.
  */
 
 /**
