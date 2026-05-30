@@ -1,6 +1,6 @@
 # scripts
 
-Directory for CI helpers, code generation, foraating tools, and release scropt.
+Directory for CI helpers, code generation, formatting tools, and release scropt.
 
 Copyright (c) 2026 paulsinclair51   
 SPDX-License-Identifier: MIT   
