@@ -2,7 +2,7 @@
 
 Directory for object files, binaries, and temporary files.
 
-Normally these artifact files are added to .gitignore.
+Normally, these artifact files are added to .gitignore.
 
 Copyright (c) 2026 paulsinclair51
 SPDX-License-Identifier: MIT
