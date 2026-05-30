@@ -36,7 +36,7 @@
  * 
  * @copyright Copyright (c) 2026 paulsinclair51
  * SPDX-License-Identifier: MIT
- * See @ref ../LICENSE "LICENSE" in the repository root for details.
+ * See LICENSE in the repository root for details.
  */
 
 /**
@@ -49,8 +49,8 @@
 #include "litetest.h"
  * @endcode
  *
- * Use the orchestrator macros, variables and functions in the test orchestrator
- * logic plus the LT_TEST macro to execute test functions.
+ * Use the orchestrator macros, variables and functions in the test
+ * orchestrator logic plus the LT_TEST macro to execute test functions.
  * 
  * In the test* modules (e.g., test_guards_1.c, test_guards_2.c, and
  * test_orchestrator.c):
@@ -102,11 +102,11 @@
  * 1. Utility macros: LT_TOK_PASTE, LT_TOK_STR, LT_RESULT, LT_TOTAL
  *    LT_STATIC_ASSERT
  * 2. Version macros: LT_VERSION, LT_VERSION_EQ, LT_VERSION_AT_LEAST
- * 4. Uitlity functions: lt_current_guard_level.
+ * 4. Utility functions: lt_current_level.
  *
  * @example Public typedef Name
  *
- * lt_result_t
+ * lt_result_t, lt_state_t
  *
  * @example Private Variable Names
  *
@@ -117,8 +117,8 @@
  *
  * @section FaultGuarding Fault Guarding
  *
- * The test framework uses multi-level (up to 32) fault 
- * guarding to handle faults (i.e., segmentation fault, bus error, or abort) during
+ * The test framework uses multi-level fault guarding to handle
+ * faults (i.e., segmentation fault, bus error, or abort) during
  * test execution.
  * 
  * A test/assert macro wraps a guard around its argument, enabling
@@ -877,25 +877,26 @@ int close_report
 void get_current_time(char *current_time, size_t size);
 
 /**
- * @def REPORT
+ * @def WRITE_RESULT
  * 
- * @brief Macro to execute a test category and record its result in the test
- *        report.
+ * @brief Macro to write the results for a test category to the
+ *       report and update the total result and category fault count.
  *
  * @note Increments the static variable cat_id adn updates static variable
  *       total result with the result of the test category. If the 
  *      result has a category-level fault (fault == SIZE_MAX), increments the
  *      static variable cat_faults to count the number of category-level faults.
+ * 
+ * @param t A test/asser macro reference.
  * @param label The category label to display in the report (e.g., "Error/edge cases").
- * @param result_expr An expression that evaluates to a lt_result_t struct containing
- *                   the pass/fail/fault counts for the test category. * 
+ * 
  * @note If result_expr has a category-level fault (fault == SIZE_MAX), the
  */
 
-#define REPORT(label, result_expr) \
+#define WRITE_RESULT(t, label) \
   do \
-  { ++cat_id; \
-    lt_result_t result = (result_expr); \
+  { t; \
+    ++cat_id; \
 	  char label_buf[96]; \
 	  const char *_label = category_label_with_inject_tag( \
 	   					 (label), result, inject, label_buf, sizeof(label_buf)); \
