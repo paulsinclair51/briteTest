@@ -5,11 +5,11 @@ implementation code.
 
 Copyright (c) 2026 paulsinclair51   
 SPDX-License-Identifier: MIT   
-For license details, see the LICENSE file in the repository root.
+For license details, see `..LICENSE`.
 
 ## litetest.c
 
-Defines (non-inline) functions for the litetest API and framework.
+Defines non-inline functions for the LiteTest API and framework.
 
 See `../include/litetest` for the declarations and documentation for
 the LiteTest API and framwwork.
