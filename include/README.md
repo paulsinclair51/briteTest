@@ -10,4 +10,4 @@ For license details, see `../LICENSE`.
 
 The declarations and documentation for the LiteTest API and framework.
 
-For the definitions of non-inline functions, see `../src/liteTest.c`.
+For the definitions of non-inline functions, see `../src/litetest.c`.
