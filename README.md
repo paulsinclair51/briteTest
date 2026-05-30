@@ -18,6 +18,10 @@ Copyright (c) 2026 paulsinclair51
 SPDX-License-Identifier: MIT
 See the LICENSE file in the repository root for details.
 
+## Comparison to Other Testing Frameworks
+
+
+
 ## Overview
 
 The API and framework are defined in [litetest.h](litetest.h) and [litetest.c](litetest.c).
