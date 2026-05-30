@@ -4,7 +4,7 @@ LiteTest is a lightweight C/C++ API and testing framework suitable for
 embedding into other C/C++ projects. The API and framework are intentionally
 minimal while still providing flexible and comprehensive testing capabilities.
 
-LiteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibilty
+LiteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility
 and a C99-compliant compiler. Linux, macOS, and the BSD family natively
 meet these requirements. Windows requires a
 POSIX compatibility layer such as Cygwin, MSYS2, or WSL.
@@ -29,7 +29,7 @@ See `LICENSE` for details.
 
 ## Overview
 
-The LiteTest API and framework are defined in [litetest.h](litetest.h) and [litetest.c](litetest.c).
+The LiteTest API and framework are defined in [include/litetest.h](include/litetest.h) and [src/litetest.c](src/litetest.c).
 
 ### Key Points
 
@@ -44,33 +44,61 @@ The LiteTest API and framework are defined in [litetest.h](litetest.h) and [lite
    
 2. The executable produces a report grouped by category, including
 pass/fail/fault counts per category and totals across all categories.
-Fail and fault messages are appeneded to the report.
+Fail and fault messages are appended to the report.
 
-4. The orchestrator and test functions may reside
+3. The orchestrator and test functions may reside
 in one module or multiple modules. **Recommended**: put
 the orchestrator function in one module and each test function in its own module.
 
-5. The test framework requires `unistd.h` for POSIX fork and signal capabilities.
+4. The test framework requires `unistd.h` for POSIX fork and signal capabilities.
    
 ### Test and Assert Macros
 
-- LT_TEST(funcname)
-- LT_ASSERT(assertexpr)
-- LT_ASSERT_FAIL
-- LT_ASSERT_FAULT
+- LT_TEST(funcname, isolation)
+- LT_ASSERT(assertexpr, isolation)
+- LT_ASSERT_FAIL (isolation)
+- LT_ASSERT_FAULT (isolation)
+
+### Faults
   
 These macros provide multi-level signal
 handling to capture faults (`SIGSEGV`, `SIGABRT`, `SIGBUS`). Faults
 are counted without aborting execution, allowing the test suite to continue
 and produce a complete test report with fault counts and messages for each fault.
 
-Parallel execution of LT_TEST macros is enabled/disabled by the `maxparallel` parameter
-for the LT_INIT_ORCHESTRATOR and LT_INIT_TEST macros. Up to `maxparallel` test functions
-are started and when one finishes another is started.
+### Parallel Execution
 
-LT_TEST macros can run in parallel as a group (that is, they are not started
-until they can all start without exceeding `maxparallel`).
-A gruop is bracketed by the LT_BEGIN_GROUP and LT_END_GROUP macros.
+Parallel execution of the test/assert macros is enabled/disabled by the
+`maxparallel` parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_TEST
+macros. Up to `maxparallel` test/assert macros are started and when one
+finishes another is started.
+
+Test/assert macros can run in parallel as a group (that is, they
+are not started until they can all start without exceeding `maxparallel`).
+A group is bracketed by the LT_BEGIN_GROUP and LT_END_GROUP macros.
+
+### Test Isolation
+
+For non-grouped test/assert macro, the `isolation` parameter 
+indicates whether the macro runs in the same thread as the calling
+function (no parallelism), a separate thread, or a separate process:
+
+   Isolation: NONE, THREAD, PROCESS
+
+For grouped test/assert macros, the combination of the
+`isolation` parameter for the LT_BEGIN_GROUP and for the
+test/assert macro specifies whether the macro runs as
+a threads of the calling function, as threads in a separate
+process, or each in its own process:
+
+| LT_BEGIN_GROUP | Test/Assert | Isolation     |
+|----------------|-------------|---------------|
+| THREAD         | THREAD      | caller thread |
+| THREAD         | PROCESS     | process       |
+| PROCESS        | THREAD      | group thread  |
+| PROCESS        | PROCESS     | process       |
+
+Other combinations are invalid.
 
 ### Orchestrator (`main`) Macros
 
@@ -90,7 +118,7 @@ A gruop is bracketed by the LT_BEGIN_GROUP and LT_END_GROUP macros.
 
 ### Parallel Group Macros
 
-- LT_BEGIN_GROUP(groupname)
+- LT_BEGIN_GROUP(groupname, isolation)
 - LT_END_GROUP(groupname)
 
 ### Utility Functions
@@ -102,6 +130,9 @@ Examples include:
 - lt_currenttotal
 - lt_maxparallel(level)
 - lt_currentparallel
+- lt_isisolated
+- lt_isthreadisolated
+- lt_isprocessisolated
 - lt_groupid
 - lt_groupname
 - lt_ispathdir
@@ -119,7 +150,7 @@ Examples include:
 - lt_reporttitle
 - lt_assertexpr
 
-See [litetest.h](litetest.h) for documention on the provided utitily functions.
+See [include/litetest.h](include/litetest.h) for documention on the provided utitily functions.
   
 ## Modules (.c files)
 
@@ -141,8 +172,8 @@ the lubtype API. The modules include these two files:
 
 The tests directory for this GitHbub repository provides an example
 with an orchestrator module and test modules to self-test the LiteTest
-API and framwork. The modules iheader include one header (since it is both
-the header for API to be tested and the API for testing). 
+API and framwork. The modules include one header (since it is both
+the header for the API to be tested and the API for testing). 
 
 ```c
 #include "litetest.h"
@@ -159,8 +190,8 @@ LT_DECLARE_ORCHESTRATOR(main)
 
   // Tests
   // Insert here expanding:
-  // [[LT_TEST(func); | LT_ASSERT(assertexpr);]...
-  // LT_WRITE_RESULT([LT_TEST(funcname) | LT_ASSERT(assertexpr)], "categoryname")]...
+  // [[LT_TEST(func, isolation); | LT_ASSERT(assertexpr, isolation);]...
+  // LT_WRITE_RESULT([LT_TEST(funcname, isolation) | LT_ASSERT(assertexpr, isolation)], "categoryname")]...
   // with your funcames. assertexprs, categorynames.
 
   LT_CLOSE_REPORT;
@@ -192,7 +223,8 @@ LT_DECLARE_ORCHESTRATOR(main);
   LT_INIT_TEST(testname, maxparallel);
 
   // Tests
-  // Insert here expanding: [LT_TEST(funcname); | LT_ASSERT(assertexpr);]...
+  // Insert here expanding:
+  //   [LT_TEST(funcname, isolation); | LT_ASSERT(assertexpr, isolation);]...
   // your funcname and assertexprs.
 
   LT_RETURN_RESULT;
@@ -309,7 +341,7 @@ the testsuite that is specified by the LT_INIT_ORCHESTRATOR macro in the orchest
 
 You may override the output locaction using the PATH argument:
 
-- PATH specifies a file path or a directory path. It may be optionally quoted (with ") or is required to be quoted if it contains spaces or other characters that require the path to be quoted.
+- PATH specifies a file path or a directory path. The path may optionally be quoted (with ") or is required to be quoted if it contains spaces or other characters that require the path to be quoted.
 
 - If `PATH` is a file path to an existing or nonexistent file, the test report is written to that file.
 
@@ -329,7 +361,8 @@ For example:
 ```sh
 ./test_litetest --help
 ```
-This (or using -h instead of --help) prints a summary of all command-line options and usage details.
+This (or using -h instead of --help) prints a summary of all command-line
+ options and usage details.
 
 ## Example Test Report
 
