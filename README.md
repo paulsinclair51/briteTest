@@ -1,13 +1,16 @@
 # LiteTest
 
 LiteTest is a lightweight C/C++ application programming interface (API) and testing framework
-designed for a test orchestrator (`main`) function and optional test functions. It is
-POSIX-aware, signal‑safe, and suitable for embedding into
-other C/C++ projects. The API and framework is intentionally minimal while still providing 
-comprehensive testing capabilites.  
+suitable for embedding into other C/C++ projects. The API and framework is intentionally minimal while still providing comprehensive testing capabilites.
 
-LiteTest does not implement the actual tests or assertions itself; these must supplied
-by the test executable.
+API macros simplify developing a test orchestrator (`main`) function 
+and optional test functions by abstracting the management of running tests
+and report generation so you can focus on the actual tests for your project.
+
+It is POSIX-aware so that it handle faults (`SIGSEGV`, `SIGABRT`, `SIGBUS`) without terminating,
+
+Note that LiteTest does not implement the actual tests or assertions itself; these must be supplied
+as part ot the test executable.
 
 Copyright (c) 2026 paulsinclair51
 SPDX-License-Identifier: MIT
@@ -48,7 +51,7 @@ and` sigjmp_buf` for capturing faults.
 - LT_ASSERT_FAULT
   
 These macros provide multi-level (default maximum of 4 levels) signal
-handling (`SIGSEGV`, `SIGABRT`, `SIGBUS`) to capture faults. Faults
+handling to capture faults (`SIGSEGV`, `SIGABRT`, `SIGBUS`). Faults
 are counted without aborting execution, allowing test suite to continue
 and produce a complete test report.
 
