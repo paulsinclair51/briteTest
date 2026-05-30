@@ -18,8 +18,6 @@ See the LICENSE file in the repository root for details.
 
 ## Comparison to Other Test Frameworks
 
-## Comparison to Other Test Frameworks
-
 | Framework | Language / Style | Dependencies | Fault Isolation | Strengths | How LiteTest Differs |
 |----------|------------------|--------------|-----------------|-----------|-----------------------|
 | **LiteTest** | Pure C, minimal API | None (single .c/.h) | POSIX signals (`SIGSEGV`, `SIGBUS`, `SIGABRT`) with nested guards | Tiny, embeddable, safe for low‑level code, simple reporting | Designed for small C projects, embedded systems, and environments where external frameworks are too heavy |
