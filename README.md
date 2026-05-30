@@ -246,7 +246,7 @@ make -C tests CC=gcc run
 #### Windows (POSIX Toolchain Required)
 
 Use a POSIX‑capable toolchain such as MSYS2 UCRT64 or Clang64. The test
-framework depends on POSIX signals and `setjmp`.
+framework depends on POSIX signals, `setjmp`, and `siglongjmp`.
 
 For an untested (due to toolchain not yet being installe), refer to
 the build_test_litetest.ps1 powershell script. The following is the
