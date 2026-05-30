@@ -44,7 +44,7 @@ Fail and fault messages are appeneded to the report.
 in one module or multiple modules. **Recommended**: put
 the orchestrator function in one module and each test function in its own module.
 
-5. The test framework requires `unistd.h` for POSIX fork and signal capabilities,
+5. The test framework requires `unistd.h` for POSIX fork and signal capabilities.
    
 ### Test and Assert Macros
 
@@ -60,13 +60,11 @@ and produce a complete test report with fault counts and messages for each fault
 
 Parallel execution of LT_TEST macros is enabled/disabled by the `maxparallel` parameter
 for the LT_INIT_ORCHESTRATOR and LT_INIT_TEST macros. Up to `maxparallel` test functions
-are started and when one finishes another can be started.
+are started and when one finishes another is started.
 
-LT_TEST macros can be run in parallel as a group (that is, they are not started
-until they can all be started without exceeding `maxparallel`). The number of
-LT_Test macros in a group must not exceed the maximum that are allowed to execute in parallel.
-Gruoping is done bracketing the LT_TEST macros in the group with the LT_BEGIN_GROUP and
-LT_END_GROUP macros.
+LT_TEST macros can run in parallel as a group (that is, they are not started
+until they can all start without exceeding `maxparallel`).
+A gruop is bracketed by the LT_BEGIN_GROUP and LT_END_GROUP macros.
 
 ### Orchestrator (`main`) Macros
 
