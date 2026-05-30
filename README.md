@@ -23,7 +23,7 @@ See `LICENSE` for details.
 | **LiteTest** | Pure C, minimal API | None (single .c/.h) | POSIX signals (`SIGSEGV`, `SIGBUS`, `SIGABRT`) with nested guards | Tiny, embeddable, safe for low‑level code, simple reporting | Designed for small C projects, embedded systems, and environments where external frameworks are too heavy |
 | **GoogleTest (gtest)** | C++ (OOP, templates) | Large library, build system integration | No built‑in POSIX fault trapping | Feature‑rich, fixtures, matchers, parameterized tests | LiteTest is dramatically smaller, pure C, and dependency‑free |
 | **Unity / CMock** | C, embedded‑focused | Small library | No multi‑level signal guards | Lightweight, good for microcontrollers | LiteTest adds POSIX fault handling and nested guard levels |
-| **Check** | C with process forking | Requires linking to Check library | Fork‑based isolation | Good isolation, TAP output | LiteTest avoids forking and stays single‑process with `setjmp`/`longjmp` guards |
+| **Check** | C with process forking | Requires linking to Check library | Fork‑based isolation | Good isolation, TAP output | LiteTest avoids forking and stays single‑process with `sigsetjmp`/`siglongjmp` guards |
 | **CTest (CMake)** | Test runner only | Requires CMake | None (runs external binaries) | Integrates with CMake, dashboards | LiteTest provides assertions + reporting; CTest is only an executor |
 | **Catch2 / doctest** | Modern C++ | Header‑only | No POSIX fault trapping | Very expressive syntax, rich features | LiteTest is pure C and suitable for environments avoiding C++ |
 
