@@ -12,8 +12,8 @@ POSIX compatibility layer such as Cygwin, MSYS2, or WSL.
 LiteTest has been exercised in a POSIX environment; however, users must
 confirm correct behavior in their own environment.
 
-Copyright (c) 2026 paulsinclair51
-SPDX-License-Identifier: MIT
+Copyright (c) 2026 paulsinclair51  
+SPDX-License-Identifier: MIT. 
 See the LICENSE file in the repository root for details.
 
 ## Comparison to Other Testing Frameworks
