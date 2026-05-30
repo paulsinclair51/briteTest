@@ -39,21 +39,28 @@ the orchestrator in one module and each test function in its own module.
    
 ### Test and Assert Macros
 
-- LT_TEST(func)
+- LT_TEST(funcname)
 - LT_ASSERT(assert_expr)
 - LT_ASSERT_FAIL
 - LT_ASSERT_FAULT
   
-These macros provide multi-level (up to 32) signal handling (`SIGSEGV`,
-`SIGABRT`, `SIGBUS`) to capture faults. Faults are counted
-without aborting execution, allowing test suite to continue
+These macros provide multi-level (default maximum of 4 levels) signal
+handling (`SIGSEGV`, `SIGABRT`, `SIGBUS`) to capture faults. Faults
+are counted without aborting execution, allowing test suite to continue
 and produce a complete test report.
+
+Future enhancment: parallel execution of LT_TEST. Allow up to a settable
+maximum of LT_TEST macros to execute (when one finishes, another is started.
+
+Future enhancement: group a set of LT_TEST macros to run in parallel. The
+number of LT_Test macros in a set must not exceed the maximum that are allowed
+to execute in parallel
 
 ### Orchestrator (`main`) Macros
 
-- LT_DECLARE_MAIN
-- LT_INIT_TEST(testsuite)
-- LT_PARSE_ARGS
+- LT_DECLARE_MAIN_ORCHESTRATOR
+- LT_INIT_ORCHESTRATOR(testsuite, maxparallel)
+- LT_PARSE_ARGS("defaultreportfilename", "tempfilename")
 - LT_OPEN_REPORT("reporttitle")
 - LT_WRITE_RESULT([t], "categoryname")
 - LT_CLOSE_REPORT
@@ -61,17 +68,40 @@ and produce a complete test report.
 
 ### Test Function Macros
 
-- LT_DECLARE_FUNC(func)
-- LT_INIT_TEST
+- LT_DECLARE_FUNCTION(funcname)
+- LT_INIT_TEST(testname, maxparallel)
 - LT_RETURN_RESULT
+
+### Parallel Group Macros
+
+- LT_BEGIN_GROUP(groupname)
+- LT_END_GROUP(groupname)
 
 ### Utility Functions
 
 Examples include:
 
-- lt_current_guard_level
-- lt_current_result
-- lt_current_total
+- lt_currentlevel
+- lt_currentresult
+- lt_currenttotal
+- lt_maxparallel(level)
+- lt_currentparallel
+- lt_groupid
+- lt_groupname
+- lt_ispathdir
+- lt_ispathfile
+- lt_ispathfilename
+- lt_dirpath
+- lt_filepath
+- lt_filename
+- lt_tempfilepath
+- lt_tempfilename
+- lt_testsuite
+- lt_categoryname
+- lt_funcname
+- lt_testname
+- lt_reporttitle
+- lt_assertexpr
 
 See [litetest.h](litetest.h) for documention on the provided utitily functions.
   
@@ -80,7 +110,7 @@ See [litetest.h](litetest.h) for documention on the provided utitily functions.
 Modules containing the orchestrator or test functions must include `litetest.h` and
 any required project headers.
 
-### lubtype Testing Example
+### Example: lubtype Testing 
 
 Include these two files:
 
@@ -89,27 +119,30 @@ Include these two files:
 #include "litetest.h"
 ```
 
-`/paulsinclair5/lubtype/test` provides an example with a test orchestrator
-(`test_lubtype.c`) and test categories (`test.charclass.c`, `test_count.c`,
+`/paulsinclair5/lubtype/tests` provides an example with an orchestrator
+(`test_lubtype.c`) and test modules (`test.charclass.c`, `test_count.c`,
 `test_compare.c`, etc.). Currently, this repository is private.
 
-### LiteTest Self-Testing Example
+### Example: LiteTest Self-Testing
 
 ```c
 #include "litetest.h"
 ```
 
-`/paulsinclair51/litetest/tests` provides an self-testimplementation of
+`/paulsinclair51/litetest/tests` provides an self-test implementation of
 the LiteTest API and framework. It includes:
 
-- `test_litetest.c` with two test categories "Orchestrator" and "Guard".
+- `test_litetest.c` defines the orchestrator (`main`) with two test
+   categories "Orchestrator" and "Guard".
 
-- `test_orchestrator.c` defines the test_orchestrator function for the
-"Orchestrator catagory.
+- `test_orchestrator.c` defines the test_orchestrator functions for
+   testing the "Orchestrator" catagory.
 
-- `test_guard1.c` defines the `test_guard1` function for the "Guard" category.
+- `test_guard1.c` defines the `test_guard1` function for testing part of
+   the "Guard" category.
 
-- `test_guard2.c` defines the `test_guard2` function for the "Guard category.
+- `test_guard2.c` defines the `test_guard2` function for testing the other
+   part of the "Guard" category.
 
 The result of test_guard1 and test_guard2 are combined by the orchestrator
 into a single result for the "Guard" category.
@@ -117,15 +150,17 @@ into a single result for the "Guard" category.
 ## Orchestrator (`main`) Function Template
 
 ```c
-LT_DECLARE_MAIN(testsuite)
+LT_DECLARE_MAIN_ORCHESTRATOR
 {
-  LT_INIT_TEST(testname);
-  LT_PARSE_ARGS;
+  LT_INIT_TEST(testname, maxparallel);
+  LT_PARSE_ARGS("defaultfilename", "tempfilename");
   LT_OPEN_REPORT("reporttitle");
 
   // Tests
-  [[LT_TEST(func); | LT_ASSERT(assert_expr);]...
-  LT_WRITE_RESULT([LT_TEST(func) | LT_ASSERT(assert_expr)], "categoryname")]...
+  // Insert here expanding:
+  // [[LT_TEST(func); | LT_ASSERT(assertexpr);]...
+  // LT_WRITE_RESULT([LT_TEST(funcname) | LT_ASSERT(assertexpr)], "categoryname")]...
+  // with your funcames. assertexprs, categorynames.
 
   LT_CLOSE_REPORT;
 }
@@ -135,24 +170,27 @@ Results accumulated until `LT_WRITE_RESULT` and then reset.
 Totals are accumulated across all tests and asserts.
 
 Optional typedefs, variable, functions, code etc. may be
-added to customize or support the testing. Added code may
-use utility functions.
+added to customize or support testing. Added code may
+use utility functions. **Recommmended**: do not intermix
+code with the tests (such code is handled as if it occurs
+before the tests).
 
 Forward-declaration:
 
 ```c
-LT_DECLARE_MAIN(testsuite);
+LT_DECLARE_MAIN_OCHESTRATOR(testsuite);
 ```
 
 ## Test Function Template
 
 ```c
-[static] LT_DECLARE_FUNC(func)
+[static] LT_DECLARE_FUNCTION(func)
 {
   LT_INIT_TEST(testname);
 
   // Tests
-  [LT_TEST(func); | LT_ASSERT(assert_expr);]...
+  // Insert here expanding: [LT_TEST(funcname); | LT_ASSERT(assertexpr);]...
+  // your funcname and assertexprs.
 
   LT_RETURN_RESULT;
 }
@@ -168,22 +206,19 @@ Forward declaration:
 
 Specify `static` if the above definition of the function specifies `static`.
 
+Optional typedefs, variable, functions, code etc. may be
+added to customize or support testing. Added code may
+use utility functions. **Recommmended**: do not intermix
+code with the tests (such code is handled as if it occurs
+before the tests).
+
 ## Building the Test Executable
 
-Modify a copy of an existing MakeFile to build a test executable for
-a project using the modules and includes needed for that project.
-
-### Example: Building the lubtype Test Executable
-
-See the Makefile in the repository `paulsinclair51/lubtype/`
-(currently private) to build ah test executable for the lubtype API.
-
-### Example: Building the LiteTest SeLf-Test Executable
-
-The LiteTest repository root directory contains a Makefile to build
-and execute the exectable test_litetest to self-test LiteTest.
-
-Npte: For other test executables,
+Modify a copy of an existing MakeFile that builds a test executable for
+a project to a Makefile for your project. For example, use the Makefile
+for testing the lubtype project or the Makefile for self-testing this
+LiteTest project as a starting point for creating your Makefile in hour
+project root directory.
 
 #### Linux / macOS
 
@@ -196,8 +231,8 @@ From the repository root:
 ```sh
 make -C tests run
 
-The Makefile builds and executes the executable test_litetest writing the test report
-to the /paulsinclair51/LiteTest/reports directory as LiteTest_test_report.txt file).
+The Makefile builds and executes the executable writing the test report
+in the reports directory with the default name <testsuite>_test_report.txt.
 
 The executable can then be executed directly (see
 [Executable Usage](#executable-usage-readme)).
