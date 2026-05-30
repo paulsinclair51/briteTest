@@ -8,7 +8,7 @@ For license details, see `../LICENSE`.
 
 ## `test_litetest.c`
 
-Orchestrator code for running litetest tests implemented in `test_orchestrator.c`,
+Orchestrator code for running liteTest tests implemented in `test_orchestrator.c`,
 `test_guaad1.c` and `test_guard1.c`.
 
 ## `test_orchestrator.c`
