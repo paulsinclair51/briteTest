@@ -30,7 +30,7 @@ The LiteTest API and framework are defined in [litetest.h](litetest.h) and [lite
 
 1. A test executable is built from:
 
-   - The orchestrator (`main`) function.
+   - An orchestrator (`main`) function.
 
    - Optional test functions.
 
