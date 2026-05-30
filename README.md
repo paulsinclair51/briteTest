@@ -19,7 +19,7 @@ See the LICENSE file in the repository root for details.
 ## Comparison to Other Test Frameworks
 
 | Framework | Language / Style | Dependencies | Fault Isolation | Strengths | How LiteTest Differs |
-|----------|------------------|--------------|-----------------|-----------|-----------------------|
+|-----------|------------------|--------------|-----------------|-----------|-----------------------|
 | **LiteTest** | Pure C, minimal API | None (single .c/.h) | POSIX signals (`SIGSEGV`, `SIGBUS`, `SIGABRT`) with nested guards | Tiny, embeddable, safe for low‑level code, simple reporting | Designed for small C projects, embedded systems, and environments where external frameworks are too heavy |
 | **GoogleTest (gtest)** | C++ (OOP, templates) | Large library, build system integration | No built‑in POSIX fault trapping | Feature‑rich, fixtures, matchers, parameterized tests | LiteTest is dramatically smaller, pure C, and dependency‑free |
 | **Unity / CMock** | C, embedded‑focused | Small library | No multi‑level signal guards | Lightweight, good for microcontrollers | LiteTest adds POSIX fault handling and nested guard levels |
