@@ -1,13 +1,16 @@
 # LiteTest
 
 LiteTest is a lightweight C/C++ API and testing framework suitable for
-embedding into other C/C++ projects. The API and framework is intentionally
+embedding into other C/C++ projects. The API and framework are intentionally
 minimal while still providing flexible and comprehensive testing capabilities.
 
-The LiteTest macros simplify test development by abstracting the management of running tests
-and report generation so you can focus on the actual tests for your project.
+LiteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibilty
+and a C99-compliant compiler. Linux, macOS, and the BSD family natively
+meet these requirements. Windows requires a
+POSIX compatibility layer such as Cygwin, MSYS2, or WSL.
 
-The LiteTest framework requires POSIX.1-2008 ( `unistd.h`),
+LiteTest has been exercised in a POSIX environment; however, users must
+confirm correct behavior in their own environment.
 
 Copyright (c) 2026 paulsinclair51
 SPDX-License-Identifier: MIT
