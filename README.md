@@ -2,7 +2,7 @@
 
 LiteTest is a lightweight C/C++ API and testing framework suitable for
 embedding into other C/C++ projects. The API and framework is intentionally
-minimal while still providing flexible and comprehensive testing capabilites.
+minimal while still providing flexible and comprehensive testing capabilities.
 
 The LiteTest macros simplify developing a test orchestrator (`main`) function 
 and optional test functions by abstracting the management of running tests
