@@ -2,9 +2,8 @@
 
 Directory for public .h files (including API declarations).
 
-Copyright (c) 2026 paulsinclair51
-SPDX-License-Identifier: MIT
-
+Copyright (c) 2026 paulsinclair51 
+SPDX-License-Identifier: MIT  
 For license details, see the LICENSE file in the root directory.
 
 ## litetest.h
