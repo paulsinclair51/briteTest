@@ -1,6 +1,6 @@
 # include
 
-Directory for public headder files (including API declarations).
+Directory for public header files (including API declarations).
 
 Copyright (c) 2026 paulsinclair51  
 SPDX-License-Identifier: MIT  
