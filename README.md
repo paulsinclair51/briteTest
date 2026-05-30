@@ -7,7 +7,7 @@ minimal while still providing flexible and comprehensive testing capabilities.
 The LiteTest macros simplify test development by abstracting the management of running tests
 and report generation so you can focus on the actual tests for your project.
 
-The LiteTest framework requires POSIX support ( `unistd.h`),
+The LiteTest framework requires POSIX.1-2008 ( `unistd.h`),
 
 Copyright (c) 2026 paulsinclair51
 SPDX-License-Identifier: MIT
