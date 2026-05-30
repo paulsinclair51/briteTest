@@ -1,15 +1,17 @@
 # LiteTest
 
-LiteTest is a lightweight C/C++ application programming interface (API) and testing framework
-suitable for embedding into other C/C++ projects. The API and framework is intentionally minimal while still providing comprehensive testing capabilites.
+LiteTest is a lightweight C/C++ API and testing framework suitable for
+embedding into other C/C++ projects. The API and framework is intentionally
+minimal while still providing flexible and comprehensive testing capabilites.
 
-API macros simplify developing a test orchestrator (`main`) function 
+The LiteTest macros simplify developing a test orchestrator (`main`) function 
 and optional test functions by abstracting the management of running tests
 and report generation so you can focus on the actual tests for your project.
 
-It is POSIX-aware so that it handle faults (`SIGSEGV`, `SIGABRT`, `SIGBUS`) without terminating,
+The LiteTest framework is POSIX-aware so that it handle faults (`SIGSEGV`,
+`SIGABRT`, `SIGBUS`) without terminating.
 
-Note that LiteTest does not implement the actual tests or assertions itself; these must be supplied
+LiteTest does **not** implement tests or assertions itself; these must be supplied
 as part ot the test executable.
 
 Copyright (c) 2026 paulsinclair51
@@ -18,7 +20,7 @@ See the LICENSE file in the repository root for details.
 
 ## Overview
 
-The API and test framework is defined in [litetest.c](litetest.c) and [litetest.h](litetest.h).
+The API and framework are defined in [litetest.h](litetest.h) and [litetest.c](litetest.c).
 
 ### Key Points
 
@@ -28,17 +30,17 @@ The API and test framework is defined in [litetest.c](litetest.c) and [litetest.
 
    - Optional test functions.
 
-   - `litetest.c`, and `litetest.h`.
+   - `litetest.h`, and `litetest.c`.
 
    - Modules and include files from the feature/project/API under test.
    
 2. The executable produces a report grouped by category, including
 pass/fail/fault counts per category and totals across all categories.
-Error messages for fails and faults are appeneded to the report.
+Fail and fault messages are appeneded to the report.
 
 4. The orchestrator and test functions may be reside
-in one module or multiple modules. **Recommended**: place
-the orchestrator in one module and each test function in its own module.
+in one module or multiple modules. **Recommended**: put
+the orchestrator function in one module and each test function in its own module.
 
 5. The test framework depends on POSIX signals, `sigaction`, `sigsetjmp`, `siglongjmp`,
 and` sigjmp_buf` for capturing faults.
@@ -50,17 +52,20 @@ and` sigjmp_buf` for capturing faults.
 - LT_ASSERT_FAIL
 - LT_ASSERT_FAULT
   
-These macros provide multi-level (default maximum of 4 levels) signal
+These macros provide multi-level signal
 handling to capture faults (`SIGSEGV`, `SIGABRT`, `SIGBUS`). Faults
-are counted without aborting execution, allowing test suite to continue
-and produce a complete test report.
+are counted without aborting execution, allowing the test suite to continue
+and produce a complete test report with fault counts and messages for each fault.
 
-Future enhancment: parallel execution of LT_TEST. Allow up to a settable
-maximum of LT_TEST macros to execute (when one finishes, another is started.
+Parallel execution of LT_TEST macros is enabled/disabled by the `maxparallel` parameter
+for the LT_INIT_ORCHESTRATOR and LT_INIT_TEST macros. Up to `maxparallel` test functions
+are started and when one finishes another can be started.
 
-Future enhancement: group a set of LT_TEST macros to run in parallel. The
-number of LT_Test macros in a set must not exceed the maximum that are allowed
-to execute in parallel
+LT_TEST macros can be run in parallel as a group (that is, they are not started
+until they can all be started without exceeding `maxparallel`). The number of
+LT_Test macros in a group must not exceed the maximum that are allowed to execute in parallel.
+Gruoping is done bracketing the LT_TEST macros in the group with the LT_BEGIN_GROUP and
+LT_END_GROUP macros.
 
 ### Orchestrator (`main`) Macros
 
@@ -118,40 +123,25 @@ any required project headers.
 
 ### Example: lubtype Testing 
 
-Include these two files:
+The tests directory in the `paulsinclair5/lubtype` GitHub repository
+provides an example with an orchestrator module and test modules to test
+the lubtype API. The modules include these two files:
 
 ```c
 #include "lubtype.h"
 #include "litetest.h"
 ```
 
-`/paulsinclair5/lubtype/tests` provides an example with an orchestrator
-(`test_lubtype.c`) and test modules (`test.charclass.c`, `test_count.c`,
-`test_compare.c`, etc.). Currently, this repository is private.
-
 ### Example: LiteTest Self-Testing
+
+The tests directory for this GitHbub repository provides an example
+with an orchestrator module and test modules to self-test the LiteTest
+API and framwork. The modules iheader include one header (since it is both
+the header for API to be tested and the API for testing). 
 
 ```c
 #include "litetest.h"
 ```
-
-`/paulsinclair51/litetest/tests` provides an self-test implementation of
-the LiteTest API and framework. It includes:
-
-- `test_litetest.c` defines the orchestrator (`main`) with two test
-   categories "Orchestrator" and "Guard".
-
-- `test_orchestrator.c` defines the test_orchestrator functions for
-   testing the "Orchestrator" catagory.
-
-- `test_guard1.c` defines the `test_guard1` function for testing part of
-   the "Guard" category.
-
-- `test_guard2.c` defines the `test_guard2` function for testing the other
-   part of the "Guard" category.
-
-The result of test_guard1 and test_guard2 are combined by the orchestrator
-into a single result for the "Guard" category.
 
 ## Orchestrator (`main`) Function Template
 
@@ -172,8 +162,8 @@ LT_DECLARE_MAIN_ORCHESTRATOR
 }
 ```
 
-Results accumulated until `LT_WRITE_RESULT` and then reset.
-Totals are accumulated across all tests and asserts.
+Results accumulate until `LT_WRITE_RESULT`, and then reset.
+Totals accumulate across all tests and asserts.
 
 Optional typedefs, variable, functions, code etc. may be
 added to customize or support testing. Added code may
@@ -202,7 +192,7 @@ LT_DECLARE_MAIN_OCHESTRATOR(testsuite);
 }
 ```
 
-Use `static` if the function is only referenced in the same module.
+Use `static` when the function is only referenced in the same module.
 
 Forward declaration:
 
@@ -217,6 +207,26 @@ added to customize or support testing. Added code may
 use utility functions. **Recommmended**: do not intermix
 code with the tests (such code is handled as if it occurs
 before the tests).
+
+## Example Usage
+
+The tests directory for this GitHbub repository  provides an self-test implementation of
+the LiteTest API and framework. It includes:
+
+- `test_litetest.c` defines the orchestrator (`main`) with two test
+   categories "Orchestrator" and "Guard".
+
+- `test_orchestrator.c` defines the test_orchestrator functions for
+   testing the "Orchestrator" catagory.
+
+- `test_guard1.c` defines the `test_guard1` function for testing part of
+   the "Guard" category.
+
+- `test_guard2.c` defines the `test_guard2` function for testing the other
+   part of the "Guard" category.
+
+The result of test_guard1 and test_guard2 are combined by the orchestrator
+into a single result for the "Guard" category.
 
 ## Building the Test Executable
 
@@ -278,7 +288,9 @@ POSIX-capable compiler.
 To execute the tests, run the test executable to produce the test report file (an
 existing file is overwritten):
 
-`test_<test> [-i] [PATH]`
+```c
+test_<testname> [-i] [PATH]
+```
 
 By default if PATH is not specified, the executable writes the report
 to `<testsuite>_test_report.text` in the current working directory using
