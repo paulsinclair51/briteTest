@@ -5,7 +5,7 @@ implementation code.
 
 Copyright (c) 2026 paulsinclair51   
 SPDX-License-Identifier: MIT   
-For license details, see `..LICENSE`.
+For license details, see `../LICENSE`.
 
 ## litetest.c
 
