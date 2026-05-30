@@ -36,6 +36,9 @@ Error messages for fails and faults are appeneded to the report.
 4. The orchestrator and test functions may be reside
 in one module or multiple modules. **Recommended**: place
 the orchestrator in one module and each test function in its own module.
+
+5. The test framework depends on POSIX signals, `sigaction`, `sigsetjmp`, `siglongjmp`,
+and` sigjmp_buf` for capturing faults.
    
 ### Test and Assert Macros
 
@@ -245,8 +248,7 @@ make -C tests CC=gcc run
 
 #### Windows (POSIX Toolchain Required)
 
-Use a POSIX‑capable toolchain such as MSYS2 UCRT64 or Clang64. The test
-framework depends on POSIX signals, `setjmp`, and `siglongjmp`.
+Use a POSIX‑capable toolchain such as MSYS2 UCRT64 or Clang64.
 
 For an untested (due to toolchain not yet being installe), refer to
 the build_test_litetest.ps1 powershell script. The following is the
@@ -265,43 +267,45 @@ pacman -S --needed base-devel mingw-w64-ucrt-x86_64-gcc
 
 Ensure the MSYS2 `bin` directory is on `PATH` before running PowerShell.
 
-If you prefer Clang, MSYS2 Clang64 is also suitable with the corresponding
-Clang toolchain packages, as long as `cc`, `clang`, or `gcc` resolves to the
-POSIX-capable compiler in that environment.
+Clang64 is also suitable with if `cc`, `clang`, or `gcc` resolves to a
+POSIX-capable compiler.
 
 ## Executable Usage
 
-To execute the tests, run the test executable:
+To execute the tests, run the test executable to produce the test report file (an
+existing file is overwritten):
 
 `test_<test> [-i] [PATH]`
 
-PATH:
+By default if PATH is not specified, the executable writes the report
+to `<testsuite>_test_report.text` in the current working directory using
+the testsuite that is specified by LT_INIT_ORCHESTRATOR macro in the orchestrator
+(`main`) function.
 
-PATH specifies a file path or a directory path. It may be optionally quoted (with ") or is required to be quoted if it contains spaces or other characters that requiring the path to be quoted.
+### PATH
+You may override the output locaction using the PATH argument:
+
+- PATH specifies a file path or a directory path. It may be optionally quoted (with ") or is required to be quoted if it contains spaces or other characters that require the path to be quoted.
 
 = If `PATH` is a file path to an existing or nonexistent file, the test report is written to that file.
 
-- If `PATH` is a directory path (with or without a trailing separator) to an existing directory, the report is written to the file in that directory with filename <test>_test_report.txtfilename.
+- If `PATH` is a directory path (with or without a trailing separator) to an existing directory, the report is written to the file in that directory with filename`<test>_test_report.txt`.
 
-- If `PATH` is omitted, the test report is written to the file in the current working directory with filenaem <test>_test_report.txt.
-
-The default filename is `<test>name>_test_report.txt` where <testname> is the testname
-specified for `LT_INIT_TEST` in the orchestrator `main` function.
+### -i Option
 
 The -i options indicates fail/fault asserts planted in the tests are to inject
-a fail/fault. This useful to verify test report formatting when fails and faults occur.
+a fail/fault. This useful to test the LiteTest frammwork and verify test report
+formatting when fails and faults occur.
 
-An existing report file is overwritten.
-
-### Help Option
+### --help and -h Help Options
 
 You can display usage information at any time with the `--help` or `-h` option.
 For example:
 
 ```sh
-./test_litetest [-h | --help]
+./test_litetest --help
 ```
-This prints a summary of all command-line options and usage details.
+This (or using -h instead of --help) prints a summary of all command-line options and usage details.
 
 ## Example Test Report
 
