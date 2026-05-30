@@ -55,7 +55,7 @@ the orchestrator function in one module and each test function in its own module
 ### Test and Assert Macros
 
 - LT_TEST(funcname)
-- LT_ASSERT(assert_expr)
+- LT_ASSERT(assertexpr)
 - LT_ASSERT_FAIL
 - LT_ASSERT_FAULT
   
@@ -74,8 +74,8 @@ A gruop is bracketed by the LT_BEGIN_GROUP and LT_END_GROUP macros.
 
 ### Orchestrator (`main`) Macros
 
-- LT_DECLARE_MAIN_ORCHESTRATOR
-- LT_INIT_ORCHESTRATOR(testsuite, maxparallel)
+- LT_DECLARE_ORCHESTRATOR(main)
+- LT_INIT_ORCHESTRATOR(testsuitename, maxparallel)
 - LT_PARSE_ARGS("defaultreportfilename", "tempfilename")
 - LT_OPEN_REPORT("reporttitle")
 - LT_WRITE_RESULT([t], "categoryname")
@@ -151,9 +151,9 @@ the header for API to be tested and the API for testing).
 ## Orchestrator (`main`) Function Template
 
 ```c
-LT_DECLARE_MAIN_ORCHESTRATOR
+LT_DECLARE_ORCHESTRATOR(main)
 {
-  LT_INIT_TEST(testname, maxparallel);
+  LT_INIT_ORCHESTRATOR(testsuitename, maxparallel);
   LT_PARSE_ARGS("defaultfilename", "tempfilename");
   LT_OPEN_REPORT("reporttitle");
 
@@ -164,6 +164,8 @@ LT_DECLARE_MAIN_ORCHESTRATOR
   // with your funcames. assertexprs, categorynames.
 
   LT_CLOSE_REPORT;
+
+  LT_RETURN_STATUS;
 }
 ```
 
@@ -179,7 +181,7 @@ before the tests).
 Forward-declaration:
 
 ```c
-LT_DECLARE_MAIN_OCHESTRATOR(testsuite);
+LT_DECLARE_ORCHESTRATOR(main);
 ```
 
 ## Test Function Template
@@ -187,7 +189,7 @@ LT_DECLARE_MAIN_OCHESTRATOR(testsuite);
 ```c
 [static] LT_DECLARE_FUNCTION(func)
 {
-  LT_INIT_TEST(testname);
+  LT_INIT_TEST(testname, maxparallel);
 
   // Tests
   // Insert here expanding: [LT_TEST(funcname); | LT_ASSERT(assertexpr);]...
@@ -251,12 +253,13 @@ From the repository root:
 
 ```sh
 make -C tests run
+```
 
 The Makefile builds and executes the executable writing the test report
 in the reports directory with the default name <testsuite>_test_report.txt.
 
 The executable can then be executed directly (see
-[Executable Usage](#executable-usage-readme)).
+[Executable Usage](#executable-usage)).
 
 To build with gcc instead of clang:
 
@@ -273,8 +276,8 @@ the build_test_litetest.ps1 powershell script. The following is the
 expected command to run the script once it has been tested:
 
 ```powershell
-./build_test_litetest>.ps1
-.\test_litetest>.exe
+./build_test_litetest.ps1
+.\test_litetest.exe
 ```
 
 A tested setup is MSYS2 UCRT64 with:
@@ -298,16 +301,17 @@ test_<testname> [-i] [PATH]
 ```
 
 By default if PATH is not specified, the executable writes the report
-to `<testsuite>_test_report.text` in the current working directory using
-the testsuite that is specified by LT_INIT_ORCHESTRATOR macro in the orchestrator
+to `<testsuite>_test_report.txt` in the current working directory using
+the testsuite that is specified by the LT_INIT_ORCHESTRATOR macro in the orchestrator
 (`main`) function.
 
 ### PATH
+
 You may override the output locaction using the PATH argument:
 
 - PATH specifies a file path or a directory path. It may be optionally quoted (with ") or is required to be quoted if it contains spaces or other characters that require the path to be quoted.
 
-= If `PATH` is a file path to an existing or nonexistent file, the test report is written to that file.
+- If `PATH` is a file path to an existing or nonexistent file, the test report is written to that file.
 
 - If `PATH` is a directory path (with or without a trailing separator) to an existing directory, the report is written to the file in that directory with filename`<test>_test_report.txt`.
 

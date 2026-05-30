@@ -11,18 +11,20 @@
  * paulsinclair51/LiteTest GitHub repository.
  */
 
-#define TEST_ORCHESTRATOR test_litetest
 #include "litetest.h"
 
-LT_DECLARE_MAIN
+LT_DECLARE_ORCHESTRATOR(main)
 { 
-  LT_PARSE_ARGS ("LiteTest_test_report.txt";
+  LT_PARSE_ARGS ("LiteTest_test_report.txt");
+
+  LT_INIT_ORCHESTRATOR(litetest, 1);
   
   LT_OPEN_REPORT("LiteTest");
  
-  LT_WRITE_RESULT(TEST(test_orchestrator), "Orchestrator");
-  LT_TEST(test_guards1);
-  LT_WRITE_RESULT((TEST(test_guards2), "Guards 1 and 2");
+  LT_WRITE_RESULT(LT_TEST(test_orchestrator), "Orchestrator Tests");
+
+  LT_TEST(test_guard1);
+  LT_WRITE_RESULT(LT_TEST(test_guard2), "Guard Tests 1 and 2");
 
   LT_CLOSE_REPORT;
 
