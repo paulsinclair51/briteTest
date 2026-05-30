@@ -4,7 +4,7 @@ Directory for reports, standard output, and standard error output.
 
 Copyright (c) 2026 paulsinclair51   
 SPDX-License-Identifier: MIT   
-For license details, see `../LICENSE file'.
+For license details, see `../LICENSE file`.
 
 ## litetest_test_report.txt
 
