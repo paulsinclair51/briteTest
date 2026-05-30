@@ -1,19 +1,24 @@
 # tests
 
-Directory for test source files, test data, test runners, and test fixtures.
+Directory for test source files, test data, test executable, and test fixtures.
 
-Copyright (c) 2026 paulsinclair51
-SPDX-License-Identifier: MIT For license details, see the LICENSE file in the paulsinclair51/lubtype repository root.
+Copyright (c) 2026 paulsinclair51   
+SPDX-License-Identifier: MIT   
+For license details, see `../LICENSE`.
 
 ## test_litetest.c
 
-Orchestrator code for running litetest tests implemented in test_orchestrator.c
-and test_guards.c.
+Orchestrator code for running litetest tests implemented in `test_orchestrator.c`,
+`test_guaad1.c` and `test_guard1.c`.
 
 ## test_orchestrator.c
 
 Code for testing orchestrator API functionality.
 
-## test_guards.c
+## test_guard1.c
 
-Code for testing guard API functionality.
+Code for testing 1st part of thr guard API functionality.
+
+## test_guard2.c
+
+Code for testing 2nd part of thr guard API functionality.
