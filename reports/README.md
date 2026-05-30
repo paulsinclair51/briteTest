@@ -14,5 +14,5 @@ for a run of executeable test_litetest.
 
 ## out.txt
 
-Standard output for the run corresponding to litetest_test_report.txt if
+Standard output for the run corresponding to `litetest_test_report.txt` if
 the executable test_litetest was run by `../Makefile`.
