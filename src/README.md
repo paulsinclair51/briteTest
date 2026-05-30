@@ -1,6 +1,6 @@
 # src
 
-Directory for .c files, internal headers (if not meant for public use), and
+Directory for `.c` files, internal headers (if not meant for public use), and
 implementation code.
 
 Copyright (c) 2026 paulsinclair51   
