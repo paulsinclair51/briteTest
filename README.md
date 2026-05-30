@@ -8,8 +8,7 @@ The LiteTest macros simplify developing a test orchestrator (`main`) function
 and optional test functions by abstracting the management of running tests
 and report generation so you can focus on the actual tests for your project.
 
-The LiteTest framework is POSIX-aware so that it handle faults (`SIGSEGV`,
-`SIGABRT`, `SIGBUS`) without terminating.
+The LiteTest framework requires POSIX support. 
 
 LiteTest does **not** implement tests or assertions itself; these must be supplied
 as part ot the test executable.
@@ -30,11 +29,10 @@ The LiteTest API and framework are defined in [litetest.h](litetest.h) and [lite
 
 1. A test executable is built from:
 
-   - An orchestrator (`main`) function.
+   - An orchestrator (`main`) function and optional test functions
+     organized into one or more modules,
 
-   - Optional test functions.
-
-   - `litetest.h`, and `litetest.c`.
+   - `litetest.h`, and `litetest.c`, `unistd.h`
 
    - Modules and include files from the feature/project/API under test.
    
@@ -42,12 +40,11 @@ The LiteTest API and framework are defined in [litetest.h](litetest.h) and [lite
 pass/fail/fault counts per category and totals across all categories.
 Fail and fault messages are appeneded to the report.
 
-4. The orchestrator and test functions may be reside
+4. The orchestrator and test functions may reside
 in one module or multiple modules. **Recommended**: put
 the orchestrator function in one module and each test function in its own module.
 
-5. The test framework depends on POSIX signals, `sigaction`, `sigsetjmp`, `siglongjmp`,
-and` sigjmp_buf` for capturing faults.
+5. The test framework requires `unistd.h` for POSIX fork and signal capabilities,
    
 ### Test and Assert Macros
 
