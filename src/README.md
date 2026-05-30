@@ -12,4 +12,4 @@ For license details, see the LICENSE file in the repository root.
 Defines (non-inline) functions for the litetest API and framework.
 
 See `../include/litetest` for the declarations and documentation for
-the litetext API and framwwork.
+the LiteTest API and framwwork.
