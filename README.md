@@ -16,7 +16,7 @@ Copyright (c) 2026 paulsinclair51
 SPDX-License-Identifier: MIT.  
 See `LICENSE` for details.
 
-## Comparison to Other Test Frameworks
+## Test Framework Comparison
 
 | Framework | Language / Style | Dependencies | Fault Isolation | Strengths | How LiteTest Differs |
 |-----------|------------------|--------------|-----------------|-----------|-----------------------|
