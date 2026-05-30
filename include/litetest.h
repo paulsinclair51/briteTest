@@ -36,8 +36,7 @@
  * 
  * @copyright Copyright (c) 2026 paulsinclair51
  * SPDX-License-Identifier: MIT
- * See @ref ../LICENSE "LICENSE" in the
- * repository root for details.
+ * See @ref ../LICENSE "LICENSE" in the repository root for details.
  */
 
 /**
@@ -638,7 +637,7 @@ void litetest_install_guard_internal(litetest_guard_internal_t *new_guard);
  * @note This function is designed to be called after a guard has
  * been used to ensure that the previous guard is properly restored.
  *
- * @note The guard mechanism allows for nested guards, and the restore_guard_internal
+ * @note The guard mechanism allows for nested guards, and the litetest_restore_guard_internal
  * function ensures that the correct guard is restored in a last-in-first-out manner.
  */
 
@@ -653,9 +652,6 @@ void litetest_restore_guard_internal(void);
  * 
  * @param func Pointer to a function to execute, which takes a
  *             char inject parameter and returns a lt_result_t value.
- * @param inject Flag to pass to function.
- *                 0: normal execution.
- *                 1: enable inject fail/fault tests, if any, in the function.
  * @param func_name Name of the function being executed that is used for error messages.
  * 
  * @return lt_result_t result from function or
@@ -664,8 +660,8 @@ void litetest_restore_guard_internal(void);
 
 lt_result_t litetest_tests_internal
 ( lt_result_t (*func)(char),
-  const char inject,
-  const char * const func_name
+  const char * const func_name,
+  litetest_state_internal_t *litetest_caller_state_internal
 );
 
 /** @} */
@@ -678,21 +674,20 @@ lt_result_t litetest_tests_internal
  */
 
 /**
- * @name lt_guard_level
+ * @name lt_level
  * 
- * @brief Get the guard level indicating the 
- *        number of nested guards and nested LT_TEST and LT_ASSERT* macros.
+ * @brief Get the level indicating the number of nested LT_TEST and LT_ASSERT* macros.
  * 
- *        The guard level can be used for debugging, informational purposes, to
- *        determine the depth of nested guards, or for checking against
- *        the maximum guard level (MAX_GUARD_LEVEL).
+ *        The level can be used for retrieving the results and total for the function,
+ *        debugging, informational purposes,
+ *        determining the depth of nested macros, or for checking against
+ *        the maximum level (lt_max_level).
  * 
- * @return 0 if there are no installed guards.
- *         Otherwise, the current guard level, which is the number
- *         of nested guards currently installed.
+ * @return 0 if not nested.
+ *         Otherwise, the current level.
  */
 
- static inline size_t lt_guard_level(void)
+ static inline size_t lt_level(void)
  { return litetest_num_saved_guards_internal + 
           (litetest_current_guard_internal ? 1 : 0); }
 
@@ -709,31 +704,32 @@ lt_result_t litetest_tests_internal
   { return litetest_guard_internal ? litetest_guard_internal->active : -1; }
 
 /**
- * @section TEST Macros
+ * @section LT_TEST and LT_ASSERT* Macros
  * 
- * The test macros (TEST, TRSTS, TESTS_MERGE[n], TEST_FAIL, and TEST_FAULT
- * provide a convenient interface for running tests with
- * built-in fault recovery using the multi-level guard infrastructure:
+ * The LT_TEST, LT_ASSERT, LT_ASSERT_FAIL, and LT_ASSERT_FAULT macros
+ * provide a interface for running tests with built-in fault recovery
+ * using the multi-level guard infrastructure:
  * 
- * - Typically, the test orchestrator uses one of the TESTS[_MERGE[n]]
- *   macros to execute the test function in a test module. The TEST, TEST_FAIL,
- *   and TEST_FAULT macros may be used in the test orchestrator, but it is
- *   more common for test category modules to  use these macros.
+ * - Typically, the test orchestrator (main) function uses the LT_TEST macro
+ *   to execute a test function. The LT_ASSERT, LT_ASSERT__FAIL, and
+ *   LT_ASSERT_FAULT macros may be used in the test orchestrator
+ *   function, but it is more common for test fucntions to  use these macros.
  * 
- * - Typically, test modules use the TEST, TEST_FAIL, and TEST_FAULT macros.
- *   A test module may also use the TESTS[_MERGE[n]] macros for a test that
- *   can not reasonably be expressed as a single assertion, as a single
- *   assertion, such as a test that involves multiple steps, looping, or
- *   requires setup and teardown.
+ * - Typically, a test function uses the LT_ASSERT, LT_ASSERT_FAIL,
+ *   and LT_ASSERT_FAULT macros. A test module may also use the
+ *   LT_TEST macro for a test that can not reasonably be expressed as
+ *   a single assertion, as a single  assertion, such as a test that
+ *   involves multiple steps, looping, or requires setup and teardown.
  */
 
 /**
- * @name TESTS
+ * @name LT_TESTS
  * 
  * @brief A macro to run a function with a guard.
  *
- * After saving the current guard, setting up a new current guard to capture a fault (SIGABRT, SIGSEGV,
- * or SIGBUS), calls the function pointed to by parameter func
+ * After saving the current guard, setting up a new current guard to
+ * capture a fault (SIGABRT, SIGSEGV,
+ * or SIGBUS), calls the function named funcname.
  * with parameter inject. If a fault occurs this level, siglongjmps back to
  * the guard point, the result is saved and added to total. Then the saved
  * guard is set as the current guard.
@@ -759,102 +755,33 @@ lt_result_t litetest_tests_internal
  *          run the test function in a test module (e.g., test_orchestrator.c):
  *
  * @code
- TESTS(test_arg_handlers, inject);
+ LT_TEST(funcname);
  * @endcode
  */
 
-#define TESTS(func, inject) \
-   { t_result_t func(char inject); \
-     litetest_tests(func, 0, inject, #func); }
+#define LT_TEST(funcname) \
+   { t_result_t funcname(lt_state_t *litetest_state_internal); \
+     litetest_test_internal(funcname, #funcname); }
 
 /**
- * @name TESTS_MERGE, TESTS_MERGE3, TESTS_MERGE4
+ * @name LT_ASSERT
+ *
+ * @brietf Evaluates assertexpr with a fault guard and updates the internal
+ * totals for pass/fail/fault:
+ *
+ * - If assertexpr is true (not zero), increments pass count.
+ * - If assertexpr false, increments fail count.
+ * - IF fault, incremenet fault count
+ *
+ * @param assertexpr The expression to evaluate.
+ *
+ * @note The LT_ASSERT macro uses a guard to capture a fault that may occur during the
+ *       evaluation of assertexpr. If a fault is causght, it counts as a fault.
  * 
- * @brief Macros to run two, three, or four functions each with a guard and
- * merge their results.
- *
- * After setting up a guard to capture a fault (SIGABRT, SIGSEGV,
- * or SIGBUS), calls the function pointed to by parameter func1
- * with parameter inject, calls the function pointed to by parameter
- * func2 and merges their results, etc. If a fault occurs for a call,
- * siglongjmps back to the guard point.
- *
- * @param func1 Pointer to function 1.
- * @param func2 Pointer to function 2.
- * @param func3 Pointer to function 3 (for TESTS_MERGE3 and TESTS_MERGE4).
- * @param func4 Pointer to function 4 (for TESTS_MERGE4).
- * @param inject Flag to pass to the function.
- *               0: normal run.
- *               1: enable inject fail/fault tests, if any, in the function.
+ * @note For fail and fault, a message is appended to the test report.
+ *       The message includes assertexpr, filename of the module, and line
+ *       ine number for debugging purposes.
  * 
- * @botr If no signal, the result from the test function is merged.
- *         If signal caught, (lt_result_t){0, 0, SIZE_MAX, 0, 0} is merged.
- * 
- * @note If a fault is captured, a message is printed to stderr
- *       including the function name, file name, and line number
- *       for debugging purposes.
- * 
- * @note A fault is considered a fault in the testing framework or in the use of the
- *       testing framework, rather than a fault in the feature being tested. The use
- *       of SIZE_MAX for the fault count allows the macro to distinguish between
- *       a function-level fault and faults counted by the function itself.
- * 
- * @example In the orchestrator module (e,g., test_litetest.c) to
- *          run the 2 test functions (e.g., test_guards_1.c and
- *          test_guards_2.c) and merge their results:
- *
- * @code
- TESTS_MERGE(test_guards_1, test_guards_2, inject)
- * @endcode
- */
-
-#define TESTS_MERGE(func1, func2, inject) \
-   {  { lt_result_t func1(char inject); \
-        tests_internal(func1, 0, inject, #func1); }
-      { lt_result_t func2(char inject); \
-        tests_internal(func2, 1, inject, #func2); } \
-   }
-
-#define TESTS_MERGE3(func1, func2, func3, inject) \
-   {  { lt_result_t func1(char inject); \
-        tests_internal(func1, 0, inject, #func1); }
-      { lt_result_t func2(char inject); \
-        tests_internal(func2, 1, inject, #func2); } \
-      { lt_result_t func3(char inject); \
-        tests_internal(func3, 1, inject, #func3); } \
-}
-
-#define TESTS_MERGE3(func1, func2, func3, inject) \
-   {  { lt_result_t func1(char inject); \
-        tests_internal(func1, 0, inject, #func1); }
-      { lt_result_t func2(char inject); \
-        tests_internal(func2, 1, inject, #func2); } \
-      { lt_result_t func3(char inject); \
-        tests_internal(func3, 1, inject, #func3); } \
-      { lt_result_t func4(char inject); \
-        tests_internal(func4, 1, inject, #func4); } \
-}			
-
-/**
- * @name TEST
- *
- * @brief Evaluates assert_expr with a fault guard and updates the internal
- * static variable litetest_total for pass/fail/fault:
- *
- * - If assert_expr is true (not zero), increments pass count.
-   - If false, increments fail count.
-   - IF fault, incremenet fault count.
-   
- * For fail and fault, prints a message to stderr.
- *
- * @param assert_expr The expression to evaluate as a test assertion.
- *
- * @note The TEST macro uses a guard to capture signals that may occur during the
- *       evaluation of assert_expr. If a signal is caught, it counts as a fault.
- *       The macro also prints messages to stderr for failed assertions and faults,
- *       including the expression, file name, and line number for debugging purposes.
- * 
- *
  * @example In a test module (e.g., test_guard_2.c):
  * 
  * @code
