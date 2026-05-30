@@ -24,7 +24,7 @@ See the LICENSE file in the repository root for details.
 
 ## Overview
 
-The API and framework are defined in [litetest.h](litetest.h) and [litetest.c](litetest.c).
+The LiteTest API and framework are defined in [litetest.h](litetest.h) and [litetest.c](litetest.c).
 
 ### Key Points
 
