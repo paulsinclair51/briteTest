@@ -888,6 +888,9 @@ void lt_current_time(char *current_time, size_t size);
  * 
  * @param funcname Name of the function which must be main.
  *
+ * @note Compile-time error occurs if the macro is not followed by a semicolon or
+ *       the macro is syntactically not allowed in this context.
+ *
  * @example
  * @code
     LT_INIT_ORCHESTRATOR(LT_TEST(main);
@@ -949,6 +952,45 @@ const char *category_label_with_inject_tag
 );
 
 /**
+ * @name OPEN_REPORT
+ * 
+ * @brief Open report file, open tmp file, and write header lines.
+ *
+ * @param report_title Pointer to a string of customized title lines for the report.
+ *              If NULL or zero-length, a default title line is used.
+ *              Each line must end with a newline character ('\n').
+ *.             %t indicate replace with a timestamp "yyyy hh:mm:ss"
+ *              RECOMMENDED: Each line should be less than 80
+ *              characters for readability.
+ *
+ * @note Compile-time error occurs if the macro is not followed by a semicolon or
+ *       the macro is syntactically not allowed in this context.
+ *
+ * @example
+ * @code
+    LT_OPEN_REPORT("LiteTest Test Report %t\n");
+ * @endcode
+ * @{
+ */
+
+int litetest_open_report_internal
+( litetest_state_internal_t *const state, const char *const report_title );
+
+#define OPEN_REPORT(reporttitle) \
+    do \
+    { \
+      if (!strcmp(__func__, "main")) \
+      { \
+        fprintf(stdout, "[ERROR] LT_EXIT is not in the orchestrator "
+                        "(main) function\n"); \
+        exit(LT_MACRO_MISPLACED); \
+      } \
+      int rc = litetest_open_report_internal
+                 (__func__, #funcname, &litetest_state_internal, (reporttitle)); \
+      if (rc) exit(rc); \
+    } while (0)
+
+/**
  * @def LT_WRITE_RESULT
  * 
  * @brief Macro to write the results for a test category to the
@@ -956,6 +998,9 @@ const char *category_label_with_inject_tag
  * 
  * @param t An optional test/assert macro.
  * @param label The category label to display in the report,
+ *
+ * @note Compile-time error occurs if the macro is not followed by a semicolon or
+ *       the macro is syntactically not allowed in this context.
  *
  * @example Write the results for a category with one test function:
  * @code
@@ -1002,44 +1047,6 @@ const char *category_label_with_inject_tag
   } while (0)
 
 /**
- * @name OPEN_REPORT
- * 
- * @brief Open report file, open tmp file, and write header lines.
- *
- * @param report_title Pointer to a string of customized title lines for the report.
- *              If NULL or zero-length, a default title line is used.
- *              Each line must end with a newline character ('\n').
- *.             %t indicate replace with a timestamp "yyyy hh:mm:ss"
- *              RECOMMENDED: Each line should be less than 80
- *              characters for readability.
- *
- * @example
- * @code
-    LT_OPEN_REPORT("LiteTest Test Report %t\n");
- * @endcode
- * @{
- */
-
-int litetest_open_report_internal
-( litetest_state_internal_t *const state, const char *const report_title );
-
-#define OPEN_REPORT(reporttitle) \
-    do \
-    { \
-      if (!strcmp(__func__, "main")) \
-      { \
-        fprintf(stdout, "[ERROR] LT_EXIT is not in the orchestrator "
-                        "(main) function\n"); \
-        exit(LT_MACRO_MISPLACED); \
-      } \
-      int rc = litetest_open_report_internal
-                 (__func__, #funcname, &litetest_state_internal, (reporttitle)); \
-      if (rc) exit(rc); \
-    } while (0)
-
-/** @} */
-
-/**
  * @name LT_CLOSE_REPORT
  * 
  * @brief Write the final summary lines, notes, and error messasges
@@ -1051,6 +1058,9 @@ int litetest_open_report_internal
  *              Each line of the notes must end with a newline character ('\n').
  *              RECOMMENDED: Each line of the notes should be less than 80
  *              characters for readability.
+ *
+ * @note Compile-time error occurs if the macro is not followed by a semicolon or
+ *       the macro is syntactically not allowed in this context.
  *
  * @example
  * @code
@@ -1085,7 +1095,7 @@ int litetest_close_report_internal
  * @brief Exit the orchestrator with exit code (0 if successful and
  *        no fails or faults).
  *
- * @note Compile-time error occurs if macro is not followed by a semicolon or
+ * @note Compile-time error occurs if the macro is not followed by a semicolon or
  *       the macro is not syntactically allowed in this context.
  *
  * @example
@@ -1110,7 +1120,7 @@ int litetest_close_report_internal
 /**
  * @section Test Function Macros
  * 
- * The test function macros provide an API for running a set of tessts.
+ * The test function macros provide an API for running a set of tests.
  * 
  * Typically, a test function uses the LT_ASSERT, LT_ASSERT_FAIL,
  * and LT_ASSERT_FAULT macros. A test module may also use the
@@ -1132,7 +1142,7 @@ int litetest_close_report_internal
  * 
  * @param funcname Name of the test function. funcnsme must not be main.
  *
-* @note Compile-time error occurs if macro is not syntactically
+* @note Compile-time error occurs if the macro is not syntactically
 *       alloewed in ths contrst.
  *
  * @example Forward-reference
@@ -1161,7 +1171,7 @@ int litetest_close_report_internal
  * @param funcname Name of the test function. funcnsme must be the same
  *                 funcname as for the containing function.
  *
- * @note Compile-time error occurs if macro is not followed by a semicolon or
+ * @note Compile-time error occurs if the macro is not followed by a semicolon or
  *       the macro is not syntactically allowed in this context.
  *
  * @example
@@ -1193,7 +1203,7 @@ int litetest_close_report_internal
  * @param funcname Test function name. funcnsme must be the same
  *                 funcname as for the containing function.
  *
- * @note Compile-time error occurs if macro is not followed by a semicolon or
+ * @note Compile-time error occurs if the macro is not followed by a semicolon or
  *       the macro is syntactically not allowed in this context.
  *
  * @example
