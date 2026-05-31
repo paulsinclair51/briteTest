@@ -859,19 +859,24 @@ void lt_current_time(char *current_time, size_t size);
  * LT_ASSERT_FAULT macros may be used in the test orchestrator, but
  * it is more common for test fucntions to use these macros.
  *
- * @example
+ * @example Orchestrator function:
  * @code
-LT_DECLARE_FUNCTION(test_orchestrator)
+LT_DECLARE_ORCHESTRATOR(main)
 { 
-  LT_INIT_TEST(test_orchestrator, 1);
- 
-  LT_ASSERT(!strcmp("dummy", "dummy"));
-  LT_ASSERT_FAIL;
-  LT_ASSERT(!strcmp("dummy", "dummy"));
-  LT_ASSERT_FAULT;
-  LT_ASSERT(!strcmp("dummy", "dummy"));
+  LT_PARSE_ARGS ("LiteTest_test_report.txt");
 
-  LT_RETURN_RESULT;
+  LT_INIT_ORCHESTRATOR(litetest, 1);
+  
+  LT_OPEN_REPORT("LiteTest");
+ 
+  LT_WRITE_RESULT(LT_TEST(test_orchestrator), "Orchestrator Tests");
+
+  LT_TEST(test_guard1);
+  LT_WRITE_RESULT(LT_TEST(test_guard2), "Guard Tests 1 and 2");
+
+  LT_CLOSE_REPORT;
+
+  LT_RETURN_STATUS;
 }
  * @endcode
  */
