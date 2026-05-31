@@ -25,18 +25,23 @@
  *    - LT_ASSERT_FAULT
  *
  * 2. Macros for use in the test orchestrator (main) function:
- *    - LT_DECLARE_ORCHESTRATOR(main)[;]
- *    - LT_INIT_ORCHESTRATOR(main);
+ *    - LT_DECLARE_ORCHESTRATOR(funcname)[;]
+ *    - LT_INIT_ORCHESTRATOR(funcname);
  *.   - LT_PARSE_ARGS("defaultreportname");
  *    - LT_OPEN_REPORT("reporttitle");
  *    - LT_WRITE_RESULT(t%%[t], "categoryname");
  *    - LT_CLOSE_REPORT("notes");
- *    - LT_EXIT(main);
+ *    - LT_EXIT(funcname);
+ *
+ *    funcname must be main.
  *
  * 2. Macros for use in a test finction function:
  *    - LT_DECLARE_TEST_FUNCTION(funcname)[;]
  *    - LT_INIT_TEST_FUNCTION(funcname);
  *    - LT_RETURN(funcnamm);
+ *
+ *    funcname must not be main and must be ssme for all three macros when
+ *    defining a test function.
  *
  * 3. Miscellanous functions, macros, typedefs, and variables. For example, lt_executablename,
  *    lt_result_t, lt_dirpath, lt_path_usage, and LT_MAX_PATH_LEN.
@@ -1009,12 +1014,14 @@ int litetest_open_report_internal
 #define OPEN_REPORT(reporttitle) \
     do \
     { \
-      if (!strcmp(__func__, "main") || !litetest_state_internal.orchestrator) \
+      if (!strcmp(__func__, "main")) \
       { \
-        fprintf(stdout, "[ERROR] LT_EXIT not in orchestrator\n"); \
-        exit(1); \
+        fprintf(stdout, "[ERROR] LT_EXIT is not in the orchestrator "
+                        "(main) function\n"); \
+        exit(2); \
       } \
-      int rc = litetest_open_report_internal(&litetest_state_internal, (reporttitle)); \
+      int rc = litetest_open_report_internal
+                 (__func__, #funcname, &litetest_state_internal, (reporttitle)); \
       if (rc) exit(rc); \
     } while (0)
 
@@ -1047,12 +1054,14 @@ int litetest_close_report_internal
 #define LT_CLOSE_REPORT(notes) \
     do \
     { \
-      if (!strcmp(__func__, "main") || !litetest_state_internal.orchestrator) \
+      if (!strcmp(__func__, "main")) \
       { \
-        fprintf(stdout, "[ERROR] LT_CLOSE_REPORT not in orchestrator\n"); \
+        fprintf(stdout, "[ERROR] LT_CLOSE_REPORT is not in the "
+                        "orchestrator (main) function.\n"); \
         exit(1); \
       } \
-      int rc = litetest_close_report_internal(&litetest_state_internal, (notes)); \
+      int rc = litetest_close_report_internal
+                 (__func__, #funcname, litetest_state_internal, (notes)); \
       if (rc) exit(rc) \
     } while (0) \
 
@@ -1061,10 +1070,11 @@ int litetest_close_report_internal
 /**
  * @name LT_EXIT
  * 
- * @brief Exit the orchestrator.
- * 
- * @note It exits with the exit code saved in the internal state, which
- *       is set to 0 for success or a non-zero value for failure.
+ * @brief Exit the orchestrator with exit code (0 if successful and
+ *        no fails or faults).
+ *
+ * @note Compile-time error occurs if macro is not followed by a semicolon or
+ *       the macro is not syntactically allowed in this context.
  *
  * @example
  * @code
@@ -1072,15 +1082,17 @@ int litetest_close_report_internal
  * @endcode
  */
 
-#define LT_EXIT \
+#define LT_EXIT(funcname) \
     do \
     { \
-      if (!strcmp(__func__, "main") || !litetest_state_internal.orchestrator) \
+      if (!strcmp(__func__, "main")) \
       { \
-        fprintf(stdout, "[ERROR] LT_EXIT not in orchestrator\n"); \
+        fprintf(stdout, "[ERROR] LT_EXIT is not in the "
+                        "orchestrator (main) function.\n"); \
         exit(1); \
       } \
-      exit(litetest_state_internal.exit_code) \
+      exit(litetest_exit_internal \
+             (__func__, #funcname, litetest_state_internal, (notes)); \
     while (0)
 
 /**
@@ -1106,19 +1118,20 @@ int litetest_close_report_internal
  * @brief Declare a test function as a forward teference or
  *.       with a function body to define the test function.
  * 
- * @param funcname Name of the function. funcnsme must not be main.
+ * @param funcname Name of the test function. funcnsme must not be main.
  *
-* @note Compile-time error occurs if macro is alloewed in ths contrst.
+* @note Compile-time error occurs if macro is not syntactically
+*       alloewed in ths contrst.
  *
  * @example Forward-reference
  * @code
-    LT_DECLARE_TEST_FUNCTION(funcname);
+    LT_DECLARE_TEST_FUNCTION(test_guard1);
  * @endcode
  *
  * @example Function Definition
  * @code
-    LT_DECLARE_TEST_FUNCTION(funcname)
-    { /* test function body*/ }
+    LT_DECLARE_TEST_FUNCTION(test_guard1)
+    { /* test_guard1 function body*/ }
  * @endcode
  */
 
@@ -1133,11 +1146,11 @@ int litetest_close_report_internal
  *
  *        Exits the executable if the call is not allowed in this context.
  * 
- * @param funcname Name of the test function.
+ * @param funcname Name of the test function. funcnsme must be the same
+ *                 funcname as for the containing function.
  *
-* @note Compile-time error occurs if macro is not followed by a semicolon or
- *      macro is not syntactically allowed in this context.
- *
+ * @note Compile-time error occurs if macro is not followed by a semicolon or
+ *       the macro is not syntactically allowed in this context.
  *
  * @example
  * @code
@@ -1165,14 +1178,15 @@ int litetest_close_report_internal
  *
  *        Exits the executable if the call is not allowed in this context.
  *
- * @param funcname Test function name.
+ * @param funcname Test function name. funcnsme must be the same
+ *                 funcname as for the containing function.
  *
  * @note Compile-time error occurs if macro is not followed by a semicolon or
- *      macro is syntactically not allowed in this context.
+ *       the macro is syntactically not allowed in this context.
  *
  * @example
  * @code
-    LT_RETURN(test_guard2);
+    LT_RETURN(test_guard1);
  * @endcode
  */
 
@@ -1182,7 +1196,7 @@ int litetest_close_report_internal
       if (!strcmp(__func__, "main")) \
       { \
         fprintf(stdout, "[ERROR] LT_RETURN is NOT allowed "
-                        "in orchestrator (main) function.\n"); \
+                        "in the orchestrator (main) function.\n"); \
         exit(2); \
       } \
       int rc = litetest_return_internal \
