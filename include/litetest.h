@@ -952,21 +952,33 @@ const char *category_label_with_inject_tag
  * @def LT_WRITE_RESULT
  * 
  * @brief Macro to write the results for a test category to the
- *       report and update the total result and category fault count.
- *
- * @note Increments the static variable cat_id adn updates static variable
- *       total result with the result of the test category. If the 
- *      result has a category-level fault (fault == SIZE_MAX), increments the
- *      static variable cat_faults to count the number of category-level faults.
+ *        report and resets the result counts for the next category.
  * 
- * @param t A test/asser macro reference.
- * @param label The category label to display in the report (e.g., "Error/edge cases").
- * 
- * @note If result_expr has a category-level fault (fault == SIZE_MAX), the
+ * @param t An optional test/assert macro.
+ * @param label The category label to display in the report,
  *
- * @example
+ * @example Write the results for a category with one test function:
  * @code
-    LT_WRITE_RESULT(LT_TEST(test_orchestrator);
+    LT_WRITE_RESULT(LT_TEST(test_orchestrator), "orchestrator");
+ * @endcode
+ *
+ * @example Write results for a category with one test function (alternate):
+ * @code
+    LT_TEST(test_orchestrator);
+    LT_WRITE_RESULT(, "orchestrator");
+ * @endcode
+ *
+ * @example Write results for a category with two test functions:
+ * @code
+    LT_TEST(test_guard1);
+    LT_WRITE_RESULT(LT_TEST(test_guard2), "guard 1 and 2");
+ * @endcode
+ *
+ * @example Write results for a category with two test functions (alternate):
+ * @code
+    LT_TEST(test_guard1);
+    LT_TEST(test_guard2);
+    LT_WRITE_RESULT(, "guard 1 and 2");
  * @endcode
  */
 
@@ -974,10 +986,10 @@ const char *category_label_with_inject_tag
   do \
   { t; \
     ++cat_id; \
-	  char label_buf[96]; \
-	  const char *_label = category_label_with_inject_tag( \
-	   					 (label), result, inject, label_buf, sizeof(label_buf)); \
-	  write_category(report, cat_id, _label, result); \
+    char label_buf[96]; \
+    const char *_label = category_label_with_inject_tag( \
+             (label), result, inject, label_buf, sizeof(label_buf)); \
+    litetest%_write_result_internal(report, cat_id, _label, result); \
     total = (lt_result_t) \
 		    { total.pass + result.pass, \
 		      total.fail + result.fail, \
@@ -1018,7 +1030,7 @@ int litetest_open_report_internal
       { \
         fprintf(stdout, "[ERROR] LT_EXIT is not in the orchestrator "
                         "(main) function\n"); \
-        exit(2); \
+        exit(LT_MACRO_MISPLACED); \
       } \
       int rc = litetest_open_report_internal
                  (__func__, #funcname, &litetest_state_internal, (reporttitle)); \
@@ -1058,7 +1070,7 @@ int litetest_close_report_internal
       { \
         fprintf(stdout, "[ERROR] LT_CLOSE_REPORT is not in the "
                         "orchestrator (main) function.\n"); \
-        exit(1); \
+        exit(LT_MACRO_MISPLACED); \
       } \
       int rc = litetest_close_report_internal
                  (__func__, #funcname, litetest_state_internal, (notes)); \
@@ -1089,7 +1101,7 @@ int litetest_close_report_internal
       { \
         fprintf(stdout, "[ERROR] LT_EXIT is not in the "
                         "orchestrator (main) function.\n"); \
-        exit(1); \
+        exit(LT_MACRO_MISPLACED); \
       } \
       exit(litetest_exit_internal \
              (__func__, #funcname, litetest_state_internal, (notes)); \
@@ -1164,7 +1176,7 @@ int litetest_close_report_internal
       if (!strcmp(__func__, "main" || !strcmp(#funcname, "main")) \
       { fprintf(stdout, "[ERROR] LT_INIT_TEST_FUNCTION is NOT allowed "
                         "in the orchesrator (main) function.\n"); \
-        exit(2); \
+        exit(LT_MACRO_MISPLACED); \
       } \
       int rc = litetest_init…test_function_internal \
                  (__func__, #funcname, litetest_lcl_state_internal) \
@@ -1197,7 +1209,7 @@ int litetest_close_report_internal
       { \
         fprintf(stdout, "[ERROR] LT_RETURN is NOT allowed "
                         "in the orchestrator (main) function.\n"); \
-        exit(2); \
+        exit(LT_MACRO_MISPLACED); \
       } \
       int rc = litetest_return_internal \
                  (__func__, #funcname, litetest_lcl_state_internal) \
