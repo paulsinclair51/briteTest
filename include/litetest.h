@@ -861,7 +861,10 @@ void lt_current_time(char *current_time, size_t size);
  *
  * @example
  * @code
-    LT_INIT_ORCHESTRATOR(LT_TEST(main);
+ LT_DECLARE_ORCHESTRATOR(main)
+ {
+   LT_INIT_ORCHESTRATOR(LT_TEST(main);
+   LT_
  * @endcode
  */
 
@@ -878,7 +881,7 @@ void lt_current_time(char *current_time, size_t size);
  *
  * @example Forward-reference
  * @code
-    LT_DECLARE_ORCHESTRATOR(main);
+ LT_DECLARE_ORCHESTRATOR(main);
  * @endcode
  *
  * @example Function Definition
@@ -906,7 +909,7 @@ void lt_current_time(char *current_time, size_t size);
  *
  * @example
  * @code
-    LT_INIT_ORCHESTRATOR(LT_TEST(main);
+ LT_INIT_ORCHESTRATOR(LT_TEST(main);
  * @endcode
  */
 
@@ -984,7 +987,7 @@ const char *category_label_with_inject_tag
  *
  * @example
  * @code
-    LT_OPEN_REPORT("LiteTest Test Report %t\n");
+ LT_OPEN_REPORT("LiteTest Test Report %t\n");
  * @endcode
  * @{
  */
@@ -1028,8 +1031,8 @@ int litetest_open_report_internal
  *
  * @example Write results for a category with one test function (alternate):
  * @code
-    LT_TEST(test_orchestrator);
-    LT_WRITE_RESULT(, "orchestrator");
+ LT_TEST(test_orchestrator);
+ LT_WRITE_RESULT(, "orchestrator");
  * @endcode
  *
  * @example Write results for a category with two test functions:
@@ -1085,8 +1088,8 @@ int litetest_open_report_internal
  *
  * @example
  * @code
-    LT_CLOSE_REPORT("guard: fault detection mechanism,\n"
-                    "orchestrator: main function to run testd.\n");
+ LT_CLOSE_REPORT("guard: fault detection mechanism,\n"
+                 "orchestrator: main function to run testd.\n");
  * @endcode
  * @{
  */
@@ -1125,7 +1128,7 @@ int litetest_close_report_internal
  *
  * @example
  * @code
-    LT_EXIT;
+ LT_EXIT(main);
  * @endcode
  */
 
@@ -1155,7 +1158,7 @@ int litetest_close_report_internal
  *
  * @example
  * @code
-    LT_INIT_TEST_FUNCTION(test_guard1);
+ LT_INIT_TEST_FUNCTION(test_guard1);
  * @endcode
  */
 
@@ -1177,8 +1180,8 @@ int litetest_close_report_internal
  *
  * @example Function Definition
  * @code
-    LT_DECLARE_TEST_FUNCTION(test_guard1)
-    { /* test_guard1 function body*/ }
+ LT_DECLARE_TEST_FUNCTION(test_guard1)
+ { /* test_guard1 function body*/ }
  * @endcode
  */
 
@@ -1201,7 +1204,7 @@ int litetest_close_report_internal
  *
  * @example
  * @code
-    LT_INIT_TEST_FUNCTION(test_guard1);
+ LT_INIT_TEST_FUNCTION(test_guard1);
  * @endcode
  */
 
@@ -1233,7 +1236,7 @@ int litetest_close_report_internal
  *
  * @example
  * @code
-    LT_RETURN(test_guard1);
+ LT_RETURN(test_guard1);
  * @endcode
  */
 
