@@ -1106,20 +1106,18 @@ int litetest_close_report_internal
 
 #define LT_DECLARE_TEST_FUNCTION(funcnane) \
     void funcname \
-    ( litetest_state_internal_t *const litetest_state_internal, \
-      litetest_lcl_state_internal_t *const litetest_lcl_state_internal \
-    )
+    ( litetest_lcl_state_internal_t *const litetest_lcl_state_internal )
 
 /**
- * @name LT_INIT_ORCHESTRATOR
+ * @name LT_INIT_TEST_FUNCTION
  * 
- * @brief Initialize the orchestrator.
+ * @brief Initialize a test function.
  * 
- * @param funcname Name of the function which must be main.
+ * @param funcname Name of the test function which must NOT be main.
  *
  * @example
  * @code
-    LT_INIT_ORCHESTRATOR(LT_TEST(main);
+    LT_INIT_TEST_FUNCTION(LT_TEST(test_guard1);
  * @endcode
  */
 
@@ -1127,14 +1125,13 @@ int litetest_close_report_internal
     do \
     { \
       if (!strcmp(__func__, "main" || !strcmp(#funcname, "main")) \
-      { fprintf(stdout, "[ERROR] LT_INIT_ORCHESTRATOR must not be used in main function.\n"); \
+      { fprintf(stdout, "[ERROR] LT_INIT_TEST_FUNCTION is NOT allowed "
+                        "in the orchesrator (main) function.\n"); \
         exit(2); \
       } \
-      if (litetest_state_internal.orchestrator) \
-      { fprintf(stdout, "[ERROR] LT_EXIT not in orchestrator\n"); } \
-        exit(litetest_state_internal.exit_code); \
-      } \
-
+      int rc = litetest_init…test_function_internal \
+                 (#funcname, litetest_lcl_state_internal) \
+      if (rc) exit(rc);
     } while (0)
 
 /**
@@ -1144,5 +1141,37 @@ int litetest_close_report_internal
 #if defined(__cplusplus)
 }
 #endif
+
+/**
+ * @name LT_RETURN
+ * 
+ * @brief Return from test function.
+ *.       Exits the executable if call is not allowed 
+ *
+ * @param funcname Test function name.
+ *
+ * @note Compile-time error if not followed by a semicolon or
+ * a misplacement of macro 
+ *
+ * @example
+ * @code
+    LT_RETURN(funcname);
+ * @endcode
+ */
+
+#define LT_RETURN \
+    do \
+    { \
+      if (!strcmp(__func__, "main")) \
+      { \
+        fprintf(stdout, "[ERROR] LT_RETURN is NOT allowed "
+                        "in orchestrator (main) function.\n"); \
+        exit(2); \
+      } \
+      int rc = litetest_return_internal \
+                 (__func__, litetest_lcl_state_internal) \
+      if (rc) exit(rc); \
+      return; \
+    while (0)
 
 // End of litetest.h
