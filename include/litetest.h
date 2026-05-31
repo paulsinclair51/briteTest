@@ -1110,6 +1110,38 @@ int litetest_close_report_internal
       litetest_lcl_state_internal_t *const litetest_lcl_state_internal \
     )
 
+/**
+ * @name LT_INIT_ORCHESTRATOR
+ * 
+ * @brief Initialize the orchestrator.
+ * 
+ * @param funcname Name of the function which must be main.
+ *
+ * @example
+ * @code
+    LT_INIT_ORCHESTRATOR(LT_TEST(main);
+ * @endcode
+ */
+
+#define LT_INIT_TEST_FUNCTION(funcname) \
+    do \
+    { \
+      if (!strcmp(__func__, "main" || !strcmp(#funcname, "main")) \
+      { fprintf(stdout, "[ERROR] LT_INIT_ORCHESTRATOR must not be used in main function.\n"); \
+        exit(2); \
+      } \
+      if (litetest_state_internal.orchestrator) \
+      { fprintf(stdout, "[ERROR] LT_EXIT not in orchestrator\n"); } \
+        exit(litetest_state_internal.exit_code); \
+      } \
+      char litetest_runid; \
+      lt_result_t internal_total; \
+      char *internal_executable_name; \
+      const char internal_default_path_msg[]; \
+      const char *path_msg; \
+    } while (0)
+
+
 #if defined(__cplusplus)
 }
 #endif
