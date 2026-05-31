@@ -1134,13 +1134,12 @@ int litetest_close_report_internal
       { fprintf(stdout, "[ERROR] LT_EXIT not in orchestrator\n"); } \
         exit(litetest_state_internal.exit_code); \
       } \
-      char litetest_runid; \
-      lt_result_t internal_total; \
-      char *internal_executable_name; \
-      const char internal_default_path_msg[]; \
-      const char *path_msg; \
+
     } while (0)
 
+/**
+ * @section Glossary
+ */
 
 #if defined(__cplusplus)
 }
