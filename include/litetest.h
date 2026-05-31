@@ -923,9 +923,9 @@ const char *category_label_with_inject_tag
 /**
  * @name OPEN_REPORT
  * 
- * @brief Open report file and write header lines.
+ * @brief Open report file, open tmp file, and write header lines.
  *
- * @param report_title Title of the report.
+ * @param report_title Report title string.
  * @{
  */
 
@@ -933,10 +933,16 @@ int litetest_open_report_internal
 ( litetest_state_internal_t *const state, const char *const report_title );
 
 #define OPEN_REPORT(reporttitle) \
-  do \
-  { int rc = litetest_open_report_internal(&litetest_state_internal, (reporttitle)); \
-    if (rc) exit(rc); \
-  } while (0)
+    do \
+    { \
+      if (!strcmp(__func__, "main") || !litetest_state_internal.orchestrator) \
+      { \
+        fprintf(stdout, "[ERROR] LT_EXIT not in orchestrator\n"); \
+        exit(1); \
+      } \
+      int rc = litetest_open_report_internal(&litetest_state_internal, (reporttitle)); \
+      if (rc) exit(rc); \
+    } while (0)
 
 /** @} */
 
@@ -960,9 +966,15 @@ int litetest_close_report_internal
 
 #define LT_CLOSE_REPORT(notes) \
     do \
-    { int rc = litetest_close_report_internal(&litetest_state_internal, (notes)); \
-      if (rc) exit(rc); \
-    } while (0)
+    { \
+      if (!strcmp(__func__, "main") || !litetest_state_internal.orchestrator) \
+      { \
+        fprintf(stdout, "[ERROR] LT_CLOSE_REPORT not in orchestrator\n"); \
+        exit(1); \
+      } \
+      int rc = litetest_close_report_internal(&litetest_state_internal, (notes)); \
+      if (rc) exit(rc) \
+    } while (0) \
 
 /** @} */
 
@@ -978,10 +990,13 @@ int litetest_close_report_internal
 #define LT_EXIT \
     do \
     { \
-      if (litetest_state_internal.orchestrator) \
-      { fprintf(stdout, "[ERROR] LT_EXIT not in orchestrator\n"); } \
-        exit(litetest_state_internal.exit_code); \
-    } while (0)
+      if (!strcmp(__func__, "main") || !litetest_state_internal.orchestrator) \
+      { \
+        fprintf(stdout, "[ERROR] LT_EXIT not in orchestrator\n"); \
+        exit(1); \
+      } \
+      exit(litetest_state_internal.exit_code) \
+    while (0)
 
 /**
  * @name lt_current_time
