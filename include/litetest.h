@@ -866,30 +866,43 @@ void lt_current_time(char *current_time, size_t size);
  */
 
 /**
- * @name LT_DECLARE_ORCHESTRATOR(main)
+ * @name LT_DECLARE_ORCHESTRATOR(funcmame)
  * 
- * @brief Declare the orchestrator ad the main function.
- * 
- * @param funcname Name of the function which must be main.
+ * @brief Declare the orchestrator (main) function as a forward teference or
+ *        with a function body to define the orchestrator function.
  *
- * @example
+ * @param funcname Name of the function. funcname must be main.
+ *
+ * @note Compile-time error occurs if the macro is not syntactically
+ *       alloewed in this context.
+ *
+ * @example Forward-reference
  * @code
-    LT_INIT_ORCHESTRATOR(LT_TEST(main);
+    LT_DECLARE_ORCHESTRATOR(main);
+ * @endcode
+ *
+ * @example Function Definition
+ * @code
+    LT_DECLARE_TEST_FUNCTION(main)
+    { /* orchestrator (main) function body*/ }
  * @endcode
  */
 
 #define LT_DECLARE_ORCHESTRATOR(funcnane) \
-    void funcname()
+    void funcname \ return int?
+    ( litetest_lcl_state_internal_t *const litetest_lcl_state_internal )
 
 /**
  * @name LT_INIT_ORCHESTRATOR
  * 
  * @brief Initialize the orchestrator.
+ *
+ *        Exits the executable if the macro is not allowed in this context.
  * 
  * @param funcname Name of the function which must be main.
  *
  * @note Compile-time error occurs if the macro is not followed by a semicolon or
- *       the macro is syntactically not allowed in this context.
+ *       the macro is not syntactically allowed in this context.
  *
  * @example
  * @code
@@ -956,6 +969,9 @@ const char *category_label_with_inject_tag
  * 
  * @brief Open report file, open tmp file, and write header lines.
  *
+ *        Exits the executable if the macro is not allowed in this context.
+ * 
+ *
  * @param report_title Pointer to a string of customized title lines for the report.
  *              If NULL or zero-length, a default title line is used.
  *              Each line must end with a newline character ('\n').
@@ -964,7 +980,7 @@ const char *category_label_with_inject_tag
  *              characters for readability.
  *
  * @note Compile-time error occurs if the macro is not followed by a semicolon or
- *       the macro is syntactically not allowed in this context.
+ *       the macro is not syntactically allowed in this context.
  *
  * @example
  * @code
@@ -995,12 +1011,15 @@ int litetest_open_report_internal
  * 
  * @brief Macro to write the results for a test category to the
  *        report and resets the result counts for the next category.
+ *
+ *        Exits the executable if the macro is not allowed in this context.
+ * 
  * 
  * @param t An optional test/assert macro.
  * @param label The category label to display in the report,
  *
  * @note Compile-time error occurs if the macro is not followed by a semicolon or
- *       the macro is syntactically not allowed in this context.
+ *       the macro is not syntactically allowed in this context.
  *
  * @example Write the results for a category with one test function:
  * @code
@@ -1052,6 +1071,8 @@ int litetest_open_report_internal
  * @brief Write the final summary lines, notes, and error messasges
  *        to the report, closes the report, closes/deletes
  *        the temp file, and saves the final return code.
+ *
+ *        Exits the executable if the macro is not allowed in this context.
  * 
  * @param notes Pointer to a string of customized notes for the report.
  *              If NULL or zero-length, no customized notes are added to the report.
@@ -1060,7 +1081,7 @@ int litetest_open_report_internal
  *              characters for readability.
  *
  * @note Compile-time error occurs if the macro is not followed by a semicolon or
- *       the macro is syntactically not allowed in this context.
+ *       the macro is not syntactically allowed in this context.
  *
  * @example
  * @code
@@ -1095,6 +1116,10 @@ int litetest_close_report_internal
  * @brief Exit the orchestrator with exit code (0 if successful and
  *        no fails or faults).
  *
+ *        Exits the executable if the macro is not allowed in this context.
+ *
+ * @param funcname Name of the function which must be main.
+ * 
  * @note Compile-time error occurs if the macro is not followed by a semicolon or
  *       the macro is not syntactically allowed in this context.
  *
@@ -1166,7 +1191,7 @@ int litetest_close_report_internal
  * 
  * @brief Initialize a test function.
  *
- *        Exits the executable if the call is not allowed in this context.
+ *        Exits the executable if the macro is not allowed in this context.
  * 
  * @param funcname Name of the test function. funcnsme must be the same
  *                 funcname as for the containing function.
@@ -1198,13 +1223,13 @@ int litetest_close_report_internal
  * 
  * @brief Return from test function.
  *
- *        Exits the executable if the call is not allowed in this context.
+ *        Exits the executable if the macro is not allowed in this context.
  *
  * @param funcname Test function name. funcnsme must be the same
  *                 funcname as for the containing function.
  *
  * @note Compile-time error occurs if the macro is not followed by a semicolon or
- *       the macro is syntactically not allowed in this context.
+ *       the macro is not syntactically allowed in this context.
  *
  * @example
  * @code
