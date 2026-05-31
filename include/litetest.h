@@ -709,6 +709,16 @@ static inline char lt_categoryid(void)
 static inline lt_result_t currenttotal(void)
 { return litetest_total_internal; }
 
+/**
+ * @name lt_current_time
+ * @brief Get the current time as a formatted string.
+ *
+ * @param current_time Buffer to store the formatted time string.
+ * @param size Size of the buffer.
+ * 
+ * @return void. On error, current_time is set to "unknown time".
+ */
+
 void lt_current_time(char *current_time, size_t size);
 
 /**
@@ -832,8 +842,8 @@ void lt_current_time(char *current_time, size_t size);
  * 
  * Typically, the test orchestrator (main) function uses the LT_TEST macro
  * to execute a test function. The LT_ASSERT, LT_ASSERT__FAIL, and
- * LT_ASSERT_FAULT macros may be used in the test orchestrator
- * function, but it is more common for test fucntions to  use these macros.
+ * LT_ASSERT_FAULT macros may be used in the test orchestrator, but
+ * it is more common for test fucntions to use these macros.
  *
  * @example
  * @code
@@ -1065,14 +1075,40 @@ int litetest_close_report_internal
     while (0)
 
 /**
- * @name lt_current_time
- * @brief Get the current time as a formatted string.
- *
- * @param current_time Buffer to store the formatted time string.
- * @param size Size of the buffer.
+ * @section Test Function Macros
  * 
- * @return void. On error, current_time is set to "unknown time".
+ * The test function macros provide an API for running a set of tessts.
+ * 
+ * Typically, a test function uses the LT_ASSERT, LT_ASSERT_FAIL,
+ * and LT_ASSERT_FAULT macros. A test module may also use the
+ * LT_TEST macro for a test that can not reasonably be expressed as
+ * a single assertion, as a single  assertion, such as a test that
+ * involves multiple steps, looping, or requires setup and teardown.
+ *
+ * @example
+ * @code
+    LT_INIT_TEST_FUNCTION(test_guard1);
+ * @endcode
  */
+
+/**
+ * @name LT_DECLARE_TEST_FUNCTION(funcname)
+ * 
+ * @brief Declare a test function.
+ * 
+ * @param funcname Name of the function which must not be main.
+ *
+ * @example
+ * @code
+    LT_DECLARE_TEST_FUNCTION(funcname);
+ * @endcode
+ */
+
+#define LT_DECLARE_TEST_FUNCTION(funcnane) \
+    void funcname \
+    ( litetest_state_internal_t *const litetest_state_internal, \
+      litetest_lcl_state_internal_t *const litetest_lcl_state_internal \
+    )
 
 #if defined(__cplusplus)
 }
