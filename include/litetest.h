@@ -861,10 +861,18 @@ void lt_current_time(char *current_time, size_t size);
  *
  * @example
  * @code
- LT_DECLARE_ORCHESTRATOR(main)
- {
-   LT_INIT_ORCHESTRATOR(LT_TEST(main);
-   LT_
+LT_DECLARE_FUNCTION(test_orchestrator)
+{ 
+  LT_INIT_TEST(test_orchestrator, 1);
+ 
+  LT_ASSERT(!strcmp("dummy", "dummy"));
+  LT_ASSERT_FAIL;
+  LT_ASSERT(!strcmp("dummy", "dummy"));
+  LT_ASSERT_FAULT;
+  LT_ASSERT(!strcmp("dummy", "dummy"));
+
+  LT_RETURN_RESULT;
+}
  * @endcode
  */
 
