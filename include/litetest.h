@@ -18,21 +18,30 @@
  * The LiteTest API includes:
  * 
  * 1. Macros with a multi-level signal-guard mechanism
- *    based on sigsetjmp/siglongjmp to capture faults:
- *    - `LT_TEST(func)`
- *    - `LT_ASSERT(assert_expr)`
- *    - `LT_ASSERT_FAIL`
- *    - `LT_ASSERT_FAULT`
+ *    to capture faults:
+ *    - LT_TEST(func)
+ *    - LT_ASSERT(assert_expr)
+ *    - LT_ASSERT_FAIL
+ *    - LT_ASSERT_FAULT
  *
- * 2. Macros for use in a test orchestrator:
- *    - `OPEN_REPORT`
- *    - `CLOSE_REPORT`
- *    - `WRITE_RESULT`
+ * 2. Macros for use in the test orchestrator (main) function:
+ *    - LT_DECLARE_ORCHESTRATOR(main)[;]
+ *    - LT_INIT_ORCHESTRATOR(main);
+ *.   - LT_PARSE_ARGS("defaultreportname");
+ *    - LT_OPEN_REPORT("reporttitle");
+ *    - LT_WRITE_RESULT(t%%[t], "categoryname");
+ *    - LT_CLOSE_REPORT("notes");
+ *    - LT_EXIT(main);
+ *
+ * 2. Macros for use in a test finction function:
+ *    - LT_DECLARE_TEST_FUNCTION(funcname)[;]
+ *    - LT_INIT_TEST_FUNCTION(funcname);
+ *    - LT_RETURN(funcnamm);
  *
  * 3. Miscellanous functions, macros, typedefs, and variables. For example, lt_executablename,
  *    lt_result_t, lt_dirpath, lt_path_usage, and LT_MAX_PATH_LEN.
  * 
- * This header requires POSIX.1-2008 for signal handling and sigsetjmp/siglongjmp.
+ * This header requires at minimum POSIX.1-2001.
  * 
  * @copyright Copyright (c) 2026 paulsinclair51
  * SPDX-License-Identifier: MIT
@@ -1094,13 +1103,22 @@ int litetest_close_report_internal
 /**
  * @name LT_DECLARE_TEST_FUNCTION(funcname)
  * 
- * @brief Declare a test function.
+ * @brief Declare a test function as a forward teference or
+ *.       with a function body to define the test function.
  * 
- * @param funcname Name of the function which must not be main.
+ * @param funcname Name of the function. funcnsme must not be main.
  *
- * @example
+* @note Compile-time error occurs if macro is alloewed in ths contrst.
+ *
+ * @example Forward-reference
  * @code
     LT_DECLARE_TEST_FUNCTION(funcname);
+ * @endcode
+ *
+ * @example Function Definition
+ * @code
+    LT_DECLARE_TEST_FUNCTION(funcname)
+    { /* test function body*/ }
  * @endcode
  */
 
@@ -1112,12 +1130,18 @@ int litetest_close_report_internal
  * @name LT_INIT_TEST_FUNCTION
  * 
  * @brief Initialize a test function.
+ *
+ *        Exits the executable if the call is not allowed in this context.
  * 
- * @param funcname Name of the test function which must NOT be main.
+ * @param funcname Name of the test function.
+ *
+* @note Compile-time error occurs if macro is not followed by a semicolon or
+ *      macro is not syntactically allowed in this context.
+ *
  *
  * @example
  * @code
-    LT_INIT_TEST_FUNCTION(LT_TEST(test_guard1);
+    LT_INIT_TEST_FUNCTION(test_guard1);
  * @endcode
  */
 
@@ -1130,36 +1154,29 @@ int litetest_close_report_internal
         exit(2); \
       } \
       int rc = litetest_init…test_function_internal \
-                 (#funcname, litetest_lcl_state_internal) \
+                 (__func__, #funcname, litetest_lcl_state_internal) \
       if (rc) exit(rc);
     } while (0)
-
-/**
- * @section Glossary
- */
-
-#if defined(__cplusplus)
-}
-#endif
 
 /**
  * @name LT_RETURN
  * 
  * @brief Return from test function.
- *.       Exits the executable if call is not allowed 
+ *
+ *        Exits the executable if the call is not allowed in this context.
  *
  * @param funcname Test function name.
  *
- * @note Compile-time error if not followed by a semicolon or
- * a misplacement of macro 
+ * @note Compile-time error occurs if macro is not followed by a semicolon or
+ *      macro is syntactically not allowed in this context.
  *
  * @example
  * @code
-    LT_RETURN(funcname);
+    LT_RETURN(test_guard2);
  * @endcode
  */
 
-#define LT_RETURN \
+#define LT_RETURN(funcname)\
     do \
     { \
       if (!strcmp(__func__, "main")) \
@@ -1169,9 +1186,18 @@ int litetest_close_report_internal
         exit(2); \
       } \
       int rc = litetest_return_internal \
-                 (__func__, litetest_lcl_state_internal) \
+                 (__func__, #funcname, litetest_lcl_state_internal) \
       if (rc) exit(rc); \
       return; \
     while (0)
+
+/**
+ * @section Glossary
+ */
+
+#if defined(__cplusplus)
+}
+#endif
+
 
 // End of litetest.h
