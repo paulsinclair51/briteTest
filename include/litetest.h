@@ -835,13 +835,13 @@ lt_result_t litetest_tests_internal
       if (litetest_state_internal.orchestrator) \
       { fprintf(stdout, "[ERROR] LT_EXIT not in orchestrator\n"); } \
         exit(litetest_state_internal.exit_code); \
+      } \
+      char litetest_runid; \
+      lt_result_t internal_total; \
+      char *internal_executable_name; \
+      const char internal_default_path_msg[]; \
+      const char *path_msg; \
     } while (0)
-
-static char litetest_runid;
-extern lt_result_t internal_total;
-extern char *internal_executable_name;
-extern const char internal_default_path_msg[];
-extern const char *path_msg;
 
 static inline char current_run_id(void)
 { return internal_run_id; }
