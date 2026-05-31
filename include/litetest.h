@@ -692,7 +692,7 @@ lt_result_t litetest_tests_internal
           (litetest_current_guard_internal ? 1 : 0); }
 
 /**
- * @name  lt_is_current_guard_active
+ * @name  lt_isguardactive
  * @brief Check if the current guard is active.
  * 
  * @return 1 if the current guard is active
@@ -700,8 +700,16 @@ lt_result_t litetest_tests_internal
  *        -1 if there is no current guard.
  */
 
-  static inline int lt_is_current_guard_active(void)
+static inline int lt_isguardactive(void)
   { return litetest_guard_internal ? litetest_guard_internal->active : -1; }
+
+static inline char lt_categoryid(void)
+{ return litetest_categoryid_internal; }
+
+static inline lt_result_t currenttotal(void)
+{ return litetest_total_internal; }
+
+void lt_current_time(char *current_time, size_t size);
 
 /**
  * @section LT_TEST and LT_ASSERT* Macros
@@ -816,13 +824,50 @@ lt_result_t litetest_tests_internal
     restore_guard_internal(); \
    } while (0)
 
+/**
+ * @section Orchestrator Macros
+ * 
+ * The orchestrator macros provide an API for running tests as the
+ * main function of an executable.
+ * 
+ * Typically, the test orchestrator (main) function uses the LT_TEST macro
+ * to execute a test function. The LT_ASSERT, LT_ASSERT__FAIL, and
+ * LT_ASSERT_FAULT macros may be used in the test orchestrator
+ * function, but it is more common for test fucntions to  use these macros.
+ *
+ * @example
+ * @code
+    LT_INIT_ORCHESTRATOR(LT_TEST(main);
+ * @endcode
+ */
+
+/**
+ * @name LT_DECLARE_ORCHESTRATOR(main)
+ * 
+ * @brief Declare the orchestrator ad the main function.
+ * 
+ * @param funcname Name of the function which must be main.
+ *
+ * @example
+ * @code
+    LT_INIT_ORCHESTRATOR(LT_TEST(main);
+ * @endcode
+ */
+
+#define LT_DECLARE_ORCHESTRATOR(funcnane) \
+    void funcname()
 
 /**
  * @name LT_INIT_ORCHESTRATOR
  * 
  * @brief Initialize the orchestrator.
  * 
- * @param funcname Name of the function which must be 'main'
+ * @param funcname Name of the function which must be main.
+ *
+ * @example
+ * @code
+    LT_INIT_ORCHESTRATOR(LT_TEST(main);
+ * @endcode
  */
 
 #define LT_INIT_ORCHESTRATOR(funcname) \
@@ -843,11 +888,6 @@ lt_result_t litetest_tests_internal
       const char *path_msg; \
     } while (0)
 
-static inline char current_run_id(void)
-{ return internal_run_id; }
-
-static inline lt_result_t current_total(void)
-{ return internal_total; }
 
 static inline char *executable_name(char *const buf, size_t n)
 { if (!buf || !n) { return NULL; }
@@ -899,6 +939,11 @@ const char *category_label_with_inject_tag
  * @param label The category label to display in the report (e.g., "Error/edge cases").
  * 
  * @note If result_expr has a category-level fault (fault == SIZE_MAX), the
+ *
+ * @example
+ * @code
+    LT_WRITE_RESULT(LT_TEST(test_orchestrator);
+ * @endcode
  */
 
 #define LT_WRITE_RESULT(t, label) \
@@ -925,7 +970,17 @@ const char *category_label_with_inject_tag
  * 
  * @brief Open report file, open tmp file, and write header lines.
  *
- * @param report_title Report title string.
+ * @param report_title Pointer to a string of customized title lines for the report.
+ *              If NULL or zero-length, a default title line is used.
+ *              Each line must end with a newline character ('\n').
+ *.             %t indicate replace with a timestamp "yyyy hh:mm:ss"
+ *              RECOMMENDED: Each line should be less than 80
+ *              characters for readability.
+ *
+ * @example
+ * @code
+    LT_OPEN_REPORT("LiteTest Test Report %t\n");
+ * @endcode
  * @{
  */
 
@@ -958,6 +1013,12 @@ int litetest_open_report_internal
  *              Each line of the notes must end with a newline character ('\n').
  *              RECOMMENDED: Each line of the notes should be less than 80
  *              characters for readability.
+ *
+ * @example
+ * @code
+    LT_CLOSE_REPORT("guard: fault detection mechanism,\n"
+                    "orchestrator: main function to run testd.\n");
+ * @endcode
  * @{
  */
 
@@ -985,6 +1046,11 @@ int litetest_close_report_internal
  * 
  * @note It exits with the exit code saved in the internal state, which
  *       is set to 0 for success or a non-zero value for failure.
+ *
+ * @example
+ * @code
+    LT_EXIT;
+ * @endcode
  */
 
 #define LT_EXIT \
@@ -1007,8 +1073,6 @@ int litetest_close_report_internal
  * 
  * @return void. On error, current_time is set to "unknown time".
  */
-
-void lt_current_time(char *current_time, size_t size);
 
 #if defined(__cplusplus)
 }
