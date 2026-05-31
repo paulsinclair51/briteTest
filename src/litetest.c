@@ -259,7 +259,7 @@ static int path_is_existing_directory(const char *s)
 static int output_dir_is_writable(const char *s)
 { return is_writeabledir(s); }
 
-void print_err_usage(const char *err_msg)
+static void print_err_usage(const char *err_msg)
 { FILE *out;
 
   if (err_msg && *err_msg)
@@ -276,36 +276,86 @@ void print_err_usage(const char *err_msg)
           path_msg && *path_msg ? path_msg : internal_default_path_msg);
 }
 
-int parse_args
-( const int argc, const char *const *const argv,
+/**
+ * @name litetest_parse_args_internal
+ * 
+ * @brief LT_PARSE_ARGS helper function.
+ * 
+ *        Parses command-line arguments for the test orchestrator, validates
+ *        them, and extracts the directory path and filename.
+ *        If the arguments are valid, the function returns 0 and fills the
+ *        provided buffers with the directory path and filename. If the arguments
+ *        are invalid, the function prints an error message and usage information,
+ *        and returns a non-zero error code.
+ * 
+ * @param state Pointer to the internal state of the orchestrator.
+ * @param argc The number of command-line arguments.
+ * @param argv The array of command-line argument strings.
+ * @param dir_path Buffer to store the extracted directory path.
+ * @param filename Buffer to store the extracted filename.
+ * 
+ * @return 0 if arguments are valid.
+ *        -1: Help (-h or --help) requested (usage information printed).
+ *         1: LT_PARSE_ARGS outside of orchestrator.
+ *         2: Unexpected number of arguments.
+ *         3: PATH must not be empty or whitespace only.
+ *         4: Directory path is too long.
+ *         5: File or directory path is too long.
+ *         6: Filename is too long.
+ *        99: Internal error
+ * 
+ * @note For an error, message and usage information printed to stdout.
+ * 
+ * @note The function also performs self-tests on the path parsing logic
+ *       and checks for writable directories as needed. It is designed
+ *       to be called from the orchestrator function to handle
+ *       command-line arguments and set up the test report path.
+ */
+
+int litetest_parse_args_internal
+(
+  litetest_state_internal_t * const state,
+  const int argc, const char *const *const argv,
   char *const dir_path, char *const filename
 )
-{ const char *path_arg = NULL;
-
+{
+  const char *path_arg = NULL;
   char normalized_path[MAX_PATH_LEN + 2] = {0};
+
+  if (!state)
+  {
+    print_err_usage("Internal error: NULL state pointer.");
+    return 99;
+  }
+  if (!state->orchestrator)
+  {
+    print_err_usage("LT_PARSE_ARGS not in orchestrator.");
+    return 1;
+  }
 
   if (argc > 0 && argv && argv[0] && *argv[0])
   { internal_executable_name = (char *)argv[0]; }
 
   if (!dir_path || !filename)
-  { print_err_usage("Internal error: output buffers are NULL.");
-    return 1;
+  {
+    print_err_usage("Internal error: output buffers are NULL.");
+    return 99;
   }
 
   if (run_path_parser_selftests())
-  { print_err_usage("Internal PATH parser self-test failed.");
-    return 1;
+  { print_err_usage("PATH parser self-test failed.");
+    return 99;
   }
-
+1
   if (argc > 2)
   { print_err_usage("Unexpected number of arguments.");
-    return 1;
+    return 2;
   }
 
   if (argc == 2)
   { if (!argv || !argv[1])
     { print_err_usage("Non-standard call: missing first argument.");
-      return 1;
+      return 99;
     }
 
     if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
@@ -315,7 +365,7 @@ int parse_args
 
     if (is_blank_path_arg(argv[1]))
     { print_err_usage("PATH must not be empty or whitespace only.");
-      return 1;
+      return 3;
     }
 
     path_arg = argv[1];
@@ -324,7 +374,7 @@ int parse_args
     { int n = snprintf(normalized_path, sizeof(normalized_path), "%s/", path_arg);
       if (n < 0 || (size_t)n >= sizeof(normalized_path))
       { print_err_usage("Directory path is too long.");
-        return 1;
+        return 4;
       }
       path_arg = normalized_path;
     }
@@ -332,21 +382,23 @@ int parse_args
     int result = extract_dirpath_and_filename
                    (dir_path, filename,
                     path_arg, MAX_PATH_LEN + 1, MAX_FILENAME_LEN + 1);
-    if (result == -4)
+    if (result == 1)
     { print_err_usage("File or directory path is too long.");
-      return 1;
+      return 5;
     }
-    if (result == -5)
+    if (result == 2)
     { print_err_usage("Filename is too long.");
-      return 1;
+      return 6;
     }
   }
 
   return 0;
 }
 
-int is_writable_dir(char *dirpath, char *path)
-{ if (!output_dir_is_writable(path))
+static int is_writable_dir
+( const char *const dirpath, const char *const path )
+{
+  if (!output_dir_is_writable(path))
   { fprintf(stderr,
             "[ERROR] Directory '%s' for test report is not writable.\n",
             dirpath);
@@ -355,14 +407,20 @@ int is_writable_dir(char *dirpath, char *path)
   return 1;
 }
 
-result_t merge_results(result_t a, result_t b)
-{ return (result_t)
-         { a.pass + b.pass, a.fail + b.fail,
-           (a.fault == SIZE_MAX || b.fault == SIZE_MAX) ?
-                      SIZE_MAX : a.fault + b.fault,
-           a.injected_fail + b.injected_fail,
-           a.injected_fault + b.injected_fault
-         };
+static void merge_result
+(
+  litetest_state_t *state,
+  const result_t r
+)
+{
+  if (!state) { return; }
+  test_result_t t = state->total;
+  t.pass += r.pass;
+  t.fail += r.fail;
+  t.fault += (r.fault == SIZE_MAX) ? 1 : r.fault;
+  t.injected_fail += r.injected_fail;
+  t.injected_fault += r.injected_fault;
+  state->total = t;
 }
 
 void write_category
@@ -410,9 +468,10 @@ const char *category_label_with_inject_tag(
   char inject,
   char *label_buf,
   size_t label_buf_len)
-{ const int has_injected_fail = result.injected_fail > 0;
+{
+  const int has_injected_fail = result.injected_fail > 0;
   const int has_injected_fault =
-    result.injected_fault > 0 || result.fault == SIZE_MAX;
+      result.injected_fault > 0 || result.fault == SIZE_MAX;
 
   if (!inject || (!has_injected_fail && !has_injected_fault))
   { return base_label; }
@@ -427,35 +486,120 @@ const char *category_label_with_inject_tag(
   return label_buf;
 }
 
-FILE *open_report(const char *report_path, const char *report_title)
-{ FILE *report = fopen(report_path, "w");
 
-  if (!report)
-  { fprintf(stderr, "[ERROR] Could not open report file '%s' for writing.\n",
-            report_path ? report_path : "(null)");
-    return NULL;
+/**
+ * @name litetest_open_report_internal
+ * 
+ * @brief LT_OPEN_REPORT helper function.
+ * 
+ * @param state Pointer to the internal state of the orchestrator.
+ * @param report_title Pointer to report title string.
+ * 
+ * @return 0 if report report successfully.
+ *         1: LT_OPEN_REPORT is outside of orchestrator.
+ *         2: Could not open report file for write.
+ *         3: Could not open temporary file.
+ *        99: Internal error.
+ * 
+ * @note For errors, a message is printed to stdout.
+ */
+
+int litetest_open_report_internal
+(
+  litetest_state_internal_t *const state,
+  const char *const report_title
+)
+{
+  if (!state)
+  {
+    print_err_usage("Internal error: NULL state pointer.");
+    return 99;
+  }
+  if (!state->orchestrator)
+  {
+    print_err_usage("LT_OPEN_REPORT not in Orchestrator.");
+    return 1;
   }
 
+
+  FILE *report = fopen(state->report_path, "w");
+  if (!report)
+  {
+    fprintf(stderr, "[ERROR] Could not open report file '%s' for write.\n",
+            state->report_path ? state->report_path : "(null)");
+    return 2;
+  }
+  state->report = report;
   (void)setvbuf(report, NULL, _IONBF, 0);
+
+  FILE *temp = tmpfile();
+  if (!temp)
+  {
+    fprintf(stderr, "[ERROR] Could not open temporary file.\n");
+    fclose(report);
+    return 3;
+  }
+  state->temp = temp;
+  (void)setvbuf(state->temp, NULL, _IONBF, 0);
 
   fprintf(report, "%s", report_title);
   fprintf(report, "     Test Categories                           Pass  Fail  Fault\n");
   fprintf(report, "--------------------------------------------------------------------\n");
 
-  internal_run_id = 0;
-  internal_total = (result_t){0, 0, 0, 0, 0};
+  state->run_id = 0;
+  state->total = (result_t){0, 0, 0, 0, 0};
 
-  return report;
+  return 0;
 }
 
-int close_report
-( FILE *report,
-  result_t total,
-  int cat_faults,
-  char inject,
-  const char *note
+/**
+ * @name litetest_close_report_internal
+ * 
+ * @brief LT_CLOSE_REPORT helper function.
+ * 
+ * @param state Pointer to the internal state of the orchestrator.
+ * @param notes The notes to be included in the report.
+ * 
+ * @return 0 if report report successfully.
+ *         1: LT_CLOSE_REPORT is outside of orchestrator.
+ *        99: Internal error.
+ * 
+ * @note For errors, a message is printed to stdout.
+ */
+
+int litetest_close_report_internal
+(
+  litetest_state_internal_t *const state,
+  const char *const notes
 )
-{ fprintf(report, "------------------------------------------------------------------\n");
+{
+  if (!state)
+  {
+    print_err_usage("Internal error: NULL state pointer."); 
+    return 99; 
+  }
+
+  if (!state->orchestrator)
+  { print_err_usage("LT_CLOSE_REPORT not in Orchestrator."); 
+    return 1;
+  }
+
+  FILE *report = state->report;
+  if (!report)
+  {
+    print_err_usage("Internal error: NULL report pointer."); 
+    return 99;
+  }
+
+  FILE *temp = state->temp;
+  if (!temp)
+  { print_err_usage("Internal error: NULL temporary file pointer."); }
+
+  result_t total = state->total;
+
+  // Write the summary lines to the report.
+
+  fprintf(report, "------------------------------------------------------------------\n");
 
   if (!total.fail && !total.fault)
   { fprintf(report, "                                        Total  %4zu",
@@ -474,12 +618,22 @@ int close_report
             total.pass, total.fail, total.fault);
   }
 
-  if (note) { fprintf(report, "\n\n%s", note); }
-  if (cat_faults)
+  // Append custom notes, if any.
+
+  const char *const notes = state->notes;
+  if (notes && *notes) { fprintf(report, "\n%s", notes); }
+  if (state->category_faults)
   { fprintf(report, "\n\n*: category-level fault (counts as 1 in fault total).\n"); }
-  if (inject)
+
+  // Explanation of FAIL/FAULT indicator in a category label.
+
+  if (state->inject && total.injected_fail + total.injected_fault)
   { fprintf(report, "\nFAIL/FAULT: indicates fail/fault injected "
                     "to test fail/fault detection.\n"); }
+  else if (state->inject)
+  { fprintf(report, "\nNo injected fails or faults were detected.\n"); }
+
+  // Summary of results.
 
   if (!total.fail && !total.fault)
   { fprintf(report, "\nAll tests passed.\n"); }
@@ -490,13 +644,38 @@ int close_report
   else
   { fprintf(report, "\nTest run completed with failures and faults.\n"); }
 
+  // Append the contents of the temporary file to the report.
+
+  if (temp)
+  {
+    rewind(temp);
+    char line[256];
+    while (fgets(line, sizeof(line), temp))
+    { fputs(line, report); }
+    fclose(temp);
+  }
+
   fclose(report);
 
-  return (total.fail > 0 || total.fault > 0) ? 1 : 0;
+  state->exit_code = (total.fail > 0 || total.fault > 0) ? 1 : 0;
+
+  return temp ? 0 : 99;
 }
 
-void get_current_time(char *current_time, size_t size)
-{ time_t now = time(NULL);
+/**
+ * @name lt_current_time
+ * 
+ * @brief Format the current time as a string.
+ * 
+ * @param current_time Buffer to store the formatted time string.
+ * @param size The size of the current_time buffer.
+ * 
+ * @return void. On error, current_time is set to "unknown time".
+ */
+void lt_current_time
+ (char *current_time, size_t size )
+{
+  time_t now = time(NULL);
   struct tm *tm_now = localtime(&now);
   if (!tm_now || !strftime(current_time, size,
                            "%Y-%m-%d %H:%M:%S", tm_now))

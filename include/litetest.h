@@ -816,7 +816,26 @@ lt_result_t litetest_tests_internal
     restore_guard_internal(); \
    } while (0)
 
-#if defined(TEST_ORCHESTRATOR)
+
+/**
+ * @name LT_INIT_ORCHESTRATOR
+ * 
+ * @brief Initialize the orchestrator.
+ * 
+ * @param funcname Name of the function which must be 'main'
+ */
+
+#define LT_INIT_ORCHESTRATOR(funcname) \
+    do \
+    { \
+      if (strcmp(__func__, "main" || strcmp(#funcname, "main")) \
+      { fprintf(stdout, "[ERROR] LT_INIT_ORCHESTRATOR must be used in main function.\n"); \
+        exit(2); \
+      } \
+      if (litetest_state_internal.orchestrator) \
+      { fprintf(stdout, "[ERROR] LT_EXIT not in orchestrator\n"); } \
+        exit(litetest_state_internal.exit_code); \
+    } while (0)
 
 static char litetest_runid;
 extern lt_result_t internal_total;
@@ -865,19 +884,8 @@ const char *category_label_with_inject_tag
   size_t label_buf_len
 );
 
-FILE *open_report(const char *report_path, const char *report_title);
-int close_report
-( FILE *report,
-  lt_result_t total,
-  int cat_faults,
-  char inject,
-  const char *note
-);
-
-void get_current_time(char *current_time, size_t size);
-
 /**
- * @def WRITE_RESULT
+ * @def LT_WRITE_RESULT
  * 
  * @brief Macro to write the results for a test category to the
  *       report and update the total result and category fault count.
@@ -893,7 +901,7 @@ void get_current_time(char *current_time, size_t size);
  * @note If result_expr has a category-level fault (fault == SIZE_MAX), the
  */
 
-#define WRITE_RESULT(t, label) \
+#define LT_WRITE_RESULT(t, label) \
   do \
   { t; \
     ++cat_id; \
@@ -913,33 +921,70 @@ void get_current_time(char *current_time, size_t size);
   } while (0)
 
 /**
- * @name open_report
+ * @name OPEN_REPORT
  * 
  * @brief Open report file and write header lines.
  *
- * @param report_path Output file path for the report.
  * @param report_title Title of the report.
- * 
- * @return Open FILE* on success, NULL on error.
+ * @{
  */
 
+int litetest_open_report_internal
+( litetest_state_internal_t *const state, const char *const report_title );
+
+#define OPEN_REPORT(reporttitle) \
+  do \
+  { int rc = litetest_open_report_internal(&litetest_state_internal, (reporttitle)); \
+    if (rc) exit(rc); \
+  } while (0)
+
+/** @} */
 
 /**
- * @name close_report
+ * @name LT_CLOSE_REPORT
  * 
- * @brief Write the final summary lines to the report and close it.
+ * @brief Write the final summary lines, notes, and error messasges
+ *        to the report, closes the report, closes/deletes
+ *        the temp file, and saves the final return code.
  * 
- * @param report The open FILE* for the report.
- * @param total The accumulated total result for all categories.
- * @param cat_faults The number of category-level faults.
- * @param inject Indicates if fail/fault injection was used.
- * @param note Additional string of 1 or more notes (can be NULL).
- * 
- * @return 0 if all tests passed (fail=0, fault=0); 1 otherwise.
+ * @param notes Pointer to a string of customized notes for the report.
+ *              If NULL or zero-length, no customized notes are added to the report.
+ *              Each line of the notes must end with a newline character ('\n').
+ *              RECOMMENDED: Each line of the notes should be less than 80
+ *              characters for readability.
+ * @{
  */
 
+int litetest_close_report_internal
+( litetest_state_internal_t *const state, const char *const notes );
+
+#define LT_CLOSE_REPORT(notes) \
+    do \
+    { int rc = litetest_close_report_internal(&litetest_state_internal, (notes)); \
+      if (rc) exit(rc); \
+    } while (0)
+
+/** @} */
+
 /**
- * @name get_current_time
+ * @name LT_EXIT
+ * 
+ * @brief Exit the orchestrator.
+ * 
+ * @note It exits with the exit code saved in the internal state, which
+ *       is set to 0 for success or a non-zero value for failure.
+ */
+
+#define LT_EXIT \
+    do \
+    { \
+      if (litetest_state_internal.orchestrator) \
+      { fprintf(stdout, "[ERROR] LT_EXIT not in orchestrator\n"); } \
+        exit(litetest_state_internal.exit_code); \
+    } while (0)
+
+/**
+ * @name lt_current_time
  * @brief Get the current time as a formatted string.
  *
  * @param current_time Buffer to store the formatted time string.
@@ -948,7 +993,7 @@ void get_current_time(char *current_time, size_t size);
  * @return void. On error, current_time is set to "unknown time".
  */
 
-#endif // defined(TEST_ORCHESTRATOR)
+void lt_current_time(char *current_time, size_t size);
 
 #if defined(__cplusplus)
 }

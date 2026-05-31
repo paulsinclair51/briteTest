@@ -107,8 +107,8 @@ Other combinations are invalid.
 - LT_PARSE_ARGS("defaultreportfilename", "tempfilename")
 - LT_OPEN_REPORT("reporttitle")
 - LT_WRITE_RESULT([t], "categoryname")
-- LT_CLOSE_REPORT
-- LT_RETURN_STATUS
+- LT_CLOSE_REPORT("notes")
+- LT_EXIT
 
 ### Test Function Macros
 
