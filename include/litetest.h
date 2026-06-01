@@ -1272,6 +1272,8 @@ int litetest_close_report_internal
  * @section Glossary
 assert
 guard
+header .h file
+module .c file
 orchestrator (main) function
 test function
  */
