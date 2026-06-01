@@ -9,6 +9,35 @@
  * declarations, definitions (other than non-inline fumction definition), and the
  * definitve Doxygen documentation for LiteTest (see README.md in the
  * root directory for an overview of LiteTest).
+ * 
+ * @copyright Copyright (c) 2026 paulsinclair51
+ * SPDX-License-Identifier: MIT
+ * See LICENSE in the repository root for details.
+ */
+
+/**
+ * @defgroup Version
+ *
+ * @name LT_VERSION_MAJOR, LT_VERSION_MINOR 0, LT_VERSION_PATCH
+ *
+ * - Major version for incompatible API changes.
+ * - Minor version for backward-compatible additions.
+ * - Patch version for bug fixes or internal improvements.
+ *
+ * Incompatible API changes: The naming conventions, error semantics, and safety guarantees
+ * are part of the documented and stable API and will not change without a
+ * major version increment.
+ * @{
+ */
+ 
+#define LT_VERSION_MAJOR 1
+#define LT_VERSION_MINOR 0
+#define LT_VERSION_PATCH 0
+
+/** @} */
+
+/**
+ * @section Overview
  *
  * In the following, testing the LiteTest itself is used as an example of
  * using the LiteTest API and framework with test modules test_guards_1.c,
@@ -47,10 +76,7 @@
  *    lt_result_t, lt_dirpath, lt_path_usage, and LT_MAX_PATH_LEN.
  * 
  * This header requires at minimum POSIX.1-2001.
- * 
- * @copyright Copyright (c) 2026 paulsinclair51
- * SPDX-License-Identifier: MIT
- * See LICENSE in the repository root for details.
+
  */
 
 /**
@@ -177,18 +203,6 @@ extern "C" {
  * @section UtilityMacros Utility Macros
  */
 
-#if defined(LT_TOK_PASTE) || defined(LITETEST_TOK_PASTE_INTRRNAL)
-#error "litetest.h: A LT_TOK_PASTE or LITETEST_TOK_PASTE_INTERNAL " \
-       "macro is unexpectedly already defined. " \
-       "#undef before including litetest.h."
-#endif // defined macros
-
-#if defined(LT_TOK_STR) || defined(LITETEST_TOK_STR_INTERNAL)
-#error "litetest.h: A LT_TOK_STR or LITETEST_TOK_STR_INTERNAL " \
-       "macro is unexpectedly already defined. " \
-       "#undef before including litetest.h."
-#endif // defined macros
-
 #if defined(LT_STATIC_ASSERT))
 #error "litetest.h: An LT_STATIC_ASSERT " \
        "macro is unexpectedly already defined. " \
@@ -311,42 +325,18 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
 #endif
 
 /**
- * @section VersionMacros LiteTest Version Macros
+ * @section LiteTestVersionMacros LiteTest Version Macros
  */
 
 /**
  * @defgroup LiteTestVersionMacros LiteTest Version Macros
  *
- * @name LT_VERSION_MAJOR, LT_VERSION_MINOR, LT_VERSION_PATCH,
- *       LT_VERSION, LT_VERSION_NUM, LT_VERSION_HEX, 
+ * @name LT_VERSION, LT_VERSION_NUM, LT_VERSION_HEX, 
  *       LT_VERSION_EQ, LT_VERSION_AT_LEAST
  *
  * @brief Version macros for LiteTest (litetest.h and litetest.c):
- *
- * Increment:
- *
- * - LT_VERSION_MAJOR for incompatible API changes.
- * - LT_VERSION_MINOR for backward-compatible additions.
- * - LT_VERSION_PATCH for bug fixes or internal improvements.
-
- * Do not modify the other version macros.
- *
- * Incompatible API changes: The naming conventions, error semantics, and safety guarantees
- * are part of the documented and stable API and will not change without a
- * major version increment.
  * 
  * The following version macros are provided:
- *
- * LT_VERSION_MAJOR
- *    Untyped numeric form, e.g., 1 for major version 1.
- * 
- * LT_VERSION_MINOR
- *    Untyped numeric form, e.g., 0 for minor version 0,
- *    or 22 for minor version 22.
- * 
- * LT_VERSION_PATCH
- *    Untyped umeric form, e.g., 0 for patch version 0,
- *    or 12 for patch version 12.
  * 
  * LT_VERSION
  *    String form, e.g., "1.0.0".
@@ -370,24 +360,6 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
  *       are already defined before including litetest.h.
  * @{
  */
-
-#if defined(LT_VERSION_MAJOR) || defined(LT_VERSION_MINOR) || \
-    defined(LT_VERSION_PATCH) || \
-    defined(LT_VERSION) || \
-    defined(LT_VERSION_NUM) || defined(LT_VERSION_HEX) || \
-    defined(LT_VERSION_EQ) || defined(LT_VERSION_AT_LEAST)
-#error "lubtype.h: A LT_VERSION_* macro is unexpectedly " \
-       "already defined. #undef before including lubtype.h."
-#endif // defined macros
-
-// Define current LiteTest version major, minor, patch. Inrement:
-// - Major version for incompatible API changes.
-// - Minor version for backward-compatible additions.
-// - Patch version for bug fixes or internal improvements.
- 
-#define LT_VERSION_MAJOR 1
-#define LT_VERSION_MINOR 0
-#define LT_VERSION_PATCH 0
 
 // Ensure major version is greater than 0.
 
