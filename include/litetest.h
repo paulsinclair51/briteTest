@@ -1253,7 +1253,7 @@ int litetest_close_report_internal
  * @endcode
  */
 
-#define LT_RETURN(funcname)\
+#define LT_RETURN(funcname) \
     do \
     { \
       if (!strcmp(__func__, "main")) \
@@ -1270,6 +1270,10 @@ int litetest_close_report_internal
 
 /**
  * @section Glossary
+assert
+guard
+orchestrator (main) function
+test function
  */
 
 #if defined(__cplusplus)
