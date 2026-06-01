@@ -18,23 +18,20 @@
 /**
  * @defgroup Version
  *
- * @name LT_VERSION_MAJOR, LT_VERSION_MINOR 0, LT_VERSION_PATCH
+ * @name LT_VERSION
  *
- * - Major version for incompatible API changes.
- * - Minor version for backward-compatible additions.
- * - Patch version for bug fixes or internal improvements.
+ * @brief "M.m.p"
+ *
+ * - M: Major version for incompatible API changes.
+ * - m: Minor version for backward-compatible additions.
+ * - p version for bug fixes or internal improvements.
  *
  * Incompatible API changes: The naming conventions, error semantics, and safety guarantees
  * are part of the documented and stable API and will not change without a
  * major version increment.
- * @{
  */
  
-#define LT_VERSION_MAJOR 1
-#define LT_VERSION_MINOR 0
-#define LT_VERSION_PATCH 0
-
-/** @} */
+#define LT_VERSION "1.0.0"
 
 /**
  * @section Overview
@@ -331,12 +328,12 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
 /**
  * @defgroup LiteTestVersionMacros LiteTest Version Macros
  *
- * @name LT_VERSION, LT_VERSION_NUM, LT_VERSION_HEX, 
+ * @name LT_VERSION_NUM, LT_VERSION_HEX, 
  *       LT_VERSION_EQ, LT_VERSION_AT_LEAST
  *
  * @brief Version macros for LiteTest (litetest.h and litetest.c):
  * 
- * The following version macros are provided:
+ * In addition to following version macros are provided:
  * 
  * LT_VERSION
  *    String form, e.g., "1.0.0".
@@ -377,6 +374,22 @@ LT_STATIC_ASSERT((uint32_t)LT_VERSION_PATCH <= 99, patch_fits_in_field);
   (LT_TOK_STR(LT_VERSION_MAJOR) "." \
    LT_TOK_STR(LT_VERSION_MINOR) "." \
    LT_TOK_STR(LT_VERSION_PATCH))
+
+ * - Major version for incompatible API changes.
+ * - Minor version for backward-compatible additions.
+ * - Patch version for bug fixes or internal improvements.
+ *
+ * Incompatible API changes: The naming conventions, error semantics, and safety guarantees
+ * are part of the documented and stable API and will not change without a
+ * major version increment.
+ * @{
+ */
+ 
+#define LT_VERSION_MAJOR 1
+#define LT_VERSION_MINOR 0
+#define LT_VERSION_PATCH 0
+
+/** @} */
 
 // LiteTest version as an integer for comparisons.
 
