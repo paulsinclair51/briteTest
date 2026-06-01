@@ -34,6 +34,18 @@
 
 #include "litetest.h"
 
+// Ensure major version is greater than 0.
+
+LT_STATIC_ASSERT((uint32_t)LT_VERSION_MAJOR, major_version_not_zero);
+
+// Ensure version components fit in the encoding fields.
+
+LT_STATIC_ASSERT((uint32_t)LT_VERSION_MAJOR <= 99, major_fits_in_field);
+LT_STATIC_ASSERT((uint32_t)LT_VERSION_MINOR <= 99, minor_fits_in_field);
+LT_STATIC_ASSERT((uint32_t)LT_VERSION_PATCH <= 99, patch_fits_in_field);
+
+// Define internal types.
+
 litetest_guard_t *litetest_guard = NULL;
 litetest_saved_guard_t saved_guards[MAX_GUARD_LEVEL] = { 0 };
 size_t litetest_num_saved_guards = 0;
