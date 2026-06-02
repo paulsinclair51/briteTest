@@ -336,18 +336,18 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
  * 
  * LT_VERSION_MAJOR
  *    Major version
- *    size_t form, 1 or greater.
+ *    size_t, 1 or greater.
  * 
  * LT_VERSION_MINOR
  *    Minor version nunber
- *    size_t form, e.g., 0, 22.
+ *    size_t, e.g., 0, 22.
  * 
  * LT_VERSION_PATCH
  *    Patch version number
- *    size_t form, e.g., 0, 12.
+ *    size_t, e.g., 0, 12.
  * 
  * LT_VERSION_NUM
- *    size_t form MMmmpp for comparisons, e.g., 10000 for
+ *    size_t, form MMmmpp for comparisons, e.g., 10000 for
  *    version 1.0.0, 10200 for version 1.2.0, or 11212 for version 1.12.12.
  * 
  * LT_VERSION_HEX
