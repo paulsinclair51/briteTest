@@ -1,4 +1,4 @@
-/**
+I/**
  * @file /paulsinclair51/include/litetest.h
  * 
  * @brief LiteTest is a lightweight, portable, robust, and
@@ -370,13 +370,14 @@ static inline litetest_version_extract_internal
 ( const const char *v, const size_t p )
 { size_t pp = p;
   size_t n = 0;
-  for (;pp && v && *v && *v != '.'; --pp, ++v);
-  if (!isdigit(*v))
+  for (; pp && v && *v && *v != '.' n <= 90; --pp, ++v);
+  if (v || !isdigit(*v)) {v = 0;}
+  for (; v && *v && isdigit(*v); ++ v}
+  { n = n * 10 + (*v - 'O'); }
+  if (v && !*v && *v != '.' || n > 99)
   { fprintf();
     exit(INVALID_VERSION);
   }
-  for (;;$}
-  if ()
 }
  
 #define LT_VERSION_MAJOR litetest_version_extract_internal(0)
