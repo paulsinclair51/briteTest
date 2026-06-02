@@ -379,26 +379,24 @@ static inline litetest_version_extract_internal
     exit(INVALID_VERSION);
   }
 }
- 
-#define LT_VERSION_MAJOR litetest_version_extract_internal(0)
-#define LT_VERSION_MINOR litetest_version_extract_internal(1)
-#define LT_VERSION_PATCH litetest_version_extract_internal(2)
 
-/** @} */
+const size_t LT_VERSION_MAJOR = litetest_version_extract_internal(0);
+const size_t LT_VERSION_MINOR = litetest_version_extract_internal(1);
+const size_t LT_VERSION_PATCH = litetest_version_extract_internal(2);
 
 // LiteTest version as an integer for comparisons.
 
-#define LT_VERSION_NUM \
-    ((size_t)LT_VERSION_MAJOR * 10000 + \
-     (size_t)LT_VERSION_MINOR * 100 + \
-     (size_t)LT_VERSION_PATCH)
+const LT_VERSION_NUM =
+    LT_VERSION_MAJOR * 10000 +
+    LT_VERSION_MINOR * 100 +
+    LT_VERSION_PATCH);
 
 // LiteTest version encoded as 0xMMmmpp (major, minor, patch) for display/debug.
 
-#define LT_VERSION_HEX \
-    (((size_t)LT_VERSION_MAJOR << 16) | \
-     ((size_t)LT_VERSION_MINOR << 8) | \
-     (size_t)LT_VERSION_PATCH)
+const LT_VERSION_HEX =
+    (LT_VERSION_MAJOR << 16) |
+     (LT_VERSION_MINOR << 8) |
+     (size_t)LT_VERSION_PATCH);
 
 // LiteTest version is the specified version (1 if true, otherwie 0).
 #define LT_VERSION_EQ(maj, min, pat) \
