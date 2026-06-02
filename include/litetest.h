@@ -366,7 +366,7 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
 
 // LiteTest version string in "major.minor.patch" format.
 
-
+static inline
  
 #define LT_VERSION_MAJOR litetest_version_extract_internal(1)
 #define LT_VERSION_MINOR litetest_version_extract_internal(1)
