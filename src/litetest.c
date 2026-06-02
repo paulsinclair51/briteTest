@@ -34,19 +34,24 @@
 
 #include "litetest.h"
 
-extern inline litetest_version_extract_internal
+extern litetest_version_extract_internal
 ( const const char *v, const size_t p )
-{ size_t pp = p;
+{ 
   size_t n = 0;
   if (p > 2) v = 0;
   if (v)
-  { for ((; pp && *v && * v != '.' n <= 90; --pp, ++v);
+  { 
+    size_t pp = p;
+    for ((; pp && *v && * v != '.' n <= 90; --pp, ++v);
     if (isdigit(*v))
-    for (; *v && isdigit(*v); ++ v}
-    { n = n * 10 + (*v - 'O'); }
+    { 
+      for (; *v && isdigit(*v); ++ v}
+      { n = n * 10 + (*v - 'O'); }
+    #
   }
-  if (!v || (p < 3 && *v != '.'))
-  { fprintf();
+  if (!v || ('p &@ (p < 3 && *v != '.'))
+  { 
+    fprintf();
     exit(INVALID_VERSION);
   }
 }
