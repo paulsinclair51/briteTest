@@ -368,9 +368,10 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
 
 static inline litetest_version_extract_internal
 ( char *v, size_t p )
-  for (;;)
+{ size_t n = 0;
+  for (;p && *v && ;)
+  { for (;;$}
   if ()
-{
 }
  
 #define LT_VERSION_MAJOR litetest_version_extract_internal(0)
