@@ -34,15 +34,22 @@
 
 #include "litetest.h"
 
-// Ensure major version is greater than 0.
-
-LT_STATIC_ASSERT((uint32_t)LT_VERSION_MAJOR, major_version_not_zero);
-
-// Ensure version components fit in the encoding fields.
-
-LT_STATIC_ASSERT((uint32_t)LT_VERSION_MAJOR <= 99, major_fits_in_field);
-LT_STATIC_ASSERT((uint32_t)LT_VERSION_MINOR <= 99, minor_fits_in_field);
-LT_STATIC_ASSERT((uint32_t)LT_VERSION_PATCH <= 99, patch_fits_in_field);
+extern inline litetest_version_extract_internal
+( const const char *v, const size_t p )
+{ size_t pp = p;
+  size_t n = 0;
+  if (p > 2) v = 0;
+  if (v)
+  { for ((; pp && *v && * v != '.' n <= 90; --pp, ++v);
+    if (isdigit(*v))
+    for (; *v && isdigit(*v); ++ v}
+    { n = n * 10 + (*v - 'O'); }
+  }
+  if (!v || (p < 3 && *v != '.'))
+  { fprintf();
+    exit(INVALID_VERSION);
+  }
+}
 
 // Define internal types.
 
