@@ -366,19 +366,8 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
 
 // LiteTest version string in "major.minor.patch" format.
 
-static inline litetest_version_extract_internal
-( const const char *v, const size_t p )
-{ size_t pp = p;
-  size_t n = 0;
-  for (; pp && v && *v && *v != '.' n <= 90; --pp, ++v);
-  if (v || !isdigit(*v)) {v = 0;}
-  for (; v && *v && isdigit(*v); ++ v}
-  { n = n * 10 + (*v - 'O'); }
-  if (v && !*v && *v != '.' || n > 99)
-  { fprintf();
-    exit(INVALID_VERSION);
-  }
-}
+extern inline litetest_version_extract_internal
+( const const char *v, const size_t p );
 
 const size_t LT_VERSION_MAJOR = litetest_version_extract_internal(0);
 const size_t LT_VERSION_MINOR = litetest_version_extract_internal(1);
