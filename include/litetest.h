@@ -321,114 +321,6 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
 
 #endif
 
-
-
-/**
- * @defgroup LUBAPIVersioning LUB API Versioning
- * @name LUB_VERSION_NUM, LUB_VERSION_HEX, 
- *       LUB_VERSION_EQ, LUB_VERSION_AT_LEAST
- * @brief Versioning macros for the LUB API (lubtype.h):
- * 
- * LUB_VERSION_MAJOR
- *    Major version number, incremented for incompatible API changes.
- *    Numeric form, e.g., 1 for major version 1.
- * 
- * LUB_VERSION_MINOR
- *    Minor version number, incremented for backward-compatible additions.
- *    Numeric form, e.g., 0 for minor version 0,
- *    or 22 for minor version 22.
- * 
- * LUB_VERSION_PATCH
- *    Patch version number, incremented for bug fixes or internal improvements.
- *    Numeric form, e.g., 0 for patch version 0,
- *    or 12 for patch version 12.
- * 
- * LUB_VERSION
- *    String form, e.g., "1.0.0" for major version 1, minor
- *    version 0, patch version 0.
- * 
- * LUB_VERSION_NUM
- *    uint32_t form MMmmpp for comparisons, e.g., 10000 for
- *    version 1.0.0, 10200 for version 1.2.0, or 11212 for version 1.12.12.
- * 
- * LUB_VERSION_HEX
- *    Hexadecimal form 0xMMmmpp for display/debugging, e.g.,
- *    0x010000 for version 1.0.0, 0x010200 for version 1.2.0,
- *    or 0x011212 for version 1.12.12.
- * 
- * LUB_VERSION_EQ(maj,min,pat)
- *    True if current version is exactly maj.min.pat
- *
- * LUB_VERSION_AT_LEAST(maj,min,pat)
- *    True if current version is at least maj.min.pat.
- *
- * @note A compiler error is raised if any of the versioning macros
- *       are already defined before including lubtype.h.
- *
- * @note The naming conventions, error semantics, and safety guarantees
- *       are part of the documented and stable API and will not change without a
- *       major version increment.
- * @{
- */
-
-#if defined(LUB_VERSION_MAJOR) || defined(LUB_VERSION_MINOR) || \
-    defined(LUB_VERSION_PATCH) || \
-    defined(LUB_VERSION) || \
-    defined(LUB_VERSION_NUM) || defined(LUB_VERSION_HEX) || \
-    defined(LUB_VERSION_EQ) || defined(LUB_VERSION_AT_LEAST)
-#error "lubtype.h: A LUB_VERSION_* macro is unexpectedly " \
-       "already defined. #undef before including lubtype.h."
-#endif // defined macros
-
-// LUB API version major, minor, patch.
-#define LUB_VERSION_MAJOR 1
-#define LUB_VERSION_MINOR 0
-#define LUB_VERSION_PATCH 0
-
-#if defined(LUB_DEFINITIONS)
-
-// Ensure major version is greater than 0.
-LUB_STATIC_ASSERT((uint32_t)LUB_VERSION_MAJOR, major_version_not_zero);
-
-// Ensure version components fit in the encoding fields.
-LUB_STATIC_ASSERT((uint32_t)LUB_VERSION_MAJOR <= 99, major_fits_in_field);
-LUB_STATIC_ASSERT((uint32_t)LUB_VERSION_MINOR <= 99, minor_fits_in_field);
-LUB_STATIC_ASSERT((uint32_t)LUB_VERSION_PATCH <= 99, patch_fits_in_field);
-
-#endif // LUB_DEFINITIONS
-
-// LUB API version string in "major.minor.patch" format.
-#define LUB_VERSION \
-  (LUB_STRINGIFY(LUB_VERSION_MAJOR) "." \
-   LUB_STRINGIFY(LUB_VERSION_MINOR) "." \
-   LUB_STRINGIFY(LUB_VERSION_PATCH))
-
-// LUB API version as an integer for comparisons.
-#define LUB_VERSION_NUM \
-    ((uint32_t)LUB_VERSION_MAJOR * 10000 + \
-     (uint32_t)LUB_VERSION_MINOR * 100 + \
-     (uint32_t)LUB_VERSION_PATCH)
-
-// LUB API version encoded as 0xMMmmpp (major, minor, patch) for display/debug.
-#define LUB_VERSION_HEX \
-    (((uint32_t)LUB_VERSION_MAJOR << 16) | \
-     ((uint32_t)LUB_VERSION_MINOR << 8) | \
-     (uint32_t)LUB_VERSION_PATCH)
-
-// True if the current LUB API version is the specified version.
-#define LUB_VERSION_EQ(maj, min, pat) \
-    (LUB_VERSION_NUM == (uint32_t)(maj) * 10000 + \
-                        (uint32_t)(min) * 100 + \
-                        (uint32_t)(pat))
-
-// True if the current LUB API version is at least the specified version.
-#define LUB_VERSION_AT_LEAST(maj, min, pat) \
-    (LUB_VERSION_NUM >=  (uint32_t)(maj) * 10000 + \
-                         (uint32_t)(min) * 100 + \
-                         (uint32_t)(pat))
-
-
-
 /**
  * @section LiteTestVersionMacros LiteTest Version Macros
  */
@@ -442,21 +334,17 @@ LUB_STATIC_ASSERT((uint32_t)LUB_VERSION_PATCH <= 99, patch_fits_in_field);
  *
  * @brief Version macros for LiteTest (litetest.h and litetest.c):
  * 
- * In addition to following version macros are provided:
- * 
  * LT_VERSION_MAJOR
  *    Major version
- *    size_t form, e.g., 1 for major version 1.
+ *    size_t form, 1 or greater.
  * 
  * LT_VERSION_MINOR
- *    Minor version number
- *    size_t form, e.g., 0 for minor version 0,
- *    or 22 for minor version 22.
+ *    Minor version nunber
+ *    size_t form, e.g., 0, 22.
  * 
  * LT_VERSION_PATCH
  *    Patch version number
- *    size_t form, e.g., 0 for patch version 0,
- *    or 12 for patch version 12.
+ *    size_t form, e.g., 0, 12.
  * 
  * LT_VERSION_NUM
  *    size_t form MMmmpp for comparisons, e.g., 10000 for
@@ -473,69 +361,42 @@ LUB_STATIC_ASSERT((uint32_t)LUB_VERSION_PATCH <= 99, patch_fits_in_field);
  * LT_VERSION_AT_LEAST(maj, min, pat)
  *    True if current version is at least maj.min.pat.
  *
- * @note A compiler error is raised if any of the version macros
- *       are already defined before including litetest.h.
  * @{
  */
-
-// Ensure major version is greater than 0.
-
-LT_STATIC_ASSERT((uint32_t)LT_VERSION_MAJOR, major_version_not_zero);
-
-// Ensure version components fit in the encoding fields.
-
-LT_STATIC_ASSERT((uint32_t)LT_VERSION_MAJOR <= 99, major_fits_in_field);
-LT_STATIC_ASSERT((uint32_t)LT_VERSION_MINOR <= 99, minor_fits_in_field);
-LT_STATIC_ASSERT((uint32_t)LT_VERSION_PATCH <= 99, patch_fits_in_field);
 
 // LiteTest version string in "major.minor.patch" format.
-
-#define LT_VERSION \
-  (LT_TOK_STR(LT_VERSION_MAJOR) "." \
-   LT_TOK_STR(LT_VERSION_MINOR) "." \
-   LT_TOK_STR(LT_VERSION_PATCH))
-
- * - Major version for incompatible API changes.
- * - Minor version for backward-compatible additions.
- * - Patch version for bug fixes or internal improvements.
- *
- * Incompatible API changes: The naming conventions, error semantics, and safety guarantees
- * are part of the documented and stable API and will not change without a
- * major version increment.
- * @{
- */
  
-#define LT_VERSION_MAJOR 1
-#define LT_VERSION_MINOR 0
-#define LT_VERSION_PATCH 0
+#define LT_VERSION_MAJOR litetest_version_major_internal
+#define LT_VERSION_MINOR litetest_version_minor_internal
+#define LT_VERSION_PATCH litetest_version_patch_internal
 
 /** @} */
 
 // LiteTest version as an integer for comparisons.
 
 #define LT_VERSION_NUM \
-    ((uint32_t)LT_VERSION_MAJOR * 10000 + \
-     (uint32_t)LT_VERSION_MINOR * 100 + \
-     (uint32_t)LT_VERSION_PATCH)
+    ((size_t)LT_VERSION_MAJOR * 10000 + \
+     (size_t)LT_VERSION_MINOR * 100 + \
+     (size_t)LT_VERSION_PATCH)
 
 // LiteTest version encoded as 0xMMmmpp (major, minor, patch) for display/debug.
 
 #define LT_VERSION_HEX \
-    (((uint32_t)LT_VERSION_MAJOR << 16) | \
-     ((uint32_t)LT_VERSION_MINOR << 8) | \
-     (uint32_t)LT_VERSION_PATCH)
+    (((size_t)LT_VERSION_MAJOR << 16) | \
+     ((size_t)LT_VERSION_MINOR << 8) | \
+     (size_t)LT_VERSION_PATCH)
 
 // LiteTest version is the specified version (1 if true, otherwie 0).
 #define LT_VERSION_EQ(maj, min, pat) \
-    ((LT_VERSION_NUM == (uint32_t)(maj) * 10000 + \
-                             (uint32_t)(min) * 100 + \
-                             (uint32_t)(pat)) ? 1 : 0)
+    ((LT_VERSION_NUM == (size_t)(maj) * 10000 + \
+                             (size_t)(min) * 100 + \
+                             (size_t)(pat)) ? 1 : 0)
 
 // LiteTest version is at least the specified version (1 if true, otherwise 0).
 #define LT_VERSION_AT_LEAST(maj, min, pat) \
-    ((LT_VERSION_NUM >=  (uint32_t)(maj) * 10000 + \
-                         (uint32_t)(min) * 100 + \
-                         (uint32_t)(pat)) ? 1 : 0)
+    ((LT_VERSION_NUM >=  (size_t)(maj) * 10000 + \
+                         (size_t)(min) * 100 + \
+                         (size_t)(pat)) ? 1 : 0)
 
 /** @} */ // End of Version Macros.
 
