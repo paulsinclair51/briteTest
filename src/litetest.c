@@ -34,8 +34,6 @@
 
 #include "litetest.h"
 
-const size_t litetest_version_major_internal
-
 extern size_t litetest_version_extract_internal
 ( const const char *v, const size_t p )
 { 
@@ -62,9 +60,6 @@ extern size_t litetest_version_extract_internal
   }
   return n;
 }
-
-char litetest_version_internal[8+1] = litetest_version_p
-
 
 // Define internal types.
 
