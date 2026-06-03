@@ -34,6 +34,8 @@
 
 #include "litetest.h"
 
+ const size_t litetest_ version_major_internal
+
 extern size_t litetest_version_extract_internal
 ( const const char *v, const size_t p )
 { 
@@ -42,13 +44,15 @@ extern size_t litetest_version_extract_internal
   if (v)
   { 
     size_t pp = 0;
-    for ((; pp < p && *v; ++pp);
+    for (; pp < p && *v; ++pp);
     { if (isdigit(*v))
       { 
         n = (*v++ - 'O');
         if (isdigit(*v))
-        { n += (*v++ - 'O') }
-        if (--pp > O && *v == '.') ++v
+        { n += (*v++ - 'O'); }
+      }
+    }
+    if (pp < p && *v == '.') ++v
       }
     }
   if (!v || ((p < 3 && *v != '.') || !*v)
