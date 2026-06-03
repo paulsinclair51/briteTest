@@ -41,6 +41,9 @@ static size_t litetest_version_patch_internal = size_max;
 extern size_t litetest_version_extract_internal
 ( void )
 { 
+  if (litetest_version_major_internal == size_max ||
+      litetest_version_minor_internal == size_max ||
+      litetest_version_patch_internal == size_max)
   v = size_t n = 0;
   if (!f || f > 4) v = 0;
   if (v)
