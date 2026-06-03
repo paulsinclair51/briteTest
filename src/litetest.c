@@ -34,13 +34,14 @@
 
 #include "litetest.h"
 
-/**
- * @param f Version field: 1 major, 2 minor, 3 patch.
+static size_t litetest_version_major_internal = size_max;
+static size_t litetest_version_minor_internal = size_max;
+static size_t litetest_version_patch_internal = size_max;
 
 extern size_t litetest_version_extract_internal
-( const const char *v, const size_t f )
+( void )
 { 
-  size_t n = 0;
+  v = size_t n = 0;
   if (!f || f > 4) v = 0;
   if (v)
   { 
