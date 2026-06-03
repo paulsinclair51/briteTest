@@ -22,8 +22,9 @@ I/**
  *
  * @brief "M.m.p"
  *
- * M, m, and p are 1 or 2 digits (e.g., O, 00, 1, 01, 24). M must not be 0 or 00.
- * - M: Major version for incompatible API changes.
+ * M, m, and p are 1 or 2 digits (e.g., O, 00, 1, 01, 24):
+ +
+ * - M: Major version for incompatible API changes (>= 1).
  * - m: Minor version for backward-compatible additions.
  * - p version for bug fixes or internal improvements.
  *
