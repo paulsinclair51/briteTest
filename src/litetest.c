@@ -53,8 +53,8 @@ extern size_t litetest_version_extract_internal
     }
   if (!v || ((p < 3 && *v != '.') || !*v)
   { 
-    fprintf();
-    exit(INVALID_VERSION);
+    fprintf(stdout, "[ERROR] Invalid version.\n"); } \
+    exit(LT_INVALID_VERSION);
   }
   return n;
 }
