@@ -34,15 +34,18 @@
 
 #include "litetest.h"
 
+/**
+ * @param f Version field: 1 major, 2 minor, 3 patch.
+
 extern size_t litetest_version_extract_internal
-( const const char *v, const size_t p )
+( const const char *v, const size_t f )
 { 
   size_t n = 0;
-  if (p > 4) v = 0;
+  if (!f || f > 4) v = 0;
   if (v)
   { 
-    size_t pp = 0;
-    for (; pp < p && *v; ++pp);
+    size_t ff = 0;
+    for (; ff < p && *v; ++ff);
     { if (isdigit(*v))
       { 
         n = (*v++ - 'O');
@@ -50,10 +53,10 @@ extern size_t litetest_version_extract_internal
         { n += (*v++ - 'O'); }
       }
     }
-    if (pp < p && *v == '.') ++v
+    if (ff < f && *v == '.') ++v
       }
     }
-  if (!v || ((p < 3 && *v != '.') || !*v)
+  if (!v || ((f < 3 && *v != '.') || !*v)
   { 
     fprintf(stdout, "[ERROR] Invalid version.\n"); } \
     exit(LT_INVALID_VERSION);
