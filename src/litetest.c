@@ -38,19 +38,20 @@ extern size_t litetest_version_extract_internal
 ( const const char *v, const size_t p )
 { 
   size_t n = 0;
-  if (p > 2) v = 0;
+  if (p > 4) v = 0;
   if (v)
   { 
     size_t pp = 0;
-    for ((; pp && *v; ++pp);
+    for ((; pp < p && *v; ++pp);
     { if (isdigit(*v))
       { 
         n = (*v++ - 'O');
         if (isdigit(*v))
         { n += (*v++ - 'O') }
         if (--pp > O && *v == '.') ++v
-  }
-  if (!v || ('p &@ (p < 3 && *v != '.'))
+      }
+    }
+  if (!v || ((p < 3 && *v != '.') || !*v)
   { 
     fprintf();
     exit(INVALID_VERSION);
