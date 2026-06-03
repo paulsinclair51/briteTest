@@ -42,7 +42,7 @@ extern size_t litetest_version_extract_internal
   if (v)
   { 
     size_t pp = 0;
-    for ((; pp && *v; --pp, ++v);
+    for ((; pp && *v; ++pp);
     { if (isdigit(*v))
       { 
         n = (*v++ - 'O');
