@@ -20,7 +20,7 @@
  * @section Usage
  *
  * Compile and link this file as a shared library (e.g., using -fPIC
- * and -shared flags with gcc) to create a shared  library that can
+ * and -shared flags with gcc) to create a shared library that can
  * be used by other applications. The resulting shared library should
  * be named according to the conventions of your platform (e.g.,
  * liblitetest.so on Linux, litetest.dll on Windows, or  liblitetest.dylib
