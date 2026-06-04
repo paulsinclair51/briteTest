@@ -26,9 +26,9 @@ I/**
  +
  * - M: Major version for incompatible API changes (>= 1).
  * - m: Minor version for backward-compatible additions.
- * - p version for bug fixes or internal improvements.
+ * - p: Patch version for bug fixes or internal improvements.
  *
- * Incompatible API changes: The naming conventions, error semantics, and safety guarantees
+ * @note Incompatible API changes: The naming conventions, error semantics, and safety guarantees
  * are part of the documented and stable API and will not change without a
  * major version increment.
  */
@@ -357,47 +357,46 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
  *    0x010000 for version 1.0.0, 0x010200 for version 1.2.0,
  *    or 0x011212 for version 1.12.12.
  * 
- * LT_VERSION_EQ(maj, min, pat)
- *    True if current version is exactly maj.min.pat
- *
- * LT_VERSION_AT_LEAST(maj, min, pat)
- *    True if current version is at least maj.min.pat.
+ * LT_VERSION_CMP(maj, min, pat)
+ *    0 version is exactly maj.min.pat
+ *    1 version is greater than maj.min.pat
+ *   -1 version is greater than maj.min.pat
  *
  * @{
  */
 
-size_t litetest_version_major_internal(void);
-#define LT_VERSION_MAJOR litetest_version_major_internal()
+size_t litetest_get_version_major_internal(void);
+#define LT_VERSION_MAJOR litetest_get_version_major_internal()
 
 size_t litetest_get_version_minor_internal(void);
-#define LT_VERSION_MINOR litetest_version_minor_internal()
+#define LT_VERSION_MINOR litetest_get_version_minor_internal()
 
-size_t litetest_version_patch_internal(void);
-#define LT_VERSION_PATCH litetest_version_patch_internal()
+size_t litetest_get_version_patch_internal(void);
+#define LT_VERSION_PATCH litetest_get_version_patch_internal()
 
 // LiteTest version as an integer for comparisons.
 
-size_t litetest_version_num_internal(void);
-#define LT_VERSION_NUM litetest_version_num_internal()
+size_t litetest_get_version_num_internal(void);
+#define LT_VERSION_NUM litetest_get_version_num_internal()
 
 // LiteTest version encoded as 0xMMmmpp (major, minor, patch) for display/debug.
 
-size_t litetest_version_hes_internal(void);
-#define LT_VERSION_HEX litetest_version_hex_internal()
+size_t litetest_get_version_hex_internal(void);
+#define LT_VERSION_HEX litetest_get_version_hex_internal()
 
-// LiteTest version is the specified version (1 if true, otherwie 0).
+// LiteTest version compared to specified version (1 if true, otherwie 0).
 
-#define LT_VERSION_EQ(maj, min, pat) \
+int litetest_version_cmp_internal
+( comst size_t major, comst size_t minor, comst size_t patch );
+#define LT_VERSION_CMP(maj, min, pat) \
+    litetest_version_cmp_internal((major), (minor), (patch))
+
     ((LT_VERSION_NUM == (size_t)(maj) * 10000 + \
-                             (size_t)(min) * 100 + \
-                             (size_t)(pat)) ? 1 : 0)
-
-// LiteTest version is at least the specified version (1 if true, otherwise 0).
-
-#define LT_VERSION_AT_LEAST(maj, min, pat) \
-    ((LT_VERSION_NUM >=  (size_t)(maj) * 10000 + \
-                         (size_t)(min) * 100 + \
-                         (size_t)(pat)) ? 1 : 0)
+                        (size_t)(min) * 100 + \
+                        (size_t)(pat)) ? 0 :
+    ((LT_VERSION_NUM > (size_t)(maj) * 10000 + \
+                       (size_t)(min) * 100 + \
+                       (size_t)(pat)) ? 1 : 0)
 
 /** @} */ // End of Version Macros.
 
