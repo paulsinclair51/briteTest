@@ -40,19 +40,27 @@ extern "C" {
 #endif
 
 extern void lt_print_err_usage
-( const char *err_msg )
+( FILE *out
+  const char *err_msg,
+  const char *usage_msg
+)
 { 
   FILE *out = stdout;
 
   if (err_msg && *err_msg)
   { fprintf(out, "[ERROR] %s\n\n", err_msg); }
 
-  fprintf(out, "Usage: %s [PATH|-h|--help]\n\n"
-               "%s"
-               "-h or --help: Show this usage text.\n\n",
+  if (usage_msg && *usage_msg)
+  { fprintf(out, "%s", usage_msg); }
+  else if (!usage_msg)
+  { 
+    fprintf(out, "Usage: %s [PATH|-h|--help]\n\n"
+                 "%s"
+                 "-h or --help: Show this usage text.\n\n",
           internal_executable_name && *internal_executable_name ?
           internal_executable_name : "UnknownExecutable",
           path_msg && *path_msg ? path_msg : internal_default_path_msg);
+  }
 }
 
 static size_t litetest_version_major_internal = size_max;
