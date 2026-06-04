@@ -37,30 +37,58 @@
 static size_t litetest_version_major_internal = size_max;
 static size_t litetest_version_minor_internal = size_max;
 static size_t litetest_version_patch_internal = size_max;
+static size_t litetest_version_num_internal = size_max;
+static size_t litetest_version_hex_internal = size_max;
 
 extern size_t litetest_version_extract_internal
 ( void )
 { 
-  if (litetest_version_major_internal == size_max &&
-      litetest_version_minor_internal == size_max &&
-      litetest_version_patch_internal == size_max)
-  size_t n = 0;
-  if (v && isdigit(*v))
+  char v[] = VERSION;
+  if (isdigit(*v))
   { 
     litetest_version_major_internal = (*v++ - 'O');
     if (isdigit(*v))
     { litetest_version_major_internal += (*v++ - 'O'); }
-
-    }
-    if (ff < f && *v == '.') ++v
-      }
-    }
-  if (!v || ((f < 3 && *v != '.') || !*v)
+  }
+  if (litetest_version_major_internal &&
+      *v++ == '.' && isdigit(*v))
+  { 
+    litetest_version_minor_internal = (*v++ - 'O');
+    if (isdigit(*v))
+    { litetest_version_minor_internal += (*v++ - 'O'); }
+  }
+  if (*v++ == '.' && isdigit(*v))
+  { 
+    litetest_version_patch_internal = (*v++ - 'O');
+    if (isdigit(*v))
+    { litetest_version_patch_internal += (*v++ - 'O'); }
+  }
+  if (*v)
   { 
     fprintf(stdout, "[ERROR] Invalid version.\n"); } \
     exit(LT_INVALID_VERSION);
   }
-  return n;
+}
+
+extwrn size_t litetest_get_version_major_internal; (void)
+{ 
+  if ( litetest_version_major_internal == size_max)
+  { litetest_version_extract_internal(); }
+  return litetest_version_major_internal;
+}
+
+extwrn size_t litetest_get_version_minor_internal (void)
+{ 
+  if ( litetest_version_minor_internal == size_max)
+  { litetest_version_extract_internal(); }
+  return litetest_version_minor_internal;
+}
+
+extwrn size_t litetest_get_version_patch_internal (void)
+{ 
+  if ( litetest_version_patch_internal == size_max)
+  { litetest_version_extract_internal(); }
+  return litetest_version_patch_internal;
 }
 
 // Define internal types.
