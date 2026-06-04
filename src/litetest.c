@@ -39,6 +39,22 @@
 extern "C" {
 #endif
 
+extern void lt_print_err_usage
+( const char *err_msg )
+{ 
+  FILE *out = stdout;
+
+  if (err_msg && *err_msg)
+  { fprintf(out, "[ERROR] %s\n\n", err_msg); }
+
+  fprintf(out, "Usage: %s [PATH|-h|--help]\n\n"
+               "%s"
+               "-h or --help: Show this usage text.\n\n",
+          internal_executable_name && *internal_executable_name ?
+          internal_executable_name : "UnknownExecutable",
+          path_msg && *path_msg ? path_msg : internal_default_path_msg);
+}
+
 static size_t litetest_version_major_internal = size_max;
 static size_t litetest_version_minor_internal = size_max;
 static size_t litetest_version_patch_internal = size_max;
@@ -75,7 +91,7 @@ extern size_t litetest_version_extract_internal
   }
 }
 
-extwrn size_t litetest_get_version_major_internal
+extern size_t litetest_get_version_major_internal
 ( void )
 { 
   if ( litetest_version_major_internal == size_max)
@@ -83,7 +99,7 @@ extwrn size_t litetest_get_version_major_internal
   return litetest_version_major_internal;
 }
 
-extwrn size_t litetest_get_version_minor_internal
+extern size_t litetest_get_version_minor_internal
 ( void )
 { 
   if ( litetest_version_minor_internal == size_max)
@@ -91,7 +107,7 @@ extwrn size_t litetest_get_version_minor_internal
   return litetest_version_minor_internal;
 }
 
-extwrn size_t litetest_get_version_patch_internal
+extern size_t litetest_get_version_patch_internal
 ( void )
 { 
   if ( litetest_version_patch_internal == size_max)
@@ -183,10 +199,10 @@ void lt_current_time
   { snprintf(current_time, 20, "unknown time"); }
 }
 
-static int is_nblank(const char *s, size_t n)
-{ if (!s) return 1;
+extern int lt_isblank(const char *s, size_t n)
+{ if (!s) return 0;
   for (; n && *s; --n, ++s) { if (!isspace((unsigned char)*s)) return 0; }
-  return *s ? -1 : 1;
+  return *s ? 1 : 0;
 }
 
 static int has_trailing_slash(const char *s)
@@ -245,7 +261,7 @@ static int extract_dirpath_and_filename
   return 0;
 }
 
-static int is_writeabledir(const char *s)
+static int lt_iswriteabledir(const char *s)
 { char dirpath[MAX_PATH_LEN + 1] = {0};
   char filename[MAX_FILENAME_LEN + 1] = {0};
   size_t dlen;
@@ -270,6 +286,27 @@ static int is_writeabledir(const char *s)
 
   if (stat(dirpath, &st) != 0 || !S_ISDIR(st.st_mode)) { return 0; }
   return access(dirpath, W_OK) == 0 ? 1 : 0;
+}
+
+static int is_blank_path_arg(const char *s)
+{ return is_nblank(s, MAX_PATH_LEN + 1) != 0; }
+
+static int path_has_trailing_separator(const char *s)
+{ return has_trailing_slash(s) > 0; }
+
+static int path_is_existing_directory(const char *s)
+{ return is_directory(s) > 0; }
+
+extern int lt_iswritabledir
+( const char *const dirpath, const char *const path )
+{
+  if (!output_dir_is_writable(path))
+  { fprintf(stderr,
+            "[ERROR] Directory '%s' for test report is not writable.\n",
+            dirpath);
+    return 0;
+  }
+  return 1;
 }
 
 static int run_path_parser_selftests(void)
@@ -333,35 +370,6 @@ static int run_path_parser_selftests(void)
   if (strcmp(reportpath, "out.txt") != 0) return -1;
 
   return 0;
-}
-
-static int is_blank_path_arg(const char *s)
-{ return is_nblank(s, MAX_PATH_LEN + 1) != 0; }
-
-static int path_has_trailing_separator(const char *s)
-{ return has_trailing_slash(s) > 0; }
-
-static int path_is_existing_directory(const char *s)
-{ return is_directory(s) > 0; }
-
-static int output_dir_is_writable(const char *s)
-{ return is_writeabledir(s); }
-
-static void print_err_usage(const char *err_msg)
-{ FILE *out;
-
-  if (err_msg && *err_msg)
-  { out = stderr;
-    fprintf(out, "[ERROR] %s\n\n", err_msg); }
-  else
-  { out = stdout; }
-
-  fprintf(out, "Usage: %s [PATH|-h|--help]\n\n"
-               "%s"
-               "-h or --help: Show this usage text.\n\n",
-          internal_executable_name && *internal_executable_name ?
-          internal_executable_name : "UnknownExecutable",
-          path_msg && *path_msg ? path_msg : internal_default_path_msg);
 }
 
 /**
@@ -483,18 +491,6 @@ int litetest_parse_args_internal
   return 0;
 }
 
-static int is_writable_dir
-( const char *const dirpath, const char *const path )
-{
-  if (!output_dir_is_writable(path))
-  { fprintf(stderr,
-            "[ERROR] Directory '%s' for test report is not writable.\n",
-            dirpath);
-    return 0;
-  }
-  return 1;
-}
-
 static void merge_result
 (
   litetest_state_t *state,
@@ -574,7 +570,6 @@ const char *category_label_with_inject_tag(
   return label_buf;
 }
 
-
 /**
  * @name litetest_open_report_internal
  * 
@@ -608,7 +603,6 @@ int litetest_open_report_internal
     print_err_usage("LT_OPEN_REPORT not in Orchestrator.");
     return 1;
   }
-
 
   FILE *report = fopen(state->report_path, "w");
   if (!report)
