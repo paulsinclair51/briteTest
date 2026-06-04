@@ -366,36 +366,34 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
  * @{
  */
 
-size_t litetest_get_version_major_internal(void);
-#define LT_VERSION_MAJOR litetest_get_version_major_internal()
+size_t litetest_version_major_internal(void);
+#define LT_VERSION_MAJOR litetest_version_major_internal()
 
 size_t litetest_get_version_minor_internal(void);
-#define LT_VERSION_MINOR litetest_get_version_minor_internal()
+#define LT_VERSION_MINOR litetest_version_minor_internal()
 
-size_t litetest_get_version_patch_internal(void);
-#define LT_VERSION_MINOR litetest_get_version_patch_internal()
+size_t litetest_version_patch_internal(void);
+#define LT_VERSION_PATCH litetest_version_patch_internal()
 
 // LiteTest version as an integer for comparisons.
 
-const LT_VERSION_NUM =
-    LT_VERSION_MAJOR * 10000 +
-    LT_VERSION_MINOR * 100 +
-    LT_VERSION_PATCH);
+size_t litetest_version_num_internal(void);
+#define LT_VERSION_NUM litetest_version_num_internal()
 
 // LiteTest version encoded as 0xMMmmpp (major, minor, patch) for display/debug.
 
-const LT_VERSION_HEX =
-    (LT_VERSION_MAJOR << 16) |
-     (LT_VERSION_MINOR << 8) |
-     (size_t)LT_VERSION_PATCH);
+size_t litetest_version_hes_internal(void);
+#define LT_VERSION_HEX litetest_version_hex_internal()
 
 // LiteTest version is the specified version (1 if true, otherwie 0).
+
 #define LT_VERSION_EQ(maj, min, pat) \
     ((LT_VERSION_NUM == (size_t)(maj) * 10000 + \
                              (size_t)(min) * 100 + \
                              (size_t)(pat)) ? 1 : 0)
 
 // LiteTest version is at least the specified version (1 if true, otherwise 0).
+
 #define LT_VERSION_AT_LEAST(maj, min, pat) \
     ((LT_VERSION_NUM >=  (size_t)(maj) * 10000 + \
                          (size_t)(min) * 100 + \
