@@ -41,21 +41,16 @@ static size_t litetest_version_patch_internal = size_max;
 extern size_t litetest_version_extract_internal
 ( void )
 { 
-  if (litetest_version_major_internal == size_max ||
-      litetest_version_minor_internal == size_max ||
+  if (litetest_version_major_internal == size_max &&
+      litetest_version_minor_internal == size_max &&
       litetest_version_patch_internal == size_max)
-  v = size_t n = 0;
-  if (!f || f > 4) v = 0;
-  if (v)
+  size_t n = 0;
+  if (v && isdigit(*v))
   { 
-    size_t ff = 0;
-    for (; ff < p && *v; ++ff);
-    { if (isdigit(*v))
-      { 
-        n = (*v++ - 'O');
-        if (isdigit(*v))
-        { n += (*v++ - 'O'); }
-      }
+    litetest_version_major_internal = (*v++ - 'O');
+    if (isdigit(*v))
+    { litetest_version_major_internal += (*v++ - 'O'); }
+
     }
     if (ff < f && *v == '.') ++v
       }
