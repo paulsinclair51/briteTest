@@ -34,6 +34,11 @@
 
 #include "litetest.h"
 
+// Allow functions to be invoked from C++.
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 static size_t litetest_version_major_internal = size_max;
 static size_t litetest_version_minor_internal = size_max;
 static size_t litetest_version_patch_internal = size_max;
@@ -745,3 +750,8 @@ int litetest_close_report_internal
   return temp ? 0 : 99;
 }
 
+#if defined(__cplusplus)
+}
+#endif
+
+// End of litetest.c
