@@ -45,7 +45,7 @@ extern void lt_print_err_usage
   const char *usage_msg
 )
 { 
-  FILE *out = stdout;
+  if (!out) out = stdout;
 
   if (err_msg && *err_msg)
   { fprintf(out, "[ERROR] %s\n\n", err_msg); }
@@ -97,6 +97,8 @@ extern size_t litetest_version_extract_internal
     fprintf(stdout, "[ERROR] Invalid version.\n"); } \
     exit(LT_INVALID_VERSION);
   }
+  litetest_version_num_internal =
+  litetest_version_hex_internal =
 }
 
 extern size_t litetest_get_version_major_internal
