@@ -70,21 +70,24 @@ extern size_t litetest_version_extract_internal
   }
 }
 
-extwrn size_t litetest_get_version_major_internal; (void)
+extwrn size_t litetest_get_version_major_internal
+( void )
 { 
   if ( litetest_version_major_internal == size_max)
   { litetest_version_extract_internal(); }
   return litetest_version_major_internal;
 }
 
-extwrn size_t litetest_get_version_minor_internal (void)
+extwrn size_t litetest_get_version_minor_internal
+( void )
 { 
   if ( litetest_version_minor_internal == size_max)
   { litetest_version_extract_internal(); }
   return litetest_version_minor_internal;
 }
 
-extwrn size_t litetest_get_version_patch_internal (void)
+extwrn size_t litetest_get_version_patch_internal
+( void )
 { 
   if ( litetest_version_patch_internal == size_max)
   { litetest_version_extract_internal(); }
@@ -152,6 +155,27 @@ result_t test_run_internal
   }
   restore_guard_internal();
   return result;
+}
+
+/**
+ * @name lt_current_time
+ * 
+ * @brief Format the current time as a string.
+ * 
+ * @param current_time Buffer to store the formatted time string.
+ *.                    Buffer size must be at least 20 bytes.
+ * 
+ * @notr: On error, current_time is set to "unknown time".
+ */
+
+void lt_current_time
+ (char *current_time, size_t size )
+{
+  time_t now = time(NULL);
+  struct tm *tm_now = localtime(&now);
+  if (!tm_now || !strftime(current_time, 20,
+                           "%Y-%m-%d %H:%M:%S", tm_now))
+  { snprintf(current_time, 20, "unknown time"); }
 }
 
 static int is_nblank(const char *s, size_t n)
@@ -721,22 +745,3 @@ int litetest_close_report_internal
   return temp ? 0 : 99;
 }
 
-/**
- * @name lt_current_time
- * 
- * @brief Format the current time as a string.
- * 
- * @param current_time Buffer to store the formatted time string.
- * @param size The size of the current_time buffer.
- * 
- * @return void. On error, current_time is set to "unknown time".
- */
-void lt_current_time
- (char *current_time, size_t size )
-{
-  time_t now = time(NULL);
-  struct tm *tm_now = localtime(&now);
-  if (!tm_now || !strftime(current_time, size,
-                           "%Y-%m-%d %H:%M:%S", tm_now))
-  { snprintf(current_time, size, "unknown time"); }
-}
