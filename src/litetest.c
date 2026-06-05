@@ -39,6 +39,20 @@
 extern "C" {
 #endif
 
+/**
+ * @name lt_print_err_usage
+ *
+ * @brief
+ *
+ * @param out NULL indicates output to stdout.
+
+ * @param err_msg NULL or empty string indicates no error message.
+ *                Otherwise, errot message string.
+ * @param usage_msg NULL indicates default usage message.
+ *                  Empty string indicates no usage message.
+ *                  Otherwise, usage message string.
+ */
+
 extern void lt_print_err_usage
 ( FILE *out
   const char *err_msg,
@@ -113,7 +127,7 @@ extern size_t litetest_version_extract_internal
 extern size_t litetest_version_major_internal
 ( void )
 { 
-  if ( litetest_version_get_major_internal == size_max)
+  if (litetest_version_get_major_internal == size_max)
   { litetest_version_extract_internal(); }
   return litetest_version_major_internal;
 }
@@ -121,7 +135,7 @@ extern size_t litetest_version_major_internal
 extern size_t litetest_get_version_minor_internal
 ( void )
 { 
-  if ( litetest_version_minor_internal == size_max)
+  if (litetest_version_minor_internal == size_max)
   { litetest_version_extract_internal(); }
   return litetest_version_minor_internal;
 }
@@ -129,7 +143,7 @@ extern size_t litetest_get_version_minor_internal
 extern size_t litetest_get_version_patch_internal
 ( void )
 { 
-  if ( litetest_version_patch_internal == size_max)
+  if (litetest_version_patch_internal == size_max)
   { litetest_version_extract_internal(); }
   return litetest_version_patch_internal;
 }
@@ -137,7 +151,7 @@ extern size_t litetest_get_version_patch_internal
 extern size_t litetest_get_version_num_internal
 ( void )
 { 
-  if ( litetest_version_patch_internal == size_max)
+  if ( litetest_version_num_internal == size_max)
   { litetest_version_extract_internal(); }
   return litetest_version_num_internal;
 }
@@ -145,7 +159,7 @@ extern size_t litetest_get_version_num_internal
 extern size_t litetest_ger_version_patch_internal
 ( void )
 { 
-  if ( litetest_version_get_hex_internal == size_max)
+  if ( litetest_version_hex_internal == size_max)
   { litetest_version_extract_internal(); }
   return litetest_version_hex_internal;
 }
