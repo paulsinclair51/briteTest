@@ -169,6 +169,228 @@ const char litetest_default_path_msg[] =
   "      An already existing report file is overwritten.\n\n";
 const char *lt_path_msg = NULL;
 
+void write_category
+( FILE * const report,
+  const size_t index,
+  const char *label,
+  lt_result_t result
+);
+
+const char *category_label_with_inject_tag
+( const char *base_label,
+  lt_result_t result,
+  char inject,
+  char *label_buf,
+  size_t label_buf_len
+);
+
+/**
+ * @section Guard Infrastructure
+ * 
+ * The internal guard infrastructure provides a mechanism to catch signals such as SIGSEGV,
+ * SIGABRT, and SIGBUS that may occur during the evaluation of LT_TEST
+ * and LT_ASSERT* macros.
+ *
+ * It uses sigsetjmp and siglongjmp to return control
+ * to a known point in the code when a signal is caught, allowing the test framework
+ * to count faults and continue running other tests instead of aborting the entire
+ * test suite.
+ * 
+ * @note The internal guard infrastructure is not intended to be used directly.
+ */
+
+/**
+ * @name litetest_sighandler_internal_t
+ * 
+ * @brief Type for signal handlers used in the guard infrastructure.
+ *
+ * @details litetest_sighandler_internal_t type is defined as a pointer to a function that takes
+ * an int signal number as a parameter and returns void. This type is used for the
+ * handler function pointer in the guard structure and for saving/restoring signal
+ * handlers in the guard install and restore functions.
+ * 
+ * The litetest_sighandler_internal_t type ensures that the guard mechanism can properly
+ * manage signal handlers for SIGSEGV, SIGABRT, and SIGBUS.
+ * 
+ * The use of litetest_sighandler_internal_t allows the guard mechanism to be flexible and compatible
+ * with the signal handling conventions of this framework.
+ */
+
+typedef void (*litetest_sighandler_interal_t)(int);
+
+/**
+ * @name litetest_guard_internal_t
+ * 
+ * @brief Structure for a guard used to capture signals and manage
+ *        state for fault recovery.
+ */
+
+typedef struct
+{ void (*handler)(int sig);
+  sigjmp_buf env;
+  volatile sig_atomic_t active;
+} litetest_guard_internal_internal_t;
+
+/**
+ * @name litetest_saved_guard_internal_t
+ * 
+ * @brief Structure for saving the current guard and when a guard 
+ *        at a lower level is installed.
+ */
+
+typedef struct
+{ litetest_guard_internal_t *guard;
+  litetest_sighandler_internal_t segv_handler;
+  litetest_sighandler_internal_t abrt_handler;
+  litetest_sighandler_internal_t bus_handler;
+  lt_state_t state;
+} litetest_saved_guard_internal_t;
+
+/**
+ * @name litetest_current_guard_internal
+ * 
+ * @brief Pointer to the current guard used for signal handling
+ *        and fault recovery.
+ * 
+ * @note Current guard is accessible internally by the guard
+ *       infrastructure in the orchestrator and test functions.
+ *       It is defined only for the orchestrator function.
+ */
+
+extern litetest_guard_internal_t *litetest_current_guard_internal;
+
+/**
+ * @name litetest_saved_guards_internal, litetest_num_saved_guards_internal
+ * 
+ * @brief Array of saved guards and the number of saved guards.
+ * 
+ * @note These are accessible internally by the guard infrastructure
+ *       in the orchestrator and test functions. It is defined only
+ *       for the orchestrator function.
+ * @{
+ */
+
+extern litetest_saved_guard_internal_t litetest_saved_guards_internal[MAX_GUARD_LEVEL];
+extern size_t litetest_num_saved_guards_internal;
+
+/** @} */
+
+/**
+ * @name litetest_guardhandler_internal
+ * 
+ * @brief Captures signals and siglongjmps back to the guard point.
+ * 
+ * @param sig The signal number that was caught (e.g., SIGSEGV, SIGABRT, SIGBUS).
+ * 
+ * If sig is 0, uses 1 as the siglongjmp value to distinguish from a signal number.
+ * 
+ * If there is no active guard, aborts to indicate a fatal error or framework
+ * misuse.
+ * 
+ * If guard is active, sets it to inactive and siglongjmps back to the guard point
+ * with the signal number (or 1 if sig is 0) as the value.
+ * 
+ * Note: The guard handler is designed to be simple and signal-safe, and does not
+ * perform any complex logic or I/O. It relies on the guard structure to manage state
+ * and the testing framework to handle the results appropriately.
+ */
+
+static inline void litetest_guard_handler_internal(int sig)
+{ if (litetest_guard_internal && litetest_guard_internal->active)
+  { litetest_guard_internal->active = 0;
+    siglongjmp(litetest_guard_interrnal->env, sig ? sig : 1); 
+  }
+
+  // Fault outside of active guard or misuse of guard framework.
+  abort();
+}
+
+/**
+ * @name litetest_install_guard_internal
+ * 
+ * @brief Install a new guard after saving the current guard.
+ * 
+ * @param new_guard Pointer to a new guard.
+ * 
+ * On error (too many nested guards or signal handler installation
+ * failure), raises abort using abort() for POSIX/C behavior to
+ * terminate the program without causing an infinite loop through
+ * signal handling.
+ */
+
+void litetest_install_guard_internal(litetest_guard_internal_t *new_guard);
+
+/**
+ * @name litetest_restore_guard_internal
+ * 
+ * @brief Restore the previous guard.
+ *
+ * On error (no saved guard), raises abort using abort() for
+ * POSIX/C behavior to terminate the program without causing
+ * an infinite loop through signal handling.
+ *
+ * @note This function restores the previous guard by checking if
+ * there are any saved guards. If there are no saved guards, it raises a SIGABRT
+ * to indicate a fatal error in the testing framework. If there is a saved guard,
+ * it restores the signal handlers for SIGSEGV, SIGABRT, and SIGBUS to their
+ * previous handlers and sets the current guard to the saved guard.
+ *
+ * @note This function is designed to be called after a guard has
+ * been used to ensure that the previous guard is properly restored.
+ *
+ * @note The guard mechanism allows for nested guards, and the litetest_restore_guard_internal
+ * function ensures that the correct guard is restored in a last-in-first-out manner.
+ */
+
+void litetest_restore_guard_internal(void);
+
+ * @name litetest_test_internal
+ * 
+ * @brief Internal function used by the LT_TEST macro: ezexutes func
+ *        capturing a fault, if one occurs, with a guard.
+ *        Saves the result internally and adds the result
+ *        to the internal total.
+ * 
+ * @param func Pointer to a function to execute, which takes a
+ *             char inject parameter and returns a lt_result_t value.
+ * @param func_name Name of the function being executed that is used for error messages.
+ * 
+ * @return lt_result_t result from function or
+ *         (lt_result_t){0, 0, SIZE_MAX, 0, 0} if a fault occurs.
+ */
+
+lt_result_t litetest_tests_internal
+( lt_result_t (*func)(char),
+  const char * const func_name,
+  litetest_state_internal_t *litetest_caller_state_internal
+);
+
+/** @} */
+
+ * @section GuardAPIFunctionS Guard API Functions
+ * 
+ * The guard functions provide a public API fot the guard mechanism status, such as the 
+ * current guard level and whether the current guard is active.
+ */
+
+/**
+ * @name lt_level
+ * 
+ * @brief Get the level indicating the number of nested LT_TEST and LT_ASSERT* macros.
+ * 
+ *        The level can be used for retrieving the results and total for the function,
+ *        debugging, informational purposes,
+ *        determining the depth of nested macros, or for checking against
+ *        the maximum level (lt_max_level).
+ * 
+ * @return 0 if not nested.
+ *         Otherwise, the current level.
+ */
+
+ static inline size_t lt_level(void)
+ { return litetest_num_saved_guards_internal + 
+          (litetest_current_guard_internal ? 1 : 0); }
+
 void litetest_install_guard(internal_guard_t *new_guard)
 { if (litetest_num_saved_guards >= MAX_GUARD_LEVEL) { abort(); }
   litetest_saved_guard_t *saved_guard = &saved_guards[litetest_num_saved_guards++];
