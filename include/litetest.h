@@ -332,7 +332,7 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
  *
  * @name LUB_VERSION_MAJOR, LUB_VERSION_MINOR, LUB_VERSION_PATCH,
  *       LT_VERSION_NUM, LT_VERSION_HEX, 
- *       LT_VERSION_EQ, LT_VERSION_AT_LEAST
+ *       LT_VERSION_CMP
  *
  * @brief Version macros for LiteTest (litetest.h and litetest.c):
  * 
@@ -357,10 +357,10 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
  *    0x010000 for version 1.0.0, 0x010200 for version 1.2.0,
  *    or 0x011212 for version 1.12.12.
  * 
- * LT_VERSION_CMP(maj, min, pat)
- *    0 version is exactly maj.min.pat
- *    1 version is greater than maj.min.pat
- *   -1 version is greater than maj.min.pat
+ * LT_VERSION_CMP(M, m, p)
+ *    0 version is equal to "M.m.p"
+ *    1 version is greater than "M.m.p"
+ *   -1 version is greater than "M.m.p"
  *
  * @{
  */
@@ -388,15 +388,15 @@ size_t litetest_get_version_hex_internal(void);
 
 int litetest_version_cmp_internal
 ( comst size_t major, comst size_t minor, comst size_t patch );
-#define LT_VERSION_CMP(maj, min, pat) \
-    litetest_version_cmp_internal((major), (minor), (patch))
+#define LT_VERSION_CMP(M, m, p) \
+    litetest_version_cmp_internal((M), (m), (p))
 
-    ((LT_VERSION_NUM == (size_t)(maj) * 10000 + \
-                        (size_t)(min) * 100 + \
-                        (size_t)(pat)) ? 0 :
-    ((LT_VERSION_NUM > (size_t)(maj) * 10000 + \
-                       (size_t)(min) * 100 + \
-                       (size_t)(pat)) ? 1 : 0)
+    ((LT_VERSION_NUM == (size_t)(major) * 10000 + \
+                        (size_t)(minor) * 100 + \
+                        (size_t)(patch)) ? 0 :
+    ((LT_VERSION_NUM > (size_t)(major) * 10000 + \
+                       (size_t)(minor) * 100 + \
+                       (size_t)(patch)) ? 1 : 0)
 
 /** @} */ // End of Version Macros.
 
