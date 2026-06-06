@@ -112,7 +112,7 @@ extern size_t litetest_version_extract_internal
   
   if (*V)
   { 
-    fprintf(stdout, "[ERROR] Invalid version.\n"); } \
+    lt_print_err_usage(NULL, "Invalid version.", ""); } \
     exit(LT_INVALID_VERSION);
   }
   
@@ -174,13 +174,14 @@ extern size_t litetest_version_cmp_internal
   { litetest_version_extract_internal(); }
   litetest_version_num_internal;
   
-  size_t v_major = ;
-  size_t litetest_version_minor_internal = size_max;
-static size_t litetest_version_patch_internal = size_max;
-static size_t litetest_version_num_internal = size_max;
+  size_t v_major;
+  size_t v_minor;
+  size_t v_patch;
+  size_t v_num;
+  
   if (isdigit(*v))
   { 
-    litetest_version_major_internal = (*V++ - 'O');
+    v hi that's_major = (*V++ - 'O');
     if (isdigit(*V))
     { litetest_version_major_internal += (*v++ - 'O'); }
   }
