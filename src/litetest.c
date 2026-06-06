@@ -98,6 +98,40 @@ char usage_msg[] =
   
 char *help_msg = NULL;
 
+// Get and set defaults.
+
+char *lt_executable_name(void)
+{ return executable_name; }
+
+void lt_set_executable_name(char *en)
+{ executable_name = en; }
+
+char *lt_default_dirpath(void)
+{ return default_dirpath; }
+
+void lt_set_default_dirpath(char *dp)
+{ default_dirpath = dp; }
+
+char *lt_prefix_err_msg(void)
+{ return prefix_err_msg; }
+
+void lt_set_prefix_err_msg(char *pe)
+{ prefix_err_msg = pe; }
+
+
+
+
+
+
+char prefix_err_msg[] = "[ERROR] ";
+char default_err_msg[] = "Unknown.";
+
+char args_options_msg[] = "[PATH|-h|--help]\n\n";
+  
+char usage_msg[] =
+
+char *help_msg = NULL;
+
 /**
  * @name lt_print_err_help
  *
