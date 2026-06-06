@@ -16,7 +16,30 @@
  * SPDX-License-Identifier: MIT
  * For license details, see @ref LICENSE "LICENSE" in the
  * paulsinclair51/LiteTest repository root.
+ */
+
+/**
+ * @defgroup Version
  *
+ * @name LT_VERSION_C#
+ *
+ * @brief "M.m.p"
+ *
+ * M, m, and p are 1 or 2 digits (e.g., O, 00, 1, 01, 24):
+ +
+ * - M: Major version for incompatible API changes (>= 1).
+ * - m: Minor version for backward-compatible additions.
+ * - p: Patch version for bug fixes or internal improvements.
+ *
+ * @note Incompatible API changes: The naming conventions, error semantics, and safety guarantees
+ * are part of the documented and stable API and will not change without a
+ * major version increment.
+ */
+ 
+#define LT_VERSION_C "1.0.0"
+
+
+/**
  * @section Usage
  *
  * Compile and link this file as a shared library (e.g., using -fPIC
