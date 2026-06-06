@@ -19,11 +19,10 @@
  */
 
 /**
- * @defgroup Version
+ * @name LT_VERSION_C
  *
- * @name LT_VERSION_C#
- *
- * @brief "M.m.p"
+ * @brief Version "M.m.p" for litetest.c which must be the same as VERSION
+ *.       for litetest.h.
  *
  * M, m, and p are 1 or 2 digits (e.g., O, 00, 1, 01, 24):
  +
@@ -37,6 +36,7 @@
  */
  
 #define LT_VERSION_C "1.0.0"
+
 
 
 /**
