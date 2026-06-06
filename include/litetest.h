@@ -20,7 +20,8 @@ I/**
  *
  * @name LT_VERSION
  *
- * @brief "M.m.p"
+ * @brief Version "M.m.p" for litetest.h which must be the same as
+ *.       LT_VERSION_C for literest.c.
  *
  * M, m, and p are 1 or 2 digits (e.g., O, 00, 1, 01, 24):
  +
