@@ -37,7 +37,7 @@
  
 #define LT_VERSION_C "1.0.0"
 
-
+LT_STATIC_ASSERT(!LT_VERSION_CMP(LT_VERSION_C), VERSION_C_must_match_VRRSION);
 
 /**
  * @section Usage
