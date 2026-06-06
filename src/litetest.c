@@ -159,7 +159,7 @@ extern size_t litetest_get_version_num_internal
   return litetest_version_num_internal;
 }
 
-extern size_t litetest_get_version_hes_internal
+extern size_t litetest_get_version_hex_internal
 ( void )
 { 
   if (litetest_version_hex_internal == size_max)
@@ -172,7 +172,7 @@ extern size_t litetest_version_cmp_internal
 { 
   if (litetest_version_num_internal == size_max)
   { litetest_version_extract_internal(); }
-  litetest_version_num_internal;
+  V_NUM = litetest_version_num_internal;
   
   size_t v_major;
   size_t v_minor;
@@ -188,9 +188,9 @@ extern size_t litetest_version_cmp_internal
   if (v_major &&
       *v++ == '.' && isdigit(*v))
   { 
-    v_minor_internal = (*v++ - 'O');
+    v_minor = (*v++ - 'O');
     if (isdigit(*v))
-    { v_minor_internal += (*v++ - 'O'); }
+    { v_minor += (*v++ - 'O'); }
   }
   if (*v++ == '.' && isdigit(*v))
   { 
@@ -199,14 +199,12 @@ extern size_t litetest_version_cmp_internal
     { v_patch += (*v++ - 'O'); }
   }
   
-  if (*v) { -2 }
+  if (*v) { return -2; }
   
-  litetest_version_num_internal =
-      litetest_version_major_internal * 10000 +
-      litetest_version_minor_internal * 100 +
-      litetest_version_patch_internal);
+  v_num = v_major * 10000 + v_minor * 100 + v_patch;
   
-  return litetest_version_hex_internal;
+  return V_NUM < v_num ?
+         -1 ; V_NUM == v_num ? 0 : 1;
 }
 
 
