@@ -48,25 +48,32 @@ extern "C" {
 // Define executable defaults.
 
 char *executable_name = NULL;
-const char default_path[] = "./";
+char default_dirpath[] = "./";
 char default_file_name[] = "test_report.txt";
 
-const char default_path_usage_msg[] =
+char default_err_msg[] = "Unknown.";
+
+char default_args_options_msg[] =
+  "[PATH|-h|--help]\n\n";
+  
+char default_usage_msg[] =
   "PATH: A directory path, file path, or file name (optionally quoted\n"
   "      or as needed).\n\n"
   
   "      If PATH (with or without a trailing \\ or / separator) is a path\n"
   "      to a directory, the test report is written in that directory\n"
-  "      with a default name.\n\n"
+  "      with file name %s.\n\n"
   
   "      If PATH is a file path, the test report is written to that file.\n"
   "      An already existing report file is overwritten.\n\n"
   
   "      If PATH is a file name (not ending with a separator), the test\n"
   "      report is written with that file name in the current working"
-  "      directory (./).\n";
+  "      directory (./).\n\n"
   
-const char *path_usage_msg = NULL;
+  "-h or --help: Show this usage text.\n\n",
+  
+char *usage_msg = NULL;
 
 /**
  * @name lt_print_err_usage
@@ -74,40 +81,35 @@ const char *path_usage_msg = NULL;
  * @brief Print error and/or executable usage messages.
  *
  * @param out NULL indicates output to stdout.
- *             Otherwise, pointer to file (e.g., stderr).
+ *            Otherwise, pointer to file (e.g., stderr).
  * @param err_msg NULL indicates default error message.
  *                Empty string indicates no error message.
- *                Otherwise, errot message string.
- * @param usage_msg NULL indicates default usage message.
- *                  Empty string indicates no usage message.
- *                  Otherwise, usage message string.
+ *                Otherwise, error message string.
  */
 
 void lt_print_err_usage
 (
   FILE *const out,
-  const char *const err_msg,
-  const char *const usage_msg
+  const char *const err_msg
 )
 { 
   if (!out) out = stdout;
 
-  if (err_msg && *err_msg)
+  if (!err_msg)
+  { fprintf(out, "[ERROR] %s\n\n", default_err_msg); }
+  else if (*err_msg)
   { fprintf(out, "[ERROR] %s\n\n", err_msg); }
-  else if (!usage_msg)
-  { fprintf(out, "[ERROR] %s\n\n", "unknown,"); }
 
-  if (usage_msg && *usage_msg)
-  { fprintf(out, "%s", usage_msg); }
-  else if (!usage_msg)
+  if (!usage_msg)
   { 
-    fprintf(out, "Usage: %s [PATH|-h|--help]\n\n"
-                 "%s"
-                 "-h or --help: Show this usage text.\n\n",
-          internal_executable_name && *internal_executable_name ?
-          internal_executable_name : "UnknownExecutable",
-          path_msg && *path_msg ? path_msg : default_path_usage_msg);
+    fprintf(out, "Usage: %s %s\n"
+                 executable_name && *executable_name ?
+                    executable_name : "UnknownExecutable",
+                 default_args_options_msg);
+    fprintf(out, default_usage_msg, default_file_name);
   }
+  else if (*usage_msg)
+  { fprintf(out, "%s", usage_msg); }
 }
 
 // Version:
