@@ -46,8 +46,9 @@ extern "C" {
  *
  * @param out NULL indicates output to stdout.
 
- * @param err_msg NULL or empty string indicates no error message.
- *                Otherwise, errot message string.
+ * @param err_msg NULL indicates default error message.
+ *                 Empty string indicates no error message.
+ *                 Otherwise, errot message string.
  * @param usage_msg NULL indicates default usage message.
  *                  Empty string indicates no usage message.
  *                  Otherwise, usage message string.
@@ -63,6 +64,8 @@ extern void lt_print_err_usage
 
   if (err_msg && *err_msg)
   { fprintf(out, "[ERROR] %s\n\n", err_msg); }
+  else if (!usage_msg)
+  { fprintf(out, "[ERROR] %s\n\n", "unknown,"); }
 
   if (usage_msg && *usage_msg)
   { fprintf(out, "%s", usage_msg); }
@@ -86,28 +89,28 @@ static size_t litetest_version_hex_internal = size_max;
 extern size_t litetest_version_extract_internal
 ( void )
 { 
-  char v[] = VERSION;
-  if (isdigit(*v))
+  char V[] = VERSION;
+  if (isdigit(*V))
   { 
-    litetest_version_major_internal = (*v++ - 'O');
-    if (isdigit(*v))
+    litetest_version_major_internal = (*V++ - 'O');
+    if (isdigit(*V))
     { litetest_version_major_internal += (*v++ - 'O'); }
   }
   if (litetest_version_major_internal &&
-      *v++ == '.' && isdigit(*v))
+      *V++ == '.' && isdigit(*V))
   { 
-    litetest_version_minor_internal = (*v++ - 'O');
-    if (isdigit(*v))
-    { litetest_version_minor_internal += (*v++ - 'O'); }
+    litetest_version_minor_internal = (*V++ - 'O');
+    if (isdigit(*V))
+    { litetest_version_minor_internal += (*V++ - 'O'); }
   }
-  if (*v++ == '.' && isdigit(*v))
+  if (*V++ == '.' && isdigit(*V))
   { 
-    litetest_version_patch_internal = (*v++ - 'O');
-    if (isdigit(*v))
-    { litetest_version_patch_internal += (*v++ - 'O'); }
+    litetest_version_patch_internal = (*V++ - 'O');
+    if (isdigit(*V))
+    { litetest_version_patch_internal += (*V++ - 'O'); }
   }
   
-  if (*v)
+  if (*V)
   { 
     fprintf(stdout, "[ERROR] Invalid version.\n"); } \
     exit(LT_INVALID_VERSION);
@@ -151,18 +154,64 @@ extern size_t litetest_get_version_patch_internal
 extern size_t litetest_get_version_num_internal
 ( void )
 { 
-  if ( litetest_version_num_internal == size_max)
+  if (litetest_version_num_internal == size_max)
   { litetest_version_extract_internal(); }
   return litetest_version_num_internal;
 }
 
-extern size_t litetest_ger_version_patch_internal
+extern size_t litetest_get_version_hes_internal
 ( void )
 { 
-  if ( litetest_version_hex_internal == size_max)
+  if (litetest_version_hex_internal == size_max)
   { litetest_version_extract_internal(); }
   return litetest_version_hex_internal;
 }
+
+extern size_t litetest_version_cmp_internal
+( const char *v )
+{ 
+  if (litetest_version_num_internal == size_max)
+  { litetest_version_extract_internal(); }
+  litetest_version_num_internal;
+  
+  size_t v_major = ;
+  size_t litetest_version_minor_internal = size_max;
+static size_t litetest_version_patch_internal = size_max;
+static size_t litetest_version_num_internal = size_max;
+  if (isdigit(*v))
+  { 
+    litetest_version_major_internal = (*V++ - 'O');
+    if (isdigit(*V))
+    { litetest_version_major_internal += (*v++ - 'O'); }
+  }
+  if (litetest_version_major_internal &&
+      *V++ == '.' && isdigit(*V))
+  { 
+    litetest_version_minor_internal = (*V++ - 'O');
+    if (isdigit(*V))
+    { litetest_version_minor_internal += (*V++ - 'O'); }
+  }
+  if (*V++ == '.' && isdigit(*V))
+  { 
+    litetest_version_patch_internal = (*V++ - 'O');
+    if (isdigit(*V))
+    { litetest_version_patch_internal += (*V++ - 'O'); }
+  }
+  
+  if (*V)
+  { 
+    fprintf(stdout, "[ERROR] Invalid version.\n"); } \
+    exit(LT_INVALID_VERSION);
+  }
+  
+  litetest_version_num_internal =
+      litetest_version_major_internal * 10000 +
+      litetest_version_minor_internal * 100 +
+      litetest_version_patch_internal);
+  
+  return litetest_version_hex_internal;
+}
+
 
 // Define internal types.
 
