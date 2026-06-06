@@ -54,8 +54,7 @@ char default_file_name[] = "test_report.txt";
 char prefix_err_msg[] = "[ERROR] ";
 char default_err_msg[] = "Unknown.";
 
-char args_options_msg[] =
-  "[PATH|-h|--help]\n\n";
+char args_options_msg[] = "[PATH|-h|--help]\n\n";
   
 char usage_msg[] =
   "PATH: A directory path, file path, or file name (optionally quoted\n"
