@@ -45,13 +45,33 @@ extern "C" {
 #define LT_FAIL_FAULT 3
 #define LT_INVALID_VERSION -100
 
+// Define executable defaults.
+
+char *executable_name = NULL;
+const char default_path[] = "./";
+char default_file_name[] = "test_report.txt";
+
+const char default_path_msg[] =
+  "PATH: A directory path, file path, or file name (optionally quoted\n"
+  "      or as needed).\n\n"
+  "      If PATH (with or without a trailing \\ or / separator) is a path\n"
+  "      to a directory, the test report is written in that directory\n"
+  "      with a default name.\n\n"
+  "      If PATH is a file path, the test report is written to that file.\n"
+  "      An already existing report file is overwritten.\n\n"
+  "      If PATH is a file name (not ending with a separator), the test\n"
+  "      report is written with that file name in the current working"
+  "      directory (./).\n";
+  
+const char *path_msg = NULL;
+
 /**
  * @name lt_print_err_usage
  *
- * @brief
+ * @brief Print error and/or executable usage messages.
  *
  * @param out NULL indicates output to stdout.
-
+ *             Otherwise, pointer to file (e.g., stderr).
  * @param err_msg NULL indicates default error message.
  *                Empty string indicates no error message.
  *                Otherwise, errot message string.
@@ -61,9 +81,10 @@ extern "C" {
  */
 
 void lt_print_err_usage
-( FILE *out
-  const char *err_msg,
-  const char *usage_msg
+(
+  FILE *const out,
+  const char *const err_msg,
+  const char *const usage_msg
 )
 { 
   if (!out) out = stdout;
@@ -82,9 +103,11 @@ void lt_print_err_usage
                  "-h or --help: Show this usage text.\n\n",
           internal_executable_name && *internal_executable_name ?
           internal_executable_name : "UnknownExecutable",
-          path_msg && *path_msg ? path_msg : internal_default_path_msg);
+          path_msg && *path_msg ? path_msg : default_path_msg);
   }
 }
+
+// Version:
 
 static size_t version_major = size_max;
 static size_t version_minor = size_max;
@@ -92,28 +115,28 @@ static size_t version_patch = size_max;
 static size_t version_num = size_max;
 static size_t version_hex = size_max;
 
-size_t litetest_version_extract_internal
+static size_t version_extract
 ( void )
 { 
-  char V[] = VERSION;
-  if (isdigit(*V))
+  char v[] = VERSION;
+  if (isdigit(*v))
   { 
-    version_major = (*V++ - 'O');
+    version_major = (*v++ - 'O');
     if (isdigit(*V))
-    { version_major += (*V++ - 'O'); }
+    { version_major += (*v++ - 'O'); }
   }
   if (version_major &&
-      *V++ == '.' && isdigit(*V))
+      *v++ == '.' && isdigit(*v))
   { 
-    version_minor = (*V++ - 'O');
-    if (isdigit(*V))
-    { litetest_version_minor += (*V++ - 'O'); }
+    version_minor = (*v++ - 'O');
+    if (isdigit(*v))
+    { version_minor += (*v++ - 'O'); }
   }
   if (*V++ == '.' && isdigit(*V))
   { 
-    version_patch = (*V++ - 'O');
-    if (isdigit(*V))
-    { version_patch += (*V++ - 'O'); }
+    version_patch = (*v++ - 'O');
+    if (isdigit(*v))
+    { version_patch += (*v++ - 'O'); }
   }
   
   if (*V)
@@ -122,134 +145,87 @@ size_t litetest_version_extract_internal
     exit(LT_INVALID_VERSION);
   }
   
-  litetest_version_num_internal =
-      litetest_version_major_internal * 10000 +
-      litetest_version_minor_internal * 100 +
-      litetest_version_patch_internal);
+  version_num = version_major * 10000 +
+                version_minor * 100 +
+                version_patch);
       
-  litetest_version_hex_internal =
-      (litetest_version_major_internal << 16) |
-      (litetest_version_minor_internal << 8) |
-      (litetest_version_patch_internal);
+  version_hex = (version_major << 16) |
+                (version_minor << 8) |
+                (version_patch);
 }
 
 size_t litetest_version_major_internal
 ( void )
 { 
-  if (litetest_version_get_major_internal == size_max)
-  { litetest_version_extract_internal(); }
-  return litetest_version_major_internal;
+  if (version_major == size_max) { version_extract(); }
+  return version_major_;
 }
 
-size_t litetest_get_version_minor_internal
+size_t litetest_version_minor_internal
 ( void )
 { 
-  if (litetest_version_minor_internal == size_max)
-  { litetest_version_extract_internal(); }
-  return litetest_version_minor_internal;
+  if (version_minor == size_max) { version_extract(); }
+  return version_minor;
 }
 
-size_t litetest_get_version_patch_internal
+size_t litetest_version_patch_internal
 ( void )
 { 
-  if (litetest_version_patch_internal == size_max)
-  { litetest_version_extract_internal(); }
-  return litetest_version_patch_internal;
+  if (version_patch == size_max) { version_extract(); }
+  return version_patch;
 }
 
-size_t litetest_get_version_num_internal
+size_t litetest_version_num_internal
 ( void )
 { 
-  if (litetest_version_num_internal == size_max)
-  { litetest_version_extract_internal(); }
+  if (version_num == size_max) { version_extract(); }
   return litetest_version_num_internal;
 }
 
-size_t litetest_get_version_hex_internal
+size_t litetest_version_hex_internal
 ( void )
 { 
-  if (litetest_version_hex_internal == size_max)
-  { litetest_version_extract_internal(); }
+  if (version_hex == size_max) { version_extract(); }
   return litetest_version_hex_internal;
 }
 
 size_t litetest_version_cmp_internal
 ( const char *v )
 { 
-  if (litetest_version_num_internal == size_max)
-  { litetest_version_extract_internal(); }
-  V_NUM = litetest_version_num_internal;
+  if (version_num == size_max) { version_extract(); }
   
-  size_t v_major;
-  size_t v_minor;
-  size_t v_patch;
-  size_t v_num;
+  size_t major;
+  size_t minor;
+  size_t patch;
+  size_t num;
   
   if (isdigit(*v))
   { 
-    v_major = (*v++ - 'O');
+    major = (*v++ - 'O');
     if (isdigit(*v))
-    { v_major += (*v++ - 'O'); }
+    { major += (*v++ - 'O'); }
   }
-  if (v_major &&
+  if (major &&
       *v++ == '.' && isdigit(*v))
   { 
-    v_minor = (*v++ - 'O');
+    minor = (*v++ - 'O');
     if (isdigit(*v))
-    { v_minor += (*v++ - 'O'); }
+    { minor += (*v++ - 'O'); }
   }
   if (*v++ == '.' && isdigit(*v))
   { 
-    v_patch = (*v++ - 'O');
+    patch = (*v++ - 'O');
     if (isdigit(*v))
-    { v_patch += (*v++ - 'O'); }
+    { patch += (*v++ - 'O'); }
   }
   
   if (*v) { return -2; }
   
-  v_num = v_major * 10000 + v_minor * 100 + v_patch;
+  num = major * 10000 + minor * 100 + patch;
   
-  return V_NUM < v_num ?
-         -1 ; V_NUM == v_num ? 0 : 1;
+  return version_num < num ?
+         -1 ; version_num == num ? 0 : 1;
 }
-
-// Define internal types.
-
-guard_t *guard = NULL;
-saved_guard_t saved_guards[MAX_GUARD_LEVEL] = { 0 };
-size_t num_saved_guards = 0;
-
-char *executable_name = NULL;
-char default_file_name[] = "test_report.txt";
-
-const char default_path_msg[] =
-  "PATH: A directory path, file path, or file name (optionally quoted\n"
-  "      or as needed).\n\n"
-  "      If PATH (with or without a trailing \\ or / separator) is a path\n"
-  "      to a directory, the test report is written in that directory\n"
-  "      with a default name.\n\n"
-  "      If PATH is a file path, the test report is written to that file.\n"
-  "      An already existing report file is overwritten.\n\n"
-  "      If PATH is a file name (not ending with a separator), the test\n"
-  "      report is written with that file name in the current working"
-  "      directory (./).\n";
-  
-const char *path_msg = NULL;
-
-static void write_category
-( FILE * const report,
-  const size_t index,
-  const char *label,
-  lt_result_t result
-);
-
-const char *category_label_with_inject_tag
-( const char *base_label,
-  lt_result_t result,
-  char inject,
-  char *label_buf,
-  size_t label_buf_len
-);
 
 /**
  * @section Guard Infrastructure
@@ -267,26 +243,26 @@ const char *category_label_with_inject_tag
  */
 
 /**
- * @name litetest_sighandler_internal_t
+ * @name sighandler_t
  * 
  * @brief Type for signal handlers used in the guard infrastructure.
  *
- * @details litetest_sighandler_internal_t type is defined as a pointer to a function that takes
+ * @details sighandler_t type is defined as a pointer to a function that takes
  * an int signal number as a parameter and returns void. This type is used for the
  * handler function pointer in the guard structure and for saving/restoring signal
  * handlers in the guard install and restore functions.
  * 
- * The litetest_sighandler_internal_t type ensures that the guard mechanism can properly
+ * The sighandler_t type ensures that the guard mechanism can properly
  * manage signal handlers for SIGSEGV, SIGABRT, and SIGBUS.
  * 
- * The use of litetest_sighandler_internal_t allows the guard mechanism to be flexible and compatible
+ * The use of sighandler_t allows the guard mechanism to be flexible and compatible
  * with the signal handling conventions of this framework.
  */
 
-typedef void (*litetest_sighandler_interal_t)(int);
+typedef void (*sighandler_t)(int);
 
 /**
- * @name litetest_guard_internal_t
+ * @name guard_t
  * 
  * @brief Structure for a guard used to capture signals and manage
  *        state for fault recovery.
@@ -296,25 +272,35 @@ typedef struct
 { void (*handler)(int sig);
   sigjmp_buf env;
   volatile sig_atomic_t active;
-} litetest_guard_internal_internal_t;
+} guard_t;
+
+extern const litetest_size_guard_internal = sizeof(guard_t);
 
 /**
- * @name litetest_saved_guard_internal_t
+ * @name saved_guard_t
  * 
  * @brief Structure for saving the current guard and when a guard 
  *        at a lower level is installed.
  */
 
 typedef struct
-{ litetest_guard_internal_t *guard;
-  litetest_sighandler_internal_t segv_handler;
-  litetest_sighandler_internal_t abrt_handler;
-  litetest_sighandler_internal_t bus_handler;
+{ guard_t *guard;
+  sighandler_t segv_handler;
+  sighandler_t abrt_handler;
+  sighandler_t bus_handler;
   lt_state_t state;
-} litetest_saved_guard_internal_t;
+} saved_guard_t;
+
+extern const litetest_size_saved_guard_internal = sizeof(saved_guard_t);
+
+// Define guard variables.
+
+static guard_t *guard = NULL;
+static saved_guard_t saved_guards[MAX_GUARD_LEVEL] = { 0 };
+static size_t num_saved_guards = 0;
 
 /**
- * @name litetest_current_guard_internal
+ * @name current_guard
  * 
  * @brief Pointer to the current guard used for signal handling
  *        and fault recovery.
@@ -324,7 +310,7 @@ typedef struct
  *       It is defined only for the orchestrator function.
  */
 
-extern litetest_guard_internal_t *litetest_current_guard_internal;
+static guard_t *current_guard;
 
 /**
  * @name litetest_saved_guards_internal, litetest_num_saved_guards_internal
