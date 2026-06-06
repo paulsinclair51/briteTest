@@ -45,18 +45,19 @@ extern "C" {
 #define LT_FAIL_FAULT 3
 #define LT_INVALID_VERSION -100
 
-// Define executable defaults.
+// Define defaults.
 
-char *executable_name = NULL;
+char executable_name[] = "UnknownExecutable";
 char default_dirpath[] = "./";
 char default_file_name[] = "test_report.txt";
 
+char prefix_err_msg[] = "[ERROR] ";
 char default_err_msg[] = "Unknown.";
 
-char default_args_options_msg[] =
+char args_options_msg[] =
   "[PATH|-h|--help]\n\n";
   
-char default_usage_msg[] =
+char usage_msg[] =
   "PATH: A directory path, file path, or file name (optionally quoted\n"
   "      or as needed).\n\n"
   
@@ -73,12 +74,12 @@ char default_usage_msg[] =
   
   "-h or --help: Show this usage text.\n\n",
   
-char *usage_msg = NULL;
+char *help_msg = NULL;
 
 /**
- * @name lt_print_err_usage
+ * @name lt_print_err_help
  *
- * @brief Print error and/or executable usage messages.
+ * @brief Print error message and/or help message.
  *
  * @param out NULL indicates output to stdout.
  *            Otherwise, pointer to file (e.g., stderr).
@@ -87,7 +88,7 @@ char *usage_msg = NULL;
  *                Otherwise, error message string.
  */
 
-void lt_print_err_usage
+void lt_print_err_help
 (
   FILE *const out,
   const char *const err_msg
@@ -96,20 +97,19 @@ void lt_print_err_usage
   if (!out) out = stdout;
 
   if (!err_msg)
-  { fprintf(out, "[ERROR] %s\n\n", default_err_msg); }
+  { fprintf(out, "%s%s\n", prefix_err_msg, default_err_msg); }
   else if (*err_msg)
-  { fprintf(out, "[ERROR] %s\n\n", err_msg); }
+  { fprintf(out, "%s%s\n", prefix_err_msg, err_msg); }
 
-  if (!usage_msg)
+  if (!help_msg)
   { 
+    if (!err_msg || *err_msg) { fprintf(out, "\n"); }
     fprintf(out, "Usage: %s %s\n"
-                 executable_name && *executable_name ?
-                    executable_name : "UnknownExecutable",
-                 default_args_options_msg);
-    fprintf(out, default_usage_msg, default_file_name);
+                 executable_name, args_options_msg);
+    fprintf(out, usage_msg, default_file_name);
   }
-  else if (*usage_msg)
-  { fprintf(out, "%s", usage_msg); }
+  else if (*help_msg)
+  { fprintf(out, "%s", help_msg); }
 }
 
 // Version:
