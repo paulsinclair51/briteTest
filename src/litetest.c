@@ -118,19 +118,24 @@ char *lt_prefix_err_msg(void)
 void lt_set_prefix_err_msg(char *pe)
 { prefix_err_msg = pe; }
 
+char *lt_args_options_msg(void)
+{ return args_options_msg; }
 
+void lt_set_args_options_msg(char *ao)
+{ args_options_msg = ao; }
 
+char *lt_usage_msg(void)
+{ return usage_msg; }
 
+void lt_set_usage_msgg(char *u)
+{ usage_msg = u; }
 
+char *lt_help_msg(void)
+{ return help_msg_msg; }
 
-char prefix_err_msg[] = "[ERROR] ";
-char default_err_msg[] = "Unknown.";
+void lt_set_help_msg(char *h)
+{ help_msg = h; }
 
-char args_options_msg[] = "[PATH|-h|--help]\n\n";
-  
-char usage_msg[] =
-
-char *help_msg = NULL;
 
 /**
  * @name lt_print_err_help
