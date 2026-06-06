@@ -39,6 +39,12 @@
 extern "C" {
 #endif
 
+#define LT_PASS 0
+#define LT_FAIL 1
+#define LT_FAULT 2
+#define LT_FAIL_FAULT 3
+#define LT_INVALID_VERSION -100
+
 /**
  * @name lt_print_err_usage
  *
@@ -47,14 +53,14 @@ extern "C" {
  * @param out NULL indicates output to stdout.
 
  * @param err_msg NULL indicates default error message.
- *                 Empty string indicates no error message.
- *                 Otherwise, errot message string.
+ *                Empty string indicates no error message.
+ *                Otherwise, errot message string.
  * @param usage_msg NULL indicates default usage message.
  *                  Empty string indicates no usage message.
  *                  Otherwise, usage message string.
  */
 
-extern void lt_print_err_usage
+void lt_print_err_usage
 ( FILE *out
   const char *err_msg,
   const char *usage_msg
@@ -80,34 +86,34 @@ extern void lt_print_err_usage
   }
 }
 
-static size_t litetest_version_major_internal = size_max;
-static size_t litetest_version_minor_internal = size_max;
-static size_t litetest_version_patch_internal = size_max;
-static size_t litetest_version_num_internal = size_max;
-static size_t litetest_version_hex_internal = size_max;
+static size_t version_major = size_max;
+static size_t version_minor = size_max;
+static size_t version_patch = size_max;
+static size_t version_num = size_max;
+static size_t version_hex = size_max;
 
-extern size_t litetest_version_extract_internal
+size_t litetest_version_extract_internal
 ( void )
 { 
   char V[] = VERSION;
   if (isdigit(*V))
   { 
-    litetest_version_major_internal = (*V++ - 'O');
+    version_major = (*V++ - 'O');
     if (isdigit(*V))
-    { litetest_version_major_internal += (*v++ - 'O'); }
+    { version_major += (*V++ - 'O'); }
   }
-  if (litetest_version_major_internal &&
+  if (version_major &&
       *V++ == '.' && isdigit(*V))
   { 
-    litetest_version_minor_internal = (*V++ - 'O');
+    version_minor = (*V++ - 'O');
     if (isdigit(*V))
-    { litetest_version_minor_internal += (*V++ - 'O'); }
+    { litetest_version_minor += (*V++ - 'O'); }
   }
   if (*V++ == '.' && isdigit(*V))
   { 
-    litetest_version_patch_internal = (*V++ - 'O');
+    version_patch = (*V++ - 'O');
     if (isdigit(*V))
-    { litetest_version_patch_internal += (*V++ - 'O'); }
+    { version_patch += (*V++ - 'O'); }
   }
   
   if (*V)
@@ -127,7 +133,7 @@ extern size_t litetest_version_extract_internal
       (litetest_version_patch_internal);
 }
 
-extern size_t litetest_version_major_internal
+size_t litetest_version_major_internal
 ( void )
 { 
   if (litetest_version_get_major_internal == size_max)
@@ -135,7 +141,7 @@ extern size_t litetest_version_major_internal
   return litetest_version_major_internal;
 }
 
-extern size_t litetest_get_version_minor_internal
+size_t litetest_get_version_minor_internal
 ( void )
 { 
   if (litetest_version_minor_internal == size_max)
@@ -143,7 +149,7 @@ extern size_t litetest_get_version_minor_internal
   return litetest_version_minor_internal;
 }
 
-extern size_t litetest_get_version_patch_internal
+size_t litetest_get_version_patch_internal
 ( void )
 { 
   if (litetest_version_patch_internal == size_max)
@@ -151,7 +157,7 @@ extern size_t litetest_get_version_patch_internal
   return litetest_version_patch_internal;
 }
 
-extern size_t litetest_get_version_num_internal
+size_t litetest_get_version_num_internal
 ( void )
 { 
   if (litetest_version_num_internal == size_max)
@@ -159,7 +165,7 @@ extern size_t litetest_get_version_num_internal
   return litetest_version_num_internal;
 }
 
-extern size_t litetest_get_version_hex_internal
+size_t litetest_get_version_hex_internal
 ( void )
 { 
   if (litetest_version_hex_internal == size_max)
@@ -167,7 +173,7 @@ extern size_t litetest_get_version_hex_internal
   return litetest_version_hex_internal;
 }
 
-extern size_t litetest_version_cmp_internal
+size_t litetest_version_cmp_internal
 ( const char *v )
 { 
   if (litetest_version_num_internal == size_max)
@@ -207,27 +213,30 @@ extern size_t litetest_version_cmp_internal
          -1 ; V_NUM == v_num ? 0 : 1;
 }
 
-
 // Define internal types.
 
-litetest_guard_t *litetest_guard = NULL;
-litetest_saved_guard_t saved_guards[MAX_GUARD_LEVEL] = { 0 };
-size_t litetest_num_saved_guards = 0;
+guard_t *guard = NULL;
+saved_guard_t saved_guards[MAX_GUARD_LEVEL] = { 0 };
+size_t num_saved_guards = 0;
 
-char *litetest_executable_name = NULL;
-const char litetest_default_path_msg[] =
-  "PATH: A directory path, test report file name, or test report file path.\n"
-  "      (optional quoted or as needed).\n\n"
-  "      If PATH is a path to an existing directory (with or without a trailing\n"
-  "      separator), the test report is written\n"
-  "      in that directory with a default name.\n\n"
-  "      If PATH is a file name (not ending with a separator), the test\n"
-  "      report is written with that file name in the current working directory (./).\n"
+char *executable_name = NULL;
+char default_file_name[] = "test_report.txt";
+
+const char default_path_msg[] =
+  "PATH: A directory path, file path, or file name (optionally quoted\n"
+  "      or as needed).\n\n"
+  "      If PATH (with or without a trailing \\ or / separator) is a path\n"
+  "      to a directory, the test report is written in that directory\n"
+  "      with a default name.\n\n"
   "      If PATH is a file path, the test report is written to that file.\n"
-  "      An already existing report file is overwritten.\n\n";
-const char *lt_path_msg = NULL;
+  "      An already existing report file is overwritten.\n\n"
+  "      If PATH is a file name (not ending with a separator), the test\n"
+  "      report is written with that file name in the current working"
+  "      directory (./).\n";
+  
+const char *path_msg = NULL;
 
-void write_category
+static void write_category
 ( FILE * const report,
   const size_t index,
   const char *label,
