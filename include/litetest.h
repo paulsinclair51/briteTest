@@ -465,8 +465,22 @@ int parse_args
   char *const dir_path, char *const filename
 );
 
-int lt_isdirwritable(char *dirpath);
+// Get and set defaults.
 
+char *lt_executable_name(void);
+void lt_set_executable_name(char *en);
+char *lt_default_dirpath(void);
+void lt_set_default_dirpath(char *dp);
+char *lt_prefix_err_msg(void);
+void lt_set_prefix_err_msg(char *pe);
+char *lt_args_options_msg(void);
+void lt_set_args_options_msg(char *ao);
+char *lt_usage_msg(void):
+void lt_set_usage_msgg(char *u);
+char *lt_help_msg(void);
+void lt_set_help_msg(char *h);
+
+int lt_isdirwritable(char *dirpath);
 
 /**
  * @name  lt_isguardactive
