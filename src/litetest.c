@@ -51,19 +51,22 @@ char *executable_name = NULL;
 const char default_path[] = "./";
 char default_file_name[] = "test_report.txt";
 
-const char default_path_msg[] =
+const char default_path_usage_msg[] =
   "PATH: A directory path, file path, or file name (optionally quoted\n"
   "      or as needed).\n\n"
+  
   "      If PATH (with or without a trailing \\ or / separator) is a path\n"
   "      to a directory, the test report is written in that directory\n"
   "      with a default name.\n\n"
+  
   "      If PATH is a file path, the test report is written to that file.\n"
   "      An already existing report file is overwritten.\n\n"
+  
   "      If PATH is a file name (not ending with a separator), the test\n"
   "      report is written with that file name in the current working"
   "      directory (./).\n";
   
-const char *path_msg = NULL;
+const char *path_usage_msg = NULL;
 
 /**
  * @name lt_print_err_usage
@@ -103,7 +106,7 @@ void lt_print_err_usage
                  "-h or --help: Show this usage text.\n\n",
           internal_executable_name && *internal_executable_name ?
           internal_executable_name : "UnknownExecutable",
-          path_msg && *path_msg ? path_msg : default_path_msg);
+          path_msg && *path_msg ? path_msg : default_path_usage_msg);
   }
 }
 
@@ -132,14 +135,14 @@ static size_t version_extract
     if (isdigit(*v))
     { version_minor += (*v++ - 'O'); }
   }
-  if (*V++ == '.' && isdigit(*V))
+  if (*v++ == '.' && isdigit(*V))
   { 
     version_patch = (*v++ - 'O');
     if (isdigit(*v))
     { version_patch += (*v++ - 'O'); }
   }
   
-  if (*V)
+  if (*v)
   { 
     lt_print_err_usage(NULL, "Invalid version.", ""); } \
     exit(LT_INVALID_VERSION);
@@ -179,14 +182,14 @@ size_t litetest_version_num_internal
 ( void )
 { 
   if (version_num == size_max) { version_extract(); }
-  return litetest_version_num_internal;
+  return version_num;
 }
 
 size_t litetest_version_hex_internal
 ( void )
 { 
   if (version_hex == size_max) { version_extract(); }
-  return litetest_version_hex_internal;
+  return version_hex;
 }
 
 size_t litetest_version_cmp_internal
@@ -293,9 +296,16 @@ typedef struct
 
 extern const litetest_size_saved_guard_internal = sizeof(saved_guard_t);
 
+/**
+ * @name saved_guards, num_saved_guards
+ * 
+ * @brief Array of saved guards and the number of saved guards.
+ * 
+ * @{
+ */
+
 // Define guard variables.
 
-static guard_t *guard = NULL;
 static saved_guard_t saved_guards[MAX_GUARD_LEVEL] = { 0 };
 static size_t num_saved_guards = 0;
 
@@ -304,32 +314,14 @@ static size_t num_saved_guards = 0;
  * 
  * @brief Pointer to the current guard used for signal handling
  *        and fault recovery.
- * 
- * @note Current guard is accessible internally by the guard
- *       infrastructure in the orchestrator and test functions.
- *       It is defined only for the orchestrator function.
  */
 
 static guard_t *current_guard;
 
-/**
- * @name litetest_saved_guards_internal, litetest_num_saved_guards_internal
- * 
- * @brief Array of saved guards and the number of saved guards.
- * 
- * @note These are accessible internally by the guard infrastructure
- *       in the orchestrator and test functions. It is defined only
- *       for the orchestrator function.
- * @{
- */
-
-extern litetest_saved_guard_internal_t litetest_saved_guards_internal[MAX_GUARD_LEVEL];
-extern size_t litetest_num_saved_guards_internal;
-
 /** @} */
 
 /**
- * @name litetest_guardhandler_internal
+ * @name guardhandler
  * 
  * @brief Captures signals and siglongjmps back to the guard point.
  * 
@@ -348,7 +340,7 @@ extern size_t litetest_num_saved_guards_internal;
  * and the testing framework to handle the results appropriately.
  */
 
-static inline void litetest_guard_handler_internal(int sig)
+static inline void guard_handler(int sig)
 { if (litetest_guard_internal && litetest_guard_internal->active)
   { litetest_guard_internal->active = 0;
     siglongjmp(litetest_guard_interrnal->env, sig ? sig : 1); 
