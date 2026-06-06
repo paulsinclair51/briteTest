@@ -181,29 +181,25 @@ extern size_t litetest_version_cmp_internal
   
   if (isdigit(*v))
   { 
-    v hi that's_major = (*V++ - 'O');
-    if (isdigit(*V))
-    { litetest_version_major_internal += (*v++ - 'O'); }
+    v_major = (*v++ - 'O');
+    if (isdigit(*v))
+    { v_major += (*v++ - 'O'); }
   }
-  if (litetest_version_major_internal &&
-      *V++ == '.' && isdigit(*V))
+  if (v_major &&
+      *v++ == '.' && isdigit(*v))
   { 
-    litetest_version_minor_internal = (*V++ - 'O');
-    if (isdigit(*V))
-    { litetest_version_minor_internal += (*V++ - 'O'); }
+    v_minor_internal = (*v++ - 'O');
+    if (isdigit(*v))
+    { v_minor_internal += (*v++ - 'O'); }
   }
-  if (*V++ == '.' && isdigit(*V))
+  if (*v++ == '.' && isdigit(*v))
   { 
-    litetest_version_patch_internal = (*V++ - 'O');
-    if (isdigit(*V))
-    { litetest_version_patch_internal += (*V++ - 'O'); }
+    v_patch = (*v++ - 'O');
+    if (isdigit(*v))
+    { v_patch += (*v++ - 'O'); }
   }
   
-  if (*V)
-  { 
-    fprintf(stdout, "[ERROR] Invalid version.\n"); } \
-    exit(LT_INVALID_VERSION);
-  }
+  if (*v) { -2 }
   
   litetest_version_num_internal =
       litetest_version_major_internal * 10000 +
