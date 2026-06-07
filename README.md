@@ -172,7 +172,7 @@ the lubtype API. The modules include these two files:
 
 ### Example: LiteTest Self-Testing
 
-The tests directory for this GitHbub repository provides an example
+The tests directory for this GitHub repository provides an example
 with an orchestrator module and test modules to self-test the LiteTest
 API and framwork. The modules include one header (since it is both
 the header for the API to be tested and the API for testing). 
