@@ -95,7 +95,7 @@ Note:
 The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
 otherwise it is required.
 
-### Faults
+#### Faults
   
 These macros provide multi-level signal handling to capture faults
 (`SIGSEGV`, `SIGABRT`, `SIGBUS`). Faults are counted without aborting
@@ -103,14 +103,14 @@ execution, allowing the test suite to continue and produce a complete
 and produce a complete test report with fault counts and messages for
 each fault.
 
-### Parallel Execution
+#### Parallel Execution
 
 Parallel execution of the test/assert macros is enabled/disabled by the
 `maxparallel` parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_TEST
 macros. Up to `maxparallel` test/assert macros are started and when one
 finishes another is started.
 
-###  Parallel Group Execution
+####  Parallel Group Execution
 
 Test/assert macros can run in parallel as a group (that is, they
 are not started until they can all start without exceeding `maxparallel`).
@@ -121,7 +121,7 @@ A group is bracketed using the followug macros:
 
 A group cannot be nested in a group within a test function.
 
-### Test Isolation
+#### Test Isolation
 
 For non-grouped test/assert macro, the `isolation` parameter 
 indicates whether the macro runs in the same thread as the calling
