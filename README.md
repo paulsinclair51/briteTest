@@ -54,43 +54,43 @@ the orchestrator function in one module and each test function in its own module
 
 ### Orchestrator (`main`) Macros
 
-- LT_DECLARE_ORCHESTRATOR(funcname)[;]
-- LT_INIT_ORCHESTRATOR(funcname, testsuitename, [maxparallel]);
-- LT_PARSE_ARGS(maxargs, ["defaultreportfilename"]);
-- LT_OPEN_REPORT("reporttitle");
+- `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
+- `LT_INIT_ORCHESTRATOR(funcname, testsuitename, [maxparallel]);`
+- `LT_PARSE_ARGS(maxargs, ["defaultreportfilename"]);`
+- `LT_OPEN_REPORT(["reporttitle"]);`
 - test and assert macros
-- LT_WRITE_RESULT([t], "categoryname");
-- LT_CLOSE_REPORT("notes");
-- LT_EXIT;
+- `LT_WRITE_RESULT([t], "categoryname");`
+- `LT_CLOSE_REPORT("notes");`
+- `LT_EXIT;`
 
 Note:
-- funcname must be main.
-- maxargs must be 2 or greater. The first arg is the executable name.
+- `funcname` must be main.
+- `maxargs` must be 2 or greater. The first arg is the executable name.
   The second optional arg is PATH. Additional args are for customization
   and must be parsed by customizing code added to the function.
-- t is a test or assert macro.
+- `t` is a test or assert macro.
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, it is omitted if is it followed by a definition in {}.
 
 ### Test Function Macros
 
 - LT_DECLARE_TEST(funcname)[;]
-- LT_INIT_TEST(testname, maxparallel);
+- LT_INIT_TEST(testname, [maxparallel]);
 - test and assert macros
 - LT_RETURN;
 
 Note:
-- funcname must not be main and must be same for the first two macros when
+- `funcname` must not be main and must be same for the first two macros when
   defining a test function.
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, it is omitted if it is followed by a definition in {}.
 
 ### Test and Assert Macros
 
-- LT_TEST(funcname, isolation)[;]
-- LT_ASSERT(assertexpr, isolation)[;]
-- LT_ASSERT_FAIL(isolation)[;]
-- LT_ASSERT_FAULT(isolation)[;]
+- LT_TEST(funcname, [isolation])[;]
+- LT_ASSERT(assertexpr, [isolation])[;]
+- LT_ASSERT_FAIL([isolation])[;]
+- LT_ASSERT_FAULT([isolation])[;]
 
 The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
 otherwise it is required.
@@ -115,7 +115,7 @@ Test/assert macros can run in parallel as a group (that is, they
 are not started until they can all start without exceeding `maxparallel`).
 A group is bracketed using the followug macros:
 
-- LT_BEGIN_GROUP(groupname, isolation)
+- LT_BEGIN_GROUP(groupname, [isolation])
 - LT_END_GROUP(groupname);
 
 ### Test Isolation
@@ -126,15 +126,19 @@ function (no parallelism), a separate thread, or a separate process:
 
    Isolation: NONE, THREAD, PROCESS
 
+Default for isolation is NONE if not in group; otherwise, THREAD.
+
 For grouped test/assert macros, the combination of the
 `isolation` parameter for the LT_BEGIN_GROUP and for the
 test/assert macro specifies whether the macro runs as
-a threads of the calling function, as threads in a separate
+a thread of the calling function, as threads in a separate
 process, or each in its own process:
 
 | LT_BEGIN_GROUP | Test/Assert | Isolation     |
 |----------------|-------------|---------------|
-| THREAD         | THREAD      | caller thread |
+| NONE           | THREAD      | thread        |
+| NONE           | PROCESS     | process       |
+| THREAD         | THREAD      | thread        |
 | THREAD         | PROCESS     | process       |
 | PROCESS        | THREAD      | group thread  |
 | PROCESS        | PROCESS     | process       |
