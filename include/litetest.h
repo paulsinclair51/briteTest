@@ -1,14 +1,24 @@
-I/**
+ /**
  * @file /paulsinclair51/include/litetest.h
  * 
- * @brief LiteTest is a lightweight, portable, robust, and
- * customizable testing API and framework.
+ * @brief LiteTest is a lightweight C/C++ API and testing framework suitable for
+ * embedding into other C/C++ projects. The API and framework are intentionally
+ * minimal while still providing flexible and comprehensive testing capabilities.
  *
- * This header is included by test modules and a test orchestrator for
- * testing, e.g., a feature, API, or a project implementation. It provides
- * declarations, definitions (other than non-inline fumction definition), and the
- * complete Doxygen documentation for LiteTest (see README.md in the
- * root directory for an overview of LiteTest).
+ * This header is included by orchestrator and test modules for testing, e.g.,
+ * a feature, API, or a project implementation. It provides declarations, 
+ * definitions (other than non-inline function definitions provided by litetest.c
+ * in the repository src directory), and the complete Doxygen documentation for
+ * LiteTest. See README.md in the repository root directory for an overview of
+ * LiteTest.
+ *
+ * @note LiteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility and a
+ * C99-compliant compiler. Linux, macOS, and the BSD family natively meet these
+ * requirements. Windows requires a POSIX compatibility layer such as Cygwin,
+ * MSYS2, or WSL.
+ *
+ * @note LiteTest has been exercised in a POSIX environment; however, users must
+ * confirm correct behavior in their own environment.
  * 
  * @copyright Copyright (c) 2026 paulsinclair51
  * SPDX-License-Identifier: MIT
@@ -16,7 +26,7 @@ I/**
  */
 
 /**
- * @defgroup Version
+ * @section VersonMacro Version Macro
  *
  * @name LT_VERSION
  *
@@ -25,7 +35,7 @@ I/**
  *
  * M, m, and p are 1 or 2 digits (e.g., O, 00, 1, 01, 24):
  +
- * - M: Major version for incompatible API changes (>= 1).
+ * - M: Major version for incompatible API changes.
  * - m: Minor version for backward-compatible additions.
  * - p: Patch version for bug fixes or internal improvements.
  *
@@ -37,45 +47,137 @@ I/**
 #define LT_VERSION "1.0.0"
 
 /**
- * @section Overview
+ * @section ChangeHistory Change History
+ *
+ * 2026/09/27 Initial version "1.0.0.".
+ **/
+
+/**
+ * @section Overview Overview
  *
  * @note In the following, testing the LiteTest itself is used as an example of
  *       using the LiteTest API and framework with test modules test_guards_1.c,
  *       test_guards_2.c, and test_orchestrator.c, and test orchestrator
  *       test_litetest.c in the repository tests directory.
+ *
+ * @subsection KeyPoints Key Points
+ *
+ * 1. A test executable is built from:
+ *
+ *   - An orchestrator (`main`) function and optional test functions
+ *     organized into one or more modules,
+ *
+ *   - `litetest.h`, and `litetest.c`, `unistd.h`
+ *
+ *   - Modules and include files from the feature/project/API under test.
+ *   
+ * 2. The executable produces a report grouped by category, including
+ *    pass/fail/fault counts per category and totals across all categories.
+ *    Fail and fault messages are appended to the report.
+ *
+ * 3. The orchestrator and test functions may reside in one module
+ *    or multiple modules. Recommended: put the orchestrator function
+ *    in one module and each test function in its own module.
+ *
+ * 4. The test framework requires `unistd.h` for POSIX fork and signal capabilities.
  * 
- * The LiteTest API includes:
+ * @subsection OrchestratorMacros Orchestrator Function Macros
  *
- * 1. Macros with a multi-level signal-guard mechanism
- *    to capture faults:
- *    - LT_TEST(func)
- *    - LT_ASSERT(assert_expr)
- *    - LT_ASSERT_FAIL
- *    - LT_ASSERT_FAULT
+ * Macros for use in the orchestrator (main) function:
  *
- * 2. Macros for use in the test orchestrator (main) function:
- *    - LT_DECLARE_ORCHESTRATOR(funcname)[;]
- *    - LT_INIT_ORCHESTRATOR(funcname);
- *.   - LT_PARSE_ARGS("defaultreportname");
- *    - LT_OPEN_REPORT("reporttitle");
- *    - LT_WRITE_RESULT([t], "categoryname");
- *    - LT_CLOSE_REPORT("notes");
- *    - LT_EXIT(funcname);
+ * - LT_DECLARE_ORCHESTRATOR(funcname)[;]
+ * - LT_INIT_ORCHESTRATOR(funcname, testsuitename, maxparallel);
+ * - LT_PARSE_ARGS(maxargs, "defaultreportfilename");
+ * - LT_OPEN_REPORT("reporttitle");
+ * - test and assert macros
+ * - LT_WRITE_RESULT([t], "categoryname");
+ * - LT_CLOSE_REPORT("notes");
+ * - LT_EXIT;
  *
- *    funcname must be main.
+ * @note funcname must be main.
+ * @note maxargs must be 2 or greater. The first arg is the executable name.
+ *       The second optional arg is PATH. Additional args are for customization
+ *       and must be parsed by customizing code added to the function.
+ * @note t is a test or assert macro.
+ * @note For the first macro, a semicolon is required for a forward declaration;
+ *       otherwise, it is omitted if is it followed by a definition in {}.
  *
- * 2. Macros for use in a test function:
- *    - LT_DECLARE_TEST(funcname)[;]
- *    - LT_INIT_TEST(funcname);
- *    - LT_RETURN(funcnamm);
+ * @subsection TestFunctionMacros Test Function Macros
  *
- *    funcname must not be main and must be ssme for all three macros when
- *    defining a test function.
+ * Macros for use in a test function:
  *
- * 3. Miscellanous functions, macros, typedefs, and variables. For example, lt_executablename,
- *    lt_result_t, lt_dirpath, and LT_MAX_PATH_LEN.
+ * - LT_DECLARE_TEST(funcname)[;]
+ * - LT_INIT_TEST(funcname);
+ * - LT_RETURN;
+ *
+ * @note funcname must not be main and must be same for the first two macros when
+ *       defining a test function.
+ * @note For the first macro, a semicolon is required for a forward declaration;
+ *       otherwise, it is omitted if it is followed by a definition in {}.
+ *
+ * @subsection TestAndAssertMacros Test and Assert Macros
+ *
+ * These macros provide multi-level signal handling to capture faults
+ * (`SIGSEGV`, `SIGABRT`, `SIGBUS`). Faults are counted without aborting
+ * execution, allowing the test suite to continue and produce a complete
+ * test report with fault counts and messages for each fault.
+ *
+ * - LT_TEST(funcname, isolation)[;]
+ * - LT_ASSERT(assertexpr, isolation)[;]
+ * - LT_ASSERT_FAIL(isolation)[;]
+ * - LT_ASSERT_FAULT(isolation)[;]
+ *
+ * @note The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
+ *       otherwise it is required.
+ *
+ * @subsubsection ParallelExecution Parallel Execution
+ *
+ * Parallel execution of the test/assert macros is enabled/disabled by the
+ * `maxparallel` parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_TEST
+ * macros. Up to `maxparallel` test/assert macros are started and when one
+ * finishes another is started.
+ *
+ * @subsubsection ParallelGroupExecution Parallel Group Execution
+ *
+ * Test/assert macros can run in parallel as a group (that is, they
+ * are not started until they can all start without exceeding `maxparallel`).
+ * A group is bracketed using the followug macros:
+ *
+ * - LT_BEGIN_GROUP(groupname, isolation)
+ * - LT_END_GROUP(groupname);
+ *
+ * @subsubsection TextIsolation Test Isolation
+ *
+ * For non-grouped test/assert macro, the `isolation` parameter 
+ * indicates whether the macro runs in the same thread as the calling
+ * function (no parallelism), a separate thread, or a separate process:
+ *
+ *     Isolation: NONE, THREAD, PROCESS
+ *
+ * For grouped test/assert macros, the combination of the
+ * isolation` parameter for the LT_BEGIN_GROUP and for the
+ * test/assert macro specifies whether the macro runs as
+ * a threads of the calling function, as threads in a separate
+ * process, or each in its own process:
  * 
- * @note This header requires at minimum POSIX.1-2001.
+ *   | LT_BEGIN_GROUP | Test/Assert | Isolation     |
+ *   |----------------|-------------|---------------|
+ *   | THREAD         | THREAD      | caller thread |
+ *   | THREAD         | PROCESS     | process       |
+ *   | PROCESS        | THREAD      | group thread  |
+ *   | PROCESS        | PROCESS     | process       |
+ *
+ * @note Other combinations are invalid.
+ *
+ * @subsection Miscellaneous
+ * 
+ * Miscellaneous functions, macros, typedefs, and variables,
+ * for example:
+ *
+ * - lt_executablename
+ * - lt_result_t
+ * - lt_dirpath
+ * - LT_MAX_PATH_LEN
  */
 
 /**
