@@ -15,10 +15,10 @@
 
 LT_DECLARE_ORCHESTRATOR(main)
 { 
-  LT_PARSE_ARGS ("LiteTest_test_report.txt");
-
   LT_INIT_ORCHESTRATOR(litetest, 1);
   
+  LT_PARSE_ARGS("LiteTest_test_report.txt");
+
   LT_OPEN_REPORT("LiteTest");
  
   LT_WRITE_RESULT(LT_TEST(test_orchestrator), "Orchestrator Tests");
