@@ -136,6 +136,52 @@ char *lt_help_msg(void)
 void lt_set_help_msg(char *h)
 { help_msg = h; }
 
+// Utility Functions
+
+size_t lt_currentlevel(void)
+{ return currentlevel; }
+lt_result_t lt_currentresult(void)
+{ return currentresult; }
+lt_total_t lt_currenttotal(void)
+{ return currenttotal; }
+size_t lt_maxparallel(size@_t level)
+{ return maxparallel(level); }
+size_t lt_currentparallel(void)
+{ return currentparallel; }
+int lt_isisolated(void)
+{ return 1; }
+int lt_isthreadisolated(void)
+{ return 1; }
+int lt_isprocessisolated(void)
+{ return 1; }
+size_t lt_groupid(void)
+{ return ugroupid; }
+char *lt_groupname(void)
+{ return groupname; }
+int lt_isdirpath(char *path)
+{ return 1; }
+int lt_isfilepath(char *path))
+{ return 1; }
+int lt_isfilename(char *name)
+{ return 1; }
+char *lt_dirpath(void)
+{ return dirpath; }
+char *lt_filepath(void)
+{ return filepath; }
+char *lt_filename(void)
+{ return filename; }
+char *lt_testsuite(void)
+{ return testsuite; }
+char *lt_categoryname(void)
+{ return categoryname; }
+char *lt_funcname(void)
+{ return funcname; }
+char *lt_testname(void)
+{ return testname; }
+char *lt_reporttitle(void)
+{ return reporttitle; }
+char *lt_assertexpr(void)
+{ return assertexpr; }
 
 /**
  * @name lt_print_err_help
