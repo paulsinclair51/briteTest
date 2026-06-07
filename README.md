@@ -56,7 +56,7 @@ the orchestrator function in one module and each test function in its own module
 
 - LT_DECLARE_ORCHESTRATOR(funcname)[;]
 - LT_INIT_ORCHESTRATOR(funcname, testsuitename, maxparallel);
-- LT_PARSE_ARGS("defaultreportfilename", "tempfilename");
+- LT_PARSE_ARGS(maxargs, "defaultreportfilename");
 - LT_OPEN_REPORT("reporttitle");
 - test and assert macros
 - LT_WRITE_RESULT([t], "categoryname");
@@ -65,6 +65,9 @@ the orchestrator function in one module and each test function in its own module
 
 Note:
 - funcname must be main.
+- maxargs must be 2 or greater. The first arg is the executable name.
+  The second optional arg is PATH. Additional args are for customization
+  and must be parsed by customizing code added to the function.
 - t is a test or assert macro.
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, it is omitted if is it followed by a definition in {}.
@@ -77,7 +80,7 @@ Note:
 - LT_RETURN;
 
 Note:
-- funcname must not be main and must be ssme for the first two macros when
+- funcname must not be main and must be same for the first two macros when
   defining a test function.
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, it is omitted if it is followed by a definition in {}.
