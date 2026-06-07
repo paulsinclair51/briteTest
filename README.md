@@ -60,14 +60,14 @@ the orchestrator function in one module and each test function in its own module
 - `LT_OPEN_REPORT(["reporttitle"]);`
 - test and assert macros
 - `LT_WRITE_RESULT([t], "categoryname");`
-- `LT_CLOSE_REPORT("notes");`
+- `LT_CLOSE_REPORT(["notes"]);`
 - `LT_EXIT;`
 
 Note:
 - `funcname` must be main.
 - `maxargs` must be 2 or greater. The first arg is the executable name.
-  The second optional arg is PATH. Additional args are for customization
-  and must be parsed by customizing code added to the function.
+  The second optional arg is `PATH`. Additional args are for customization
+  and must be parsed by custom code added to the function.
 - `t` is a test or assert macro.
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, it is omitted if is it followed by a definition in {}.
@@ -119,6 +119,8 @@ A group is bracketed using the followug macros:
 - `LT_BEGIN_GROUP(groupname, [isolation])`
 - `LT_END_GROUP(groupname);`
 
+A group cannot be nested in a group within a test function.
+
 ### Test Isolation
 
 For non-grouped test/assert macro, the `isolation` parameter 
@@ -134,13 +136,18 @@ with a default of 1 (thread).
 
 Other combinations are invalid.
 
-### Utility Functions
+### Miscellaneous
 
+Miscellaneous functions, macros, typedefs, and variables.
 Examples include:
 
+- `lt_executablename`
+- `lt_result_t`
+- `lt_dirpath`
+- `LT_MAX_PATH_LEN`
 - `lt_currentlevel`
 - `lt_currentresult`
-- `lt_maxparallel(level)`
+- `lt_maxparallel`
 - `lt_isisolated`
 - `lt_groupname`
 - `lt_iswritedirpath`
