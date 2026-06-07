@@ -135,14 +135,11 @@ Examples include:
 - lt_isprocessisolated
 - lt_groupid
 - lt_groupname
-- lt_ispathdir
-- lt_ispathfile
-- lt_ispathfilename
+- lt_iswritedirpath
+- lt_isreadfilepath
 - lt_dirpath
 - lt_filepath
 - lt_filename
-- lt_tempfilepath
-- lt_tempfilename
 - lt_testsuite
 - lt_categoryname
 - lt_funcname
