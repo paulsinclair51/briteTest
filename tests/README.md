@@ -8,17 +8,17 @@ For license details, see `../LICENSE`.
 
 ## `test_litetest.c`
 
-Orchestrator code for running liteTest tests implemented in `test_orchestrator.c`,
+Orchestrator (main) code for running liteTest tests implemented in `test_orchestrator.c`,
 `test_guard1.c` and `test_guard2.c`.
 
 ## `test_orchestrator.c`
 
-Code for testing orchestrator API functionality.
+Tests for the orchestrator API functionality.
 
 ## `test_guard1.c`
 
-Code for testing 1st set of tests for the LiteTest guard framework functionality.
+Part 1 tests for the LiteTest guard framework functionality.
 
 ## `test_guard2.c`
 
-Code for testing 2nd set of tests for the LiteTest guard framework functionality.
+Part 2 test for the LiteTest guard framework functionality.
