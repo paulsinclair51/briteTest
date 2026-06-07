@@ -1,7 +1,7 @@
 /**
  * @file paulsinclair51/LiteTest/tests/test_litetest.c
  *
- * @brief Test guard related functions and macros declared in
+ * @brief Test the LiteTest API and framework declared in
  *        /paulsinclair51/LiteTest/include/litetest.h (e.g.,
  *        LT_OPEN_REPORT, LT_TEST, LT_WRITE_RESULT).
  *
@@ -28,5 +28,5 @@ LT_DECLARE_ORCHESTRATOR(main)
 
   LT_CLOSE_REPORT;
 
-  LT_RETURN_STATUS;
+  LT_EXIT;
 }
