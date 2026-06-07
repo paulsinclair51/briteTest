@@ -45,7 +45,7 @@ I/**
  * test_litetest.c in the repository tests directory.
  * 
  * The LiteTest API includes:
- * 
+ * ,,.
  * 1. Macros with a multi-level signal-guard mechanism
  *    to capture faults:
  *    - LT_TEST(func)
@@ -733,16 +733,31 @@ LT_DECLARE_ORCHESTRATOR(main)
  *
  * @example
  * @code
- LT_INIT_ORCHESTRATOR(LT_TEST(main);
+ LT_INIT_ORCHESTRATOR(main);
  * @endcode
  */
 
+void litetest_init_orchestrator_internal
+( char *funcname,
+  char *func, char *file, int line,
+  litetest_state_internal_t *const state,
+  litetest_lcl_state_internal_t *const lcl_state
+);
+
 #define LT_INIT_ORCHESTRATOR(funcname) \
-    litetest_state_internal_t litetest_state_internal; \
-    litetest_lcl_state_internal_t litetest_lcl_state_internal; \
+  typedef int lt_use_LT_INIT_ORCHESTRATOR_once; \
+  litetest_state_internal_t litetest_state_internal; \
+  litetest_lcl_state_internal_t litetest_lcl_state_internal; \
+  do \
+  { \
     litetest_init_orchestrator_internal \
-        (&litetest_state_internal, & litetest_lcl_state_internal, \
-           __func__, #funcname, __src__, __line__);
+    ( #funcname, \
+      __func__, __FILE__, __LINE__, \
+      &litetest_state_internal, \
+      &litetest_lcl_state_internal \
+      ); \
+  } \
+  while (0)
 
 /**
  * @name OPEN_REPORT
@@ -768,22 +783,23 @@ LT_DECLARE_ORCHESTRATOR(main)
  * @{
  */
 
-int litetest_open_report_internal
-( litetest_state_internal_t *const state, const char *const report_title );
+void litetest_open_report_internal
+( const char *const report_title,
+  char *func, char *file, int line,
+  litetest_state_internal_t *const state
+);
 
-#define OPEN_REPORT(reporttitle) \
-    do \
-    { \
-      if (!strcmp(__func__, "main")) \
-      { \
-        lt_print_err_help("LT_EXIT is not in the orchestrator "
-                          "(main) function\n", 0); \
-        exit(LT_MACRO_MISPLACED); \
-      } \
-      int rc = litetest_open_report_internal
-                 (__func__, #funcname, &litetest_state_internal, (reporttitle)); \
-      if (rc) exit(rc); \
-    } while (0)
+#define LT_OPEN_REPORT(reporttitle) \
+  typedef int lt_use_LT_OPEN_REPORT_once; \
+  do \
+  { \
+    litetest_open_report_internal \
+    ( (reporttitle), \
+      __func__, __FILE__, __LINE__, \
+      &litetest_state_internal \
+    ); \
+  } \
+  while (0)
 
 /**
  * @def LT_WRITE_RESULT
@@ -825,6 +841,23 @@ int litetest_open_report_internal
  * @endcode
  */
 
+void litetest_write_result_internal
+( const char *const label,
+  char *func, char *file, int line,
+  litetest_lcl_state_internal_t *const lcl_state
+);
+
+#define LT_WRITE_RESULT(t, label) \
+  do \
+  { \
+    litetest_write_result_internal \
+    ( (label),
+      __func__, __FILE__, __LINE__, \
+      &litetest_state_internal \
+    ); \
+  } \
+  while (0)
+
 #define LT_WRITE_RESULT(t, label) \
   do \
   { t; \
@@ -832,7 +865,7 @@ int litetest_open_report_internal
     char label_buf[96]; \
     const char *_label = categorylabel_with_inject_tag( \
              (label), result, inject, label_buf, sizeof(label_buf)); \
-    litetest%_write_result_internal(report, categoryid, categorylabel, result); \
+    litetest_write_result_internal(report, categoryid, categorylabel, result); \
     total = (lt_result_t) \
 		    { total.pass + result.pass, \
 		      total.fail + result.fail, \
@@ -841,8 +874,9 @@ int litetest_open_report_internal
 			  total.injected_fail + result.injected_fail, \
 			  total.injected_fault + result.injected_fault \
 		   	}; \
-	if (result.fault == SIZE_MAX) ++catevory_faults; \
-  } while (0)
+	if (result.fault == SIZE_MAX) ++category_faults; \
+  } \
+  while (0)
 
 /**
  * @name LT_CLOSE_REPORT
@@ -870,27 +904,28 @@ int litetest_open_report_internal
  * @{
  */
 
-int litetest_close_report_internal
-( litetest_state_internal_t *const state, const char *const notes );
+void litetest_close_report_internal
+( const char *const notes,
+  char *func, char *file, int line,
+  litetest_state_internal_t *const state
+);
 
 #define LT_CLOSE_REPORT(notes) \
-    do \
-    { \
-      if (!strcmp(__func__, "main")) \
-      { \
-        fprintf(stdout, "[ERROR] LT_CLOSE_REPORT is not in the "
-                        "orchestrator (main) function.\n"); \
-        exit(LT_MACRO_MISPLACED); \
-      } \
-      int rc = litetest_close_report_internal
-                 (__func__, #funcname, litetest_state_internal, (notes)); \
-      if (rc) exit(rc) \
-    } while (0) \
+  typedef int lt_use_LT_CLOSE_REPORT_once; \
+  do \
+  { \
+    litetest_ lose_report_internal \
+    ( (notes), \
+      __func__, __FILE__, __LINE__, \
+      &litetest_state_internal \
+    ); \
+  } \
+  while (0)
 
 /** @} */
 
 /**
- * @name LT_EXIT
+ * @name LT_EXIT_ORCHESTRATOR
  * 
  * @brief Exit the orchestrator with exit code (0 if successful and
  *        no fails or faults).
@@ -904,9 +939,27 @@ int litetest_close_report_internal
  *
  * @example
  * @code
- LT_EXIT(main);
+ LT_EXIT_ORCHESTRATOR(main);
  * @endcode
  */
+
+void litetest_exit_orchestrator_internal
+( const char *const funcname,
+  char *func, char *file, int line,
+  litetest_state_internal_t *const state
+);
+
+#define LT_EXIT_ORCHESTRATOR(notes) \
+  typedef int lt_use_LT_CLOSE_REPORT_once; \
+  do \
+  { \
+    litetest_ lose_report_internal \
+    ( (notes), \
+      __func__, __FILE__, __LINE__, \
+      &litetest_state_internal \
+    ); \
+  } \
+  while (0)
 
 #define LT_EXIT(funcname) \
     do \
