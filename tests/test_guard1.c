@@ -1,9 +1,9 @@
 /**
  * @file paulsinclair51/LiteTest/tests/guard1_tests.c
  *
- * @brief Test guard related functions and macros declared in
- *        /paulsinclair51/LiteTest/include/litetest.h (e.g.,
- *        LT_INIT_TEST, LT_ASSERT).
+ * @brief Part 1 of test guard related functions and macros declared
+ *        in /paulsinclair51/LiteTest/include/litetest.h (e.g.,
+ *        LT_ASSERT, LT_ASSERT_FAIL).
  *
  * @copyright Copyright (c) 2026 paulsinclair51
  * SPDX-License-Identifier: MIT
