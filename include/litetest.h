@@ -557,7 +557,7 @@ void lt_current_time(char *current_time, size_t size);
  */
 
 /**
- * @name LT_TESTS
+ * @name LT_TEST
  * 
  * @brief A macro to run a function with a guard.
  *
@@ -629,25 +629,26 @@ void lt_current_time(char *current_time, size_t size);
 
 #define TEST(assert_expr) \
   do \
-   { internal_guard_t test_guard = { 0 }; \
-     test_guard.handler = guard_handler_internal; \
-     install_guard_internal(&test_guard); \
-	   if (sigsetjmp(test_guard.env, 1) == 0) \
+   { litetest_guard_internal_t test_guard = { 0 }; \
+     test_guard.handler = litetest_guard_handler_internal; \
+     litetest_install_guard_internal(&test_guard); \
+     if (sigsetjmp(test_guard.env, 1) == 0) \
      { test_guard.active = 1; \
-	     if (assert_expr) { ++test_result.pass; } \
-	     else \
-	     { ++test_result.fail; \
-		     fprintf(stderr, "Test fail: %s (%s:%d)\n", \
-                         #assert_expr, __FILE__, __LINE__); \
-	     } \
+	if (assert_expr)
+       { ++test_result.pass; } \
+	else \
+	{ ++test_result.fail; \
+         litetest_print_result_internal \
+           (1, #assert_expr, __FILE__, __LINE__); \
+       } \
        test_guard.active = 0; \
-	   } \
-	   else \
-	   { ++test_result.fault; \
-	     fprintf(stderr, "Test fault: %s (%s:%d)\n", \
-                       #assert_expr, __FILE__, __LINE__); \
-	   } \
-    restore_guard_internal(); \
+     } \
+     else \
+     { ++test_result.fault; \
+	litetest_print_result_internal \
+           (-1, #assert_expr, __FILE__, __LINE__); \
+     } \
+     litetest_restore_guard_internal(); \
    } while (0)
 
 /**
