@@ -70,7 +70,7 @@ Note:
   and must be parsed by custom code added to the function.
 - `t` is a test or assert macro.
 - For the first macro, a semicolon is required for a forward declaration;
-  otherwise, it is omitted if is it followed by a definition in {}.
+  otherwise, it is omitted if it's followed by a definition in {}.
 
 ### Test Function Macros
 
