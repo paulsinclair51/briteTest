@@ -401,20 +401,20 @@ int litetest_version_cmp_internal
  */
 
 /**
- * @name LT_MAX_PATH_LEN, LT_MAX_FILENAME_LEN, LT_MAX_GUARD_LEVEL
+ * @name LT_MAX_PATH_LEN, LT_MAX_FILENAME_LEN, LT_MAX_LEVEL
  * 
  * @brief Maximum values for path length, filename length,
  *        and guard levels.
  *
  * @note The limit of 32 levels in unlikely to be
- *       eceeded if there are 2 or more TEST/ASSERT* macros at each level.
+ *       exceeded if there are 2 or more TEST/ASSERT* macros at each level.
  *       It is expected that a level will generally have 2 or
  *       more per level.
  */
 
 #define LT_MAX_PATH_LEN      ((size_T)4096)
 #define LT_MAX_FILENAME_LEN  ((size_T)255)
-#define LT_MAX_GUARD_LEVEL   ((size_T)32)
+#define LT_MAX_LEVEL         ((size_T)32)
 
 /**
  * @section result_t Result Type
@@ -440,11 +440,17 @@ typedef struct
 /**
  * @name lt_state_t
  *
- * @brief Type for maintaining the state of the LiteTest framework.
+ * @brief Type for maintaining the state of the orchestrator (main)
+ *        or a test function.
  */
 
 typedef struct
-{ size_t current_guard_level;
+{ size_t id;
+  char *funcname;
+  size_t current_level;
+  size_t groupid;
+  char *groupname;
+  int isolation; // 0 none, 1 thread, 2 process.
   size_t category_id;
   size_t num_results_merged;
   size_t pass;
@@ -457,6 +463,9 @@ typedef struct
   size_t total_fault;
   size_t total_injected_fail;
   size_t total_injected_fault;
+  lt_state_t parent;
+  lt_state_t prev;
+  lt_state_t next;
 } lt_state_t;
 
 void print_err_usage(const char *err_msg);
@@ -480,25 +489,41 @@ void lt_set_usage_msgg(char *u);
 char *lt_help_msg(void);
 void lt_set_help_msg(char *h);
 
-int lt_isdirwritable(char *dirpath);
+// Utility Functions
 
-/**
- * @name  lt_isguardactive
- * @brief Check if the current guard is active.
- * 
- * @return 1 if the current guard is active
- *         0 if current guard is not active.
- *        -1 if there is no current guard.
- */
+size_t lt_currentlevel(void);
+lt_result_t lt_currentresult(void);
+lt_total_t lt_currenttotal(void);
+size_t lt_maxparallel(size@_t level);
+size_t lt_currentparallel(void);}
+int lt_isisolated(void);
+int lt_isthreadisolated(void);
+int lt_isprocessisolated(void);
+size_t lt_groupid(void);
+char *lt_groupname(void);
 
-static inline int lt_isguardactive(void)
-  { return litetest_guard_internal ? litetest_guard_internal->active : -1; }
+char *lt_testsuite(void);
+char *lt_reporttitle(void);
+size_t lt_categoryid(void);
+char *lt_categoryname(void);
+char *lt_funcname(void);
+char *lt_testname(void)
+char *lt_assertexpr(void);
 
-static inline char lt_categoryid(void)
-{ return litetest_categoryid_internal; }
+char *lt_dirpath(void);
+char *lt_filepath(void);
+char *lt_filename(void);
 
-static inline lt_result_t currenttotal(void)
-{ return litetest_total_internal; }
+// 1 true, 0 false
+int lt_isfilename(char *name);
+
+// 1 true, 0 false, -1 not a directory path
+int lt_isreaddirpath(char *path);
+int lt_iswritedirpath(char *path);
+
+// 1 true, 0 false, -1 not a file path
+int lt_isreadfilepath(char *path);
+int lt_iswritefilepath(char *path);
 
 /**
  * @name lt_current_time
