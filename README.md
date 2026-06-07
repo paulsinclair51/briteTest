@@ -55,8 +55,8 @@ the orchestrator function in one module and each test function in its own module
 ### Orchestrator (`main`) Macros
 
 - LT_DECLARE_ORCHESTRATOR(funcname)[;]
-- LT_INIT_ORCHESTRATOR(funcname, testsuitename, maxparallel);
-- LT_PARSE_ARGS(maxargs, "defaultreportfilename");
+- LT_INIT_ORCHESTRATOR(funcname, testsuitename, [maxparallel]);
+- LT_PARSE_ARGS(maxargs, \["defaultreportfilename"\]);
 - LT_OPEN_REPORT("reporttitle");
 - test and assert macros
 - LT_WRITE_RESULT([t], "categoryname");
