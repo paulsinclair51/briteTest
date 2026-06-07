@@ -5,20 +5,20 @@
  * embedding into other C/C++ projects. The API and framework are intentionally
  * minimal while still providing flexible and comprehensive testing capabilities.
  *
- * This header is included by orchestrator and test modules for testing, e.g.,
- * a feature, API, or a project implementation. It provides declarations, 
- * definitions (other than non-inline function definitions provided by litetest.c
- * in the repository src directory), and the complete Doxygen documentation for
- * LiteTest. See README.md in the repository root directory for an overview of
- * LiteTest.
+ * This header is included by modules defining an orchestrator (main) and 
+ * testing functions for testing, e.g., a feature, API, or a project implementation.
+ * It provides declarations, definitions (other than non-inline function definitions
+ * provided by litetest.c in the repository src directory), and the complete
+ * Doxygen documentation for LiteTest. See README.md in the repository root
+ * directory for an overview of LiteTest plus a comparison to other frameworks.
  *
  * @note LiteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility and a
- * C99-compliant compiler. Linux, macOS, and the BSD family natively meet these
- * requirements. Windows requires a POSIX compatibility layer such as Cygwin,
- * MSYS2, or WSL.
+ *       C99-compliant compiler. Linux, macOS, and the BSD family natively meet these
+ *       requirements. Windows requires a POSIX compatibility layer such as Cygwin,
+ *       MSYS2, or WSL.
  *
  * @note LiteTest has been exercised in a POSIX environment; however, users must
- * confirm correct behavior in their own environment.
+ *       confirm correct behavior in their own environment.
  * 
  * @copyright Copyright (c) 2026 paulsinclair51
  * SPDX-License-Identifier: MIT
@@ -64,10 +64,10 @@
  *
  * 1. A test executable is built from:
  *
- *   - An orchestrator (`main`) function and optional test functions
+ *   - An orchestrator (main) function and optional test functions
  *     organized into one or more modules,
  *
- *   - `litetest.h`, and `litetest.c`, `unistd.h`
+ *   - litetest.h, and litetest.c, unistd.h
  *
  *   - Modules and include files from the feature/project/API under test.
  *   
@@ -79,35 +79,36 @@
  *    or multiple modules. Recommended: put the orchestrator function
  *    in one module and each test function in its own module.
  *
- * 4. The test framework requires `unistd.h` for POSIX fork and signal capabilities.
+ * 4. The test framework requires unistd.h for POSIX fork and signal capabilities.
  * 
  * @subsection OrchestratorMacros Orchestrator Function Macros
  *
  * Macros for use in the orchestrator (main) function:
  *
  * - LT_DECLARE_ORCHESTRATOR(funcname)[;]
- * - LT_INIT_ORCHESTRATOR(funcname, testsuitename, maxparallel);
- * - LT_PARSE_ARGS(maxargs, "defaultreportfilename");
- * - LT_OPEN_REPORT("reporttitle");
+ * - LT_INIT_ORCHESTRATOR(funcname, testsuitename, [maxparallel]);
+ * - LT_PARSE_ARGS([maxargs], ["defaultreportfilename"]);
+ * - LT_OPEN_REPORT(["reporttitle"]);
  * - test and assert macros
  * - LT_WRITE_RESULT([t], "categoryname");
- * - LT_CLOSE_REPORT("notes");
+ * - LT_CLOSE_REPORT(["notes"]);
  * - LT_EXIT;
  *
  * @note funcname must be main.
  * @note maxargs must be 2 or greater. The first arg is the executable name.
  *       The second optional arg is PATH. Additional args are for customization
- *       and must be parsed by customizing code added to the function.
+ *       and must be parsed by custom code added to the function.
  * @note t is a test or assert macro.
  * @note For the first macro, a semicolon is required for a forward declaration;
- *       otherwise, it is omitted if is it followed by a definition in {}.
+ *       otherwise, it is omitted if is it followed by a definition in { }.
  *
  * @subsection TestFunctionMacros Test Function Macros
  *
  * Macros for use in a test function:
  *
  * - LT_DECLARE_TEST(funcname)[;]
- * - LT_INIT_TEST(funcname);
+ * - LT_INIT_TEST(funcname, [maxparallel]);
+ * - test and assert macros
  * - LT_RETURN;
  *
  * @note funcname must not be main and must be same for the first two macros when
@@ -118,66 +119,64 @@
  * @subsection TestAndAssertMacros Test and Assert Macros
  *
  * These macros provide multi-level signal handling to capture faults
- * (`SIGSEGV`, `SIGABRT`, `SIGBUS`). Faults are counted without aborting
+ * (SIGSEGV, SIGABRT, SIGBUS). Faults are counted without aborting
  * execution, allowing the test suite to continue and produce a complete
  * test report with fault counts and messages for each fault.
  *
- * - LT_TEST(funcname, isolation)[;]
- * - LT_ASSERT(assertexpr, isolation)[;]
- * - LT_ASSERT_FAIL(isolation)[;]
- * - LT_ASSERT_FAULT(isolation)[;]
+ * - LT_TEST(funcname, [isolation])[;]
+ * - LT_ASSERT(assertexpr, [isolation])[;]
+ * - LT_ASSERT_FAIL([isolation])[;]
+ * - LT_ASSERT_FAULT([isolation])[;]
  *
- * @note The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
- *       otherwise it is required.
+ * @note The semicolon is omitted if used as an argument to the
+ *       LT_WRITE_RESULT macro; otherwise it is required.
  *
  * @subsubsection ParallelExecution Parallel Execution
  *
  * Parallel execution of the test/assert macros is enabled/disabled by the
- * `maxparallel` parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_TEST
- * macros. Up to `maxparallel` test/assert macros are started and when one
+ * maxparallel parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_TEST
+ * macros. Up to maxparallel test/assert macros are started and when one
  * finishes another is started.
  *
  * @subsubsection ParallelGroupExecution Parallel Group Execution
  *
  * Test/assert macros can run in parallel as a group (that is, they
- * are not started until they can all start without exceeding `maxparallel`).
+ * are not started until they can all start without exceeding maxparallel).
  * A group is bracketed using the followug macros:
  *
- * - LT_BEGIN_GROUP(groupname, isolation)
+ * - LT_BEGIN_GROUP(groupname, [isolation])
  * - LT_END_GROUP(groupname);
+ *
+ * @note A group cannot be nested in a group within a test function.
  *
  * @subsubsection TextIsolation Test Isolation
  *
- * For non-grouped test/assert macro, the `isolation` parameter 
+ * For non-grouped test/assert macro, the isolation parameter 
  * indicates whether the macro runs in the same thread as the calling
  * function (no parallelism), a separate thread, or a separate process:
  *
- *     Isolation: NONE, THREAD, PROCESS
+ *     Isolation: 0 (none), 1 (thread), 2 (process)
  *
- * For grouped test/assert macros, the combination of the
- * isolation` parameter for the LT_BEGIN_GROUP and for the
- * test/assert macro specifies whether the macro runs as
- * a threads of the calling function, as threads in a separate
- * process, or each in its own process:
- * 
- *   | LT_BEGIN_GROUP | Test/Assert | Isolation     |
- *   |----------------|-------------|---------------|
- *   | THREAD         | THREAD      | caller thread |
- *   | THREAD         | PROCESS     | process       |
- *   | PROCESS        | THREAD      | group thread  |
- *   | PROCESS        | PROCESS     | process       |
+ * @note For a test/assert macro not in a group, the default is 0 (none).
  *
- * @note Other combinations are invalid.
+ * @note For a test/assert macro in a group, isolation must be 1 (thread)
+ *       or 2 (process) with a default of 1 (thread).
  *
  * @subsection Miscellaneous
  * 
- * Miscellaneous functions, macros, typedefs, and variables,
- * for example:
+ * Miscellaneous functions, macros, typedefs, and variables.
+ * Examples include:
  *
  * - lt_executablename
  * - lt_result_t
  * - lt_dirpath
  * - LT_MAX_PATH_LEN
+ * - lt_currentlevel
+ * - lt_currentresult
+ * - lt_maxparallel
+ * - lt_isisolated
+ * - lt_groupname
+ * - lt_iswritedirpath
  */
 
 /**
