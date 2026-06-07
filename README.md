@@ -70,7 +70,7 @@ Note:
   and must be parsed by custom code added to the function.
 - `t` is a test or assert macro.
 - For the first macro, a semicolon is required for a forward declaration;
-  otherwise, omit the semicolon and follow with a definition in { }.
+  otherwise, omit the semicolon and follow with a definition in `{ }`.
 
 ### Test Function Macros
 
@@ -83,7 +83,7 @@ Note:
 - `funcname` must not be main and must be same for the first two macros when
   defining a test function.
 - For the first macro, a semicolon is required for a forward declaration;
-  otherwise, it is omitted if it is followed by a definition in `{ }`.
+  otherwise, omit the semicolon and follow with a definition in `{ }`.
 
 ### Test and Assert Macros
 
