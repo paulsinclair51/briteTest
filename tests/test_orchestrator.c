@@ -12,7 +12,7 @@
 
 #include "litetest.h"
 
-LT_DECLARE_FUNCTION(test_orchestrator)
+LT_DECLARE_TEST(test_orchestrator)
 { 
   LT_INIT_TEST(test_orchestrator, 1);
  
@@ -22,5 +22,5 @@ LT_DECLARE_FUNCTION(test_orchestrator)
   LT_ASSERT_FAULT;
   LT_ASSERT(!strcmp("dummy", "dummy"));
 
-  LT_RETURN_RESULT;
+  LT_RETURN;
 }
