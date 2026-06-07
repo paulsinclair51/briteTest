@@ -7,7 +7,7 @@ I/**
  * This header is included by test modules and a test orchestrator for
  * testing, e.g., a feature, API, or a project implementation. It provides
  * declarations, definitions (other than non-inline fumction definition), and the
- * definitve Doxygen documentation for LiteTest (see README.md in the
+ * complete Doxygen documentation for LiteTest (see README.md in the
  * root directory for an overview of LiteTest).
  * 
  * @copyright Copyright (c) 2026 paulsinclair51
@@ -39,13 +39,13 @@ I/**
 /**
  * @section Overview
  *
- * In the following, testing the LiteTest itself is used as an example of
- * using the LiteTest API and framework with test modules test_guards_1.c,
- * test_guards_2.c, and test_orchestrator.c, and test orchestrator
- * test_litetest.c in the repository tests directory.
+ * @note In the following, testing the LiteTest itself is used as an example of
+ *       using the LiteTest API and framework with test modules test_guards_1.c,
+ *       test_guards_2.c, and test_orchestrator.c, and test orchestrator
+ *       test_litetest.c in the repository tests directory.
  * 
  * The LiteTest API includes:
- * ,,.
+ *
  * 1. Macros with a multi-level signal-guard mechanism
  *    to capture faults:
  *    - LT_TEST(func)
@@ -60,7 +60,7 @@ I/**
  *    - LT_OPEN_REPORT("reporttitle");
  *    - LT_WRITE_RESULT([t], "categoryname");
  *    - LT_CLOSE_REPORT("notes");
- *    - LT_EXIT_(funcname);
+ *    - LT_EXIT(funcname);
  *
  *    funcname must be main.
  *
