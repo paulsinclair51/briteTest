@@ -629,7 +629,15 @@ void lt_current_time(char *current_time, size_t size);
 
 #define TEST(assert_expr) \
   do \
-   { litetest_guard_internal_t test_guard = { 0 }; \
+   { int func_assert( void ) { return (assert_expr); }
+     litetest_guarded_assert_expr_internal
+         (&func_assert, #assert_expr, __FILE__, __LINE__)
+
+
+
+
+
+     litetest_guard_internal_t test_guard = { 0 }; \
      test_guard.handler = litetest_guard_handler_internal; \
      litetest_install_guard_internal(&test_guard); \
      if (sigsetjmp(test_guard.env, 1) == 0) \
@@ -730,37 +738,11 @@ LT_DECLARE_ORCHESTRATOR(main)
  */
 
 #define LT_INIT_ORCHESTRATOR(funcname) \
-    do \
-    { \
-      if (strcmp(__func__, "main" || strcmp(#funcname, "main")) \
-      { fprintf(stdout, "[ERROR] LT_INIT_ORCHESTRATOR must be used in main function.\n"); \
-        exit(2); \
-      } \
-      if (litetest_state_internal.orchestrator) \
-      { fprintf(stdout, "[ERROR] LT_EXIT not in orchestrator\n"); } \
-        exit(litetest_state_internal.exit_code); \
-      } \
-      char litetest_runid; \
-      lt_result_t internal_total; \
-      char *internal_executable_name; \
-      const char internal_default_path_msg[]; \
-      const char *path_msg; \
-    } while (0)
-
-
-static inline char *executable_name(char *const buf, size_t n)
-{ if (!buf || !n) { return NULL; }
-  const char *name = internal_executable_name ?
-                     internal_executable_name : "UnknownExecutable";
-  size_t capped_len = strnlen(name, MAX_PATH_LEN + 1);
-  if (capped_len > MAX_PATH_LEN) { capped_len = MAX_PATH_LEN; }
-  int len = snprintf(buf, n, "%.*s", (int)capped_len, name);
-  if (len < 0) { buf[0] = '\0'; return buf; }
-  if ((size_t)len >= n) { buf[n - 1] = '\0'; }
-  return buf;
-}
-
-
+    litetest_state_internal_t litetest_state_internal; \
+    litetest_lcl_state_internal_t litetest_lcl_state_internal; \
+    litetest_init_orchestrator_internal \
+        (&litetest_state_internal, & litetest_lcl_state_internal, \
+           __func__, #funcname, __src__, __line__);
 
 /**
  * @name OPEN_REPORT
@@ -794,8 +776,8 @@ int litetest_open_report_internal
     { \
       if (!strcmp(__func__, "main")) \
       { \
-        fprintf(stdout, "[ERROR] LT_EXIT is not in the orchestrator "
-                        "(main) function\n"); \
+        lt_print_err_help("LT_EXIT is not in the orchestrator "
+                          "(main) function\n", 0); \
         exit(LT_MACRO_MISPLACED); \
       } \
       int rc = litetest_open_report_internal
@@ -965,7 +947,7 @@ int litetest_close_report_internal
  * @param funcname Name of the test function. funcnsme must not be main.
  *
 * @note Compile-time error occurs if the macro is not syntactically
-*       alloewed in ths contrst.
+*       alloewed in ths context.
  *
  * @example Forward-reference
  * @code
