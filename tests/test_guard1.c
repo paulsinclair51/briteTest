@@ -13,7 +13,7 @@
 
 #include "litetest.h"
 
-LT_DECLARE_FUNCTION(test_guard1)
+LT_DECLARE_TESTtest_guard1)
 { 
   LT_INIT_TEST(test_guard1, 1);
  
@@ -23,6 +23,6 @@ LT_DECLARE_FUNCTION(test_guard1)
   LT_ASSERT_FAIL;
   LT_ASSERT(!strcmp("dummy", "dummy"));
 
-  LT_RETURN_RESULT;
+  LT_RETURN;
 
 }
