@@ -1,8 +1,9 @@
 /**
  * @file /paulsinclair51/LiteTest/tests/test_orchestrator.c
  *
- * @brief Test orchestrator related functions and macros declared in
- *        /paulsinclair51/LiteTest/include/litetest.h (e.g., LT_TEST, LT_ASSERT).
+ * @brief Test orchestrator related functions and macros declared
+ *        in /paulsinclair51/LiteTest/include/litetest.h (e.g., 
+ *        LT_INIT_ORCHESTRATOR, LT_EXIT).
  *
  * @copyright Copyright (c) 2026 paulsinclair51
  * SPDX-License-Identifier: MIT
