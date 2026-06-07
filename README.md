@@ -51,13 +51,46 @@ in one module or multiple modules. **Recommended**: put
 the orchestrator function in one module and each test function in its own module.
 
 4. The test framework requires `unistd.h` for POSIX fork and signal capabilities.
-   
+
+### Orchestrator (`main`) Macros
+
+- LT_DECLARE_ORCHESTRATOR(funcname)[;]
+- LT_INIT_ORCHESTRATOR(funcname, testsuitename, maxparallel);
+- LT_PARSE_ARGS("defaultreportfilename", "tempfilename");
+- LT_OPEN_REPORT("reporttitle");
+- test and assert macros
+- LT_WRITE_RESULT([t], "categoryname");
+- LT_CLOSE_REPORT("notes");
+- LT_EXIT;
+
+Note:
+- funcname must be main.
+- t is a test or assert macro.
+- For the first macro, a semicolon is required for a forward declaration;
+  otherwise, it is omitted if is it followed by a definition in {}.
+
+### Test Function Macros
+
+- LT_DECLARE_TEST(funcname)[;]
+- LT_INIT_TEST(testname, maxparallel);
+- test and assert macros
+- LT_RETURN;
+
+Note:
+- funcname must not be main and must be ssme for the first two macros when
+  defining a test function.
+- For the first macro, a semicolon is required for a forward declaration;
+  otherwise, it is omitted if it is followed by a definition in {}.
+
 ### Test and Assert Macros
 
-- LT_TEST(funcname, isolation)
-- LT_ASSERT(assertexpr, isolation)
-- LT_ASSERT_FAIL (isolation)
-- LT_ASSERT_FAULT (isolation)
+- LT_TEST(funcname, isolation)[;]
+- LT_ASSERT(assertexpr, isolation)[;]
+- LT_ASSERT_FAIL(isolation)[;]
+- LT_ASSERT_FAULT(isolation)[;]
+
+The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
+otherwise it is required.
 
 ### Faults
   
@@ -73,9 +106,14 @@ Parallel execution of the test/assert macros is enabled/disabled by the
 macros. Up to `maxparallel` test/assert macros are started and when one
 finishes another is started.
 
+###  Parallel Group Execution
+
 Test/assert macros can run in parallel as a group (that is, they
 are not started until they can all start without exceeding `maxparallel`).
-A group is bracketed by the LT_BEGIN_GROUP and LT_END_GROUP macros.
+A group is bracketed using the followug macros:
+
+- LT_BEGIN_GROUP(groupname, isolation)
+- LT_END_GROUP(groupname);
 
 ### Test Isolation
 
@@ -99,27 +137,6 @@ process, or each in its own process:
 | PROCESS        | PROCESS     | process       |
 
 Other combinations are invalid.
-
-### Orchestrator (`main`) Macros
-
-- LT_DECLARE_ORCHESTRATOR(main)
-- LT_INIT_ORCHESTRATOR(testsuitename, maxparallel)
-- LT_PARSE_ARGS("defaultreportfilename", "tempfilename")
-- LT_OPEN_REPORT("reporttitle")
-- LT_WRITE_RESULT([t], "categoryname")
-- LT_CLOSE_REPORT("notes")
-- LT_EXIT
-
-### Test Function Macros
-
-- LT_DECLARE_FUNCTION(funcname)
-- LT_INIT_TEST(testname, maxparallel)
-- LT_RETURN_RESULT
-
-### Parallel Group Macros
-
-- LT_BEGIN_GROUP(groupname, isolation)
-- LT_END_GROUP(groupname)
 
 ### Utility Functions
 
@@ -147,7 +164,7 @@ Examples include:
 - lt_reporttitle
 - lt_assertexpr
 
-See [include/litetest.h](include/litetest.h) for documention on the provided utitily functions.
+See [include/litetest.h](include/litetest.h) for documention on the provided utility functions.
   
 ## Modules (.c files)
 
@@ -193,7 +210,7 @@ LT_DECLARE_ORCHESTRATOR(main)
 
   LT_CLOSE_REPORT;
 
-  LT_RETURN_STATUS;
+  LT_EXIT;
 }
 ```
 
@@ -215,7 +232,7 @@ LT_DECLARE_ORCHESTRATOR(main);
 ## Test Function Template
 
 ```c
-[static] LT_DECLARE_FUNCTION(func)
+[static] LT_DECLARE_TEST(funcname)
 {
   LT_INIT_TEST(testname, maxparallel);
 
@@ -224,7 +241,7 @@ LT_DECLARE_ORCHESTRATOR(main);
   //   [LT_TEST(funcname, isolation); | LT_ASSERT(assertexpr, isolation);]...
   // your funcname and assertexprs.
 
-  LT_RETURN_RESULT;
+  LT_RETURN;
 }
 ```
 
@@ -233,7 +250,7 @@ Use `static` when the function is only referenced in the same module.
 Forward declaration:
 
 ```c
-[static] LT_DECLARE_FUNC(func);
+[static] LT_DECLARE_TEST(func);
 ```
 
 Specify `static` if the above definition of the function specifies `static`.
