@@ -74,33 +74,34 @@ Note:
 
 ### Test Function Macros
 
-- LT_DECLARE_TEST(funcname)[;]
-- LT_INIT_TEST(testname, [maxparallel]);
+- `LT_DECLARE_TEST(funcname)[;]`
+- `LT_INIT_TEST(testname, [maxparallel]);`
 - test and assert macros
-- LT_RETURN;
+- `LT_RETURN;`
 
 Note:
 - `funcname` must not be main and must be same for the first two macros when
   defining a test function.
 - For the first macro, a semicolon is required for a forward declaration;
-  otherwise, it is omitted if it is followed by a definition in {}.
+  otherwise, it is omitted if it is followed by a definition in `{ }`.
 
 ### Test and Assert Macros
 
-- LT_TEST(funcname, [isolation])[;]
-- LT_ASSERT(assertexpr, [isolation])[;]
-- LT_ASSERT_FAIL([isolation])[;]
-- LT_ASSERT_FAULT([isolation])[;]
+- `LT_TEST(funcname, [isolation])[;]`
+- `LT_ASSERT(assertexpr, [isolation])[;]`
+- `LT_ASSERT_FAIL([isolation])[;]`
+- `LT_ASSERT_FAULT([isolation])[;]`
 
 The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
 otherwise it is required.
 
 ### Faults
   
-These macros provide multi-level signal
-handling to capture faults (`SIGSEGV`, `SIGABRT`, `SIGBUS`). Faults
-are counted without aborting execution, allowing the test suite to continue
-and produce a complete test report with fault counts and messages for each fault.
+These macros provide multi-level signal handling to capture faults
+(`SIGSEGV`, `SIGABRT`, `SIGBUS`). Faults are counted without aborting
+execution, allowing the test suite to continue and produce a complete
+and produce a complete test report with fault counts and messages for
+each fault.
 
 ### Parallel Execution
 
@@ -115,8 +116,8 @@ Test/assert macros can run in parallel as a group (that is, they
 are not started until they can all start without exceeding `maxparallel`).
 A group is bracketed using the followug macros:
 
-- LT_BEGIN_GROUP(groupname, [isolation])
-- LT_END_GROUP(groupname);
+- `LT_BEGIN_GROUP(groupname, [isolation])`
+- `LT_END_GROUP(groupname);`
 
 ### Test Isolation
 
@@ -124,24 +125,12 @@ For non-grouped test/assert macro, the `isolation` parameter
 indicates whether the macro runs in the same thread as the calling
 function (no parallelism), a separate thread, or a separate process:
 
-   Isolation: NONE, THREAD, PROCESS
+   `Isolation`: 0 (none), 1 (thread), 2 (process)
 
-Default for isolation is NONE if not in group; otherwise, THREAD.
+For a test/assert macro not in a group, the default is 0 (none).
 
-For grouped test/assert macros, the combination of the
-`isolation` parameter for the LT_BEGIN_GROUP and for the
-test/assert macro specifies whether the macro runs as
-a thread of the calling function, as threads in a separate
-process, or each in its own process:
-
-| LT_BEGIN_GROUP | Test/Assert | Isolation     |
-|----------------|-------------|---------------|
-| NONE           | THREAD      | thread        |
-| NONE           | PROCESS     | process       |
-| THREAD         | THREAD      | thread        |
-| THREAD         | PROCESS     | process       |
-| PROCESS        | THREAD      | group thread  |
-| PROCESS        | PROCESS     | process       |
+For a test/assert macro in a group, `isolation` must be 1 (thread) or 2 (process)
+with a default of 1 (thread).
 
 Other combinations are invalid.
 
@@ -149,27 +138,12 @@ Other combinations are invalid.
 
 Examples include:
 
-- lt_currentlevel
-- lt_currentresult
-- lt_currenttotal
-- lt_maxparallel(level)
-- lt_currentparallel
-- lt_isisolated
-- lt_isthreadisolated
-- lt_isprocessisolated
-- lt_groupid
-- lt_groupname
-- lt_iswritedirpath
-- lt_isreadfilepath
-- lt_dirpath
-- lt_filepath
-- lt_filename
-- lt_testsuite
-- lt_categoryname
-- lt_funcname
-- lt_testname
-- lt_reporttitle
-- lt_assertexpr
+- `lt_currentlevel`
+- `lt_currentresult`
+- `lt_maxparallel(level)`
+- `lt_isisolated`
+- `lt_groupname`
+- `lt_iswritedirpath`
 
 See [include/litetest.h](include/litetest.h) for documention on the provided utility functions.
   
