@@ -8,4 +8,6 @@ For license details, see `../LICENSE`.
 
 Currently, none available.
 
-See `../README.nd` and `..include/litetest.h` for current documentation.
+See `../README.nd` for an overview of LiteTest and
+`..include/litetest.h` for the complete documentation
+of LiteTest.
