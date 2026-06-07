@@ -11,5 +11,7 @@ For license details, see `../LICENSE`.
 
 Defines non-inline functions for the LiteTest API and framework.
 
-See `../include/litetest` for the declarations and documentation for
-the LiteTest API and framwwork.
+See `../include/litetest.h` for the declarations and documentation for
+the LiteTest API and framework.
+
+For an overview of LiteTest, see `../README.md`.
