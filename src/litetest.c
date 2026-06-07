@@ -37,7 +37,7 @@
  
 #define LT_VERSION_C "1.0.0"
 
-LT_STATIC_ASSERT(!LT_VERSION_CMP(LT_VERSION_C), VERSION_C_must_match_VRRSION);
+LT_STATIC_ASSERT(!LT_VERSION_CMP(LT_VERSION_C), VERSION_C_must_match_VERSION);
 
 /**
  * @section Usage
@@ -62,11 +62,12 @@ LT_STATIC_ASSERT(!LT_VERSION_CMP(LT_VERSION_C), VERSION_C_must_match_VRRSION);
 extern "C" {
 #endif
 
-#define LT_PASS 0
-#define LT_FAIL 1
-#define LT_FAULT 2
-#define LT_FAIL_FAULT 3
-#define LT_INVALID_VERSION -100
+#define LT_PASS                 0
+#define LT_FAIL                 1
+#define LT_FAULT                2
+#define LT_FAIL_FAULT           3
+#define LT_MACRO_MISPLACED     -1
+#define LT_INVALID_VERSION   -100
 
 // Define defaults.
 
@@ -186,37 +187,36 @@ char *lt_assertexpr(void)
 /**
  * @name lt_print_err_help
  *
- * @brief Print error message and/or help message.
+ * @brief Print error message and/or help to stdout.
  *
- * @param out NULL indicates output to stdout.
- *            Otherwise, pointer to file (e.g., stderr).
  * @param err_msg NULL indicates default error message.
  *                Empty string indicates no error message.
  *                Otherwise, error message string.
+ * @param help 0 don't print help; otherwise, print help,
  */
 
 void lt_print_err_help
 (
-  FILE *const out,
-  const char *const err_msg
+  const char *const err_msg,
+  const char help;
 )
-{ 
-  if (!out) out = stdout;
-
+{
   if (!err_msg)
-  { fprintf(out, "%s%s\n", prefix_err_msg, default_err_msg); }
+  { fprintf(stdout, "%s%s\n", prefix_err_msg, default_err_msg); }
   else if (*err_msg)
-  { fprintf(out, "%s%s\n", prefix_err_msg, err_msg); }
+  { fprintf(stdout, "%s%s\n", prefix_err_msg, err_msg); }
 
-  if (!help_msg)
-  { 
-    if (!err_msg || *err_msg) { fprintf(out, "\n"); }
-    fprintf(out, "Usage: %s %s\n"
-                 executable_name, args_options_msg);
-    fprintf(out, usage_msg, default_file_name);
+  if (help)
+  { if (!help_msg)
+    { 
+      if (!err_msg || *err_msg) { fprintf(stdout, "\n"); }
+      fprintf(stdout, "Usage: %s %s\n"
+                      executable_name, args_options_msg);
+      fprintf(stdout, usage_msg, default_file_name);
+     }
+     else if (*help_msg)
+     { fprintf(stdout, "%s", help_msg); }
   }
-  else if (*help_msg)
-  { fprintf(out, "%s", help_msg); }
 }
 
 // Version:
@@ -894,7 +894,7 @@ int litetest_parse_args_internal
       return 5;
     }
     if (result == 2)
-    { print_err_usage("Filename is too long.");
+    { lt_print_err_usage("Filename is too long.");
       return 6;
     }
   }
@@ -1052,15 +1052,11 @@ int litetest_open_report_internal
  * 
  * @param state Pointer to the internal state of the orchestrator.
  * @param notes The notes to be included in the report.
- * 
- * @return 0 if report report successfully.
- *         1: LT_CLOSE_REPORT is outside of orchestrator.
- *        99: Internal error.
- * 
- * @note For errors, a message is printed to stdout.
+ *
+ * @note For errors, a message is printed to stdout and exits.
  */
 
-int litetest_close_report_internal
+void litetest_close_report_internal
 (
   litetest_state_internal_t *const state,
   const char *const notes
@@ -1068,25 +1064,25 @@ int litetest_close_report_internal
 {
   if (!state)
   {
-    print_err_usage("Internal error: NULL state pointer."); 
-    return 99; 
+    lt_print_err_help("NULL state pointer.", 0);
+    exit(LT_NULL_STATE);
   }
 
   if (!state->orchestrator)
-  { print_err_usage("LT_CLOSE_REPORT not in Orchestrator."); 
-    return 1;
+  { lt_print_err_help("LT_CLOSE_REPORT not in Orchestrator.", 0);
+    exit(LT_MACRO_MISPLACED);
   }
 
   FILE *report = state->report;
   if (!report)
   {
-    print_err_usage("Internal error: NULL report pointer."); 
-    return 99;
+    lt_print_err_help("NULL report pointer.", 0);
+    exit(LT_NULL_REPORT);
   }
 
   FILE *temp = state->temp;
   if (!temp)
-  { print_err_usage("Internal error: NULL temporary file pointer."); }
+  { lt_print_err_help("Missing temporary file.", 0); }
 
   result_t total = state->total;
 
@@ -1147,12 +1143,15 @@ int litetest_close_report_internal
     { fputs(line, report); }
     fclose(temp);
   }
+  else
+  { fprintf(report, "\nUnexpected missing temporary file.\n"); }
 
   fclose(report);
 
-  state->exit_code = (total.fail > 0 || total.fault > 0) ? 1 : 0;
+  state->exit_code = (total.fail > 0 ? 1 : 0) +
+                     (total.fault > 0 ? 2 : 0);
 
-  return temp ? 0 : 99;
+  return;
 }
 
 #if defined(__cplusplus)
