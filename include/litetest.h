@@ -21,7 +21,7 @@ I/**
  * @name LT_VERSION
  *
  * @brief Version "M.m.p" for litetest.h which must be the same as
- *.       LT_VERSION_C for literest.c.
+ *.       LT_VERSION_C for litetest.c.
  *
  * M, m, and p are 1 or 2 digits (e.g., O, 00, 1, 01, 24):
  +
@@ -29,9 +29,9 @@ I/**
  * - m: Minor version for backward-compatible additions.
  * - p: Patch version for bug fixes or internal improvements.
  *
- * @note Incompatible API changes: The naming conventions, error semantics, and safety guarantees
- * are part of the documented and stable API and will not change without a
- * major version increment.
+ * @note Incompatible API changes: The naming conventions, error semantics,
+ *       and safety guarantees are part of the documented and stable API
+ *       and will not change without a major version increment.
  */
  
 #define LT_VERSION "1.0.0"
@@ -58,25 +58,24 @@ I/**
  *    - LT_INIT_ORCHESTRATOR(funcname);
  *.   - LT_PARSE_ARGS("defaultreportname");
  *    - LT_OPEN_REPORT("reporttitle");
- *    - LT_WRITE_RESULT(t%%[t], "categoryname");
+ *    - LT_WRITE_RESULT([t], "categoryname");
  *    - LT_CLOSE_REPORT("notes");
- *    - LT_EXIT(funcname);
+ *    - LT_EXIT_(funcname);
  *
  *    funcname must be main.
  *
- * 2. Macros for use in a test finction function:
- *    - LT_DECLARE_TEST_FUNCTION(funcname)[;]
- *    - LT_INIT_TEST_FUNCTION(funcname);
+ * 2. Macros for use in a test function:
+ *    - LT_DECLARE_TEST(funcname)[;]
+ *    - LT_INIT_TEST(funcname);
  *    - LT_RETURN(funcnamm);
  *
  *    funcname must not be main and must be ssme for all three macros when
  *    defining a test function.
  *
  * 3. Miscellanous functions, macros, typedefs, and variables. For example, lt_executablename,
- *    lt_result_t, lt_dirpath, lt_path_usage, and LT_MAX_PATH_LEN.
+ *    lt_result_t, lt_dirpath, and LT_MAX_PATH_LEN.
  * 
- * This header requires at minimum POSIX.1-2001.
-
+ * @note This header requires at minimum POSIX.1-2001.
  */
 
 /**
