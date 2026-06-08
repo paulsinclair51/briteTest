@@ -20,12 +20,6 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [Requirements](#requirements)
 
 - [How LiteTest Compares](#how-litetest-compares)
-  - [Framework](#framework)
-  - [Language / Style](#language--style)
-  - [Dependencies](#dependencies)
-  - [Fault Isolation](#fault-isolation)
-  - [Strengths](#strengths)
-  - [How LiteTest Differs](#how-litetest-differs)
 
 - [Overview](#overview)
   - [Orchestrator (main) Macros](#orchestrator-main-macros)
