@@ -1,10 +1,61 @@
 # LiteTest
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/LiteTest?display_name=tag)](https://github.com/paulsinclair51/LiteTest/releases)
+[![CI](https://img.shields.io/badge/CI-pending-lightgrey)](https://github.com/paulsinclair51/LiteTest/actions)
+
 LiteTest is a lightweight C/C++ API and testing framework designed for use
 with C/C++ projects. It provides a minimal but flexible testing capability.
 
 Copyright (c) 2026 paulsinclair51  
 SPDX-License-Identifier: MIT. See `LICENSE` for details.
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Documentation Scope](#documentation-scope)
+- [Key Features](#key-features)
+- [Requirements](#requirements)
+- [How LiteTest Compares](#how-litetest-compares)
+- [Overview](#overview)
+- [Project Layout](#project-layout)
+- [Modules (.c files)](#modules-c-files)
+- [Orchestrator (`main`) Function Template](#orchestrator-main-function-template)
+- [Test Function Template](#test-function-template)
+- [Example Usage](#example-usage)
+- [Building the Test Executable](#building-the-test-executable)
+- [Executable Usage](#executable-usage)
+- [Common Pitfalls](#common-pitfalls)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [Example Test Report](#example-test-report)
+- [Example Test Report for -i Option](#example-test-report-for--i-option)
+- [Further Reading](#further-reading)
+- [Glossary](#glossary)
+
+## Quick Start
+
+Build and run the self-test from the repository root:
+
+```sh
+make -C tests run
+```
+
+See [Building the Test Executable](#building-the-test-executable) for platform-specific notes and options.
+
+First successful run checklist:
+
+- The test executable builds and runs without errors.
+- A report file is written in `reports/` or at the `PATH` you provide.
+- The report shows category-level counts and overall totals.
+
+## Documentation Scope
+
+This README is the primary onboarding guide. It focuses on workflow, usage,
+and practical examples.
+
+Detailed API behavior, full macro semantics, and lower-level implementation
+details are documented in [include/litetest.h](include/litetest.h).
 
 ## Key Features
 
@@ -46,7 +97,7 @@ validate behavior in their own systems.
 
 ## Overview
 
-The LiteTest API is defined in:
+Core LiteTest API files:
  - [include/litetest.h](include/litetest.h)
  - [src/litetest.c](src/litetest.c)
 
@@ -55,12 +106,13 @@ A test executable typically consists of:
 - A test **orchestrator** (`main`) function and optional test functions
   organized into one or more modules,
 
-- `litetest.h`, and `litetest.c`, `unistd.h`
+- `litetest.h`, `litetest.c`, and `unistd.h`
 
 - The modules and headers for the project under test.
 
-The orchestrator and test functions may reside in one module or multiple modules. **Recommended**: put the orchestrator function in one module and each test
-function in its own module.
+The orchestrator and test functions may reside in one module or multiple modules.
+Recommended: put the orchestrator function in one module and each test function
+in its own module.
    
 When executed, LiteTest produces a structured report grouped by category, including:
 
@@ -72,7 +124,7 @@ When executed, LiteTest produces a structured report grouped by category, includ
 
 - `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
 - `LT_INIT_ORCHESTRATOR(funcname, project, [maxparallel]);`
-- `LT_PARSE_ARGS(maxargs, ["defaultreportfilename"]);`
+- `LT_PARSE_ARGS([maxargs], ["defaultreportfilename"]);`
 - `LT_OPEN_REPORT(["title"]);`
 - test and assert macros
 - `LT_WRITE_RESULT([t], "category");`
@@ -131,7 +183,7 @@ Parallel execution of the test/assert macros is enabled/disabled by the
 macros. Up to `maxparallel` test/assert macros are started and when one
 finishes another is started.
 
-####  Parallel Group Macros
+#### Parallel Group Macros
 
 A group ensures that all test/assert macros inside it start together:
 
@@ -139,9 +191,6 @@ A group ensures that all test/assert macros inside it start together:
   - `LT_BEGIN_GROUP(groupname)`
   - `LT_END_GROUP(groupname)`
 - Within a test function, a group cannot be nested inside another group.
-- Default isolation inside a group is `1` (separate thread).
-- Default isolation outside a group is `0` (same thread).
-- Invalid isolation combinations are rejected at runtime.
 
 #### Isolation Levels
 
@@ -155,6 +204,25 @@ Defaults:
 - Grouped macros: 1.
 
 Invalid combinations are rejected.
+
+## Project Layout
+
+Repository layout (abridged):
+
+```text
+LiteTest/
+|- include/litetest.h
+|- src/litetest.c
+|- tests/
+|  |- test_litetest.c
+|  |- test_orchestrator.c
+|  |- test_guard1.c
+|  \- test_guard2.c
+|- reports/
+\- README.md
+```
+
+Use this as a reference when adapting LiteTest into your own project structure.
 
 ### Customization
 
@@ -174,7 +242,7 @@ Examples include:
 - `lt_groupname`
 - `lt_iswritedirpath`
 
-See [include/litetest.h](include/litetest.h) for documention on the provided utility functions.
+See [include/litetest.h](include/litetest.h) for documentation on the provided utility functions.
   
 ## Modules (.c files)
 
@@ -183,9 +251,9 @@ any required project headers.
 
 ### Example: lubtype Testing 
 
-The tests directory in the `paulsinclair5/lubtype` GitHub repository
-provides an example with an orchestrator module and test modules to test
-the lubtype API. The modules include these two files:
+The tests directory in the `paulsinclair51/lubtype` repository provides an
+example orchestrator module and test modules for the lubtype API. The modules
+include these two files:
 
 ```c
 #include "lubtype.h"
@@ -194,10 +262,8 @@ the lubtype API. The modules include these two files:
 
 ### Example: LiteTest Self-Testing
 
-The tests directory for this GitHub repository provides an example
-with an orchestrator module and test modules to self-test the LiteTest
-API and framwork. The modules include one header (since it is both
-the header for the API to be tested and the API for testing). 
+The tests directory for this repository provides an example self-test for
+the LiteTest API and framework.
 
 ```c
 #include "litetest.h"
@@ -208,33 +274,32 @@ the header for the API to be tested and the API for testing).
 ```c
 LT_DECLARE_ORCHESTRATOR(main)
 {
-  LT_INIT_ORCHESTRATOR(testsuitename, maxparallel);
-  LT_PARSE_ARGS("defaultfilename", "tempfilename");
-  LT_OPEN_REPORT("reporttitle");
+  LT_INIT_ORCHESTRATOR(main, project, [maxparallel]);
+  LT_PARSE_ARGS([maxargs], ["defaultfilename"]);
+  LT_OPEN_REPORT(["title"]);
 
   // Insert test/assert/write calls here:
-  //   LT_TEST(funcname, isolation);
-  //   LT_ASSERT(expression, isolation);
-  //   LT_WRITE_RESULT(LT_TEST(funcname, isolation), "category");
-  //   LT_WRITE_RESULT(LT_ASSERT(expression, isolation), "category");
-  // Group test/assert calls as needed using:
+  //   LT_TEST(funcname, [isolation]);
+  //   LT_ASSERT(expression, [isolation]);
+  //   LT_WRITE_RESULT(LT_TEST(funcname, [isolation]), "category");
+  //   LT_WRITE_RESULT(LT_ASSERT(expression, [isolation]), "category");
+  // Group test/assert calls using:
   //   LT_BEGIN_GROUP(groupname);
   //   LT_END_GROUP(groupname);
 
-  LT_CLOSE_REPORT;
+  LT_CLOSE_REPORT(["notes"]);
 
   LT_EXIT;
 }
 ```
 
-Results accumulate until `LT_WRITE_RESULT`, and then reset.
-Totals accumulate across all tests and asserts.
+`LT_WRITE_RESULT` flushes one category and resets its counts. Totals accumulate
+across the full run.
 
-Optional typedefs, variable, functions, code etc. may be
-added to customize or support testing. Added code may
-use utility functions. **Recommmended**: do not intermix
-code with the tests (such code is handled as if it occurs
-before the tests).
+Optional typedefs, variables, functions, and code may be added to customize
+or support testing. Added code may use utility functions. **Recommended**:
+do not intermix code with the tests; such code is handled as if it occurs
+before the tests.
 
 Forward-declaration:
 
@@ -247,12 +312,12 @@ LT_DECLARE_ORCHESTRATOR(main);
 ```c
 [static] LT_DECLARE_TEST(funcname)
 {
-  LT_INIT_TEST(funcname, maxparallel);
+  LT_INIT_TEST(funcname, [maxparallel]);
 
   // Insert test/assert calls here:
-  //   LT_TEST(funcname, isolation);
-  //   LT_ASSERT(expression, isolation);
-  // Group test/assert calls as needed using:
+  //   LT_TEST(funcname, [isolation]);
+  //   LT_ASSERT(expression, [isolation]);
+  // Group test/assert calls using:
   //   LT_BEGIN_GROUP(groupname);
   //   LT_END_GROUP(groupname);
 
@@ -270,15 +335,14 @@ Forward declaration:
 
 Specify `static` if the above definition of the function specifies `static`.
 
-Optional typedefs, variable, functions, code etc. may be
-added to customize or support testing. Added code may
-use utility functions. **Recommmended**: do not intermix
-code with the tests (such code is handled as if it occurs
-before the tests).
+Optional typedefs, variables, functions, and code may be added to customize
+or support testing. Added code may use utility functions. **Recommended**:
+do not intermix code with the tests; such code is handled as if it occurs
+before the tests.
 
 ## Example Usage
 
-The tests directory for this GitHub repository  provides an self-test implementation of
+The tests directory for this repository provides a self-test implementation of
 the LiteTest API and framework. It includes:
 
 - `test_litetest.c` defines the orchestrator (`main`) with two test
@@ -293,12 +357,12 @@ the LiteTest API and framework. It includes:
 - `test_guard2.c` defines the `test_guard2` function for testing the other
    part of the "Guard" category.
 
-The result of test_guard1 and test_guard2 are combined by the orchestrator
-into a single result for the "Guard" category.
+The results of `test_guard1` and `test_guard2` are combined by the orchestrator
+into a single result for the "Guard 1 and 2" category.
 
 ## Building the Test Executable
 
-Modify a copy of an existing MakeFile that builds a test executable for
+Modify a copy of an existing Makefile that builds a test executable for
 a project to a Makefile for your project. For example, use the Makefile
 for testing the lubtype project or the Makefile for self-testing this
 LiteTest project as a starting point for creating your Makefile in your
@@ -317,7 +381,7 @@ make -C tests run
 ```
 
 The Makefile builds and executes the executable writing the test report
-in the reports directory with the default name <testsuite>_test_report.txt.
+in the reports directory with the default name `<project>_test_report.txt`.
 
 The executable can then be executed directly (see
 [Executable Usage](#executable-usage)).
@@ -332,9 +396,8 @@ make -C tests CC=gcc run
 
 Use a POSIX‑capable toolchain such as MSYS2 UCRT64 or Clang64.
 
-For an untested (due to toolchain not yet being installed), refer to
-the build_test_litetest.ps1 powershell script. The following is the
-expected command to run the script once it has been tested:
+If you need the PowerShell path, refer to `build_test_litetest.ps1`. The
+following is the expected command to run the script once it has been tested:
 
 ```powershell
 ./build_test_litetest.ps1
@@ -349,7 +412,7 @@ pacman -S --needed base-devel mingw-w64-ucrt-x86_64-gcc
 
 Ensure the MSYS2 `bin` directory is on `PATH` before running PowerShell.
 
-Clang64 is also suitable with if `cc`, `clang`, or `gcc` resolves to a
+Clang64 is also suitable if `cc`, `clang`, or `gcc` resolves to a
 POSIX-capable compiler.
 
 ## Executable Usage
@@ -357,32 +420,34 @@ POSIX-capable compiler.
 To execute the tests, run the test executable to produce the test report file (an
 existing file is overwritten):
 
-```c
+```sh
 test_<testname> [-i] [PATH]
 ```
 
-By default if PATH is not specified, the executable writes the report
-to `<testsuite>_test_report.txt` in the current working directory using
-the testsuite that is specified by the LT_INIT_ORCHESTRATOR macro in the orchestrator
-(`main`) function.
+By default, if `PATH` is not specified, LiteTest writes the report to the
+current working directory using the default report filename configured by your
+test setup.
 
 ### PATH
 
 You may override the output location using the PATH argument:
 
-- PATH specifies a file path or a directory path. The path may optionally be quoted (with ") or is required to be quoted if it contains spaces or other characters that require the path to be quoted.
+- `PATH` can point to either a report file or a directory. Quote it only when
+  it contains spaces (for example, `"my reports/"`).
 
-- If `PATH` is a file path to an existing or nonexistent file, the test report is written to that file.
+- If `PATH` is a file path (existing or new), LiteTest writes the report to
+  that file.
 
-- If `PATH` is a directory path (with or without a trailing separator) to an existing directory, the report is written to the file in that directory with filename`<test>_test_report.txt`.
+- If `PATH` is a directory path, LiteTest writes the report in that directory
+  using the default report filename configured by your test setup.
 
-### -i Option
+### `-i` Option
 
-The -i options indicates fail/fault asserts planted in the tests are to inject
-a fail/fault. This useful to test the LiteTest framework and verify test report
-formatting when fails and faults occur.
+The `-i` option enables fail/fault assertions planted in the tests to inject a
+fail or fault. Use it to exercise the LiteTest framework and verify report
+formatting when failures and faults occur.
 
-### --help and -h Help Options
+### `--help` and `-h` Help Options
 
 You can display usage information at any time with the `--help` or `-h` option.
 For example:
@@ -393,10 +458,119 @@ For example:
 This (or using -h instead of --help) prints a summary of all command-line
  options and usage details.
 
+## Common Pitfalls
+
+- If `PATH` contains spaces, quote it (for example, `"my reports/report.txt"`).
+- Existing report files may be overwritten; use unique paths if you need history.
+- On Windows, use a POSIX-capable toolchain (for example, MSYS2 UCRT64).
+- Keep macro examples in your project aligned with the version of `litetest.h` in use.
+
+## Troubleshooting
+
+- Build fails with missing POSIX APIs on Windows: verify you are using a
+  POSIX-capable toolchain (for example, MSYS2 UCRT64) and that its `bin`
+  directory is on `PATH`.
+- Report file not found where expected: confirm the current working directory
+  and check whether `PATH` was passed as a file path or directory path.
+- Output path with spaces fails: quote `PATH` (for example,
+  `"my reports/report.txt"`).
+- Unexpected behavior after macro updates: ensure code and docs match the same
+  LiteTest version (`LT_VERSION` in `litetest.h` and `LT_VERSION_C` in
+  `litetest.c`).
+
+## Contributing
+
+Contributions are welcome. Before opening a pull request:
+
+- Create a feature branch for your work (for example, `docs/readme-update`).
+- Update LT_VERSION in `litetest.h` and LT_VERSION_C in `litetest.c` if either is
+  updated. Update major version for incompatible API changes. Update minor
+  version for backward-compatible additions. Update patch version for bug
+  fixes or internal improvements.
+- Build and run tests from the repository root with `make -C tests run`.
+- Keep documentation updates aligned with code and macro behavior.
+- Prefer focused commits with clear commit messages.
+- If report formatting changes, refresh the README report examples.
+- Do not commit directly to `main` unless you have explicit maintainer approval.
+
+Incompatible API changes: The naming conventions, error semantics, and
+safety guarantees are part of the documented and stable API and must not
+change without compelling justification and impact analysis. When possible,
+provide a compatibility mechanism to preserve prior behavior (for example, a
+feature flag or macro to enable/disable the new behavior).
+
 ## Example Test Report
 
-todo.
+```text
+LiteTest Report
+                             Pass   Fail     Fault
+--------------------------------------------------
+1. Orchestrator                 4
+2. Guard 1 and 2                6
+--------------------------------------------------
+                      Total    10
+```
 
 ## Example Test Report for -i Option
 
-todo.
+```text
+LiteTest Report (-i)
+
+                             Pass   Fail     Fault
+--------------------------------------------------
+1. Orchestrator                 4      1         1
+2. Guard 1 and 2                6      2         1
+--------------------------------------------------
+                      Total    10      3         2
+```
+
+## Further Reading
+
+- [include/README.md](include/README.md)
+- [src/README.md](src/README.md)
+- [tests/README.md](tests/README.md)
+- [reports/README.md](reports/README.md)
+
+## Glossary
+
+- `assertion expression`: The boolean expression passed to an assert macro.
+- `category`: A labeled group of test/assert results written by
+  `LT_WRITE_RESULT`.
+- `default report filename`: The report filename LiteTest uses when only a
+  directory path (or no `PATH`) is provided.
+- `executable`: The compiled test program that runs the orchestrator and test
+  functions.
+- `fail`: A counted assertion failure where the expression evaluates false.
+- `fault`: A counted runtime fault captured by LiteTest guards (for example,
+  invalid memory access).
+- `group`: A bracketed set of test/assert calls between `LT_BEGIN_GROUP` and
+  `LT_END_GROUP`.
+- `guard`: The protection mechanism used to catch runtime faults and continue
+  test execution.
+- `guard level`: The nesting depth of active guards while tests/asserts run.
+- `inject mode (-i)`: Optional command-line flag that enables injected
+  fail/fault test paths.
+- `isolation`: Execution mode for a test/assert call.
+  `0` = same thread, `1` = separate thread, `2` = separate process.
+- `maxargs`: The maximum number of command-line arguments accepted by
+  orchestrator parsing. Optional arguments may be omitted.
+  `LT_PARSE_ARGS` handles the first two arguments (executable name and optional
+  `PATH`) when provided. Any additional arguments must be parsed by custom code
+  added to the orchestrator.
+- `maxparallel`: Upper bound on concurrent test/assert execution configured by
+  orchestrator/test initialization macros.
+- `notes`: Optional report text provided when closing the report.
+- `orchestrator`: The `main` function that initializes LiteTest, runs tests,
+  and writes report output.
+- `pass`: A counted successful assertion where the expression evaluates true.
+- `PATH`: Optional command-line output destination; can be a report file path
+  or directory path.
+- `process isolation`: Isolation mode where a test/assert call runs in a
+  separate process.
+- `project`: Project identifier used in orchestrator initialization and default
+  report naming.
+- `test function`: A function declared with LiteTest test macros that contains
+  test and assert calls.
+- `thread isolation`: Isolation mode where a test/assert call runs in a
+  separate thread.
+- `title`: Optional report header text provided when opening the report.
