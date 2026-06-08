@@ -139,8 +139,8 @@ finishes another is started.
 A group ensures that all test/assert macros inside it start together:
 
 - Groups are bracketed with:
-  - `LT_BEGIN_GROUP(name)`
-  - `LT_END_GROUP(name)`
+  - `LT_BEGIN_GROUP(groupname)`
+  - `LT_END_GROUP(groupname)`
 - Within a test function, a group cannot be nested inside another group.
 - Default isolation inside a group is `1` (separate thread).
 - Default isolation outside a group is `0` (same thread).
@@ -215,11 +215,14 @@ LT_DECLARE_ORCHESTRATOR(main)
   LT_PARSE_ARGS("defaultfilename", "tempfilename");
   LT_OPEN_REPORT("reporttitle");
 
-  // Insert test calls here:
+  // Insert test/assert/write calls here:
   //   LT_TEST(funcname, isolation);
   //   LT_ASSERT(expression, isolation);
   //   LT_WRITE_RESULT(LT_TEST(funcname, isolation), "category");
   //   LT_WRITE_RESULT(LT_ASSERT(expression, isolation), "category");
+  // Group test/assert calls as needed using:
+  //   LT_BEGIN_GROUP(groupname);
+  //   LT_END_GROUP(groupname);
 
   LT_CLOSE_REPORT;
 
@@ -247,11 +250,14 @@ LT_DECLARE_ORCHESTRATOR(main);
 ```c
 [static] LT_DECLARE_TEST(funcname)
 {
-  LT_INIT_TEST(testname, maxparallel);
+  LT_INIT_TEST(funcname, maxparallel);
 
-  // Tests
-  // Insert here expanding:
-  //   [LT_TEST(funcname, isolation); | LT_ASSERT(assertexpr, isolation);]...
+  // Insert test/assert calls here:
+  //   LT_TEST(funcname, isolation);
+  //   LT_ASSERT(expression, isolation);
+  // Group test/assert calls as needed using:
+  //   LT_BEGIN_GROUP(groupname);
+  //   LT_END_GROUP(groupname);
 
   LT_RETURN;
 }
