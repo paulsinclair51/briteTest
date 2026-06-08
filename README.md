@@ -58,18 +58,15 @@ A test executable typically consists of:
 - `litetest.h`, and `litetest.c`, `unistd.h`
 
 - The modules and headers for the project under test.
+
+The orchestrator and test functions may reside in one module or multiple modules. **Recommended**: put the orchestrator function in one module and each test
+function in its own module.
    
 When executed, LiteTest produces a structured report grouped by category, including:
 
-- Pass/fail/fault counts per category
-- Totals across all categories
-- Appended failure and fault
-
-3. The orchestrator and test functions may reside
-   in one module or multiple modules. **Recommended**: put
-   the orchestrator function in one module and each test function in its own module.
-
-4. The test framework requires `unistd.h` for POSIX fork and signal capabilities.
+- Pass/fail/fault counts per category.
+- Totals across all categories.
+- Appended failure and fault.
 
 ### Orchestrator (`main`) Macros
 
