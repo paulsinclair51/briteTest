@@ -16,9 +16,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [Documentation Scope](#documentation-scope)
 - [Key Features](#key-features)
 - [Requirements](#requirements)
-
 - [How LiteTest Compares](#how-litetest-compares)
-
 - [Overview](#overview)
 - [Core API Macros](#core-api-macros)
   - [Orchestrator (main) Macros](#orchestrator-main-macros)
@@ -28,41 +26,28 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
     - [Parallel Execution](#parallel-execution)
     - [Parallel Group Macros](#parallel-group-macros)
     - [Isolation Levels](#isolation-levels)
-
 - [Project Layout](#project-layout)
   - [Customization](#customization)
   - [Modules (.c files)](#modules-c-files)
     - [Example: lubtype Testing](#example-lubtype-testing)
     - [Example: LiteTest Self-Testing](#example-litetest-self-testing)
-
 - [Orchestrator (main) Function Template](#orchestrator-main-function-template)
-
 - [Test Function Template](#test-function-template)
-
 - [Example Usage](#example-usage)
-
 - [Building the Test Executable](#building-the-test-executable)
   - [Linux / macOS](#linux--macos)
   - [Windows (POSIX Toolchain Required)](#windows-posix-toolchain-required)
-
 - [Executable Usage](#executable-usage)
   - [PATH](#path)
   - [-i Option](#i-option)
   - [--help and -h Help Options](#help-and--h-help-options)
-
 - [Common Pitfalls](#common-pitfalls)
-
 - [Troubleshooting](#troubleshooting)
-
 - [Contributing](#contributing)
-
 - [Example Test Report](#example-test-report)
 - [Example Test Report for -i Option](#example-test-report-for--i-option)
-
 - [Further Reading](#further-reading)
-
 - [Glossary](#glossary)
-
 </details>
 
 ## Quick Start
@@ -80,7 +65,7 @@ Create a file named test_quick.c in the same directory and paste the following m
 example of one test function and the orchestrator (`main`) function:
 
 <details>
-    <summary>Click for test_quick.c</summary>
+    <summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Click for test_quick.c</summary>
 
 ```c
 #include "litetest.h"
