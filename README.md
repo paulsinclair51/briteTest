@@ -12,9 +12,9 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 
 - Fault isolation using POSIX signals (SIGSEGV, SIGBUS, SIGABRT) with nested guard levels.
 
-- Light footprint with one header and one module defining the API,
+- Light footprint with one header and one module defining the API.
 
-- Straightforward API — simple assertions, categories, and reporting.--
+- Straightforward API — simple assertions, categories, and reporting.
 
 - Comprehensive reporting — pass/fail/fault counts per category and overall totals.
 
