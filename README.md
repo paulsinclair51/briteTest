@@ -64,7 +64,8 @@ details are documented in [include/litetest.h](include/litetest.h).
 
 - Light footprint with one header and one module defining the API.
 
-- Straightforward API — simple assertions, categories, and reporting.
+- Straightforward API — simple assertions, categories, and reporting so user can focus
+  on writing the tests.
 
 - Comprehensive reporting — pass/fail/fault counts per category and overall totals.
 
@@ -156,11 +157,22 @@ Note:
 
 - `LT_TEST(funcname, [isolation])[;]`
 - `LT_ASSERT(expression, [isolation])[;]`
-- `LT_ASSERT_FAIL([isolation])[;]`
-- `LT_ASSERT_FAULT([isolation])[;]`
+- `LT_INJECT_ASSERT(expression, [isolation])[;]`
 
 The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
 otherwise it is required.
+
+`LT_INJECT_ASSERT` is the same as `LT_ASSERT` except:
+
+-  It only executes if injection is enabled (see [`-i` Option](#i-option).
+-  Result is counted as an injected pass/fail/fault.
+
+Special values that can be used in any expression:
+
+- LT_PASS: returns 1.
+- LT_FAIL: returns 0.
+- LT_FAULT(type): causes a fault of the specified type: 1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
+  For other values of type, LT_FAULT returns 0.
 
 #### Fault Handling
 
