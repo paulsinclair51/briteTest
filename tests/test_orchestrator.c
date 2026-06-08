@@ -17,11 +17,11 @@ LT_DECLARE_TEST(test_orchestrator)
 { 
   LT_INIT_TEST(test_orchestrator, 1);
  
-  LT_ASSERT(!strcmp("dummy", "dummy"));
-  LT_ASSERT_FAIL;
-  LT_ASSERT(!strcmp("dummy", "dummy"));
-  LT_ASSERT_FAULT;
-  LT_ASSERT(!strcmp("dummy", "dummy"));
+  LT_ASSERT(!strcmp("dummy", "dummy"), 0);
+  LT_ASSERT_FAIL(0);
+  LT_ASSERT(!strcmp("dummy", "dummy"), 0);
+  LT_ASSERT_FAULT(0);
+  LT_ASSERT(!strcmp("dummy", "dummy"), 0);
 
   LT_RETURN;
 }

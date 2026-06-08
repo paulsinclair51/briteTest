@@ -15,16 +15,16 @@
 
 LT_DECLARE_ORCHESTRATOR(main)
 { 
-  LT_INIT_ORCHESTRATOR(litetest, 1);
+  LT_INIT_ORCHESTRATOR(main, LiteTest, 1);
   
-  LT_PARSE_ARGS("LiteTest_test_report.txt");
+  LT_PARSE_ARGS(2, "");
 
-  LT_OPEN_REPORT("LiteTest");
+  LT_OPEN_REPORT("");
  
-  LT_WRITE_RESULT(LT_TEST(test_orchestrator), "Orchestrator Tests");
+  LT_WRITE_RESULT(LT_TEST(test_orchestrator, 0), "Orchestrator");
 
-  LT_TEST(test_guard1);
-  LT_WRITE_RESULT(LT_TEST(test_guard2), "Guard Tests 1 and 2");
+  LT_TEST(test_guard1, 0);
+  LT_WRITE_RESULT(LT_TEST(test_guard2, 0), "Guard 1 and 2");
 
   LT_CLOSE_REPORT;
 

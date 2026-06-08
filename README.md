@@ -71,9 +71,9 @@ When executed, LiteTest produces a structured report grouped by category, includ
 ### Orchestrator (`main`) Macros
 
 - `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
-- `LT_INIT_ORCHESTRATOR(funcname, testsuitename, [maxparallel]);`
+- `LT_INIT_ORCHESTRATOR(funcname, project, [maxparallel]);`
 - `LT_PARSE_ARGS(maxargs, ["defaultreportfilename"]);`
-- `LT_OPEN_REPORT(["reporttitle"]);`
+- `LT_OPEN_REPORT(["title"]);`
 - test and assert macros
 - `LT_WRITE_RESULT([t], "category");`
 - `LT_CLOSE_REPORT(["notes"]);`
