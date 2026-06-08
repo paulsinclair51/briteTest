@@ -568,24 +568,58 @@ typedef struct
   lt_state_t next;
 } lt_state_t;
 
-void print_err_usage(const char *err_msg);
+// 
 
-// Get and set defaults.
+/**
+ * @name LT_PRINT_ERR_HELP(err)
+ *
+ * @brief Print optionsl err and help text to stdout.
+ *        err is prefixed with lt_err_prefix().
+ *.       help text is formed using lt_usage() and lt_help().
+ *
+ * @param err Pointer to error string.
+ * @param help 0: don't print help text.
+ *             non-zero: print help text.
+ *
+ * @note Use lt_set_err_prefix() to set the prefix.
+ *
+ * @note Use lt_set_usage() and/or lt_set_help() to
+ *       define the help text.
+ */
+
+void litetest_print_err_help_internal
+( char *err, char help,
+  char *func, char *file, int line,
+  litetest_state_internal_t *const state
+);
+
+#define LT_PRINT_ERR_HELP(err, help) \
+  do \
+  { \
+    litetest_print_err_help_internal \
+      ( \
+       (err), (help) \
+       __func__, __FILE__, __LINE__, \
+       litetest_state_internal \
+      ); \
+   } while (0)
+
+// Customization: Get and set.
 
 char *lt_executable_name(void);
 void lt_set_executable_name(char *en);
 char *lt_default_dirpath(void);
 void lt_set_default_dirpath(char *dp);
-char *lt_prefix_err_msg(void);
-void lt_set_prefix_err_msg(char *pe);
-char *lt_args_options_msg(void);
-void lt_set_args_options_msg(char *ao);
-char *lt_usage_msg(void):
-void lt_set_usage_msgg(char *u);
-char *lt_help_msg(void);
-void lt_set_help_msg(char *h);
+char *lt_err_prefix(void);
+void lt_set_err_prefix(char *pe);
+char *lt_args_options(void);
+void lt_set_args_options(char *ao);
+char *lt_usage(void):
+void lt_set_usage(char *u);
+char *lt_help(void);
+void lt_set_help(char *h);
 
-// Utility Functions
+// Customization Helper Functions
 
 size_t lt_currentlevel(void);
 lt_result_t lt_currentresult(void);
@@ -598,13 +632,19 @@ int lt_isprocessisolated(void);
 size_t lt_groupid(void);
 char *lt_groupname(void);
 
-char *lt_testsuite(void);
-char *lt_reporttitle(void);
+char *lt_project(void);
+size_t lt_maxargs(void);
+char *lt_title(void);
 size_t lt_categoryid(void);
-char *lt_categoryname(void);
+char *lt_category(void);
 char *lt_funcname(void);
-char *lt_testname(void)
-char *lt_assertexpr(void);
+char *lt_notes(void);
+char *lt_assertexpression(void);
+char lt_inject(void);
+char lt_isolation(void);
+char lt_orchestrator(void);
+char lt_testfunction(void);
+char lt_assert(void);
 
 char *lt_dirpath(void);
 char *lt_filepath(void);
@@ -767,10 +807,11 @@ LT_ASSERT_FAIL(0);
 
 #define LT_ASSERT_FAIL(isolation) \
   do \
-   {  if (litetest_state_internal->inject)
-      { LT_ASSERT(1 == 0, isolation); }
-      else NULL;
-   } while (0)
+  { \
+    if (litetest_state_internal->inject)
+    { LT_ASSERT(1 == 0, isolation); }
+    else NULL;
+  } while (0)
 
 /**
  * @name LT_ASSERT_FAULT
@@ -898,13 +939,6 @@ void litetest_init_orchestrator_internal
   } \
   while (0)
 
-void litetest_parse_args_internal
-( const int argc, const char *const *const argv,
-  const size_t maxargs, char *const defaultfilenamename,
-  char *func, char *file, int line,
-  litetest_state_internal_t *const state
-);
-
 /**
  * @name LT_PARSE_ARGS
  * 
@@ -924,6 +958,13 @@ LT_PARSE_ARGS(2, "");
  * @endcode
  * @{
  */
+
+void litetest_parse_args_internal
+( const int argc, const char *const *const argv,
+  const size_t maxargs, char *const defaultfilenamename,
+  char *func, char *file, int line,
+  litetest_state_internal_t *const state
+);
 
 #define LT_PARSE_ARGS(maxargs, defaultreportfilename) \
   do \
