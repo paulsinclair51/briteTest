@@ -729,7 +729,7 @@ void lt_current_time(char *current_time, size_t size);
 
 #define TEST(assert_expr) \
   do \
-   { int func_assert( void ) { return (assert_expr); }
+   { int func_assert( void ) { return (int)(assert_expr); }
      litetest_guarded_assert_expr_internal
          (&func_assert, #assert_expr, __FILE__, __LINE__)
 
