@@ -78,7 +78,7 @@ When executed, LiteTest produces a structured report grouped by category, includ
 - `LT_PARSE_ARGS(maxargs, ["defaultreportfilename"]);`
 - `LT_OPEN_REPORT(["reporttitle"]);`
 - test and assert macros
-- `LT_WRITE_RESULT([t], "categoryname");`
+- `LT_WRITE_RESULT([t], "category");`
 - `LT_CLOSE_REPORT(["notes"]);`
 - `LT_EXIT;`
 
@@ -114,13 +114,18 @@ Note:
 The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
 otherwise it is required.
 
-#### Faults
-  
-These macros provide multi-level signal handling to capture faults
-(`SIGSEGV`, `SIGABRT`, `SIGBUS`). Faults are counted without aborting
-execution, allowing the test suite to continue and produce a complete
-and produce a complete test report with fault counts and messages for
-each fault.
+#### Fault Handling
+
+LiteTest provides multi‑level signal guards to safely capture faults such as
+`SIGSEGV` `SIGABRT`, and `SIGBUS`. When a fault occurs:
+
+- The fault is recorded
+- Execution continues
+- The test suite completes normally
+- The final report includes fault counts and messages
+
+This allows you to test low‑level or unsafe code without aborting the entire
+test run.
 
 #### Parallel Execution
 
@@ -129,19 +134,20 @@ Parallel execution of the test/assert macros is enabled/disabled by the
 macros. Up to `maxparallel` test/assert macros are started and when one
 finishes another is started.
 
-####  Parallel Group Execution
+####  Parallel Group Macros
 
-Test/assert macros can run in parallel as a group (that is, they
-are not started until they can all start without exceeding `maxparallel`).
+A group ensures that all test/assert macros inside it start together without
+exceeding the `maxparallel` limit.
 
-A group is bracketed using the followug macros:
+- Groups are bracketed with:
+  - `LT_BEGIN_GROUP(name)`
+  - `LT_END_GROUP(name)`
+- Within a test function, a group cannot be nested inside another group.
+- Default isolation inside a group is `1` (separate thread).
+- Default isolation outside a group is `0` (same thread).
+- Invalid isolation combinations are rejected at runtime.
 
-- `LT_BEGIN_GROUP(groupname, [isolation])`
-- `LT_END_GROUP(groupname);`
-
-Within a test function, a group cannot be nested in a group.
-
-#### Isolation
+#### Isolation Levels
 
 `isolation`:
 - 0 same thread (no parallelism)
@@ -154,9 +160,11 @@ Defaults:
 
 Invalid combinations are rejected.
 
-### Miscellaneous
+### Custom`ization
 
-Miscellaneous functions, macros, typedefs, and variables.
+Additional functions, macros, typedefs, and variables are
+provided to support customization.
+
 Examples include:
 
 - `lt_executablename`
@@ -208,11 +216,11 @@ LT_DECLARE_ORCHESTRATOR(main)
   LT_PARSE_ARGS("defaultfilename", "tempfilename");
   LT_OPEN_REPORT("reporttitle");
 
-  // Tests
-  // Insert here expanding:
-  // [[LT_TEST(func, isolation); | LT_ASSERT(assertexpr, isolation);]...
-  // LT_WRITE_RESULT([LT_TEST(funcname, isolation) | LT_ASSERT(assertexpr, isolation)], "categoryname")]...
-  // with your funcames. assertexprs, categorynames.
+  // Insert test calls here:
+  // LT_TEST(funcname, isolation);
+  // LT_ASSERT(expression, isolation);
+  // LT_WRITE_RESULT(LT_TEST(funcname, isolation), "category");
+  // LT_WRITE_RESULT(LT_ASSERT(expression, isolation), "category");
 
   LT_CLOSE_REPORT;
 
@@ -245,7 +253,6 @@ LT_DECLARE_ORCHESTRATOR(main);
   // Tests
   // Insert here expanding:
   //   [LT_TEST(funcname, isolation); | LT_ASSERT(assertexpr, isolation);]...
-  // your funcname and assertexprs.
 
   LT_RETURN;
 }
@@ -269,14 +276,14 @@ before the tests).
 
 ## Example Usage
 
-The tests directory for this GitHbub repository  provides an self-test implementation of
+The tests directory for this GitHub repository  provides an self-test implementation of
 the LiteTest API and framework. It includes:
 
 - `test_litetest.c` defines the orchestrator (`main`) with two test
    categories "Orchestrator" and "Guard".
 
 - `test_orchestrator.c` defines the test_orchestrator functions for
-   testing the "Orchestrator" catagory.
+   testing the "Orchestrator" category.
 
 - `test_guard1.c` defines the `test_guard1` function for testing part of
    the "Guard" category.
@@ -292,7 +299,7 @@ into a single result for the "Guard" category.
 Modify a copy of an existing MakeFile that builds a test executable for
 a project to a Makefile for your project. For example, use the Makefile
 for testing the lubtype project or the Makefile for self-testing this
-LiteTest project as a starting point for creating your Makefile in hour
+LiteTest project as a starting point for creating your Makefile in your
 project root directory.
 
 #### Linux / macOS
@@ -323,7 +330,7 @@ make -C tests CC=gcc run
 
 Use a POSIX‑capable toolchain such as MSYS2 UCRT64 or Clang64.
 
-For an untested (due to toolchain not yet being installe), refer to
+For an untested (due to toolchain not yet being installed), refer to
 the build_test_litetest.ps1 powershell script. The following is the
 expected command to run the script once it has been tested:
 
@@ -359,7 +366,7 @@ the testsuite that is specified by the LT_INIT_ORCHESTRATOR macro in the orchest
 
 ### PATH
 
-You may override the output locaction using the PATH argument:
+You may override the output location using the PATH argument:
 
 - PATH specifies a file path or a directory path. The path may optionally be quoted (with ") or is required to be quoted if it contains spaces or other characters that require the path to be quoted.
 
@@ -370,7 +377,7 @@ You may override the output locaction using the PATH argument:
 ### -i Option
 
 The -i options indicates fail/fault asserts planted in the tests are to inject
-a fail/fault. This useful to test the LiteTest frammwork and verify test report
+a fail/fault. This useful to test the LiteTest framework and verify test report
 formatting when fails and faults occur.
 
 ### --help and -h Help Options
