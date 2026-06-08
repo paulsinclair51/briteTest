@@ -569,10 +569,6 @@ typedef struct
 } lt_state_t;
 
 void print_err_usage(const char *err_msg);
-int parse_args
-( const int argc, const char *const *const argv,
-  char *const dir_path, char *const filename
-);
 
 // Get and set defaults.
 
@@ -659,19 +655,14 @@ void lt_current_time(char *current_time, size_t size);
 /**
  * @name LT_TEST
  * 
- * @brief A macro to run a function with a guard.
+ * @brief A macro to call a test function with a fault guard.
  *
- * After saving the current guard, setting up a new current guard to
- * capture a fault (SIGABRT, SIGSEGV,
- * or SIGBUS), calls the function named funcname.
- * with parameter inject. If a fault occurs this level, siglongjmps back to
- * the guard point, the result is saved and added to total. Then the saved
- * guard is set as the current guard.
+ * Result counts and totals updated.
  *
- * @param func Pointer to function.
- * @param inject Flag to pass to the function.
- *               0: normal run.
- *               1: enable inject fail/fault tests, if any, in the function.
+ * @param func Pointer to test function.
+ * @param isolation 0: same thread (no paralleliam)
+ *                  1: separate thread.
+ *                  2: separate process.
  * 
  * @note If no signal, lt_result_t result from test function is used.
  *       If signal caught, (lt_result_t){0, 0, SIZE_MAX, 0, 0} is used.
@@ -689,45 +680,43 @@ void lt_current_time(char *current_time, size_t size);
  *          run the test function in a test module (e.g., test_orchestrator.c):
  *
  * @code
- LT_TEST(funcname);
+LT_TEST(test_guard_2, 0);
  * @endcode
  */
 
-#define LT_TEST(funcname) \
-   { t_result_t funcname(lt_state_t *litetest_state_internal); \
+#define LT_TEST(func, isolation) \
+   { t_result_t func(lt_state_t *litetest_state_internal); \
      litetest_test_internal(funcname, #funcname); }
 
 /**
  * @name LT_ASSERT
  *
- * @brietf Evaluates assertexpr with a fault guard and updates the internal
+ * @brief Evaluates expression with a fault guard and updates the
  * totals for pass/fail/fault:
  *
- * - If assertexpr is true (not zero), increments pass count.
- * - If assertexpr false, increments fail count.
- * - IF fault, incremenet fault count
+ * - If expression is true (non-zero), increments pass count.
+ * - If expressions is false (zero), increments fail count.
+ * - If fault, incremenet fault count
  *
- * @param assertexpr The expression to evaluate.
+ * @param expression The expression to evaluate.
+ * @param isolation 0: same thread (no paralleliam)
+ *                  1: separate thread.
+ *                  2: separate process.
  *
  * @note The LT_ASSERT macro uses a guard to capture a fault that may occur during the
- *       evaluation of assertexpr. If a fault is causght, it counts as a fault.
+ *       evaluation of expression. If a fault is causght, it counts as a fault.
  * 
  * @note For fail and fault, a message is appended to the test report.
- *       The message includes assertexpr, filename of the module, and line
- *       ine number for debugging purposes.
+ *       The message includes expression, filename of the module, and
+ *       line number for debugging purposes.
  * 
- * @example In a test module (e.g., test_guard_2.c):
- * 
+ * @example
  * @code
- lt_result_t test_count(const char inject)
- { lt_result_t result = {0, 0, 0, 0, 0};
-   TEST(func("hello", 'l') == 2);
-   return result;
- }
+LT_ASSERT(func("hello", 'l') == 2, 0);
  * @endcode
  */
 
-#define TEST(assert_expr) \
+#define LT_ASSERT(expression, isolation) \
   do \
    { int func_assert( void ) { return (int)(assert_expr); }
      litetest_guarded_assert_expr_internal
@@ -757,6 +746,54 @@ void lt_current_time(char *current_time, size_t size);
            (-1, #assert_expr, __FILE__, __LINE__); \
      } \
      litetest_restore_guard_internal(); \
+   } while (0)
+
+/**
+ * @name LT_ASSERT_FAIL
+ *
+ * @brief If -i option specified on command-line,
+ * replaced with LT_ASSERT(1 == 0, isolation).
+ * Otherwise, replaced with NULL.
+ *
+ * @param isolation 0: same thread (no paralleliam)
+ *                  1: separate thread.
+ *                  2: separate process.
+ * 
+ * @example
+ * @code
+LT_ASSERT_FAIL(0);
+ * @endcode
+ */
+
+#define LT_ASSERT_FAIL(isolation) \
+  do \
+   {  if (litetest_state_internal->inject)
+      { LT_ASSERT(1 == 0, isolation); }
+      else NULL;
+   } while (0)
+
+/**
+ * @name LT_ASSERT_FAULT
+ *
+ * @brief If -i option specified on command-line,
+ * replaced with LT_ASSERT(1 == *(NULL), isolation).
+ * Otherwise, replaced with NULL.
+ *
+ * @param isolation 0: same thread (no paralleliam)
+ *                  1: separate thread.
+ *                  2: separate process.
+ * 
+ * @example
+ * @code
+LT_ASSERT_FAIL(0);
+ * @endcode
+ */
+
+#define LT_ASSERT_FAULT(isolation) \
+  do \
+   {  if (litetest_state_internal->inject)
+      { LT_ASSERT(1 == *(NULL), isolation); }
+      else NULL;
    } while (0)
 
 /**
@@ -805,13 +842,13 @@ LT_DECLARE_ORCHESTRATOR(main)
  *
  * @example Forward-reference
  * @code
- LT_DECLARE_ORCHESTRATOR(main);
+LT_DECLARE_ORCHESTRATOR(main);
  * @endcode
  *
  * @example Function Definition
  * @code
-    LT_DECLARE_TEST_FUNCTION(main)
-    { /* orchestrator (main) function body*/ }
+LT_DECLARE_TEST_FUNCTION(main)
+{ /* orchestrator (main) function body*/ }
  * @endcode
  */
 
@@ -827,13 +864,15 @@ LT_DECLARE_ORCHESTRATOR(main)
  *        Exits the executable if the macro is not allowed in this context.
  * 
  * @param funcname Name of the function which must be main.
+ * @param project Single token project identifier.
+ * @param maxparallel Value must be at least 1.
  *
  * @note Compile-time error occurs if the macro is not followed by a semicolon or
  *       the macro is not syntactically allowed in this context.
  *
  * @example
  * @code
- LT_INIT_ORCHESTRATOR(main);
+LT_INIT_ORCHESTRATOR(main, LiteTest, 1);
  * @endcode
  */
 
@@ -859,14 +898,53 @@ void litetest_init_orchestrator_internal
   } \
   while (0)
 
+void litetest_parse_args_internal
+( const int argc, const char *const *const argv,
+  const size_t maxargs, char *const defaultfilenamename,
+  char *func, char *file, int line,
+  litetest_state_internal_t *const state
+);
+
 /**
- * @name OPEN_REPORT
+ * @name LT_PARSE_ARGS
+ * 
+ * @brief .
+ *
+ *        Exits the executable if the macro is not allowed in this context.
+ * 
+ * @param maxargs .
+ * @param defaultreportfilename .
+ *
+ * @note Compile-time error occurs if the macro is not followed by a semicolon or
+ *       the macro is not syntactically allowed in this context.
+ *
+ * @example
+ * @code
+LT_PARSE_ARGS(2, "");
+ * @endcode
+ * @{
+ */
+
+#define LT_PARSE_ARGS(maxargs, defaultreportfilename) \
+  do \
+  { \
+    litetest_parse_args_internal \
+    ( argc, argv,
+      (maxargs), (defaultreportfilename), \
+      __func__, __FILE__, __LINE__, \
+      &litetest_state_internal \
+      ); \
+  } \
+  while (0)
+
+/**
+ * @name LT_OPEN_REPORT
  * 
  * @brief Open report file, open tmp file, and write header lines.
  *
  *        Exits the executable if the macro is not allowed in this context.
  * 
- * @param report_title Pointer to a string of customized title lines for the report.
+ * @param title Pointer to a string of customized title lines for the report.
  *              If NULL or zero-length, a default title line is used.
  *              Each line must end with a newline character ('\n').
  *.             %t indicate replace with a timestamp "yyyy hh:mm:ss"
@@ -878,13 +956,13 @@ void litetest_init_orchestrator_internal
  *
  * @example
  * @code
- LT_OPEN_REPORT("LiteTest Test Report %t\n");
+LT_OPEN_REPORT("LiteTest Test Report %t\n");
  * @endcode
  * @{
  */
 
 void litetest_open_report_internal
-( const char *const report_title,
+( const char *const title,
   char *func, char *file, int line,
   litetest_state_internal_t *const state
 );
@@ -894,7 +972,7 @@ void litetest_open_report_internal
   do \
   { \
     litetest_open_report_internal \
-    ( (reporttitle), \
+    ( (title), \
       __func__, __FILE__, __LINE__, \
       &litetest_state_internal \
     ); \
@@ -935,9 +1013,9 @@ void litetest_open_report_internal
  *
  * @example Write results for a category with two test functions (alternate):
  * @code
-    LT_TEST(test_guard1);
-    LT_TEST(test_guard2);
-    LT_WRITE_RESULT(, "guard 1 and 2");
+LT_TEST(test_guard1);
+LT_TEST(test_guard2);
+LT_WRITE_RESULT(, "guard 1 and 2");
  * @endcode
  */
 
