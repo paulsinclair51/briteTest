@@ -541,7 +541,8 @@ LiteTest Report (-i)
   directory path (or no `PATH`) is provided.
 - `executable`: The compiled test program that runs the orchestrator and test
   functions.
-- `fail`: A counted assertion failure where the expression evaluates false.
+- `fail`: A counted assertion failure where the expression evaluates false (i.e.,
+  zero).
 - `fault`: A counted runtime fault captured by LiteTest guards (for example,
   invalid memory access).
 - `group`: A bracketed set of test/assert calls between `LT_BEGIN_GROUP` and
@@ -563,7 +564,8 @@ LiteTest Report (-i)
 - `notes`: Optional report text provided when closing the report.
 - `orchestrator`: The `main` function that initializes LiteTest, runs tests,
   and writes report output.
-- `pass`: A counted successful assertion where the expression evaluates true.
+- `pass`: A counted successful assertion where the expression evaluates true (i.e.,
+  non-zero).
 - `PATH`: Optional command-line output destination; can be a report file path
   or directory path.
 - `process isolation`: Isolation mode where a test/assert call runs in a
