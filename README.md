@@ -1,22 +1,39 @@
 # LiteTest
 
-LiteTest is a lightweight C/C++ API and testing framework suitable for
-embedding into other C/C++ projects. The API and framework are intentionally
-minimal while still providing flexible and comprehensive testing capabilities.
-
-LiteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility
-and a C99-compliant compiler. Linux, macOS, and the BSD family natively
-meet these requirements. Windows requires a
-POSIX compatibility layer such as Cygwin, MSYS2, or WSL.
-
-LiteTest has been exercised in a POSIX environment; however, users must
-confirm correct behavior in their own environment.
+LiteTest is a lightweight C/C++ API and testing framework designed for use
+with C/C++ projects. It provides a minimal but flexible testing capability.
 
 Copyright (c) 2026 paulsinclair51  
-SPDX-License-Identifier: MIT.  
-See `LICENSE` for details.
+SPDX-License-Identifier: MIT. See `LICENSE` for details.
 
-## Test Framework Comparison
+## Key Features
+
+- Pure C implementation.
+
+- Fault isolation using POSIX signals (SIGSEGV, SIGBUS, SIGABRT) with nested guard levels.
+
+- Light footprint with one header and one module defining the API,
+
+- Straightforward API — simple assertions, categories, and reporting.--
+
+- Comprehensive reporting — pass/fail/fault counts per category and overall totals.
+
+## Requirements
+
+LiteTest requires:
+
+- POSIX.1‑2001 (IEEE Std 1003.1‑2001) compatibility
+- A C99‑compliant compiler
+
+Supported environments:
+
+- Linux, macOS, BSD — fully compatible
+- Windows — requires a POSIX layer such as Cygwin, MSYS2, or WSL
+
+LiteTest has been exercised in POSIX environments; users should
+validate behavior in their own systems.
+
+## How LiteTest Compares
 
 | Framework | Language / Style | Dependencies | Fault Isolation | Strengths | How LiteTest Differs |
 |-----------|------------------|--------------|-----------------|-----------|-----------------------|
@@ -29,22 +46,24 @@ See `LICENSE` for details.
 
 ## Overview
 
-The LiteTest API and framework are defined in [include/litetest.h](include/litetest.h) and [src/litetest.c](src/litetest.c).
+The LiteTest API is defined in:
+ - [include/litetest.h](include/litetest.h)
+ - [src/litetest.c](src/litetest.c)
 
-### Key Points
+A test executable typically consitst of:
 
-1. A test executable is built from:
+- A test **orchestrator** (`main`) function and optional test functions
+  organized into one or more modules,
 
-   - An orchestrator (`main`) function and optional test functions
-     organized into one or more modules,
+- `litetest.h`, and `litetest.c`, `unistd.h`
 
-   - `litetest.h`, and `litetest.c`, `unistd.h`
-
-   - Modules and include files from the feature/project/API under test.
+- The modules and headers for the project under test.
    
-2. The executable produces a report grouped by category, including
-pass/fail/fault counts per category and totals across all categories.
-Fail and fault messages are appended to the report.
+When executed, LiteTest produces a structured report grouped by category, including:
+
+- Pass/fail/fault counts per category
+- Totals across all categories
+- Appended failure and fault
 
 3. The orchestrator and test functions may reside
 in one module or multiple modules. **Recommended**: put
