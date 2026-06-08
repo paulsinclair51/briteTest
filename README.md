@@ -532,6 +532,7 @@ LiteTest Report (-i)
 
 ## Glossary
 
+- `API`: Application Programming Interface.
 - `assertion expression`: An expression passed to an assert macro that can be
   converted to `int`; `0` means fail and any nonzero value means pass.
 - `category`: A labeled group of test/assert results written by
