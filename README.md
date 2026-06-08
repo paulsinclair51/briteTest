@@ -11,26 +11,121 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 
 ## Table of Contents
 
+<details>
+<summary><strong>Quick Start</strong></summary>
+
 - [Quick Start](#quick-start)
+
+</details>
+
+<details>
+<summary><strong>Documentation Scope</strong></summary>
+
 - [Documentation Scope](#documentation-scope)
+
+</details>
+
+<details>
+<summary><strong>Key Features</strong></summary>
+
 - [Key Features](#key-features)
+
+</details>
+
+<details>
+<summary><strong>Requirements</strong></summary>
+
 - [Requirements](#requirements)
+
+</details>
+
+<details>
+<summary><strong>How LiteTest Compares</strong></summary>
+
 - [How LiteTest Compares](#how-litetest-compares)
+
+</details>
+
+<details>
+<summary><strong>Overview</strong></summary>
+
 - [Overview](#overview)
+
+</details>
+
+<details>
+<summary><strong>Project Layout</strong></summary>
+
 - [Project Layout](#project-layout)
-- [Modules (.c files)](#modules-c-files)
-- [Orchestrator (`main`) Function Template](#orchestrator-main-function-template)
-- [Test Function Template](#test-function-template)
+  - [Modules (.c files)](#modules-c-files)
+  - [Orchestrator (main) Function Template](#orchestrator-main-function-template)
+  - [Test Function Template](#test-function-template)
+
+</details>
+
+<details>
+<summary><strong>Example Usage</strong></summary>
+
 - [Example Usage](#example-usage)
+
+</details>
+
+<details>
+<summary><strong>Building the Test Executable</strong></summary>
+
 - [Building the Test Executable](#building-the-test-executable)
+
+</details>
+
+<details>
+<summary><strong>Executable Usage</strong></summary>
+
 - [Executable Usage](#executable-usage)
+
+</details>
+
+<details>
+<summary><strong>Common Pitfalls</strong></summary>
+
 - [Common Pitfalls](#common-pitfalls)
+
+</details>
+
+<details>
+<summary><strong>Troubleshooting</strong></summary>
+
 - [Troubleshooting](#troubleshooting)
+
+</details>
+
+<details>
+<summary><strong>Contributing</strong></summary>
+
 - [Contributing](#contributing)
+
+</details>
+
+<details>
+<summary><strong>Example Test Reports</strong></summary>
+
 - [Example Test Report](#example-test-report)
-- [Example Test Report for -i Option](#example-test-report-for--i-option)
+  - [Example Test Report for -i Option](#example-test-report-for--i-option)
+
+</details>
+
+<details>
+<summary><strong>Further Reading</strong></summary>
+
 - [Further Reading](#further-reading)
+
+</details>
+
+<details>
+<summary><strong>Glossary</strong></summary>
+
 - [Glossary](#glossary)
+
+</details>
 
 ## Quick Start
 
