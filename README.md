@@ -10,7 +10,7 @@ Copyright (c) 2026 paulsinclair51
 SPDX-License-Identifier: MIT. See `LICENSE` for details.
 
 <details>
-<summary><strong>Table of Contents</strong></summary>
+<summary><h2>Table of Contents</h2></summary>
 
 - [Quick Start](#quick-start)
 - [Documentation Scope](#documentation-scope)
