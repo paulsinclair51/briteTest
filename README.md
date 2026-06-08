@@ -164,7 +164,7 @@ otherwise it is required.
 
 `LT_INJECT_ASSERT` is the same as `LT_ASSERT` except:
 
--  It only executes if injection is enabled (see [`-i` Option](#i-option).
+-  Only executes if injection is enabled (see [`-i` Option](#i-option)).
 -  Result is counted as an injected pass/fail/fault.
 
 Special values that can be used in any expression:
