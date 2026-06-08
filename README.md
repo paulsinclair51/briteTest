@@ -533,7 +533,8 @@ LiteTest Report (-i)
 
 ## Glossary
 
-- `assertion expression`: The boolean expression passed to an assert macro.
+- `assertion expression`: An expression passed to an assert macro that can be
+  converted to `int`; `0` means fail and any nonzero value means pass.
 - `category`: A labeled group of test/assert results written by
   `LT_WRITE_RESULT`.
 - `default report filename`: The report filename LiteTest uses when only a
