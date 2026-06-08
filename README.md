@@ -22,7 +22,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [How LiteTest Compares](#how-litetest-compares)
 
 - [Overview](#overview)
-- [Core API Macros][#core-api-macros)
+- [Core API Macros](#core-api-macros)
   - [Orchestrator (main) Macros](#orchestrator-main-macros)
   - [Test Function Macros](#test-function-macros)
   - [Test and Assert Macros](#test-and-assert-macros)
