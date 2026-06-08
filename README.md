@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [How LiteTest Compares](#how-litetest-compares)
 
 - [Overview](#overview)
+- [Core API Macros][#core-api-macros)
   - [Orchestrator (main) Macros](#orchestrator-main-macros)
   - [Test Function Macros](#test-function-macros)
   - [Test and Assert Macros](#test-and-assert-macros)
@@ -132,6 +133,7 @@ validate behavior in their own systems.
 ## Overview
 
 Core LiteTest API files:
+
  - [include/litetest.h](include/litetest.h)
  - [src/litetest.c](src/litetest.c)
 
@@ -153,6 +155,8 @@ When executed, LiteTest produces a structured report grouped by category, includ
 - Pass/fail/fault counts per category.
 - Totals across all categories.
 - Appended failure and fault.
+
+## Core API Macros
 
 ### Orchestrator (`main`) Macros
 
