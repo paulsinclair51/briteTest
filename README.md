@@ -9,8 +9,6 @@ LiteTest is a lightweight C/C++ API and framework designed for running tests. It
 Copyright (c) 2026 paulsinclair51  
 SPDX-License-Identifier: MIT. See `LICENSE` for details.
 
-## Table of Contents
-
 <details>
 <summary><strong>Table of Contents</strong></summary>
 
