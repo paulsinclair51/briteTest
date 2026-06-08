@@ -4,8 +4,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/LiteTest?display_name=tag)](https://github.com/paulsinclair51/LiteTest/releases)
 [![CI](https://img.shields.io/badge/CI-pending-lightgrey)](https://github.com/paulsinclair51/LiteTest/actions)
 
-LiteTest is a lightweight API and framework designed for running tests
-for C/C++ projects. It provides a minimal but flexible testing capability.
+LiteTest is a lightweight C/C++ API and framework designed for running tests. It provides a minimal but flexible testing capability.
 
 Copyright (c) 2026 paulsinclair51  
 SPDX-License-Identifier: MIT. See `LICENSE` for details.
