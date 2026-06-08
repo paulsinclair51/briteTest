@@ -107,7 +107,7 @@ Note:
 ### Test and Assert Macros
 
 - `LT_TEST(funcname, [isolation])[;]`
-- `LT_ASSERT(assertexpr, [isolation])[;]`
+- `LT_ASSERT(expression, [isolation])[;]`
 - `LT_ASSERT_FAIL([isolation])[;]`
 - `LT_ASSERT_FAULT([isolation])[;]`
 
@@ -136,8 +136,7 @@ finishes another is started.
 
 ####  Parallel Group Macros
 
-A group ensures that all test/assert macros inside it start together without
-exceeding the `maxparallel` limit.
+A group ensures that all test/assert macros inside it start together:
 
 - Groups are bracketed with:
   - `LT_BEGIN_GROUP(name)`
@@ -160,7 +159,7 @@ Defaults:
 
 Invalid combinations are rejected.
 
-### Custom`ization
+### Customization
 
 Additional functions, macros, typedefs, and variables are
 provided to support customization.
@@ -217,10 +216,10 @@ LT_DECLARE_ORCHESTRATOR(main)
   LT_OPEN_REPORT("reporttitle");
 
   // Insert test calls here:
-  // LT_TEST(funcname, isolation);
-  // LT_ASSERT(expression, isolation);
-  // LT_WRITE_RESULT(LT_TEST(funcname, isolation), "category");
-  // LT_WRITE_RESULT(LT_ASSERT(expression, isolation), "category");
+  //   LT_TEST(funcname, isolation);
+  //   LT_ASSERT(expression, isolation);
+  //   LT_WRITE_RESULT(LT_TEST(funcname, isolation), "category");
+  //   LT_WRITE_RESULT(LT_ASSERT(expression, isolation), "category");
 
   LT_CLOSE_REPORT;
 
