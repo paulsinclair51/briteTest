@@ -12,116 +12,61 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 ## Table of Contents
 
 <details>
-<summary><strong>Quick Start</strong></summary>
+<summary><strong>Table of Contents</strong></summary>
 
 - [Quick Start](#quick-start)
-
-</details>
-
-<details>
-<summary><strong>Documentation Scope</strong></summary>
-
 - [Documentation Scope](#documentation-scope)
-
-</details>
-
-<details>
-<summary><strong>Key Features</strong></summary>
-
 - [Key Features](#key-features)
-
-</details>
-
-<details>
-<summary><strong>Requirements</strong></summary>
-
 - [Requirements](#requirements)
 
-</details>
-
-<details>
-<summary><strong>How LiteTest Compares</strong></summary>
-
 - [How LiteTest Compares](#how-litetest-compares)
-
-</details>
-
-<details>
-<summary><strong>Overview</strong></summary>
+  - [Framework](#framework)
+  - [Language / Style](#language--style)
+  - [Dependencies](#dependencies)
+  - [Fault Isolation](#fault-isolation)
+  - [Strengths](#strengths)
+  - [How LiteTest Differs](#how-litetest-differs)
 
 - [Overview](#overview)
-
-</details>
-
-<details>
-<summary><strong>Project Layout</strong></summary>
+  - [Orchestrator (main) Macros](#orchestrator-main-macros)
+  - [Test Function Macros](#test-function-macros)
+  - [Test and Assert Macros](#test-and-assert-macros)
+  - [Fault Handling](#fault-handling)
+  - [Parallel Execution](#parallel-execution)
+  - [Parallel Group Macros](#parallel-group-macros)
+  - [Isolation Levels](#isolation-levels)
 
 - [Project Layout](#project-layout)
+  - [Customization](#customization)
   - [Modules (.c files)](#modules-c-files)
-  - [Orchestrator (main) Function Template](#orchestrator-main-function-template)
-  - [Test Function Template](#test-function-template)
+    - [Example: lubtype Testing](#example-lubtype-testing)
+    - [Example: LiteTest Self-Testing](#example-litetest-self-testing)
 
-</details>
+- [Orchestrator (main) Function Template](#orchestrator-main-function-template)
 
-<details>
-<summary><strong>Example Usage</strong></summary>
+- [Test Function Template](#test-function-template)
 
 - [Example Usage](#example-usage)
 
-</details>
-
-<details>
-<summary><strong>Building the Test Executable</strong></summary>
-
 - [Building the Test Executable](#building-the-test-executable)
-
-</details>
-
-<details>
-<summary><strong>Executable Usage</strong></summary>
+  - [Linux / macOS](#linux--macos)
+  - [Windows (POSIX Toolchain Required)](#windows-posix-toolchain-required)
 
 - [Executable Usage](#executable-usage)
-
-</details>
-
-<details>
-<summary><strong>Common Pitfalls</strong></summary>
+  - [PATH](#path)
+  - [-i Option](#i-option)
+  - [--help and -h Help Options](#help-and--h-help-options)
 
 - [Common Pitfalls](#common-pitfalls)
 
-</details>
-
-<details>
-<summary><strong>Troubleshooting</strong></summary>
-
 - [Troubleshooting](#troubleshooting)
-
-</details>
-
-<details>
-<summary><strong>Contributing</strong></summary>
 
 - [Contributing](#contributing)
 
-</details>
-
-<details>
-<summary><strong>Example Test Reports</strong></summary>
-
 - [Example Test Report](#example-test-report)
-  - [Example Test Report for -i Option](#example-test-report-for--i-option)
-
-</details>
-
-<details>
-<summary><strong>Further Reading</strong></summary>
+- [Example Test Report for -i Option](#example-test-report-for--i-option)
 
 - [Further Reading](#further-reading)
-
-</details>
-
-<details>
-<summary><strong>Glossary</strong></summary>
 
 - [Glossary](#glossary)
 
