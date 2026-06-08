@@ -50,7 +50,7 @@ The LiteTest API is defined in:
  - [include/litetest.h](include/litetest.h)
  - [src/litetest.c](src/litetest.c)
 
-A test executable typically consitst of:
+A test executable typically consists of:
 
 - A test **orchestrator** (`main`) function and optional test functions
   organized into one or more modules,
@@ -66,8 +66,8 @@ When executed, LiteTest produces a structured report grouped by category, includ
 - Appended failure and fault
 
 3. The orchestrator and test functions may reside
-in one module or multiple modules. **Recommended**: put
-the orchestrator function in one module and each test function in its own module.
+   in one module or multiple modules. **Recommended**: put
+   the orchestrator function in one module and each test function in its own module.
 
 4. The test framework requires `unistd.h` for POSIX fork and signal capabilities.
 
@@ -133,27 +133,26 @@ finishes another is started.
 
 Test/assert macros can run in parallel as a group (that is, they
 are not started until they can all start without exceeding `maxparallel`).
+
 A group is bracketed using the followug macros:
 
 - `LT_BEGIN_GROUP(groupname, [isolation])`
 - `LT_END_GROUP(groupname);`
 
-A group cannot be nested in a group within a test function.
+Within a test function, a group cannot be nested in a group.
 
-#### Test Isolation
+#### Isolation
 
-For non-grouped test/assert macro, the `isolation` parameter 
-indicates whether the macro runs in the same thread as the calling
-function (no parallelism), a separate thread, or a separate process:
+`isolation`:
+- 0 same thread (no parallelism)
+- 1 separate thread
+- 2 separate process
 
-   `Isolation`: 0 (none), 1 (thread), 2 (process)
+Defaults:
+- Non-grouped macros: 0.
+- Grouped macros: 1.
 
-For a test/assert macro not in a group, the default is 0 (none).
-
-For a test/assert macro in a group, `isolation` must be 1 (thread) or 2 (process)
-with a default of 1 (thread).
-
-Other combinations are invalid.
+Invalid combinations are rejected.
 
 ### Miscellaneous
 
