@@ -174,6 +174,7 @@ details are documented in [include/litetest.h](include/litetest.h).
 
 <details>
 <summary>Click to view</summary>
+
 - Pure C implementation.
 
 - Fault isolation using POSIX signals (SIGSEGV, SIGBUS, SIGABRT) with nested guard levels.
