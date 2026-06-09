@@ -144,7 +144,7 @@ less quick_test_report.txt   # Press 'q' to quit
 Example of the report:
 
 <details>
-<summary>💻 Click to view the report</summary>
+<summary>💻 Click to view</summary>
 
 ```text
 LiteTest Report
