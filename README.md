@@ -231,7 +231,7 @@ The orchestrator and test functions may reside in one module or multiple modules
 Recommended: put the orchestrator function in one module and each test function
 in its own module.
    
-When executed, LiteTest produces a structured report grouped by category, including:
+When executed, LiteTest produces a report grouped by category, including:
 
 - Pass/fail/fault counts per category.
 - Totals across all categories.
