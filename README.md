@@ -4,7 +4,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/LiteTest?display_name=tag)](https://github.com/paulsinclair51/LiteTest/releases)
 [![CI](https://github.com/paulsinclair51/LiteTest/actions/workflows/ci.yml/badge.svg)](https://github.com/paulsinclair51/LiteTest/actions/workflows/ci.yml)
 
-LiteTest is a lightweight C/C++ API and framework designed for running tests. It provides a minimal but flexible testing capability.
+LiteTest is a lightweight C/C++ API and framework for defining, running, and reporting tests in C/C++ projects.
 
 Copyright (c) 2026 paulsinclair51  
 SPDX-License-Identifier: MIT. See `LICENSE` for details.
@@ -488,15 +488,14 @@ make CC=gcc run
 
 Use a POSIX‑capable toolchain such as MSYS2 UCRT64 or Clang64.
 
-If you need the PowerShell path, refer to `build_test_litetest.ps1`. The
-following provisional commands build and run the test executable:
+On Windows, use `build_test_litetest.ps1` to build and run the test executable:
 
 ```powershell
 ./build_test_litetest.ps1
 .\test_litetest.exe
 ```
 
-A tested setup is MSYS2 UCRT64 with:
+A common setup is MSYS2 UCRT64 with:
 
 ```powershell
 pacman -S --needed base-devel mingw-w64-ucrt-x86_64-gcc
@@ -575,14 +574,20 @@ This (or using -h instead of --help) prints a summary of all command-line
 Contributions are welcome. Before opening a pull request:
 
 - Create a feature branch for your work (for example, `docs/readme-update`).
+
 - Update LT_VERSION in `litetest.h` and LT_VERSION_C in `litetest.c` if either is
   updated. Update major version for incompatible API changes. Update minor
   version for backward-compatible additions. Update patch version for bug
-  fixes or internal improvements.
+  fixes or implementation improvements.
+
 - Build and run tests from the repository root with `make run`.
+
 - Keep documentation updates aligned with code and macro behavior.
+
 - Prefer focused commits with clear commit messages.
+
 - If report formatting changes, refresh the README report examples.
+
 - Do not commit directly to `main` unless you have explicit maintainer approval.
 
 Incompatible API changes: The naming conventions, error semantics, and

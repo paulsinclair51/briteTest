@@ -1,14 +1,14 @@
-# Provisional PowerShell build script for LiteTest on Windows POSIX toolchains.
-# Intended for MSYS2 (UCRT64/Clang64) where gcc/clang/cc are on PATH.
-
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
-
 param(
     [string]$Compiler = 'gcc',
     [string]$BuildDir = 'build',
     [string]$Output = 'test_litetest.exe'
 )
+
+# PowerShell build script for LiteTest on Windows POSIX toolchains.
+# Intended for MSYS2 (UCRT64/Clang64) where gcc/clang/cc are on PATH.
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $scriptDir
