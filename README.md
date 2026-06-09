@@ -65,7 +65,7 @@ cp /path/to/litetest.c .
 
 2. Create a file named `test_quick.c` in the same directory.
 
-3. Paste the example into `test_quick.c` (click to expand):
+3. Paste the example into `test_quick.c`:
 
 <details>
 <summary>💻 Click to view and copy code</summary>
@@ -140,6 +140,22 @@ cc -std=c99 -Wall -Wextra -o test_quick test_quick.c litetest.c
 ```sh
 less quick_test_report.txt   # Press 'q' to quit
 ```
+
+Example of the report:
+
+<details>
+<summary>💻 Click to view the report/summary>
+
+```text
+LiteTest Report
+                             Pass   Fail     Fault
+--------------------------------------------------
+1. Orchestrator                 4
+2. Guard 1 and 2                6
+--------------------------------------------------
+                      Total    10
+```
+</details>
 
 See the [Core API Macros](#core-api-macros) and other sections for more detail.
 
@@ -824,5 +840,7 @@ Use this as a reference when adapting LiteTest into your own project structure.
 - `test function`: A function declared with LiteTest test macros that contains
   test and assert calls.
 - `thread isolation`: Isolation mode where a test/assert call runs in a
-  separate thread.
+separate thread.
+- `test assist functions`: API functions provided to simplifying the writing
+  of tests. See  [Test Assist Functions](#test-assist-functions).
 - `title`: Optional report header text provided when opening the report.
