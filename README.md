@@ -756,6 +756,7 @@ Use this as a reference when adapting LiteTest into your own project structure.
   converted to `int`; `0` means fail and any nonzero value means pass.
 - `category`: A labeled group of test/assert results written by
   `LT_WRITE_RESULT`.
+- `control file`:  
 - `default report filename`: The report filename LiteTest uses when only a
   directory path (or no `PATH`) is provided.
 - `executable`: The compiled test program that runs the orchestrator and test
@@ -795,6 +796,7 @@ Use this as a reference when adapting LiteTest into your own project structure.
   test and assert calls.
 - `thread isolation`: Isolation mode where a test/assert call runs in a
 separate thread.
+- `testing artifact`: 
 - `test assist functions`: API functions provided to simplifying the writing
   of tests. See  [Test Assist Functions](#test-assist-functions).
 - `title`: Optional report header text provided when opening the report.
