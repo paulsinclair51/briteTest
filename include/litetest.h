@@ -50,6 +50,7 @@
  * @section ChangeHistory Change History
  *
  * 2026/09/27 Initial version "1.0.0.".
+ *
  **/
 
 /**
@@ -126,9 +127,9 @@
 /**
  * @subsection TestAndAssertMacros Test and Assert Macros
  *
- * - `LT_TEST(funcname, [isolation])[;]`
- * - `LT_ASSERT(expression, [isolation])[;]`
- * - `LT_INJECT_ASSERT(expression, [isolation])[;]`
+ * - LT_TEST(funcname, [isolation])[;]
+ * - LT_ASSERT(expression, [isolation])[;]
+ * - LT_INJECT_ASSERT(expression, [isolation])[;]
  *
  * The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
  * otherwise it is required.
@@ -142,7 +143,8 @@
  *
  * - LT_PASS: returns 1.
  * - LT_FAIL: returns 0.
- * - LT_FAULT(type): causes a fault of the specified type: 1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
+ * - LT_FAULT(type): causes a fault of the specified type:
+ *.                  1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
  * 
  * For other values of type, LT_FAULT returns 0.
  */
@@ -185,7 +187,7 @@ A group ensures that all test/assert macros inside it start together:
 
 /**
  * @subsubsection Isolation Levels
-
+ *
 `isolation`:
 - 0 same thread (no parallelism)
 - 1 separate thread
@@ -198,7 +200,7 @@ Defaults:
  * Invalid combinations are rejected.
  */
  
-old
+/** old
  * @subsubsection ParallelExecution Parallel Execution
  *
  * Parallel execution of the test/assert macros is enabled/disabled by the
@@ -229,7 +231,9 @@ old
  *
  * @note For a test/assert macro in a group, isolation must be 1 (thread)
  *       or 2 (process) with a default of 1 (thread).
- *
+ */
+
+/**
  * @subsection Miscellaneous
  * 
  * Miscellaneous functions, macros, typedefs, and variables.
@@ -743,16 +747,40 @@ void lt_current_time(char *current_time, size_t size);
 
 /**
  * @section LT_TEST and LT_ASSERT* Macros
+ *
+/**
+ * @subsection TestAndAssertMacros Test and Assert Macros
+ *
+ * - LT_TEST(funcname, [isolation])[;]
+ * - LT_ASSERT(expression, [isolation])[;]
+ * - LT_INJECT_ASSERT(expression, [isolation])[;]
+ *
+ * The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
+ * otherwise it is required.
+ *
+ * LT_INJECT_ASSERT is the same as LT_ASSERT except:
+ *
+ * - Only executes if injection is enabled (see @ref iOption `-i` Option.
+ * - Result is counted as an injected pass/fail/fault.
+ *
+ * Special values that can be used in any expression:
+ *
+ * - LT_PASS: returns 1.
+ * - LT_FAIL: returns 0.
+ * - LT_FAULT(type): causes a fault of the specified type:
+ *.                  1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
  * 
+ * For other values of type, LT_FAULT returns 0.
+ */
  * The LT_TEST, LT_ASSERT, LT_ASSERT_FAIL, and LT_ASSERT_FAULT macros
  * provide a interface for running tests with built-in fault recovery
  * using the multi-level guard infrastructure:
- * 
+ *
  * - Typically, the test orchestrator (main) function uses the LT_TEST macro
  *   to execute a test function. The LT_ASSERT, LT_ASSERT__FAIL, and
  *   LT_ASSERT_FAULT macros may be used in the test orchestrator
  *   function, but it is more common for test fucntions to  use these macros.
- * 
+ *
  * - Typically, a test function uses the LT_ASSERT, LT_ASSERT_FAIL,
  *   and LT_ASSERT_FAULT macros. A test module may also use the
  *   LT_TEST macro for a test that can not reasonably be expressed as
@@ -762,7 +790,7 @@ void lt_current_time(char *current_time, size_t size);
 
 /**
  * @name LT_TEST
- * 
+ *
  * @brief A macro to call a test function with a fault guard.
  *
  * Result counts and totals updated.
