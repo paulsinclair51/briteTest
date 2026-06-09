@@ -65,7 +65,7 @@ Create a file named test_quick.c in the same directory and paste the following m
 example of one test function and the orchestrator (`main`) function:
 
 <details>
-    <summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Click for test_quick.c</summary>
+    <summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;💻 Click for test_quick.c</summary>
 
 ```c
 #include "litetest.h"
