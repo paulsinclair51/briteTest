@@ -211,7 +211,7 @@ validate behavior in their own systems.
 ## How LiteTest Compares
 
 <details>
-<summary>💻 Click to view</summary>
+<summary>Click to view</summary>
 
 | Framework | Language / Style | Dependencies | Fault Isolation | Strengths | How LiteTest Differs |
 |-----------|------------------|--------------|-----------------|-----------|-----------------------|
