@@ -211,6 +211,12 @@ validate behavior in their own systems.
 | **CTest (CMake)** | Test runner only | Requires CMake | None (runs external binaries) | Integrates with CMake, dashboards | LiteTest provides assertions + reporting; CTest is only an executor |
 | **Catch2 / doctest** | Modern C++ | Header‑only | No POSIX fault trapping | Very expressive syntax, rich features | LiteTest is pure C and suitable for environments avoiding C++ |
 
+
+## What LiteTest Doesn't Do
+
+- Generate the code for tests.
+- Manage testing artifacts such as control files.
+
 ## Overview
 
 Core LiteTest API files:
