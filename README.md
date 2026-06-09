@@ -695,6 +695,21 @@ change without compelling justification and impact analysis. When possible,
 provide a compatibility mechanism to preserve prior behavior (for example, a
 feature flag or macro to enable/disable the new behavior).
 
+API compatibility policy:
+
+- Treat published APIs as additive by default. Add new symbols for new behavior
+  instead of changing existing signatures.
+- Keep existing return code meanings stable. New error codes may be added, but
+  existing codes and semantics must remain backward compatible.
+- Keep default behavior backward compatible. New behavior should be opt-in via
+  explicit flags, options, or macros.
+- Deprecate before removing. Reserve removals or incompatible changes for major
+  version updates with migration guidance.
+- Preserve documented ownership, timeout, path, and thread-safety semantics
+  unless a major version explicitly revises them.
+- Maintain compatibility tests so previously supported call patterns continue
+  to pass as new features are introduced.
+
 ## Example Test Report
 
 ```text
