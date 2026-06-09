@@ -52,25 +52,28 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 
 ## Quick Start
 
-LiteTest tests are C/C++ expressions/functions, and the orchestrator controls reporting and execution.
+LiteTest tests are C/C++ expressions/functions, and the orchestrator controls
+reporting and execution.
 
-To try LiteTest, copy 'litetest.h' and 'litetest.c' to your current directory:
+1. To try LiteTest, copy 'litetest.h' and 'litetest.c' to your current directory:
 
 ```sh
 cp /path/to/litetest.h .
 cp /path/to/litetest.c .
 ```
 
-Create a file named test_quick.c in the same directory and paste the following minimal
-example of one test function and the orchestrator (`main`) function:
+2. Create a file named `test_quick.c` in the same directory.
+
+3. Paste the example into `test_quick.c` (click to expand):
 
 <details>
-    <summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;💻 Click for test_quick.c</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;💻 Click to view code</summary>
 
 ```c
 #include "litetest.h"
 
-// A simple test function (with 4 test assertions)
+// A simple test function.
+
 STATIC LT_DECLARE_TEST(test_quick)
 {
   LT_INIT_TEST(test_quick, 1);
@@ -78,6 +81,7 @@ STATIC LT_DECLARE_TEST(test_quick)
   int a = 2;
   int b = 2;
 
+  // 4 test assertions.
   LT_ASSERT(a == b, 0);        // Pass
   LT_ASSERT(a + b == 4, 0);    // Pass
   LT_ASSERT(a - b == 1, 0);    // Fail
@@ -86,7 +90,8 @@ STATIC LT_DECLARE_TEST(test_quick)
   LT_RETURN;
 }
 
-// The orchestrator (main) function
+// A simple orchestrator (main) function.
+
 LT_DECLARE_ORCHESTRATOR(main)
 {
   LT_INIT_ORCHESTRATOR(main, quick, 1);
@@ -97,43 +102,48 @@ LT_DECLARE_ORCHESTRATOR(main)
   LT_WRITE_RESULT(LT_TEST(test_quick), "Quick tests");
 
   LT_CLOSE_REPORT("Note: This report is a very simple example of using LiteTest.\n"
-                  "Note: Multiple test categories could be added using multiple\n"
+                  "Note: Multiple test categories can be added using multiple\n"
                   "      test functions.\n"
                   "Note: Orchestrator (`main`) and test functions can be placed in\n"
-                         in individual modules (.c files).\n"
+                  "      individual modules (.c files).\n"
                   "Note: Parameters can be set to run tests in parallel, isolate\n"
-                  "      a test to a separate thread or processm etc.\n"
-                  "Note: The expresion for LT_ASSERT can reference functions to\n"
+                  "      a test to a separate thread or process, etc.\n"
+                  "Note: The expression for LT_ASSERT can reference functions to\n"
                   "      provide a more complex test. A non-zero result indicates\n"
-                  "      pass and a 0 result indicates fail. If a fault occurs\n"
+                  "      pass and a zero result indicates fail. If a fault occurs\n"
                   "      executing the expression, it is detected and counted in\n"
                   "      the report as a fault.\n"
                   "Note: Larger projects can place files in a more conventional\n"
-                  "      layout (e.g., `include/` and `src/`, but this eaple keeps\n"
-                  "      everything in your currebt directory for simplification.\n"
+                  "      layout (e.g., `include/` and `src/`, but this example keeps\n"
+                  "      everything in your current directory for simplification.\n"
                   "Note: See README.md for LiteTest for additional API features.\n");
   LT_EXIT;
 }
 ```
 </details>
 
-Build the executable test_quick in your current directory:
+4. Build the executable `test_quick` in your current directory:
 
-```xh
+```sh
 cc -std=c99 -Wall -Wextra -o test_quick test_quick.c litetest.c
 ```
 
-Run it:
+5. Run it:
 
 ```sh
 ./test_quick
 ```
 
-Tye report is written to `quick_test_report.txt` in your current directory.
+6. View `quick_test_report.txt` in your current directory:
 
-See the [API Macros](api-macros) and other sections from more detail.
+```sh
+less quick_test_report.txt   # Press 'q' to quit
+```
 
-See [Building the Test Executable](#building-the-test-executable) for platform-specific notes and options.
+See the [API Macros](api-macros) and other sections for more detail.
+
+See [Building the Test Executable](#building-the-test-executable) for
+platform-specific notes and options.
 
 ## Documentation Scope
 
