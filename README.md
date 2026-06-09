@@ -172,6 +172,8 @@ details are documented in [include/litetest.h](include/litetest.h).
 
 ## Key Features
 
+<details>
+<summary>Click to view</summary>
 - Pure C implementation.
 
 - Fault isolation using POSIX signals (SIGSEGV, SIGBUS, SIGABRT) with nested guard levels.
@@ -184,6 +186,7 @@ details are documented in [include/litetest.h](include/litetest.h).
 - Comprehensive reporting — pass/fail/fault counts per category and overall totals.
 
 - A set of functions to simplify writing tests.
+</details>
 
 ## API Usage Requirements
 
