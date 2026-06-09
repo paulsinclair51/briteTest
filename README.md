@@ -167,6 +167,8 @@ details are documented in [include/litetest.h](include/litetest.h).
 
 - Comprehensive reporting — pass/fail/fault counts per category and overall totals.
 
+- A set of functions useful for simplifying the writing of tests.
+
 ## API Usage Requirements
 
 LiteTest requires:
