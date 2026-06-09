@@ -59,7 +59,9 @@
  *       using the LiteTest API and framework with test modules test_guards_1.c,
  *       test_guards_2.c, and test_orchestrator.c, and test orchestrator
  *       test_litetest.c in the repository tests directory.
- *
+ */
+ 
+/**
  * @subsection KeyPoints Key Points
  *
  * 1. A test executable is built from:
@@ -80,7 +82,9 @@
  *    in one module and each test function in its own module.
  *
  * 4. The test framework requires unistd.h for POSIX fork and signal capabilities.
- * 
+ */
+
+/**
  * @subsection OrchestratorMacros Orchestrator Function Macros
  *
  * Macros for use in the orchestrator (main) function:
@@ -101,7 +105,9 @@
  * @note t is a test or assert macro.
  * @note For the first macro, a semicolon is required for a forward declaration;
  *       otherwise, it is omitted if is it followed by a definition in { }.
- *
+ */
+
+/**
  * @subsection TestFunctionMacros Test Function Macros
  *
  * Macros for use in a test function:
@@ -115,22 +121,84 @@
  *       defining a test function.
  * @note For the first macro, a semicolon is required for a forward declaration;
  *       otherwise, it is omitted if it is followed by a definition in {}.
- *
+ */
+
+/**
  * @subsection TestAndAssertMacros Test and Assert Macros
  *
- * These macros provide multi-level signal handling to capture faults
- * (SIGSEGV, SIGABRT, SIGBUS). Faults are counted without aborting
- * execution, allowing the test suite to continue and produce a complete
- * test report with fault counts and messages for each fault.
+ * - `LT_TEST(funcname, [isolation])[;]`
+ * - `LT_ASSERT(expression, [isolation])[;]`
+ * - `LT_INJECT_ASSERT(expression, [isolation])[;]`
  *
- * - LT_TEST(funcname, [isolation])[;]
- * - LT_ASSERT(assertexpr, [isolation])[;]
- * - LT_ASSERT_FAIL([isolation])[;]
- * - LT_ASSERT_FAULT([isolation])[;]
+ * The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
+ * otherwise it is required.
  *
- * @note The semicolon is omitted if used as an argument to the
- *       LT_WRITE_RESULT macro; otherwise it is required.
+ * LT_INJECT_ASSERT is the same as LT_ASSERT except:
  *
+ * - Only executes if injection is enabled (see @ref iOption `-i` Option.
+ * - Result is counted as an injected pass/fail/fault.
+ *
+ * Special values that can be used in any expression:
+ *
+ * - LT_PASS: returns 1.
+ * - LT_FAIL: returns 0.
+ * - LT_FAULT(type): causes a fault of the specified type: 1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
+ * 
+ * For other values of type, LT_FAULT returns 0.
+ */
+
+/**
+ * @subsubsection FaultHandling Fault Handling
+ *
+ * LiteTest provides multi‑level signal guards to safely capture faults such as
+ * `SIGSEGV` `SIGABRT`, and `SIGBUS`. When a fault occurs:
+ *
+ * - The fault is recorded
+ * - Execution continues
+ * - The test suite completes normally
+ * - The final report includes fault counts and messages
+ *
+ * This allows you to test low‑level or unsafe code without aborting the entire
+ * test run.
+ */
+
+/**
+ * @subsubsection ParallelExecution Parallel Execution
+
+Parallel execution of the test/assert macros is enabled/disabled by the
+`maxparallel` parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_TEST
+macros. Up to `maxparallel` test/assert macros are started and when one
+finishes another is started.
+ */
+
+/**
+ * @subsubsection ParallelGroupMacros Parallel Group Macros
+
+A group ensures that all test/assert macros inside it start together:
+
+- Groups are bracketed with:
+  - `LT_BEGIN_GROUP(groupname)`
+  - `LT_END_GROUP(groupname)`
+- Within a test function, a group cannot be nested inside another group.
+
+ */
+
+/**
+ * @subsubsection Isolation Levels
+
+`isolation`:
+- 0 same thread (no parallelism)
+- 1 separate thread
+- 2 separate process
+
+Defaults:
+- Non-grouped macros: 0.
+- Grouped macros: 1.
+
+ * Invalid combinations are rejected.
+ */
+ 
+old
  * @subsubsection ParallelExecution Parallel Execution
  *
  * Parallel execution of the test/assert macros is enabled/disabled by the
