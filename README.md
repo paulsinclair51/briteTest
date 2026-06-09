@@ -229,9 +229,13 @@ validate behavior in their own systems.
 <summary>Click to view</summary>
 
 - Generate the source code for tests.
-- Manage the source code fot testing.
+- Manage the testing source code (SCM).
 - Manage testing artifacts such as control files.
-- Mana
+  - Directory layouts
+  - Promoting output files to control files.
+  - Versioning/history
+- Anything not specified as being provided by the APO. 
+
 </details>
 
 ## Overview
