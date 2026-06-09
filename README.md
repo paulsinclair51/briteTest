@@ -202,6 +202,9 @@ validate behavior in their own systems.
 
 ## How LiteTest Compares
 
+<details>
+<summary>💻 Click to view</summary>
+
 | Framework | Language / Style | Dependencies | Fault Isolation | Strengths | How LiteTest Differs |
 |-----------|------------------|--------------|-----------------|-----------|-----------------------|
 | **LiteTest** | Pure C, minimal API | None (single .c/.h) | POSIX signals (`SIGSEGV`, `SIGBUS`, `SIGABRT`) with nested guards | Tiny, embeddable, safe for low‑level code, simple reporting | Designed for small C projects, embedded systems, and environments where external frameworks are too heavy |
@@ -211,6 +214,7 @@ validate behavior in their own systems.
 | **CTest (CMake)** | Test runner only | Requires CMake | None (runs external binaries) | Integrates with CMake, dashboards | LiteTest provides assertions + reporting; CTest is only an executor |
 | **Catch2 / doctest** | Modern C++ | Header‑only | No POSIX fault trapping | Very expressive syntax, rich features | LiteTest is pure C and suitable for environments avoiding C++ |
 
+</details>
 
 ## What LiteTest Doesn't Do
 
