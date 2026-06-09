@@ -191,6 +191,9 @@ details are documented in [include/litetest.h](include/litetest.h).
 
 ## API Usage Requirements
 
+<details>
+<summary>Click to view</summary>
+
 LiteTest requires:
 
 - POSIX.1‑2001 (IEEE Std 1003.1‑2001) compatibility
@@ -203,6 +206,7 @@ Supported environments:
 
 LiteTest has been exercised in POSIX environments; users should
 validate behavior in their own systems.
+</details>
 
 ## How LiteTest Compares
 
@@ -217,13 +221,17 @@ validate behavior in their own systems.
 | **Check** | C with process forking | Requires linking to Check library | Fork‑based isolation | Good isolation, TAP output | LiteTest avoids forking and stays single‑process with `sigsetjmp`/`siglongjmp` guards |
 | **CTest (CMake)** | Test runner only | Requires CMake | None (runs external binaries) | Integrates with CMake, dashboards | LiteTest provides assertions + reporting; CTest is only an executor |
 | **Catch2 / doctest** | Modern C++ | Header‑only | No POSIX fault trapping | Very expressive syntax, rich features | LiteTest is pure C and suitable for environments avoiding C++ |
-
 </details>
 
 ## What LiteTest Doesn't Do
 
+<details>
+<summary>Click to view</summary>
+
 - Generate the code for tests.
 - Manage testing artifacts such as control files.
+
+</details>
 
 ## Overview
 
