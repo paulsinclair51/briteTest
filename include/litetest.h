@@ -10,7 +10,7 @@
  * It provides declarations, definitions (other than non-inline function definitions
  * provided by litetest.c in the repository src directory), and the complete
  * Doxygen documentation for LiteTest. See README.md in the repository root
- * directory for an overview of LiteTest plus a comparison to other frameworks.
+ * directory for a formatted introduction to LiteTest.
  *
  * @note LiteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility and a
  *       C99-compliant compiler. Linux, macOS, and the BSD family natively meet these
