@@ -65,7 +65,7 @@ cp /path/to/litetest.c .
 
 2. Create a file named `test_quick.c` in the same directory.
 
-3. Paste the example into `test_quick.c`:
+3. Paste the code into `test_quick.c`:
 
 <details>
 <summary>💻 Click to view and copy code</summary>
