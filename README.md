@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/LiteTest?display_name=tag)](https://github.com/paulsinclair51/LiteTest/releases)
-[![CI](https://img.shields.io/badge/CI-pending-lightgrey)](https://github.com/paulsinclair51/LiteTest/actions)
+[![CI](https://github.com/paulsinclair51/LiteTest/actions/workflows/ci.yml/badge.svg)](https://github.com/paulsinclair51/LiteTest/actions/workflows/ci.yml)
 
 LiteTest is a lightweight C/C++ API and framework designed for running tests. It provides a minimal but flexible testing capability.
 
@@ -26,11 +26,10 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
     - [Parallel Execution](#parallel-execution)
     - [Parallel Group Macros](#parallel-group-macros)
     - [Isolation Levels](#isolation-levels)
-- [Project Layout](#project-layout)
-  - [Customization](#customization)
-  - [Modules (.c files)](#modules-c-files)
-    - [Example: lubtype Testing](#example-lubtype-testing)
-    - [Example: LiteTest Self-Testing](#example-litetest-self-testing)
+- [Customization](#customization)
+- [Modules (.c files)](#modules-c-files)
+  - [Example: lubtype Testing](#example-lubtype-testing)
+  - [Example: LiteTest Self-Testing](#example-litetest-self-testing)
 - [Orchestrator (main) Function Template](#orchestrator-main-function-template)
 - [Test Function Template](#test-function-template)
 - [Example Usage](#example-usage)
@@ -46,6 +45,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [Contributing](#contributing)
 - [Example Test Report](#example-test-report)
 - [Example Test Report for -i Option](#example-test-report-for--i-option)
+- [Repository Layout](#repository-layout)
 - [Further Reading](#further-reading)
 - [Glossary](#glossary)
 </details>
@@ -67,14 +67,14 @@ cp /path/to/litetest.c .
 3. Paste the example into `test_quick.c` (click to expand):
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;💻 Click to view code</summary>
+<summary>💻 Click to view and copy code</summary>
 
 ```c
 #include "litetest.h"
 
 // A simple test function.
 
-STATIC LT_DECLARE_TEST(test_quick)
+static LT_DECLARE_TEST(test_quick)
 {
   LT_INIT_TEST(test_quick, 1);
 
@@ -140,7 +140,7 @@ cc -std=c99 -Wall -Wextra -o test_quick test_quick.c litetest.c
 less quick_test_report.txt   # Press 'q' to quit
 ```
 
-See the [API Macros](api-macros) and other sections for more detail.
+See the [Core API Macros](#core-api-macros) and other sections for more detail.
 
 See [Building the Test Executable](#building-the-test-executable) for
 platform-specific notes and options.
@@ -316,26 +316,7 @@ Defaults:
 
 Invalid combinations are rejected.
 
-## Project Layout
-
-Repository layout (abridged):
-
-```text
-LiteTest/
-|- include/litetest.h
-|- src/litetest.c
-|- tests/
-|  |- test_litetest.c
-|  |- test_orchestrator.c
-|  |- test_guard1.c
-|  \- test_guard2.c
-|- reports/
-\- README.md
-```
-
-Use this as a reference when adapting LiteTest into your own project structure.
-
-### Customization
+## Customization
 
 Additional functions, macros, typedefs, and variables are
 provided to support customization.
@@ -459,7 +440,7 @@ the LiteTest API and framework. It includes:
 - `test_litetest.c` defines the orchestrator (`main`) with two test
    categories "Orchestrator" and "Guard".
 
-- `test_orchestrator.c` defines the test_orchestrator functions for
+- `test_orchestrator.c` defines the test_orchestrator function for
    testing the "Orchestrator" category.
 
 - `test_guard1.c` defines the `test_guard1` function for testing part of
@@ -488,7 +469,7 @@ including GitHub Codespaces.
 From the repository root:
 
 ```sh
-make -C tests run
+make run
 ```
 
 The Makefile builds and executes the executable writing the test report
@@ -500,7 +481,7 @@ The executable can then be executed directly (see
 To build with gcc instead of clang:
 
 ```sh
-make -C tests CC=gcc run
+make CC=gcc run
 ```
 
 #### Windows (POSIX Toolchain Required)
@@ -508,7 +489,7 @@ make -C tests CC=gcc run
 Use a POSIX‑capable toolchain such as MSYS2 UCRT64 or Clang64.
 
 If you need the PowerShell path, refer to `build_test_litetest.ps1`. The
-following is the expected command to run the script once it has been tested:
+following provisional commands build and run the test executable:
 
 ```powershell
 ./build_test_litetest.ps1
@@ -598,7 +579,7 @@ Contributions are welcome. Before opening a pull request:
   updated. Update major version for incompatible API changes. Update minor
   version for backward-compatible additions. Update patch version for bug
   fixes or internal improvements.
-- Build and run tests from the repository root with `make -C tests run`.
+- Build and run tests from the repository root with `make run`.
 - Keep documentation updates aligned with code and macro behavior.
 - Prefer focused commits with clear commit messages.
 - If report formatting changes, refresh the README report examples.
@@ -634,6 +615,41 @@ LiteTest Report (-i)
 --------------------------------------------------
                       Total    10      3         2
 ```
+
+## Repository Layout
+
+GitHub repository: `paulsinclair51/LiteTest`
+
+Repository layout (with core files listed):
+
+```text
+LiteTest/
+|- .github/
+|  \- workflows/
+|     \- ci.yml
+|- LICENSE
+|- Makefile
+|- README.md
+|- build_test_litetest.ps1
+|- build/
+|- docs/
+|- examples/
+|- include/
+|  \- litetest.h
+|- reports/
+|  |- litetest_test_report-i.txt
+|  \- litetest_test_report.txt
+|- scripts/
+|- src/
+|  \- litetest.c
+|- tests/
+|  |- test_litetest.c
+|  |- test_orchestrator.c
+|  |- test_guard1.c
+|  \- test_guard2.c
+```
+
+Use this as a reference when adapting LiteTest into your own project structure.
 
 ## Further Reading
 
