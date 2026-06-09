@@ -228,9 +228,10 @@ validate behavior in their own systems.
 <details>
 <summary>Click to view</summary>
 
-- Generate the code for tests.
+- Generate the source code for tests.
+- Manage the source code fot testing.
 - Manage testing artifacts such as control files.
-
+- Mana
 </details>
 
 ## Overview
