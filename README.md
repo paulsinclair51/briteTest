@@ -26,7 +26,6 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
   - [Test Group and Test Macros](#test-group-and-test-macros)
   - [Parallel Execution](#parallel-execution)
   - [Concurrent Block Macros](concurrent-block-macros)
-  - [Fault Handling](#fault-handling)
   - [Isolation Modes and Fault Handling](#isolation-modes-and-fault-handling)
 - [Customization](#customization)
 - [Test Support Functions](#test-support-functions)
@@ -443,6 +442,9 @@ provided to support customization.
 
 Examples include:
 
+<details>
+<summary>Click here for list</summary>
+
 - `lt_executablename`
 - `lt_result_t`
 - `lt_dirpath`
@@ -452,6 +454,7 @@ Examples include:
 - `lt_maxparallel`
 - `lt_blockname`
 - `lt_iswritedirpath`
+</details>
 
 See [include/litetest.h](include/litetest.h) for documentation on the provided
 customization functions.
@@ -512,6 +515,9 @@ the LiteTest API and framework.
 
 ## Orchestrator (`main`) Function Template
 
+<details>
+<summary>💻 Click to view and copy</summary>
+
 ```c
 LT_DECLARE_ORCHESTRATOR(main)
 {
@@ -534,12 +540,13 @@ LT_DECLARE_ORCHESTRATOR(main)
   LT_EXIT;
 }
 ```
+</details>
 
-`LT_WRITE_RESULT` flushes one category and resets its counts. Totals accumulate
+`LT_WRITE_RESULT` writes one category and resets its counts. Totals accumulate
 across the full run.
 
 Optional typedefs, variables, functions, and code may be added to customize
-or support testing. Added code may use utility functions. **Recommended**:
+or support testing. Added code may use test support functions. **Recommended**:
 do not intermix code with the tests; such code is handled as if it occurs
 before the tests.
 
@@ -550,6 +557,9 @@ LT_DECLARE_ORCHESTRATOR(main);
 ```
 
 ## Test Function Template
+
+<details>
+<summary>💻 Click to view and copy</summary>
 
 ```c
 [static] LT_DECLARE_TEST(funcname)
@@ -567,6 +577,7 @@ LT_DECLARE_ORCHESTRATOR(main);
   LT_RETURN;
 }
 ```
+</details>
 
 Use `static` when the function is only referenced in the same module.
 
@@ -588,6 +599,9 @@ before the tests.
 The tests directory for this repository provides a self-test implementation of
 the LiteTest API and framework. It includes:
 
+<details>
+<summary>Click to view</summary>
+
 - `test_litetest.c` defines the orchestrator (`main`) with two test
    categories "Orchestrator" and "Guard".
 
@@ -599,12 +613,13 @@ the LiteTest API and framework. It includes:
 
 - `test_guard2.c` defines the `test_guard2` function for testing the other
    part of the "Guard" category.
+</details>
 
 The results of `test_guard1` and `test_guard2` are combined by the orchestrator
 into a single result for the "Guard 1 and 2" category.
 
 ## Building the Test Executable
-
+ 
 Modify a copy of an existing Makefile that builds a test executable for
 a project to a Makefile for your project. For example, use the Makefile
 for testing the lubtype project or the Makefile for self-testing this
@@ -663,7 +678,7 @@ To execute the tests, run the test executable to produce the test report file (a
 existing file is overwritten):
 
 ```sh
-test_<testname> [-i] [PATH]
+test_<testname> [-I] [PATH]
 ```
 
 By default, if `PATH` is not specified, LiteTest writes the report to the
@@ -683,10 +698,10 @@ You may override the output location using the PATH argument:
 - If `PATH` is a directory path, LiteTest writes the report in that directory
   using the default report filename configured by your test setup.
 
-### `-i` Option
+### `-I` Option
 
-The `-i` option enables fail/fault assertions planted in the tests to inject a
-fail or fault. Use it to exercise the LiteTest framework and verify report
+The `-I` option enables LT_TEST_I macros to execute,
+Use it to exercise the LiteTest framework and verify report
 formatting when failures and faults occur.
 
 ### `--help` and `-h` Help Options
