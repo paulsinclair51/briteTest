@@ -30,7 +30,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
   - [Isolation Modes and Fault Handling](#isolation-modes-and-fault-handling)
 - [Customization](#customization)
 - [Test Support Functions](#test-support-functions)
-- [Modules (.c files)](#modules-c-files)
+- [Headers (.h) and Sources (.c)](#headers-h-and-sources-c)
   - [Example: lubtype Testing](#example-lubtype-testing)
   - [Example: LiteTest Self-Testing](#example-litetest-self-testing)
 - [Orchestrator (main) Function Template](#orchestrator-main-function-template)
@@ -489,25 +489,25 @@ Example of Environment helpers:
 See [include/litetest.h](include/litetest.h) for documentation on the provided
 test support functions.
   
-## Modules (.c files)
+## Headers (.h) and Sources (.c)
 
-Modules containing the orchestrator or test functions must include `litetest.h` and
+Source files containing the orchestrator or test group functions must include `litetest.h` and
 any required project headers.
 
-### Example: lubtype Testing
+Example: lubtype Testing
 
-The tests directory in the `paulsinclair51/lubtype` repository provides an
-example orchestrator module and test modules for the lubtype API. The modules
-include these two files:
+The `tests` directory in the `paulsinclair51/lubtype` repository provides an
+example orchestrator and test group source (,c) files for the lubtype API. Each
+source file includes these two headers:
 
 ```c
 #include "lubtype.h"
 #include "litetest.h"
 ```
 
-### Example: LiteTest Self-Testing
+Example: LiteTest Self-Testing
 
-The tests directory for this repository provides an example self-test for
+The `tests` directory for this repository provides an example self-test for
 the LiteTest API and framework.
 
 ```c
