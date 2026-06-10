@@ -32,7 +32,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [Test Support API](#test-support-api)
 - [Headers (.h) and Sources (.c)](#headers-h-and-sources-c)
 - [Orchestrator (main) Function Template](#orchestrator-main-function-template)
-- [Test Group Function Template](#test-grouo-function-template)
+- [Test Group Function Template](#test-group-function-template)
 - [Example of Using the LiteTest API](#example-of-using-the-litetest-api)
 - [Building the Test Executable](#building-the-test-executable)
   - [Linux / macOS](#linux--macos)
@@ -41,7 +41,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
   - [PATH](#path)
   - [-I Option](#i-option)
   - [--help and -h Help Options](#help-and--h-help-options)
-- [Common Pitfalls](#common-pitfalls)
+- [Common Mistakes](#common-mistakes)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [Example Test Report](#example-test-report)
@@ -272,7 +272,13 @@ When executed, LiteTest produces a report summarizing tests by category, includi
 ## Core API
 
 The core API is set of macros used to define the orchestrator and test group
-functions.
+functions. These macros fall into 3 types:
+
+| Type | Purpose | Naming Pattern |
+| --- | --- | --- |
+| **Orchestrator** | Define and run the test runner | ``LT_DECLARE_*``, ``LT_INIT_*``, ``LT_*`` |
+| **Test Group Functions** | Define test group functions | ``LT_DECLARE_GROUP``, ``LT_INIT_GROUP``, ``LT_RETURN`` |
+| **Execution** | Execute groups or test expressions | ``LT_GROUP``, ``LT_TEST`` |
 
 ### Macros for the Orchestrator (`main`) Function
 
@@ -290,7 +296,7 @@ Note:
 - `maxargs` must be 2 or greater. The first arg is the executable name.
   The second optional arg is `PATH`. Additional args are for customization
   and must be parsed by custom code added to the function.
-- `gtm` is aN `LT_GROUP` or `LT_TEST` macro.
+- `gtm` is an `LT_GROUP` or `LT_TEST` macro.
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, omit the semicolon and follow with a definition in `{ }`.
 
@@ -309,22 +315,26 @@ Note:
 
 ### Macros for Executing a Test Group Function or Test Expression
 
-- `LT_GROUP(funcname, include, isolation)[;]`
-- `LT_TEST(expression, include, isolation)[;]`
+- `LT_GROUP(funcname, [include], isolation)[;]`
+- `LT_TEST(expression, [include], isolation)[;]`
 
-The semicolon is omitted if used as an argument to the `LT_WRITE_RESULT` macro;
-otherwise it is required.
+When LT_GROUP or LT_TEST is passed as the first argument to LT_WRITE_RESULT,
+omit the trailing semicolon. Otherwise, a semicolon is required.
 
-include: '1' indicates to always execute the macro.
-         '2'  to '9' indicate to only execute the macro baased on the
-                     on the setting of options (see [Options](#options)).
-                     If an option is not specified, the default is to
-                     execute the macro.
+include: 1: always execute.
+         2-9: execute only when value is less than or equal to n where n (1 - 9) is specified
+              by the -I option (see [`-I` Option](#I-option)).
+              If -I option is not specified with an n value, the default is to
+              execute the macro.
                     
-         'I' indicates to only execute the test expression if the -I option
-             (see [`-I` Option](#I-option)) is specified.
-             Result is counted as a pass/fail/fault and as an injected
-             pass/fail/fault. 'I' is not valid for a test group.
+         I: only execute when the -I option is specified without n value
+            (for `LT_TEST` only).
+            Result is counted as a pass/fail/fault and as an injected
+            pass/fail/fault. 'I' is not valid for a test group.
+            
+Default is 1 if omitted.
+
+For `isolation`, see [Isolation Modes and Fault Handling](isolation-modes-and-fault-handling).
 
 Special values that can be used in any expression:
 
@@ -336,10 +346,9 @@ Special values that can be used in any expression:
 
 #### Parallel Execution
 
-Parallel execution of test group functions and test expressions is enabled/disabled by the
-`maxparallel` parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_GROUP
-macros. Up to `maxparallel` test group functions and test expressions are started and when one
-finishes another is started.
+LiteTest starts up to `maxparallel` test group functions or test expressions concurrently.
+When one finishes, another begins, until all are complete. `maxparallel` is set by the
+LT_INIT_ORCHESTRATOR and LT_INIT_GROUP macros.
 
 ###  Macros for Concurrent Execution
 
@@ -722,7 +731,7 @@ For example:
 This (or using -h instead of --help) prints a summary of all command-line
  options and usage details.
 
-## Common Pitfalls
+## Common Mistakes
 
 - If `PATH` contains spaces, quote it (for example, `"my reports/report.txt"`).
 - Existing report files may be overwritten; use unique paths if you need history.
