@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [Key Features](#key-features)
 - [API Usage Requirements](#api-usage-requirements)
 - [How LiteTest Compares](#how-litetest-compares)
+- [What LiteTest Does Not Provide](what-litetest-does-not-provide)
 - [Overview](#overview)
 - [Core API Macros](#core-api-macros)
   - [Orchestrator (main) Function Macros](#orchestrator-main-function-macros)
