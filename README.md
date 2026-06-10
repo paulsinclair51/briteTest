@@ -321,18 +321,24 @@ Note:
 When LT_GROUP or LT_TEST is passed as the first argument to LT_WRITE_RESULT,
 omit the trailing semicolon. Otherwise, a semicolon is required.
 
-include: 1: always execute.
-         2-9: execute only when value is less than or equal to n where n (1 - 9) is specified
-              by the -I option (see [`-I` Option](#I-option)).
-              If -I option is not specified with an n value, the default is to
-              execute the macro.
-                    
-         I: only execute when the -I option is specified without n value
-            (for `LT_TEST` only).
-            Result is counted as a pass/fail/fault and as an injected
-            pass/fail/fault. 'I' is not valid for a test group.
+`funcname`: name of the group function to execute.
+
+`expression`: Test expression which is cast to int. If `expression` returns 0, test failed;
+              otherwise, test passed. If a fault is captured, the test faulted.
             
-Default is 1 if omitted.
+`include`:
+
+This parameter controls whether a test group or test expression executes
+based on the test executable's `-I` or `-In` option (see [`-I` and `-In` Option](i-and-in-option)):
+
+- 0 — do not execute.
+- 1 — always execute.
+- 2 – 9 — execute only when the user specifies an `-In` option and the value is less than or
+-         equal to n (a single non-zero digit).
+- I — execute only when the user specifies `-I` without a digit (valid only for LT_TEST),
+      Result is counted as an injected pass/fail/fault as well as the usual
+      a pass/fail/fault count.
+- omitted — defaults to `1`.
 
 For `isolation`, see [Isolation Modes and Fault Handling](isolation-modes-and-fault-handling).
 
@@ -694,7 +700,7 @@ To execute the tests, run the test executable to produce the test report file (a
 existing file is overwritten):
 
 ```sh
-test_<testname> [-I] [PATH]
+test_<testname> [-I|-In] [PATH]
 ```
 
 By default, if `PATH` is not specified, LiteTest writes the report to the
@@ -714,11 +720,23 @@ You may override the output location using the PATH argument:
 - If `PATH` is a directory path, LiteTest writes the report in that directory
   using the default report filename configured by your test setup.
 
-### `-I` Option
+### `-I` and `-In` Option
 
-The `-I` option enables LT_TEST_I macros to execute,
-Use it to exercise the LiteTest framework and verify report
-formatting when failures and faults occur.
+The  `-I` and `-In` options control which test execute based the `include`
+parameter of the `LT_GROUP` ane `LT_TEST` macros. `n` is a single non-zero digit.
+Only one of these forms may be specified.
+
+- Use `-In` to enable `LT_GROUP` and `LT_TEST` that have `include`  argument
+  that is a non-zero digit less than or equal to `n`.
+
+- Use `-I` to enable `LT_TEST` that have `include`  argument that is `I`. This
+can be used to exercise the LiteTest framework and verify report formatting
+(typically, these `LT_TEST` macros have a test expression that is coded to
+case a failures or a fault.
+
+- If neither option is provided, all tests with include `1` – `9` execute by default. 
+
+See [Macros for Executing a Test Group Function or Test Expression](macros-for-execution-a-test-group-function-or-test-macros).
 
 ### `--help` and `-h` Help Options
 
