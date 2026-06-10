@@ -21,15 +21,15 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [How LiteTest Compares](#how-litetest-compares)
 - [What LiteTest Does Not Provide](what-litetest-does-not-provide)
 - [Overview](#overview)
-- [Core API Macros](#core-api-macros)
-  - [Orchestrator (main) Function Macros](#orchestrator-main-function-macros)
-  - [Test Group Function Macros](#test-group-function-macros)
-  - [Test Group and Test Macros](#test-group-and-test-macros)
-  - [Parallel Execution](#parallel-execution)
-  - [Concurrent Block Macros](concurrent-block-macros)
+- [Core API](#core-api)
+  - [Macros for the Orchestrator (main) Function](#macros-for-the-orchestrator-main-function)
+  - [Macros for a Test Group Function](#macros-for-a-test-group-function)
+  - [Macros for Executing a Test Group Function or Test Expression](#macros-for-executing-a-test-group-function-or-test-expression)
+    - [Parallel Execution](#parallel-execution)
+  - [Macros for Concurrent Execution](macros-for-concurrent-execution)
   - [Isolation Modes and Fault Handling](#isolation-modes-and-fault-handling)
-- [Customization](#customization)
-- [Test Support Functions](#test-support-functions)
+- [Customization Support API](#customization-support-api)
+- [Test Support API](#test-support-api)
 - [Headers (.h) and Sources (.c)](#headers-h-and-sources-c)
 - [Orchestrator (main) Function Template](#orchestrator-main-function-template)
 - [Test Group Function Template](#test-grouo-function-template)
@@ -269,9 +269,12 @@ When executed, LiteTest produces a report summarizing tests by category, includi
 - Totals across all categories.
 - Notes describing each failure or fault.
 
-## Core API Macros
+## Core API
 
-### Orchestrator (`main`) Function Macros
+The core API is set of macros used to define the orchestrator and test group
+functions.
+
+### Macros for the Orchestrator (`main`) Function
 
 - `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
 - `LT_INIT_ORCHESTRATOR(funcname, project, [maxparallel]);`
@@ -291,7 +294,7 @@ Note:
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, omit the semicolon and follow with a definition in `{ }`.
 
-### Test Group Function Macros
+### Macros for a Test Group Function
 
 - `LT_DECLARE_GROUP(funcname)[;]`
 - `LT_INIT_GROUP(funcname, [maxparallel]);`
@@ -304,7 +307,7 @@ Note:
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, omit the semicolon and follow with a definition in `{ }`.
 
-### Test Group and Test Macros
+### Macros for Executing a Test Group Function or Test Expression
 
 - `LT_GROUP(funcname, [isolation])[;]`
 - `LT_TEST(expression, [isolation])[;]`
@@ -326,21 +329,21 @@ Special values that can be used in any expression:
 - LT_FAULT(type): causes a fault of the specified type: 1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
   For other values of type, LT_FAULT returns 0.
 
-### Parallel Execution
+#### Parallel Execution
 
-Parallel execution of the test group and test macros is enabled/disabled by the
+Parallel execution of test group functions and test expressions is enabled/disabled by the
 `maxparallel` parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_GROUP
-macros. Up to `maxparallel` test group and test macros are started and when one
+macros. Up to `maxparallel` test group functions and test expressions are started and when one
 finishes another is started.
 
-### Concurrent Block Macros
+###  Macros for Concurrent Execution
 
 The concurrent block macros ensure that all test macros inside it start together:
 
-- The tests are bracketed with:
+- The test macros are bracketed with:
   - `LT_BEGIN_CONCURRENT(blockname)`
   - `LT_END_CONCURRENT(blockname)`
-- Within a test group function, a concurrent block cannot be nested inside another
+- Within a test group function, a concurrent block cannot be nested inside
   concurrent block.
 
 ### Isolation Modes and Fault Handling
@@ -434,7 +437,7 @@ Summary:
 Both modes use the same LT_GROUP, LT_TEST, and LT_TEST_I macros. The choice of isolation
 mode affects only how test groups and tests are executed, not how they are written.
 
-## Customization
+## Customization Support API
 
 Additional functions, macros, typedefs, and variables are
 provided to support customization.
@@ -458,7 +461,7 @@ Examples include:
 See [include/litetest.h](include/litetest.h) for documentation on the provided
 customization functions.
 
-## Test Support Functions
+## Test Support API
 
 Additional functions are provided to support writing tests.
 
