@@ -22,11 +22,11 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [Overview](#overview)
 - [Core API Macros](#core-api-macros)
   - [Orchestrator (main) Macros](#orchestrator-main-macros)
-  - [Test Function Macros](#test-function-macros)
-  - [Test and Assert Macros](#test-and-assert-macros)
+  - [Test Group Macros](#test-group-macros)
+  - [Group and Test Macros](#group-and-test-macros)
     - [Fault Handling](#fault-handling)
     - [Parallel Execution](#parallel-execution)
-    - [Parallel Group Macros](#parallel-group-macros)
+    - [Concurrent Macros](concurrent-macros)
     - [Isolation Levels](#isolation-levels)
 - [Customization](#customization)
 - [Test Support Functions](#test-support-functions)
@@ -34,7 +34,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
   - [Example: lubtype Testing](#example-lubtype-testing)
   - [Example: LiteTest Self-Testing](#example-litetest-self-testing)
 - [Orchestrator (main) Function Template](#orchestrator-main-function-template)
-- [Test Function Template](#test-function-template)
+- [Group Function Template](#grouo-function-template)
 - [Example Usage](#example-usage)
 - [Building the Test Executable](#building-the-test-executable)
   - [Linux / macOS](#linux--macos)
@@ -75,20 +75,20 @@ cp /path/to/litetest.c .
 ```c
 #include "litetest.h"
 
-// A simple test function.
+// A simple test group function.
 
-static LT_DECLARE_TEST(test_quick)
+static LT_DECLARE_GROUP(test_quick)
 {
-  LT_INIT_TEST(test_quick, 1);
+  LT_INIT_GROUP(test_quick, 1);
 
   int a = 2;
   int b = 2;
 
   // 4 test assertions.
-  LT_ASSERT(a == b, 0);        // Pass
-  LT_ASSERT(a + b == 4, 0);    // Pass
-  LT_ASSERT(a - b == 1, 0);    // Fail
-  LT_ASSERT(LT_FAULT(1), 0);   // Fault
+  LT_TEST(a == b, 0);        // Pass
+  LT_TEST(a + b == 4, 0);    // Pass
+  LT_TEST(a - b == 1, 0);    // Fail
+  LT_TEST(LT_FAULT(1), 0);   // Fault
 
   LT_RETURN;
 }
@@ -102,7 +102,7 @@ LT_DECLARE_ORCHESTRATOR(main)
   LT_OPEN_REPORT("Test Quick Report");
 
   // Single test category.
-  LT_WRITE_RESULT(LT_TEST(test_quick), "Quick tests");
+  LT_WRITE_RESULT(LT_GROUP(test_quick), "Quick tests");
 
   LT_CLOSE_REPORT("Note: This report is a very simple example of using LiteTest.\n"
                   "Note: Multiple test categories can be added using multiple\n"
@@ -111,7 +111,7 @@ LT_DECLARE_ORCHESTRATOR(main)
                   "      individual modules (.c files).\n"
                   "Note: Parameters can be set to run tests in parallel, isolate\n"
                   "      a test to a separate thread or process, etc.\n"
-                  "Note: The expression for LT_ASSERT can reference functions to\n"
+                  "Note: The expression for LT_TEST can reference functions to\n"
                   "      provide a more complex test. A non-zero result indicates\n"
                   "      pass and a zero result indicates fail. If a fault occurs\n"
                   "      executing the expression, it is detected and counted in\n"
@@ -243,10 +243,10 @@ LiteTest focuses on executing tests and reporting results. It does not:
 ## Overview
 
 LiteTest is a lightweight C/C++ testing framework built around a simple execution model:
-1. You write C expressions (that typically invoke functions) for each test and wrap each
-   of these expressions with the `LT_ASSERT` macro in a test function.
-2. You wrap each test function with the `LT_TEST` macro in the orchestrator.
-3. The orchestrator (`main`) runs the wrapped test functions and reports results.
+1. You write C texpressions (that typically invoke functions) for each test and wrap each
+   of these expressions with the `LT_TEST` macro in a test group function.
+2. You wrap each test grouo function name with the `LT_GROUP` macro in the orchestrator.
+3. The orchestrator (`main`) runs the test group functions and reports results.
 
 The LiteTest API and framework files:
 
@@ -256,16 +256,16 @@ The LiteTest API and framework files:
 
 A typical test executable includes:
 
-- A test orchestrator (`main`) function that opens the report, invokes test functions,
+- A test orchestrator (`main`) function that opens the report, invokes test group functions,
   writes category results, and closes the report.
-- Multiple test functions that execute the tests.
+- Multiple test group functions that execute the tests.
 - The LiteTest API and framework files (`litetest.h`, `litetest.c`). 
 - The headers and source files for the project being tested.
 
-Recommended: Put the orchestrator function in one source file and each test function
+Recommended: Put the orchestrator function in one source file and each test group function
 in its own source file.
    
-When executed, LiteTest produces a report grouped by category, including:
+When executed, LiteTest produces a report summarizing tests by category, including:
 
 - Pass/fail/fault counts per category.
 - Totals across all categories.
@@ -279,7 +279,7 @@ When executed, LiteTest produces a report grouped by category, including:
 - `LT_INIT_ORCHESTRATOR(funcname, project, [maxparallel]);`
 - `LT_PARSE_ARGS([maxargs], ["defaultreportfilename"]);`
 - `LT_OPEN_REPORT(["title"]);`
-- test and assert macros
+- test group and test macros,
 - `LT_WRITE_RESULT([t], "category");`
 - `LT_CLOSE_REPORT(["notes"]);`
 - `LT_EXIT;`
@@ -293,37 +293,38 @@ Note:
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, omit the semicolon and follow with a definition in `{ }`.
 
-### Test Function Macros
+### Test Group Function Macros
 
-- `LT_DECLARE_TEST(funcname)[;]`
-- `LT_INIT_TEST(testname, [maxparallel]);`
-- test and assert macros
+- `LT_DECLARE_GROUP(funcname)[;]`
+- `LT_INIT_GROUP(funcname, [maxparallel]);`
+- test and group macros.
 - `LT_RETURN;`
 
 Note:
 - `funcname` must not be main and must be same for the first two macros when
-  defining a test function.
+  defining a test group function.
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, omit the semicolon and follow with a definition in `{ }`.
 
-### Test and Assert Macros
+### Test Group and Test Macros
 
-- `LT_TEST(funcname, [isolation])[;]`
-- `LT_ASSERT(expression, [isolation])[;]`
-- `LT_INJECT_ASSERT(expression, [isolation])[;]`
+- `LT_GROUP(funcname, [isolation])[;]`
+- `LT_TEST(expression, [isolation])[;]`
+- `LT_INJECT_TEST(expression, [isolation])[;]`
 
 The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
 otherwise it is required.
 
-`LT_INJECT_ASSERT` is the same as `LT_ASSERT` except:
+`LT_INJECT_TEST` is the same as `LT_TEST` except:
 
 -  Only executes if injection is enabled (see [`-i` Option](#i-option)).
--  Result is counted as an injected pass/fail/fault.
+-  Result is counted as a pass/fail/fault and as an injected pass/fail/fault.
 
 Special values that can be used in any expression:
 
 - LT_PASS: returns 1.
-- LT_FAIL: returns 0.
+- LT_FAIL: returns 0. Note this does force a fail. A fail occurs only if the test
+  expression evaluates to 0.
 - LT_FAULT(type): causes a fault of the specified type: 1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
   For other values of type, LT_FAULT returns 0.
 
@@ -343,18 +344,19 @@ test run.
 #### Parallel Execution
 
 Parallel execution of the test/assert macros is enabled/disabled by the
-`maxparallel` parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_TEST
+`maxparallel` parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_GROUP
 macros. Up to `maxparallel` test/assert macros are started and when one
 finishes another is started.
 
-#### Parallel Group Macros
+#### Concurrent Macros
 
-A group ensures that all test/assert macros inside it start together:
+The concurrent macros ensure that all test macros inside it start together:
 
-- Groups are bracketed with:
-  - `LT_BEGIN_GROUP(groupname)`
-  - `LT_END_GROUP(groupname)`
-- Within a test function, a group cannot be nested inside another group.
+- The tests are bracketed with:
+  - `LT_BEGIN_CONCURRENT(blockname)`
+  - `LT_END_CONCURRENT(blockname)`
+- Within a test group function, a concurrent block cannot be nested inside another
+  concurrent block.
 
 #### Isolation Levels
 
@@ -364,10 +366,81 @@ A group ensures that all test/assert macros inside it start together:
 - 2 separate process
 
 Defaults:
-- Non-grouped macros: 0.
-- Grouped macros: 1.
+- Tests and test grouos not within a concurrent block: 0.
+- Tests within a concurrent block: 1.
 
 Invalid combinations are rejected.
+
+## Isolation Modes
+
+LiteTest supports two execution modes that balance speed and fault‑isolation. Both modes run
+tests in a single thread within each process; the difference is whether all test groups run
+inside one process or each test group runs in its own process.
+
+### 1. Single‑Process Mode (default)
+
+In this mode, all test groups run sequentially inside a single process and a single thread.
+This provides the fastest execution and the simplest debugging experience.
+
+LiteTest installs a signal guard that can detect and report certain synchronous faults,
+including:
+
+- SIGSEGV (invalid memory access)
+- SIGBUS  (bus error)
+- SIGFPE  (arithmetic error)
+- SIGILL  (illegal instruction)
+
+These faults can be caught and reported without terminating the test run.
+
+However, some failures cannot be isolated in a single process. If a test triggers one of the
+following, the entire LiteTest process will terminate:
+
+- SIGABRT (abort(), assert() failures, malloc corruption)
+- SIGKILL, SIGSTOP
+- external termination signals (SIGTERM, SIGINT, SIGHUP)
+- sanitizer aborts
+- undefined behavior that escalates to process termination
+- deadlocks, infinite loops, or resource exhaustion
+
+Single‑process mode is ideal for everyday development and fast feedback, but it does not
+provide complete fault isolation.
+
+### 2. Process‑Isolated Mode (parallel or serial)
+
+In this mode, each test group runs in its own child process. LiteTest monitors each child and
+reports its result after the process exits.
+
+Because each test group runs in a separate process, LiteTest can fully isolate:
+
+- SIGABRT and all abort‑based failures
+- memory corruption that triggers allocator aborts
+- sanitizer aborts
+- undefined behavior that terminates the process
+- deadlocks (child can be killed)
+- infinite loops (child can be timed out)
+- resource exhaustion
+- all synchronous faults (SIGSEGV, SIGBUS, SIGILL, SIGFPE)
+
+A failure in one test group cannot affect any other test group or the test runner itself.
+
+Process‑isolated mode is recommended for:
+
+- CI environments
+- fault‑injection testing
+- untrusted or experimental code
+- tests that may hang, abort, or corrupt memory
+- running test groups in parallel
+
+### Summary
+
+| Mode              | Execution                     | Isolation Strength                     | Best For                    |
+|-------------------|-------------------------------|----------------------------------------|-----------------------------|
+| Single‑Process    | One process, one thread       | Partial (cannot isolate aborts/hangs)  | Fast local runs, debugging  |
+| Process‑Isolated  | One process per test group    | Full (survives all faults)             | CI, fault injection, parallel runs |
+
+Both modes use the same LT_GROUP, LT_TEST, and LT_INJECT_TEST macros. The choice of isolation
+level affects only how test groups are executed, not how they are written.
+
 
 ## Customization
 
@@ -383,8 +456,7 @@ Examples include:
 - `lt_currentlevel`
 - `lt_currentresult`
 - `lt_maxparallel`
-- `lt_isisolated`
-- `lt_groupname`
+- `lt_blockname`
 - `lt_iswritedirpath`
 
 See [include/litetest.h](include/litetest.h) for documentation on the provided
@@ -454,13 +526,13 @@ LT_DECLARE_ORCHESTRATOR(main)
   LT_OPEN_REPORT(["title"]);
 
   // Insert test/assert/write calls here:
-  //   LT_TEST(funcname, [isolation]);
-  //   LT_ASSERT(expression, [isolation]);
-  //   LT_WRITE_RESULT(LT_TEST(funcname, [isolation]), "category");
-  //   LT_WRITE_RESULT(LT_ASSERT(expression, [isolation]), "category");
+  //   LT_GROUP(funcname, [isolation]);
+  //   LT_TEST(expression, [isolation]);
+  //   LT_WRITE_RESULT(LT_GROUP(funcname, [isolation]), "category");
+  //   LT_WRITE_RESULT(LT_TEST(expression, [isolation]), "category");
   // Group test/assert calls using:
-  //   LT_BEGIN_GROUP(groupname);
-  //   LT_END_GROUP(groupname);
+  //   LT_BEGIN_CONCURRENT(groupname);
+  //   LT_END_CONCURRENT(groupname);
 
   LT_CLOSE_REPORT(["notes"]);
 
@@ -490,11 +562,11 @@ LT_DECLARE_ORCHESTRATOR(main);
   LT_INIT_TEST(funcname, [maxparallel]);
 
   // Insert test/assert calls here:
-  //   LT_TEST(funcname, [isolation]);
-  //   LT_ASSERT(expression, [isolation]);
+  //   LT_GROUP(funcname, [isolation]);
+  //   LT_TEST(expression, [isolation]);
   // Group test/assert calls using:
-  //   LT_BEGIN_GROUP(groupname);
-  //   LT_END_GROUP(groupname);
+  //   LT_BEGIN_CONCURRENT(groupname);
+  //   LT_END_CONCURRENT(groupname);
 
   LT_RETURN;
 }
@@ -764,51 +836,61 @@ Use this as a reference when adapting LiteTest into your own project structure.
 ## Glossary
 
 - `API`: Application Programming Interface.
-- `assertion expression`: An expression passed to an assert macro that can be
-  converted to `int`; `0` means fail and any nonzero value means pass.
-- `category`: A labeled group of test/assert results written by
-  `LT_WRITE_RESULT`.
+- `category`: A labeled set of LT_GROUP, LT_TEST, or LT_INJECT_TEST whose combined results are written by
+  `LT_WRITE_RESULT` to the report with a specified category name.
 - `control file`:  
 - `default report filename`: The report filename LiteTest uses when only a
   directory path (or no `PATH`) is provided.
 - `executable`: The compiled test program that runs the orchestrator and test
   functions.
-- `fail`: A counted assertion failure where the expression evaluates false (i.e.,
-  zero).
+- `fail`: A counted test failure where the LT_TEST or LT_INJECT_TEST
+   expression evaluatess to false (i.e., zero).
 - `fault`: A counted runtime fault captured by LiteTest guards (for example,
   invalid memory access).
-- `group`: A bracketed set of test/assert calls between `LT_BEGIN_GROUP` and
-  `LT_END_GROUP`.
+- `Concurrent block`: A set of tests (LT_TEST and LT_INJECT_TEST macros)
+   bracketed by `LT_BEGIN_CONCURRENT` and `LT_END_CONCURRENT;`.
+- `group': see `test group`.
 - `guard`: The protection mechanism used to catch runtime faults and continue
   test execution.
-- `guard level`: The nesting depth of active guards while tests/asserts run.
-- `inject mode (-i)`: Optional command-line flag that enables injected
-  fail/fault test paths.
-- `isolation`: Execution mode for a test/assert call.
+- `guard level`: The nesting depth of active guards while test groups and tests run.
+- `inject mode (-i)`: Optional command-line flag that enables an LT_INJECT_TEST to
+   be executed.
+- `isolation`: Execution mode for LT_GROUP, LT_TEST, or LT_INJECT_TEST.
   `0` = same thread, `1` = separate thread, `2` = separate process.
 - `maxargs`: The maximum number of command-line arguments accepted by
   orchestrator parsing. Optional arguments may be omitted.
   `LT_PARSE_ARGS` handles the first two arguments (executable name and optional
   `PATH`) when provided. Any additional arguments must be parsed by custom code
   added to the orchestrator.
-- `maxparallel`: Upper bound on concurrent test/assert execution configured by
-  orchestrator/test initialization macros.
-- `notes`: Optional report text provided when closing the report.
-- `orchestrator`: The `main` function that initializes LiteTest, runs tests,
+- `maxparallel`: Upper bound on concurrent LT_GROUP, LT_TEST, LT_INJECT_TEST. Value set in
+   LT_INIT_ORCHESTRATOR and LT_GROUP macros.
+- `notes`: Optional text for LT_CLOSE_REPORT to append to the report before closing it.
+- `orchestrator`: The `main` function that initializes LiteTest, runs groups or tests,
   and writes report output.
-- `pass`: A counted successful assertion where the expression evaluates true (i.e.,
-  non-zero).
+- `pass`: A counted successful test where the LT_TEST or LT_INJECT_TEST
+   expression evaluates to true (i.e., non-zero).
 - `PATH`: Optional command-line output destination; can be a report file path
   or directory path.
-- `process isolation`: Isolation mode where a test/assert call runs in a
+- `process isolation`: Isolation mode where a test group or test runs in a
   separate process.
 - `project`: Project identifier used in orchestrator initialization and default
   report naming.
-- `test function`: A function declared with LiteTest test macros that contains
-  test and assert calls.
+- `test group`: a grouping of tests and optionally nested groups.
+- `test group function`: A function declared with LiteTest group macros that contains
+ tests or nested groups.
 - `thread isolation`: Isolation mode where a test/assert call runs in a
 separate thread.
-- `testing artifact`: 
+- `test case`: This term is not used in LiteTest. In some contexts, it means
+   a single individual test and, in other contexts, a set of tests, In LiteTest, the former
+   is referred to as a test and the latter, as a test group.
+- `test`: see test expression.
+- `test expression`: An expression passed to an LT_TEST or
+   LT_INJECT_TEST macro that can be cast to `int`; `0` means fail and any
+   nonzero value means pass. The expression typically is a function call or
+   contains function calls. A function could be in the project being tested or
+   a testing function to implement the test.
+- `testing artifact`:
+- `testing function`; a user written function implement or help implement a test.
 - `test suppport functions`: API functions provided to simplifying writing
    tests. See  [Test Support Functions](#test-support-functions).
 - `title`: Optional report header text provided when opening the report.
