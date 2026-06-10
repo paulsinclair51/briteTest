@@ -1,16 +1,17 @@
  /**
  * @file /paulsinclair51/include/litetest.h
  * 
- * @brief LiteTest is a lightweight C/C++ API and testing framework suitable for
- * embedding into other C/C++ projects. The API and framework are intentionally
- * minimal while still providing flexible and comprehensive testing capabilities.
+ * @brief LiteTest is a lightweight Application Programming Interface (API) and
+ * framework for defining, running, and reporting tests in C/C++ projects. It is
+ * implemented as a single .h and .c pair with no external dependencies requiring
+ * only a POSIX.1‑2001 environment and a C99‑compliant compiler.
  *
  * This header is included by modules defining an orchestrator (main) and 
  * testing functions for testing, e.g., a feature, API, or a project implementation.
  * It provides declarations, definitions (other than non-inline function definitions
  * provided by litetest.c in the repository src directory), and the complete
  * Doxygen documentation for LiteTest. See README.md in the repository root
- * directory for a formatted introduction to LiteTest.
+ * directory for an introduction and usage guide to LiteTest.
  *
  * @note LiteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility and a
  *       C99-compliant compiler. Linux, macOS, and the BSD family natively meet these
