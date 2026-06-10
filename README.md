@@ -39,7 +39,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
   - [Windows (POSIX Toolchain Required)](#windows-posix-toolchain-required)
 - [Executable Usage](#executable-usage)
   - [PATH](#path)
-  - [-I Option](#i-option)
+  - [`-I` and `-In` Option](#i-option-and-in-option)
   - [--help and -h Help Options](#help-and--h-help-options)
 - [Common Mistakes](#common-mistakes)
 - [Troubleshooting](#troubleshooting)
