@@ -277,12 +277,12 @@ functions.
 ### Macros for the Orchestrator (`main`) Function
 
 - `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
-- `LT_INIT_ORCHESTRATOR(funcname, project, [maxparallel]);`
-- `LT_PARSE_ARGS([maxargs], ["defaultreportfilename"]);`
-- `LT_OPEN_REPORT(["title"]);`
-- test group and test macros,
-- `LT_WRITE_RESULT([t], "category");`
-- `LT_CLOSE_REPORT(["notes"]);`
+- `LT_INIT_ORCHESTRATOR(funcname, project, maxparallel);`
+- `LT_PARSE_ARGS(maxargs, defaultreportfilename);`
+- `LT_OPEN_REPORT(title]);`
+- test group and test expression macros,
+- `LT_WRITE_RESULT(gtm, category);`
+- `LT_CLOSE_REPORT(notes]);`
 - `LT_EXIT;`
 
 Note:
@@ -290,15 +290,15 @@ Note:
 - `maxargs` must be 2 or greater. The first arg is the executable name.
   The second optional arg is `PATH`. Additional args are for customization
   and must be parsed by custom code added to the function.
-- `t` is a test or assert macro.
+- `gtm` is aN `LT_GROUP` or `LT_TEST` macro.
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, omit the semicolon and follow with a definition in `{ }`.
 
 ### Macros for a Test Group Function
 
 - `LT_DECLARE_GROUP(funcname)[;]`
-- `LT_INIT_GROUP(funcname, [maxparallel]);`
-- test and test group macros.
+- `LT_INIT_GROUP(funcname, maxparallel);`
+- test expression and test group macros.
 - `LT_RETURN;`
 
 Note:
@@ -309,17 +309,22 @@ Note:
 
 ### Macros for Executing a Test Group Function or Test Expression
 
-- `LT_GROUP(funcname, [isolation])[;]`
-- `LT_TEST(expression, [isolation])[;]`
-- `LT_TEST_I(expression, [isolation])[;]`
+- `LT_GROUP(funcname, include, isolation)[;]`
+- `LT_TEST(expression, include, isolation)[;]`
 
-The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
+The semicolon is omitted if used as an argument to the `LT_WRITE_RESULT` macro;
 otherwise it is required.
 
-`LT_TEST_I` is the same as `LT_TEST` except:
-
--  Only executes if injection is enabled (see [`-I` Option](#I-option)).
--  Result is counted as a pass/fail/fault and as an injected pass/fail/fault.
+include: '1' indicates to always execute the macro.
+         '2'  to '9' indicate to only execute the macro baased on the
+                     on the setting of options (see [Options](#options)).
+                     If an option is not specified, the default is to
+                     execute the macro.
+                    
+         'I' indicates to only execute the test expression if the -I option
+             (see [`-I` Option](#I-option)) is specified.
+             Result is counted as a pass/fail/fault and as an injected
+             pass/fail/fault. 'I' is not valid for a test group.
 
 Special values that can be used in any expression:
 
