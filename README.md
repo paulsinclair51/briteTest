@@ -21,33 +21,33 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [How LiteTest Compares](#how-litetest-compares)
 - [Overview](#overview)
 - [Core API Macros](#core-api-macros)
-  - [Orchestrator (main) Macros](#orchestrator-main-macros)
-  - [Test Group Macros](#test-group-macros)
-  - [Group and Test Macros](#group-and-test-macros)
-    - [Fault Handling](#fault-handling)
-    - [Parallel Execution](#parallel-execution)
-    - [Concurrent Macros](concurrent-macros)
-    - [Isolation Levels](#isolation-levels)
+  - [Orchestrator (main) Function Macros](#orchestrator-main-function-macros)
+  - [Test Group Function Macros](#test-group-function-macros)
+  - [Test Group and Test Macros](#test-group-and-test-macros)
+  - [Parallel Execution](#parallel-execution)
+  - [Concurrent Block Macros](concurrent-block-macros)
+  - [Fault Handling](#fault-handling)
+  - [Isolation Modes](#isolation-modes)
 - [Customization](#customization)
 - [Test Support Functions](#test-support-functions)
 - [Modules (.c files)](#modules-c-files)
   - [Example: lubtype Testing](#example-lubtype-testing)
   - [Example: LiteTest Self-Testing](#example-litetest-self-testing)
 - [Orchestrator (main) Function Template](#orchestrator-main-function-template)
-- [Group Function Template](#grouo-function-template)
+- [Test Group Function Template](#test-grouo-function-template)
 - [Example Usage](#example-usage)
 - [Building the Test Executable](#building-the-test-executable)
   - [Linux / macOS](#linux--macos)
   - [Windows (POSIX Toolchain Required)](#windows-posix-toolchain-required)
 - [Executable Usage](#executable-usage)
   - [PATH](#path)
-  - [-i Option](#i-option)
+  - [-I Option](#i-option)
   - [--help and -h Help Options](#help-and--h-help-options)
 - [Common Pitfalls](#common-pitfalls)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [Example Test Report](#example-test-report)
-- [Example Test Report for -i Option](#example-test-report-for--i-option)
+- [Example Test Report for -I Option](#example-test-report-for--i-option)
 - [Repository Layout](#repository-layout)
 - [Further Reading](#further-reading)
 - [Glossary](#glossary)
@@ -243,10 +243,10 @@ LiteTest focuses on executing tests and reporting results. It does not:
 ## Overview
 
 LiteTest is a lightweight C/C++ testing framework built around a simple execution model:
-1. You write C texpressions (that typically invoke functions) for each test and wrap each
+1. You write C test expressions (that typically invoke functions) for each test and wrap each
    of these expressions with the `LT_TEST` macro in a test group function.
 2. You wrap each test grouo function name with the `LT_GROUP` macro in the orchestrator.
-3. The orchestrator (`main`) runs the test group functions and reports results.
+3. The orchestrator (`main`) function runs the test group functions and reports results.
 
 The LiteTest API and framework files:
 
@@ -256,7 +256,7 @@ The LiteTest API and framework files:
 
 A typical test executable includes:
 
-- A test orchestrator (`main`) function that opens the report, invokes test group functions,
+- An orchestrator (`main`) function that opens the report, invokes test group functions,
   writes category results, and closes the report.
 - Multiple test group functions that execute the tests.
 - The LiteTest API and framework files (`litetest.h`, `litetest.c`). 
@@ -273,7 +273,7 @@ When executed, LiteTest produces a report summarizing tests by category, includi
 
 ## Core API Macros
 
-### Orchestrator (`main`) Macros
+### Orchestrator (`main`) Function Macros
 
 - `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
 - `LT_INIT_ORCHESTRATOR(funcname, project, [maxparallel]);`
@@ -297,7 +297,7 @@ Note:
 
 - `LT_DECLARE_GROUP(funcname)[;]`
 - `LT_INIT_GROUP(funcname, [maxparallel]);`
-- test and group macros.
+- test and test group macros.
 - `LT_RETURN;`
 
 Note:
@@ -310,14 +310,14 @@ Note:
 
 - `LT_GROUP(funcname, [isolation])[;]`
 - `LT_TEST(expression, [isolation])[;]`
-- `LT_INJECT_TEST(expression, [isolation])[;]`
+- `LT_TEST_I(expression, [isolation])[;]`
 
 The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
 otherwise it is required.
 
-`LT_INJECT_TEST` is the same as `LT_TEST` except:
+`LT_TEST_I` is the same as `LT_TEST` except:
 
--  Only executes if injection is enabled (see [`-i` Option](#i-option)).
+-  Only executes if injection is enabled (see [`-I` Option](#I-option)).
 -  Result is counted as a pass/fail/fault and as an injected pass/fail/fault.
 
 Special values that can be used in any expression:
@@ -328,7 +328,24 @@ Special values that can be used in any expression:
 - LT_FAULT(type): causes a fault of the specified type: 1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
   For other values of type, LT_FAULT returns 0.
 
-#### Fault Handling
+### Parallel Execution
+
+Parallel execution of the test group and test macros is enabled/disabled by the
+`maxparallel` parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_GROUP
+macros. Up to `maxparallel` test group and test macros are started and when one
+finishes another is started.
+
+### Concurrent Block Macros
+
+The concurrent block macros ensure that all test macros inside it start together:
+
+- The tests are bracketed with:
+  - `LT_BEGIN_CONCURRENT(blockname)`
+  - `LT_END_CONCURRENT(blockname)`
+- Within a test group function, a concurrent block cannot be nested inside another
+  concurrent block.
+
+### Fault Handling
 
 LiteTest provides multi‑level signal guards to safely capture faults such as
 `SIGSEGV` `SIGABRT`, and `SIGBUS`. When a fault occurs:
@@ -341,45 +358,26 @@ LiteTest provides multi‑level signal guards to safely capture faults such as
 This allows you to test low‑level or unsafe code without aborting the entire
 test run.
 
-#### Parallel Execution
+### Isolation Modes
 
-Parallel execution of the test/assert macros is enabled/disabled by the
-`maxparallel` parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_GROUP
-macros. Up to `maxparallel` test/assert macros are started and when one
-finishes another is started.
-
-#### Concurrent Macros
-
-The concurrent macros ensure that all test macros inside it start together:
-
-- The tests are bracketed with:
-  - `LT_BEGIN_CONCURRENT(blockname)`
-  - `LT_END_CONCURRENT(blockname)`
-- Within a test group function, a concurrent block cannot be nested inside another
-  concurrent block.
-
-#### Isolation Levels
+LiteTest supports two execution isolation modes that balance speed and fault‑isolation. Both modes run
+tests in a single thread within each process; the difference is whether all test groups and tests run
+inside one process or each runs in its own process.
 
 `isolation`:
 - 0 same thread (no parallelism)
 - 1 separate thread
-- 2 separate process
+- 2 separate processx
 
 Defaults:
-- Tests and test grouos not within a concurrent block: 0.
+- Tests and test groups not within a concurrent block: 0.
 - Tests within a concurrent block: 1.
 
 Invalid combinations are rejected.
 
-## Isolation Modes
-
-LiteTest supports two execution modes that balance speed and fault‑isolation. Both modes run
-tests in a single thread within each process; the difference is whether all test groups run
-inside one process or each test group runs in its own process.
-
 ### 1. Single‑Process Mode (default)
 
-In this mode, all test groups run sequentially inside a single process and a single thread.
+In this mode, all test groups and tests run sequentially inside a single process and a single thread.
 This provides the fastest execution and the simplest debugging experience.
 
 LiteTest installs a signal guard that can detect and report certain synchronous faults,
@@ -407,10 +405,10 @@ provide complete fault isolation.
 
 ### 2. Process‑Isolated Mode (parallel or serial)
 
-In this mode, each test group runs in its own child process. LiteTest monitors each child and
+In this mode, each test group and test runs in its own child process. LiteTest monitors each child and
 reports its result after the process exits.
 
-Because each test group runs in a separate process, LiteTest can fully isolate:
+Because each test group and test runs in a separate process, LiteTest can isolate:
 
 - SIGABRT and all abort‑based failures
 - memory corruption that triggers allocator aborts
@@ -525,9 +523,10 @@ LT_DECLARE_ORCHESTRATOR(main)
   LT_PARSE_ARGS([maxargs], ["defaultfilename"]);
   LT_OPEN_REPORT(["title"]);
 
-  // Insert test/assert/write calls here:
+  // Insert group/test/write calls here:
   //   LT_GROUP(funcname, [isolation]);
   //   LT_TEST(expression, [isolation]);
+  //   LT_TEST_I(expression, [isolation]);
   //   LT_WRITE_RESULT(LT_GROUP(funcname, [isolation]), "category");
   //   LT_WRITE_RESULT(LT_TEST(expression, [isolation]), "category");
   // Group test/assert calls using:
@@ -561,9 +560,10 @@ LT_DECLARE_ORCHESTRATOR(main);
 {
   LT_INIT_TEST(funcname, [maxparallel]);
 
-  // Insert test/assert calls here:
-  //   LT_GROUP(funcname, [isolation]);
+  // Insert test/group calls here:
   //   LT_TEST(expression, [isolation]);
+  //   LT_TEST_I(expression, [isolation]);
+  //   LT_GROUP(funcname, [isolation]);
   // Group test/assert calls using:
   //   LT_BEGIN_CONCURRENT(groupname);
   //   LT_END_CONCURRENT(groupname);
