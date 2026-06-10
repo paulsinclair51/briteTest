@@ -29,7 +29,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
     - [Parallel Group Macros](#parallel-group-macros)
     - [Isolation Levels](#isolation-levels)
 - [Customization](#customization)
-- [Test Assist Functions](#test-assist-functions)
+- [Test Support Functions](#test-support-functions)
 - [Modules (.c files)](#modules-c-files)
   - [Example: lubtype Testing](#example-lubtype-testing)
   - [Example: LiteTest Self-Testing](#example-litetest-self-testing)
@@ -166,11 +166,11 @@ platform-specific notes and options.
 
 ## Documentation Scope
 
-This README is the primary onboarding guide. It focuses on workflow, usage,
-and practical examples.
+This README serves as the introduction and usage guide to LiteTest. It focuses on concepts,
+workflow, and practical examples to help you quickly integrate LiteTest into your project.
 
-Detailed API behavior, full macro semantics, and lower-level implementation
-details are documented in [include/litetest.h](include/litetest.h).
+Detailed API behavior, macro semantics, and lower‑level implementation details are documented
+directly in `include/litetest.h`.
 
 ## Key Features
 
@@ -178,17 +178,12 @@ details are documented in [include/litetest.h](include/litetest.h).
 <summary>Click to view</summary>
 
 - Pure C implementation.
+- Fault isolation using POSIX signals (`SIGSEGV`, `SIGBUS`, `SIGABRT`) with nested guard levels.
+- Minimal footprint — a single header and source file define the entire API.
+- Straightforward API: simple assertions, categories, and reporting so you can focus on writing tests.
+- Comprehensive reporting: pass/fail/fault counts per category and overall totals.
+- Test support functions that simplify writing and organizing tests.
 
-- Fault isolation using POSIX signals (SIGSEGV, SIGBUS, SIGABRT) with nested guard levels.
-
-- Light footprint with one header and one module defining the API.
-
-- Straightforward API — simple assertions, categories, and reporting so user can focus
-  on writing the tests.
-
-- Comprehensive reporting — pass/fail/fault counts per category and overall totals.
-
-- A set of functions to simplify writing tests.
 </details>
 
 ## API Usage Requirements
@@ -198,13 +193,13 @@ details are documented in [include/litetest.h](include/litetest.h).
 
 LiteTest requires:
 
-- POSIX.1‑2001 (IEEE Std 1003.1‑2001) compatibility
-- A C99‑compliant compiler
+- POSIX.1‑2001 (IEEE Std 1003.1‑2001) compatibility.
+- A C99‑compliant compiler.
 
 Supported environments:
 
-- Linux, macOS, BSD — fully compatible
-- Windows — requires a POSIX layer such as Cygwin, MSYS2, or WSL
+- Linux, macOS, BSD — fully compatible.
+- Windows — requires a POSIX layer such as Cygwin, MSYS2, or WSL.
 
 LiteTest has been exercised in POSIX environments; users should
 validate behavior in their own systems.
@@ -215,14 +210,13 @@ validate behavior in their own systems.
 <details>
 <summary>Click to view</summary>
 
-| Framework | Language / Style | Dependencies | Fault Isolation | Strengths | How LiteTest Differs |
-|-----------|------------------|--------------|-----------------|-----------|-----------------------|
-| **LiteTest** | Pure C, minimal API | None (single .c/.h) | POSIX signals (`SIGSEGV`, `SIGBUS`, `SIGABRT`) with nested guards | Tiny, embeddable, safe for low‑level code, simple reporting | Designed for small C projects, embedded systems, and environments where external frameworks are too heavy |
-| **GoogleTest (gtest)** | C++ (OOP, templates) | Large library, build system integration | No built‑in POSIX fault trapping | Feature‑rich, fixtures, matchers, parameterized tests | LiteTest is dramatically smaller, pure C, and dependency‑free |
-| **Unity / CMock** | C, embedded‑focused | Small library | No multi‑level signal guards | Lightweight, good for microcontrollers | LiteTest adds POSIX fault handling and nested guard levels |
-| **Check** | C with process forking | Requires linking to Check library | Fork‑based isolation | Good isolation, TAP output | LiteTest avoids forking and stays single‑process with `sigsetjmp`/`siglongjmp` guards |
-| **CTest (CMake)** | Test runner only | Requires CMake | None (runs external binaries) | Integrates with CMake, dashboards | LiteTest provides assertions + reporting; CTest is only an executor |
-| **Catch2 / doctest** | Modern C++ | Header‑only | No POSIX fault trapping | Very expressive syntax, rich features | LiteTest is pure C and suitable for environments avoiding C++ |
+| Framework     | Language / Style | Dependencies | Fault Isolation | Strengths | How LiteTest Differs |
+|---------------|------------------|--------------|-----------------|-----------|------------------------|
+| **Unity**     | C, macro‑heavy   | None         | No              | Widely used, simple API | LiteTest adds POSIX signal‑based fault isolation and category‑level reporting. |
+| **cmocka**    | C, function‑based | None        | Yes (setjmp)    | Mature, feature‑rich | LiteTest is smaller, header‑driven, and easier to embed in small projects. |
+| **Check**     | C, process‑based | POSIX tools  | Yes (fork)      | Strong isolation, fixtures | LiteTest avoids process spawning and keeps a minimal footprint. |
+| **Criterion** | C, auto‑discovery | libc, POSIX | Yes             | Modern, fast, rich output | LiteTest is simpler, portable, and avoids auto‑discovery complexity. |
+| **LiteTest**  | C99, macro‑driven | None        | Yes (POSIX signals) | Minimal, portable, easy to embed | Designed for small C projects needing fault isolation without heavy frameworks. |
 </details>
 
 ## What LiteTest Doesn't Do
@@ -385,9 +379,9 @@ Examples include:
 See [include/litetest.h](include/litetest.h) for documentation on the provided
 customization functions.
 
-## Test Assist Functions
+## Test Support Functions
 
-Additional functions are provided to assist in writing tests.
+Additional functions are provided to support writing tests.
 
 Examples of Process and runtime helpers include:
 
@@ -412,7 +406,7 @@ Example of Environment helpers:
 - `int lt_with_env(const char *name, const char *value, int (*fn)(void *), void *ctx)`
 
 See [include/litetest.h](include/litetest.h) for documentation on the provided
-test assist functions.
+test support functions.
   
 ## Modules (.c files)
 
@@ -804,6 +798,6 @@ Use this as a reference when adapting LiteTest into your own project structure.
 - `thread isolation`: Isolation mode where a test/assert call runs in a
 separate thread.
 - `testing artifact`: 
-- `test assist functions`: API functions provided to simplifying the writing
-  of tests. See  [Test Assist Functions](#test-assist-functions).
+- `test suppport functions`: API functions provided to simplifying writing
+   tests. See  [Test Support Functions](#test-support-functions).
 - `title`: Optional report header text provided when opening the report.
