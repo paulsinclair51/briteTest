@@ -33,7 +33,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [Headers (.h) and Sources (.c)](#headers-h-and-sources-c)
 - [Orchestrator (main) Function Template](#orchestrator-main-function-template)
 - [Test Group Function Template](#test-grouo-function-template)
-- [Example Usage](#example-usage)
+- [Example of Using the LiteTest API](#example-of-using-the-litetest-api)
 - [Building the Test Executable](#building-the-test-executable)
   - [Linux / macOS](#linux--macos)
   - [Windows (POSIX Toolchain Required)](#windows-posix-toolchain-required)
@@ -596,9 +596,9 @@ or support testing. Added code may use utility functions. **Recommended**:
 do not intermix code with the tests; such code is handled as if it occurs
 before the tests.
 
-## Example Usage
+## Example of Using the LiteTest API
 
-The tests directory for this repository provides a self-test implementation of
+The `tests` directory for this repository provides a self-test implementation of
 the LiteTest API and framework. It includes:
 
 <details>
