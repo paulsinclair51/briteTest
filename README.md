@@ -242,44 +242,34 @@ LiteTest focuses on executing tests and reporting results. It does not:
 
 ## Overview
 
-LiteTest is a lightweight C testing framework built around a simple execution model: you
-write test functions using LiteTest macros, and an orchestrator function (main) runs them
-and reports results. The framework consists of a single header and source file, making it
-easy to embed directly into small or medium‑sized C/C++ projects.
+LiteTest is a lightweight C/C++ testing framework built around a simple execution model:
+1. You write C expressions (that typically invoke functions) for each test and wrap each
+   of these expressions with the `LT_ASSERT` macro in a test function.
+2. You wrap each test function with the `LT_TEST` macro in the orchestrator.
+3. The orchestrator (`main`) runs the wrapped test functions and reports results.
 
-Core LiteTest API files:
+The LiteTest API and framework files:
 
-- 'include/litetest.h' — public API, macros, and test support functions.
-- 'src/litetest.c' — implementation of the LiteTest runtime and reporting logic.
-
- - [include/litetest.h](include/litetest.h)
- - [src/litetest.c](src/litetest.c)
+ - [`include/litetest.h`](include/litetest.h) — public API (typedefs, enums, constants, macros,
+   function declarations, and static inline function definitions).
+ - [`src/litetest.c`](src/litetest.c) — function definitions for the LiteTest framework.
 
 A typical test executable includes:
 
-- A test orchestrator (`main`) that calls the test functions.
-- One or more test modules containing `LT_TEST` functions.
-- The LiteTest framework files (`litetest.h` and `litetest.c`).
+- A test orchestrator (`main`) function that opens the report, invokes test functions,
+  writes category results, and closes the report.
+- Multiple test functions that execute the tests.
+- The LiteTest API and framework files (`litetest.h`, `litetest.c`). 
 - The headers and source files for the project being tested.
 
-A test executable typically consists of:
-
-- A test **orchestrator** (`main`) function and optional test functions
-  organized into one or more modules,
-
-- `litetest.h`, `litetest.c`, and `unistd.h`
-
-- The modules and headers for the project under test.
-
-The orchestrator and test functions may reside in one module or multiple modules.
-Recommended: put the orchestrator function in one module and each test function
-in its own module.
+Recommended: Put the orchestrator function in one source file and each test function
+in its own source file.
    
 When executed, LiteTest produces a report grouped by category, including:
 
 - Pass/fail/fault counts per category.
 - Totals across all categories.
-- Appended failure and fault.
+- Notes describing each failure or fault.
 
 ## Core API Macros
 
