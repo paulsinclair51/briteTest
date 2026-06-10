@@ -27,7 +27,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
   - [Parallel Execution](#parallel-execution)
   - [Concurrent Block Macros](concurrent-block-macros)
   - [Fault Handling](#fault-handling)
-  - [Isolation Modes](#isolation-modes)
+  - [Isolation Modes and Fault Handling](#isolation-modes-and-fault-handling)
 - [Customization](#customization)
 - [Test Support Functions](#test-support-functions)
 - [Modules (.c files)](#modules-c-files)
@@ -178,7 +178,7 @@ directly in `include/litetest.h`.
 <summary>Click to view</summary>
 
 - Pure C implementation.
-- Fault isolation using POSIX signals (`SIGSEGV`, `SIGBUS`, `SIGABRT`) with nested guard levels.
+- Fault handling with nested guard levels.
 - Minimal footprint — a single header and source file define the entire API.
 - Straightforward API: simple assertions, categories, and reporting so you can focus on writing tests.
 - Comprehensive reporting: pass/fail/fault counts per category and overall totals.
@@ -345,20 +345,7 @@ The concurrent block macros ensure that all test macros inside it start together
 - Within a test group function, a concurrent block cannot be nested inside another
   concurrent block.
 
-### Fault Handling
-
-LiteTest provides multi‑level signal guards to safely capture faults such as
-`SIGSEGV` `SIGABRT`, and `SIGBUS`. When a fault occurs:
-
-- The fault is recorded
-- Execution continues
-- The test suite completes normally
-- The final report includes fault counts and messages
-
-This allows you to test low‑level or unsafe code without aborting the entire
-test run.
-
-### Isolation Modes
+### Isolation Modes and Fault Handling
 
 LiteTest supports two execution isolation modes that balance speed and fault‑isolation. Both modes run
 tests in a single thread within each process; the difference is whether all test groups and tests run
@@ -375,7 +362,17 @@ Defaults:
 
 Invalid combinations are rejected.
 
-### 1. Single‑Process Mode (default)
+A fault s handled as follows:
+
+- The fault is recorded
+- Execution continues
+- The execution completes normally
+- The final report includes fault counts and messages
+
+This allows you to test low‑level or unsafe code without aborting the entire
+test run.
+
+1. Single‑Process Mode (default)
 
 In this mode, all test groups and tests run sequentially inside a single process and a single thread.
 This provides the fastest execution and the simplest debugging experience.
@@ -391,7 +388,7 @@ including:
 These faults can be caught and reported without terminating the test run.
 
 However, some failures cannot be isolated in a single process. If a test triggers one of the
-following, the entire LiteTest process will terminate:
+following, the entire LiteTest process terminate:
 
 - SIGABRT (abort(), assert() failures, malloc corruption)
 - SIGKILL, SIGSTOP
@@ -403,7 +400,7 @@ following, the entire LiteTest process will terminate:
 Single‑process mode is ideal for everyday development and fast feedback, but it does not
 provide complete fault isolation.
 
-### 2. Process‑Isolated Mode (parallel or serial)
+2. Process‑Isolated Mode (parallel or serial)
 
 In this mode, each test group and test runs in its own child process. LiteTest monitors each child and
 reports its result after the process exits.
@@ -429,16 +426,15 @@ Process‑isolated mode is recommended for:
 - tests that may hang, abort, or corrupt memory
 - running test groups in parallel
 
-### Summary
+Summary:
 
 | Mode              | Execution                     | Isolation Strength                     | Best For                    |
 |-------------------|-------------------------------|----------------------------------------|-----------------------------|
 | Single‑Process    | One process, one thread       | Partial (cannot isolate aborts/hangs)  | Fast local runs, debugging  |
 | Process‑Isolated  | One process per test group    | Full (survives all faults)             | CI, fault injection, parallel runs |
 
-Both modes use the same LT_GROUP, LT_TEST, and LT_INJECT_TEST macros. The choice of isolation
-level affects only how test groups are executed, not how they are written.
-
+Both modes use the same LT_GROUP, LT_TEST, and LT_TEST_I macros. The choice of isolation
+mode affects only how test groups and tests are executed, not how they are written.
 
 ## Customization
 
