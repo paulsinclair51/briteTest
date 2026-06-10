@@ -183,7 +183,6 @@ directly in `include/litetest.h`.
 - Straightforward API: simple assertions, categories, and reporting so you can focus on writing tests.
 - Comprehensive reporting: pass/fail/fault counts per category and overall totals.
 - Test support functions that simplify writing and organizing tests.
-
 </details>
 
 ## API Usage Requirements
@@ -219,27 +218,49 @@ validate behavior in their own systems.
 | **LiteTest**  | C99, macro‑driven | None        | Yes (POSIX signals) | Minimal, portable, easy to embed | Designed for small C projects needing fault isolation without heavy frameworks. |
 </details>
 
-## What LiteTest Doesn't Do
+## What LiteTest Does Not Provide
 
 <details>
 <summary>Click to view</summary>
 
-- Generate the source code for tests.
-- Manage the testing source code (SCM).
-- Manage testing artifacts such as control files.
-  - Directory layouts
-  - Promoting output files to control files.
-  - Versioning/history
-- Anything not specified as being provided by the APO. 
+LiteTest focuses on executing tests and reporting results. It does not:
 
+- Generate test source files — users write their own test modules.
+- Perform automatic test discovery — tests are invoked explicitly by the orchestrator or from within test functions.
+- Provide mocking or stubbing frameworks — users implement their own mocking and stubbing.
+- Include built‑in setup/teardown systems — users implement their own patterns as needed.
+- Handle memory management or leak detection — external tools (e.g., Valgrind) must be used.
+- Manage source control or repository structure — LiteTest does not define SCM workflows.
+- Integrate with build systems or CI pipelines — users configure these as needed.
+- Manage test artifacts such as expected‑output (“control”) files.
+- Define or enforce directory layouts for tests or project structure.
+- Promote output files to control files — users handle this workflow manually.
+- Track versioning or history of test artifacts.
+- Produce rich reporting formats such as JUnit XML or HTML output.
+- Provide functionality outside the features explicitly described in this document.
 </details>
 
 ## Overview
 
+LiteTest is a lightweight C testing framework built around a simple execution model: you
+write test functions using LiteTest macros, and an orchestrator function (main) runs them
+and reports results. The framework consists of a single header and source file, making it
+easy to embed directly into small or medium‑sized C/C++ projects.
+
 Core LiteTest API files:
+
+- 'include/litetest.h' — public API, macros, and test support functions.
+- 'src/litetest.c' — implementation of the LiteTest runtime and reporting logic.
 
  - [include/litetest.h](include/litetest.h)
  - [src/litetest.c](src/litetest.c)
+
+A typical test executable includes:
+
+- A test orchestrator (`main`) that calls the test functions.
+- One or more test modules containing `LT_TEST` functions.
+- The LiteTest framework files (`litetest.h` and `litetest.c`).
+- The headers and source files for the project being tested.
 
 A test executable typically consists of:
 
