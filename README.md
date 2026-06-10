@@ -846,6 +846,9 @@ Use this as a reference when adapting LiteTest into your own project structure.
 
 ## Glossary
 
+<details>
+<summary>Click to view</summary>
+
 - `API`: Application Programming Interface.
 - `category`: A labeled set of LT_GROUP, LT_TEST, or LT_INJECT_TEST whose combined results are written by
   `LT_WRITE_RESULT` to the report with a specified category name.
@@ -905,3 +908,6 @@ separate thread.
 - `test suppport functions`: API functions provided to simplifying writing
    tests. See  [Test Support Functions](#test-support-functions).
 - `title`: Optional report header text provided when opening the report.
+</details>
+<summary>Click to view</summary>
+
