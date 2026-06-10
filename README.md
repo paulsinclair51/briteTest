@@ -808,6 +808,9 @@ GitHub repository: `paulsinclair51/LiteTest`
 
 Repository layout (with core files listed):
 
+<details>
+<summary>Click to view</summary>
+
 ```text
 LiteTest/
 |- .github/
@@ -834,6 +837,8 @@ LiteTest/
 |  |- test_guard1.c
 |  \- test_guard2.c
 ```
+<details>
+<summary>Click to view</summary>k
 
 Use this as a reference when adapting LiteTest into your own project structure.
 
@@ -893,7 +898,7 @@ Use this as a reference when adapting LiteTest into your own project structure.
 - `test group function`: A function declared with LiteTest group macros that contains
  tests or nested groups.
 - `thread isolation`: Isolation mode where a test/assert call runs in a
-separate thread.
+  separate thread.
 - `test case`: This term is not used in LiteTest. In some contexts, it means
    a single individual test and, in other contexts, a set of tests, In LiteTest, the former
    is referred to as a test and the latter, as a test group.
@@ -909,5 +914,3 @@ separate thread.
    tests. See  [Test Support Functions](#test-support-functions).
 - `title`: Optional report header text provided when opening the report.
 </details>
-<summary>Click to view</summary>
-
