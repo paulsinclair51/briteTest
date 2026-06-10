@@ -6,7 +6,7 @@
 
 LiteTest is a lightweight Application Programming Interface (API) and framework for defining,
 running, and reporting tests in C/C++ projects. It is implemented as a single `.h` and `.c` pair
-with no external dependencies, requiring only a POSIX.1‑2001 environment and a C99‑compliant compiler.
+with no external dependencies requiring only a POSIX.1‑2001 environment and a C99‑compliant compiler.
 
 Copyright (c) 2026 paulsinclair51  
 SPDX-License-Identifier: MIT. See `LICENSE` for details.
