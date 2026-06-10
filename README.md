@@ -31,8 +31,6 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [Customization](#customization)
 - [Test Support Functions](#test-support-functions)
 - [Headers (.h) and Sources (.c)](#headers-h-and-sources-c)
-  - [Example: lubtype Testing](#example-lubtype-testing)
-  - [Example: LiteTest Self-Testing](#example-litetest-self-testing)
 - [Orchestrator (main) Function Template](#orchestrator-main-function-template)
 - [Test Group Function Template](#test-grouo-function-template)
 - [Example Usage](#example-usage)
