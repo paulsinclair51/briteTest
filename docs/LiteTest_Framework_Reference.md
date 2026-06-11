@@ -32,7 +32,7 @@ SOFTWARE.
 ### Documentation
 
 <details>
-<summary>Click to view</summary>
+<summary>Click to view</summary
 
 For user documentation of the LiteTest API, see:
 
@@ -48,7 +48,25 @@ additionally see:
 - **LiteTest API Reference** — Private (internal) framework types, enums, macros, functions, etc.
 
 See [Repository Layout](#repository-layout) for locations of the above and the
-LiteTest directories and files,
+LiteTest directories and files.
+
+#### Why This Document Uses `Click to View`
+
+<details>
+<summary>Click to view</summary>
+  
+This document uses `Click to view` to keep the overall structure readable while
+still allowing deep technical content to be included. Framework internals tend
+to be long, low‑level, and can obscure what the specific content that is trying
+to be referenced. By collapsing sections and subsections,  a reader can quickly
+scan the high‑level structure and expand donly the parts they need to reference.
+
+This keeps the file manageable on GitHub, avoids overwhelming readers with
+unrelated implementation detail, and makes it easier to navigate as the framework grows.
+
+When modifying this document, follow this convention of using the mark-down tagging pattern:
+`<details> <summary>Click to view</summary> (content) </details>`.
+</details>
 </details>
 
 ## Table of Contents
@@ -392,7 +410,6 @@ Use this as a reference when adapting LiteTest into your own project structure.
                   by promoting the new file to be the control file.
 - `customization support functions`: API functions provided to support
    customizing the orchestrator and test group functions.
-   See [Customization Support Functions](#customization-support-functions).
 - `default report filename`: The report filename LiteTest uses when only a
   directory path (or no `PATH`) is provided.
 - `executable`: The compiled test program that runs the orchestrator and test
@@ -447,7 +464,7 @@ Use this as a reference when adapting LiteTest into your own project structure.
    by the test executable or the LiteTest framework.
 - `testing function`; a user written function to implement or help implement a
    test expression.
-- `test support functions`: API functions provided to simplifying writing
-   tests. See [Test Support Functions](#test-support-functions).
+- `test support functions`: API functions provided to simplify writing
+   tests.
 - `title`: Optional report header text provided when opening the report.
 </details>
