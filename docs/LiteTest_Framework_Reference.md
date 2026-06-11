@@ -64,6 +64,9 @@ LiteTest directories and files,
 
 ## 1, Overview
 
+<details>
+<summary><strong>Click to view</strong></summary>
+
 This document is organized in a top-down order (in contrast to the bottom=up order in `litetest.h`
 and `litetest.c`. This allows a contributors to begin with high-level behavior and
 drill down into lower-level detail.
@@ -83,6 +86,7 @@ These names are only for internal use and should not be referenced by API users.
 
 In general, users of the API should not define names prefixed with `lt_`, `LT`, `litetest_`,
 or `LITETEST`, or use names prefixed with `litetest_` or `LITETEST_`.
+</details>
 
 ### Why Internal Symbols Appear in the Header
 
