@@ -31,10 +31,10 @@ SOFTWARE.
 
 ### Documentation
 
-For user documentation of the LiteTest API, see:
-
 <details>
 <summary><strong>Click to view</strong></summary>
+
+For user documentation of the LiteTest API, see:
 
 - **README.md** — Introduction and quick summary atart to LiteTest.
 - **LiteTest User Guide** — Concepts, workflow, examples.
