@@ -32,7 +32,7 @@ SOFTWARE.
 ### Documentation
 
 <details>
-<summary>Click to view</summary
+<summary>Click to view</summary>
 
 For user documentation of the LiteTest API, see:
 
@@ -45,7 +45,7 @@ additionally see:
 
 - **LiteTest Contributor Guide** — Versioning, branching, testing, documentation rules.  
 - **LiteTest Framework Guide** — Concepts, workflow, examples.
-- **LiteTest API Reference** — Private (internal) framework types, enums, macros, functions, etc.
+- **LiteTest Framework Reference** — Private (internal) framework types, enums, macros, functions, etc.
 
 See [Repository Layout](#repository-layout) for locations of the above and the
 LiteTest directories and files.
@@ -54,18 +54,20 @@ LiteTest directories and files.
 
 <details>
 <summary>Click to view</summary>
-  
-This document uses `Click to view` to keep the overall structure readable while
-still allowing deep technical content to be included. Framework internals tend
-to be long, low‑level, and can obscure what the specific content that is trying
-to be referenced. By collapsing sections and subsections,  a reader can quickly
-scan the high‑level structure and expand donly the parts they need to reference.
+
+This document uses `Click to view` sections to keep the rendered page readable
+while still accommodating large amounts of technical detail. Framework internals
+tend to be long, low‑level, and can obscure the specific content a reader is
+trying to locate. By collapsing sections and subsections, readers can quickly
+scan the high‑level structure and expand only the parts they need.
 
 This keeps the file manageable on GitHub, avoids overwhelming readers with
-unrelated implementation detail, and makes it easier to navigate as the framework grows.
+unrelated implementation detail, and makes the document easier to navigate as
+the framework grows.
 
-When modifying this document, follow this convention of using the mark-down tagging pattern:
-`<details> <summary>Click to view</summary> (content) </details>`.
+Maintainers and contributors should follow this same pattern when adding or updating content:
+
+`<details><summary>Click to view</summary> (content) </details>`
 </details>
 </details>
 
@@ -74,13 +76,13 @@ When modifying this document, follow this convention of using the mark-down tagg
 <details>
 <summary>Click to view</summary>
 
-- [1, Overview](#overview)
-- [2, Internal Symbols Defined in `litetest.h`](#internal-symbols-defined-in-litetesth)
+- [1. Overview](#overview)
+- [2. Internal Symbols Defined in `litetest.h`](#internal-symbols-defined-in-litetesth)
 - [Repository Layout](#repository-layout)
 - [Glossary](#glossary)
 </details>
 
-## 1, Overview
+## 1. Overview
 
 <details>
 <summary>Click to view</summary>
@@ -95,22 +97,30 @@ In this document, a *symbol* refers to any named entity in the LiteTest framewor
 - structs
 - enums and enum values
 - macros
-- variables an
+- variables
 - functions
+</details>
 
-#### Public and Internal Name Conventsions
+#### Public and Internal Name Conventions
+
+<details>
+<summary>Click to view</summary>
 
 Any framework names that are public and visible to LiteTest API users are prefixed
-with `lt_...` (typically, all lowercas) or `LT_..` (typically, all uppercase).
+with `lt_...` (typically lowercase) or `LT_..` (typically uppercase).
 
 Any framework names that are internal (but technically visible to LiteTest API users)
 follow the pattern `litetest_..._internal_t`, `litetest_..._internal`, or `LITETEST_..._INTERNAL`.
 These names should not be referenced by API users.
 
 In general, users of the API should not define names prefixed with `lt_`, `LT`, `litetest_`,
-or `LITETEST`, or refereence names prefixed with `litetest_` or `LITETEST_`.
+or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
+</details>
 
 #### Why Internal Symbols Appear in the Header
+
+<details>
+<summary>Click to view</summary>
 
 Some internal symbols must appear in `litetest.h` because LiteTest relies on
 macros that expand into code requiring access to internal types, constants, or
@@ -121,13 +131,15 @@ Their visibility is an implementation requirement, not part of the public API
 contract. Users should treat all such symbols as internal and avoid depending on
 them, as they may change at any time.
 </details>
+</details>
 
 ## 2. Symbols Defined in `litetest.h`
 
 <details>
 <summary>Click to view</summary>
 
-These may be used internally by `litetest.h` or `litestest.c`.
+These are used by `litetest.h` or `litestest.c` and are public or internal
+based on their name per the naming convetions.
 
 ### 2.1. Types
 
@@ -197,9 +209,9 @@ These functions may be static, static inline, or (by default) extern.
 <details>
 <summary>Click to view</summary>
 
-These symbols are local to `litetest.c` unless speified or defaulting to
-extern. The names for symbols that local do not have to conform to the
-internal name conventions and more natural names may be used.
+These symbols are local to `litetest.c` unless specified or defaulting to
+extern. Symbols that local do not have to conform to the internal naming
+conventions and more natural names may be used.
 
 ### 3.1. Types
 
@@ -256,7 +268,7 @@ internal name conventions and more natural names may be used.
 <details>
 <summary>Click to view</summary>
 
-These fucctions are referenced internally by `litetest.h` but defined in `litetest.c`.
+These functions are referenced internally by `litetest.h` but defined in `litetest.c`.
 These functions are (by default) extern and must conform to the internal name conventions.
 
 (Placeholder)
@@ -264,7 +276,7 @@ These functions are (by default) extern and must conform to the internal name co
 ---
 </details>
 
-### 3.7. Functions (not declared in `liteTest.h`)
+### 3.7. Functions (not declared in `litetest.h`)
 
 <details>
 <summary>Click to view</summary>
@@ -351,12 +363,12 @@ internal name conventions and more natural names may be used.
 
 ## Repository Layout
 
+<details>
+<summary>Click to view</summary>
+  
 GitHub repository: `paulsinclair51/LiteTest`
 
 Repository layout (listing core files):
-
-<details>
-<summary>Click to view</summary>
 
 ```text
 LiteTest/
