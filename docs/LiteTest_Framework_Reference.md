@@ -86,7 +86,6 @@ These names are only for internal use and should not be referenced by API users.
 
 In general, users of the API should not define names prefixed with `lt_`, `LT`, `litetest_`,
 or `LITETEST`, or use names prefixed with `litetest_` or `LITETEST_`.
-</details>
 
 ### Why Internal Symbols Appear in the Header
 
@@ -98,6 +97,7 @@ compile correctly, even though they are not intended for direct use.
 Their visibility is an implementation requirement, not part of the public API
 contract. Users should treat all such symbols as internal and avoid depending on
 them, as they may change at any time.
+</details>
 
 ## 2, Internal Symbols Defined in `litetest.h`
 
