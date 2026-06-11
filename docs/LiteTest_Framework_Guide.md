@@ -3,6 +3,11 @@
 This guide documents the internal architecture and design of the LiteTest framework.  
 It is intended for maintainers and contributors working on the implementation.
 
+Copyright (c) 2026 paulsinclair51
+SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
+
+## Preface
+
 ### Internal Symbols in the Header
 
 LiteTest exposes some internal symbols in `litetest.h` because the framework’s
