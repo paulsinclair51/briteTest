@@ -99,7 +99,9 @@ contract. Users should treat all such symbols as internal and avoid depending on
 them, as they may change at any time.
 </details>
 
-## 2, Internal Symbols Defined in `litetest.h`
+## 2, Internal Symbols Defined in `litetest.<details>
+
+<summary><strong>Click to view</strong></summary>
 
 These  may be used internally by `litetest.h` or `litestest.c`.
 
@@ -145,38 +147,64 @@ These functions may be static, static inline, or (by default) extern.
 
 ## 3. Internal Symbols Defined in `litetest.c`
 
+<details>
+<summary><strong>Click to view</strong></summary>
+
 ### 3.1. Types
+
+<details>
+<summary><strong>Click to view</strong></summary>
 
 (Placeholder)
 
 ---
+</details>
 
 ### 3.2. Structs
 
+<details>
+<summary><strong>Click to view</strong></summary>
+
 (Placeholder)
 
 ---
+</details>
 
 ### 3.3. Enums and Enum Constants
 
+<details>
+<summary><strong>Click to view</strong></summary>
+
 (Placeholder)
 
 ---
+</details>
 
 
 ### 3.4. Global Variables
 
+<details>
+<summary><strong>Click to view</strong></summary>
+
 (Placeholder)
 
 ---
+</details>
 
 ### 3.5. Macros
 
+<details>
+<summary><strong>Click to view</strong></summary>
+
 (Placeholder)
 
 ---
+</details>
 
 ### 3.6. Functions Declared (as a forward reference) in `litetest.h`
+
+<details>
+<summary><strong>Click to view</strong></summary>
 
 These are used internally by `litetest.h` but defined in `litetest.c`.
 These functions are (by default) extern.
@@ -184,55 +212,89 @@ These functions are (by default) extern.
 (Placeholder)
 
 ---
+</details>
 
 ### 3.7. Functions (not declared in `liteTest.h`)
+
+<details>
+<summary><strong>Click to view</strong></summary>
 
 (Placeholder)
 
 These functions are static.
 
 ---
+</details>
+
 ## 4. Execution Engine
+
+<details>
+<summary><strong>Click to view</strong></summary>
 
 (Placeholder for execution helpers.)
 
 ---
+</details>
 
 ## 5. Signal Handling
+
+<details>
+<summary><strong>Click to view</strong></summary>
 
 (Placeholder for signal guard helpers.)
 
 ---
+</details>
 
 ## 6. Process Management
+
+<details>
+<summary><strong>Click to view</strong></summary>
 
 (Placeholder for fork/exec/wait logic.)
 
 ---
+</details>
 
 ## 7. Thread Management
+
+<details>
+<summary><strong>Click to view</strong></summary>
 
 (Placeholder for pthread logic.)
 
 ---
+</details>
 
 ## 8. File and Path Support
+
+<details>
+<summary><strong>Click to view</strong></summary>
 
 (Placeholder for filesystem support helpers.)
 
 ---
+</details>
 
 ## 9. Matching and Comparison Support
+
+<details>
+<summary><strong>Click to view</strong></summary>
 
 (Placeholder for comparison support helpers.)
 
 ---
+</details>
 
 ## 10. Environment Support
+
+<details>
+<summary><strong>Click to view</strong></summary>
 
 (Placeholder for environment support helpers.)
 
 ---
+</details>
 
 ## Repository Layout
 
