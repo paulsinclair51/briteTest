@@ -325,7 +325,7 @@ These functions are static.
 
 GitHub repository: `paulsinclair51/LiteTest`
 
-Repository layout (with core files listed):
+Repository layout (listing core files):
 
 <details>
 <summary>Click to view</summary>
@@ -335,17 +335,22 @@ LiteTest/
 |- .github/
 |  \- workflows/
 |     \- ci.yml
+|- README.md
 |- LICENSE
 |- Makefile
-|- README.md
 |- build_test_litetest.ps1
 |- build/
 |- docs/
+|  \- LiteTest_API_User_Guide.md
+|  \- LiteTest_API_Reference.md
+|  \- LiteTest_Contributor_Guide.md
+|  \- LiteTest_Framework_Guide.md
+|  \- LiteTest_Framework_Reference.md
 |- examples/
 |- include/
 |  \- litetest.h
 |- reports/
-|  |- litetest_test_report-i.txt
+|  |- litetest_test_report-I.txt
 |  \- litetest_test_report.txt
 |- scripts/
 |- src/
