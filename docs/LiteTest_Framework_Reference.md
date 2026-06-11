@@ -145,6 +145,7 @@ These  may be used internally by `litetest.h` or `litestest.c`.
 These functions may be static, static inline, or (by default) extern.
 
 ---
+<details>
 
 ## 3. Internal Symbols Defined in `litetest.c`
 
