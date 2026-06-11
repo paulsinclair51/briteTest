@@ -1,12 +1,14 @@
 # LiteTest Framework Reference
 
-This document defines the internal framework of LiteTest.
+This document defines the internal framework of LiteTest, a lightweight 
+Application Programming Interface (API) and framework for defining, running,
+and reporting tests in C/C++ projects.
 
-This is not part of the public API and may change between versions with only a minor
-or patch increase if the change does not affect the public API contract.
-
-Copyright (c) 2026 paulsinclair51
+Copyright (c) 2026 paulsinclair51.  
 SPDX-License-Identifier: MIT.
+
+<details>
+<summary><strong>Click to view</strong></summary>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +27,19 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+</details>
+
+## Table of Contents
+
+<details>
+<summary><strong>Click to view</strong></summary>
+
+- [Quick Start](#quick-start)
+- [Documentation Scope](#documentation-scope)
+- [Repository Layout](#repository-layout)
+- [Further Reading](#further-reading)
+- [Glossary](#glossary)
+</details>
 
 ## Overview
 
