@@ -12,4 +12,4 @@ SPDX-License-Identifier: MIT. For license details, see `../LICENSE`.
 - LiteTest_Framework_Guide.md
 - LiteTest_Frameowrk_Reference.md
 
-See `../README.nd` for an introduction to Lites and a Quick Start example.
+See `../README.nd` for an introduction to LiteTest and a Quick Start example.
