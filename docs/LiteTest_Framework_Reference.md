@@ -35,12 +35,29 @@ SOFTWARE.
 <summary><strong>Click to view</strong></summary>
 
 - [Quick Start](#quick-start)
-- [Documentation Scope](#documentation-scope)
+- [Documentation](#documentation)
+- [Why Internal Symbols Appear in the Header](#why-internal-symbols-appear-jn-the-header)
 - [Repository Layout](#repository-layout)
-- [Further Reading](#further-reading)
 - [Glossary](#glossary)
 </details>
 
+## Documentation
+
+For user documentation of the LiteTest API, see:
+
+- **README.md** — Introduction and quick summary atart to LiteTest.
+- **LiteTest User Guide** — Concepts, workflow, examples.
+- **LiteTest API Reference** — Public API types, enums, macros, and functions.
+
+for contributor and maintainer documentation of the LiteTest framework,
+additionally see:
+
+- **LiteTest Contributor Guide** — Versioning, branching, testing, documentation rules.  
+- **LiteTest Framesork Guide** — Concepts, workflow, examples.
+- **LiteTest API Reference** — Private (internal) framework types, enums, macros, functions, etc.
+
+See [Repository Layout](#repository-layout) for locations of the above and the
+LiteTest directories and files,
 ## Overview
 
 This document is organized in a top-down order (in contrast to the bottom=up order in `litetest.h`
