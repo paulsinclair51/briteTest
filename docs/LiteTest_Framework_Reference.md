@@ -34,8 +34,8 @@ SOFTWARE.
 <details>
 <summary><strong>Click to view</strong></summary>
 
-- [Documentation](#documentation)
-- [Overview](#overview)
+- [1, Overview](#overview)
+- [2, Internal Symbols Defined in `litetest.h`](#internal-symbols-defined-in-litetesth)
 - [Repository Layout](#repository-layout)
 - [Glossary](#glossary)
 </details>
