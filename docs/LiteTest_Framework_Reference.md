@@ -8,7 +8,7 @@ Copyright (c) 2026 paulsinclair51.
 SPDX-License-Identifier: MIT.
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view<</summary>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@ SOFTWARE.
 ### Documentation
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view<</summary>
 
 For user documentation of the LiteTest API, see:
 
@@ -54,7 +54,7 @@ LiteTest directories and files,
 ## Table of Contents
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view<</summary>
 
 - [1, Overview](#overview)
 - [2, Internal Symbols Defined in `litetest.h`](#internal-symbols-defined-in-litetesth)
@@ -65,7 +65,7 @@ LiteTest directories and files,
 ## 1, Overview
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view<</summary>
 
 This document is organized in a top-down order (in contrast to the bottom=up order in `litetest.h`
 and `litetest.c`. This allows a contributors to begin with high-level behavior and
@@ -102,7 +102,7 @@ them, as they may change at any time.
 ## 2, Internal Symbols Defined in `litetest.<details>
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 These  may be used internally by `litetest.h` or `litestest.c`.
 
@@ -150,12 +150,12 @@ These functions may be static, static inline, or (by default) extern.
 ## 3. Internal Symbols Defined in `litetest.c`
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 ### 3.1. Types
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 (Placeholder)
 
@@ -165,7 +165,7 @@ These functions may be static, static inline, or (by default) extern.
 ### 3.2. Structs
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 (Placeholder)
 
@@ -175,7 +175,7 @@ These functions may be static, static inline, or (by default) extern.
 ### 3.3. Enums and Enum Constants
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 (Placeholder)
 
@@ -186,7 +186,7 @@ These functions may be static, static inline, or (by default) extern.
 ### 3.4. Global Variables
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 (Placeholder)
 
@@ -196,7 +196,7 @@ These functions may be static, static inline, or (by default) extern.
 ### 3.5. Macros
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 (Placeholder)
 
@@ -206,7 +206,7 @@ These functions may be static, static inline, or (by default) extern.
 ### 3.6. Functions Declared (as a forward reference) in `litetest.h`
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 These are used internally by `litetest.h` but defined in `litetest.c`.
 These functions are (by default) extern.
@@ -219,7 +219,7 @@ These functions are (by default) extern.
 ### 3.7. Functions (not declared in `liteTest.h`)
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 (Placeholder)
 
@@ -227,11 +227,12 @@ These functions are static.
 
 ---
 </details>
+</details>
 
 ## 4. Execution Engine
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 (Placeholder for execution helpers.)
 
@@ -241,7 +242,7 @@ These functions are static.
 ## 5. Signal Handling
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 (Placeholder for signal guard helpers.)
 
@@ -251,7 +252,7 @@ These functions are static.
 ## 6. Process Management
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view<</summary>
 
 (Placeholder for fork/exec/wait logic.)
 
@@ -261,7 +262,7 @@ These functions are static.
 ## 7. Thread Management
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 (Placeholder for pthread logic.)
 
@@ -271,7 +272,7 @@ These functions are static.
 ## 8. File and Path Support
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 (Placeholder for filesystem support helpers.)
 
@@ -281,7 +282,7 @@ These functions are static.
 ## 9. Matching and Comparison Support
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 (Placeholder for comparison support helpers.)
 
@@ -291,7 +292,7 @@ These functions are static.
 ## 10. Environment Support
 
 <details>
-<summary><strong>Click to view</strong></summary>
+<summary>Click to view</summary>
 
 (Placeholder for environment support helpers.)
 
