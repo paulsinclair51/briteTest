@@ -1,32 +1,158 @@
 # LiteTest
 
-LiteTest is a lightweight C/C++ testing framework implemented as a single `.h` / `.c` pair with no external dependencies. It provides simple test definitions, fault‑tolerant execution, and clear reporting — ideal for small to medium C projects that need reliable testing without heavy tooling.
+LiteTest is a lightweight C/C++ testing framework implemented as a
+single `.h` / `.c` pair with no external dependencies. It provides simple
+test definitions, fault‑tolerant execution, and clear reporting — ideal
+for small to medium C projects that need reliable testing without heavy 
+tooling.
+
+<details>
+<summary><strong>📘  TABLE OF CONTENTS  📘</strong></summary>
+
+- [Quick Start](#quick-start)
+- [Documentation Scope](#documentation-scope)
+- [Key Features](#key-features)
+- [API Usage Requirements](#api-usage-requirements)
+- [How LiteTest Compares](#how-litetest-compares)
+- [What LiteTest Does Not Provide](#what-litetest-does-not-provide)
+- [Overview](#overview)
+- [Core API Macros](#core-api-macros)
+  - [Macros for the Orchestrator (main) Function](#macros-for-the-orchestrator-main-function)
+  - [Macros for a Test Group Function](#macros-for-a-test-group-function)
+  - [Macros for Executing a Test Group Function or Test Expression](#macros-for-executing-a-test-group-function-or-test-expression)
+    - [Parallel Execution](#parallel-execution)
+  - [Macros for Concurrent Execution](#macros-for-concurrent-execution)
+  - [Isolation Modes and Fault Handling](#isolation-modes-and-fault-handling)
+- [Customization Support API](#customization-support-api)
+- [Test Support API](#test-support-api)
+- [Repository Layout](#repository-layout)
+- [Further Reading](#further-reading)
+- [Glossary](#glossary)
+</details>
 
 ## Quick Start
 
-To try LiteTest:
+LiteTest tests are C/C++ expressions/functions, and the orchestrator controls
+reporting and execution.
 
-1. Copy `litetest.h` and `litetest.c` into your project directory.
-2. Create `test_quick.c` and paste in the example test group and orchestrator.
-3. Build the test executable:
+1. To try LiteTest, copy 'litetest.h' and 'litetest.c' to your current directory:
 
-   ```sh
-   cc -std=c99 -Wall -Wextra -o test_quick test_quick.c litetest.c
-   ```
+```sh
+cp /path/to/litetest.h .
+cp /path/to/litetest.c .
+```
 
-4. Run it:
+2. Create a file named `test_quick.c` in the same directory.
 
-   ```sh
-   ./test_quick
-   ```
+3. Copy and paste the code into `test_quick.c`:
 
-5. View the generated report:
+<details>
+<summary>💻 Click to view and copy</summary>
 
-   ```sh
-   less quick_test_report.txt
-   ```
+```c
+#include "litetest.h"
 
-See the **LiteTest User Guide** for concepts, workflow, and examples.
+// A simple test group function.
+
+static LT_DECLARE_GROUP(test_quick)
+{
+  LT_INIT_GROUP(test_quick, 1);
+
+  int a = 2;
+  int b = 2;
+
+  // 4 test assertions.
+  LT_TEST(a == b, , 0);        // Pass
+  LT_TEST(a + b == 4, ,  0);    // Pass
+  LT_TEST(a - b == 1, , 0);    // Fail
+  LT_TEST(LT_FAULT(1), , 0);   // Fault
+
+  LT_RETURN;
+}
+
+// A simple orchestrator (main) function.
+
+LT_DECLARE_ORCHESTRATOR(main)
+{
+  LT_INIT_ORCHESTRATOR(main, quick, 1);
+  LT_PARSE_ARGS(2, "quick_test_report.txt");
+  LT_OPEN_REPORT("Test Quick Report");
+
+  // Single test category.
+  LT_WRITE_RESULT(LT_GROUP(test_quick), "Quick tests");
+
+  LT_CLOSE_REPORT("Note: This report is a very simple example of using LiteTest.\n"
+                  "Note: Multiple test categories can be added using multiple\n"
+                  "      test functions.\n"
+                  "Note: Orchestrator (`main`) and test functions can be placed in\n"
+                  "      individual modules (.c files).\n"
+                  "Note: Parameters can be set to run tests in parallel, isolate\n"
+                  "      a test to a separate thread or process, etc.\n"
+                  "Note: The expression for LT_TEST can reference functions to\n"
+                  "      provide a more complex test. A non-zero result indicates\n"
+                  "      pass and a zero result indicates fail. If a fault occurs\n"
+                  "      executing the expression, it is detected and counted in\n"
+                  "      the report as a fault.\n"
+                  "Note: Larger projects can place files in a more conventional\n"
+                  "      layout (e.g., `include/` and `src/`, but this example keeps\n"
+                  "      everything in your current directory for simplification.\n"
+                  "Note: See README.md for LiteTest for additional API features.\n");
+  LT_EXIT;
+}
+```
+</details>
+
+4. Build the executable `test_quick` in your current directory:
+
+```sh
+cc -std=c99 -Wall -Wextra -o test_quick test_quick.c litetest.c
+```
+
+5. Run it:
+
+```sh
+./test_quick
+```
+
+6. View `quick_test_report.txt` in your current directory:
+
+```sh
+less quick_test_report.txt   # Press 'q' to quit
+```
+
+Example of the report:
+
+<details>
+<summary>💻 Click to view</summary>
+
+```text
+LiteTest Report
+                             Pass   Fail     Fault
+--------------------------------------------------
+1. Orchestrator                 4
+2. Guard 1 and 2                6
+--------------------------------------------------
+                      Total    10
+```
+</details>
+
+## Documentation
+
+For user documentation of the LiteTest API, see:
+
+- **README.md** — Introduction and quick summary atart to LiteTest.
+- **LiteTest User Guide** — Concepts, workflow, examples.
+- **LiteTest API Reference** — Public API types, enums, macros, and functions.
+
+for contributor and maintainer documentation of the LiteTest framework,
+additionally see:
+
+- **LiteTest Contributor Guide** — Versioning, branching, testing, documentation rules.  
+- **LiteTest Framesork Guide** — Concepts, workflow, examples.
+- **LiteTest API Reference** — Private (internal) framework types, enums, macros, functions, etc.
+
+See [Repository Layout](#repository-layout) for locations of the above and the
+LiteTest directories and files,
 
 ## Key Features
 
