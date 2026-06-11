@@ -2,8 +2,13 @@
 
 This document defines the internal framework of LiteTest.
 
-This is not part of the public API and may change between versions with only a minor or patch increase
-if the change does not impact the public API contract is not affected.
+This is not part of the public API and may change between versions with only a minor
+or patch increase if the change does not affect the public API contract.
+
+Copyright (c) 2026 paulsinclair51
+SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
+
+## Overview
 
 This document is organized in a top-down order (in contrast to the bottom=up order in `litetest.h`
 and `litetest.c`. This allows a contributors to begin with high-level behavior and
