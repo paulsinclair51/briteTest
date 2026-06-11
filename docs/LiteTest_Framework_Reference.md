@@ -271,7 +271,7 @@ LiteTest/
 ```>
 
 Use this as a reference when adapting LiteTest into your own project structure.
-</details
+</details>
 
 ## Glossary
 
