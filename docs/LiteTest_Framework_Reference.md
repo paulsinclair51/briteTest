@@ -99,52 +99,74 @@ contract. Users should treat all such symbols as internal and avoid depending on
 them, as they may change at any time.
 </details>
 
-## 2, Internal Symbols Defined in `litetest.<details>
+## 2, Internal Symbols Defined in `litetest`
 
 <details>
 <summary>Click to view</summary>
 
 These  may be used internally by `litetest.h` or `litestest.c`.
 
----
-
 ### 2.1. Types
+
+<details>
+<summary>Click to view</summary>
 
 (Placeholder)
 
 ---
+<details>
 
 ### 2.2. Structs
 
+<details>
+<summary>Click to view</summary>
+
 (Placeholder)
 
 ---
+<details>
 
 ### 2.3. Enums and Enum Constants
 
+<details>
+<summary>Click to view</summary>
+
 (Placeholder)
 
 ---
+<details>
 
 ### 2.4. Global Variables
 
+<details>
+<summary>Click to view</summary>
+
 (Placeholder)
 
 ---
+<details>
 
 ### 2.5. Macros
 
+<details>
+<summary>Click to view</summary>
+
 (Placeholder)
 
 ---
+<details>
 
 ### 2.6. Functions
+
+<details>
+<summary>Click to view</summary>
 
 (Placeholder)
 
 These functions may be static, static inline, or (by default) extern.
 
 ---
+<details>
 <details>
 
 ## 3. Internal Symbols Defined in `litetest.c`
