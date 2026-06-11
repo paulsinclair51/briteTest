@@ -288,6 +288,6 @@ LiteTest/
 - **Internal API**: Framework‑only symbols not intended for external use.
 - **Semantic Versioning**: Versioning scheme using `M.m.p`.
 - **Test Group**: A function declared with `LT_DECLARE_GROUP`.
-- **Test Expression**: Expression passed to `LT_TEST` or `LT_INJECT_TEST`.
+- **Test Expression**: Expression passed to `LT_TEST`.
 - **Report Format**: The output structure produced by LiteTest test runs.
 </details>
