@@ -318,7 +318,7 @@ Note:
 - `LT_GROUP(funcname, [include], isolation)[;]`
 - `LT_TEST(expression, [include], isolation)[;]`
 
-When LT_GROUP or LT_TEST is passed as the first argument to LT_WRITE_RESULT,
+When an  `LT_GROUP `or `LT_TEST` macro is passed as the first argument to LT_WRITE_RESULT,
 omit the trailing semicolon. Otherwise, a semicolon is required.
 
 `funcname`: name of the group function to execute.
@@ -344,26 +344,26 @@ For `isolation`, see [Isolation Modes and Fault Handling](isolation-modes-and-fa
 
 Special values that can be used in any expression:
 
-- LT_PASS: returns 1.
-- LT_FAIL: returns 0. Note this does force a fail. A fail occurs only if the test
+- `LT_PASS`: returns 1.
+- `LT_FAIL`: returns 0. Note this does force a fail. A fail occurs only if the test
   expression evaluates to 0.
-- LT_FAULT(type): causes a fault of the specified type: 1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
+-` LT_FAULT(type)`: causes a fault of the specified type: 1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
   For other values of type, LT_FAULT returns 0.
 
 #### Parallel Execution
 
 LiteTest starts up to `maxparallel` test group functions or test expressions concurrently.
 When one finishes, another begins, until all are complete. `maxparallel` is set by the
-LT_INIT_ORCHESTRATOR and LT_INIT_GROUP macros.
+`LT_INIT_ORCHESTRATOR` and `LT_INIT_GROUP` macros.
 
 ###  Macros for Concurrent Execution
 
-The concurrent block macros ensure that all test macros inside it start together:
+The concurrent block macros ensure that all `LT_TEST` macros inside it start together:
 
-- The test macros are bracketed with:
+- The `LT_TEST` macros are bracketed with:
   - `LT_BEGIN_CONCURRENT(blockname)`
   - `LT_END_CONCURRENT(blockname)`
-- Within a test group function, a concurrent block cannot be nested inside
+- Within a test group function body, a concurrent block cannot be nested inside
   concurrent block.
 
 ### Isolation Modes and Fault Handling
@@ -401,41 +401,41 @@ This provides the fastest execution and the simplest debugging experience.
 LiteTest installs a signal guard that can detect and report certain synchronous faults,
 including:
 
-- SIGSEGV (invalid memory access)
-- SIGBUS  (bus error)
-- SIGFPE  (arithmetic error)
-- SIGILL  (illegal instruction)
+- `SIGSEGV` (invalid memory access)
+- `SIGBUS`  (bus error)
+- `SIGFPE`  (arithmetic error)
+- `SIGILL`  (illegal instruction)
 
 These faults can be caught and reported without terminating the test run.
 
-However, some failures cannot be isolated in a single process. If a test triggers one of the
-following, the entire LiteTest process terminate:
+However, some failures cannot be isolated in a single process. If a test triggers
+one of the following, the entire LiteTest process terminate:
 
-- SIGABRT (abort(), assert() failures, malloc corruption)
-- SIGKILL, SIGSTOP
-- external termination signals (SIGTERM, SIGINT, SIGHUP)
-- sanitizer aborts
-- undefined behavior that escalates to process termination
-- deadlocks, infinite loops, or resource exhaustion
+- `SIGABRT` (abort(), assert() failures, malloc corruption).
+- `SIGKILL`, `SIGSTOP`.
+- External termination signals `(SIGTERM`, `SIGINT`, `SIGHUP`)
+- Sanitizer aborts.
+- Undefined behavior that escalates to process termination.
+- Deadlocks, infinite loops, or resource exhaustion.
 
 Single‑process mode is ideal for everyday development and fast feedback, but it does not
 provide complete fault isolation.
 
 2. Process‑Isolated Mode (parallel or serial)
 
-In this mode, each test group and test runs in its own child process. LiteTest monitors each child and
+In this mode, each test group function and test expression runs in its own child process. LiteTest monitors each child and
 reports its result after the process exits.
 
-Because each test group and test runs in a separate process, LiteTest can isolate:
+Because each test group function and test expression runs in a separate process, LiteTest can isolate:
 
-- SIGABRT and all abort‑based failures
-- memory corruption that triggers allocator aborts
-- sanitizer aborts
-- undefined behavior that terminates the process
-- deadlocks (child can be killed)
-- infinite loops (child can be timed out)
-- resource exhaustion
-- all synchronous faults (SIGSEGV, SIGBUS, SIGILL, SIGFPE)
+- `SIGABRT` and all abort‑based failures.
+- Memory corruption that triggers allocator aborts.
+- Aanitizer aborts.
+- Undefined behavior that terminates the process.
+- Deadlocks (child can be timedout and then killed ).
+- Infinite loops (child can be timed out and then killed).
+- Resource exhaustion.
+- All synchronous faults (`SIGSEGV`, `SIGBUS`, `SIGILL`, `SIGFPE`).
 
 A failure in one test group cannot affect any other test group or the test runner itself.
 
@@ -454,18 +454,18 @@ Summary:
 | Single‑Process    | One process, one thread       | Partial (cannot isolate aborts/hangs)  | Fast local runs, debugging  |
 | Process‑Isolated  | One process per test group    | Full (survives all faults)             | CI, fault injection, parallel runs |
 
-Both modes use the same LT_GROUP, LT_TEST, and LT_TEST_I macros. The choice of isolation
-mode affects only how test groups and tests are executed, not how they are written.
+Both modes use the same `LT_GROUP` and`LT_TEST` macros. The choice of isolation
+mode affects only how test group fucntions and test expressions are executed,
+not how they are written.
 
 ## Customization Support API
 
-Additional functions, macros, typedefs, and variables are
-provided to support customization.
+Additional functions, macros, typedefs, and variables are provided to support customization.
 
 Examples include:
 
 <details>
-<summary>Click here for list</summary>
+<summary>Click here to viewt</summary>
 
 - `lt_executablename`
 - `lt_result_t`
@@ -484,6 +484,9 @@ customization functions.
 ## Test Support API
 
 Additional functions are provided to support writing tests.
+
+<details>
+<summary>Click here to viewt</summary>
 
 Examples of Process and runtime helpers include:
 
@@ -506,6 +509,7 @@ Examples of Comparison and matching helpers include:
 Example of Environment helpers:
 
 - `int lt_with_env(const char *name, const char *value, int (*fn)(void *), void *ctx)`
+</details>
 
 See [include/litetest.h](include/litetest.h) for documentation on the provided
 test support functions.
@@ -518,7 +522,7 @@ any required project headers.
 Example: lubtype Testing
 
 The `tests` directory in the `paulsinclair51/lubtype` repository provides an
-example orchestrator and test group source (,c) files for the lubtype API. Each
+example orchestrator and test group source (.c) files for the lubtype API. Each
 source file includes these two headers:
 
 ```c
@@ -710,8 +714,8 @@ test_<testname> [-I|-In] [PATH]
 ```
 
 By default, if `PATH` is not specified, LiteTest writes the report to the
-current working directory using the default report filename configured by your
-test setup.
+current working directory using the default report filename configured by
+your test setup.
 
 ### PATH
 
@@ -754,7 +758,7 @@ For example:
 ./test_litetest --help
 ```
 This (or using -h instead of --help) prints a summary of all command-line
- options and usage details.
+options and usage details.
 
 ## Common Mistakes
 
@@ -782,7 +786,7 @@ Contributions are welcome. Before opening a pull request:
 
 - Create a feature branch for your work (for example, `docs/readme-update`).
 
-- Update LT_VERSION in `litetest.h` and LT_VERSION_C in `litetest.c` if either is
+- Update `LT_VERSION` in `litetest.h` and `LT_VERSION_C` in `litetest.c` if either is
   updated. Update major version for incompatible API changes. Update minor
   version for backward-compatible additions. Update patch version for bug
   fixes or implementation improvements.
@@ -896,9 +900,18 @@ Use this as a reference when adapting LiteTest into your own project structure.
 <summary>Click to view</summary>
 
 - `API`: Application Programming Interface.
-- `category`: A labeled set of LT_GROUP, LT_TEST, or LT_INJECT_TEST whose combined results are written by
-  `LT_WRITE_RESULT` to the report with a specified category name.
-- `control file`:  
+- `category`: A labeled set of `LT_GROUP` and `LT_TEST` macro whose combined
+             results are written by `LT_WRITE_RESULT` to the report with a
+             specified category name.
+- `control file`: A previsously generated file that can be compared to newly
+                  generating file for differences (typically, if there are
+                  differences (other than expected differences like a timestamp
+                  change) this indicates a failure of the test. In some cases,
+                  the control file is out-of-date and needs to be replaced
+                  by promoting the new file to be the control file.
+- `customization suppport functions`: API functions provided to support
+   customizing the orchestrator and test group functions.
+   See [Customization Support Functions](#customization-support-functions).
 - `default report filename`: The report filename LiteTest uses when only a
   directory path (or no `PATH`) is provided.
 - `executable`: The compiled test program that runs the orchestrator and test
@@ -935,23 +948,25 @@ Use this as a reference when adapting LiteTest into your own project structure.
   separate process.
 - `project`: Project identifier used in orchestrator initialization and default
   report naming.
-- `test group`: a grouping of tests and optionally nested groups.
-- `test group function`: A function declared with LiteTest group macros that contains
- tests or nested groups.
+- `test group`: a grouping of `LT_TEST` and, optionally, `LT_GROUP` macros.
+- `test group function`: A function declared with the `LT_DECLARE_GROUP` macro
+   that contains 'LT_TEST' and 'LT_GROUP` macros.
 - `thread isolation`: Isolation mode where a test/assert call runs in a
   separate thread.
 - `test case`: This term is not used in LiteTest. In some contexts, it means
    a single individual test and, in other contexts, a set of tests, In LiteTest, the former
-   is referred to as a test and the latter, as a test group.
+   is referred to as a test (or test expression( and the latter, as a test group.
 - `test`: see test expression.
-- `test expression`: An expression passed to an LT_TEST or
-   LT_INJECT_TEST macro that can be cast to `int`; `0` means fail and any
-   nonzero value means pass. The expression typically is a function call or
-   contains function calls. A function could be in the project being tested or
-   a testing function to implement the test.
-- `testing artifact`:
-- `testing function`; a user written function implement or help implement a test.
+- `test expression`: An expression passed to an `LT_TEST` macro that can be cast
+   to `int`; `0` means fail and a nonzero value means pass. The expression
+   typically is a function call or contains function calls. A function could
+   be in the project being tested or a testing function to implement the test.
+- `testing artifact`: typically, a file generated by the test exeutable (e.g.,
+   a test report) but also stdout and stderr output plus anything that is captured
+   by the test executable or the LiteTest framework.
+- `testing function`; a user written function to implement or help implement a
+   test expression.
 - `test suppport functions`: API functions provided to simplifying writing
-   tests. See  [Test Support Functions](#test-support-functions).
+   tests. See [Test Support Functions](#test-support-functions).
 - `title`: Optional report header text provided when opening the report.
 </details>
