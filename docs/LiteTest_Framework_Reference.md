@@ -8,7 +8,7 @@ Copyright (c) 2026 paulsinclair51.
 SPDX-License-Identifier: MIT.
 
 <details>
-<summary>Click to view<</summary>
+<summary>Click to view</summary>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@ SOFTWARE.
 ### Documentation
 
 <details>
-<summary>Click to view<</summary>
+<summary>Click to view</summary>
 
 For user documentation of the LiteTest API, see:
 
@@ -54,7 +54,7 @@ LiteTest directories and files,
 ## Table of Contents
 
 <details>
-<summary>Click to view<</summary>
+<summary>Click to view</summary>
 
 - [1, Overview](#overview)
 - [2, Internal Symbols Defined in `litetest.h`](#internal-symbols-defined-in-litetesth)
@@ -65,7 +65,7 @@ LiteTest directories and files,
 ## 1, Overview
 
 <details>
-<summary>Click to view<</summary>
+<summary>Click to view</summary>
 
 This document is organized in a top-down order (in contrast to the bottom=up order in `litetest.h`
 and `litetest.c`. This allows a contributors to begin with high-level behavior and
