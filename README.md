@@ -1,10 +1,21 @@
 # LiteTest
 
-LiteTest is a lightweight C/C++ testing framework implemented as a
-single `.h` / `.c` pair with no external dependencies. It provides simple
-test definitions, fault‑tolerant execution, and clear reporting — ideal
+LiteTest is a lightweight Application Programming Interface (API) and framework 
+for defining, running, and reporting tests in C/C++ projects. It provides a simple
+core macro-driven API, fault‑tolerant execution, and clear reporting — ideal
 for small to medium C projects that need reliable testing without heavy 
-tooling.
+tooling and dependencies.
+
+LiteTesf is implemented as a single .h / .c pair with no external dependencies
+requiring only a POSIX.1‑2001 environment and a C99‑compliant compiler.
+
+Copyright (c) 2026 paulsinclair51
+SPDX-License-Identifier: MIT.
+
+<details>
+<summary><strong>📘  TABLE OF CONTENTS  📘</strong></summary>
+
+</details>
 
 <details>
 <summary><strong>📘  TABLE OF CONTENTS  📘</strong></summary>
