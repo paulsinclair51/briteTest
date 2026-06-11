@@ -3,6 +3,18 @@
 This guide documents the internal architecture and design of the LiteTest framework.  
 It is intended for maintainers and contributors working on the implementation.
 
+### Internal Symbols in the Header
+
+LiteTest exposes some internal symbols in `litetest.h` because the framework’s
+macros expand into code that depends on internal types and helper functions.
+These symbols must be visible to user code for the macros to compile correctly,
+but they are not part of the public API and should not be used directly.
+
+Their presence in the header reflects C implementation requirements, not intended
+usage. Contributors may modify these symbols as needed, provided the public API
+contract remains intact.
+
+
 ---
 
 ## 1. Introduction
