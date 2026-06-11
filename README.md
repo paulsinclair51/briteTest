@@ -62,10 +62,16 @@ SOFTWARE.
 
 ## Quick Start
 
-LiteTest tests are C/C++ expressions/functions, and the orchestrator controls
-reporting and execution.
+A test executable onsists of your tests as C/C++ expressions/functions, and the
+orchestrator and test group functions you write using the LiteTest API that
+mamnages the execution.
 
-1. To try LiteTest, copy 'litetest.h' and 'litetest.c' to your current directory:
+To try LiteTest, simply follow this steps:
+
+<details>
+<summary><strong>Click to view</strong></summary>
+
+1, copy 'litetest.h' and 'litetest.c' to your current directory:
 
 ```sh
 cp /path/to/litetest.h .
@@ -164,6 +170,7 @@ LiteTest Report
 --------------------------------------------------
                       Total    10
 ```
+</details>
 </details>
 
 ## Documentation
