@@ -409,7 +409,7 @@ including:
 These faults can be caught and reported without terminating the test run.
 
 However, some failures cannot be isolated in a single process. If a test triggers
-one of the following, the entire LiteTest process terminate:
+one of the following, the entire LiteTest process terminates:
 
 - `SIGABRT` (abort(), assert() failures, malloc corruption).
 - `SIGKILL`, `SIGSTOP`.
@@ -454,7 +454,7 @@ Summary:
 | Single‑Process    | One process, one thread       | Partial (cannot isolate aborts/hangs)  | Fast local runs, debugging  |
 | Process‑Isolated  | One process per test group    | Full (survives all faults)             | CI, fault injection, parallel runs |
 
-Both modes use the same `LT_GROUP` and`LT_TEST` macros. The choice of isolation
+Both modes use the same `LT_GROUP` and `LT_TEST` macros. The choice of isolation
 mode affects only how test group functions and test expressions are executed,
 not how they are written.
 
@@ -465,7 +465,7 @@ Additional functions, macros, typedefs, and variables are provided to support cu
 Examples include:
 
 <details>
-<summary>Click here to viewt</summary>
+<summary>Click here to view</summary>
 
 - `lt_executablename`
 - `lt_result_t`
@@ -519,7 +519,7 @@ test support functions.
 Source files containing the orchestrator or test group functions must include `litetest.h` and
 any required project headers.
 
-Example: lubtype Testing
+Example: Testing lubtype Project
 
 The `tests` directory in the `paulsinclair51/lubtype` repository provides an
 example orchestrator and test group source (.c) files for the lubtype API. Each
@@ -530,7 +530,7 @@ source file includes these two headers:
 #include "litetest.h"
 ```
 
-Example: LiteTest Self-Testing
+Example: Self-Testing LiteTest Project
 
 The `tests` directory for this repository provides an example self-test for
 the LiteTest API and framework.
@@ -573,7 +573,7 @@ across the full run.
 
 Optional typedefs, variables, functions, and code may be added to customize
 or support testing. Added code may use test support functions (see
-[Test Support API](#test-support-api)) and customization suport functions
+[Test Support API](#test-support-api)) and customization support functions
 (see [Customization Support API](#customization-support-api)).
 
 **Recommended**: do not intermix code with the tests; such code is handled
@@ -613,7 +613,7 @@ Use `static` when the function is only referenced in the same module.
 Forward declaration:
 
 ```c
-[static] LT_DECLARE_GROUPfunc);
+[static] LT_DECLARE_GROUP(func);
 ```
 
 Specify `static` if the above definition of the function specifies `static`.
@@ -733,7 +733,7 @@ You may override the output location using the PATH argument:
 ### `-I` and `-In` Option
 
 The  `-I` and `-In` options control which tests execute based on the `include`
-parameter of the `LT_GROUP` ane `LT_TEST` macros. `n` is a single non-zero digit.
+parameter of the `LT_GROUP` and `LT_TEST` macros. `n` is a single non-zero digit.
 Only one of these forms may be specified.
 
 - Use `-In` to enable `LT_GROUP` and `LT_TEST` macros that have an `include` argument
@@ -745,7 +745,7 @@ Only one of these forms may be specified.
   cause a failures or a fault.
 
 - If neither option is provided, all  `LT_GROUP` and `LT_TEST` macros with an `include`
-  arugment that is `1` – `9` execute by default.
+  argument that is `1` – `9` execute by default.
 
 See [Macros for Executing a Test Group Function or Test Expression](#macros-for-executing-a-test-group-function-or-test-expression) for the `include` parameter and its interaction with the `-I` and `-In` options.
 
@@ -903,8 +903,8 @@ Use this as a reference when adapting LiteTest into your own project structure.
 - `category`: A labeled set of `LT_GROUP` and `LT_TEST` macro whose combined
              results are written by `LT_WRITE_RESULT` to the report with a
              specified category name.
-- `control file`: A previsously generated file that can be compared to newly
-                  generating file for differences (typically, if there are
+- `control file`: A previously generated file that can be compared to a newly
+                  generated file for differences (typically, if there are
                   differences (other than expected differences like a timestamp
                   change) this indicates a failure of the test. In some cases,
                   the control file is out-of-date and needs to be replaced
@@ -917,7 +917,7 @@ Use this as a reference when adapting LiteTest into your own project structure.
 - `executable`: The compiled test program that runs the orchestrator and test
   functions.
 - `fail`: A counted test failure where the LT_TEST or LT_INJECT_TEST
-   expression evaluatess to false (i.e., zero).
+   expression evaluates to false (i.e., zero).
 - `fault`: A counted runtime fault captured by LiteTest guards (for example,
   invalid memory access).
 - `Concurrent block`: A set of tests (LT_TEST and LT_INJECT_TEST macros)
@@ -955,18 +955,18 @@ Use this as a reference when adapting LiteTest into your own project structure.
   separate thread.
 - `test case`: This term is not used in LiteTest. In some contexts, it means
    a single individual test and, in other contexts, a set of tests, In LiteTest, the former
-   is referred to as a test (or test expression( and the latter, as a test group.
+   is referred to as a test (or test expression) and the latter, as a test group.
 - `test`: see test expression.
 - `test expression`: An expression passed to an `LT_TEST` macro that can be cast
    to `int`; `0` means fail and a nonzero value means pass. The expression
    typically is a function call or contains function calls. A function could
    be in the project being tested or a testing function to implement the test.
-- `testing artifact`: typically, a file generated by the test exeutable (e.g.,
+- `testing artifact`: typically, a file generated by the test executable (e.g.,
    a test report) but also stdout and stderr output plus anything that is captured
    by the test executable or the LiteTest framework.
 - `testing function`; a user written function to implement or help implement a
    test expression.
-- `test suppport functions`: API functions provided to simplifying writing
+- `test support functions`: API functions provided to simplifying writing
    tests. See [Test Support Functions](#test-support-functions).
 - `title`: Optional report header text provided when opening the report.
 </details>
