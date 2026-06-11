@@ -48,9 +48,11 @@ which specifies a string of the form `"M.m.p"` (major, minor, patch).
 the public API and framework documentation.
 
 A **major LiteTest release requires a corresponding major update to this
-document** and, therefore, the document’s major version must match the LiteTest
+document** and therefore the document’s major version must match the LiteTest
 major version. The **update** version tracks updates to this document itself and
-does not correspond to LiteTest minor or patch versions.
+does not correspond to LiteTest minor or patch versions. The update version is
+incremented whenever this document is updated without a change to the major version,
+and it resets to `0` when the major version increases.
 </details>
 
 ### Documentation
@@ -60,7 +62,7 @@ does not correspond to LiteTest minor or patch versions.
 
 For user documentation of the LiteTest API, see:
 
-- **README.md** — Introduction and quick summary start to LiteTest.
+- **README.md** — Introduction to LiteTest.
 - **LiteTest User Guide** — Concepts, workflow, examples.
 - **LiteTest API Reference** — Public API types, enums, macros, and functions.
 
@@ -71,27 +73,37 @@ additionally see:
 - **LiteTest Framework Guide** — Concepts, workflow, examples.
 - **LiteTest Framework Reference** — Private (internal) framework types, enums, macros, functions, etc.
 
-See [Repository Layout](#repository-layout) for locations of the above and the
+See [Repository Layout](#repository-layout) for locations of the above documents and the
 LiteTest directories and files.
 
-#### Why This Document Uses `Click to View`
+#### Documentation Style Guide
 
 <details>
 <summary>Click to view</summary>
 
-This document uses `Click to view` sections to render readable pages
-while still accommodating large amounts of technical detail. Framework internals
-tend to be long, low‑level, and can obscure the specific content a reader is
-trying to locate. By collapsing sections and subsections, readers can quickly
-scan the high‑level structure and expand only the parts they need.
+## 1. Tone
+- Technical, precise, and neutral.
+- No marketing language.
+- Prefer clarity over cleverness.
 
-This keeps the file manageable, avoids overwhelming readers with
-unrelated implementation detail, and makes the document easier to navigate.
+## 2. Formatting
+- Use backticks for code identifiers.
+- Use fenced code blocks for file trees and examples.
+- Keep line lengths reasonable for GitHub rendering.
 
-Maintainers and contributors should preserve and use this structure when updating
-the document so that rendered pages remain easy to navigate:
+## 3. Writing Guidelines
+- Define terms once, and then use them consistently.
+- Avoid synonyms for technical concepts (e.g., always “update version,” never “revision”).
+- Keep paragraphs short.
+- Use lists for enumerations.
 
-`<details><summary>Click to view</summary> (content) </details>`
+## 4. `Click to view`
+- Use `Click to view` sections and subsections to keep the document readable while still
+  accommodating large amounts of technical detail: 
+  - Framework internals tend to be long and low‑level; collapsing sections allows
+    readers to scan the structure and expand only what they need.  
+  - This keeps the document manageable, avoids overwhelming readers with unrelated
+    detail, and makes the document easier to navigate.  
 </details>
 </details>
  
@@ -122,7 +134,7 @@ the document so that rendered pages remain easy to navigate:
   - [3.7. Functions (not declared in `litetest.h`)](#37-functions-not-declared-in-litetesth)
 
 - [**4. Execution Engine**](#4-execution-engine)
-- 
+
 - [**5. Signal Handling**](#5-signal-handling)
 
 - [**6. Process Management**](#6-process-management)
@@ -159,13 +171,13 @@ In this document, a *symbol* refers to any named entity in the LiteTest framewor
 - functions
 </details>
 
-#### Public and Internal Name Conventions
+#### Public and Internal Naming Conventions
 
 <details>
 <summary>Click to view</summary>
 
 Any framework names that are public and visible to LiteTest API users are prefixed
-with `lt_...` (typically lowercase) or `LT_..` (typically uppercase).
+with `lt_...` (typically lowercase) or `LT_...` (typically uppercase).
 
 Any framework names that are internal (but technically visible to LiteTest API users)
 follow the pattern `litetest_..._internal_t`, `litetest_..._internal`, or `LITETEST_..._INTERNAL`.
@@ -174,21 +186,6 @@ These names should not be referenced by API users.
 In general, users of the API should not define names prefixed with `lt_`, `LT`, `litetest_`,
 or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 </details>
-
-#### Why Internal Symbols Appear in the Header
-
-<details>
-<summary>Click to view</summary>
-
-Some internal symbols must appear in `litetest.h` because LiteTest relies on
-macros that expand into code requiring access to internal types, constants, or
-helper functions. These symbols must be visible to user code for the macros to
-compile correctly, even though they are not intended for direct use.
-
-Their visibility is an implementation requirement, not part of the public API
-contract. Users should treat all such symbols as internal and avoid depending on
-them, as they may change at any time.
-</details>
 </details>
 
 ## 2. Symbols Defined in `litetest.h`
@@ -196,8 +193,8 @@ them, as they may change at any time.
 <details>
 <summary>Click to view</summary>
 
-These are used by `litetest.h` or `litestest.c` and are public or internal
-based on their name per the naming convetions.
+These are used by `litetest.h` and `litetest.c`, and are public or internal
+based on their name per the naming conventions.
 
 ### 2.1. Types
 
@@ -268,7 +265,7 @@ These functions may be static, static inline, or (by default) extern.
 <summary>Click to view</summary>
 
 These symbols are local to `litetest.c` unless specified or defaulting to
-extern. Symbols that local do not have to conform to the internal naming
+extern. Symbols that are local do not have to conform to the internal naming
 conventions and more natural names may be used.
 
 ### 3.1. Types
@@ -532,7 +529,7 @@ Use this as a reference when adapting LiteTest into your own project structure.
 - `testing artifact`: typically, a file generated by the test executable (e.g.,
    a test report) but also stdout and stderr output plus anything that is captured
    by the test executable or the LiteTest framework.
-- `testing function`; a user written function to implement or help implement a
+- `testing function`: a user-written function to implement or help implement a
    test expression.
 - `test support functions`: API functions provided to simplify writing
    tests.
