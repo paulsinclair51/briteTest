@@ -108,51 +108,11 @@ usage. Contributors may modify these symbols as needed, provided the public API
 contract remains intact.
 
 
-## 1, Internal Symbols Defined in `litetest.h`
+## 2, Internal Symbols Defined in `litetest.h`
 
 These  may be used internally by `litetest.h` or `litestest.c`.
 
 ---
-
-### 1.1. Types
-
-(Placeholder)
-
----
-
-### 1.2. Structs
-
-(Placeholder)
-
----
-
-### 1.3. Enums and Enum Constants
-
-(Placeholder)
-
----
-
-### 1.4. Global Variables
-
-(Placeholder)
-
----
-
-### 1.5. Macros
-
-(Placeholder)
-
----
-
-### 1.6. Functions
-
-(Placeholder)
-
-These functions may be static, static inline, or (by default) extern.
-
----
-
-## 2, Internal Symbols Defined in `litetest.c`
 
 ### 2.1. Types
 
@@ -172,7 +132,6 @@ These functions may be static, static inline, or (by default) extern.
 
 ---
 
-
 ### 2.4. Global Variables
 
 (Placeholder)
@@ -185,7 +144,48 @@ These functions may be static, static inline, or (by default) extern.
 
 ---
 
-### 2.6. Functions Declared (as a forward reference) in `litetest.h`
+### 2.6. Functions
+
+(Placeholder)
+
+These functions may be static, static inline, or (by default) extern.
+
+---
+
+## 3. Internal Symbols Defined in `litetest.c`
+
+### 3.1. Types
+
+(Placeholder)
+
+---
+
+### 3.2. Structs
+
+(Placeholder)
+
+---
+
+### 3.3. Enums and Enum Constants
+
+(Placeholder)
+
+---
+
+
+### 3.4. Global Variables
+
+(Placeholder)
+
+---
+
+### 3.5. Macros
+
+(Placeholder)
+
+---
+
+### 3.6. Functions Declared (as a forward reference) in `litetest.h`
 
 These are used internally by `litetest.h` but defined in `litetest.c`.
 These functions are (by default) extern.
@@ -194,51 +194,51 @@ These functions are (by default) extern.
 
 ---
 
-### 2.7. Functions (not declared in `liteTest.h`)
+### 3.7. Functions (not declared in `liteTest.h`)
 
 (Placeholder)
 
 These functions are static.
 
 ---
-## 3. Execution Engine Internals
+## 4. Execution Engine
 
-(Placeholder for internal execution helpers.)
+(Placeholder for execution helpers.)
 
 ---
 
-## 4. Signal Handling Internals
+## 5. Signal Handling
 
 (Placeholder for signal guard helpers.)
 
 ---
 
-## 5. Process Management Internals
+## 6. Process Management
 
 (Placeholder for fork/exec/wait logic.)
 
 ---
 
-## 6. Thread Management Internals
+## 7. Thread Management
 
 (Placeholder for pthread logic.)
 
 ---
 
-## 7. File and Path Utilities
+## 8. File and Path Support
 
-(Placeholder for internal filesystem helpers.)
-
----
-
-## 8. Matching and Comparison Utilities
-
-(Placeholder for internal comparison helpers.)
+(Placeholder for filesystem support helpers.)
 
 ---
 
-## 9. Environment Utilities
+## 9. Matching and Comparison Support
 
-(Placeholder for internal environment helpers.)
+(Placeholder for comparison support helpers.)
+
+---
+
+## 10. Environment Support
+
+(Placeholder for environment support helpers.)
 
 ---
