@@ -4,6 +4,11 @@ This document defines the **public API** of LiteTest as declared in `litetest.h`
 It includes public types, enums, macros, and functions.  
 Internal implementation details are not included.
 
+Copyright (c) 2026 paulsinclair51
+SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
+
+## Overview
+
 ---
 
 # 1. Public Types
