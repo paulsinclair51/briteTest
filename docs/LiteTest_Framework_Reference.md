@@ -403,7 +403,7 @@ Use this as a reference when adapting LiteTest into your own project structure.
   invalid memory access).
 - `Concurrent block`: A set of tests (LT_TEST and LT_INJECT_TEST macros)
    bracketed by `LT_BEGIN_CONCURRENT` and `LT_END_CONCURRENT;`.
-- `group': see `test group`.
+- `group`: see `test group`.
 - `guard`: The protection mechanism used to catch runtime faults and continue
   test execution.
 - `guard level`: The nesting depth of active guards while test groups and tests run.
