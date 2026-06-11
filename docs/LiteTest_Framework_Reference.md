@@ -63,7 +63,7 @@ See [Repository Layout](#repository-layout) for locations of the above and the
 LiteTest directories and files,
 </details>
 
-## Overview
+## 1, Overview
 
 This document is organized in a top-down order (in contrast to the bottom=up order in `litetest.h`
 and `litetest.c`. This allows a contributors to begin with high-level behavior and
