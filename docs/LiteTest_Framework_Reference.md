@@ -87,7 +87,7 @@ These names are only for internal use and should not be referenced by API users.
 In general, users of the API should not define names prefixed with `lt_`, `LT`, `litetest_`,
 or `LITETEST`, or use names prefixed with `litetest_` or `LITETEST_`.
 
-### Why Internal Symbols Appear in the Header
+#### Why Internal Symbols Appear in the Header
 
 Some internal symbols must appear in `litetest.h` because LiteTest relies on
 macros that expand into code requiring access to internal types, constants, or
@@ -104,7 +104,7 @@ them, as they may change at any time.
 <details>
 <summary>Click to view</summary>
 
-These  may be used internally by `litetest.h` or `litestest.c`.
+These may be used internally by `litetest.h` or `litestest.c`.
 
 ### 2.1. Types
 
@@ -114,7 +114,7 @@ These  may be used internally by `litetest.h` or `litestest.c`.
 (Placeholder)
 
 ---
-<details>
+</details>
 
 ### 2.2. Structs
 
@@ -124,7 +124,7 @@ These  may be used internally by `litetest.h` or `litestest.c`.
 (Placeholder)
 
 ---
-<details>
+</details>
 
 ### 2.3. Enums and Enum Constants
 
@@ -134,7 +134,7 @@ These  may be used internally by `litetest.h` or `litestest.c`.
 (Placeholder)
 
 ---
-<details>
+</details>
 
 ### 2.4. Global Variables
 
@@ -144,7 +144,7 @@ These  may be used internally by `litetest.h` or `litestest.c`.
 (Placeholder)
 
 ---
-<details>
+</details>
 
 ### 2.5. Macros
 
@@ -154,7 +154,7 @@ These  may be used internally by `litetest.h` or `litestest.c`.
 (Placeholder)
 
 ---
-<details>
+</details>
 
 ### 2.6. Functions
 
@@ -166,8 +166,8 @@ These  may be used internally by `litetest.h` or `litestest.c`.
 These functions may be static, static inline, or (by default) extern.
 
 ---
-<details>
-<details>
+</details>
+</details>
 
 ## 3. Internal Symbols Defined in `litetest.c`
 
@@ -274,7 +274,7 @@ These functions are static.
 ## 6. Process Management
 
 <details>
-<summary>Click to view<</summary>
+<summary>Click to view</summary>
 
 (Placeholder for fork/exec/wait logic.)
 
