@@ -243,7 +243,7 @@ LiteTest focuses on executing tests and reporting results. It does not:
 LiteTest is a lightweight C/C++ testing framework built around a simple execution model:
 1. You write C test expressions (that typically invoke functions) for each test and wrap each
    of these expressions with the `LT_TEST` macro in a test group function.
-2. You wrap each test grouo function name with the `LT_GROUP` macro in the orchestrator.
+2. You wrap each test group function name with the `LT_GROUP` macro in the orchestrator.
 3. The orchestrator (`main`) function runs the test group functions and reports results.
 
 The LiteTest API and framework files:
@@ -375,7 +375,7 @@ inside one process or each runs in its own process.
 `isolation`:
 - 0 same thread (no parallelism)
 - 1 separate thread
-- 2 separate processx
+- 2 separate process
 
 Defaults:
 - Tests and test groups not within a concurrent block: 0.
@@ -383,7 +383,7 @@ Defaults:
 
 Invalid combinations are rejected.
 
-A fault s handled as follows:
+A fault is handled as follows:
 
 - The fault is recorded
 - Execution continues
@@ -430,9 +430,9 @@ Because each test group function and test expression runs in a separate process,
 
 - `SIGABRT` and all abort‑based failures.
 - Memory corruption that triggers allocator aborts.
-- Aanitizer aborts.
+- Sanitizer aborts.
 - Undefined behavior that terminates the process.
-- Deadlocks (child can be timedout and then killed ).
+- Deadlocks (child can be timed out and then killed).
 - Infinite loops (child can be timed out and then killed).
 - Resource exhaustion.
 - All synchronous faults (`SIGSEGV`, `SIGBUS`, `SIGILL`, `SIGFPE`).
@@ -455,7 +455,7 @@ Summary:
 | Process‑Isolated  | One process per test group    | Full (survives all faults)             | CI, fault injection, parallel runs |
 
 Both modes use the same `LT_GROUP` and`LT_TEST` macros. The choice of isolation
-mode affects only how test group fucntions and test expressions are executed,
+mode affects only how test group functions and test expressions are executed,
 not how they are written.
 
 ## Customization Support API
