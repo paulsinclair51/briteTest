@@ -42,8 +42,11 @@ The **Document** column tracks the version `M.u` (major, update) of this
 Contributor Guide. Unlike the Framework Reference, this document’s major version
 does **not** need to match the LiteTest major version.
 
-The **update** version increments whenever this document is updated without a
-major change to its structure or purpose.
+The **update** version tracks updates to this document itself and does not
+correspond to LiteTest minor or patch versions. The update version is
+incremented whenever this document is updated without a change to the major
+version, and it resets to `0` when the major version increases.
+
 </details>
 
 ### Documentation Style Guide
