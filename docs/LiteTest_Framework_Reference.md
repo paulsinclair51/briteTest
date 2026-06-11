@@ -29,52 +29,28 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 </details>
 
-### Version and Revision History
+### Document Version History
 
 <details>
 <summary>Click to view</summary>
 
-**Document Version:** 1.0  
-**Last Updated:** 2026‑06‑11  
-**Maintainer:** paulsinclair51  
+| Document | Date       | LiteTest | Description                                   | Author/Editor    |
+|----------|------------|----------------------------------------------------------|------------------|
+| 1.0      | 2026‑06‑11 | 1.0.0    | Initial LiteTest Framework Reference.         | paulsinclair51   |
 
-#### Revision History
+The **Document** column tracks the version `M.u` (major, update) of this Framework
+Reference document. The **LiteTest** column records the latest LiteTest version
+at the time this document version was published.
 
-| Version | Date       | Description                                        |
-|---------|------------|----------------------------------------------------|
-| 1.0     | 2026‑06‑11 | Initial complete draft of the Framework Reference. |
+The current LiteTest version is defined in `litetest.h` by the macro `LT_VERSION`,
+which specifies a string of the form `"M.m.p"` (major, minor, patch).
+`litetest.c` defines a matching version string `LT_VERSION_C`. For details, see
+the public API and framework documentation.
 
-This section tracks changes to the Framework Reference itself, not the LiteTest
-API or framework version. For framework versioning, see the public API
-documentation and version macros in `litetest.h`.
-</details>
-
-### LiteTest API and Framework Version for `litetest.h` and 'litetest.c`
-
-<details>
-<summary>Click to view</summary>
-
-LiteTest uses semantic versioning (`MAJOR.MINOR.PATCH`) to track changes to the
-public API and framework behavior. The current framework version is defined in
-`litetest.h` using the following macros:
-
-```c
-#define LT_VERSION      "MAJOR.MINOR.PATCH"
-#define LT_VERSIION_C   "MAJOR.MINOR.PATCH"
-```
-
-These macros allow test executables, build systems, and external tools to detect
-the LiteTest version at compile time.
-
-#### Versioning Rules
-
-- **MAJOR** increments for breaking API changes or incompatible behavior changes.  
-- **MINOR** increments for new features added in a backward‑compatible manner.  
-- **PATCH** increments for bug fixes or internal improvements that do not affect
-  the public API.
-
-The framework version is independent of the version of this document. See the
-*Version and Revision History* section for documentation updates.
+A **major LiteTest release requires a corresponding major update to this
+document** and, therefore, the document’s major version must match the LiteTest
+major version. The **update** version tracks updates to this document itself and
+does not correspond to LiteTest minor or patch versions.
 </details>
 
 ### Documentation
