@@ -55,32 +55,68 @@ LiteTest directories and files.
 <details>
 <summary>Click to view</summary>
 
-This document uses `Click to view` sections to keep the rendered page readable
+This document uses `Click to view` sections to render readable pages
 while still accommodating large amounts of technical detail. Framework internals
 tend to be long, low‑level, and can obscure the specific content a reader is
 trying to locate. By collapsing sections and subsections, readers can quickly
 scan the high‑level structure and expand only the parts they need.
 
-This keeps the file manageable on GitHub, avoids overwhelming readers with
-unrelated implementation detail, and makes the document easier to navigate as
-the framework grows.
+This keeps the file manageable, avoids overwhelming readers with
+unrelated implementation detail, and makes the document easier to navigate.
 
-Maintainers and contributors should follow this same pattern when adding or updating content:
+Maintainers and contributors should preserve and use this structure when updating
+the document so that rendered pages remain easy to navigate:
 
 `<details><summary>Click to view</summary> (content) </details>`
 </details>
 </details>
-
+ 
 ## Table of Contents
 
 <details>
 <summary>Click to view</summary>
 
-- [1. Overview](#overview)
-- [2. Internal Symbols Defined in `litetest.h`](#internal-symbols-defined-in-litetesth)
-- [Repository Layout](#repository-layout)
-- [Glossary](#glossary)
+- [**1. Overview**](#1-overview)  
+  - [Public and Internal Name Conventions](#public-and-internal-name-conventions)  
+  - [Why Internal Symbols Appear in the Header](#why-internal-symbols-appear-in-the-header)
+
+- [**2. Symbols Defined in `litetest.h`**](#2-symbols-defined-in-litetesth)  
+  - [2.1. Types](#21-types)  
+  - [2.2. Structs](#22-structs)  
+  - [2.3. Enums and Enum Values](#23-enums-and-enum-values)  
+  - [2.4. Global Variables](#24-global-variables)  
+  - [2.5. Macros](#25-macros)  
+  - [2.6. Functions](#26-functions)
+
+- [**3. Symbols Defined in `litetest.c`**](#3-symbols-defined-in-litetestc)  
+  - [3.1. Types](#31-types)  
+  - [3.2. Structs](#32-structs)  
+  - [3.3. Enums and Enum Values](#33-enums-and-enum-values)  
+  - [3.4. Global Variables](#34-global-variables)  
+  - [3.5. Macros](#35-macros)  
+  - [3.6. Functions (declared as a forward reference) in `litetest.h`](#36-functions-declared-as-a-forward-reference-in-litetesth)  
+  - [3.7. Functions (not declared in `litetest.h`)](#37-functions-not-declared-in-litetesth)
+
+- [**4. Execution Engine**](#4-execution-engine)
+- 
+- [**5. Signal Handling**](#5-signal-handling)
+- 
+- [**6. Process Management**](#6-process-management)
+- 
+- [**7. Thread Management**](#7-thread-management)
+- 
+- [**8. File and Path Support**](#8-file-and-path-support)
+- 
+- [**9. Matching and Comparison Support**](#9-matching-and-comparison-support)
+- 
+- [**10. Environment Support**](#10-environment-support)
+
+- [**Repository Layout**](#repository-layout)
+- 
+- [**Glossary**](#glossary)
+
 </details>
+
 
 ## 1. Overview
 
