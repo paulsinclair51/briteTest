@@ -83,10 +83,10 @@ static LT_DECLARE_GROUP(test_quick)
   int b = 2;
 
   // 4 test assertions.
-  LT_TEST(a == b, 0);        // Pass
-  LT_TEST(a + b == 4, 0);    // Pass
-  LT_TEST(a - b == 1, 0);    // Fail
-  LT_TEST(LT_FAULT(1), 0);   // Fault
+  LT_TEST(a == b, , 0);        // Pass
+  LT_TEST(a + b == 4, ,  0);    // Pass
+  LT_TEST(a - b == 1, , 0);    // Fail
+  LT_TEST(LT_FAULT(1), , 0);   // Fault
 
   LT_RETURN;
 }
@@ -260,6 +260,14 @@ A typical test executable includes:
 - The LiteTest API and framework files (`litetest.h`, `litetest.c`). 
 - The headers and source files for the project being tested.
 
+main()
+ ├── test_group1()
+ │     ├── test1
+ │     ├── test2
+ │     └── ...
+ └── test_group2()
+       ├── ...
+
 Recommended: Put the orchestrator function in one source file and each test group function
 in its own source file.
    
@@ -371,6 +379,12 @@ The concurrent block macros ensure that all `LT_TEST` macros inside it start tog
 LiteTest supports two execution isolation modes that balance speed and fault‑isolation. Both modes run
 tests in a single thread within each process; the difference is whether all test groups and tests run
 inside one process or each runs in its own process.
+
+| Mode | Speed | Isolation | Best Use |
+| --- | --- | --- | --- |
+| 0 – Same thread | Fastest | Low | Local dev |
+| 1 – Thread | Fast | Medium | Concurrent tests |
+| 2 – Process | Slower | Full | CI, fault injection |
 
 `isolation`:
 - 0 same thread (no parallelism)
