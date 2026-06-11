@@ -66,7 +66,7 @@ A test executable onsists of your tests as C/C++ expressions/functions, and the
 orchestrator and test group functions you write using the LiteTest API that
 mamnages the execution.
 
-To try LiteTest, simply follow this steps:
+To try LiteTest, simply follow these 6 steps:
 
 <details>
 <summary><strong>Click to view</strong></summary>
