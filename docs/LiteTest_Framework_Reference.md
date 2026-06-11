@@ -36,7 +36,6 @@ SOFTWARE.
 
 - [Documentation](#documentation)
 - [Overview](#overview)
-- [Why Internal Symbols Appear in the Header](#why-internal-symbols-appear-jn-the-header)
 - [Repository Layout](#repository-layout)
 - [Glossary](#glossary)
 </details>
