@@ -29,18 +29,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 </details>
 
-## Table of Contents
-
-<details>
-<summary><strong>Click to view</strong></summary>
-
-- [1, Overview](#overview)
-- [2, Internal Symbols Defined in `litetest.h`](#internal-symbols-defined-in-litetesth)
-- [Repository Layout](#repository-layout)
-- [Glossary](#glossary)
-</details>
-
-## Documentation
+### Documentation
 
 For user documentation of the LiteTest API, see:
 
@@ -60,6 +49,17 @@ additionally see:
 
 See [Repository Layout](#repository-layout) for locations of the above and the
 LiteTest directories and files,
+</details>
+
+## Table of Contents
+
+<details>
+<summary><strong>Click to view</strong></summary>
+
+- [1, Overview](#overview)
+- [2, Internal Symbols Defined in `litetest.h`](#internal-symbols-defined-in-litetesth)
+- [Repository Layout](#repository-layout)
+- [Glossary](#glossary)
 </details>
 
 ## 1, Overview
