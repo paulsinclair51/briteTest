@@ -34,8 +34,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 </details>
 
+## Table of Contents
+
 <details>
-<summary><strong>📘  TABLE OF CONTENTS  📘</strong></summary>
+<summary><strong>Click to view</strong></summary>
 
 - [Quick Start](#quick-start)
 - [Documentation Scope](#documentation-scope)
