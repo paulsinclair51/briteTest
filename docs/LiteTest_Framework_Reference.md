@@ -96,18 +96,6 @@ Their visibility is an implementation requirement, not part of the public API
 contract. Users should treat all such symbols as internal and avoid depending on
 them, as they may change at any time.
 
-### Internal Symbols in the Header (for guide)
-
-LiteTest exposes some internal symbols in `litetest.h` because the framework’s
-macros expand into code that depends on internal types and helper functions.
-These symbols must be visible to user code for the macros to compile correctly,
-but they are not part of the public API and should not be used directly.
-
-Their presence in the header reflects implementation requirements, not intended
-usage. Contributors may modify these symbols as needed, provided the public API
-contract remains intact.
-
-
 ## 2, Internal Symbols Defined in `litetest.h`
 
 These  may be used internally by `litetest.h` or `litestest.c`.
