@@ -99,7 +99,7 @@ contract. Users should treat all such symbols as internal and avoid depending on
 them, as they may change at any time.
 </details>
 
-## 2, Internal Symbols Defined in `litetest`
+## 2. Symbols Defined in `litetest`
 
 <details>
 <summary>Click to view</summary>
@@ -169,7 +169,7 @@ These functions may be static, static inline, or (by default) extern.
 </details>
 </details>
 
-## 3. Internal Symbols Defined in `litetest.c`
+## 3. Symbols Defined in `litetest.c`
 
 <details>
 <summary>Click to view</summary>
