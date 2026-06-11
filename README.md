@@ -65,10 +65,10 @@ cp /path/to/litetest.c .
 
 2. Create a file named `test_quick.c` in the same directory.
 
-3. Paste the code into `test_quick.c`:
+3. Copy and paste the code into `test_quick.c`:
 
 <details>
-<summary>💻 Click to view and copy code</summary>
+<summary>💻 Click to view and copy</summary>
 
 ```c
 #include "litetest.h"
@@ -568,9 +568,12 @@ LT_DECLARE_ORCHESTRATOR(main)
 across the full run.
 
 Optional typedefs, variables, functions, and code may be added to customize
-or support testing. Added code may use test support functions. **Recommended**:
-do not intermix code with the tests; such code is handled as if it occurs
-before the tests.
+or support testing. Added code may use test support functions (see
+[Test Support API](#test-support-api)) and customization suport functions
+(see [Customization Support API](#customization-support-api)).
+
+**Recommended**: do not intermix code with the tests; such code is handled
+as if it occurs before the tests.
 
 Forward-declaration:
 
@@ -578,15 +581,15 @@ Forward-declaration:
 LT_DECLARE_ORCHESTRATOR(main);
 ```
 
-## Test Function Template
+## Test Group Function Template
 
 <details>
 <summary>💻 Click to view and copy</summary>
 
 ```c
-[static] LT_DECLARE_TEST(funcname)
+[static] LT_DECLARE_GROUP(funcname)
 {
-  LT_INIT_TEST(funcname, [maxparallel]);
+  LT_INIT_GROUP(funcname, [maxparallel]);
 
   // Insert test/group calls here:
   //   LT_TEST(expression, [isolation]);
@@ -606,15 +609,18 @@ Use `static` when the function is only referenced in the same module.
 Forward declaration:
 
 ```c
-[static] LT_DECLARE_TEST(func);
+[static] LT_DECLARE_GROUPfunc);
 ```
 
 Specify `static` if the above definition of the function specifies `static`.
 
 Optional typedefs, variables, functions, and code may be added to customize
-or support testing. Added code may use utility functions. **Recommended**:
-do not intermix code with the tests; such code is handled as if it occurs
-before the tests.
+or support testing.  Added code may use test support functions (see
+[Test Support API](#test-support-api)) and customization suport functions
+(see [Customization Support API](#customization-support-api)).
+
+**Recommended**: do not intermix code with the tests; such code is
+handled as if it occurs before the tests.
 
 ## Example of Using the LiteTest API
 
@@ -697,7 +703,7 @@ POSIX-capable compiler.
 ## Executable Usage
 
 To execute the tests, run the test executable to produce the test report file (an
-existing file is overwritten):
+existing writable file is overwritten):
 
 ```sh
 test_<testname> [-I|-In] [PATH]
@@ -722,21 +728,22 @@ You may override the output location using the PATH argument:
 
 ### `-I` and `-In` Option
 
-The  `-I` and `-In` options control which test execute based the `include`
+The  `-I` and `-In` options control which tests execute based on the `include`
 parameter of the `LT_GROUP` ane `LT_TEST` macros. `n` is a single non-zero digit.
 Only one of these forms may be specified.
 
-- Use `-In` to enable `LT_GROUP` and `LT_TEST` that have `include`  argument
+- Use `-In` to enable `LT_GROUP` and `LT_TEST` macros that have an `include` argument
   that is a non-zero digit less than or equal to `n`.
 
-- Use `-I` to enable `LT_TEST` that have `include`  argument that is `I`. This
-can be used to exercise the LiteTest framework and verify report formatting
-(typically, these `LT_TEST` macros have a test expression that is coded to
-case a failures or a fault.
+- Use `-I` to enable `LT_TEST` macros that have an `include`  argument that is `I`. This
+  can be used to exercise the LiteTest framework and verify report formatting
+  (typically, these `LT_TEST` macros have a test expression that is coded to
+  cause a failures or a fault.
 
-- If neither option is provided, all tests with include `1` – `9` execute by default. 
+- If neither option is provided, all  `LT_GROUP` and `LT_TEST` macros with an `include`
+  arugment that is `1` – `9` execute by default.
 
-See [Macros for Executing a Test Group Function or Test Expression](macros-for-execution-a-test-group-function-or-test-macros).
+See [Macros for Executing a Test Group Function or Test Expression](#macros-for-executing-a-test-group-function-or-test-expression) for the `include` parameter and its interaction with the `-I` and `-In` options.
 
 ### `--help` and `-h` Help Options
 
