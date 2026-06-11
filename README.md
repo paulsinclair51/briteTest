@@ -40,7 +40,7 @@ SOFTWARE.
 <summary><strong>Click to view</strong></summary>
 
 - [Quick Start](#quick-start)
-- [Documentation Scope](#documentation-scope)
+- [Documentation](#documentation)
 - [Key Features](#key-features)
 - [API Usage Requirements](#api-usage-requirements)
 - [How LiteTest Compares](#how-litetest-compares)
