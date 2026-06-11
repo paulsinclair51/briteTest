@@ -29,6 +29,54 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 </details>
 
+### Version and Revision History
+
+<details>
+<summary>Click to view</summary>
+
+**Document Version:** 1.0  
+**Last Updated:** 2026‑06‑11  
+**Maintainer:** paulsinclair51  
+
+#### Revision History
+
+| Version | Date       | Description                                        |
+|---------|------------|----------------------------------------------------|
+| 1.0     | 2026‑06‑11 | Initial complete draft of the Framework Reference. |
+
+This section tracks changes to the Framework Reference itself, not the LiteTest
+API or framework version. For framework versioning, see the public API
+documentation and version macros in `litetest.h`.
+</details>
+
+### LiteTest API and Framework Version for `litetest.h` and 'litetest.c`
+
+<details>
+<summary>Click to view</summary>
+
+LiteTest uses semantic versioning (`MAJOR.MINOR.PATCH`) to track changes to the
+public API and framework behavior. The current framework version is defined in
+`litetest.h` using the following macros:
+
+```c
+#define LT_VERSION      "MAJOR.MINOR.PATCH"
+#define LT_VERSIION_C   "MAJOR.MINOR.PATCH"
+```
+
+These macros allow test executables, build systems, and external tools to detect
+the LiteTest version at compile time.
+
+#### Versioning Rules
+
+- **MAJOR** increments for breaking API changes or incompatible behavior changes.  
+- **MINOR** increments for new features added in a backward‑compatible manner.  
+- **PATCH** increments for bug fixes or internal improvements that do not affect
+  the public API.
+
+The framework version is independent of the version of this document. See the
+*Version and Revision History* section for documentation updates.
+</details>
+
 ### Documentation
 
 <details>
@@ -100,23 +148,21 @@ the document so that rendered pages remain easy to navigate:
 - [**4. Execution Engine**](#4-execution-engine)
 - 
 - [**5. Signal Handling**](#5-signal-handling)
-- 
+
 - [**6. Process Management**](#6-process-management)
-- 
+
 - [**7. Thread Management**](#7-thread-management)
-- 
+
 - [**8. File and Path Support**](#8-file-and-path-support)
-- 
+
 - [**9. Matching and Comparison Support**](#9-matching-and-comparison-support)
-- 
+
 - [**10. Environment Support**](#10-environment-support)
 
 - [**Repository Layout**](#repository-layout)
-- 
+
 - [**Glossary**](#glossary)
-
 </details>
-
 
 ## 1. Overview
 
