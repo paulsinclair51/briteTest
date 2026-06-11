@@ -108,7 +108,7 @@ usage. Contributors may modify these symbols as needed, provided the public API
 contract remains intact.
 
 
-## Internal Symbols Defined in `litetest.h`
+## 1, Internal Symbols Defined in `litetest.h`
 
 These  may be used internally by `litetest.h` or `litestest.c`.
 
@@ -152,7 +152,7 @@ These functions may be static, static inline, or (by default) extern.
 
 ---
 
-## Internal Symbols Defined in `litetest.c`
+## 2, Internal Symbols Defined in `litetest.c`
 
 ### 2.1. Types
 
