@@ -101,6 +101,7 @@ them, as they may change at any time.
 
 ## 2, Internal Symbols Defined in `litetest.<details>
 
+<details>
 <summary><strong>Click to view</strong></summary>
 
 These  may be used internally by `litetest.h` or `litestest.c`.
