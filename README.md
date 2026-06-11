@@ -21,7 +21,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [How LiteTest Compares](#how-litetest-compares)
 - [What LiteTest Does Not Provide](#what-litetest-does-not-provide)
 - [Overview](#overview)
-- [Core API](#core-api)
+- [Core API Macros](#core-api-macros)
   - [Macros for the Orchestrator (main) Function](#macros-for-the-orchestrator-main-function)
   - [Macros for a Test Group Function](#macros-for-a-test-group-function)
   - [Macros for Executing a Test Group Function or Test Expression](#macros-for-executing-a-test-group-function-or-test-expression)
@@ -329,7 +329,7 @@ omit the trailing semicolon. Otherwise, a semicolon is required.
 `include`:
 
 This parameter controls whether a test group or test expression executes
-based on the test executable's `-I` or `-In` option (see [`-I` and `-In` Option](i-and-in-option)):
+based on the test executable's `-I` or `-In` option (see [`-I` and `-In` Option](#i-and-in-option)):
 
 - 0 — do not execute.
 - 1 — always execute.
