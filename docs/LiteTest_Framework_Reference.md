@@ -29,7 +29,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 </details>
 
-#### Documentation
+### Documentation
 
 <details>
 <summary><strong>Click to view</strong></summary>
