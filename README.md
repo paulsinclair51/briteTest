@@ -9,7 +9,7 @@ tooling and dependencies.
 LiteTesf is implemented as a single .h / .c pair with no external dependencies
 requiring only a POSIX.1‑2001 environment and a C99‑compliant compiler.
 
-Copyright (c) 2026 paulsinclair51
+Copyright (c) 2026 paulsinclair51.  
 SPDX-License-Identifier: MIT.
 
 <details>
