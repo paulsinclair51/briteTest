@@ -268,12 +268,10 @@ LiteTest/
 |  |- test_orchestrator.c
 |  |- test_guard1.c
 |  \- test_guard2.c
-```
-<details>
-<summary>Click to view</summary>k
+```>
 
 Use this as a reference when adapting LiteTest into your own project structure.
-</details>
+</details
 
 ## Glossary
 
