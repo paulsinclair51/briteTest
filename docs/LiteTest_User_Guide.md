@@ -2,6 +2,9 @@
 
 This guide explains how to use LiteTest effectively: concepts, workflow, execution model, examples, and practical usage patterns. It complements the **LiteTest API Reference**, which documents the public API in detail.
 
+Copyright (c) 2026 paulsinclair51
+SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
+
 ---
 
 ## 1. Overview
