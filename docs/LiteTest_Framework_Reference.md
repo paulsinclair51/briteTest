@@ -209,8 +209,6 @@ based on their name per the naming conventions.
 <summary>Click to view</summary>
 
 (Placeholder)
-
----
 </details>
 
 ### 2.2. Structs
@@ -219,8 +217,6 @@ based on their name per the naming conventions.
 <summary>Click to view</summary>
 
 (Placeholder)
-
----
 </details>
 
 ### 2.3. Enums and Enum Values
@@ -229,8 +225,6 @@ based on their name per the naming conventions.
 <summary>Click to view</summary>
 
 (Placeholder)
-
----
 </details>
 
 ### 2.4. Global Variables
@@ -239,8 +233,6 @@ based on their name per the naming conventions.
 <summary>Click to view</summary>
 
 (Placeholder)
-
----
 </details>
 
 ### 2.5. Macros
@@ -249,8 +241,6 @@ based on their name per the naming conventions.
 <summary>Click to view</summary>
 
 (Placeholder)
-
----
 </details>
 
 ### 2.6. Functions
@@ -261,8 +251,6 @@ based on their name per the naming conventions.
 (Placeholder)
 
 These functions may be static, static inline, or (by default) extern.
-
----
 </details>
 </details>
 
@@ -281,8 +269,6 @@ conventions and more natural names may be used.
 <summary>Click to view</summary>
 
 (Placeholder)
-
----
 </details>
 
 ### 3.2. Structs
@@ -291,8 +277,6 @@ conventions and more natural names may be used.
 <summary>Click to view</summary>
 
 (Placeholder)
-
----
 </details>
 
 ### 3.3. Enums and Enum Values
@@ -301,8 +285,6 @@ conventions and more natural names may be used.
 <summary>Click to view</summary>
 
 (Placeholder)
-
----
 </details>
 
 ### 3.4. Global Variables
@@ -311,8 +293,6 @@ conventions and more natural names may be used.
 <summary>Click to view</summary>
 
 (Placeholder)
-
----
 </details>
 
 ### 3.5. Macros
@@ -321,8 +301,6 @@ conventions and more natural names may be used.
 <summary>Click to view</summary>
 
 (Placeholder)
-
----
 </details>
 
 ### 3.6. Functions (declared as a forward reference) in `litetest.h`
@@ -334,8 +312,6 @@ These functions are referenced internally by `litetest.h` but defined in `litete
 These functions are (by default) extern and must conform to the internal name conventions.
 
 (Placeholder)
-
----
 </details>
 
 ### 3.7. Functions (not declared in `litetest.h`)
@@ -348,8 +324,6 @@ Since these are local, these names do not have to conform to the
 internal name conventions and more natural names may be used.
 
 (Placeholder)
-
----
 </details>
 </details>
 
@@ -359,8 +333,6 @@ internal name conventions and more natural names may be used.
 <summary>Click to view</summary>
 
 (Placeholder for execution helpers.)
-
----
 </details>
 
 ## 5. Signal Handling
@@ -369,8 +341,6 @@ internal name conventions and more natural names may be used.
 <summary>Click to view</summary>
 
 (Placeholder for signal guard helpers.)
-
----
 </details>
 
 ## 6. Process Management
@@ -379,8 +349,6 @@ internal name conventions and more natural names may be used.
 <summary>Click to view</summary>
 
 (Placeholder for fork/exec/wait logic.)
-
----
 </details>
 
 ## 7. Thread Management
@@ -389,8 +357,6 @@ internal name conventions and more natural names may be used.
 <summary>Click to view</summary>
 
 (Placeholder for pthread logic.)
-
----
 </details>
 
 ## 8. File and Path Support
@@ -399,8 +365,6 @@ internal name conventions and more natural names may be used.
 <summary>Click to view</summary>
 
 (Placeholder for filesystem support helpers.)
-
----
 </details>
 
 ## 9. Matching and Comparison Support
@@ -409,8 +373,6 @@ internal name conventions and more natural names may be used.
 <summary>Click to view</summary>
 
 (Placeholder for comparison support helpers.)
-
----
 </details>
 
 ## 10. Environment Support
@@ -419,8 +381,6 @@ internal name conventions and more natural names may be used.
 <summary>Click to view</summary>
 
 (Placeholder for environment support helpers.)
-
----
 </details>
 
 ## Repository Layout
