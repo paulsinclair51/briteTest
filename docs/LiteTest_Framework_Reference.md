@@ -429,76 +429,99 @@ Use this as a reference when adapting LiteTest into your own project structure.
 
 ## Glossary
 
+### General Terms
+
 <details>
 <summary>Click to view</summary>
 
 - `API`: Application Programming Interface.
-- `category`: A labeled set of `LT_GROUP` and `LT_TEST` macro whose combined
-             results are written by `LT_WRITE_RESULT` to the report with a
-             specified category name.
+- `category`: A labeled set of `LT_GROUP` and `LT_TEST` macros whose combined
+  results are written by `LT_WRITE_RESULT` to the report with a specified
+  category name.
 - `control file`: A previously generated file that can be compared to a newly
-                  generated file for differences (typically, if there are
-                  differences (other than expected differences like a timestamp
-                  change) this indicates a failure of the test. In some cases,
-                  the control file is out-of-date and needs to be replaced
-                  by promoting the new file to be the control file.
+  generated file for differences. Differences (other than expected ones like
+  timestamps) typically indicate a test failure. Sometimes the control file is
+  out of date and must be replaced by promoting the new file.
 - `customization support functions`: API functions provided to support
-   customizing the orchestrator and test group functions.
+  customizing the orchestrator and test group functions.
 - `default report filename`: The report filename LiteTest uses when only a
   directory path (or no `PATH`) is provided.
 - `executable`: The compiled test program that runs the orchestrator and test
   functions.
-- `fail`: A counted test failure where the LT_TEST or LT_INJECT_TEST
-   expression evaluates to false (i.e., zero).
-- `fault`: A counted runtime fault captured by LiteTest guards (for example,
-  invalid memory access).
-- `Concurrent block`: A set of tests (LT_TEST and LT_INJECT_TEST macros)
-   bracketed by `LT_BEGIN_CONCURRENT` and `LT_END_CONCURRENT;`.
-- `group`: see `test group`.
+- `fail`: A counted test failure where the `LT_TEST` or `LT_INJECT_TEST`
+  expression evaluates to zero.
+- `fault`: A counted runtime fault captured by LiteTest guards (e.g., invalid
+  memory access).
+- `Concurrent block`: A set of tests bracketed by `LT_BEGIN_CONCURRENT` and
+  `LT_END_CONCURRENT`.
+- `group`: See `test group`.
 - `guard`: The protection mechanism used to catch runtime faults and continue
   test execution.
-- `guard level`: The nesting depth of active guards while test groups and tests run.
-- `inject mode (-i)`: Optional command-line flag that enables an LT_INJECT_TEST to
-   be executed.
-- `isolation`: Execution mode for LT_GROUP, LT_TEST, or LT_INJECT_TEST.
+- `guard level`: The nesting depth of active guards while test groups and tests
+  run.
+- `inject mode (-i)`: Optional command‑line flag that enables an
+  `LT_INJECT_TEST` to be executed.
+- `isolation`: Execution mode for `LT_GROUP`, `LT_TEST`, or `LT_INJECT_TEST`.
   `0` = same thread, `1` = separate thread, `2` = separate process.
-- `maxargs`: The maximum number of command-line arguments accepted by
-  orchestrator parsing. Optional arguments may be omitted.
-  `LT_PARSE_ARGS` handles the first two arguments (executable name and optional
-  `PATH`) when provided. Any additional arguments must be parsed by custom code
-  added to the orchestrator.
-- `maxparallel`: Upper bound on concurrent LT_GROUP, LT_TEST, LT_INJECT_TEST. Value set in
-   LT_INIT_ORCHESTRATOR and LT_GROUP macros.
-- `notes`: Optional text for LT_CLOSE_REPORT to append to the report before closing it.
-- `orchestrator`: The `main` function that initializes LiteTest, runs groups or tests,
-  and writes report output.
-- `pass`: A counted successful test where the LT_TEST or LT_INJECT_TEST
-   expression evaluates to true (i.e., non-zero).
-- `PATH`: Optional command-line output destination; can be a report file path
-  or directory path.
+- `maxargs`: Maximum number of command‑line arguments accepted by orchestrator
+  parsing. `LT_PARSE_ARGS` handles the first two arguments; additional arguments
+  must be parsed by custom code.
+- `maxparallel`: Upper bound on concurrent `LT_GROUP`, `LT_TEST`,
+  `LT_INJECT_TEST`. Set in `LT_INIT_ORCHESTRATOR` and `LT_GROUP`.
+- `notes`: Optional text appended to the report by `LT_CLOSE_REPORT`.
+- `orchestrator`: The `main` function that initializes LiteTest, runs groups or
+  tests, and writes report output.
+- `pass`: A counted successful test where the expression evaluates to non‑zero.
+- `PATH`: Optional command‑line output destination; may be a report file path or
+  directory path.
 - `process isolation`: Isolation mode where a test group or test runs in a
   separate process.
 - `project`: Project identifier used in orchestrator initialization and default
   report naming.
-- `test group`: a grouping of `LT_TEST` and, optionally, `LT_GROUP` macros.
-- `test group function`: A function declared with the `LT_DECLARE_GROUP` macro
-   that contains 'LT_TEST' and 'LT_GROUP` macros.
+- `test group`: A grouping of `LT_TEST` and optionally nested `LT_GROUP` macros.
+- `test group function`: A function declared with `LT_DECLARE_GROUP` that
+  contains `LT_TEST` and `LT_GROUP` macros.
 - `thread isolation`: Isolation mode where a test/assert call runs in a
   separate thread.
-- `test case`: This term is not used in LiteTest. In some contexts, it means
-   a single individual test and, in other contexts, a set of tests, In LiteTest, the former
-   is referred to as a test (or test expression) and the latter, as a test group.
-- `test`: see test expression.
+- `test case`: Not used in LiteTest. In other contexts it may mean a single
+  test or a set of tests; LiteTest uses “test expression” and “test group.”
+- `test`: See `test expression`.
 - `test expression`: An expression passed to an `LT_TEST` macro that can be cast
-   to `int`; `0` means fail and a nonzero value means pass. The expression
-   typically is a function call or contains function calls. A function could
-   be in the project being tested or a testing function to implement the test.
-- `testing artifact`: typically, a file generated by the test executable (e.g.,
-   a test report) but also stdout and stderr output plus anything that is captured
-   by the test executable or the LiteTest framework.
-- `testing function`: a user-written function to implement or help implement a
-   test expression.
-- `test support functions`: API functions provided to simplify writing
-   tests.
+  to `int`; zero means fail, non‑zero means pass.
+- `testing artifact`: A file or output generated by the test executable (e.g.,
+  test report, stdout, stderr).
+- `testing function`: A user‑written function used to implement or support a
+  test expression.
+- `test support functions`: API functions provided to simplify writing tests.
 - `title`: Optional report header text provided when opening the report.
+- `Public API`: Functions, macros, and types intended for external use.
+- `Internal API`: Framework‑only symbols not intended for external use.
+- `Semantic Versioning`: Versioning scheme using `M.m.p`.
+- `Report Format`: The output structure produced by LiteTest test runs.
+</details>
+
+### Framework‑Specific Terms
+
+<details>
+<summary>Click to view</summary>
+
+- **Orchestrator Lifecycle**: The sequence of initialization, group execution,
+  test execution, and report finalization performed by the LiteTest framework.
+- **Guard Behavior**: The mechanism LiteTest uses to catch runtime faults
+  (e.g., segmentation faults) and continue executing remaining tests.
+- **Isolation Semantics**: The rules governing how tests and groups run in
+  threads or processes to prevent interference and ensure fault containment.
+- **Concurrency Model**: The framework’s rules for running tests concurrently
+  within `LT_BEGIN_CONCURRENT` / `LT_END_CONCURRENT` blocks.
+- **Execution Phases**: The internal stages of orchestrator operation, including
+  initialization, argument parsing, group dispatch, test dispatch, and report
+  writing.
+- **Fault Handling Model**: The framework’s strategy for capturing and reporting
+  faults without terminating the entire test run.
+- **Control File Promotion**: The process of replacing an outdated control file
+  with a newly generated file when differences are expected or intentional.
+- **Nested Group Behavior**: The rules governing how groups may contain other
+  groups and how isolation and concurrency propagate through nested structures.
+- **Concurrent Block Behavior**: The semantics of executing multiple tests in
+  parallel within a concurrent block, including ordering and isolation rules.
 </details>
