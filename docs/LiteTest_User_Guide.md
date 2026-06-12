@@ -274,29 +274,11 @@ See:
 - `Report Format`: The output structure produced by LiteTest test runs.
 </details>
 
-### Framework‑Specific Terms
+### User-Guide‑Specific Terms
 
 <details>
 <summary>Click to view</summary>
 
-- **Orchestrator Lifecycle**: The sequence of initialization, group execution,
-  test execution, and report finalization performed by the LiteTest framework.
-- **Guard Behavior**: The mechanism LiteTest uses to catch runtime faults
-  (e.g., segmentation faults) and continue executing remaining tests.
-- **Isolation Semantics**: The rules governing how tests and groups run in
-  threads or processes to prevent interference and ensure fault containment.
-- **Concurrency Model**: The framework’s rules for running tests concurrently
-  within `LT_BEGIN_CONCURRENT` / `LT_END_CONCURRENT` blocks.
-- **Execution Phases**: The internal stages of orchestrator operation, including
-  initialization, argument parsing, group dispatch, test dispatch, and report
-  writing.
-- **Fault Handling Model**: The framework’s strategy for capturing and reporting
-  faults without terminating the entire test run.
-- **Control File Promotion**: The process of replacing an outdated control file
-  with a newly generated file when differences are expected or intentional.
-- **Nested Group Behavior**: The rules governing how groups may contain other
-  groups and how isolation and concurrency propagate through nested structures.
-- **Concurrent Block Behavior**: The semantics of executing multiple tests in
-  parallel within a concurrent block, including ordering and isolation rules.
+- TODO
 </details>
 </details>
