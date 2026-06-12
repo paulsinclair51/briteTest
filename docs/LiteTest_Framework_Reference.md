@@ -81,23 +81,23 @@ LiteTest directories and files.
 <details>
 <summary>Click to view</summary>
 
-## 1. Tone
+##@@@ 1. Tone
 - Technical, precise, and neutral.
 - No marketing language.
 - Prefer clarity over cleverness.
 
-## 2. Formatting
+##@@@ 2. Formatting
 - Use backticks for code identifiers.
 - Use fenced code blocks for file trees, examples, and commands.
 - Keep line lengths reasonable for GitHub rendering.
 
-## 3. Writing Guidelines
+##@@@ 3. Writing Guidelines
 - Define terms once, and then use them consistently.
 - Avoid synonyms for technical concepts (e.g., always “update version,” never “revision”).
 - Keep paragraphs short.
 - Use lists for enumerations.
 
-## 4. `Click to view`
+##@@@ 4. `Click to view`
 - Use `Click to view` sections and subsections to keep the document readable while
   still accommodating large amounts of technical detail:
   - Collapsing sections allows readers to scan the structure and expand only what
@@ -105,7 +105,7 @@ LiteTest directories and files.
   - This keeps the document manageable, avoids overwhelming readers with unrelated
     detail, and makes the document easier to navigate.
 
-## 5. Writing Style Consistency
+##@@@ 5. Writing Style Consistency
 To keep LiteTest documentation clear and easy to read, maintain **parallel
 structure** within lists and related sentences. In practice:
 
