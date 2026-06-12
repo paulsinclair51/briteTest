@@ -1,8 +1,9 @@
-# LiteTest Framework Guide
+# LiteTest Runner Internal Guide
 
-This guide documents the internal architecture and design of the LiteTest framework.
-It is intended for maintainers and contributors working on the implementation. It is
-companion document to the LiteTest Framework Reference document.
+This guide documents the internal architecture and design of the LiteTest Runner
+API and framework. It is intended for maintainers and contributors working on the
+implementation. It is companion document to the LiteTest Runner Internals
+Reference document.
 
 Copyright (c) 2026 paulsinclair51.  
 SPDX-License-Identifier: MIT.
