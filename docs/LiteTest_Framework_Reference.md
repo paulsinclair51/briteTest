@@ -1,8 +1,13 @@
 # LiteTest Framework Reference
 
-This document defines the internal framework of LiteTest, a lightweight 
-Application Programming Interface (API) and framework for defining, running,
-and reporting tests in C/C++ projects.
+This document is organized by the named entities in the LiteTest framework.
+Each symbol (type, macro, function, etc.) is described individually,
+including its purpose, behavior, and usage. It serves as the reference
+companion to the LiteTest Framework Guide, defining the framework’s
+components precisely while the Guide explains their design and interaction.
+
+LiteTest is a lightweight API and framework for defining, running, and
+reporting tests in C/C++ projects.
 
 Copyright (c) 2026 paulsinclair51.  
 SPDX-License-Identifier: MIT.
@@ -28,6 +33,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 </details>
+
+## Preface
 
 ### Document Version History
 
@@ -55,23 +62,24 @@ incremented whenever this document is updated without a change to the major vers
 and it resets to `0` when the major version increases.
 </details>
 
-### Documentation
+### LiteTest Documentation
 
 <details>
 <summary>Click to view</summary>
 
-For user documentation of the LiteTest API, see:
+The user documents for the LiteTest API are the following:
 
 - **README.md** — Introduction to LiteTest.
 - **LiteTest User Guide** — Concepts, workflow, examples.
 - **LiteTest API Reference** — Public API types, enums, macros, and functions.
 
-For contributor and maintainer documentation of the LiteTest framework,
-additionally see:
+The documents for contributors and maintainers for the LiteTest framework are
+the following:
 
 - **LiteTest Contributor Guide** — Versioning, branching, testing, documentation rules.  
 - **LiteTest Framework Guide** — Concepts, workflow, examples.
-- **LiteTest Framework Reference** — Private (internal) framework types, enums, macros, functions, etc.
+- **LiteTest Framework Reference** — Reference for Private (internal) framework types,
+  enums, macros, functions, etc.
 
 See [Repository Layout](#repository-layout) for locations of the above documents and the
 LiteTest directories and files.
@@ -164,9 +172,15 @@ LiteTest directories and files.
 <details>
 <summary>Click to view</summary>
 
-This document is organized in a top‑down order (in contrast to the bottom‑up
-order in `litetest.h` and `litetest.c`). This allows contributors to begin with
-high‑level behavior and drill down into lower‑level detail.
+LiteTest’s internal architecture consists of several cooperating subsystems,
+including the implementation of API macros and functions, the execution engine,
+guard/fault handling, isolation support, file/path utilities, matching/comparison
+helpers, and environment support. These components work together to run test
+groups and test expressions reliably across threads and processes while capturing
+faults and producing structured reports.
+
+The remainder of this document describes each internal symbol used to implement
+these subsystems, organized from high‑level behavior down to low‑level details.
 
 In this document, a *symbol* refers to any named entity in the LiteTest framework, including:
 
@@ -208,7 +222,7 @@ based on their name per the naming conventions.
 <details>
 <summary>Click to view</summary>
 
-(Placeholder)
+**Type Definition:** `typedef ...`
 </details>
 
 ### 2.2. Structs
@@ -216,7 +230,10 @@ based on their name per the naming conventions.
 <details>
 <summary>Click to view</summary>
 
-(Placeholder)
+#### Fields
+- `field1` — description  
+- `field2` — description  
+
 </details>
 
 ### 2.3. Enums and Enum Values
@@ -224,7 +241,10 @@ based on their name per the naming conventions.
 <details>
 <summary>Click to view</summary>
 
-(Placeholder)
+#### Enum Values
+- `VALUE1` — meaning  
+- `VALUE2` — meaning  
+
 </details>
 
 ### 2.4. Global Variables
@@ -240,7 +260,8 @@ based on their name per the naming conventions.
 <details>
 <summary>Click to view</summary>
 
-(Placeholder)
+#### Macro Expansion
+`#define <macro> <expansion>`
 </details>
 
 ### 2.6. Functions
@@ -248,9 +269,83 @@ based on their name per the naming conventions.
 <details>
 <summary>Click to view</summary>
 
-(Placeholder)
-
 These functions may be static, static inline, or (by default) extern.
+
+### `<symbol_name>`
+
+<details>
+<summary>Click to view</summary>
+
+**Category:** `<typedef | struct | enum | macro | variable | function>`  
+**Defined in:** `<file>`  
+**Visibility:** `<Public API | Internal API>`  
+**Related symbols:** `<optional list>`
+
+#### Purpose
+A concise description of what the symbol represents or does.
+
+**Signature:**  
+```c
+return_type function_name(parameters);
+
+#### Return Value
+What the function returns and why.
+
+#### Errors
+Conditions under which the function fails or produces error states.
+
+#### Description
+A clear explanation of the symbol’s behavior, semantics, and role in the framework.
+
+#### Usage Notes
+- Important constraints or assumptions.
+- Lifetime, ownership, or thread/process behavior.
+- Any invariants or required preconditions.
+
+#### Interactions
+How this symbol interacts with other parts of the framework (execution engine, guards, isolation, etc.).
+
+#### Implementation Notes (Internal)
+Internal details relevant to contributors (not API users).  
+May include:
+- how the symbol is used internally  
+- performance considerations  
+- ordering constraints  
+- error handling behavior  
+
+### `litetest_guard_enter_internal`
+
+<details>
+<summary>Click to view</summary>
+
+**Category:** function  
+**Defined in:** `litetest.c`  
+**Visibility:** Internal API  
+**Related symbols:** `litetest_guard_exit_internal`, `LT_BEGIN_GUARD`
+
+#### Purpose
+Enters a new guard level to protect the execution of a test expression or group.
+
+#### Description
+This function increments the internal guard depth and installs the appropriate
+signal handlers for fault detection. It is called before executing any guarded
+test expression or group and ensures that faults are captured without terminating
+the entire test run.
+
+#### Usage Notes
+- Must be paired with `litetest_guard_exit_internal`.  
+- Not reentrant; callers must maintain correct nesting.  
+- Only used when isolation mode is thread or process based.
+
+#### Interactions
+- The execution engine calls this before dispatching a guarded test.  
+- Works with the signal‑handling subsystem to catch segmentation faults,
+  illegal instructions, and similar runtime errors.
+
+#### Implementation Notes (Internal)
+- Updates the global guard depth counter.  
+- Installs handlers only when transitioning from depth 0 → 1.  
+- Does not allocate memory or perform I/O.
 </details>
 </details>
 
