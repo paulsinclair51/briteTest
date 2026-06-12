@@ -111,9 +111,6 @@ LiteTest directories and files.
    - Keep grammatical patterns consistent across bullets.
    - Avoid mixing styles such as “Keep paragraphs short” with “Using lists for enumerations.”
    - Rewrite items as needed so the list reads smoothly and uniformly.
-
-This guideline applies to all LiteTest documentation, including the User Guide,
-API Reference, Framework Guide, and Framework Reference.
 </details>
 </details>
 
