@@ -91,8 +91,6 @@ This guideline applies to all LiteTest documentation, including the User Guide,
 API Reference, Framework Guide, and Framework Reference.
 </details>
 
----
-
 ## Table of Contents
 
 <details>
@@ -110,8 +108,6 @@ API Reference, Framework Guide, and Framework Reference.
 
 </details>
 
----
-
 ## 1. Overview
 
 <details>
@@ -124,8 +120,6 @@ request requirements.
 Contributors should read this document before submitting changes to ensure
 consistency across the LiteTest codebase and documentation.
 </details>
-
----
 
 ## 2. Versioning Rules
 
@@ -159,8 +153,6 @@ LiteTest uses semantic versioning: `M.m.p` (major, minor, patch).
 - Provide migration guidance for major changes.
 </details>
 
----
-
 ## 3. Testing Requirements
 
 <details>
@@ -176,8 +168,6 @@ make run
 - Keep test code aligned with the current version of `litetest.h`.
 </details>
 
----
-
 ## 4. Documentation Rules
 
 <details>
@@ -189,8 +179,6 @@ make run
 - Framework documentation (internal) must not leak into public docs.
 - Update documentation when modifying macros, behavior, or report format.
 </details>
-
----
 
 ## 5. Code Style
 
@@ -204,8 +192,6 @@ make run
 - Avoid intermixing test code with helper logic inside test group functions.
 </details>
 
----
-
 ## 6. Writing Style Consistency
 
 <details>
@@ -217,8 +203,6 @@ This section exists here to ensure contributors do not overlook the requirement
 for parallel structure and consistent writing patterns across all LiteTest
 documentation.
 </details>
-
----
 
 ## 7. Pull Requests
 
@@ -232,8 +216,6 @@ Before submitting a PR:
 - Update documentation as needed.
 - Keep changes focused and well‑scoped.
 </details>
-
----
 
 ## Repository Layout
 
@@ -273,10 +255,7 @@ LiteTest/
 |  |- test_guard1.c
 |  \- test_guard2.c
 ```
-
 </details>
-
----
 
 ## Glossary
 
