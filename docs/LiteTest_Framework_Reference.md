@@ -81,45 +81,43 @@ LiteTest directories and files.
 <details>
 <summary>Click to view</summary>
 
-##@@@ 1. Tone
-- Technical, precise, and neutral.
-- No marketing language.
-- Prefer clarity over cleverness.
+1. Tone
+   - Technical, precise, and neutral.
+   - No marketing language.
+   - Prefer clarity over cleverness.
 
-##@@@ 2. Formatting
-- Use backticks for code identifiers.
-- Use fenced code blocks for file trees, examples, and commands.
-- Keep line lengths reasonable for GitHub rendering.
+2. Formatting
+   - Use backticks for code identifiers.
+   - Use fenced code blocks for file trees, examples, and commands.
+   - Keep line lengths reasonable for GitHub rendering.
 
-##@@@ 3. Writing Guidelines
-- Define terms once, and then use them consistently.
-- Avoid synonyms for technical concepts (e.g., always “update version,” never “revision”).
-- Keep paragraphs short.
-- Use lists for enumerations.
+3. Writing Guidelines
+   - Define terms once, and then use them consistently.
+   - Avoid synonyms for technical concepts (e.g., always “update version,” never “revision”).
+   - Keep paragraphs short.
+   - Use lists for enumerations.
 
-##@@@ 4. `Click to view`
-- Use `Click to view` sections and subsections to keep the document readable while
-  still accommodating large amounts of technical detail:
-  - Collapsing sections allows readers to scan the structure and expand only what
-    they need.
-  - This keeps the document manageable, avoids overwhelming readers with unrelated
-    detail, and makes the document easier to navigate.
+4. `Click to view`
+   - Use `Click to view` sections and subsections to keep the document readable while
+     still accommodating large amounts of technical detail:
+    - Collapsing sections allows readers to scan the structure and expand only what
+      they need.
+    - This keeps the document manageable, avoids overwhelming readers with unrelated
+      detail, and makes the document easier to navigate.
 
-##@@@ 5. Writing Style Consistency
-To keep LiteTest documentation clear and easy to read, maintain **parallel
-structure** within lists and related sentences. In practice:
-
-- Start list items with the same part of speech (typically a verb).
-- Keep grammatical patterns consistent across bullets.
-- Avoid mixing styles such as “Keep paragraphs short” with “Using lists for enumerations.”
-- Rewrite items as needed so the list reads smoothly and uniformly.
+5. Writing Style Consistency
+   To keep LiteTest documentation clear and easy to read, maintain **parallel
+   structure** within lists and related sentences. In practice:
+   - Start list items with the same part of speech (typically a verb).
+   - Keep grammatical patterns consistent across bullets.
+   - Avoid mixing styles such as “Keep paragraphs short” with “Using lists for enumerations.”
+   - Rewrite items as needed so the list reads smoothly and uniformly.
 
 This guideline applies to all LiteTest documentation, including the User Guide,
 API Reference, Framework Guide, and Framework Reference.
 </details>
 </details>
 
- 
 ## Table of Contents
 
 <details>
