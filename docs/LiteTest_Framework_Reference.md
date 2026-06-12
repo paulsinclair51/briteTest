@@ -76,23 +76,6 @@ additionally see:
 See [Repository Layout](#repository-layout) for locations of the above documents and the
 LiteTest directories and files.
 
-### Documentation
-
-<details>
-<summary>Click to view</summary>
-
-The LiteTest documentation set consists of several documents, each serving a
-specific purpose:
-
-- **README.md** — Introduction to LiteTest.
-- **LiteTest User Guide** — Concepts, workflow, examples.
-- **LiteTest API Reference** — Public API types, enums, macros, and functions.
-- **LiteTest Framework Guide** — Internal framework concepts and architecture.
-- **LiteTest Framework Reference** — Internal types, enums, macros, and functions.
-- **LiteTest Contributor Guide** — Contribution rules, versioning, testing, documentation, and code style.
-
-See [Repository Layout](#repository-layout) for the locations of these documents.
-
 #### Documentation Style Guide
 
 <details>
