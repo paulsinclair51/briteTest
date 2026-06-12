@@ -1,6 +1,6 @@
-# LiteTest API Reference
+# LiteTest Runner Reference
 
-This document defines the **public API** of LiteTest as declared in `litetest.h`.  
+This document defines the **public API** for the LiteTest Runner as declared in `litetest.h`.  
 It includes public types, enums, macros, and functions.  
 Internal implementation details are not included.
 
