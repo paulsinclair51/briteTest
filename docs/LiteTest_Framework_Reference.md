@@ -222,7 +222,32 @@ based on their name per the naming conventions.
 <details>
 <summary>Click to view</summary>
 
-**Type Definition:** `typedef ...`
+These typedefs declare fundamental internal types used throughout the LiteTest framework.
+
+#### <TypeName>
+
+<details>
+<summary>Click to view</summary>
+
+**Declaration**
+```c
+typedef <underlying-type> <TypeName>;
+```
+
+**Description**  
+A concise explanation of what this type represents within the LiteTest framework and
+how it is intended to be used.
+
+**Usage Notes**  
+- Key behavioral expectations  
+- Lifetime or ownership rules (if any)  
+- Relationships to other LiteTest types
+
+**Example**
+```c
+<TypeName> value = ...;
+```
+</details>
 </details>
 
 ### 2.2. Structs
@@ -230,10 +255,35 @@ based on their name per the naming conventions.
 <details>
 <summary>Click to view</summary>
 
-#### Fields
-- `field1` — description  
-- `field2` — description  
+#### struct <StructName>
 
+<details>
+<summary>Click to view</summary>
+
+**Declaration**
+```c
+typedef struct <StructName> {
+    <field-type> <field-name>;
+    ...
+} <StructName>;
+```
+
+**Description**  
+Explain the purpose of this struct, what data it aggregates, and how it participates in the LiteTest execution model.
+
+**Fields**
+- `<field-name>` — description  
+- `<field-name>` — description  
+
+**Usage Notes**  
+- Ownership or lifetime rules  
+- Whether fields must be initialized by the user or framework
+
+**Example**
+```c
+<StructName> s = { ... };
+```
+</details>
 </details>
 
 ### 2.3. Enums and Enum Values
@@ -241,10 +291,36 @@ based on their name per the naming conventions.
 <details>
 <summary>Click to view</summary>
 
-#### Enum Values
-- `VALUE1` — meaning  
-- `VALUE2` — meaning  
+#### enum <EnumName>
 
+<details>
+<summary>Click to view</summary>
+
+**Declaration**
+```c
+typedef enum <EnumName> {
+    <ENUM_VALUE_1>,
+    <ENUM_VALUE_2>,
+    ...
+} <EnumName>;
+```
+
+**Description**  
+Explain what conceptual category this enum models and how the values are used by the framework.
+
+**Values**
+- `<ENUM_VALUE_1>` — meaning  
+- `<ENUM_VALUE_2>` — meaning  
+
+**Usage Notes**  
+- Any ordering assumptions  
+- Whether values map to external formats (strings, logs, etc.)
+
+**Example**
+```c
+<EnumName> mode = <ENUM_VALUE_1>;
+```
+</details>
 </details>
 
 ### 2.4. Global Variables
@@ -252,7 +328,32 @@ based on their name per the naming conventions.
 <details>
 <summary>Click to view</summary>
 
-(Placeholder)
+#### <VariableName>
+
+<details>
+<summary>Click to view</summary>
+
+**Declaration**
+```c
+extern <type> <VariableName>;
+```
+
+**Description**  
+Explain the purpose of this global variable, what state it represents, and how it is used by the LiteTest framework.
+
+**Usage Notes**  
+- Whether the variable is read-only or writable  
+- Whether users are expected to modify it  
+- Thread-safety considerations  
+- Lifetime and initialization rules  
+
+**Example**
+```c
+if (<VariableName> == ...) {
+    ...
+}
+```
+</details>
 </details>
 
 ### 2.5. Macros
@@ -260,8 +361,33 @@ based on their name per the naming conventions.
 <details>
 <summary>Click to view</summary>
 
-#### Macro Expansion
-`#define <macro> <expansion>`
+#### <MACRO_NAME>
+
+<details>
+<summary>Click to view</summary>
+
+**Definition**
+```c
+#define <MACRO_NAME>(...) <expansion>
+```
+
+**Description**  
+Describe the purpose of this macro, what it expands to conceptually, and how it fits into the LiteTest orchestration or test definition model.
+
+**Parameters**
+- `<param>` — meaning and constraints  
+- `<param>` — meaning  
+
+**Usage Notes**  
+- Side effects  
+- Evaluation rules (e.g., multiple evaluation hazards)  
+- Whether arguments must be constant expressions
+
+**Example**
+```c
+<MACRO_NAME>(arg1, arg2);
+```
+</details>
 </details>
 
 ### 2.6. Functions
@@ -269,83 +395,42 @@ based on their name per the naming conventions.
 <details>
 <summary>Click to view</summary>
 
-These functions may be static, static inline, or (by default) extern.
+The functions in this section may be `static`, `static inline`, or (by default) `extern`,
+depending on how they are used within the framework.
 
-### `<symbol_name>`
+#### <FunctionName>()
 
 <details>
 <summary>Click to view</summary>
 
-**Category:** `<typedef | struct | enum | macro | variable | function>`  
-**Defined in:** `<file>`  
-**Visibility:** `<Public API | Internal API>`  
-**Related symbols:** `<optional list>`
-
-#### Purpose
-A concise description of what the symbol represents or does.
-
-**Signature:**  
+**Signature**
 ```c
-return_type function_name(parameters);
+<return-type> <FunctionName>(<parameters>);
+```
 
-#### Return Value
-What the function returns and why.
+**Description**  
+Explain what this function does, when it is called, and how it interacts with the LiteTest runtime.
 
-#### Errors
-Conditions under which the function fails or produces error states.
+**Parameters**
+- `<param-name>` — meaning, constraints, ownership  
+- `<param-name>` — meaning  
 
-#### Description
-A clear explanation of the symbol’s behavior, semantics, and role in the framework.
+**Return Value**  
+Describe what is returned and under what conditions.
 
-#### Usage Notes
-- Important constraints or assumptions.
-- Lifetime, ownership, or thread/process behavior.
-- Any invariants or required preconditions.
+**Errors / Preconditions**  
+- Preconditions the caller must satisfy  
+- Error conditions or undefined behavior cases
 
-#### Interactions
-How this symbol interacts with other parts of the framework (execution engine, guards, isolation, etc.).
+**Usage Notes**  
+- Thread safety  
+- Lifetime rules  
+- Interaction with other LiteTest components
 
-#### Implementation Notes (Internal)
-Internal details relevant to contributors (not API users).  
-May include:
-- how the symbol is used internally  
-- performance considerations  
-- ordering constraints  
-- error handling behavior  
-
-### `litetest_guard_enter_internal`
-
-<details>
-<summary>Click to view</summary>
-
-**Category:** function  
-**Defined in:** `litetest.c`  
-**Visibility:** Internal API  
-**Related symbols:** `litetest_guard_exit_internal`, `LT_BEGIN_GUARD`
-
-#### Purpose
-Enters a new guard level to protect the execution of a test expression or group.
-
-#### Description
-This function increments the internal guard depth and installs the appropriate
-signal handlers for fault detection. It is called before executing any guarded
-test expression or group and ensures that faults are captured without terminating
-the entire test run.
-
-#### Usage Notes
-- Must be paired with `litetest_guard_exit_internal`.  
-- Not reentrant; callers must maintain correct nesting.  
-- Only used when isolation mode is thread or process based.
-
-#### Interactions
-- The execution engine calls this before dispatching a guarded test.  
-- Works with the signal‑handling subsystem to catch segmentation faults,
-  illegal instructions, and similar runtime errors.
-
-#### Implementation Notes (Internal)
-- Updates the global guard depth counter.  
-- Installs handlers only when transitioning from depth 0 → 1.  
-- Does not allocate memory or perform I/O.
+**Example**
+```c
+<return-type> result = <FunctionName>(...);
+```
 </details>
 </details>
 
