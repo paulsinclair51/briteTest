@@ -105,8 +105,7 @@ LiteTest directories and files.
     - This keeps the document manageable, avoids overwhelming readers with unrelated
       detail, and makes the document easier to navigate.
 
-5. Writing Style Consistency
-   To keep LiteTest documentation clear and easy to read, maintain **parallel
+5. Writing Style Consistency: To keep LiteTest documentation clear and easy to read, maintain **parallel
    structure** within lists and related sentences. In practice:
    - Start list items with the same part of speech (typically a verb).
    - Keep grammatical patterns consistent across bullets.
