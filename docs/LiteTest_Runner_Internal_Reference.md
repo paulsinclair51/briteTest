@@ -1,7 +1,7 @@
-# LiteTest Framework Reference
+# LiteTest Runner Internal Reference
 
-This document is organized by the named entities in the LiteTest framework.
-Each symbol (type, macro, function, etc.) is described individually,
+This document is organized by the named entities in the LiteTest Runner
+impplementation. Each symbol (type, macro, function, etc.) is described individually,
 including its purpose, behavior, and usage. It serves as the reference
 companion to the LiteTest Framework Guide, defining the framework’s
 components precisely while the Guide explains their design and interaction.
