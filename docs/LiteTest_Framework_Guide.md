@@ -1,6 +1,6 @@
 # LiteTest Framework Guide
 
-This guide documents the internal architecture and design of the LiteTest framework.  
+This guide documents the internal architecture and design of the LiteTest framework.
 It is intended for maintainers and contributors working on the implementation. It is
 companion document to the LiteTest Framework Reference document.
 
