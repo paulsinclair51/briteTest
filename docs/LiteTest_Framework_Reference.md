@@ -76,6 +76,23 @@ additionally see:
 See [Repository Layout](#repository-layout) for locations of the above documents and the
 LiteTest directories and files.
 
+### Documentation
+
+<details>
+<summary>Click to view</summary>
+
+The LiteTest documentation set consists of several documents, each serving a
+specific purpose:
+
+- **README.md** — Introduction to LiteTest.
+- **LiteTest User Guide** — Concepts, workflow, examples.
+- **LiteTest API Reference** — Public API types, enums, macros, and functions.
+- **LiteTest Framework Guide** — Internal framework concepts and architecture.
+- **LiteTest Framework Reference** — Internal types, enums, macros, and functions.
+- **LiteTest Contributor Guide** — Contribution rules, versioning, testing, documentation, and code style.
+
+See [Repository Layout](#repository-layout) for the locations of these documents.
+
 #### Documentation Style Guide
 
 <details>
@@ -88,7 +105,7 @@ LiteTest directories and files.
 
 ## 2. Formatting
 - Use backticks for code identifiers.
-- Use fenced code blocks for file trees and examples.
+- Use fenced code blocks for file trees, examples, and commands.
 - Keep line lengths reasonable for GitHub rendering.
 
 ## 3. Writing Guidelines
@@ -98,14 +115,27 @@ LiteTest directories and files.
 - Use lists for enumerations.
 
 ## 4. `Click to view`
-- Use `Click to view` sections and subsections to keep the document readable while still
-  accommodating large amounts of technical detail: 
-  - Framework internals tend to be long and low‑level; collapsing sections allows
-    readers to scan the structure and expand only what they need.  
+- Use `Click to view` sections and subsections to keep the document readable while
+  still accommodating large amounts of technical detail:
+  - Collapsing sections allows readers to scan the structure and expand only what
+    they need.
   - This keeps the document manageable, avoids overwhelming readers with unrelated
-    detail, and makes the document easier to navigate.  
+    detail, and makes the document easier to navigate.
+
+## 5. Writing Style Consistency
+To keep LiteTest documentation clear and easy to read, maintain **parallel
+structure** within lists and related sentences. In practice:
+
+- Start list items with the same part of speech (typically a verb).
+- Keep grammatical patterns consistent across bullets.
+- Avoid mixing styles such as “Keep paragraphs short” with “Using lists for enumerations.”
+- Rewrite items as needed so the list reads smoothly and uniformly.
+
+This guideline applies to all LiteTest documentation, including the User Guide,
+API Reference, Framework Guide, and Framework Reference.
 </details>
 </details>
+
  
 ## Table of Contents
 
