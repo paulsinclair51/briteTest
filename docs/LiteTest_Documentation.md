@@ -80,15 +80,11 @@ The user documentation for  LiteTest includes:
 
 - **README** — Introduction to LiteTest.
 
-- **LiteTest Documentation** — A list of the LifeTest documents.
+- **LiteTest Documentation** — A list of the LifeTest documents for users and contributors plus the LiteTest repository layout (listing core files).
 
-- **LiteTest Glossary — An alphabetically-ordered list of LiteTest terms and their
-  definitions/explanations.
+- **LiteTest Glossary — An alphabetically-ordered list of terms used in the LiteTest documentation with their specific definitions/explanations in the LiteTest context.
 
-- ** LiteTest Repository Layout — list of directories and core files.
-
-- **LiteTest Runner User Guide** — Concepts, workflow, and examples for the
-  Runner framework and API.
+- **LiteTest Runner User Guide** — Concepts, workflow, and examples for the Runner framework and API.
 
 - **LiteTest Runner Reference** — Reference document for the Runne API.
 
@@ -96,18 +92,18 @@ The user documentation for  LiteTest includes:
 
 - **LiteTest Test Reference** — Reference document for the Test API .
 
-The contributor documentation for the LiteTest internals for the Runner API and
+The contributor documentation for the LiteTest implementation internals for the Runner API and
 the Test API include:
 
 - **LiteTest Contributor Guide** — Versioning, documentation/coding guidelines, branching, testing, and CI/release check lists.
 
-- **LiteTest Runner Internal Guide** — Concepts, workflow, examples for the Runner API.
+- **LiteTest Runner Internal Guide** — Implementation concepts, architecture, and high-level design for the Runner API.
 
-- **LiteTest Runner Internal Reference** — Reference for the implementation for the Test API.
+- **LiteTest Runner Internal Reference** — Reference for the implementation of the Test API.
   
-- **LiteTest Test Internal Guide** — Concepts, workflow, examples for the Test API.
+- **LiteTest Test Internal Guide** — Implementation concepts, architecture, and high-level design for the Test API.
 
-- **LiteTest Test Internal Reference** — Reference for the implementation for the Test API.
+- **LiteTest Test Internal Reference** — Reference for the implementation of the Test API.
 </details>
 
 ## Repository Layout
