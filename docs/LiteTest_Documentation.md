@@ -71,21 +71,21 @@ incremented whenever this document is updated without a change to the major vers
 and it resets to `0` when the major version increases.
 </details>
 
-### Documentation
+## Documentation
 
 <details>
 <summary>Click to view</summary>
 
-The user documentation for the LiteTest includes:
+The user documentation for  LiteTest includes:
 
 - **README** — Introduction to LiteTest.
 
-- **LiteTest Documentation** — A list of the LifeTezt documents.
+- **LiteTest Documentation** — A list of the LifeTest documents.
 
 - **LiteTest Glossary — An alphabetically-ordered list of LiteTest terms and their
   definitions/explanations.
 
-- ** LiteTest Repository Layout —
+- ** LiteTest Repository Layout — list of directories and core files.
 
 - **LiteTest Runner User Guide** — Concepts, workflow, and examples for the
   Runner framework and API.
@@ -99,21 +99,18 @@ The user documentation for the LiteTest includes:
 The contributor documentation for the LiteTest internals for the Runner API and
 the Test API include:
 
-- **LiteTest Contributor Guide** — Versioning, documentation/coding
-  guidelines, branching, testing, and CI/release check lists.
+- **LiteTest Contributor Guide** — Versioning, documentation/coding guidelines, branching, testing, and CI/release check lists.
 
 - **LiteTest Runner Internal Guide** — Concepts, workflow, examples for the Runner API.
 
-- **LiteTest Runner Internal Reference** — Reference for the implementation for the
-  Test API.
+- **LiteTest Runner Internal Reference** — Reference for the implementation for the Test API.
   
 - **LiteTest Test Internal Guide** — Concepts, workflow, examples for the Test API.
 
-- **LiteTest Test Internal Reference** — Reference for the implementation for the
-  Test API.
+- **LiteTest Test Internal Reference** — Reference for the implementation for the Test API.
 </details>
 
-### Repository Layout
+## Repository Layout
 
 <details>
 <summary>Click to view</summary>
@@ -133,20 +130,28 @@ LiteTest/
 |- build_test_litetest.ps1
 |- build/
 |- docs/
-|  \- LiteTest_API_User_Guide.md
-|  \- LiteTest_API_Reference.md
-|  \- LiteTest_Contributor_Guide.md
-|  \- LiteTest_Framework_Guide.md
-|  \- LiteTest_Framework_Reference.md
+0
+|  |- LiteTest_Documentation.md
+|  |- LiteTest_Glossary.md
+|  |- LiteTest_Repository_Layout.md 
+|  |- LiteTest_Runner_User_Guide.md
+|  |- LiteTest_Runner_Reference.md
+|  |- LiteTest_Contributor_Guide.md
+|  \- LiteTest_Runner_Internal_Guide.md
+|  \- LiteTest_Runner_Internal_Reference.md
+|  \- LiteTest_Test_Internal_Guide.md
+|  \- LiteTest_Test_Internal_Reference.md
 |- examples/
 |- include/
-|  \- litetest.h
+|  |- litetest_runner.h
+|  \- litetest_test.h
 |- reports/
 |  |- litetest_test_report-I.txt
 |  \- litetest_test_report.txt
 |- scripts/
 |- src/
-|  \- litetest.c
+|  |- litetest_runner.c
+|  \- litetest_test.c
 |- tests/
 |  |- test_litetest.c
 |  |- test_orchestrator.c
