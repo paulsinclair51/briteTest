@@ -1,7 +1,7 @@
 # LiteTest Glossary
 
 This glossary defines terms generally used in LiteTest and terms often used in
-the testing domain. It is companion document to the other LiteTest documents.
+the testing domain. It is a companion document to the other LiteTest documents.
 
 `Click to view` chapter, sections, and subsections:
 
