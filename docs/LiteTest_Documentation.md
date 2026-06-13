@@ -3,13 +3,12 @@
 This document provides an overview of all LiteTest documentation. It serves as a
 companion index to the user and contributor LiteTest documents.
 
-`Click to view` sections.
+`Click to view` sections are used throughout this document.
 
 <details>
-<summary>Click to view Why Click to view?</summary>
+<summary>Why "Click to view"?</summary>
 
-- Keeps documents readable while still accommodating large amounts
-  of technical detail.
+- Keeps documents readable while accommodating large amounts of technical detail.
   
 - Allows scanning the structure and expanding only what you need.
 
@@ -55,9 +54,7 @@ of the available documentation and repository structure.
 |----------|------|----------|---------|---------------|
 | 1.0 | 2026‑06‑11 | 1.0.0 | Initial version. | Paul Sinclair |
 
-The `Document` column uses the version format `M.u` (Major, update).
-The `LiteTest` column records the LiteTest version current
-at the time this document version was published.
+The `Document` column uses the version format `M.u` (Major, update). The `LiteTest` column records the LiteTest version current at the time this document version was published.
 
 The current LiteTest version is defined by the `LT_VERSION` macro in the LiteTest
 Runner API, which specifies a string of the form `"M.m.p"` (Major, minor, patch).
@@ -80,7 +77,7 @@ This section lists all LiteTest user and contributor documentation.
 
 - `README.md` — Introduction to LiteTest.
 
-- `LiteTest_Documentation.md` — A list of the LiteTest documents for users and contributors plus the LiteTest repository layout (listing core files).
+- `LiteTest_Documentation.md` — Index of LiteTest documents and repository layout.
 
 - `LiteTest_Glossary.md` — An alphabetically-ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest) and terms often used in the testing domain.
 
@@ -94,7 +91,7 @@ This section lists all LiteTest user and contributor documentation.
 
 **Contributor documentation**:
 
-- `LiteTest_Contributor_Guide.md` — Versioning, documentation/coding guidelines, branching, testing, and CI/release check lists.
+- `LiteTest_Contributor_Guide.md` — Versioning, documentation/coding guidelines, branching, testing, and CI/release checklists.
 
 - `LiteTest_Runner_Internal_Guide.md` — Implementation concepts, architecture, and high-level design for the Runner API.
 
@@ -110,16 +107,10 @@ This section lists all LiteTest user and contributor documentation.
 <details>
 <summary>Click to view</summary>
 
-This section outlines the structure of the LiteTest repository and its core files.
-  
-GitHub repository: `paulsinclair51/LiteTest`
-
-Repository layout (core files and directories) in LiteTest:
+This section shows the layout of the GitHub repository `paulsinclair51/LiteTest` (core files and directories):
 
 ```text
-.github/
-    workflows/
-        ci.yml
+.github/workflows/ci.yml
 README.md
 LICENSE
 Makefile
