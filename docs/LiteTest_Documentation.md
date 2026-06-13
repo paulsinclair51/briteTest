@@ -76,7 +76,7 @@ whenever this document is updated without a change to `M`, and it resets to `0` 
 
 This section lists all LiteTest user and contributor documentation.
 
-**User documentations**:
+**User documentation**:
 
 - `README.md` — Introduction to LiteTest.
 
