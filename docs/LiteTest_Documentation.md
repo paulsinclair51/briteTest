@@ -4,7 +4,7 @@ This document lists LiteTest documents,
 `Click to view` chapter, sections, and subsections:
 
 <details>
-<summary>Click to view</summary>
+<summary>Click to view Why Click to view?</summary>
 
 - Keeps documents readable while still accommodating large amounts
   of technical detail.
@@ -20,7 +20,7 @@ Copyright (c) 2026 paulsinclair.
 SPDX-License-Identifier: MIT.
 
 <details>
-<summary>Click to view</summary>
+<summary>Click to view license</summary>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
