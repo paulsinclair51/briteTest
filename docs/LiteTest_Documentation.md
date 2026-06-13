@@ -1,9 +1,9 @@
 # LiteTest Documentation
 
-This document lists LiteTest documents. It is a companion document to
-the other LiteTest documents.
+This document provides an overview of all LiteTest documentation. It serves as a
+companion index to the user and contributor LiteTest documents.
 
-`Click to view` chapter, sections, and subsections:
+`Click to view` sections:
 
 <details>
 <summary>Click to view Why Click to view?</summary>
@@ -11,11 +11,9 @@ the other LiteTest documents.
 - Keeps documents readable while still accommodating large amounts
   of technical detail.
   
-- Collapsing sections allows scanning the structure and expanding only
-  what you need.
-  
-- This keeps the document manageable, avoids overwhelming a reader
-  with unrelated detail, and makes the document easier to navigate.
+- Allows scanning the structure and expanding only what you need.
+
+- Reduces visual noise and makes navigation easier.
 </details>
 
 Copyright (c) 2026 Paul Sinclair.  
@@ -45,6 +43,9 @@ SOFTWARE.
 
 ## Preface
 
+This document is intended for LiteTest users and contributors who need an overview
+of the available documentation and repository structure.
+
 #### Document Version History
 
 <details>
@@ -54,9 +55,9 @@ SOFTWARE.
 |----------|------|----------|---------|---------------|
 | 1.0 | 2026‑06‑11 | 1.0.0 | Initial version. | Paul Sinclair |
 
-The `Document` column use the version format `M.u` (Major, update) of this LiteTest
-document. The `LiteTest` column records the latest LiteTest version
-at the time this version of the document was published.
+The `Document` column uses the version format `M.u` (Major, update).
+The `LiteTest` column records the LiteTest version current
+at the time this document version was published.
 
 The current LiteTest version is defined by the `LT_VERSION` macro in the LiteTest
 Runner API, which specifies a string of the form `"M.m.p"` (Major, minor, patch).
@@ -73,7 +74,9 @@ whenever this document is updated without a change to `M`, and it resets to `0` 
 <details>
 <summary>Click to view</summary>
 
-The user documentation for LiteTest includes:
+This section lists all LiteTest user and contributor documentation.
+
+**User documentations**:
 
 - `README.md` — Introduction to LiteTest.
 
@@ -89,8 +92,7 @@ The user documentation for LiteTest includes:
 
 - `LiteTest_Test_Reference.md` — Reference document for the LiteTest Test API.
 
-The contributor documentation for the LiteTest implementation internals for the Runner API and
-the Test API include:
+**Contributor documentation**:
 
 - `LiteTest_Contributor_Guide.md` — Versioning, documentation/coding guidelines, branching, testing, and CI/release check lists.
 
@@ -107,10 +109,12 @@ the Test API include:
 
 <details>
 <summary>Click to view</summary>
+
+This section outlines the structure of the LiteTest repository and its core files.
   
 GitHub repository: `paulsinclair51/LiteTest`
 
-Repository layout (listing core files):
+Repository layout (core files and directories):
 
 ```text
 LiteTest/
@@ -128,9 +132,9 @@ LiteTest/
 |  |- LiteTest_Runner_User_Guide.md
 |  |- LiteTest_Runner_Reference.md
 |  |- LiteTest_Contributor_Guide.md
-|  \- LiteTest_Runner_Internal_Guide.md
-|  \- LiteTest_Runner_Internal_Reference.md
-|  \- LiteTest_Test_Internal_Guide.md
+|  |- LiteTest_Runner_Internal_Guide.md
+|  | - LiteTest_Runner_Internal_Reference.md
+|  |- LiteTest_Test_Internal_Guide.md
 |  \- LiteTest_Test_Internal_Reference.md
 |- examples/
 |- include/
