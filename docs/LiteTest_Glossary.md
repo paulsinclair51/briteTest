@@ -109,7 +109,7 @@ the Test API include:
   Test API.
 </details>
 
-#### Repository Layout
+### Repository Layout
 
 <details>
 <summary>Click to view</summary>
