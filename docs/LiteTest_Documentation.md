@@ -54,18 +54,18 @@ SOFTWARE.
 |----------|------|----------|---------|---------------|
 | 1.0 | 2026‑06‑11 | 1.0.0 | Initial version. | Paul Sinclair |
 
-The `Document` column tracks the version `M.u` (Major, update) of this LiteTest
+The `Document` column use the version format `M.u` (Major, update) of this LiteTest
 document. The `LiteTest` column records the latest LiteTest version
-at the time this document version was published.
+at the time this version of the document was published.
 
 The current LiteTest version is defined by the `LT_VERSION` macro in the LiteTest
 Runner API, which specifies a string of the form `"M.m.p"` (Major, minor, patch).
 
-The document’s `Major` version matches the LiteTest Runner's `Major` version.
-The `update` version tracks updates to this document itself and does not
-correspond to the LiteTest Runner's `minor` or `patch` versions. The `update` version
-is incremented whenever this document is updated without a change to the `major`
-version, and it resets to `0` when the `major` version is incremented.
+The document’s `M` (Major) version matches the LiteTest Runner's `M` (Major) version.
+The document's `u` (update) version tracks updates to this document and does not
+correspond to the Runner's `m` (minor) or `p` (patch) versions. `u` increments
+whenever this document is updated without a change to `M`, and it resets to `0` when
+`M` is incremented.
 </details>
 
 ## Documentation
