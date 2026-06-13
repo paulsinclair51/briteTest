@@ -177,20 +177,31 @@ and terms often used in the testing domain:
 <summary>C: Click to view </summary>
 
 - `command line` - A line of text entered into a shell that specifies an
-  executable and optional arguments or flags (options).
-- `command-line` - Adjective form for command line (noun).
+  executable and optional arguments or flags (options). Use `command-line`
+  when used as an adjective.
 - `category`: For LiteTest, a labeled set of `LT_GROUP` and `LT_TEST` macros whose combined
   results are written by `LT_WRITE_RESULT` to the report with a specified
   category name.
 - `concurrent block`: For LiteTest, a set of tests bracketed by `LT_BEGIN_CONCURRENT` and
   `LT_END_CONCURRENT`.
-- `CI (Continuous Integration)`:
+- `CD (Continuous Delivery / Continuous Deployment)`: An automated practice that
+  extends `CI` by packaging, releasing, or deploying software after it has passed
+  all required tests. Continuous Delivery prepares release artifacts for manual
+  approval, while Continuous Deployment automatically deploys every passing
+  change to a target environment.
+- `CI (Continuous Integration)`: An automated development practice where every
+   change to a codebase is built and tested in a shared environment. A CI system
+   runs workflows that compile the project, execute tests, validate formatting
+   or static analysis rules, and produce artifacts such as logs or reports. CI
+   helps detect errors early, ensures consistent build quality, and provides
+   rapid feedback to developers. Use `continuous-integration` (or simpley CI)
+   when used as an adjective.
 - `control file`: A previously generated file that can be compared to a newly
   generated file for differences. Differences (other than expected ones like
   timestamps) typically indicate a test failure. Sometimes the control file is
   out of date and must be replaced by promoting the new file.
-- `customization support functions`: LiteTest Runner API functions provided
-  to support customizing the `orchestrator (main) function` and `test group`
+- `customization helper functions`: LiteTest Runner API functions provided
+  to help customizing the `orchestrator (main) function` and `test group`
   functions.
 </details>
 
@@ -230,26 +241,35 @@ and terms often used in the testing domain:
 - `guard`: For LiteTest, the protection mechanism used to catch runtime faults and continue
   test execution. See also `fault`,  `isolation`, `thread isolation`,
   and `process isolation`.
-- `guard handler`: A function that is used to capture faults.
-- `guard level`: The nesting depth of active guards for test groups and tests
+- `guard handler`: For LiteTest, a function that is used to capture faults.
+- `guard level`: For LiteTest, the nesting depth of active guards for test groups and tests
   expressions.
 </details>
 
 <details>
 <summary>I: Click to view</summary>
 
-- `include -I flag`: Optional command‑line flag that enables an
+- `include -I flag`: For LiteTest, an optional command‑line flag that enables an
   `LT_TEST` macro with an argument value of `I` to be executed. Default is to
   skip the `LT_TEST` macro if it has an argument value of `I`.
-- `include -I<n> flag`: Optional command‑line flag that enables an
+- `include -I<n> flag`: For LiteTest, an optional command‑line flag that enables an
   `LT_TEST` with an argument value of `<m>` between 1 and 9 to execute
   if `<m>` is between 1 and `<n>`. `<n>` must be between 1 and 9.
   Default for `<n>` is 9 if this flag is not specified and, for `<m>`
   is 1. If `<m>` is 0, `LT_TEST` is not enabled (i.e., it is skipped).
   At most one `-I<n>` flag specified for a command line.
-- `isolation` or 'isolation mode`: Execution mode for `LT_GROUP`, `LT_TEST`, or `LT_INJECT_TEST`.
-  `0` = same thread, `1` = separate thread, `2` = separate process.
-  
+- `isolation` or 'isolation mode`: For LiteTest, an execution mode
+   for `LT_GROUP` and `LT_TEST` macros:  `0` = same thread, `1` =
+   separate thread, `2` = separate process.
+</details>
+
+<details>
+<summary>J: Click to view</summary>
+
+- `job`: A unit of work within a `workflow`. A job runs a series of steps
+  (see `step`) in a specified environment (such as a container or virtual
+  machine). Jobs may run sequentially or in parallel, depending on their
+  dependencies.
 </details>
 
 <details>
@@ -298,7 +318,12 @@ and terms often used in the testing domain:
 
 - `report`: See `test report`.
 - `report format`: The output structure produced by LiteTest test runs.
-- `runner`: See `test runner`.
+- `runner`: For LiteTest, see `test runner`. For GitHub, A machine or
+  environment that executes the jobs defined in a GitHub Actions workflow.
+  A runner provides the operating system, tools, and runtime needed to
+  perform workflow steps such as building, testing, or packaging a project.
+  GitHub provides hosted runners, and users may also configure self‑hosted
+  runners.
 </details>
 
 <details>
@@ -312,6 +337,9 @@ and terms often used in the testing domain:
 - `shell`: a command-line interface that allows a user or script to submit
   command lines. Examples include PowerShell (`pwsh` or `powershell.exe`),
   bash, sh, zsh, and cmd.exe).
+- `step`: An individual action within a job. A step may run a `shell` command,
+  execute a script, or invoke a reusable action. Steps run in order and share
+  the job’s execution environment.
 </details>
 
 <details>
@@ -319,7 +347,7 @@ and terms often used in the testing domain:
 
 - `test`: See `test expression`.
 - `test artifact` or 'testing artifact': For LiteTest, an artifact ( file or output)
-  generated by a LiteTest executable (for example, a test report, stdout, stderr).
+  generated by a LiteTest executable (for example, a test report, stdout, and stderr).
 - `test case`: This term is not used in LiteTest. In other contexts, it
   may mean a single test or a set of tests; LiteTest uses `test expression`
   for an individual test and `test group` for a set of test expressions.
@@ -357,6 +385,11 @@ and terms often used in the testing domain:
 <details>
 <summary>W: Click to view</summary>
 
-- `workflow`: TODO.
+- `workflow`: A defined sequence of automated steps executed by a
+  `CI (continuous‑integration` system. In GitHub Actions, a workflow
+  is triggered by an event (such as a push, pull request, or scheduled
+  run) and runs one or more jobs that perform tasks like building,
+  testing, or packaging a project. Workflows may produce artifacts
+  such as logs, reports, or build outputs.
 </details>
 </details>
