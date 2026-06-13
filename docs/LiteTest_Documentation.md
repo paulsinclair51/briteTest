@@ -11,7 +11,7 @@ the other LiteTest documents.
 - Keeps documents readable while still accommodating large amounts
   of technical detail.
   
-- Collapsing sections allows scanning the structure and expand only
+- Collapsing sections allows scanning the structure and expanding only
   what you need.
   
 - This keeps the document manageable, avoids overwhelming a reader
@@ -49,20 +49,20 @@ SOFTWARE.
 
 <details>
 <summary>Click to view</summary>
-
+   
 | Document | Date | LiteTest | Comment | Author/Editor |  
 |----------|------------|----------------------------------------------------------|--------------------|  
 | 1.0 | 2026‑06‑11 | 1.0.0 | Initial version. | Paul Sinclair |  
 
-The **Document** column tracks the version `M.u` (Major, update) of this LiteTesf
-document. The **LiteTest** column records the latest LiteTest version
+The `Document` column tracks the version `M.u` (Major, update) of this LiteTest
+document. The `LiteTest` column records the latest LiteTest version
 at the time this document version was published.
 
-The current LiteTest version is defined by the LiteTest Runner API `LT_VERSION` macro,
-which specifies a string of the form `"M.m.p"` (Major, minor, patch).
+The current LiteTest version is defined by the `LT_VERSION` macro in the LiteTest
+Runner API, which specifies a string of the form `"M.m.p"` (Major, minor, patch).
 
-The document’s **Major** version matches the LiteTest Runner's Major version.
-The **update** version tracks updates to this document itself and does not
+The document’s `Major` version matches the LiteTest Runner's Major version.
+The `update` version tracks updates to this document itself and does not
 correspond to the LiteTest Runner's minor or patch versions. The update version
 is incremented whenever this document is updated without a change to the major 
 version, and it resets to `0` when the major version is incremented.
@@ -73,38 +73,37 @@ version, and it resets to `0` when the major version is incremented.
 <details>
 <summary>Click to view</summary>
 
-The user documentation for  LiteTest includes:
+The user documentation for LiteTest includes:
 
-- **README** — Introduction to LiteTest.
+- `README.md` — Introduction to LiteTest.
 
-- **LiteTest Documentation** — A list of the LifeTest documents for users and contributors plus the LiteTest repository layout (listing core files).
+- `LiteTest_Documentation.md` — A list of the LiteTest documents for users and contributors plus the LiteTest repository layout (listing core files).
 
-- **LiteTest Glossary** — An alphabetically-ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest)
-and terms often used in the testing domain.
+- `LiteTest_Glossary.md` — An alphabetically-ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest) and terms often used in the testing domain.
 
-- **LiteTest Runner User Guide** — Concepts, usage, and examples for the LiteTest Runner framework and API.
+- `LiteTest_Runner_User_Guide.md` — Concepts, usage, and examples for the LiteTest Runner framework and API.
 
-- **LiteTest Runner Reference** — Reference document for the LiteTest Runner API.
+- `LiteTest_Runner_Reference.md` — Reference document for the LiteTest Runner API.
 
-- **LiteTest Test User Guide** — Concepts, usage, and examples for the LiteTest Test API.
+- `LiteTest_Test_User_Guide.md` — Concepts, usage, and examples for the LiteTest Test API.
 
-- **LiteTest Test Reference** — Reference document for the LiteTest Test API .
+- `LiteTest_Test_Reference.md` — Reference document for the LiteTest Test API.
 
 The contributor documentation for the LiteTest implementation internals for the Runner API and
 the Test API include:
 
-- **LiteTest Contributor Guide** — Versioning, documentation/coding guidelines, branching, testing, and CI/release check lists.
+- `LiteTest_Contributor_Guide.md` — Versioning, documentation/coding guidelines, branching, testing, and CI/release check lists.
 
-- **LiteTest Runner Internal Guide** — Implementation concepts, architecture, and high-level design for the Runner API.
+- `LiteTest_Runner_Internal_Guide.md` — Implementation concepts, architecture, and high-level design for the Runner API.
 
-- **LiteTest Runner Internal Reference** — Reference for the implementation of the Test API.
+- `LiteTest_Runner_Internal_Reference.md` — Reference for the implementation of the Runner API.
   
-- **LiteTest Test Internal Guide** — Implementation concepts, architecture, and high-level design for the Test API.
+- `LiteTest_Test_Internal_Guide.md` — Implementation concepts, architecture, and high-level design for the Test API.
 
-- **LiteTest Test Internal Reference** — Reference for the implementation of the Test API.
+- `LiteTest_Test_Internal_Reference.md` — Reference for the implementation of the Test API.
 </details>
 
-## Repository Layout
+## LiteTest Repository Layout
 
 <details>
 <summary>Click to view</summary>
@@ -126,7 +125,6 @@ LiteTest/
 |- docs/
 |  |- LiteTest_Documentation.md
 |  |- LiteTest_Glossary.md
-|  |- LiteTest_Repository_Layout.md 
 |  |- LiteTest_Runner_User_Guide.md
 |  |- LiteTest_Runner_Reference.md
 |  |- LiteTest_Contributor_Guide.md
