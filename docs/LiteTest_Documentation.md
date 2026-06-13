@@ -16,7 +16,7 @@ This document lists LiteTest documents,
   with unrelated detail, and makes the document easier to navigate.
 </details>
 
-Copyright (c) 2026 paulsinclair.  
+Copyright (c) 2026 Paul Sinclair.  
 SPDX-License-Identifier: MIT.
 
 <details>
