@@ -1,6 +1,8 @@
-o# LiteTest Documentation
+# LiteTest Documentation
 
-This document lists LiteTest documents,
+This document lists LiteTest documents. It is a companion document to
+the other LiteTest documents.
+
 `Click to view` chapter, sections, and subsections:
 
 <details>
