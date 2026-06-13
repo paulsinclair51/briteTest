@@ -53,22 +53,21 @@ SOFTWARE.
 
 | Document | Date       | LiteTest | Description                                   | Author/Editor    |
 |----------|------------|----------------------------------------------------------|------------------|
-| 1.0      | 2026‑06‑11 | 1.0.0    | Initial LiteTest Framework Reference.         | Paul Sinclair   |
+| 1.0      | 2026‑06‑11 | 1.0.0    | Initial LiteTest Repository Layout            |  Paul Sinclair   |
 
 The **Document** column tracks the version `M.u` (major, update) of this LiteTesf
-Documentation document. The **LiteTest** column records the latest LiteTest version
+document. The **LiteTest** column records the latest LiteTest version
 at the time this document version was published.
 
-The current LiteTest version is defined in `litetest.h` by the macro `LT_VERSION`,
-which specifies a string of the form `"M.m.p"` (major, minor, patch).
-`litetest.c` defines a matching version string `LT_VERSION_C`. For details, see
-the public API and framework documentation.
+The current LiteTest version is defined by the macro `LT_VERSION`,
+which specifies a string of the form `"M.m.p"` (major, minor, patch). For details,
+see the public API and framework documentation.
 
-The document’s major version must match the LiteTest
-major version. The **update** version tracks updates to this document itself and
-does not correspond to LiteTest minor or patch versions. The update version is
-incremented whenever this document is updated without a change to the major version,
-and it resets to `0` when the major version increases.
+The document’s major version must match the LiteTest major version. The **update**
+version tracks updates to this document itself and does not correspond to LiteTest
+minor or patch versions. The update version is incremented whenever this document
+jis updated without a change to the major version,and it resets to `0` when the
+major version increases.
 </details>
 
 ## Documentation
