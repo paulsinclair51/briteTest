@@ -52,7 +52,7 @@ SOFTWARE.
 
 
 | Document | Date | LiteTest | Comment | Author/Editor |
-|----------|------------|----------------------------------------------------------|--------------------|
+|----------|------|----------|---------|---------------|
 | 1.0 | 2026‑06‑11 | 1.0.0 | Initial version. | Paul Sinclair |
 
 The `Document` column tracks the version `M.u` (Major, update) of this LiteTest
