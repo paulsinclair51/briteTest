@@ -1,4 +1,4 @@
-# LiteTest Documentation
+o# LiteTest Documentation
 
 This document lists LiteTest documents,
 `Click to view` chapter, sections, and subsections:
@@ -129,7 +129,6 @@ LiteTest/
 |- build_test_litetest.ps1
 |- build/
 |- docs/
-0
 |  |- LiteTest_Documentation.md
 |  |- LiteTest_Glossary.md
 |  |- LiteTest_Repository_Layout.md 
