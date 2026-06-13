@@ -48,9 +48,9 @@ SOFTWARE.
 <details>
 <summary>Click to view</summary>
 
-| Document | Date       | LiteTest | Description                                   | Author/Editor      |
-|----------|------------|----------------------------------------------------------|--------------------|
-| 1.0      | 2026‑06‑11 | 1.0.0    | Initial version.                              | Paul Sinclair      |
+| Document | Date       | LiteTest | Description                                   | Author/Editor      |  
+|----------|------------|----------------------------------------------------------|--------------------|  
+| 1.0      | 2026‑06‑11 | 1.0.0    | Initial version.                              | Paul Sinclair      |  
 
 The **Document** column tracks the version `M.u` (Major, update) of this LiteTesf
 document. The **LiteTest** column records the latest LiteTest version
