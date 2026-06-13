@@ -196,9 +196,8 @@ and terms often used in the testing domain:
    when used as an adjective.
 - `concurrent block`: For LiteTest, a set of tests bracketed by `LT_BEGIN_CONCURRENT` and
   `LT_END_CONCURRENT` macros.
-- `contributor`: Any person or agent that may commit modifications to the LiteTest
-implementation or updates to its documentation to LiteTesf `main`, The changes
-and updates for a commit to `main` must conform to the LiteTest contribution
+- `contributor`: Any person or agent that may commit to LiteTesf `main`, The implementation changes
+and documentation updates for a commit to `main` must conform to the LiteTest contribution
 guidelines and muxt have approval by a designated approver or agent.
 - `control file`: A previously generated file that can be compared to a newly
   generated file for differences. Differences (other than expected ones like
