@@ -43,7 +43,7 @@ SOFTWARE.
 ## Preface
 
 This document is intended for LiteTest users and contributors who need
-quick access to the definition of a specific term used in LiteTest or to browse
+quick access to the definitions of terms used in LiteTest or to browse
 through the terms.
 
 #### Document Version History
@@ -80,7 +80,7 @@ This section lists all LiteTest user and contributor documentation.
 
 - `LiteTest_Documentation.md` — Index of LiteTest documents and repository layout.
 
-- `LiteTest_Glossary.md` — An alphabetically-ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest) and terms often used in the testing domain.
+- `LiteTest_Glossary.md` — An alphabetically ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest) and terms often used in the testing domain.
 
 - `LiteTest_Runner_User_Guide.md` — Concepts, usage, and examples for the LiteTest Runner framework and API.
 
@@ -167,11 +167,14 @@ and terms often used in the testing domain:
 </details>
 
 <details>
+<summary>B: Click to view</summary>
+_No terms currently defined._
+
+</details>
+
+<details>
 <summary>C: Click to view </summary>
 
-- `command line` - A line of text entered into a shell that specifies an
-  executable and optional arguments or flags (options). Use command-line
-  when used as an adjective.
 - `category`: For LiteTest, a labeled set of `LT_GROUP` and `LT_TEST` macros
   whose combined results are written by `LT_WRITE_RESULT` to the report with
   a specified category name.
@@ -187,9 +190,12 @@ and terms often used in the testing domain:
    helps detect errors early, ensures consistent build quality, and provides
    rapid feedback to developers. Use continuous-integration (or simply CI)
    when used as an adjective.
+- `command line` - A line of text entered into a shell that specifies an
+  executable and optional arguments or flags (options). Use `command-line`
+  when used as an adjective.
 - `concurrent block`: For LiteTest, a set of tests bracketed by `LT_BEGIN_CONCURRENT` and
   `LT_END_CONCURRENT` macros.
-- `contributor`: Any person or agent that may commit to LiteTesf `main`, The implementation changes
+- `contributor`: Any person or agent that may commit to LiteTest `main`, The implementation changes
 and documentation updates for a commit to `main` must conform to the LiteTest contribution
 guidelines and muxt have approval by a designated approver or agent.
 - `control file`: A previously generated file that can be compared to a newly
@@ -226,7 +232,8 @@ guidelines and muxt have approval by a designated approver or agent.
   guards (e.g., invalid memory access). See also guard, isolation,
   thread isolation, and process isolation.
 - `fault type`: For LiteTest, the various types of faults (e.g., `SIGSEGV`,`SIGBUS`,
-  `SIGABRT`) that can occur or be injected.
+  `SIGABRT`) that can occur or be injected. See also `thread guard` and `process guard`
+  for signal handling details.
 </details>
 
 <details>
@@ -237,21 +244,27 @@ guidelines and muxt have approval by a designated approver or agent.
   faults and continue test execution. See also fault, isolation, thread
   isolation, and process isolation.
 - `guard handler`: For LiteTest, a function that is used to capture faults.
-- `guard level`: For LiteTest, the nesting depth of active guards for test groups and tests
+- `guard level`: For LiteTest, the nesting depth of active guards for test groups and test
   expressions.
+</details>
+
+<details>
+<summary>H: Click to view</summary>
+
+_No terms currently defined._
 </details>
 
 <details>
 <summary>I: Click to view</summary>
 
-- `-I`: For LiteTest, an optional command‑line flag that enables an
+- `-I` - For LiteTest, an optional command‑line flag that enables an
   `LT_TEST` macro with an argument value of `I` to be executed. Default is to
   skip the `LT_TEST` macro if it has an argument value of `I`.
 - `-I<n>`: For LiteTest, an optional command‑line flag that enables an
-  `LT_TEST` macro with an argument value of <m> between 1 and 9 to execute
-  if <m> is between 1 and <n>. <n> must be between 1 and 9.
-  Default for <n> is 9 if this flag is not specified and, for <m>
-  is 1. If <m> is 0, the `LT_TEST` macro is not enabled (i.e., it is skipped).
+  `LT_TEST` macro with an argument value of `<m>` between 1 and 9 to execute
+  if `<m>` is between 1 and `<n>`. `<n`> must be between 1 and 9.
+  Default for `<n>` is 9 if this flag is not specified and, for `<m>`
+  is 1. If `<m>` is 0, the `LT_TEST` macro is not enabled (i.e., it is skipped).
   At most one `-I<n>` flag specified for a command line.
 - `isolation` or `isolation mode`: For LiteTest, an execution mode
    for `LT_GROUP` and `LT_TEST` macros: `0` = same thread, `1` =
@@ -265,6 +278,19 @@ guidelines and muxt have approval by a designated approver or agent.
   in a specified environment (such as a container or virtual
   machine). Jobs may run sequentially or in parallel, depending on their
   dependencies.
+</details>
+
+<details>
+<summary>K: Click to view</summary>
+
+_No terms currently defined._
+
+</details>
+
+<details>
+<summary>L: Click to view</summary>
+
+_No terms currently defined._
 </details>
 
 <details>
@@ -293,7 +319,7 @@ guidelines and muxt have approval by a designated approver or agent.
 - `orchestrator`: See orchestrator (`main`) function.
 - `orchestrator (main) function` or simply `orchestrator function`: The `main`
   function of a LiteTest executable (i.e., the test runner) that uses `LT_GROUP`
-  macros to execute sets of tests (i.e., a  test group) or `LT_TEST`
+  macros to execute sets of tests (i.e., a test group) or `LT_TEST`
   macros to execute a specific test (i.e., a test expression).
 </details>
 
@@ -311,6 +337,12 @@ guidelines and muxt have approval by a designated approver or agent.
   separate process.
 - `project`: a single-token project identifier used in orchestrator initialization and default
   report naming.
+</details>
+
+<details>
+<summary>Q: Click to view</summary>
+
+_No terms currently defined._
 </details>
 
 <details>
@@ -350,13 +382,13 @@ guidelines and muxt have approval by a designated approver or agent.
 - `test`: See test expression.
 - `test artifact` or `testing artifact`: For LiteTest, a specific kind of
   artifact, i.e., file or output generated by a LiteTest executable (for
-  example, a test report, stdout, and stderr).
+  example, a test report, `stdout`, and `stderr`).
 - `test case`: This term is not used in LiteTest. In other contexts, it
   may mean a single test or a set of tests; LiteTest uses test expression (or
   simply test) for an individual test and `test group` for a set of test expressions.
 - `test expression`: An expression that is an argument of an `LT_TEST` macro
    that can be cast to `int`; zero means fail, non‑zero means pass. A test
-   expression and its underlying functions are user written. The LiteTest Test
+   expression and its underlying functions are user=written. The LiteTest Test
    API is provided to help simplify writing a text expression and underlying functions.
 - `test group`: A grouping of `LT_TEST` macros and optionally `LT_GROUP` macros.
 - `test group function`: A function declared with a `LT_DECLARE_GROUP` macro
@@ -365,17 +397,16 @@ guidelines and muxt have approval by a designated approver or agent.
   test expression.
 - `test helper function`: A LiteTest Test API function provided to help simplify
   writing the implementation of a test expression.
-- `test runner`: an executable that executes (runs) a set of tests.
+- `test runner`: an executable that runs a set of tests.
 - `test suite`: a complete set of tests for a project or a subset of tests for
   a project. LiteTest uses the term test group if it is a subset of the
-  tests for a project. LiteTest doesn't use the term test suite or specify
-  a term for a complete set of tests for a project since whether a set of tests
-  is complete or not for a project is not well-defined.
+  tests for a project. LiteTest does not use the term *test suite* or because
+  whether a set of tests is *complete* for a project is not well-defined.
 - `testing artifact`: See test artifact.
 - `thread guard`: The guard used for thread isolation. A thread guard
-  can only reliably capture synchronouse signals (`SIGSEGV`, `SIGBUS`,
+  can only reliably capture synchronous signals (`SIGSEGV`, `SIGBUS`,
   `SIGFPE`, and `SIGILL`). Other signals (`SIGABRT`, `SIGKILL`, `SIGSTOP`,
-  `SIGTERM`, `SIGINT`, 'SIGHUP`, 'SIGQUIT`,  `SIGPIPE`, `SIGALRM`,
+  `SIGTERM`, `SIGINT`, `SIGHUP`, `SIGQUIT`,  `SIGPIPE`, `SIGALRM`,
   `SIGCHLD`, `SIGUSR1`, and `SIGUSR2`) cause the executable to terminate.
   A process guard can capture all signals but increases the time to
   run the tests. For already proven tests, use thread guards; otherwise,
@@ -386,6 +417,18 @@ guidelines and muxt have approval by a designated approver or agent.
   the report with an `LT_OPEN_REPORT` macro.
 
 <details>
+<summary>U: Click to view</summary>
+
+_No terms currently defined._
+</details>
+
+<details>
+<summary>V: Click to view</summary>
+
+_No terms currently defined._
+</details>
+
+<details>
 <summary>W: Click to view</summary>
 
 - `workflow`: A defined sequence of automated steps executed by a
@@ -394,5 +437,23 @@ guidelines and muxt have approval by a designated approver or agent.
   run) and runs one or more jobs that perform tasks like building,
   testing, or packaging a project. Workflows may produce artifacts
   such as logs, reports, or build outputs.
+</details>
+
+<details>
+<summary>X: Click to view</summary>
+
+_No terms currently defined._
+</details>
+
+<details>
+<summary>Y: Click to view</summary>
+
+_No terms currently defined._
+</details>
+
+<details>
+<summary>Z: Click to view</summary>
+
+_No terms currently defined._
 </details>
 </details>
