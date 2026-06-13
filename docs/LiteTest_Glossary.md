@@ -190,14 +190,14 @@ _No terms currently defined._
    helps detect errors early, ensures consistent build quality, and provides
    rapid feedback to developers. Use continuous-integration (or simply CI)
    when used as an adjective.
-- `command line` - A line of text entered into a shell that specifies an
+- `command line`: A line of text entered into a shell that specifies an
   executable and optional arguments or flags (options). Use `command-line`
   when used as an adjective.
 - `concurrent block`: For LiteTest, a set of tests bracketed by `LT_BEGIN_CONCURRENT` and
   `LT_END_CONCURRENT` macros.
 - `contributor`: Any person or agent that may commit to LiteTest `main`, The implementation changes
 and documentation updates for a commit to `main` must conform to the LiteTest contribution
-guidelines and muxt have approval by a designated approver or agent.
+guidelines and must have approval by a designated approver or agent.
 - `control file`: A previously generated file that can be compared to a newly
   generated file for differences. Differences (other than expected ones like
   timestamps) typically indicate a test failure. Sometimes the control file is
@@ -257,7 +257,7 @@ _No terms currently defined._
 <details>
 <summary>I: Click to view</summary>
 
-- `-I` - For LiteTest, an optional command‑line flag that enables an
+- `-I`: For LiteTest, an optional command‑line flag that enables an
   `LT_TEST` macro with an argument value of `I` to be executed. Default is to
   skip the `LT_TEST` macro if it has an argument value of `I`.
 - `-I<n>`: For LiteTest, an optional command‑line flag that enables an
@@ -349,7 +349,6 @@ _No terms currently defined._
 <summary>R: Click to view</summary>
 
 - `report`: See test report.
-- `report format`: The output structure produced by LiteTest test runs.
 - `report header`: Lines of text written at the beginning of a test report that
    include the report title, a timestamp, etc.
 - `runner`: For LiteTest, see test runner. For GitHub, A machine or
