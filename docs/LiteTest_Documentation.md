@@ -51,23 +51,22 @@ SOFTWARE.
 <details>
 <summary>Click to view</summary>
 
-| Document | Date       | LiteTest | Description                                   | Author/Editor    |
-|----------|------------|----------------------------------------------------------|------------------|
-| 1.0      | 2026‑06‑11 | 1.0.0    | Initial LiteTest Repository Layout            |  Paul Sinclair   |
+| Document | Date       | LiteTest | Description                                   | Author/Editor      |
+|----------|------------|----------------------------------------------------------|--------------------|
+| 1.0      | 2026‑06‑11 | 1.0.0    | Initial version.                              | Paul Sinclair      |
 
-The **Document** column tracks the version `M.u` (major, update) of this LiteTesf
+The **Document** column tracks the version `M.u` (Major, update) of this LiteTesf
 document. The **LiteTest** column records the latest LiteTest version
 at the time this document version was published.
 
-The current LiteTest version is defined by the macro `LT_VERSION`,
-which specifies a string of the form `"M.m.p"` (major, minor, patch). For details,
-see the public API and framework documentation.
+The current LiteTest version is defined by the LiteTest Runner API `LT_VERSION` macro,
+which specifies a string of the form `"M.m.p"` (Major, minor, patch).
 
-The document’s major version must match the LiteTest major version. The **update**
-version tracks updates to this document itself and does not correspond to LiteTest
-minor or patch versions. The update version is incremented whenever this document
-jis updated without a change to the major version,and it resets to `0` when the
-major version increases.
+The document’s **Major** version matches the LiteTest Runner's Major version.
+The **update** version tracks updates to this document itself and does not
+correspond to the LiteTest Runner's minor or patch versions. The update version
+is incremented whenever this document is updated without a change to the major 
+version, and it resets to `0` when the major version is incremented.
 </details>
 </details>
 
@@ -84,13 +83,13 @@ The user documentation for  LiteTest includes:
 
 - **LiteTest Glossary — An alphabetically-ordered list of terms used in the LiteTest documentation with their specific definitions/explanations in the LiteTest context.
 
-- **LiteTest Runner User Guide** — Concepts, workflow, and examples for the Runner framework and API.
+- **LiteTest Runner User Guide** — Concepts, usage, and examples for the LiteTest Runner framework and API.
 
-- **LiteTest Runner Reference** — Reference document for the Runne API.
+- **LiteTest Runner Reference** — Reference document for the LiteTest Runner API.
 
-- **LiteTest Test User Guide** — Concepts, workflow, examples for the Test API.
+- **LiteTest Test User Guide** — Concepts, usage, and examples for the LiteTest Test API.
 
-- **LiteTest Test Reference** — Reference document for the Test API .
+- **LiteTest Test Reference** — Reference document for the LiteTest Test API .
 
 The contributor documentation for the LiteTest implementation internals for the Runner API and
 the Test API include:
