@@ -43,9 +43,6 @@ SOFTWARE.
 
 ## Preface
 
-<details>
-<summary>Click to view</summary>
-
 #### Document Version History
 
 <details>
@@ -67,7 +64,6 @@ The **update** version tracks updates to this document itself and does not
 correspond to the LiteTest Runner's minor or patch versions. The update version
 is incremented whenever this document is updated without a change to the major 
 version, and it resets to `0` when the major version is incremented.
-</details>
 </details>
 
 ## Documentation
