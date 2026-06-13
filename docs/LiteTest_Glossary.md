@@ -169,6 +169,7 @@ and terms often used in the testing domain:
   stored by GitHub Actions for later download or use. Artifacts typically
   include build outputs, test reports, logs, binaries, coverage data, or
   any files a workflow chooses to upload.
+
 `--C--`
 - `command-line' - A input line to a shell that specifies an executable with
   optional or required arguments and flags.
@@ -183,25 +184,30 @@ and terms often used in the testing domain:
   out of date and must be replaced by promoting the new file.
 - `customization support functions`: Runner API functions provided to support
   customizing the orchestrator and test group functions.
+
 `--D--`
 - `default report filename`: The report filename LiteTest uses when only a
   directory path (or no `PATH`) is provided.
+
 `--E--`
 - `executable`: The compiled test program that includes the orchestrator (main)
   function, group  functions, test expression implementations, the LiteTest
   Runner API implementation, and the LiteTest Test API implementation. An
   executable is executed using a command-line input to a shell.
+
 `--F--`
 - `fail`: A counted test failure where the `LT_TEST` or `LT_INJECT_TEST`
   expression evaluates to zero.
 - `fault`: A counted runtime fault captured by LiteTest guards (e.g., invalid
   memory access).
+
 `--G--`
 - `group`: See `test group`.
 - `guard`: The protection mechanism used to catch runtime faults and continue
   test execution.
 - `guard level`: The nesting depth of active guards for test groups and tests
   expressions.
+
 `--I--`
 - `include (-I)` flag: Optional command‑line flag that enables an
   `LT_TEST` with an argument value of `I` to be executed. Default is
@@ -214,6 +220,7 @@ and terms often used in the testing domain:
   At most one -`-I<n>` flas specified for command-line.
 - `isolation`: Execution mode for `LT_GROUP`, `LT_TEST`, or `LT_INJECT_TEST`.
   `0` = same thread, `1` = separate thread, `2` = separate process.
+
 `--M--`
 - `maxargs`: Maximum number of command‑line arguments accepted by orchestrator
   parsing. `LT_PARSE_ARGS` handles the first two arguments; additional arguments
@@ -223,6 +230,7 @@ and terms often used in the testing domain:
 - `notes`: Optional text appended to the report by `LT_CLOSE_REPORT`.
 - `orchestrator`: The `main` function that initializes LiteTest, runs groups or
   tests, and writes report output.
+
 `--P--`
 - `pass`: A counted successful test where the expression evaluates to non‑zero.
 - `PATH`: Optional command‑line output destination; may be a report file path or
@@ -231,8 +239,10 @@ and terms often used in the testing domain:
   separate process.
 - `project`: Project identifier used in orchestrator initialization and default
   report naming.
+
 `--R--`
 - `Report Format`: The output structure produced by LiteTest test runs.
+
 `--S--`
 - `semantic versioning`: A versioning scheme for artifacts. For example,
    in LiteTest, `M.m.p` (for `.h` and `.c` files) or `M.u` (document
@@ -242,6 +252,7 @@ and terms often used in the testing domain:
 - `shell`: a command-line interface that allows a user or script to submit
   command lines. Examples inlude PowerShell (`pwsh` or `powershell.exe`),
   bash, sh, and cmd.ext).
+  
 `--T--`
 - `test group`: A grouping of `LT_TEST` and optionally nested `LT_GROUP` macros.
 - `test group function`: A function declared with `LT_DECLARE_GROUP` that
