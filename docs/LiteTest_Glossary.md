@@ -53,25 +53,22 @@ SOFTWARE.
 <details>
 <summary>Click to view</summary>
 
-| Document | Date       | LiteTest | Description                                   | Author/Editor    |
-|----------|------------|----------------------------------------------------------|------------------|
-| 1.0      | 2026‑06‑11 | 1.0.0    | Initial LiteTest Framework Reference.         | paulsinclair51   |
+| Document | Date | LiteTest | Comment | Author/Editor |  
+|----------|------------|----------------------------------------------------------|--------------------|  
+| 1.0 | 2026‑06‑11 | 1.0.0 | Initial version. | Paul Sinclair |  
 
-The **Document** column tracks the version `M.u` (major, update) of this Glossary
+The **Document** column tracks the version `M.u` (Major, update) of this LiteTesf
 document. The **LiteTest** column records the latest LiteTest version
 at the time this document version was published.
 
-The current LiteTest version is defined in `litetest.h` by the macro `LT_VERSION`,
-which specifies a string of the form `"M.m.p"` (major, minor, patch).
-`litetest.c` defines a matching version string `LT_VERSION_C`. For details, see
-the public API and framework documentation.
+The current LiteTest version is defined by the LiteTest Runner API `LT_VERSION` macro,
+which specifies a string of the form `"M.m.p"` (Major, minor, patch).
 
-A **major LiteTest release requires a corresponding major update to this
-document** and therefore the document’s major version must match the LiteTest
-major version. The **update** version tracks updates to this document itself and
-does not correspond to LiteTest minor or patch versions. The update version is
-incremented whenever this document is updated without a change to the major version,
-and it resets to `0` when the major version increases.
+The document’s **Major** version matches the LiteTest Runner's Major version.
+The **update** version tracks updates to this document itself and does not
+correspond to the LiteTest Runner's minor or patch versions. The update version
+is incremented whenever this document is updated without a change to the major 
+version, and it resets to `0` when the major version is incremented.
 </details>
 
 #### Documentation
@@ -79,34 +76,34 @@ and it resets to `0` when the major version increases.
 <details>
 <summary>Click to view</summary>
 
-The user documentation for the LiteTest includes:
+The user documentation for  LiteTest includes:
 
 - **README** — Introduction to LiteTest.
 
-- **LiteTest Runner User Guide** — Concepts, workflow, examples for the
-  Runner framework and API.
+- **LiteTest Documentation** — A list of the LifeTest documents for users and contributors plus the LiteTest repository layout (listing core files).
 
-- **LiteTest Runner Reference** — Reference document for the Runner API.
+- **LiteTest Glossary — An alphabetically-ordered list of terms used in the LiteTest documentation with their specific definitions/explanations in the LiteTest context.
 
-- **LiteTest Test User Guide** — Concepts, workflow, examples for the Test API.
+- **LiteTest Runner User Guide** — Concepts, usage, and examples for the LiteTest Runner framework and API.
 
-- **LiteTest Test Reference** — Reference document for the runner API .
+- **LiteTest Runner Reference** — Reference document for the LiteTest Runner API.
 
-The contributor documentation for the LiteTest internals for the Runner API and
+- **LiteTest Test User Guide** — Concepts, usage, and examples for the LiteTest Test API.
+
+- **LiteTest Test Reference** — Reference document for the LiteTest Test API .
+
+The contributor documentation for the LiteTest implementation internals for the Runner API and
 the Test API include:
 
-- **LiteTest Contributor Guide** — Versioning, documentation/coding
-  guidelines, branching, testing, and CI/release check lists.
+- **LiteTest Contributor Guide** — Versioning, documentation/coding guidelines, branching, testing, and CI/release check lists.
 
-- **LiteTest Runner Internal Guide** — Concepts, workflow, examples for the Runner API.
+- **LiteTest Runner Internal Guide** — Implementation concepts, architecture, and high-level design for the Runner API.
 
-- **LiteTest Runner Internal Reference** — Reference for the implementation for the
-  Test API.
+- **LiteTest Runner Internal Reference** — Reference for the implementation of the Test API.
   
-- **LiteTest Test Internal Guide** — Concepts, workflow, examples for the Test API.
+- **LiteTest Test Internal Guide** — Implementation concepts, architecture, and high-level design for the Test API.
 
-- **LiteTest Test Internal Reference** — Reference for the implementation for the
-  Test API.
+- **LiteTest Test Internal Reference** — Reference for the implementation of the Test API.
 </details>
 
 #### Repository Layout
@@ -129,27 +126,33 @@ LiteTest/
 |- build_test_litetest.ps1
 |- build/
 |- docs/
-|  \- LiteTest_API_User_Guide.md
-|  \- LiteTest_API_Reference.md
-|  \- LiteTest_Contributor_Guide.md
-|  \- LiteTest_Framework_Guide.md
-|  \- LiteTest_Framework_Reference.md
+|  |- LiteTest_Documentation.md
+|  |- LiteTest_Glossary.md
+|  |- LiteTest_Repository_Layout.md 
+|  |- LiteTest_Runner_User_Guide.md
+|  |- LiteTest_Runner_Reference.md
+|  |- LiteTest_Contributor_Guide.md
+|  \- LiteTest_Runner_Internal_Guide.md
+|  \- LiteTest_Runner_Internal_Reference.md
+|  \- LiteTest_Test_Internal_Guide.md
+|  \- LiteTest_Test_Internal_Reference.md
 |- examples/
 |- include/
-|  \- litetest.h
+|  |- litetest_runner.h
+|  \- litetest_test.h
 |- reports/
 |  |- litetest_test_report-I.txt
 |  \- litetest_test_report.txt
 |- scripts/
 |- src/
-|  \- litetest.c
+|  |- litetest_runner.c
+|  \- litetest_test.c
 |- tests/
 |  |- test_litetest.c
 |  |- test_orchestrator.c
 |  |- test_guard1.c
 |  \- test_guard2.c
 ```
-</details>
 </details>
 </details>
 
