@@ -415,6 +415,7 @@ _No terms currently defined._
   executes in a separate thread.
 - `title`: For LiteTest, optional report header text provided when opening
   the report with an `LT_OPEN_REPORT` macro.
+</details>
 
 <details>
 <summary>U: Click to view</summary>
