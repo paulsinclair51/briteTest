@@ -182,8 +182,6 @@ and terms often used in the testing domain:
 - `category`: For LiteTest, a labeled set of `LT_GROUP` and `LT_TEST` macros whose combined
   results are written by `LT_WRITE_RESULT` to the report with a specified
   category name.
-- `concurrent block`: For LiteTest, a set of tests bracketed by `LT_BEGIN_CONCURRENT` and
-  `LT_END_CONCURRENT`.
 - `CD (Continuous Delivery / Continuous Deployment)`: An automated practice that
   extends `CI` by packaging, releasing, or deploying software after it has passed
   all required tests. Continuous Delivery prepares release artifacts for manual
@@ -196,6 +194,8 @@ and terms often used in the testing domain:
    helps detect errors early, ensures consistent build quality, and provides
    rapid feedback to developers. Use `continuous-integration` (or simpley CI)
    when used as an adjective.
+- `concurrent block`: For LiteTest, a set of tests bracketed by `LT_BEGIN_CONCURRENT` and
+  `LT_END_CONCURRENT`.
 - `control file`: A previously generated file that can be compared to a newly
   generated file for differences. Differences (other than expected ones like
   timestamps) typically indicate a test failure. Sometimes the control file is
@@ -216,16 +216,16 @@ and terms often used in the testing domain:
 <summary>E: Click to view</summary>
 
 - `executable`: For LiteTest, a compiled/linked program that
-  contains the orchestrator, test groups, test expressions (and
+  contains the `orchestrator`, `test groups`, `test expressions` (and
   underlying functions), and the LiteTest APIs. It is run from
-  a shell using a command line..
+  a `shell` using a `command line`.
 </details>
 
 <details>
 <summary>F: Click to view</summary>
 
-- `fail`: For LiteTest, a counted test failure where the `LT_TEST` or `LT_INJECT_TEST`
-  expression evaluates to zero.
+- `fail`: For LiteTest, a counted test failure where the `test exprssion` for
+   an `LT_TEST` macro evaluates to zero.
 - `fault`: For LiteTest, a counted runtime fault captured by LiteTest
   guards (e.g., invalid memory access). See also `guard`, `isolation`,
   'thread isolation`, and `process isolation`.
@@ -249,17 +249,17 @@ and terms often used in the testing domain:
 <details>
 <summary>I: Click to view</summary>
 
-- `include -I flag`: For LiteTest, an optional command‑line flag that enables an
+- `-I`: For LiteTest, an optional command‑line flag that enables an
   `LT_TEST` macro with an argument value of `I` to be executed. Default is to
   skip the `LT_TEST` macro if it has an argument value of `I`.
-- `include -I<n> flag`: For LiteTest, an optional command‑line flag that enables an
+- `-I<n>`: For LiteTest, an optional command‑line flag that enables an
   `LT_TEST` with an argument value of `<m>` between 1 and 9 to execute
   if `<m>` is between 1 and `<n>`. `<n>` must be between 1 and 9.
   Default for `<n>` is 9 if this flag is not specified and, for `<m>`
   is 1. If `<m>` is 0, `LT_TEST` is not enabled (i.e., it is skipped).
   At most one `-I<n>` flag specified for a command line.
 - `isolation` or 'isolation mode`: For LiteTest, an execution mode
-   for `LT_GROUP` and `LT_TEST` macros:  `0` = same thread, `1` =
+   for `LT_GROUP` and `LT_TEST` macros: `0` = same thread, `1` =
    separate thread, `2` = separate process.
 </details>
 
@@ -318,6 +318,8 @@ and terms often used in the testing domain:
 
 - `report`: See `test report`.
 - `report format`: The output structure produced by LiteTest test runs.
+- `report header`: Lines of text at the beginninge of `test report` that
+   include the `report` title, timestamp, etc.
 - `runner`: For LiteTest, see `test runner`. For GitHub, A machine or
   environment that executes the jobs defined in a GitHub Actions workflow.
   A runner provides the operating system, tools, and runtime needed to
@@ -356,7 +358,8 @@ and terms often used in the testing domain:
    expression and its underlying functions are user written. The LiteTest Test
    API is provided to help simplify writing these text expressions and functions.
 - `test group`: A grouping of `LT_TEST` and optionally nested `LT_GROUP` macros.
-- `test group function`: A function declared with `LT_DECLARE_GROUP` that
+- `test group function`: A function declared with the `LT_DECLARE_GROUP` macro
+-  and followed by function body in `{ }`.
 - `test function`: A user‑written function used in implementing a
   test expression.
 - `test helper function`: A LiteTest Test API function provided to simplify
@@ -379,7 +382,7 @@ and terms often used in the testing domain:
   use `process guards`.
 - `thread isolation`: Isolation mode where a test group or test expression
   executes in a separate thread.
-- `title`: For LiteTest, aptional report header text provided when opening
+- `title`: For LiteTest, optional report header text provided when opening
   the report with `LT_OPEN_REPORT` macro.
 
 <details>
