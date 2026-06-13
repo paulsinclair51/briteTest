@@ -3,6 +3,21 @@
 This glossry defines terms generally used in LiteTest and terms often used in
 the testing domain. It is companion document to the other LiteTest documents.
 
+`Click to view` chapter, sections, and subsections:
+
+<details>
+<summary>Click to view</summary>
+
+- Keeps documents readable while still accommodating large amounts
+  of technical detail.
+  
+- Collapsing sections allows scanning the structure and expand only
+  what you need.
+  
+- This keeps the document manageable, avoids overwhelming a reader
+  with unrelated detail, and makes the document easier to navigate.
+</details>
+
 Copyright (c) 2026 paulsinclair.  
 SPDX-License-Identifier: MIT.
 
@@ -29,21 +44,6 @@ SOFTWARE.
 </details>
 
 ## Preface
-
-`Click to view` chapter, sections, and subsections:
-
-<details>
-<summary>Click to view</summary>
-
-- Keeps documents readable while still accommodating large amounts
-  of technical detail.
-  
-- Collapsing sections allows scanning the structure and expand only
-  what you need.
-  
-- This keeps the document manageable, avoids overwhelming a reader
-  with unrelated detail, and makes the document easier to navigate.
-</details>
 
 <details>
 <summary>Click to view</summary>
