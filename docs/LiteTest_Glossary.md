@@ -161,10 +161,8 @@ LiteTest/
 Terms generally used in LiteTest (emphazing their specific meaning in LiteTest)
 and terms often used in the testing domain:
 
-`--A--`
-
 <details>
-<summary>Click to view</summary>
+<summary>A: Click to viewA</summary>
 
 - `API`: Application Programming Interface: public typedefs, structs, enum,
   macro, and functions that provide a well-defined service. For example,
@@ -175,10 +173,8 @@ and terms often used in the testing domain:
   any files a workflow chooses to upload
 </details>
 
-`--C--`
-
 <details>
-<summary>Click to view</summary>
+<summary>C: Click to view </summary>
 
 - `command-line' - A input line to a shell that specifies an executable with
   optional or required arguments and flags.
@@ -195,19 +191,15 @@ and terms often used in the testing domain:
   customizing the orchestrator and test group functions.
 </details>
 
-`--D--`
-
 <details>
-<summary>Click to view</summary>
+<summary>D: Click to view</summary>
 
 - `default report filename`: The report filename LiteTest uses when only a
   directory path (or no `PATH`) is provided.
 </details>
 
-`--E--`
-
 <details>
-<summary>Click to view</summary>
+<summary>E: Click to view</summary>
 
 - `executable`: The compiled test program that includes the orchestrator (main)
   function, group  functions, test expression implementations, the LiteTest
@@ -215,10 +207,8 @@ and terms often used in the testing domain:
   executable is executed using a command-line input to a shell.
 </details>
 
-`--F--`
-
 <details>
-<summary>Click to view</summary>
+<summary>F: Click to view</summary>
 
 - `fail`: A counted test failure where the `LT_TEST` or `LT_INJECT_TEST`
   expression evaluates to zero.
@@ -226,10 +216,8 @@ and terms often used in the testing domain:
   memory access).
 </details>
 
-`--G--`
-
 <details>
-<summary>Click to view</summary>
+<summary>G: Click to view</summary>
 
 - `group`: See `test group`.
 - `guard`: The protection mechanism used to catch runtime faults and continue
@@ -238,10 +226,8 @@ and terms often used in the testing domain:
   expressions.
 </details>
 
-`--I--`
-
 <details>
-<summary>Click to view</summary>
+<summary>I: Click to view</summary>
 
 - `include (-I)` flag: Optional command‑line flag that enables an
   `LT_TEST` with an argument value of `I` to be executed. Default is
@@ -256,10 +242,8 @@ and terms often used in the testing domain:
   `0` = same thread, `1` = separate thread, `2` = separate process.
 </details>
 
-`--M--`
-
 <details>
-<summary>Click to view</summary>
+<summary>M: Click to view</summary>
 
 - `maxargs`: Maximum number of command‑line arguments accepted by orchestrator
   parsing. `LT_PARSE_ARGS` handles the first two arguments; additional arguments
@@ -271,10 +255,8 @@ and terms often used in the testing domain:
   tests, and writes report output.
 </details>
 
-`--P--`
-
 <details>
-<summary>Click to view</summary>
+<summary>P: Click to view</summary>
 
 - `pass`: A counted successful test where the expression evaluates to non‑zero.
 - `PATH`: Optional command‑line output destination; may be a report file path or
@@ -285,18 +267,14 @@ and terms often used in the testing domain:
   report naming.
 </details>
 
-`--R--`
-
 <details>
-<summary>Click to view</summary>
+<summary>R: Click to view</summary>
 
 - `Report Format`: The output structure produced by LiteTest test runs.
 </details>
 
-`--S--`
-
 <details>
-<summary>Click to view</summary>
+<summary>S: Click to view</summary>
 
 - `semantic versioning`: A versioning scheme for artifacts. For example,
    in LiteTest, `M.m.p` (for `.h` and `.c` files) or `M.u` (document
@@ -308,10 +286,9 @@ and terms often used in the testing domain:
   bash, sh, and cmd.ext).
 </details>
   
-`--T--
 
 <details>
-<summary>Click to view</summary>
+<summary>T: Click to view</summary>
 
 - `test group`: A grouping of `LT_TEST` and optionally nested `LT_GROUP` macros.
 - `test group function`: A function declared with `LT_DECLARE_GROUP` that
