@@ -79,7 +79,7 @@ This section lists all LiteTest user and contributor documentation.
 
 - `LiteTest_Documentation.md` — Index of LiteTest documents and repository layout.
 
-- `LiteTest_Glossary.md` — An alphabetically-ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest) and terms often used in the testing domain.
+- `LiteTest_Glossary.md` — An alphabetically ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest) and terms often used in the testing domain.
 
 - `LiteTest_Runner_User_Guide.md` — Concepts, usage, and examples for the LiteTest Runner framework and API.
 
