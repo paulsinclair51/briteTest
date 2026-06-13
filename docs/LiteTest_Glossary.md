@@ -3,26 +3,23 @@
 This glossary defines terms generally used in LiteTest and terms often used in
 the testing domain. It is a companion document to the other LiteTest documents.
 
-`Click to view` chapter, sections, and subsections:
+`Click to view` sections are used throughout this document.
 
 <details>
-<summary>Click to view</summary>
+<summary>Why "Click to view"?</summary>
 
-- Keeps documents readable while still accommodating large amounts
-  of technical detail.
+- Keeps documents readable while accommodating large amounts of technical detail.
   
-- Collapsing sections allows scanning the structure and expand only
-  what you need.
-  
-- This keeps the document manageable, avoids overwhelming a reader
-  with unrelated detail, and makes the document easier to navigate.
+- Allows scanning the structure and expanding only what you need.
+
+- Reduces visual noise and makes navigation easier.
 </details>
 
-Copyright (c) 2026 paulsinclair.  
+Copyright (c) 2026 Paul Sinclair.  
 SPDX-License-Identifier: MIT.
 
 <details>
-<summary>Click to view</summary>
+<summary>Click to view license</summary>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -45,30 +42,29 @@ SOFTWARE.
 
 ## Preface
 
-<details>
-<summary>Click to view</summary>
+This document is intended for LiteTest users and contributors who need
+quick access to the definitiions of a term used in LitesTest or to browze
+through the terminology.
 
 #### Document Version History
 
 <details>
 <summary>Click to view</summary>
 
-| Document | Date | LiteTest | Comment | Author/Editor |  
-|----------|------------|----------------------------------------------------------|--------------------|  
-| 1.0 | 2026‑06‑11 | 1.0.0 | Initial version. | Paul Sinclair |  
+| Document | Date | LiteTest | Comment | Author/Editor |
+|----------|------|----------|---------|---------------|
+| 1.0 | 2026‑06‑11 | 1.0.0 | Initial version. | Paul Sinclair |
 
-The **Document** column tracks the version `M.u` (Major, update) of this LiteTesf
-document. The **LiteTest** column records the latest LiteTest version
-at the time this document version was published.
+The `Document` column uses the version format `M.u` (Major, update). The `LiteTest` column records the LiteTest version current at the time this document version was published.
 
-The current LiteTest version is defined by the LiteTest Runner API `LT_VERSION` macro,
-which specifies a string of the form `"M.m.p"` (Major, minor, patch).
+The current LiteTest version is defined by the `LT_VERSION` macro in the LiteTest
+Runner API, which specifies a string of the form `"M.m.p"` (Major, minor, patch).
 
-The document’s **Major** version matches the LiteTest Runner's Major version.
-The **update** version tracks updates to this document itself and does not
-correspond to the LiteTest Runner's minor or patch versions. The update version
-is incremented whenever this document is updated without a change to the major 
-version, and it resets to `0` when the major version is incremented.
+The document’s `M` (Major) version matches the LiteTest Runner's `M` (Major) version.
+The document's `u` (update) version tracks updates to this document and does not
+correspond to the Runner's `m` (minor) or `p` (patch) versions. `u` increments
+whenever this document is updated without a change to `M`, and it resets to `0` when
+`M` is incremented.
 </details>
 
 #### Documentation
@@ -76,84 +72,78 @@ version, and it resets to `0` when the major version is incremented.
 <details>
 <summary>Click to view</summary>
 
-The user documentation for  LiteTest includes:
+This section lists all LiteTest user and contributor documentation.
 
-- **README** — Introduction to LiteTest.
+**User documentation**:
 
-- **LiteTest Documentation** — A list of the LifeTest documents for users and contributors plus the LiteTest repository layout (listing core files).
+- `README.md` — Introduction to LiteTest.
 
-- **LiteTest Glossary** — An alphabetically-ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest) and terms often used in the testing domain.
+- `LiteTest_Documentation.md` — Index of LiteTest documents and repository layout.
 
-- **LiteTest Runner User Guide** — Concepts, usage, and examples for the LiteTest Runner framework and API.
+- `LiteTest_Glossary.md` — An alphabetically-ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest) and terms often used in the testing domain.
 
-- **LiteTest Runner Reference** — Reference document for the LiteTest Runner API.
+- `LiteTest_Runner_User_Guide.md` — Concepts, usage, and examples for the LiteTest Runner framework and API.
 
-- **LiteTest Test User Guide** — Concepts, usage, and examples for the LiteTest Test API.
+- `LiteTest_Runner_Reference.md` — Reference document for the LiteTest Runner API.
 
-- **LiteTest Test Reference** — Reference document for the LiteTest Test API .
+- `LiteTest_Test_User_Guide.md` — Concepts, usage, and examples for the LiteTest Test API.
 
-The contributor documentation for the LiteTest implementation internals for the Runner API and
-the Test API include:
+- `LiteTest_Test_Reference.md` — Reference document for the LiteTest Test API.
 
-- **LiteTest Contributor Guide** — Versioning, documentation/coding guidelines, branching, testing, and CI/release check lists.
+**Contributor documentation**:
 
-- **LiteTest Runner Internal Guide** — Implementation concepts, architecture, and high-level design for the Runner API.
+- `LiteTest_Contributor_Guide.md` — Versioning, documentation/coding guidelines, branching, testing, and CI/release checklists.
 
-- **LiteTest Runner Internal Reference** — Reference for the implementation of the Test API.
+- `LiteTest_Runner_Internal_Guide.md` — Implementation concepts, architecture, and high-level design for the Runner API.
+
+- `LiteTest_Runner_Internal_Reference.md` — Reference for the implementation of the Runner API.
   
-- **LiteTest Test Internal Guide** — Implementation concepts, architecture, and high-level design for the Test API.
+- `LiteTest_Test_Internal_Guide.md` — Implementation concepts, architecture, and high-level design for the Test API.
 
-- **LiteTest Test Internal Reference** — Reference for the implementation of the Test API.
+- `LiteTest_Test_Internal_Reference.md` — Reference for the implementation of the Test API.
 </details>
 
-#### Repository Layout
+#### LiteTest Repository Layout
 
 <details>
 <summary>Click to view</summary>
-  
-GitHub repository: `paulsinclair51/LiteTest`
 
-Repository layout (listing core files):
+This section shows the layout of the GitHub repository `paulsinclair51/LiteTest` (core files and directories):
 
 ```text
-LiteTest/
-|- .github/
-|  \- workflows/
-|     \- ci.yml
-|- README.md
-|- LICENSE
-|- Makefile
-|- build_test_litetest.ps1
-|- build/
-|- docs/
-|  |- LiteTest_Documentation.md
-|  |- LiteTest_Glossary.md
-|  |- LiteTest_Repository_Layout.md 
-|  |- LiteTest_Runner_User_Guide.md
-|  |- LiteTest_Runner_Reference.md
-|  |- LiteTest_Contributor_Guide.md
-|  \- LiteTest_Runner_Internal_Guide.md
-|  \- LiteTest_Runner_Internal_Reference.md
-|  \- LiteTest_Test_Internal_Guide.md
-|  \- LiteTest_Test_Internal_Reference.md
-|- examples/
-|- include/
-|  |- litetest_runner.h
-|  \- litetest_test.h
-|- reports/
-|  |- litetest_test_report-I.txt
-|  \- litetest_test_report.txt
-|- scripts/
-|- src/
-|  |- litetest_runner.c
-|  \- litetest_test.c
-|- tests/
-|  |- test_litetest.c
-|  |- test_orchestrator.c
-|  |- test_guard1.c
-|  \- test_guard2.c
+.github/workflows/ci.yml
+README.md
+LICENSE
+Makefile
+build_test_litetest.ps1
+build/
+docs/
+    LiteTest_Documentation.md
+    LiteTest_Glossary.md
+    LiteTest_Runner_User_Guide.md
+    LiteTest_Runner_Reference.md
+    LiteTest_Contributor_Guide.md
+    LiteTest_Runner_Internal_Guide.md
+    LiteTest_Runner_Internal_Reference.md
+    LiteTest_Test_Internal_Guide.md
+    LiteTest_Test_Internal_Reference.md
+examples/
+include/
+    litetest_runner.h
+    litetest_test.h
+reports/
+    litetest_test_report-I.txt
+    litetest_test_report.txt
+scripts/
+src/
+    litetest_runner.c
+    litetest_test.c
+tests/
+    test_litetest.c
+    test_orchestrator.c
+    test_guard1.c
+    test_guard2.c
 ```
-</details>
 </details>
 
 ## Glossary
