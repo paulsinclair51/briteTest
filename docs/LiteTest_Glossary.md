@@ -48,7 +48,7 @@ SOFTWARE.
 <details>
 <summary>Click to view</summary>
 
-### Document Version History
+###3 Document Version History
 
 <details>
 <summary>Click to view</summary>
@@ -74,7 +74,7 @@ incremented whenever this document is updated without a change to the major vers
 and it resets to `0` when the major version increases.
 </details>
 
-### Documentation
+###3 Documentation
 
 <details>
 <summary>Click to view</summary>
@@ -109,7 +109,7 @@ the Test API include:
   Test API.
 </details>
 
-### Repository Layout
+#### Repository Layout
 
 <details>
 <summary>Click to view</summary>
