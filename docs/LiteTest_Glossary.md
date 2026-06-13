@@ -43,8 +43,8 @@ SOFTWARE.
 ## Preface
 
 This document is intended for LiteTest users and contributors who need
-quick access to the definitiions of a term used in LitesTest or to browse
-through the terminology.
+quick access to the definition of a specific term used in LiteTest or to browse
+through the terms.
 
 #### Document Version History
 
