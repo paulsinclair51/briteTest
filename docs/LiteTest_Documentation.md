@@ -69,6 +69,7 @@ minor or patch versions. The update version is incremented whenever this documen
 jis updated without a change to the major version,and it resets to `0` when the
 major version increases.
 </details>
+</details>
 
 ## Documentation
 
