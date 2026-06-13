@@ -169,7 +169,7 @@ and terms often used in the testing domain:
   the LiteTest Runner API and the LiteTest Test API.
 - `artifact`:A file or bundle of files produced by a GitHub Actions workflow
   and stored for later download (e.g., build outputs, logs, reports). For
-  LiteTest, a `test artifact` is specific kind of artifact that is produced
+  LiteTest, a `test artifact` is a specific kind of artifact that is produced
   by a LiteTest executable.
 </details>
 
@@ -192,7 +192,7 @@ and terms often used in the testing domain:
    runs workflows that compile the project, execute tests, validate formatting
    or static analysis rules, and produce artifacts such as logs or reports. CI
    helps detect errors early, ensures consistent build quality, and provides
-   rapid feedback to developers. Use `continuous-integration` (or simpley CI)
+   rapid feedback to developers. Use `continuous-integration` (or simply CI)
    when used as an adjective.
 - `concurrent block`: For LiteTest, a set of tests bracketed by `LT_BEGIN_CONCURRENT` and
   `LT_END_CONCURRENT`.
@@ -200,8 +200,8 @@ and terms often used in the testing domain:
   generated file for differences. Differences (other than expected ones like
   timestamps) typically indicate a test failure. Sometimes the control file is
   out of date and must be replaced by promoting the new file.
-- `customization helper functions`: LiteTest Runner API functions provided
-  to help customizing the `orchestrator (main) function` and `test group`
+- `customization helper function`: A LiteTest Runner API function provided
+  to help customize the `orchestrator (main) function` and `test group`
   functions.
 </details>
 
@@ -224,14 +224,13 @@ and terms often used in the testing domain:
 <details>
 <summary>F: Click to view</summary>
 
-- `fail`: For LiteTest, a counted test failure where the `test exprssion` for
+- `fail`: For LiteTest, a counted test failure where the `test expression` for
    an `LT_TEST` macro evaluates to zero.
 - `fault`: For LiteTest, a counted runtime fault captured by LiteTest
   guards (e.g., invalid memory access). See also `guard`, `isolation`,
-  'thread isolation`, and `process isolation`.
-- `fault type': For LiteTest, the various type of faults (e.g., `SIGSEGV`,`SIGBUS',
-  'SIGABRT`) that can occur or be injected.
-  .
+  `thread isolation`, and `process isolation`.
+- `fault type`: For LiteTest, the various types of faults (e.g., `SIGSEGV`,`SIGBUS`,
+  `SIGABRT`) that can occur or be injected.
 </details>
 
 <details>
@@ -258,7 +257,7 @@ and terms often used in the testing domain:
   Default for `<n>` is 9 if this flag is not specified and, for `<m>`
   is 1. If `<m>` is 0, `LT_TEST` is not enabled (i.e., it is skipped).
   At most one `-I<n>` flag specified for a command line.
-- `isolation` or 'isolation mode`: For LiteTest, an execution mode
+- `isolation` or `isolation mode`: For LiteTest, an execution mode
    for `LT_GROUP` and `LT_TEST` macros: `0` = same thread, `1` =
    separate thread, `2` = separate process.
 </details>
@@ -278,7 +277,7 @@ and terms often used in the testing domain:
 - `maxargs`: For LiteTest, the maximum number of command‑line arguments allowed
   by the `LT_PARSE_ARGS` macro Note the `LT_PARSE_ARGS` macro only parses the
   first two arguments; additional arguments must be parsed by custom code.
-- `maxparallel`: For LiteTest, the Upper bound on concurrent `LT_GROUP` and
+- `maxparallel`: For LiteTest, the upper bound on concurrent `LT_GROUP` and
   `LT_TEST` macros. Set in `LT_INIT_ORCHESTRATOR` and `LT_GROUP` macros.
 - `notes`: For LiteTest, optional text appended to the report by the `LT_CLOSE_REPORT` macro.
 </details>
@@ -291,7 +290,7 @@ and terms often used in the testing domain:
   function of a LiteTest executable (`test runner`) that uses `LT_GROUP`
   macros to execute sets of tests (i.e., a  `test group`) or `LT_TEST`
   macros to execute a specific `test` (i.e., a `test expression`).
-- `process isolation`: Isolation mode where a test group or test expression runs in a
+- `process isolation`: `Isolation mode` where a test group or test expression runs in a
   separate process.
 - `project`: Project identifier used in orchestrator initialization and default
   report naming.
@@ -307,7 +306,7 @@ and terms often used in the testing domain:
 - `process guard`: The `guard` used for `process isolation` can
    capture all signals but increases the time to run the tests. For
    already proven tests, use `thread guards`; otherwise, use `process guards`.
-- `process isolation`: Isolation mode where a test group or test expression runs in a
+- `process isolation`: `Isolation mode` where a test group or test expression runs in a
   separate process.
 - `project`: Project identifier used in orchestrator initialization and default
   report naming.
@@ -348,8 +347,9 @@ and terms often used in the testing domain:
 <summary>T: Click to view</summary>
 
 - `test`: See `test expression`.
-- `test artifact` or 'testing artifact': For LiteTest, an artifact ( file or output)
-  generated by a LiteTest executable (for example, a test report, stdout, and stderr).
+- `test artifact` or 'testing artifact': For LiteTest, a specific kind of
+  artifact ( file or output) generated by a LiteTest executable (for
+  example, a test report, stdout, and stderr).
 - `test case`: This term is not used in LiteTest. In other contexts, it
   may mean a single test or a set of tests; LiteTest uses `test expression`
   for an individual test and `test group` for a set of test expressions.
@@ -380,7 +380,7 @@ and terms often used in the testing domain:
   A `process guard` can capture all signals but increases the time to
   run the tests. For already proven tests, use `thread guards`; otherwise,
   use `process guards`.
-- `thread isolation`: Isolation mode where a test group or test expression
+- `thread isolation`: `Isolation mode` where a test group or test expression
   executes in a separate thread.
 - `title`: For LiteTest, optional report header text provided when opening
   the report with `LT_OPEN_REPORT` macro.
