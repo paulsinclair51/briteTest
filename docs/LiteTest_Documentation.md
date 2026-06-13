@@ -77,7 +77,8 @@ The user documentation for  LiteTest includes:
 
 - **LiteTest Documentation** — A list of the LifeTest documents for users and contributors plus the LiteTest repository layout (listing core files).
 
-- **LiteTest Glossary — An alphabetically-ordered list of terms used in the LiteTest documentation with their specific definitions/explanations in the LiteTest context.
+- **LiteTest Glossary — An alphabetically-ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest)
+and terms often used in the testing domain.
 
 - **LiteTest Runner User Guide** — Concepts, usage, and examples for the LiteTest Runner framework and API.
 
