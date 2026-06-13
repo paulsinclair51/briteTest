@@ -49,7 +49,8 @@ SOFTWARE.
 
 <details>
 <summary>Click to view</summary>
-   
+
+
 | Document | Date | LiteTest | Comment | Author/Editor |  
 |----------|------------|----------------------------------------------------------|--------------------|  
 | 1.0 | 2026‑06‑11 | 1.0.0 | Initial version. | Paul Sinclair |  
