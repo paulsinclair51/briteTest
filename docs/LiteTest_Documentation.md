@@ -3,7 +3,7 @@
 This document provides an overview of all LiteTest documentation. It serves as a
 companion index to the user and contributor LiteTest documents.
 
-`Click to view` sections:
+`Click to view` sections.
 
 <details>
 <summary>Click to view Why Click to view?</summary>
