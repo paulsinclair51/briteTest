@@ -114,43 +114,42 @@ This section outlines the structure of the LiteTest repository and its core file
   
 GitHub repository: `paulsinclair51/LiteTest`
 
-Repository layout (core files and directories):
+Repository layout (core files and directories) in LiteTest:
 
 ```text
-LiteTest/
-|- .github/
-|  \- workflows/
-|     \- ci.yml
-|- README.md
-|- LICENSE
-|- Makefile
-|- build_test_litetest.ps1
-|- build/
-|- docs/
-|  |- LiteTest_Documentation.md
-|  |- LiteTest_Glossary.md
-|  |- LiteTest_Runner_User_Guide.md
-|  |- LiteTest_Runner_Reference.md
-|  |- LiteTest_Contributor_Guide.md
-|  |- LiteTest_Runner_Internal_Guide.md
-|  | - LiteTest_Runner_Internal_Reference.md
-|  |- LiteTest_Test_Internal_Guide.md
-|  \- LiteTest_Test_Internal_Reference.md
-|- examples/
-|- include/
-|  |- litetest_runner.h
-|  \- litetest_test.h
-|- reports/
-|  |- litetest_test_report-I.txt
-|  \- litetest_test_report.txt
-|- scripts/
-|- src/
-|  |- litetest_runner.c
-|  \- litetest_test.c
-|- tests/
-|  |- test_litetest.c
-|  |- test_orchestrator.c
-|  |- test_guard1.c
-|  \- test_guard2.c
+.github/
+    workflows/
+        ci.yml
+README.md
+LICENSE
+Makefile
+build_test_litetest.ps1
+build/
+docs/
+    LiteTest_Documentation.md
+    LiteTest_Glossary.md
+    LiteTest_Runner_User_Guide.md
+    LiteTest_Runner_Reference.md
+    LiteTest_Contributor_Guide.md
+    LiteTest_Runner_Internal_Guide.md
+    LiteTest_Runner_Internal_Reference.md
+    LiteTest_Test_Internal_Guide.md
+    LiteTest_Test_Internal_Reference.md
+examples/
+include/
+    litetest_runner.h
+    litetest_test.h
+reports/
+    litetest_test_report-I.txt
+    litetest_test_report.txt
+scripts/
+src/
+    litetest_runner.c
+    litetest_test.c
+tests/
+    test_litetest.c
+    test_orchestrator.c
+    test_guard1.c
+    test_guard2.c
 ```
 </details>
