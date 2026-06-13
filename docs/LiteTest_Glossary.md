@@ -48,7 +48,7 @@ SOFTWARE.
 <details>
 <summary>Click to view</summary>
 
-###3 Document Version History
+#### Document Version History
 
 <details>
 <summary>Click to view</summary>
@@ -74,7 +74,7 @@ incremented whenever this document is updated without a change to the major vers
 and it resets to `0` when the major version increases.
 </details>
 
-###3 Documentation
+#### Documentation
 
 <details>
 <summary>Click to view</summary>
