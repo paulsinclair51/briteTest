@@ -50,9 +50,9 @@ through the terms.
 <details>
 <summary>Click to view</summary>
 
-| Document | Date | Runner | Test | Comment | Author/Editor |
+| Document | Runner | Tsst | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0 | 2026‑06‑11 | 1.0.0 | 1.0.0 | Initial version. | Paul Sinclair |
+| 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
 
 - The `Document` column records the document's version and uses the version format `M.u` (Major, update).
 - The `Runner` column records the LiteTest Runner API version current at the time this document version was published and is defined by its `LT_RUNNER_VERSION` macro.
@@ -154,10 +154,10 @@ and terms often used in the testing domain:
 <details>
 <summary>A: Click to view</summary>
 
-- `API`: Application Programming Interface: public typedefs, structs, enum,
+- **API**: Application Programming Interface: public typedefs, structs, enum,
   macro, and functions that provide a well-defined service. For example,
   the LiteTest Runner API and the LiteTest Test API.
-- `artifact`: A file or bundle of files produced by a GitHub Actions workflow
+- **artifact**: A file or bundle of files produced by a GitHub Actions workflow
   and stored for later download (e.g., build outputs, logs, reports). For
   LiteTest, a test artifact is a specific kind of artifact that is produced
   by a LiteTest executable.
@@ -172,27 +172,27 @@ _No terms currently defined._
 <details>
 <summary>C: Click to view </summary>
 
-- `category`: For LiteTest, a labeled set of `LT_GROUP` and `LT_TEST` macros
+- **category**: For LiteTest, a labeled set of `LT_GROUP` and `LT_TEST` macros
   whose combined results are written by `LT_WRITE_RESULT` to the report with
   a specified category name.
-- `CD (Continuous Delivery / Continuous Deployment)`: An automated practice that
+- **CD (Continuous Delivery / Continuous Deployment)**: An automated practice that
   extends `CI` by packaging, releasing, or deploying software after it has passed
   all required tests. Continuous Delivery prepares release artifacts for manual
   approval, while Continuous Deployment automatically deploys every passing
   change to a target environment.
-- `CI (Continuous Integration)`: An automated development practice where every
+- **CI (Continuous Integration)((: An automated development practice where every
    change to a codebase is built and tested in a shared environment. A CI system
    runs workflows that compile the project, execute tests, validate formatting
    or static analysis rules, and produce artifacts such as logs or reports. CI
    helps detect errors early, ensures consistent build quality, and provides
    rapid feedback to developers. Use continuous-integration (or simply CI)
    when used as an adjective.
-- `command line`: A line of text entered into a shell that specifies an
+- **command line**: A line of text entered into a shell that specifies an
   executable and optional arguments or flags (options). Use `command-line`
   when used as an adjective.
-- `concurrent block`: For LiteTest, a set of tests bracketed by `LT_BEGIN_CONCURRENT` and
+- **concurrent block**: For LiteTest, a set of tests bracketed by `LT_BEGIN_CONCURRENT` and
   `LT_END_CONCURRENT` macros.
-- `contributor`: Any person or agent that may commit to LiteTest `main`, The implementation changes
+-**contributor: Any person or agent that may commit to LiteTest `main`, The implementation changes
 and documentation updates for a commit to `main` must conform to the LiteTest contribution
 guidelines and must have approval by a designated approver or agent.
 - `control file`: A previously generated file that can be compared to a newly
