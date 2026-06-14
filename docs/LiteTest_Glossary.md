@@ -168,8 +168,8 @@ and terms often used in the testing domain:
 
 <details>
 <summary>B: Click to view</summary>
-_No terms currently defined._
 
+_No terms currently defined._
 </details>
 
 <details>
