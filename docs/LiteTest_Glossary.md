@@ -20,7 +20,7 @@ the testing domain. It is a companion document to the other LiteTest documents.
 <details>
 <summary>Click to view SPDX-License-Identifier: MIT</summary>
 
-#### MIT License
+#### License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
