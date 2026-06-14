@@ -41,6 +41,9 @@ SOFTWARE.
 
 ## Preface
 
+<details>
+<summary>Click to view</summary>
+
 This document is intended for LiteTest users and contributors who need
 quick access to the definitions of terms used in LiteTest or to browse
 through the terms.
@@ -141,6 +144,7 @@ tests/
     test_guard1.c
     test_guard2.c
 ```
+</details>
 </details>
 
 ## Glossary
