@@ -52,10 +52,10 @@ This document is intended for LiteTest users and contributors who need
 quick access to the definitions of terms used in LiteTest or to browse
 through the terms.
 
-#### Document Version History
-
 <details>
-<summary>Click to view</summary>
+<summary>Click to view Document Version History</summary>
+
+#### Document Version History
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
@@ -70,10 +70,10 @@ through the terms.
 The document's update version track updates to this document and does not correspond to a minor or patch version. `u` increments whenever this document is updated without a change to `M`, and it resets to `0` when `M` is incremented.
 </details>
 
-#### Documentation
-
 <details>
-<summary>Click to view</summary>
+<summary>Click to view Documentation</summary>
+
+#### Documentation
 
 This section lists all LiteTest user and contributor documentation.
 
@@ -106,10 +106,10 @@ This section lists all LiteTest user and contributor documentation.
 - **LiteTest_Test_Internal_Reference.md**: Reference for the implementation of the Test API.
 </details>
 
-#### LiteTest Repository Layout
-
 <details>
-<summary>Click to view</summary>
+<summary>Click to view LiteTest Repository Layout</summary>
+
+#### LiteTest Repository Layout
 
 This section shows the layout of the GitHub repository `paulsinclair51/LiteTest` (core files and directories):
 
