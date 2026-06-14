@@ -50,17 +50,17 @@ through the terms.
 <details>
 <summary>Click to view</summary>
 
-| Document | Runner | Tsst | Date | Comment | Author/Editor |
+| Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
 | 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
 
-- The `Document` column records the document's version and uses the version format `M.u` (Major, update).
-- The `Runner` column records the LiteTest Runner API version current at the time this document version was published and is defined by its `LT_RUNNER_VERSION` macro.
-- The `Test` column records the LiteTest Test API version current at the time this document version was published and is defined by its `LT_TEST_VERSION` macro.
+- The **Document** column records the document's version and uses the version format `M.u` (Major, update).
+- The **Runner** column records the LiteTest Runner API version current at the time this document version was published and is defined by its `LT_RUNNER_VERSION` macro.
+- The **Test** column records the LiteTest Test API version current at the time this document version was published and is defined by its `LT_TEST_VERSION` macro.
 
-Both Runner and Test versions specify a string of the form `"M.m.p"` (Major, minor, patch). `M` is the same for the document, Runner, and Test.
+Both Runner and Test versions specify a string of the form `"M.m.p"` (Major, minor, patch). `M` is the same for the document, Runner, and Test versions.
 
-The document's `u` (update) version track updates to this document and does not correspond to a `m` (minor) or `p` (patch) version. `u` increments whenever this document is updated without a change to `M`, and it resets to `0` when `M` is incremented.
+The document's update version track updates to this document and does not correspond to a minor or patch version. `u` increments whenever this document is updated without a change to `M`, and it resets to `0` when `M` is incremented.
 </details>
 </details>
 
@@ -73,31 +73,31 @@ This section lists all LiteTest user and contributor documentation.
 
 **User documentation**:
 
-- `README.md` — Introduction to LiteTest.
+- **README.md** — Introduction to LiteTest.
 
-- `LiteTest_Documentation.md` — Index of LiteTest documents and repository layout.
+- **LiteTest_Documentation.md**: Index of LiteTest documents and repository layout.
 
-- `LiteTest_Glossary.md` — An alphabetically ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest) and terms often used in the testing domain.
+- **LiteTest_Glossary.md**: An alphabetically ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest) and terms often used in the testing domain.
 
-- `LiteTest_Runner_User_Guide.md` — Concepts, usage, and examples for the LiteTest Runner framework and API.
+- **LiteTest_Runner_User_Guide.md**: Concepts, usage, and examples for the LiteTest Runner framework and API.
 
-- `LiteTest_Runner_Reference.md` — Reference document for the LiteTest Runner API.
+- **LiteTest_Runner_Reference.md**: Reference document for the LiteTest Runner API.
 
-- `LiteTest_Test_User_Guide.md` — Concepts, usage, and examples for the LiteTest Test API.
+- **LiteTest_Test_User_Guide.md**: Concepts, usage, and examples for the LiteTest Test API.
 
-- `LiteTest_Test_Reference.md` — Reference document for the LiteTest Test API.
+- **LiteTest_Test_Reference.md**: Reference document for the LiteTest Test API.
 
 **Contributor documentation**:
 
-- `LiteTest_Contributor_Guide.md` — Versioning, documentation/coding guidelines, branching, testing, and CI/release checklists.
+- **LiteTest_Contributor_Guide.md**: Versioning, documentation/coding guidelines, branching, testing, and CI/release checklists.
 
-- `LiteTest_Runner_Internal_Guide.md` — Implementation concepts, architecture, and high-level design for the Runner API.
+- **LiteTest_Runner_Internal_Guide.md**: Implementation concepts, architecture, and high-level design for the Runner API.
 
-- `LiteTest_Runner_Internal_Reference.md` — Reference for the implementation of the Runner API.
+- **LiteTest_Runner_Internal_Reference.md**: Reference for the implementation of the Runner API.
   
-- `LiteTest_Test_Internal_Guide.md` — Implementation concepts, architecture, and high-level design for the Test API.
+- **LiteTest_Test_Internal_Guide.md**: Implementation concepts, architecture, and high-level design for the Test API.
 
-- `LiteTest_Test_Internal_Reference.md` — Reference for the implementation of the Test API.
+- **LiteTest_Test_Internal_Reference.md**: Reference for the implementation of the Test API.
 </details>
 
 #### LiteTest Repository Layout
@@ -180,7 +180,7 @@ _No terms currently defined._
   all required tests. Continuous Delivery prepares release artifacts for manual
   approval, while Continuous Deployment automatically deploys every passing
   change to a target environment.
-- **CI (Continuous Integration)((: An automated development practice where every
+- **CI (Continuous Integration)**: An automated development practice where every
    change to a codebase is built and tested in a shared environment. A CI system
    runs workflows that compile the project, execute tests, validate formatting
    or static analysis rules, and produce artifacts such as logs or reports. CI
@@ -192,29 +192,29 @@ _No terms currently defined._
   when used as an adjective.
 - **concurrent block**: For LiteTest, a set of tests bracketed by `LT_BEGIN_CONCURRENT` and
   `LT_END_CONCURRENT` macros.
--**contributor: Any person or agent that may commit to LiteTest `main`, The implementation changes
+- **contributor**: Any person or agent that may commit to LiteTest `main`, The implementation changes
 and documentation updates for a commit to `main` must conform to the LiteTest contribution
 guidelines and must have approval by a designated approver or agent.
-- `control file`: A previously generated file that can be compared to a newly
+- **control file**: A previously generated file that can be compared to a newly
   generated file for differences. Differences (other than expected ones like
   timestamps) typically indicate a test failure. Sometimes the control file is
   out of date and must be replaced by promoting the new file.
-- `customization function`: A function included in the LiteTest Runner API
-   that can be used to help customize the orchestrator (main) function and test group
+- *customization function***: A function included in the LiteTest Runner API
+  that can be used to help customize the orchestrator (main) function and test group
   functions.
 </details>
 
 <details>
 <summary>D: Click to view</summary>
 
-- `default report filename`: For LiteTest, the report filename
+- **default report filename**: For LiteTest, the report filename
   used when only a directory path (or no `PATH`) is provided.
 </details>
 
 <details>
 <summary>E: Click to view</summary>
 
-- `executable`: For LiteTest, a compiled/linked program that
+- **executable**: For LiteTest, a compiled/linked program that
   contains the orchestrator, test groups, test expressions (and
   underlying functions), and the LiteTest APIs. It is run from
   a shell using a command line.
@@ -223,12 +223,12 @@ guidelines and must have approval by a designated approver or agent.
 <details>
 <summary>F: Click to view</summary>
 
-- `fail`: For LiteTest, a counted test failure where the `test expression` for
+- **fail**: For LiteTest, a counted test failure where the `test expression` for
    an `LT_TEST` macro evaluates to zero.
-- `fault`: For LiteTest, a counted runtime fault captured by LiteTest
+- **fault**: For LiteTest, a counted runtime fault captured by LiteTest
   guards (e.g., invalid memory access). See also guard, isolation,
   thread isolation, and process isolation.
-- `fault type`: For LiteTest, the various types of faults (e.g., `SIGSEGV`,`SIGBUS`,
+- **fault type**: For LiteTest, the various types of faults (e.g., `SIGSEGV`,`SIGBUS`,
   `SIGABRT`) that can occur or be injected. See also `thread guard` and `process guard`
   for signal handling details.
 </details>
@@ -236,12 +236,12 @@ guidelines and must have approval by a designated approver or agent.
 <details>
 <summary>G: Click to view</summary>
 
-- `group`: See test group.
-- `guard`: For LiteTest, the protection mechanism used to catch runtime
+- **group**: See test group.
+- **guard**: For LiteTest, the protection mechanism used to catch runtime
   faults and continue test execution. See also fault, isolation, thread
   isolation, and process isolation.
-- `guard handler`: For LiteTest, a function that is used to capture faults.
-- `guard level`: For LiteTest, the nesting depth of active guards for test groups and test
+- **guard handler**: For LiteTest, a function that is used to capture faults.
+- **guard level**: For LiteTest, the nesting depth of active guards for test groups and test
   expressions.
 </details>
 
@@ -254,16 +254,16 @@ _No terms currently defined._
 <details>
 <summary>I: Click to view</summary>
 
-- `-I`: For LiteTest, an optional command‑line flag that enables an
+- **-I**: For LiteTest, an optional command‑line flag that enables an
   `LT_TEST` macro with an argument value of `I` to be executed. Default is to
   skip the `LT_TEST` macro if it has an argument value of `I`.
-- `-I<n>`: For LiteTest, an optional command‑line flag that enables an
+- **-I<n>**: For LiteTest, an optional command‑line flag that enables an
   `LT_TEST` macro with an argument value of `<m>` between 1 and 9 to execute
   if `<m>` is between 1 and `<n>`. `<n`> must be between 1 and 9.
   Default for `<n>` is 9 if this flag is not specified and, for `<m>`
   is 1. If `<m>` is 0, the `LT_TEST` macro is not enabled (i.e., it is skipped).
   At most one `-I<n>` flag specified for a command line.
-- `isolation` or `isolation mode`: For LiteTest, an execution mode
+- **isolation` or `isolation mode**: For LiteTest, an execution mode
    for `LT_GROUP` and `LT_TEST` macros: `0` = same thread, `1` =
    separate thread, `2` = separate process.
 </details>
@@ -271,7 +271,7 @@ _No terms currently defined._
 <details>
 <summary>J: Click to view</summary>
 
-- `job`: A unit of work within a workflow. A job runs a series of steps
+- **job**: A unit of work within a workflow. A job runs a series of steps
   in a specified environment (such as a container or virtual
   machine). Jobs may run sequentially or in parallel, depending on their
   dependencies.
@@ -293,10 +293,10 @@ _No terms currently defined._
 <details>
 <summary>M: Click to view</summary>
 
-- `maxargs`: For LiteTest, the maximum number of command‑line arguments allowed
+- **maxargs**: For LiteTest, the maximum number of command‑line arguments allowed
   by the `LT_PARSE_ARGS` macro. Note that the `LT_PARSE_ARGS` macro only parses the
   first two arguments; additional arguments must be parsed by custom code.
-- `maxparallel`: For LiteTest, the upper bound on concurrent `LT_GROUP` and
+- **maxparallel**: For LiteTest, the upper bound on concurrent `LT_GROUP` and
   `LT_TEST` macros. That is, when the number of macros executing is `maxparallel`,
   the next macro to execute is delayed until one of the executing macros finishes.
  `maxparallel` is a parameter for the `LT_INIT_ORCHESTRATOR` and `LT_GROUP` macros.
@@ -305,7 +305,7 @@ _No terms currently defined._
 <details>
 <summary>N: Click to view</summary>
   
-- `notes`: For LiteTest, a string parameter for the `LT_CLOSE_REPORT` macro. The
+- **notes**: For LiteTest, a string parameter for the `LT_CLOSE_REPORT` macro. The
   `LT_CLOSE_REPORT` macro appends the string (which must include `\n` at the end
   of each line in the string) if the string is not NULL or empty.
 </details>
@@ -313,8 +313,8 @@ _No terms currently defined._
 <details>
 <summary>O: Click to view</summary>
 
-- `orchestrator`: See orchestrator (`main`) function.
-- `orchestrator (main) function` or simply `orchestrator function`: The `main`
+- **orchestrator**: See orchestrator (`main`) function.
+- **orchestrator (main) function` or simply `orchestrator function**: The `main`
   function of a LiteTest executable (i.e., the test runner) that uses `LT_GROUP`
   macros to execute sets of tests (i.e., a test group) or `LT_TEST`
   macros to execute a specific test (i.e., a test expression).
@@ -323,16 +323,16 @@ _No terms currently defined._
 <details>
 <summary>P: Click to view</summary>
 
-- `pass`: A counted successful test where the expression evaluates to non‑zero.
-- `PATH`: Optional command‑line argument indicating the output destination;
+- **pass**: A counted successful test where the expression evaluates to non‑zero.
+- **PATH**: Optional command‑line argument indicating the output destination;
    may be a report file path or directory path. Argument must be quoted if it
    contains spaces.
-- `process guard`: The guard used for process isolation can
+- **process guard**: The guard used for process isolation can
    capture all signals but increases the time to run the tests. For
    already proven tests, use thread guards; otherwise, use process guards.
-- `process isolation`: Isolation mode where a test group or test expression runs in a
+- **process isolation**: Isolation mode where a test group or test expression runs in a
   separate process.
-- `project`: a single-token project identifier used in orchestrator initialization and default
+- **project**: a single-token project identifier used in orchestrator initialization and default
   report naming.
 </details>
 
@@ -345,10 +345,10 @@ _No terms currently defined._
 <details>
 <summary>R: Click to view</summary>
 
-- `report`: See test report.
-- `report header`: Lines of text written at the beginning of a test report that
+- **report**: See test report.
+- **report header**: Lines of text written at the beginning of a test report that
    include the report title, a timestamp, etc.
-- `runner`: For LiteTest, see test runner. For GitHub, A machine or
+- **runner**: For LiteTest, see test runner. For GitHub, A machine or
   environment that executes the jobs defined in a GitHub Actions workflow.
   A runner provides the operating system, tools, and runtime needed to
   perform workflow steps such as building, testing, or packaging a project.
@@ -359,15 +359,15 @@ _No terms currently defined._
 <details>
 <summary>S: Click to view</summary>
 
-- `semantic versioning`: A versioning scheme for artifacts. For example,
+- **semantic versioning**: A versioning scheme for artifacts. For example,
    in LiteTest, `M.m.p` (for `.h` and `.c` files) or `M.u` (document
   `.md` files) where M, m, p, and u are one or two digits and M
   indicates the major release, m indicates the minor release, p
   indicates the patch version, and u the document update version.
-- `shell`: A command-line interface that allows a user or script to submit
+- **shell**: A command-line interface that allows a user or script to submit
   command lines. Examples include `pwsh`, `powershell.exe`,
   `bash`, `sh`, `zsh`, and `cmd.exe`.
-- `step`: An individual action within a job. A step may run a shell command,
+- **step**: An individual action within a job. A step may run a shell command,
   execute a script, or invoke a reusable action. Steps run in order and share
   the job’s execution environment.
 </details>
@@ -375,31 +375,31 @@ _No terms currently defined._
 <details>
 <summary>T: Click to view</summary>
 
-- `test`: See test expression.
-- `test artifact` or `testing artifact`: For LiteTest, a specific kind of
+- **test**: See test expression.
+- **test artifact` or `testing artifact**: For LiteTest, a specific kind of
   artifact, i.e., file or output generated by a LiteTest executable (for
   example, a test report, `stdout`, and `stderr`).
-- `test case`: This term is not used in LiteTest. In other contexts, it
+- **test case**: This term is not used in LiteTest. In other contexts, it
   may mean a single test or a set of tests; LiteTest uses test expression (or
   simply test) for an individual test and `test group` for a set of test expressions.
-- `test expression`: An expression that is an argument of an `LT_TEST` macro
+- **test expression**: An expression that is an argument of an `LT_TEST` macro
    that can be cast to `int`; zero means fail, non‑zero means pass. A test
    expression and its underlying functions are user=written. The LiteTest Test
    API is provided to help simplify writing a text expression and underlying functions.
-- `test group`: A grouping of `LT_TEST` macros and optionally `LT_GROUP` macros.
-- `test group function`: A function declared with a `LT_DECLARE_GROUP` macro
+- **test group**: A grouping of `LT_TEST` macros and optionally `LT_GROUP` macros.
+- **test group function**: A function declared with a `LT_DECLARE_GROUP` macro
   and followed by function body in `{ }`.
-- `test function`: A user‑written function used in implementing a
+- **test function**: A user‑written function used in implementing a
   test expression.
-- `test helper function`: A LiteTest Test API function provided to help simplify
+- **test helper function**: A LiteTest Test API function provided to help simplify
   writing the implementation of a test expression.
-- `test runner`: an executable that runs a set of tests.
-- `test suite`: a complete set of tests for a project or a subset of tests for
+- **test runner**: an executable that runs a set of tests.
+- **test suite**: a complete set of tests for a project or a subset of tests for
   a project. LiteTest uses the term test group if it is a subset of the
   tests for a project. LiteTest does not use the term *test suite* or because
   whether a set of tests is *complete* for a project is not well-defined.
-- `testing artifact`: See test artifact.
-- `thread guard`: The guard used for thread isolation. A thread guard
+- **testing artifact**: See test artifact.
+- **thread guard**: The guard used for thread isolation. A thread guard
   can only reliably capture synchronous signals (`SIGSEGV`, `SIGBUS`,
   `SIGFPE`, and `SIGILL`). Other signals (`SIGABRT`, `SIGKILL`, `SIGSTOP`,
   `SIGTERM`, `SIGINT`, `SIGHUP`, `SIGQUIT`,  `SIGPIPE`, `SIGALRM`,
@@ -407,9 +407,9 @@ _No terms currently defined._
   A process guard can capture all signals but increases the time to
   run the tests. For already proven tests, use thread guards; otherwise,
   use process guards.
-- `thread isolation`: Isolation mode where a test group or test expression
+- **thread isolation**: Isolation mode where a test group or test expression
   executes in a separate thread.
-- `title`: For LiteTest, optional report header text provided when opening
+- **title**: For LiteTest, optional report header text provided when opening
   the report with an `LT_OPEN_REPORT` macro.
 </details>
 
@@ -428,7 +428,7 @@ _No terms currently defined._
 <details>
 <summary>W: Click to view</summary>
 
-- `workflow`: A defined sequence of automated steps executed by a
+- **workflow**: A defined sequence of automated steps executed by a
   CI (continuous‑integration) system. In GitHub Actions, a workflow
   is triggered by an event (such as a push, pull request, or scheduled
   run) and runs one or more jobs that perform tasks like building,
