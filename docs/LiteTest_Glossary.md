@@ -182,20 +182,21 @@ _No terms currently defined._
 - **category**: For LiteTest, a labeled set of `LT_GROUP` and `LT_TEST` macros
   whose combined results are written by `LT_WRITE_RESULT` to the report with
   a specified category name.
-- **CD (Continuous Delivery / Continuous Deployment)**: An automated practice that
-  extends `CI` by packaging, releasing, or deploying software after it has passed
+- **CD (Continuous Delivery/Deployment)**: Automated practices that
+  extend CI (Continuous Integration) by packaging, releasing, or deploying software after it has passed
   all required tests. Continuous Delivery prepares release artifacts for manual
   approval, while Continuous Deployment automatically deploys every passing
-  change to a target environment.
-- **CI (Continuous Integration)**: An automated development practice where every
+  change to a target environment. Use continuous-delivery,continuous-development, ot CI
+   when used as an adjective.
+- **CI (Continuous Integration)**: An automated practice where every
    change to a codebase is built and tested in a shared environment. A CI system
    runs workflows that compile the project, execute tests, validate formatting
    or static analysis rules, and produce artifacts such as logs or reports. CI
    helps detect errors early, ensures consistent build quality, and provides
-   rapid feedback to developers. Use continuous-integration (or simply CI)
+   rapid feedback to developers. Use continuous-integration or CI
    when used as an adjective.
 - **command line**: A line of text entered into a shell that specifies an
-  executable and optional arguments or flags (options). Use `command-line`
+  executable and optional arguments or flags (options). Use command-line
   when used as an adjective.
 - **concurrent block**: For LiteTest, a set of tests bracketed by `LT_BEGIN_CONCURRENT` and
   `LT_END_CONCURRENT` macros.
@@ -230,24 +231,21 @@ guidelines and must have approval by a designated approver or agent.
 <details>
 <summary>F: Click to view</summary>
 
-- **fail**: For LiteTest, a counted test failure where the `test expression` for
+- **fail**: For LiteTest, a counted test failure where the test expression for
    an `LT_TEST` macro evaluates to zero.
-- **fault**: For LiteTest, a counted runtime fault captured by LiteTest
-  guards (e.g., invalid memory access). See also guard, isolation,
-  thread isolation, and process isolation.
+- **fault**: For LiteTest, a counted runtime fault (e.g., invalid memory access) captured by LiteTest
+  guards. See also fault type, guard, and isolation,
 - **fault type**: For LiteTest, the various types of faults (e.g., `SIGSEGV`,`SIGBUS`,
-  `SIGABRT`) that can occur or be injected. See also `thread guard` and `process guard`
-  for signal handling details.
+  `SIGABRT`) that can occur or be injected. See also fault, `LT_FAULT`, and `-I`,
 </details>
 
 <details>
 <summary>G: Click to view</summary>
 
 - **group**: See test group.
-- **guard**: For LiteTest, the protection mechanism used to catch runtime
-  faults and continue test execution. See also fault, isolation, thread
+- **guard**: For LiteTest, the protection mechanism used to catch
+  faults and continue test execution. See also fault, fault type, isolation, thread
   isolation, and process isolation.
-- **guard handler**: For LiteTest, a function that is used to capture faults.
 - **guard level**: For LiteTest, the nesting depth of active guards for test groups and test
   expressions.
 </details>
@@ -262,8 +260,10 @@ _No terms currently defined._
 <summary>I: Click to view</summary>
 
 - **-I**: For LiteTest, an optional command‑line flag that enables an
-  `LT_TEST` macro with an argument value of `I` to be executed. Default is to
-  skip the `LT_TEST` macro if it has an argument value of `I`.
+  `LT_TEST` macro with an argument value of `I` to be executed. Typically used to
+  inject a fail or fault into a run of a test executable. Default is to
+  skip the `LT_TEST` macro if it has an argument value of `I`. See also fault,
+ `LT_FAIL`, and `LT_FAULT`,
 - **-I<n>**: For LiteTest, an optional command‑line flag that enables an
   `LT_TEST` macro with an argument value of `<m>` between 1 and 9 to execute
   if `<m>` is between 1 and `<n>`. `<n`> must be between 1 and 9.
@@ -288,32 +288,36 @@ _No terms currently defined._
 <summary>K: Click to view</summary>
 
 _No terms currently defined._
-
 </details>
 
 <details>
 <summary>L: Click to view</summary>
 
-_No terms currently defined._
+- **LT_FAIL**: For LiteTest, a Runner API macro that returns 0.
+Typically used in the Runner API `LT_TEST` macro to conditionally
+inject a fail, See also  `-I`.
+- **LT_FAULT**: For LiteTest, a Runner API macro that injects (signals) a fault.
+Typically used in the Runner API `LT_TEST` macro to conditionally inject
+a fault. See also fault and  `-I`.
 </details>
 
 <details>
 <summary>M: Click to view</summary>
 
-- **maxargs**: For LiteTest, the maximum number of command‑line arguments allowed
-  by the `LT_PARSE_ARGS` macro. Note that the `LT_PARSE_ARGS` macro only parses the
-  first two arguments; additional arguments must be parsed by custom code.
-- **maxparallel**: For LiteTest, the upper bound on concurrent `LT_GROUP` and
-  `LT_TEST` macros. That is, when the number of macros executing is `maxparallel`,
+- **maxargs**: For the LiteTest runner API, the maximum number of command‑line arguments allowed
+  by the `LT_PARSE_ARGS` macro. Note that this macro only
+  parses the first two arguments; additional arguments must be parsed by custom code.
+- **maxparallel**: For the LiteTest runner API, the upper bound on concurrent `LT_GROUP` and
+  `LT_TEST` macros. That is, when the number of macros executing is `fault `,
   the next macro to execute is delayed until one of the executing macros finishes.
- `maxparallel` is a parameter for the `LT_INIT_ORCHESTRATOR` and `LT_GROUP` macros.
+ `maxparallel` is a parameter for the Runner API `LT_INIT_ORCHESTRATOR` and `LT_GROUP` macros.
 </details>
 
 <details>
 <summary>N: Click to view</summary>
   
-- **notes**: For LiteTest, a string parameter for the `LT_CLOSE_REPORT` macro. The
-  `LT_CLOSE_REPORT` macro appends the string (which must include `\n` at the end
+- **notes**: For the LiteTest runner API, a string parameter for the `LT_CLOSE_REPORT` macro. This
+  macro appends the string (which must include `\n` at the end
   of each line in the string) if the string is not NULL or empty.
 </details>
 
@@ -321,7 +325,7 @@ _No terms currently defined._
 <summary>O: Click to view</summary>
 
 - **orchestrator**: See orchestrator (`main`) function.
-- **orchestrator (main) function` or simply `orchestrator function**: The `main`
+- **orchestrator (main) function` or simply `orchestrator function**: For the LiteTest runner API, the `main`
   function of a LiteTest executable (i.e., the test runner) that uses `LT_GROUP`
   macros to execute sets of tests (i.e., a test group) or `LT_TEST`
   macros to execute a specific test (i.e., a test expression).
@@ -330,17 +334,17 @@ _No terms currently defined._
 <details>
 <summary>P: Click to view</summary>
 
-- **pass**: A counted successful test where the expression evaluates to non‑zero.
+- **pass**: For LiteTest, a counted successful test where the expression evaluates to non‑zero.
 - **PATH**: Optional command‑line argument indicating the output destination;
    may be a report file path or directory path. Argument must be quoted if it
    contains spaces.
-- **process guard**: The guard used for process isolation can
+- **process guard**: For LiteTest, the guard used for process isolation can
    capture all signals but increases the time to run the tests. For
    already proven tests, use thread guards; otherwise, use process guards.
-- **process isolation**: Isolation mode where a test group or test expression runs in a
+- **process isolation**: For LiteTest, isolation mode where a test group or test expression runs in a
   separate process.
-- **project**: a single-token project identifier used in orchestrator initialization and default
-  report naming.
+- **project**: For LiteTest, a single-token project identifier used in
+  orchestrator initialization and default report naming.
 </details>
 
 <details>
@@ -353,8 +357,8 @@ _No terms currently defined._
 <summary>R: Click to view</summary>
 
 - **report**: See test report.
-- **report header**: Lines of text written at the beginning of a test report that
-   include the report title, a timestamp, etc.
+- **report header**: For LiteTest, lines of text written at the beginning
+  of a test report that include the report title, a timestamp, etc.
 - **runner**: For LiteTest, see test runner. For GitHub, A machine or
   environment that executes the jobs defined in a GitHub Actions workflow.
   A runner provides the operating system, tools, and runtime needed to
@@ -389,21 +393,21 @@ _No terms currently defined._
 - **test case**: This term is not used in LiteTest. In other contexts, it
   may mean a single test or a set of tests; LiteTest uses test expression (or
   simply test) for an individual test and `test group` for a set of test expressions.
-- **test expression**: An expression that is an argument of an `LT_TEST` macro
+- **test expression**: For LiteTest, an expression that is an argument of an `LT_TEST` macro
    that can be cast to `int`; zero means fail, non‑zero means pass. A test
    expression and its underlying functions are user=written. The LiteTest Test
    API is provided to help simplify writing a text expression and underlying functions.
-- **test group**: A grouping of `LT_TEST` macros and optionally `LT_GROUP` macros.
+- **test group**: For the LiteTest Runner API, a grouping of `LT_TEST` macros and optionally `LT_GROUP` macros.
 - **test group function**: A function declared with a `LT_DECLARE_GROUP` macro
   and followed by function body in `{ }`.
-- **test function**: A user‑written function used in implementing a
+- **test function**: For LiteTest, A user‑written function used in implementing a
   test expression.
 - **test helper function**: A LiteTest Test API function provided to help simplify
   writing the implementation of a test expression.
-- **test runner**: an executable that runs a set of tests.
+- **test runner**: For LiteTest, an executable that runs a set of tests.
 - **test suite**: a complete set of tests for a project or a subset of tests for
   a project. LiteTest uses the term test group if it is a subset of the
-  tests for a project. LiteTest does not use the term *test suite* or because
+  tests for a project. LiteTest does not use the term *test suite* since
   whether a set of tests is *complete* for a project is not well-defined.
 - **testing artifact**: See test artifact.
 - **thread guard**: The guard used for thread isolation. A thread guard
