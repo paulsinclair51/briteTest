@@ -1,5 +1,5 @@
  /**
- * @file /paulsinclair51/include/litetest.h
+ * @file /paulsinclair51/include/litetest_runner.h
  * 
  * @brief LiteTest is a lightweight Application Programming Interface (API) and
  * framework for defining, running, and reporting tests in C/C++ projects. It is
@@ -9,7 +9,7 @@
  * This header is included by modules defining an orchestrator (main) and 
  * testing functions for testing, e.g., a feature, API, or a project implementation.
  * It provides declarations, definitions (other than non-inline function definitions
- * provided by litetest.c in the repository src directory), and the complete
+ * provided by litetest_runner.c in the repository src directory), and the complete
  * Doxygen documentation for LiteTest. See README.md in the repository root
  * directory for an introduction and usage guide to LiteTest.
  *
@@ -21,7 +21,7 @@
  * @note LiteTest has been exercised in a POSIX environment; however, users must
  *       confirm correct behavior in their own environment.
  * 
- * @copyright Copyright (c) 2026 paulsinclair51
+ * @copyright Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
  * See LICENSE in the repository root for details.
  */
@@ -31,8 +31,8 @@
  *
  * @name LT_VERSION
  *
- * @brief Version "M.m.p" for litetest.h which must be the same as
- *.       LT_VERSION_C for litetest.c.
+ * @brief Version "M.m.p" for litetest_runner.h which must be the same as
+ *.       LT_VERSION_C for litetest_runner.c.
  *
  * M, m, and p are 1 or 2 digits (e.g., O, 00, 1, 01, 24):
  +
@@ -71,7 +71,7 @@
  *   - An orchestrator (main) function and optional test functions
  *     organized into one or more modules,
  *
- *   - litetest.h, and litetest.c, unistd.h
+ *   - litetest_runner.h, and litetest_runner.c, unistd.h
  *
  *   - Modules and include files from the feature/project/API under test.
  *   
@@ -259,7 +259,7 @@ Defaults:
  * include the following:
  *
  * @code
-#include "litetest.h"
+#include "litetest_runner.h"
  * @endcode
  *
  * Use the orchestrator macros, variables and functions in the test
@@ -270,7 +270,7 @@ Defaults:
  *
  * @code
  #undef LT_ORCHESTRATOR
- #include "litetest.h"
+ #include "litetest_runner.h"
  * @endcode
  *
  * Use the LT_TEST, LT_ASSERT_FAIL, and LT_ASSERT_FAULT macros in
@@ -294,7 +294,7 @@ Defaults:
  *
  * LiteTest - Repository name (case-jnsensitive.
  *
- * litetest.h and litetest.c - filenames.
+ * litetest_runner.h and litetest_runner.c - filenames.
  * 
  * Public API:
  *
@@ -377,9 +377,9 @@ extern "C" {
  */
 
 #if defined(LT_STATIC_ASSERT))
-#error "litetest.h: An LT_STATIC_ASSERT " \
+#error "litetest_runner.h: An LT_STATIC_ASSERT " \
        "macro is unexpectedly already defined. " \
-       "#undef before including litetest.h."
+       "#undef before including litetest_runner.h."
 #endif // defined macro
 
 /*
@@ -508,7 +508,7 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
  *       LT_VERSION_NUM, LT_VERSION_HEX, 
  *       LT_VERSION_CMP
  *
- * @brief Version macros for LiteTest (litetest.h and litetest.c):
+ * @brief Version macros for LiteTest (litetest_runner.h and litetest_runner.c):
  * 
  * LT_VERSION_MAJOR
  *    Major version
@@ -1414,113 +1414,4 @@ test function
 }
 #endif
 
-/**
- * @sectiom Test Assist Functions
- *
-
-Additional functions are provided to assist in writing tests.
-
-Priority legend: * nice to have for initial release, ** can wait until
-after initial release. Markers are shown as a suffix after each function
-signature. Unmarked entries are must-have for initial release.
-
-All test assist functions return int status codes.
-
-0 indicates success.
-Non-zero indicates failure.
-
-For comparison helpers, 0 indicates equivalent/match and non-zero
-indicates difference/error.
-
-Named status codes are recommended for consistency (for example,
-LT_OK, LT_ERR_IO, LT_ERR_TIMEOUT, LT_ERR_PARSE, LT_ERR_ARG).
-
-Detailed outputs (for example, captured text, first mismatch index,
-exit codes, and byte counts) are returned through output parameters.
-Behavior notes:
-
-Comparison helpers should document when non-zero means mismatch
-versus operational error.
-
-Output ownership should be explicit: caller-provided buffers are
-caller-owned, and any allocated output must define caller/freeing
-responsibility.
-
-Timeout values are in milliseconds; behavior for 0 and negative values
-should be documented per helper.
-
-Path helpers should define separator normalization and whether relative
-paths resolve from current working directory.
-
-Process/environment helpers are not assumed thread-safe unless explicitly
-documented.
-
-Cross-platform notes: path helpers should normalize separator handling,
-and process helpers should document shell/quoting differences across platforms.
- */
-
-// Process and runtime helpers.
-
-int lt_assert_timeout(int (*fn)(void *ctx), void *ctx, int timeout_ms);
-// Timeout assertion helper for detecting hangs and slow paths.
-// int lt_capture_stderr(int (*fn)(void *ctx), void *ctx, char *buf, size_t bufsz); *
-// stderr capture helper for validating error messages and diagnostics.
-int lt_chdir_scope(const char *path, int (*fn)(void *ctx), void *ctx); *
-// Run a callback in a temporary working directory and restore afterward.
-int lt_execute(const char *commandline, int timeout,
-       char *outbuf, size_t outsz, int *exit_code):
-int lt_wait_until(int (*predicate)(void *ctx), void *ctx,
-       int timeout_ms, int interval_ms);
-// Timed wait/poll helper. Stabilizes tests for async/process behavior.
-
-// File and filesystem helpers.
-
-int lt_copyfile(const char *src, const char *dst)
-// File copy helper for preparing sandboxed test inputs.
-int lt_mktempdir(const char *prefix, char *outpath, size_t outsz)
-// Temp directory creator. Isolates test artifacts per test.
-int lt_mktempfile(const char *prefix, char *outpath, size_t outsz)
-// Temp file creator. Avoids collisions and manual cleanup issues.
-int lt_mkdirp(const char *path)
-// Create nested directories for fixture setup.
-int lt_path_join(const char *a, const char *b, char *out, size_t outsz)
- // Path join helper to reduce separator and path-format mistakes.
-int lt_readfile(const char *filepath, char **content, size_t *len)
-// File-to-string helper. Simplifies validating generated files and golden-output checks.
-int lt_readfile_limit(const char *path, size_t max_bytes, char **content, size_t *len)
-// Bounded file read helper to prevent unbounded allocations in tests.
-int lt_rmrf(const char *path)
-// Recursive delete helper for deterministic cleanup of test artifacts.
-int lt_stat_check(const char *path, int must_exist, long min_size)
-// File existence/metadata helper for generated output validation.
-int lt_touch(const char *path) *
-// Create-or-update timestamp helper for file state tests.
-int lt_writefile(const char *filepath, const void *buf, size_t len)
-// File write helper for fixture setup and output generation.
-
-// Comparison and matching helpers,
-
-int lt_dircmp(const char *dir1, const char *dir2, int recursive) *
-// Directory snapshot compare. Useful for tools that generate multiple output artifacts.
-int lt_filecmp(FILE *f1, FILE *f2)
-int lt_filecmpfilepath(FILE *f, const char *fp)
-int lt_filepathcmp(const char *fp1, const char *fp2)
-int lt_filepathcmpfile(const char *fp, FILE *f)
-int lt_hexdump_diff(const void *a, const void *b, size_t n, size_t context) *
-// Hex diff helper to make binary assertion failures easy to diagnose.
-int lt_jsoncmp(const char *expected, const char *actual, int ignore_key_order) **
-// JSON compare helper for API output tests with optional key-order tolerance.
-int lt_match(const char *text, const char *pattern)
-// Pattern/regex assert helper. Assert expected output structure without
-//exact full-string match.
-int lt_memcmp_detail(const void *a, const void *b, size_t n, size_t *first_diff)
-// Binary buffer compare with diff index. Improves failure diagnostics.
-int lt_textcmp_normalized(const char *a, const char *b, int ignore_ws, int ignore_line_endings)
-// Text normalization compare. Avoids flaky failures across platforms due to CRLF/whitespace differences.
-
-// Environment helpers.
-
-int lt_with_env(const char *name, const char *value, int (*fn)(void *), void *ctx)
-// Environment variable scope helper. Safely sets/restores env vars around a test action.
-
-// End of litetest.h
+// End of litetest_runner.h

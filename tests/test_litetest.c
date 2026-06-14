@@ -2,16 +2,16 @@
  * @file paulsinclair51/LiteTest/tests/test_litetest.c
  *
  * @brief Test the LiteTest API and framework declared in
- *        /paulsinclair51/LiteTest/include/litetest.h (e.g.,
+ *        /paulsinclair51/LiteTest/include/litetest_runner.h (e.g.,
  *        LT_OPEN_REPORT, LT_TEST, LT_WRITE_RESULT).
  *
- * @copyright Copyright (c) 2026 paulsinclair51
+ * @copyright Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
  * For license details, see @ref ../LICENSE "LICENSE" in the
  * paulsinclair51/LiteTest GitHub repository.
  */
 
-#include "litetest.h"
+#include "litetest_runner.h"
 
 LT_DECLARE_ORCHESTRATOR(main)
 { 
@@ -25,6 +25,7 @@ LT_DECLARE_ORCHESTRATOR(main)
 
   LT_TEST(test_guard1, 0);
   LT_WRITE_RESULT(LT_TEST(test_guard2, 0), "Guard 1 and 2");
+  LT_WRITE_RESULT(LT_TEST(test_file_compare_helpers, 0), "File Compare Helpers");
 
   LT_CLOSE_REPORT;
 

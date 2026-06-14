@@ -2,7 +2,7 @@
 
 This guide explains how to use LiteTest Runner effectively: concepts, workflow, execution model, examples, and practical usage patterns. It complements the **LiteTest API Reference**, which documents the public API in detail.
 
-Copyright (c) 2026 paulsinclair51
+Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
 
 ---
@@ -19,7 +19,7 @@ A typical test executable includes:
 
 - An orchestrator (`main`)
 - One or more test group functions
-- `litetest.h` and `litetest.c`
+- `litetest_runner.h` and `litetest_runner.c`
 - Project headers and sources under test
 
 ---

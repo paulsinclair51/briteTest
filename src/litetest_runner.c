@@ -1,5 +1,5 @@
 /**
- * @file /paulsinclair51/src/litetest.c
+ * @file /paulsinclair51/src/litetest_runner.c
  *
  * @mainpage LiteTest Function Definitions
  * 
@@ -8,11 +8,11 @@
  * 
  *        For an overview of the LiteTest API and framework, see
  *        @ref README.md "README.md" in the /paulsinclair51/litetest
- *        repository. See the header @ref /paulsinclair51/include/litetest.h
- *        "litetest.h" in the include directory for the complete
+ *        repository. See the header @ref /paulsinclair51/include/litetest_runner.h
+ *        "litetest_runner.h" in the include directory for the complete
  *        definition and documentation.
  * 
- * @copyright Copyright (c) 2026 paulsinclair51
+ * @copyright Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
  * For license details, see @ref LICENSE "LICENSE" in the
  * paulsinclair51/LiteTest repository root.
@@ -21,8 +21,8 @@
 /**
  * @name LT_VERSION_C
  *
- * @brief Version "M.m.p" for litetest.c which must be the same as VERSION
- *.       for litetest.h.
+ * @brief Version "M.m.p" for litetest_runner.c which must be the same as VERSION
+ *.       for litetest_runner.h.
  *
  * M, m, and p are 1 or 2 digits (e.g., O, 00, 1, 01, 24):
  +
@@ -55,7 +55,7 @@ LT_STATIC_ASSERT(!LT_VERSION_CMP(LT_VERSION_C), VERSION_C_must_match_VERSION);
  * for Windows).
  */
 
-#include "litetest.h"
+#include "litetest_runner.h"
 
 // Allow functions to be invoked from C++.
 #if defined(__cplusplus)
@@ -1158,4 +1158,4 @@ void litetest_close_report_internal
 }
 #endif
 
-// End of litetest.c
+// End of litetest_runner.c

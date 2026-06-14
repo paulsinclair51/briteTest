@@ -1,14 +1,25 @@
 # LiteTest Contributor Guide
 
 This document defines the contribution process, coding standards, documentation
-rules, and versioning guidelines for LiteTest. It is intended for contributors
-and maintainers working on the LiteTest framework, tools, and documentation.
+rules, and versioning guidelines for LiteTest.
 
-Copyright (c) 2026 paulsinclair51.  
-SPDX-License-Identifier: MIT.
+`Click to view` sections are used throughout this document.
+</details>
 
 <details>
-<summary>Click to view</summary>
+<summary>Why "Click to view"?</summary>
+
+- Keeps documents readable while accommodating large amounts of technical detail.
+  
+- Allows scanning the structure and expanding only what you need.
+
+- Reduces visual noise and makes navigation easier.
+</details>
+
+#### Copyright (c) 2026 Paul Sinclair  
+
+<details>
+<summary>Click to view SPDX-License-Identifier: MIT</summary>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,27 +40,238 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 </details>
 
-### Document Version History
+## Preface
+
+This document is intended for LiteTest contributors who need guidance on patching and
+enhancing LiteTest APIs, and updating Litetest documentation.
+.
+
+#### Document Version History
 
 <details>
 <summary>Click to view</summary>
 
-| Document | Date       | Description                          | Author/Editor  |
-|----------|------------|--------------------------------------|----------------|
-| 1.0      | 2026‑06‑11 | Initial LiteTest Contributor Guide.  | paulsinclair51 |
+| Document | Date | Runner ! Test | Comment | Author/Editor |
+| Document | Date | Runner | Test | Comment | Author/Editor |
+|----------|------|--------|------|---------|---------------|
+| 1.0 | 2026‑06‑11 | 1.0.0 | 1.0.0 | Initial version. | Paul Sinclair |
 
-The **Document** column tracks the version `M.u` (major, update) of this
-Contributor Guide. Unlike the Framework Reference, this document’s major version
-does **not** need to match the LiteTest major version.
+- The `Document` column records the document's version and uses the version format `M.u` (Major, update).
+- The `Runner` column records the LiteTest Runner API version current at the time this document version was published and is defined by its `LT_RUNNER_VERSION` macro.
+- The `Test` column records the LiteTest Test API version current at the time this document version was published and is defined by its `LT_TEST_VERSION` macro.
 
-The **update** version tracks updates to this document itself and does not
-correspond to LiteTest minor or patch versions. The update version is
-incremented whenever this document is updated without a change to the major
-version, and it resets to `0` when the major version increases.
+Both Runner and Test versions specify a string of the form `"M.m.p"` (Major, minor, patch). `M` is the same for the document, Runner, and Test.
 
+The document's `u` (update) version track updates to this document and does not correspond to a `m` (minor) or `p` (patch) version. `u` increments whenever this document is updated without a change to `M`, and it resets to `0` when `M` is incremented.
+</details>
 </details>
 
-### Documentation Style Guide
+#### Documentation
+
+<details>
+<summary>Click to view</summary>
+
+This section lists all LiteTest user and contributor documentation.
+
+**User documentation**:
+
+- `README.md` — Introduction to LiteTest.
+
+- `LiteTest_Documentation.md` — Index of LiteTest documents and repository layout.
+
+- `LiteTest_Glossary.md` — An alphabetically ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest) and terms often used in the testing domain.
+
+- `LiteTest_Runner_User_Guide.md` — Concepts, usage, and examples for the LiteTest Runner framework and API.
+
+- `LiteTest_Runner_Reference.md` — Reference document for the LiteTest Runner API.
+
+- `LiteTest_Test_User_Guide.md` — Concepts, usage, and examples for the LiteTest Test API.
+
+- `LiteTest_Test_Reference.md` — Reference document for the LiteTest Test API.
+
+**Contributor documentation**:
+
+- `LiteTest_Contributor_Guide.md` — Versioning, documentation/coding guidelines, branching, testing, and CI/release checklists.
+
+- `LiteTest_Runner_Internal_Guide.md` — Implementation concepts, architecture, and high-level design for the Runner API.
+
+- `LiteTest_Runner_Internal_Reference.md` — Reference for the implementation of the Runner API.
+  
+- `LiteTest_Test_Internal_Guide.md` — Implementation concepts, architecture, and high-level design for the Test API.
+
+- `LiteTest_Test_Internal_Reference.md` — Reference for the implementation of the Test API.
+</details>
+
+#### LiteTest Repository Layout
+
+<details>
+<summary>Click to view</summary>
+
+This section shows the layout of the GitHub repository `paulsinclair51/LiteTest` (core files and directories):
+
+```text
+.github/workflows/ci.yml
+README.md
+LICENSE
+Makefile
+build_test_litetest.ps1
+build/
+docs/
+    LiteTest_Documentation.md
+    LiteTest_Glossary.md
+    LiteTest_Runner_User_Guide.md
+    LiteTest_Runner_Reference.md
+    LiteTest_Contributor_Guide.md
+    LiteTest_Runner_Internal_Guide.md
+    LiteTest_Runner_Internal_Reference.md
+    LiteTest_Test_Internal_Guide.md
+    LiteTest_Test_Internal_Reference.md
+examples/
+include/
+    litetest_runner.h
+    litetest_test.h
+reports/
+    litetest_test_report-I.txt
+    litetest_test_report.txt
+scripts/
+src/
+    litetest_runner.c
+    litetest_test.c
+tests/
+    test_litetest.c
+    test_orchestrator.c
+    test_guard1.c
+    test_guard2.c
+```
+</details>
+
+## Table of Contents
+
+<details>
+<summary>Click to view</summary>
+
+- [**1. Overview**](#1-overview)
+- [**2. Versioning Rules**](#2-versioning-rules)
+- [**3. Testing Requirements**](#3-testing-requirements)
+- [**4. Documentation Rules**](#4-documentation-rules)
+- [**5. Code Style**](#5-code-style)
+- [**6. Writing Style Consistency**](#6-writing-style-consistency)
+- [**7. Pull Requests**](#7-pull-requests)
+- [**Glossary**](#glossary)
+</details>
+
+## 1. Overview
+
+<details>
+<summary>Click to view</summary>
+
+This Contributor Guide defines the expectations and rules for contributing to
+LiteTest. It covers versioning, testing, documentation, code style, and pull
+request requirements.
+
+Contributors should read this document before submitting changes to ensure
+consistency across the LiteTest codebase and documentation.
+</details>
+
+## 2. Versioning Rules
+
+<details>
+<summary>Click to view</summary>
+
+LiteTest uses semantic versioning:
+- For .h and .c files: `M.m.p` (major, minor, patch).
+- For .md files: `M.u` (major, update).
+
+### Update
+- Document update.
+
+### Patch
+- Bug fixes or implementation improvements.
+
+### Minor
+- Additive changes to the public API.
+- New behavior must be opt‑in.
+- No breaking changes.
+
+### Major
+- Breaking changes to public APIs.
+- Removal of deprecated features.
+- Significant behavior changes.
+- If incremented, it must be updated for all files (.h, .c, and .md) to the same major value, even if the file was not otherwise modified or updated with update,
+minor, and patch reset to 0.
+
+### When updating the version for the Runner API:
+- Update `LT_RUNNER_VERSION` in `litetest_runner.h`.
+- Update `LT_RUNNER_VERSION_C` in `litetest_runner.c`.
+
+### When updating the version for the Test API:
+- Update `LT_TEST_VERSION` in `litetest_test.h`.
+- Update `LT_TEST_VERSION_C` in `litetest_test.c`.
+
+### When updating the version for a document:
+- Add a new new entry to the Document Verion History table
+with an incremented value for u if major is not incremented,
+otherwsith with 0.
+
+### API compatibility rules:
+- Public APIs are additive by default.
+- Do not change existing signatures.
+- Do not change return code meanings.
+- Deprecate before removing.
+- Provide migration guidance for major changes.
+</details>
+
+## 3. Testing Requirements
+
+<details>
+<summary>Click to view</summary>
+
+- Build and run tests from the repository root:
+
+```sh
+make run
+```
+
+- Ensure report formatting changes are reflected in documentation examples.
+- Keep test code aligned with the current version of `litetest_runner.h`.
+</details>
+
+## 4. Documentation Rules
+
+<details>
+<summary>Click to view</summary>
+
+- `README.md` must remain short and onboarding‑focused.
+- A User Guide contains conceptual explanations and examples.
+- A API Reference contains public API definitions only.
+- An internal guide or reference must not leak into public docs.
+- Update documentation when enhancing macros, behavior, or report format.
+</details>
+
+## 5. Code Style
+
+<details>
+<summary>Click to view</summary>
+
+- C99.
+- POSIX.1‑2001 APIs only.
+- Keep `litetest_runner.h` self‑contained.
+- Keep `litetest_runner.c` implementation‑only.
+- Avoid intermixing test code with helper logic inside test group functions.
+</details>
+
+## 6. Writing Style Consistency
+
+<details>
+<summary>Click to view</summary>
+
+(See the full style rules in the Documentation Style Guide above.)
+
+This section exists here to ensure contributors do not overlook the requirement
+for parallel structure and consistent writing patterns across all LiteTest
+documentation.
+
+##@ 6.1 Documentation Style Guide
 
 <details>
 <summary>Click to view</summary>
@@ -87,121 +309,8 @@ structure** within lists and related sentences. In practice:
 - Avoid mixing styles such as “Keep paragraphs short” with “Using lists for enumerations.”
 - Rewrite items as needed so the list reads smoothly and uniformly.
 
-This guideline applies to all LiteTest documentation, including the User Guide,
-API Reference, Framework Guide, and Framework Reference.
+This guideline applies to all LiteTest documentation (.md files).
 </details>
-
-## Table of Contents
-
-<details>
-<summary>Click to view</summary>
-
-- [**1. Overview**](#1-overview)
-- [**2. Versioning Rules**](#2-versioning-rules)
-- [**3. Testing Requirements**](#3-testing-requirements)
-- [**4. Documentation Rules**](#4-documentation-rules)
-- [**5. Code Style**](#5-code-style)
-- [**6. Writing Style Consistency**](#6-writing-style-consistency)
-- [**7. Pull Requests**](#7-pull-requests)
-- [**Repository Layout**](#repository-layout)
-- [**Glossary**](#glossary)
-
-</details>
-
-## 1. Overview
-
-<details>
-<summary>Click to view</summary>
-
-This Contributor Guide defines the expectations and rules for contributing to
-LiteTest. It covers versioning, testing, documentation, code style, and pull
-request requirements.
-
-Contributors should read this document before submitting changes to ensure
-consistency across the LiteTest codebase and documentation.
-</details>
-
-## 2. Versioning Rules
-
-<details>
-<summary>Click to view</summary>
-
-LiteTest uses semantic versioning: `M.m.p` (major, minor, patch).
-
-### Patch
-- Bug fixes or implementation improvements.
-
-### Minor
-- Additive changes to the public API.
-- New behavior must be opt‑in.
-- No breaking changes.
-
-### Major
-- Breaking changes to public APIs.
-- Removal of deprecated features.
-- Significant behavior changes.
-
-### When updating the version:
-- Update `LT_VERSION` in `litetest.h`.
-- Update `LT_VERSION_C` in `litetest.c`.
-
-### API compatibility rules:
-- Public APIs are additive by default.
-- Do not change existing signatures.
-- Do not change return code meanings.
-- Deprecate before removing.
-- Provide migration guidance for major changes.
-</details>
-
-## 3. Testing Requirements
-
-<details>
-<summary>Click to view</summary>
-
-- Build and run tests from the repository root:
-
-```sh
-make run
-```
-
-- Ensure report formatting changes are reflected in documentation examples.
-- Keep test code aligned with the current version of `litetest.h`.
-</details>
-
-## 4. Documentation Rules
-
-<details>
-<summary>Click to view</summary>
-
-- `README.md` must remain short and onboarding‑focused.
-- The User Guide contains conceptual explanations and examples.
-- The API Reference contains public API definitions only.
-- Framework documentation (internal) must not leak into public docs.
-- Update documentation when modifying macros, behavior, or report format.
-</details>
-
-## 5. Code Style
-
-<details>
-<summary>Click to view</summary>
-
-- C99.
-- POSIX.1‑2001 APIs only.
-- Keep `litetest.h` self‑contained.
-- Keep `litetest.c` implementation‑only.
-- Avoid intermixing test code with helper logic inside test group functions.
-</details>
-
-## 6. Writing Style Consistency
-
-<details>
-<summary>Click to view</summary>
-
-(See the full style rules in the Documentation Style Guide above.)
-
-This section exists here to ensure contributors do not overlook the requirement
-for parallel structure and consistent writing patterns across all LiteTest
-documentation.
 </details>
 
 ## 7. Pull Requests
@@ -217,138 +326,27 @@ Before submitting a PR:
 - Keep changes focused and well‑scoped.
 </details>
 
-## Repository Layout
-
-<details>
-<summary>Click to view</summary>
-
-(Identical to the Framework Reference for consistency.)
-
-```text
-LiteTest/
-|- .github/
-|  \- workflows/
-|     \- ci.yml
-|- README.md
-|- LICENSE
-|- Makefile
-|- build_test_litetest.ps1
-|- build/
-|- docs/
-|  \- LiteTest_API_User_Guide.md
-|  \- LiteTest_API_Reference.md
-|  \- LiteTest_Contributor_Guide.md
-|  \- LiteTest_Framework_Guide.md
-|  \- LiteTest_Framework_Reference.md
-|- examples/
-|- include/
-|  \- litetest.h
-|- reports/
-|  |- litetest_test_report-I.txt
-|  \- litetest_test_report.txt
-|- scripts/
-|- src/
-|  \- litetest.c
-|- tests/
-|  |- test_litetest.c
-|  |- test_orchestrator.c
-|  |- test_guard1.c
-|  \- test_guard2.c
-```
-</details>
-
 ## Glossary
 
 <details>
 <summary>Click to view</summary>
 
-### General Terms
+For general LiteTest terms, see the LiteTest Glossary document.
 
-<details>
-<summary>Click to view</summary>
-  
-- `API`: Application Programming Interface.
-- `category`: A labeled set of `LT_GROUP` and `LT_TEST` macros whose combined
-  results are written by `LT_WRITE_RESULT` to the report with a specified
-  category name.
-- `control file`: A previously generated file that can be compared to a newly
-  generated file for differences. Differences (other than expected ones like
-  timestamps) typically indicate a test failure. Sometimes the control file is
-  out of date and must be replaced by promoting the new file.
-- `customization support functions`: API functions provided to support
-  customizing the orchestrator and test group functions.
-- `default report filename`: The report filename LiteTest uses when only a
-  directory path (or no `PATH`) is provided.
-- `executable`: The compiled test program that runs the orchestrator and test
-  functions.
-- `fail`: A counted test failure where the `LT_TEST` or `LT_INJECT_TEST`
-  expression evaluates to zero.
-- `fault`: A counted runtime fault captured by LiteTest guards (e.g., invalid
-  memory access).
-- `Concurrent block`: A set of tests bracketed by `LT_BEGIN_CONCURRENT` and
-  `LT_END_CONCURRENT`.
-- `group`: See `test group`.
-- `guard`: The protection mechanism used to catch runtime faults and continue
-  test execution.
-- `guard level`: The nesting depth of active guards while test groups and tests
-  run.
-- `inject mode (-i)`: Optional command‑line flag that enables an
-  `LT_INJECT_TEST` to be executed.
-- `isolation`: Execution mode for `LT_GROUP`, `LT_TEST`, or `LT_INJECT_TEST`.
-  `0` = same thread, `1` = separate thread, `2` = separate process.
-- `maxargs`: Maximum number of command‑line arguments accepted by orchestrator
-  parsing. `LT_PARSE_ARGS` handles the first two arguments; additional arguments
-  must be parsed by custom code.
-- `maxparallel`: Upper bound on concurrent `LT_GROUP`, `LT_TEST`,
-  `LT_INJECT_TEST`. Set in `LT_INIT_ORCHESTRATOR` and `LT_GROUP`.
-- `notes`: Optional text appended to the report by `LT_CLOSE_REPORT`.
-- `orchestrator`: The `main` function that initializes LiteTest, runs groups or
-  tests, and writes report output.
-- `pass`: A counted successful test where the expression evaluates to non‑zero.
-- `PATH`: Optional command‑line output destination; may be a report file path or
-  directory path.
-- `process isolation`: Isolation mode where a test group or test runs in a
-  separate process.
-- `project`: Project identifier used in orchestrator initialization and default
-  report naming.
-- `test group`: A grouping of `LT_TEST` and optionally nested `LT_GROUP` macros.
-- `test group function`: A function declared with `LT_DECLARE_GROUP` that
-  contains `LT_TEST` and `LT_GROUP` macros.
-- `thread isolation`: Isolation mode where a test/assert call runs in a
-  separate thread.
-- `test case`: Not used in LiteTest. In other contexts it may mean a single
-  test or a set of tests; LiteTest uses “test expression” and “test group.”
-- `test`: See `test expression`.
-- `test expression`: An expression passed to an `LT_TEST` macro that can be cast
-  to `int`; zero means fail, non‑zero means pass.
-- `testing artifact`: A file or output generated by the test executable (e.g.,
-  test report, stdout, stderr).
-- `testing function`: A user‑written function used to implement or support a
-  test expression.
-- `test support functions`: API functions provided to simplify writing tests.
-- `title`: Optional report header text provided when opening the report.
-- `Public API`: Functions, macros, and types intended for external use.
-- `Internal API`: Framework‑only symbols not intended for external use.
-- `Semantic Versioning`: Versioning scheme using `M.m.p`.
-- `Report Format`: The output structure produced by LiteTest test runs.
-</details>
-
-### Contributor‑Specific Terms
+Contributor‑Specific Terms:
 
 <details>
 <summary>Click to view</summary>
 
-- **Contributor**: A person submitting code, documentation, fixes, or improvements to LiteTest.
-- **Maintainer**: A contributor with commit access who reviews pull requests, enforces versioning rules, and ensures documentation consistency.
-- **Documentation Update**: Any change to LiteTest documentation that requires incrementing the Contributor Guide’s update version.
-- **Major Document Version**: A structural or conceptual overhaul of the Contributor Guide (e.g., reorganizing sections, adding new contributor workflows).
-- **Update Document Version**: Incremented for smaller edits, clarifications, formatting changes, or refinements.
-- **Public API Change**: Any modification to the LiteTest API that requires a version bump, documentation updates, and test updates.
-- **Internal API Change**: A change to framework internals that does not affect public API users but may require updates to the Framework Guide, Framework Reference, or Contributor Guide.
+- **Approver**: A contributor with commit access who reviews pull requests, enforces versioning rules, and ensures documentation consistency.
 - **Breaking Change**: A change that alters public API behavior, removes or renames macros, changes return semantics, or requires a major version bump.
+- **Contributor**: A person submitting code, documentation, fixes, or improvements to LiteTest.
 - **Deprecation**: A public API element marked for removal in a future major version, requiring documentation updates and migration guidance.
+- **Documentation Update**: Any change to released LiteTest documentation requires incrementing the update version or, if an API major version is incremented, incrementing the major version and resetting the update version to 0.
+- **Internal API Change**: A change to an API's internals that does not affect public API users but may require updates to an Internal Guide or Internal Reference.
+- **Major Increment**: A structural or conceptual overhaul of LiteTest that causes a breaking change.
+- **Public API Change**: Any modification to the LiteTest Runner or Test API that requires a version bumpv.
 - **Pull Request Scope**: A guideline requiring PRs to be focused, minimal, logically grouped, and not mixing unrelated changes.
 - **Test Coverage Requirement**: The expectation that all changes to LiteTest include new tests (if adding behavior), updated tests (if modifying behavior), and no regressions.
-- **Report Format Change**: Any modification to the LiteTest test report output that requires updating examples, documentation, and tests that compare report output.
 </details>
 </details>

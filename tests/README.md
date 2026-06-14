@@ -2,7 +2,7 @@
 
 Directory for test source files, test data, test executable, and test fixtures.
 
-Copyright (c) 2026 paulsinclair51   
+Copyright (c) 2026 Paul Sinclair   
 SPDX-License-Identifier: MIT   
 For license details, see `../LICENSE`.
 

@@ -15,11 +15,10 @@ companion index to the user and contributor LiteTest documents.
 - Reduces visual noise and makes navigation easier.
 </details>
 
-Copyright (c) 2026 Paul Sinclair.  
-SPDX-License-Identifier: MIT.
+#### Copyright (c) 2026 Paul Sinclair  
 
 <details>
-<summary>Click to view license</summary>
+<summary>Click to view SPDX-License-Identifier: MIT</summary>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -50,20 +49,17 @@ of the available documentation and repository structure.
 <details>
 <summary>Click to view</summary>
 
-| Document | Date | LiteTest | Comment | Author/Editor |
-|----------|------|----------|---------|---------------|
-| 1.0 | 2026‑06‑11 | 1.0.0 | Initial version. | Paul Sinclair |
+| Document | Date | Runner | Test | Comment | Author/Editor |
+|----------|------|--------|------|---------|---------------|
+| 1.0 | 2026‑06‑11 | 1.0.0 | 1.0.0 | Initial version. | Paul Sinclair |
 
-The `Document` column uses the version format `M.u` (Major, update). The `LiteTest` column records the LiteTest version current at the time this document version was published.
+- The `Document` column records the document's version and uses the version format `M.u` (Major, update).
+- The `Runner` column records the LiteTest Runner API version current at the time this document version was published and is defined by its `LT_RUNNER_VERSION` macro.
+- The `Test` column records the LiteTest Test API version current at the time this document version was published and is defined by its `LT_TEST_VERSION` macro.
 
-The current LiteTest version is defined by the `LT_VERSION` macro in the LiteTest
-Runner API, which specifies a string of the form `"M.m.p"` (Major, minor, patch).
+Both Runner and Test versions specify a string of the form `"M.m.p"` (Major, minor, patch). `M` is the same for the document, Runner, and Test.
 
-The document’s `M` (Major) version matches the LiteTest Runner's `M` (Major) version.
-The document's `u` (update) version tracks updates to this document and does not
-correspond to the Runner's `m` (minor) or `p` (patch) versions. `u` increments
-whenever this document is updated without a change to `M`, and it resets to `0` when
-`M` is incremented.
+The document's `u` (update) version track updates to this document and does not correspond to a `m` (minor) or `p` (patch) version. `u` increments whenever this document is updated without a change to `M`, and it resets to `0` when `M` is incremented.
 </details>
 
 ## Documentation
