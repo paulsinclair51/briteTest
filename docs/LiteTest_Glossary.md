@@ -18,9 +18,11 @@ the testing domain. It is a companion document to the other LiteTest documents.
 #### Copyright (c) 2026 Paul Sinclair  
 
 <details>
-<summary>Click to view SPDX-License-Identifier: MIT</summary>
+<summary>Click to view License</summary>
 
 #### License
+
+SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
