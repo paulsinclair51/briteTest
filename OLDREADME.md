@@ -8,7 +8,7 @@ LiteTest is a lightweight Application Programming Interface (API) and framework 
 running, and reporting tests in C/C++ projects. It is implemented as a single `.h` and `.c` pair
 with no external dependencies requiring only a POSIX.1‑2001 environment and a C99‑compliant compiler.
 
-Copyright (c) 2026 paulsinclair51  
+Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT. See `LICENSE` for details.
 
 <details>
@@ -56,11 +56,11 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 LiteTest tests are C/C++ expressions/functions, and the orchestrator controls
 reporting and execution.
 
-1. To try LiteTest, copy 'litetest.h' and 'litetest.c' to your current directory:
+1. To try LiteTest, copy 'litetest_runner.h' and 'litetest_runner.c' to your current directory:
 
 ```sh
-cp /path/to/litetest.h .
-cp /path/to/litetest.c .
+cp /path/to/litetest_runner.h .
+cp /path/to/litetest_runner.c .
 ```
 
 2. Create a file named `test_quick.c` in the same directory.
@@ -71,7 +71,7 @@ cp /path/to/litetest.c .
 <summary>💻 Click to view and copy</summary>
 
 ```c
-#include "litetest.h"
+#include "litetest_runner.h"
 
 // A simple test group function.
 
@@ -126,7 +126,7 @@ LT_DECLARE_ORCHESTRATOR(main)
 4. Build the executable `test_quick` in your current directory:
 
 ```sh
-cc -std=c99 -Wall -Wextra -o test_quick test_quick.c litetest.c
+cc -std=c99 -Wall -Wextra -o test_quick test_quick.c litetest_runner.c
 ```
 
 5. Run it:
@@ -168,7 +168,7 @@ This README serves as the introduction and usage guide to LiteTest. It focuses o
 workflow, and practical examples to help you quickly integrate LiteTest into your project.
 
 Detailed API behavior, macro semantics, and lower‑level implementation details are documented
-directly in `include/litetest.h`.
+directly in `include/litetest_runner.h`.
 
 ## Key Features
 
@@ -246,18 +246,24 @@ LiteTest is a lightweight C/C++ testing framework built around a simple executio
 2. You wrap each test group function name with the `LT_GROUP` macro in the orchestrator.
 3. The orchestrator (`main`) function runs the test group functions and reports results.
 
-The LiteTest API and framework files:
+The LiteTest Runner API files:
 
- - [`include/litetest.h`](include/litetest.h) — public API (typedefs, enums, constants, macros,
+ - [`include/litetest_runner.h`](include/litetest_runner.h) — public API (typedefs, enums, constants, macros,
    function declarations, and static inline function definitions).
- - [`src/litetest.c`](src/litetest.c) — function definitions for the LiteTest framework.
+ - [`src/litetest_runner.c`](src/litetest_runner.c) — function definitions for the LiteTest framework.
+
+The LiteTest Test API files:
+
+ - [`include/litetest_test.h`](include/litetest_test.h) — test support/helper function declarations.
+ - [`src/litetest_test.c`](src/litetest_test.c) — test support/helper function definitions.
 
 A typical test executable includes:
 
 - An orchestrator (`main`) function that opens the report, invokes test group functions,
   writes category results, and closes the report.
 - Multiple test group functions that execute the tests.
-- The LiteTest API and framework files (`litetest.h`, `litetest.c`). 
+- The LiteTest Runner API files (`litetest_runner.h`, `litetest_runner.c`).
+- The LiteTest Test API files (`litetest_test.h`, `litetest_test.c`).
 - The headers and source files for the project being tested.
 
 main()
@@ -492,7 +498,7 @@ Examples include:
 - `lt_iswritedirpath`
 </details>
 
-See [include/litetest.h](include/litetest.h) for documentation on the provided
+See [include/litetest_runner.h](include/litetest_runner.h) for documentation on the provided
 customization functions.
 
 ## Test Support API
@@ -504,33 +510,33 @@ Additional functions are provided to support writing tests.
 
 Examples of Process and runtime helpers include:
 
-- `int lt_execute(const char *commandline, int timeout, char *outbuf, size_t outsz, int *exit_code)`
-- `int lt_wait_until(int (*predicate)(void *ctx), void *ctx, int timeout_ms, int interval_ms)`
+- `int lt_execute_command(const char *command_line, int timeout_ms, char *output_buffer, size_t output_buffer_size, int *exit_code)`
+- `int lt_wait_for_condition(int (*condition)(void *callback_context), void *callback_context, int timeout_ms, int poll_interval_ms)`
 
 Examples of File and filesystem helpers include:
 
-- `int lt_copyfile(const char *src, const char *dst)`
-- `int lt_mktempdir(const char *prefix, char *outpath, size_t outsz)`
+- `int lt_copy_file(const char *source_path, const char *destination_path)`
+- `int lt_make_temp_dir(const char *prefix, char *out_path, size_t out_path_size)`
   
 Examples of Comparison and matching helpers include:
 
-- `int lt_filecmp(FILE *f1, FILE *f2)`
-- `int lt_filecmpfilepath(FILE *f, const char *fp)`
-- `int lt_filepathcmp(const char *fp1, const char *fp2)`
-- `int lt_filepathcmpfile(const char *fp, FILE *f)`
+- `int lt_compare_files(FILE *left_file, FILE *right_file)`
+- `int lt_compare_file_to_path(FILE *file, const char *path)`
+- `int lt_compare_paths(const char *left_path, const char *right_path)`
+- `int lt_compare_path_to_file(const char *path, FILE *file)`
 - `int lt_match(const char *text, const char *pattern)`
 
 Example of Environment helpers:
 
-- `int lt_with_env(const char *name, const char *value, int (*fn)(void *), void *ctx)`
+- `int lt_with_environment_variable(const char *variable_name, const char *temporary_value, int (*callback)(void *callback_context), void *callback_context)`
 </details>
 
-See [include/litetest.h](include/litetest.h) for documentation on the provided
+See [include/litetest_test.h](include/litetest_test.h) for documentation on the provided
 test support functions.
   
 ## Headers (.h) and Sources (.c)
 
-Source files containing the orchestrator or test group functions must include `litetest.h` and
+Source files containing the orchestrator or test group functions must include `litetest_runner.h` and
 any required project headers.
 
 Example: Testing lubtype Project
@@ -541,7 +547,7 @@ source file includes these two headers:
 
 ```c
 #include "lubtype.h"
-#include "litetest.h"
+#include "litetest_runner.h"
 ```
 
 Example: Self-Testing LiteTest Project
@@ -550,7 +556,7 @@ The `tests` directory for this repository provides an example self-test for
 the LiteTest API and framework.
 
 ```c
-#include "litetest.h"
+#include "litetest_runner.h"
 ```
 
 ## Orchestrator (`main`) Function Template
@@ -779,7 +785,7 @@ options and usage details.
 - If `PATH` contains spaces, quote it (for example, `"my reports/report.txt"`).
 - Existing report files may be overwritten; use unique paths if you need history.
 - On Windows, use a POSIX-capable toolchain (for example, MSYS2 UCRT64).
-- Keep macro examples in your project aligned with the version of `litetest.h` in use.
+- Keep macro examples in your project aligned with the version of `litetest_runner.h` in use.
 
 ## Troubleshooting
 
@@ -791,8 +797,8 @@ options and usage details.
 - Output path with spaces fails: quote `PATH` (for example,
   `"my reports/report.txt"`).
 - Unexpected behavior after macro updates: ensure code and docs match the same
-  LiteTest version (`LT_VERSION` in `litetest.h` and `LT_VERSION_C` in
-  `litetest.c`).
+  LiteTest version (`LT_VERSION` in `litetest_runner.h` and `LT_VERSION_C` in
+  `litetest_runner.c`).
 
 ## Contributing
 
@@ -800,7 +806,7 @@ Contributions are welcome. Before opening a pull request:
 
 - Create a feature branch for your work (for example, `docs/readme-update`).
 
-- Update `LT_VERSION` in `litetest.h` and `LT_VERSION_C` in `litetest.c` if either is
+- Update `LT_VERSION` in `litetest_runner.h` and `LT_VERSION_C` in `litetest_runner.c` if either is
   updated. Update major version for incompatible API changes. Update minor
   version for backward-compatible additions. Update patch version for bug
   fixes or implementation improvements.
@@ -883,13 +889,13 @@ LiteTest/
 |- docs/
 |- examples/
 |- include/
-|  \- litetest.h
+|  \- litetest_runner.h
 |- reports/
 |  |- litetest_test_report-i.txt
 |  \- litetest_test_report.txt
 |- scripts/
 |- src/
-|  \- litetest.c
+|  \- litetest_runner.c
 |- tests/
 |  |- test_litetest.c
 |  |- test_orchestrator.c

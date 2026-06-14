@@ -3,7 +3,7 @@
 Directory for user/API documents, implementation (framework) documents, design notes,
 architecture diagrams, and other project documentation.
 
-Copyright (c) 2026 paulsinclair51   
+Copyright (c) 2026 Paul Sinclair   
 SPDX-License-Identifier: MIT. For license details, see `../LICENSE`.
 
 LiteTest Documents:

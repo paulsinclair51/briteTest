@@ -21,7 +21,8 @@ $cppFlags = @('-Iinclude', '-D_POSIX_C_SOURCE=200809L')
 $cFlags = @('-std=c11', '-Wall', '-Wextra', '-Wno-clobbered', '-O2')
 
 $sources = @(
-    'src/litetest.c',
+    'src/litetest_runner.c',
+    'src/litetest_test.c',
     'tests/test_litetest.c',
     'tests/test_orchestrator.c',
     'tests/test_guard1.c',

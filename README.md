@@ -9,7 +9,7 @@ tooling and dependencies.
 LiteTesf is implemented as a single .h / .c pair with no external dependencies
 requiring only a POSIX.1‑2001 environment and a C99‑compliant compiler.
 
-Copyright (c) 2026 paulsinclair51.  
+Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT.
 
 <details>
@@ -107,11 +107,11 @@ To try LiteTest, simply follow these 6 steps:
 <details>
 <summary><strong>Click to view</strong></summary>
 
-1, copy 'litetest.h' and 'litetest.c' to your current directory:
+1, copy 'litetest_runner.h' and 'litetest_runner.c' to your current directory:
 
 ```sh
-cp /path/to/litetest.h .
-cp /path/to/litetest.c .
+cp /path/to/litetest_runner.h .
+cp /path/to/litetest_runner.c .
 ```
 
 2. Create a file named `test_quick.c` in the same directory.
@@ -122,7 +122,7 @@ cp /path/to/litetest.c .
 <summary>💻 Click to view and copy</summary>
 
 ```c
-#include "litetest.h"
+#include "litetest_runner.h"
 
 // A simple test group function.
 
@@ -177,7 +177,7 @@ LT_DECLARE_ORCHESTRATOR(main)
 4. Build the executable `test_quick` in your current directory:
 
 ```sh
-cc -std=c99 -Wall -Wextra -o test_quick test_quick.c litetest.c
+cc -std=c99 -Wall -Wextra -o test_quick test_quick.c litetest_runner.c
 ```
 
 5. Run it:

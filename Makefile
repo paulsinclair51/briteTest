@@ -1,5 +1,5 @@
 # Makefile for LiteTest test runner (Linux/macOS)
-# Copyright (c) 2026 paulsinclair51
+# Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see the LICENSE file in the root directory.
 
@@ -11,9 +11,11 @@ BUILD_DIR := build
 TARGET := test_litetest
 
 SOURCES := \
-	litetest.c \
+	litetest_runner.c \
+	litetest_test.c \
 	test_litetest.c \
 	test_orchestrator.c \
+	 test_file_compare_helpers.c \
 	test_guard1.c \
 	test_guard2.c
 

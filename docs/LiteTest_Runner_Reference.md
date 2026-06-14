@@ -1,10 +1,10 @@
 # LiteTest Runner Reference
 
-This document defines the **public API** for the LiteTest Runner as declared in `litetest.h`.  
+This document defines the **public API** for the LiteTest Runner as declared in `litetest_runner.h`.  
 It includes public types, enums, macros, and functions.  
 Internal implementation details are not included.
 
-Copyright (c) 2026 paulsinclair51
+Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
 
 ## Overview
@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
 
 # 1. Public Types
 
-(Extracted directly from `litetest.h`)
+(Extracted directly from `litetest_runner.h`)
 
 - `lt_result_t`  
 - `lt_dirpath`  
@@ -27,7 +27,7 @@ SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
 
 # 2. Public Enums
 
-As defined in `litetest.h`:
+As defined in `litetest_runner.h`:
 
 - Result codes  
 - Fault types  
@@ -80,29 +80,29 @@ Isolation parameter:
 
 # 4. Public Functions
 
-As declared in `litetest.h`:
+As declared in `litetest_runner.h`:
 
 ### Process and Runtime Helpers
 
-- `int lt_execute(const char *commandline, int timeout, char *outbuf, size_t outsz, int *exit_code)`  
-- `int lt_wait_until(int (*predicate)(void *ctx), void *ctx, int timeout_ms, int interval_ms)`  
+- `int lt_execute_command(const char *command_line, int timeout_ms, char *output_buffer, size_t output_buffer_size, int *exit_code)`  
+- `int lt_wait_for_condition(int (*condition)(void *callback_context), void *callback_context, int timeout_ms, int poll_interval_ms)`  
 
 ### File and Filesystem Helpers
 
-- `int lt_copyfile(const char *src, const char *dst)`  
-- `int lt_mktempdir(const char *prefix, char *outpath, size_t outsz)`  
+- `int lt_copy_file(const char *source_path, const char *destination_path)`  
+- `int lt_make_temp_dir(const char *prefix, char *out_path, size_t out_path_size)`  
 
 ### Comparison and Matching Helpers
 
-- `int lt_filecmp(FILE *f1, FILE *f2)`  
-- `int lt_filecmpfilepath(FILE *f, const char *fp)`  
-- `int lt_filepathcmp(const char *fp1, const char *fp2)`  
-- `int lt_filepathcmpfile(const char *fp, FILE *f)`  
+- `int lt_compare_files(FILE *left_file, FILE *right_file)`  
+- `int lt_compare_file_to_path(FILE *file, const char *path)`  
+- `int lt_compare_paths(const char *left_path, const char *right_path)`  
+- `int lt_compare_path_to_file(const char *path, FILE *file)`  
 - `int lt_match(const char *text, const char *pattern)`  
 
 ### Environment Helpers
 
-- `int lt_with_env(const char *name, const char *value, int (*fn)(void *), void *ctx)`  
+- `int lt_with_environment_variable(const char *variable_name, const char *temporary_value, int (*callback)(void *callback_context), void *callback_context)`  
 
 ---
 
@@ -114,5 +114,5 @@ The public API follows the versioning rules described in the **LiteTest Contribu
 
 # 6. Notes
 
-- All public API symbols are declared in `include/litetest.h`.  
+- All public API symbols are declared in `include/litetest_runner.h`.  
 - Inline documentation in the header is authoritative.  

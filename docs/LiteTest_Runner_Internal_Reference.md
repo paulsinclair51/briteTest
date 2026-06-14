@@ -9,7 +9,7 @@ components precisely while the Guide explains their design and interaction.
 LiteTest is a lightweight API and framework for defining, running, and
 reporting tests in C/C++ projects.
 
-Copyright (c) 2026 paulsinclair51.  
+Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT.
 
 <details>
@@ -49,9 +49,9 @@ The **Document** column tracks the version `M.u` (major, update) of this Framewo
 Reference document. The **LiteTest** column records the latest LiteTest version
 at the time this document version was published.
 
-The current LiteTest version is defined in `litetest.h` by the macro `LT_VERSION`,
+The current LiteTest version is defined in `litetest_runner.h` by the macro `LT_VERSION`,
 which specifies a string of the form `"M.m.p"` (major, minor, patch).
-`litetest.c` defines a matching version string `LT_VERSION_C`. For details, see
+`litetest_runner.c` defines a matching version string `LT_VERSION_C`. For details, see
 the public API and framework documentation.
 
 A **major LiteTest release requires a corresponding major update to this
@@ -131,7 +131,7 @@ LiteTest directories and files.
   - [Public and Internal Name Conventions](#public-and-internal-name-conventions)  
   - [Why Internal Symbols Appear in the Header](#why-internal-symbols-appear-in-the-header)
 
-- [**2. Symbols Defined in `litetest.h`**](#2-symbols-defined-in-litetesth)  
+- [**2. Symbols Defined in `litetest_runner.h`**](#2-symbols-defined-in-litetesth)  
   - [2.1. Types](#21-types)  
   - [2.2. Structs](#22-structs)  
   - [2.3. Enums and Enum Values](#23-enums-and-enum-values)  
@@ -139,14 +139,14 @@ LiteTest directories and files.
   - [2.5. Macros](#25-macros)  
   - [2.6. Functions](#26-functions)
 
-- [**3. Symbols Defined in `litetest.c`**](#3-symbols-defined-in-litetestc)  
+- [**3. Symbols Defined in `litetest_runner.c`**](#3-symbols-defined-in-litetestc)  
   - [3.1. Types](#31-types)  
   - [3.2. Structs](#32-structs)  
   - [3.3. Enums and Enum Values](#33-enums-and-enum-values)  
   - [3.4. Global Variables](#34-global-variables)  
   - [3.5. Macros](#35-macros)  
-  - [3.6. Functions (declared as a forward reference) in `litetest.h`](#36-functions-declared-as-a-forward-reference-in-litetesth)  
-  - [3.7. Functions (not declared in `litetest.h`)](#37-functions-not-declared-in-litetesth)
+  - [3.6. Functions (declared as a forward reference) in `litetest_runner.h`](#36-functions-declared-as-a-forward-reference-in-litetesth)  
+  - [3.7. Functions (not declared in `litetest_runner.h`)](#37-functions-not-declared-in-litetesth)
 
 - [**4. Execution Engine**](#4-execution-engine)
 
@@ -209,12 +209,12 @@ or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 </details>
 </details>
 
-## 2. Symbols Defined in `litetest.h`
+## 2. Symbols Defined in `litetest_runner.h`
 
 <details>
 <summary>Click to view</summary>
 
-These are used by `litetest.h` and `litetest.c`, and are public or internal
+These are used by `litetest_runner.h` and `litetest_runner.c`, and are public or internal
 based on their name per the naming conventions.
 
 ### 2.1. Types
@@ -434,12 +434,12 @@ Describe what is returned and under what conditions.
 </details>
 </details>
 
-## 3. Symbols Defined in `litetest.c`
+## 3. Symbols Defined in `litetest_runner.c`
 
 <details>
 <summary>Click to view</summary>
 
-These symbols are local to `litetest.c` unless specified or defaulting to
+These symbols are local to `litetest_runner.c` unless specified or defaulting to
 extern. Symbols that are local do not have to conform to the internal naming
 conventions and more natural names may be used.
 
@@ -483,23 +483,23 @@ conventions and more natural names may be used.
 (Placeholder)
 </details>
 
-### 3.6. Functions (declared as a forward reference) in `litetest.h`
+### 3.6. Functions (declared as a forward reference) in `litetest_runner.h`
 
 <details>
 <summary>Click to view</summary>
 
-These functions are referenced internally by `litetest.h` but defined in `litetest.c`.
+These functions are referenced internally by `litetest_runner.h` but defined in `litetest_runner.c`.
 These functions are (by default) extern and must conform to the internal name conventions.
 
 (Placeholder)
 </details>
 
-### 3.7. Functions (not declared in `litetest.h`)
+### 3.7. Functions (not declared in `litetest_runner.h`)
 
 <details>
 <summary>Click to view</summary>
 
-These functions are local to `litetest.c` and defined as static.
+These functions are local to `litetest_runner.c` and defined as static.
 Since these are local, these names do not have to conform to the
 internal name conventions and more natural names may be used.
 
@@ -590,13 +590,13 @@ LiteTest/
 |  \- LiteTest_Framework_Reference.md
 |- examples/
 |- include/
-|  \- litetest.h
+|  \- litetest_runner.h
 |- reports/
 |  |- litetest_test_report-I.txt
 |  \- litetest_test_report.txt
 |- scripts/
 |- src/
-|  \- litetest.c
+|  \- litetest_runner.c
 |- tests/
 |  |- test_litetest.c
 |  |- test_orchestrator.c
