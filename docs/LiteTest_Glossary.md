@@ -3,10 +3,10 @@
 This glossary defines terms generally used in LiteTest and terms often used in
 the testing domain. It is a companion document to the other LiteTest documents.
 
-`Click to view` sections are used throughout this document.
-
 <details>
-<summary>Why "Click to view"?</summary>
+<summary>`Click to view` sections are used throughout this document</summary>
+
+#### Why Click to view?
 
 - Keeps documents readable while accommodating large amounts of technical detail.
   
