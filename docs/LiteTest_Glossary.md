@@ -65,7 +65,6 @@ Both Runner and Test versions specify a string of the form `"M.m.p"` (Major, min
 
 The document's update version track updates to this document and does not correspond to a minor or patch version. `u` increments whenever this document is updated without a change to `M`, and it resets to `0` when `M` is incremented.
 </details>
-</details>
 
 #### Documentation
 
