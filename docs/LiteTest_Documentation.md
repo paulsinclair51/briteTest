@@ -49,9 +49,9 @@ of the available documentation and repository structure.
 <details>
 <summary>Click to view</summary>
 
-| Document | Date | Runner | Test | Comment | Author/Editor |
+| Document | Runner | Tsst | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0 | 2026‑06‑11 | 1.0.0 | 1.0.0 | Initial version. | Paul Sinclair |
+| 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
 
 - The `Document` column records the document's version and uses the version format `M.u` (Major, update).
 - The `Runner` column records the LiteTest Runner API version current at the time this document version was published and is defined by its `LT_RUNNER_VERSION` macro.
