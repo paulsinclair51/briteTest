@@ -173,7 +173,7 @@ tests/                  # Testing assets.
         test_file_compare_helpers.c
         test_guard1.c
         test_guard2.c
-    include/            # Test-only headers.
+    include/            # Test headers.
     control/            # Golden/baseline files for comparison.
     output/             # Retained test outputs needing review
                         # (e.g., copied report file to compare
@@ -193,12 +193,14 @@ tests/                  # Testing assets.
 <details>
 <summary>Table of Contents</summary>
 
-##Table of Contents
+## Table of Contents
 
 - [1. Introduction](#1-introduction)
 - [2. Glossary](#2-glossary)
-
 </details>
+
+<details>
+<summary>Introduction</summary>
 
 ## 1. Introduction
 
@@ -211,12 +213,12 @@ meaning of the term in the testing domain or other contexts.
 
 Note: For specific API macros and functions not included in the glossary, refer
 to the LiteTest Runner or Test API Reference document for information.
-u
-x
-## 2. Glossary
+</details>
 
 <details>
-<summary>Click to view</summary>
+<summary>A: Click to view Glossary</summary>
+
+## 2. Glossary
 
 <details>
 <summary>A: Click to view</summary>
@@ -581,5 +583,4 @@ _No terms currently defined._
 
 _No terms currently defined._
 </details>
-
 </details>
