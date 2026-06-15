@@ -81,13 +81,13 @@ when `M` is incremented.
 </details>
 
 <details>
-<summary>Click to biew Table of Contents</summary>
+<summary>Click to view Table of Contents</summary>
 
 ## Table of Contents
 
 - [1. Introduction](#1-introduction)
-- [3. LiteTest Documents](#3-lite-documents)
-- [3. LiteTest Repository Layout](#2-litetest-repository-layout)
+- [2. LiteTest Documents](#2-litetest-documents)
+- [3. LiteTest Repository Layout](#3-litetest-repository-layout)
 </details>
 
 <details>
