@@ -87,15 +87,35 @@ when `M` is incremented.
 
 ## Table of Contents
 
-- [1. Documentation](#1-documentation)
-- [2. LiteTest Repository Layout](#2-litetest-repository-layout)
-
+- [1. Introduction](#1-introduction)
+- [3. Documentation](#3-documentation)
+- [3. LiteTest Repository Layout](#2-litetest-repository-layout)
 </details>
 
 <details>
-<summary>Click to view 1. Documentation</summary>
+<summary>Click to view 1. Introduction</summary>
 
-## 1. Documentation
+## 1. Introduction
+
+The LiteTest documentation consists of documents for:
+
+- **Users**: Public-facing framework and API documents,
+
+- **Contributors**; Guide and API internal documents.
+</details>
+
+Document types:
+
+- **README**: Introduction or description.
+
+- **Guide**: Usage information.
+
+- **Reference**: Reference companion to a guide.
+
+<details>
+<summary>Click to view 2. Documentation</summary>
+
+## 2. Documentation
 
 This chapter lists all LiteTest user and contributor documentation.
 
@@ -103,10 +123,10 @@ This chapter lists all LiteTest user and contributor documentation.
 
 - **README.md** — Introduction to LiteTest.
 
-- **LiteTest_Documentation.md**: Index of LiteTest documents and
+- **LiteTest_Documentation_Guide.md**: A guide to LiteTest documents and
   repository layout.
 
-- **LiteTest_Glossary.md**: An alphabetically ordered list of terms
+- **LiteTest_Glossary_Reference.Md**: An alphabetically ordered list of terms
   generally used in LiteTest (emphasizing their specific meaning in
   LiteTest) and terms often used in the testing domain.
 
@@ -123,6 +143,8 @@ This chapter lists all LiteTest user and contributor documentation.
   Test API.
 
 **Contributor documentation**:
+
+- **README.md**: Directory description for each subdirectory.
 
 - **LiteTest_Contributor_Guide.md**: Versioning, documentation/coding
   guidelines, branching, testing, and CI/release checklists.
@@ -141,9 +163,9 @@ This chapter lists all LiteTest user and contributor documentation.
 </details>
 
 <details>
-<summary>Click to view 2. LiteTest Repository Layout</summary>
+<summary>Click to view 3. LiteTest Repository Layout</summary>
 
-## 2. LiteTest Repository Layout
+## 3. LiteTest Repository Layout
 
 This chapter shows the layout of the GitHub repository
 `paulsinclair51/LiteTest` (core files and directories):
@@ -157,8 +179,8 @@ Makefile
 build_test_litetest.ps1
 build/                  # Build outputs and related artifacts.
 docs/                   # User and contributor documentation.
-    LiteTest_Documentation.md
-    LiteTest_Glossary.md
+    LiteTest_Documentation_Guide.md
+    LiteTest_Glossary_Reference.md
     LiteTest_Runner_User_Guide.md
     LiteTest_Runner_Reference.md
     LiteTest_Contributor_Guide.md
