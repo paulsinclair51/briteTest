@@ -48,7 +48,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 <details>
 <summary>Click to view Preface</summary>
 
-### Preface
+## Preface
 
 This document is intended for LiteTest users and contributors who need
 quick access to the definitions of terms used in LiteTest or to browse
@@ -57,7 +57,7 @@ through the terms.
 <details>
 <summary>Click to view Document Version History</summary>
 
-#### Document Version History
+### Document Version History
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
@@ -85,7 +85,7 @@ when `M` is incremented.
 <details>
 <summary>Click to biew Table of Contents</summary>
 
-### Table of Contents
+## Table of Contents
 
 - [1. Documentation](#1-documentation)
 - [2. LiteTest Repository Layout](#2-litetest-repository-layout)
@@ -95,9 +95,9 @@ when `M` is incremented.
 <details>
 <summary>Click to view 1. Documentation</summary>
 
-### 1. Documentation
+## 1. Documentation
 
-This section lists all LiteTest user and contributor documentation.
+This chapter lists all LiteTest user and contributor documentation.
 
 **User documentation**:
 
@@ -143,9 +143,9 @@ This section lists all LiteTest user and contributor documentation.
 <details>
 <summary>Click to view 2. LiteTest Repository Layout</summary>
 
-### 2. LiteTest Repository Layout
+## 2. LiteTest Repository Layout
 
-This section shows the layout of the GitHub repository
+This chapter shows the layout of the GitHub repository
 `paulsinclair51/LiteTest` (core files and directories):
 
 ```text
