@@ -16,7 +16,7 @@ companion index to the user and contributor LiteTest documents.
 - Reduces visual noise and makes navigation easier.
 </details>
 
-## Copyright (c) 2026 Paul Sinclair
+### Copyright (c) 2026 Paul Sinclair
 
 <details>
 <summary>Click to view License</summary>
