@@ -203,7 +203,7 @@ tests/                  # Testing assets.
         test_file_compare_helpers.c
         test_guard1.c
         test_guard2.c
-    include/            # Test-only headers.
+    include/            # Test headers.
     control/            # Golden/baseline files for comparison.
     output/             # Retained test outputs needing review
                         # (e.g., a copied report file to compare
