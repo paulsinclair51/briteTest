@@ -170,7 +170,7 @@ tests/                  # Testing assets.
     src/                # Test source files.
         test_litetest.c
         test_orchestrator.c
-    test_file_compare_helpers.c
+        test_file_compare_helpers.c
         test_guard1.c
         test_guard2.c
     include/            # Test-only headers.
