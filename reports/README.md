@@ -1,18 +1,19 @@
 # reports
 
-Directory for reports, standard output, and standard error output.
+Directory for generated report files.
 
 Copyright (c) 2026 Paul Sinclair   
 SPDX-License-Identifier: MIT   
-For license details, see `../LICENSE file`.
+For license details, see `../LICENSE`.
 
-## `litetest_test_report.txt`
+Directories:
 
-The report summarizing test results (pass, fail, fault counts, totals, etc.)
-for a run of executeable `test_litetest`.
+- None.
 
+Files:
 
-## `out.txt`
+- `litetest_test_report.txt`: Report file for a standard test run.
+- `litetest_test_report-I.txt`: Report file for an injected test run.
+- `README.md`: This directory guide.
 
-Standard output for the run corresponding to `litetest_test_report.txt` if
-the executable `test_litetest` was run by `../Makefile`.
+See `../README.md` for a concise introduction to LiteTest.

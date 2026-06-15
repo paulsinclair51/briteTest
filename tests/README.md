@@ -1,24 +1,22 @@
 # tests
 
-Directory for test source files, test data, test executable, and test fixtures.
+Directory for test assets.
 
 Copyright (c) 2026 Paul Sinclair   
 SPDX-License-Identifier: MIT   
 For license details, see `../LICENSE`.
 
-## `test_litetest.c`
+Directories:
 
-Orchestrator (main) code for running liteTest tests implemented in `test_orchestrator.c`,
-`test_guard1.c` and `test_guard2.c`.
+- `src/`: test source files (`*.c`).
+- `include/`: test-only headers (`*.h`).
+- `control/`: baseline files for output comparisons.
+- `output/`: retained generated outputs for review/promotion.
+- `input/`: static input files for tests.
+- `tmp/`: temporary test outputs.
 
-## `test_orchestrator.c`
+Files:
 
-Tests for the orchestrator API functionality.
+- `README.md`: This directory guide.
 
-## `test_guard1.c`
-
-Part 1 tests for the LiteTest guard framework functionality.
-
-## `test_guard2.c`
-
-Part 2 test for the LiteTest guard framework functionality.
+See `../README.md` for a concise introduction to LiteTest.
