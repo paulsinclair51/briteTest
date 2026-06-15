@@ -46,10 +46,10 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 </details>
 
-## Preface
-
 <details>
-<summary>Click to view</summary>
+<summary>Click to view Preface</summary>
+
+## Preface
 
 This document is intended for LiteTest users and contributors who need
 quick access to the definitions of terms used in LiteTest or to browse
