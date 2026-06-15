@@ -1,8 +1,8 @@
-# LiteTest Glossary
+# LiteTest Glossary Reference
 
-This glossary defines terms generally used in LiteTest and terms often
-used in the testing domain. It is a companion document to the other
-LiteTest documents.
+This glossary defines generally used terms in the LiteTest documentation 
+and terms often used in the testing domain. It is a companion document to the
+LiteTest Documentation Guide.
 
 <details>
 <summary>`Click to view` sections are used throughout this document</summary>
@@ -93,10 +93,10 @@ This section lists all LiteTest user and contributor documentation.
 
 - **README.md** — Introduction to LiteTest.
 
-- **LiteTest_Documentation.md**: Index of LiteTest documents and
+- **LiteTest_Documentation_Guide.md**: Guide to the LiteTest documents and
   repository layout.
 
-- **LiteTest_Glossary.md**: An alphabetically ordered list of terms
+- **LiteTest_Glossary_Reference.md**: An alphabetically ordered list of terms
   generally used in LiteTest (emphasizing their specific meaning in
   LiteTest) and terms often used in the testing domain.
 
@@ -147,8 +147,8 @@ Makefile
 build_test_litetest.ps1
 build/                  # Build outputs and related artifacts.
 docs/                   # User and contributor documentation.
-    LiteTest_Documentation.md
-    LiteTest_Glossary.md
+    LiteTest_Documentation_Guide.md
+    LiteTest_Glossary_Reference.md
     LiteTest_Runner_User_Guide.md
     LiteTest_Runner_Reference.md
     LiteTest_Contributor_Guide.md
@@ -202,16 +202,15 @@ tests/                  # Testing assets.
 
 ## 1. Introduction
 
-The glossary defineds terms generally used in LiteTest and terms
+The glossary defines generally used terms in LiteTest documentation and terms
 often used in the testing domain.
 
 Note: '(LiteTest)' indicates the definition of a term that
 has a specific meaning for LiteTest which may differ from the
 meaning of the term in the testing domain or other contexts.
 
-For a specific API macros and functions not included in the glossary,
-refer to the LiteTest Runner or Test API Reference
-document for information.x
+Note: For specific API macros and functions not included in the glossary, refer
+to the LiteTest Runner or Test API Reference document for information.
 u
 x
 ## 2. Glossary
