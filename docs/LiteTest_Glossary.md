@@ -17,12 +17,12 @@ LiteTest documents.
 - Reduces visual noise and makes navigation easier.
 </details>
 
-#### Copyright (c) 2026 Paul Sinclair
+### Copyright (c) 2026 Paul Sinclair
 
 <details>
 <summary>Click to view License</summary>
 
-#### License
+## License
 
 SPDX-License-Identifier: MIT
 
@@ -58,7 +58,7 @@ through the terms.
 <details>
 <summary>Click to view Document Version History</summary>
 
-#### Document Version History
+### Document Version History
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
@@ -85,7 +85,7 @@ when `M` is incremented.
 <details>
 <summary>Click to view Documentation</summary>
 
-#### Documentation
+### Documentation
 
 This section lists all LiteTest user and contributor documentation.
 
@@ -133,7 +133,7 @@ This section lists all LiteTest user and contributor documentation.
 <details>
 <summary>Click to view LiteTest Repository Layout</summary>
 
-#### LiteTest Repository Layout
+### LiteTest Repository Layout
 
 This section shows the layout of the GitHub repository
 `paulsinclair51/LiteTest` (core files and directories):
@@ -191,7 +191,9 @@ tests/                  # Testing assets.
 </details>
 
 <details>
-<summary><strong>📘  TABLE OF CONTENTS  📘</strong></summary>
+<summary>Table of Contents</summary>
+
+##Table of Contents
 
 - [1. Introduction](#1-introduction)
 - [2. Glossary](#2-glossary)
@@ -209,15 +211,13 @@ meaning of the term in the testing domain or other contexts.
 
 For a specific API macros and functions not included in the glossary,
 refer to the LiteTest Runner or Test API Reference
-document for information.
+document for information.x
 u
-
+x
 ## 2. Glossary
 
 <details>
 <summary>Click to view</summary>
-
-
 
 <details>
 <summary>A: Click to view</summary>
