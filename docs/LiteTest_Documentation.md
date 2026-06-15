@@ -21,7 +21,7 @@ companion index to the user and contributor LiteTest documents.
 <details>
 <summary>Click to view License</summary>
 
-#### License
+### License
 
 SPDX-License-Identifier: MIT
 
@@ -45,10 +45,10 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 </details>
 
-## Preface
-
 <details>
-<summary>Click to view</summary>
+<summary>Click to view Preface</summary>
+
+### Preface
 
 This document is intended for LiteTest users and contributors who need
 quick access to the definitions of terms used in LiteTest or to browse
@@ -83,7 +83,9 @@ when `M` is incremented.
 </details>
 
 <details>
-<summary><strong>📘  TABLE OF CONTENTS  📘</strong></summary>
+<summary>Click to biew Table of Contents</summary>
+
+### Table of Contents
 
 - [1. Documentation](#1-documentation)
 - [2. LiteTest Repository Layout](#2-litetest-repository-layout)
@@ -93,7 +95,7 @@ when `M` is incremented.
 <details>
 <summary>Click to view 1. Documentation</summary>
 
-## 1. Documentation
+### 1. Documentation
 
 This section lists all LiteTest user and contributor documentation.
 
@@ -141,7 +143,7 @@ This section lists all LiteTest user and contributor documentation.
 <details>
 <summary>Click to view 2. LiteTest Repository Layout</summary>
 
-## 2. LiteTest Repository Layout
+### 2. LiteTest Repository Layout
 
 This section shows the layout of the GitHub repository
 `paulsinclair51/LiteTest` (core files and directories):
@@ -178,7 +180,7 @@ tests/                  # Testing assets.
     src/                # Test source files.
         test_litetest.c
         test_orchestrator.c
-    test_file_compare_helpers.c
+        test_file_compare_helpers.c
         test_guard1.c
         test_guard2.c
     include/            # Test-only headers.
