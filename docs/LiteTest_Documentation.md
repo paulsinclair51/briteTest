@@ -113,7 +113,7 @@ Document types:
 <details>
 <summary>Click to view 2. LiteTest Documents</summary>
 
-## 2. LiteTesr Documents
+## 2. LiteTest Documents
 
 The following lists all LiteTest user and contributor documents.
 
