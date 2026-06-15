@@ -1,8 +1,6 @@
-# LiteTest Documentation
+# LiteTest Documentation Guide
 
-This document provides an overview of all LiteTest documentation. It serves as a
-companion index to the user and contributor LiteTest documents.
-
+This document is a guide to the LiteTest documentation.
 <details>
 <summary>`Click to view` sections are used throughout this document</summary>
 
