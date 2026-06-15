@@ -23,10 +23,11 @@ $cFlags = @('-std=c11', '-Wall', '-Wextra', '-Wno-clobbered', '-O2')
 $sources = @(
     'src/litetest_runner.c',
     'src/litetest_test.c',
-    'tests/test_litetest.c',
-    'tests/test_orchestrator.c',
-    'tests/test_guard1.c',
-    'tests/test_guard2.c'
+    'tests/src/test_litetest.c',
+    'tests/src/test_orchestrator.c',
+    'tests/src/test_file_compare_helpers.c',
+    'tests/src/test_guard1.c',
+    'tests/src/test_guard2.c'
 )
 
 if (-not (Test-Path $BuildDir)) {

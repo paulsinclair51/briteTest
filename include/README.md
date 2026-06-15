@@ -6,16 +6,18 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `../LICENSE`.
 
-## `litetest_runner.h`
+Directories:
 
-The declarations and documentation for the LiteTest Runner API.
+- None.
 
-For an overview of LiteTest, see `../README.md`.
+Files:
 
-For the definitions of non-inline functions, see `../src/litetest_runner.c`.
 
-## `litetest_test.h`
 
-Declarations and documentation for the LiteTest Test API test helper functions.
+- `litetest_runner.h`: Header for the LiteTest Runner API.
+  See `../src/litetest_runner.c` for the corresponding source file.
 
-For the function definitions, see `../src/litetest_test.c`.
+- `litetest_test.h`: Header for the LiteTest Test API.
+  See `../src/litetest_test.c` for the corresponding source file.
+
+See `../README.md` for a concise introduction to LiteTest.

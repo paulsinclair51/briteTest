@@ -1,9 +1,17 @@
 # scripts
 
-Directory for CI helpers, code generation, formatting tools, and release scropt.
+Directory for automation scripts.
 
 Copyright (c) 2026 Paul Sinclair   
 SPDX-License-Identifier: MIT   
 For license details, see `../LICENSE`.
 
-Currently, no scripts have been created.
+Directories:
+
+- None.
+
+Files:
+
+- `README.md`: This directory guide.
+
+See `../README.md` for a concise introduction to LiteTest.

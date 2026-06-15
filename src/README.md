@@ -7,17 +7,17 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT   
 For license details, see `../LICENSE`.
 
-## `litetest_runner.c`
+Directories:
 
-Defines non-inline functions for the LiteTest Runner API.
+- None.
 
-See `../include/litetest_runner.h` for the declarations and documentation for
-the LiteTest API and framework.
+Files:
 
-For an overview of LiteTest, see `../README.md`.
+- `litetest_runner.c`: Defines non-inline functions for the LiteTest Runner API.
+   See `../include/litetest_runner.h` for the declarations and documentation for
+   the LiteTest API and framework.
+- `litetest_test.c`: Defines LiteTest Test API test helper functions.
+  See `../include/litetest_test.h` for declarations.
+- `README.md`: This directory guide.
 
-## `litetest_test.c`
-
-Defines LiteTest Test API test helper functions.
-
-See `../include/litetest_test.h` for declarations.
+See `../README.md` for a concise introduction to LiteTest.

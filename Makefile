@@ -15,11 +15,11 @@ SOURCES := \
 	litetest_test.c \
 	test_litetest.c \
 	test_orchestrator.c \
-	 test_file_compare_helpers.c \
+	test_file_compare_helpers.c \
 	test_guard1.c \
 	test_guard2.c
 
-VPATH := src tests
+VPATH := src tests/src
 
 OBJECTS := $(addprefix $(BUILD_DIR)/,$(SOURCES:.c=.o))
 
