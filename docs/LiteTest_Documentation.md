@@ -102,7 +102,6 @@ The LiteTest documentation consists of documents for:
 - **Users**: Public-facing framework and API documents,
 
 - **Contributors**; Guide and API internal documents.
-</details>
 
 Document types:
 
@@ -111,6 +110,7 @@ Document types:
 - **Guide**: Usage information.
 
 - **Reference**: Reference companion to a guide.
+</details>
 
 <details>
 <summary>Click to view 2. Documentation</summary>
