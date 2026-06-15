@@ -88,7 +88,7 @@ when `M` is incremented.
 ## Table of Contents
 
 - [1. Introduction](#1-introduction)
-- [3. Documentation](#3-documentation)
+- [3. LiteTest Documents](#3-lite-documents)
 - [3. LiteTest Repository Layout](#2-litetest-repository-layout)
 </details>
 
@@ -113,17 +113,17 @@ Document types:
 </details>
 
 <details>
-<summary>Click to view 2. Documentation</summary>
+<summary>Click to view 2. LiteTest Documents</summary>
 
-## 2. Documentation
+## 2. LiteTesr Documents
 
-This chapter lists all LiteTest user and contributor documentation.
+The following lists all LiteTest user and contributor documents.
 
 **User documentation**:
 
 - **README.md** — Introduction to LiteTest.
 
-- **LiteTest_Documentation_Guide.md**: A guide to LiteTest documents and
+- **LiteTest_Documentation_Guide.md**: A guide to LiteTest documents and the
   repository layout.
 
 - **LiteTest_Glossary_Reference.Md**: An alphabetically ordered list of terms
@@ -144,7 +144,7 @@ This chapter lists all LiteTest user and contributor documentation.
 
 **Contributor documentation**:
 
-- **README.md**: Directory description for each subdirectory.
+- **README.md**: Directory description, one for each subdirectory.
 
 - **LiteTest_Contributor_Guide.md**: Versioning, documentation/coding
   guidelines, branching, testing, and CI/release checklists.
@@ -167,7 +167,7 @@ This chapter lists all LiteTest user and contributor documentation.
 
 ## 3. LiteTest Repository Layout
 
-This chapter shows the layout of the GitHub repository
+The following shows the layout of the GitHub repository
 `paulsinclair51/LiteTest` (core files and directories):
 
 ```text
