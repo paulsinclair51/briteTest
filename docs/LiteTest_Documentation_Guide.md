@@ -1,6 +1,7 @@
 # LiteTest Documentation Guide
 
-This document is a guide to the LiteTest documentation.
+This document is a guide to the LiteTest documentation and the LiteTest
+repository layout.
 
 <details>
 <summary>`Click to view` sections are used throughout this document</summary>
@@ -50,11 +51,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ## Preface
 
 This document is intended for LiteTest users and contributors who need
-quick access to the definitions of terms used in LiteTest or to browse
-through the terms.
+guide to the LiteTest documentation and the LiteTest repository layout.
 
-For a glossary of terms, see the LiteTest Glossary Reference
-(`LiteTest_Glossary_Reference.md`).
+For a glossary of terms, see the LiteTest Glossary Reference.
 
 <details>
 <summary>Click to view Document Version History</summary>
@@ -112,6 +111,14 @@ Document types:
 - **Guide**: Usage information.
 
 - **Reference**: Reference companion to a guide.
+
+Document formats:
+
+- **,md**: Markdown Documentation format for online viewing,
+
+- **,pdf**: Portable Document Format for printing. A LiteTest ,pdf file is  generated
+  from a LiteTest ,md file using genpdf in the scripts directory of the repository
+  root.
 </details>
 
 <details>
@@ -180,16 +187,11 @@ LICENSE
 Makefile
 build_test_litetest.ps1
 build/                  # Build outputs and related artifacts.
-docs/                   # User and contributor documentation.
-    LiteTest_Documentation_Guide.md
-    LiteTest_Glossary_Reference.md
-    LiteTest_Runner_User_Guide.md
-    LiteTest_Runner_Reference.md
-    LiteTest_Contributor_Guide.md
-    LiteTest_Runner_Internal_Guide.md
-    LiteTest_Runner_Internal_Reference.md
-    LiteTest_Test_Internal_Guide.md
-    LiteTest_Test_Internal_Reference.md
+docs/                   # User and contributor documentation .
+    LiteTest_*_Guide.md
+    LiteTest_*_Reference.md
+    LiteTest_*_Guide.pdf
+    LiteTest_*_Reference.pdf
 examples/               # Usage examples.
 include/                # Public API headers.
     litetest_runner.h
@@ -197,16 +199,13 @@ include/                # Public API headers.
 reports/                # Generated report files (non-source).
 scripts/                # Automation scripts.
     test/
+    genpdf
 src/                    # API source.
     litetest_runner.c
     litetest_test.c
 tests/                  # Testing assets.
     src/                # Test source files.
-        test_litetest.c
-        test_orchestrator.c
-        test_file_compare_helpers.c
-        test_guard1.c
-        test_guard2.c
+        test_*.c
     include/            # Test headers.
     control/            # Golden/baseline files for comparison.
     output/             # Retained test outputs needing review
