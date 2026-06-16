@@ -55,7 +55,7 @@ This document is intended for LiteTest users and contributors who need
 quick access to the definitions of terms used in LiteTest or to browse
 through the terms.
 
-For a list of other LiteTest documents and the repository layout, see
+For a list of other LiteTest documents and the LiteTest repository layout, see
 the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
 
 <details>
