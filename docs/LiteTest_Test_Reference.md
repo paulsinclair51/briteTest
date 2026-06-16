@@ -1,6 +1,6 @@
-# LiteTest Test Helper Reference
+# LiteTest Test Reference
 
-This document summarizes the public test helper API declared in `include/litetest_test.h`.
+This document summarizes the public Test API declared in `include/litetest_test.h`.
 It focuses on the helper-specific return conventions and the option structs used by the
 comparison helpers.
 
@@ -64,87 +64,8 @@ The current LiteTest Runner version is defined by the `LT_RUNNER_VERSION` macro 
 The document’s `M` (Major) version matches the LiteTest Runner's `M` (Major) version which matches the LiteTest Test's `M` (Major) version. The document's `u` (update) version track updates to this document and does not correspond to a `m` (minor) or `p` (patch) version. `u` increments whenever this document is updated without a change to `M`, and it resets to `0` when `M` is incremented.
 </details>
 
-#### Documentation
-
 <details>
-<summary>Click to view</summary>
-
-This section lists all LiteTest user and contributor documentation.
-
-**User documentation**:
-
-- `README.md` — Introduction to LiteTest.
-
-- `LiteTest_Documentation.md` — Index of LiteTest documents and repository layout.
-
-- `LiteTest_Glossary.md` — An alphabetically ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest) and terms often used in the testing domain.
-
-- `LiteTest_Runner_User_Guide.md` — Concepts, usage, and examples for the LiteTest Runner framework and API.
-
-- `LiteTest_Runner_Reference.md` — Reference document for the LiteTest Runner API.
-
-- `LiteTest_Test_User_Guide.md` — Concepts, usage, and examples for the LiteTest Test API.
-
-- `LiteTest_Test_Reference.md` — Reference document for the LiteTest Test API.
-
-**Contributor documentation**:
-
-- `LiteTest_Contributor_Guide.md` — Versioning, documentation/coding guidelines, branching, testing, and CI/release checklists.
-
-- `LiteTest_Runner_Internal_Guide.md` — Implementation concepts, architecture, and high-level design for the Runner API.
-
-- `LiteTest_Runner_Internal_Reference.md` — Reference for the implementation of the Runner API.
-  
-- `LiteTest_Test_Internal_Guide.md` — Implementation concepts, architecture, and high-level design for the Test API.
-
-- `LiteTest_Test_Internal_Reference.md` — Reference for the implementation of the Test API.
-</details>
-
-#### LiteTest Repository Layout
-
-<details>
-<summary>Click to view</summary>
-
-This section shows the layout of the GitHub repository `paulsinclair51/LiteTest` (core files and directories):
-
-```text
-.github/workflows/ci.yml
-README.md
-LICENSE
-Makefile
-build_test_litetest.ps1
-build/
-docs/
-    LiteTest_Documentation.md
-    LiteTest_Glossary.md
-    LiteTest_Runner_User_Guide.md
-    LiteTest_Runner_Reference.md
-    LiteTest_Contributor_Guide.md
-    LiteTest_Runner_Internal_Guide.md
-    LiteTest_Runner_Internal_Reference.md
-    LiteTest_Test_Internal_Guide.md
-    LiteTest_Test_Internal_Reference.md
-examples/
-include/
-    litetest_runner.h
-    litetest_test.h
-reports/
-    litetest_test_report-I.txt
-    litetest_test_report.txt
-scripts/
-src/
-    litetest_runner.c
-    litetest_test.c
-tests/
-    test_litetest.c
-    test_orchestrator.c
-    test_guard1.c
-    test_guard2.c
-```
-</details>
-
-<details>
-<summary><strong>📘  TABLE OF CONTENTS  📘</strong></summary>
+<summary>TABLE OF CONTENTS</summary>
 
 - [1. Return Conventions](#1-return-conventions)
   - [1.1 Return Styles](#11-return-styles)
