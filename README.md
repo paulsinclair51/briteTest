@@ -1,6 +1,6 @@
 # LiteTest
 
-LiteTest is a lightweight Application Programming Interface (API) and framework 
+LiteTest is a lightweight framework and Application Programming Interface (API) 
 for defining, running, and reporting tests in C/C++ projects. It provides a simple
 core macro-driven API, fault‑tolerant execution, and clear reporting — ideal
 for small to medium C projects that need reliable testing without heavy 
