@@ -1,8 +1,6 @@
-# LiteTest Glossary Reference
+# LiteTest Internal Guide
 
-This glossary defines generally used terms in the LiteTest documentation 
-and terms often used in the testing domain. It is a companion document to
-the LiteTest Documentation Guide.
+This .
 
 <details>
 <summary>`Click to view` sections are used throughout this document</summary>
@@ -51,9 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Preface
 
-This document is intended for LiteTest users and contributors who need
-quick access to the definitions of terms used in LiteTest or to browse
-through the terms.
+This document is intended for LiteTest users and contributors who .
 
 For a list of other LiteTest documents and the LiteTest repository layout, see
 the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
