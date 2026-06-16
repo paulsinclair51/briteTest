@@ -182,6 +182,7 @@ The following shows the layout of the GitHub repository
 ```text
 .github/workflows/ci.yml
 README.md
+README.pdf
 LICENSE
 .gitignore
 Makefile
