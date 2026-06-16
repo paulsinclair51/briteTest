@@ -52,7 +52,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 This document is intended for users and contributors who .
 
 For a list of other LiteTest documents and the LiteTest repository layout, see
-the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
+the LiteTest Documentation Guide.
+
+For a glossary of terms, see the LiteTest Glossary Reference.
 
 <details>
 <summary>Click to view Document Version History</summary>
