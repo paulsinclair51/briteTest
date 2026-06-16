@@ -20,4 +20,4 @@ Files:
   See `../include/litetest_test.h` for declarations.
 - **README.md**: This directory guide.
 
-See **../README.md** for a concise introduction to LiteTest.
+See **../README.md** for an introduction to LiteTest.
