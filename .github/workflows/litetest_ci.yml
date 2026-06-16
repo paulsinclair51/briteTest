@@ -1,4 +1,6 @@
-name: CI
+# File: litetest_ci.yml
+
+name: LiteTest CI
 
 # Define the CI workflow for LiteTest.
 
@@ -6,20 +8,21 @@ name: CI
 # SPDX-License-Identifier: MIT
 # For license details, see ../LICENSE.
 
-#---------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------
 # CI (Continuous Integration) is an automated practice where every change to the
 # codebase is built and tested in a shared environment. CI helps detect errors
 # early and ensures consistent build quality. Use continuous‑integration or CI
-# when used as an adjective. A CI workflow typically:
+# when used as an adjective.
 #
+# A CI workflow typically:
 # - Compiles the project.
 # - Runs tests.
 # - Validates formatting or static‑analysis rules.
 # - Produces artifacts such as logs or reports.
 # 
 # YAML is a plain‑text, human‑readable format where indentation defines structure.
-# Files (with the extension .yml) define YAML text and are used by GitHub Actions.
-#---------------------------------------------------------------------------------
+# Files (with the extension .yml) contain YAML text and are used by GitHub Actions.
+#----------------------------------------------------------------------------------
 
 # Set workflow to run on push events to the main branch:
 
@@ -36,11 +39,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout # LiteTest repository code.
         uses: actions/checkout@v4
 
       - name: Build
         run: make
 
       - name: Run tests
-        run: ./test_litetest
+        run: ./tests/test_litetest
