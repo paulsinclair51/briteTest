@@ -58,6 +58,11 @@ the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
 For a glossary of terms, see the LiteTest Glossary Reference
 (`LiteTest_Glossary_Reference.md`).
 
+For a glossary of general LiteTest terms, see the LiteTest Glossary
+Reference document. For contributor‑Sspecific terms: see the Glossary
+appendix at end of this document.
+
+
 <details>
 <summary>Click to view Document Version History</summary>
 
