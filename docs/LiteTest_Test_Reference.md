@@ -47,6 +47,11 @@ This document is intended for LiteTest users and contributors who need
 quick access to the definitions of terms used in LiteTest or to browse
 through the terms.
 
+For a list of other LiteTest documents and the LiteTest repository layout, see
+the LiteTest Documentation Guide.
+
+For a glossary of terms, see the LiteTest Glossary Reference.
+
 #### Document Version History
 
 <details>
