@@ -199,8 +199,8 @@ include/                # Public API headers.
     litetest_test.h
 reports/                # Generated report files (non-source).
 scripts/                # Automation scripts.
-    test/
     genpdf
+    test_genpdf,sh
 src/                    # API source.
     litetest_runner.c
     litetest_test.c
