@@ -56,7 +56,7 @@ quick access to the definitions of terms used in LiteTest or to browse
 through the terms.
 
 For a list of other LiteTest documents and the LiteTest repository layout, see
-the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
+the LiteTest Documentation Guide.
 
 <details>
 <summary>Click to view Document Version History</summary>
