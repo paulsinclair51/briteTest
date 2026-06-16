@@ -1,4 +1,4 @@
-# LiteTest Internal Guide
+# LiteTest Test Internal Guide
 
 This .
 
@@ -49,7 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Preface
 
-This document is intended for LiteTest users and contributors who .
+This document is intended for contributors who .
 
 For a list of other LiteTest documents and the LiteTest repository layout, see
 the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
