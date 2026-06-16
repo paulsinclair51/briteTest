@@ -88,12 +88,19 @@ when `M` is incremented.
 ## Table of Contents
 
 [**1. Introduction**](#1-introduction)
+
 [**2. Versioning Rules**](#2-versioning-rules)
+
 [**3. Testing Requirements**](#3-testing-requirements)
+
 [**4. Documentation Rules**](#4-documentation-rules)
+
 [**5. Code Style**](#5-code-style)
+
 [**6. Writing Style Consistency**](#6-writing-style-consistency)
+
 [**7. Pull Requests**](#7-pull-requests)
+
 [**Glossary**](#glossary)
 </details>
 
