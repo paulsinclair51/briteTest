@@ -1,6 +1,6 @@
 # LiteTest Runner User Guide
 
-This guide explains how to use LiteTest Runner framework and Runner API
+This guide explains how to use the LiteTest Runner framework and Runner API
 covering concepts, workflow, execution model, examples, and practical,usage
 patterns. It complements the LiteTest Runner Reference, which documents
 the Runner API in detail.
@@ -113,7 +113,7 @@ A typical test executable includes:
 - One or more test group functions
 - `litetest_runner.h` and `litetest_runner.c`
 - Project headers and sources under test
-<;details>
+</details>
 
 ## 2. Execution Model
 
