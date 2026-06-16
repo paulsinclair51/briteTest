@@ -4,10 +4,13 @@ This document defines the contribution process, coding standards, documentation
 rules, and versioning guidelines for LiteTest.
 
 <details>
-summary>`Click to view` sections are used throughout this document</summary>
+<summary>`Click to view` sections are used throughout this document</summary>
 
-- Keeps documents readable while accommodating large amounts of technical detail.
-  
+#### Why Click to view?
+
+- Keeps documents readable while accommodating large amounts of
+  technical detail.
+
 - Allows scanning the structure and expanding only what you need.
 
 - Reduces visual noise and makes navigation easier.
