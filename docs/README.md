@@ -27,7 +27,7 @@ Files:
 - `LiteTest_Test_Internal_Reference.md`: Test implementation
 	 reference.
 - `README.md`: This directory guide.
-- PDF formatted files of rhe above files with extension `.pdf`.
+- PDF formatted files with the extension `.pdf` generated from the above files .
 
 
 
