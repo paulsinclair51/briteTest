@@ -1,4 +1,5 @@
 # Makefile for LiteTest test runner (Linux/macOS)
+
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see the LICENSE file in the root directory.
