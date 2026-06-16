@@ -8,12 +8,12 @@ For license details, see `../LICENSE`.
 
 Directories:
 
-- `src/`: test source files (`*.c`).
-- `include/`: test headers (`*.h`).
-- `control/`: baseline files for output comparisons.
-- `output/`: retained generated outputs for review/promotion.
-- `input/`: static input files for tests.
-- `tmp/`: temporary test outputs.
+- `src/`: Test source files (`*.c`).
+- `include/`: Test headers (`*.h`).
+- `control/`: Baseline files for output comparisons.
+- `output/`: Retained generated outputs for review/promotion.
+- `input/`: Input files for tests.
+- `tmp/`: Yemporary test outputs.
 
 Files:
 
