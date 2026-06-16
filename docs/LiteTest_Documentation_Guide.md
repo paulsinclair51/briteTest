@@ -51,7 +51,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ## Preface
 
 This document is intended for LiteTest users and contributors who need
-guide to the LiteTest documentation and the LiteTest repository layout.
+a guide to the LiteTest documentation and the LiteTest repository layout.
 
 For a glossary of terms, see the LiteTest Glossary Reference.
 
