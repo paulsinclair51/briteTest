@@ -14,10 +14,10 @@ Directories:
 Files:
 
 - **LiteTest_runner.c**: Defines non-inline functions for the LiteTest Runner API.
-   See `../include/litetest_runner.h` for the declarations and documentation for
-   the LiteTest API and framework.
+  See `../include/litetest_runner.h` for the declarations and documentation for
+  the LiteTest framework and API.
 - **litetest_test.c**: Defines LiteTest Test API test helper functions.
   See `../include/litetest_test.h` for declarations.
-- `README.md`: This directory guide.
+- **README.md**: This directory guide.
 
 See **../README.md** for a concise introduction to LiteTest.
