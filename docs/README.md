@@ -12,22 +12,23 @@ Directories:
 
 Files:
 
-- `LiteTest_Documentation.md`: Index of LiteTest documents and
-	repository layout.
+- `LiteTest_Documentation.md`: Index of LiteTest documents and the Litetest
+	  repository layout.
 - `LiteTest_Glossary.md`: Glossary of LiteTest and testing terms.
-- `LiteTest_Runner_User_Guide.md`: Runner API concepts, usage, and
-	examples.
+- `LiteTest_Runner_User_Guide.md`: Runner API concepts, usage, and examples.
 - `LiteTest_Runner_Reference.md`: Runner API reference.
 - `LIteTest_Contributor_Guide.md`: Contributor process and standards.
 - `LiteTest_Runner_Internal_Guide.md`: Runner implementation guide.
 - `LiteTest_Runner_Internal_Reference.md`: Runner implementation
-	reference.
-- `LiteTest_Test_User_Guide.md`: Test API concepts, usage, and
-	examples.
+	 reference.
+- `LiteTest_Test_User_Guide.md`: Test API concepts, usage, and examples.
 - `LiteTest_Test_Reference.md`: Test API reference.
 - `LiteTest_Test_Internal_Guide.md`: Test implementation guide.
 - `LiteTest_Test_Internal_Reference.md`: Test implementation
-	reference.
+	 reference.
 - `README.md`: This directory guide.
+- PDF formatted files of rhe above files with extension `.pdf`.
+
+
 
 See `../README.md` for a concise introduction to LiteTest.
