@@ -9,7 +9,7 @@ For license details, see `../LICENSE`.
 Directories:
 
 - `src/`: test source files (`*.c`).
-- `include/`: test-only headers (`*.h`).
+- `include/`: test headers (`*.h`).
 - `control/`: baseline files for output comparisons.
 - `output/`: retained generated outputs for review/promotion.
 - `input/`: static input files for tests.
