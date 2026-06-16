@@ -192,7 +192,7 @@ See:
 - **LiteTest Runner Reference** for detailed API semantics.
 - **LiteTest Contributor Guide** for development and versioning rules.
 
-### Quick Start
+## Quick Start
 
 LiteTest tests are C/C++ expressions/functions, and the orchestrator controls
 reporting and execution.
