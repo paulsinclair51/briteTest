@@ -18,7 +18,7 @@ the Runner API in detail.
 - Reduces visual noise and makes navigation easier.
 </details>
 
-<strong>Copyright (c) 2026 Paul Sinclair</strong>
+### Copyright (c) 2026 Paul Sinclair<
 
 <details>
 <summary>Click to view License</summary>
