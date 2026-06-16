@@ -45,11 +45,10 @@ SOFTWARE.
 
 This document is intended for contributors.
 
-For a list of other LiteTest documents and the repository layout, see
-the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
+For a list of other LiteTest documents and the LiteTest repository layout, see
+the LiteTest Documentation Guide.
 
-For a glossary of terms, see the LiteTest Glossary Reference
-(`LiteTest_Glossary_Reference.md`).
+For a glossary of terms, see the LiteTest Glossary Reference.
 
 ### Document Version History
 
