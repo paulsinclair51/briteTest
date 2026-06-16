@@ -54,7 +54,7 @@ SOFTWARE.
 This document is intended for LiteTest contributors who need
 guidance on enhancing and maintaining LiteTest.
 
-For a list of other LiteTest documents and the repository layout, see
+For a list of other LiteTest documents and the LiteTest repository layout, see
 the LiteTest Documentation Guide.
 
 For a glossary of terms, see the LiteTest Glossary Reference.
