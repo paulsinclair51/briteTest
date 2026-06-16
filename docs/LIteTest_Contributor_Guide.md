@@ -3,11 +3,8 @@
 This document defines the contribution process, coding standards, documentation
 rules, and versioning guidelines for LiteTest.
 
-summary>`Click to view` sections are used throughout this document</summary>
-</details>
-
 <details>
-<summary>Why "Click to view"?</summary>
+summary>`Click to view` sections are used throughout this document</summary>
 
 - Keeps documents readable while accommodating large amounts of technical detail.
   
