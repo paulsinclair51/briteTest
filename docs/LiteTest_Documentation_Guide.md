@@ -1,6 +1,7 @@
 # LiteTest Documentation Guide
 
 This document is a guide to the LiteTest documentation.
+
 <details>
 <summary>`Click to view` sections are used throughout this document</summary>
 
@@ -52,6 +53,9 @@ This document is intended for LiteTest users and contributors who need
 quick access to the definitions of terms used in LiteTest or to browse
 through the terms.
 
+For a glossary of terms, see the LiteTest Glossary Reference
+(`LiteTest_Glossary_Reference.md`).
+
 <details>
 <summary>Click to view Document Version History</summary>
 
@@ -85,9 +89,9 @@ when `M` is incremented.
 
 ## Table of Contents
 
-- [1. Introduction](#1-introduction)
-- [2. LiteTest Documents](#2-litetest-documents)
-- [3. LiteTest Repository Layout](#3-litetest-repository-layout)
+[1. Introduction](#1-introduction)
+[2. LiteTest Documents](#2-litetest-documents)
+[3. LiteTest Repository Layout](#3-litetest-repository-layout)
 </details>
 
 <details>
@@ -115,7 +119,7 @@ Document types:
 
 ## 2. LiteTest Documents
 
-The following lists all LiteTest user and contributor documents.
+The following are the LiteTest user and contributor documents.
 
 **User documentation**:
 

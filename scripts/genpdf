@@ -1,0 +1,1238 @@
+#!/usr/bin/env bash
+
+# genpdf - Convert Markdown files to PDF optionally removing 
+#          or converting <details> and <summary> tags.
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see ./LICENSE.
+
+# Dependencies: pandoc (with a PDF engine), or
+#               python3 plus wkhtmltopdf or weasyprint.
+
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  genpdf [<doc_options>] <document>[.md] [<outdocument>[.pdf]]
+  genpdf [<dir_options>] <indirectory> [<outdirectory>]
+  genpdf [<dir_options>]
+  genpdf -t
+  genpdf -h | --help
+
+The third form is the same as: genpdf [<dir_options>] ./
+
+<doc_options>:
+  [-b <backend>] [-c] [-n] [-p] [-q] [-s] [-v]
+
+<dir_options>:
+  [-b <backend>] [-c] [-g] [-k] [-n] [-p] [-q] [-r] [-s] [-v]
+  [-i "<pattern>"]... [-x "<pattern>"]...
+
+Option values:
+  <backend>  Conversion backend: auto, pandoc, wkhtmltopdf, weasyprint
+  <pattern>  Bash glob pattern for relative paths:
+             - * or ** matches any characters, including '/'
+             - ? matches one character, including '/'
+             - [abc] matches one character from a set/range
+             - any other character matches itself
+             Note: this differs from common path-segment glob expectations,
+             where * and ? do not match '/'. Use the -g option to enable
+             * and ? not matching '/'.
+
+Options:
+  -b  Force conversion backend instead of auto-detecting.
+      Useful for diagnostics and testing.
+  -c  Convert details/summary blocks to PDF-friendly Markdown instead of
+      removing details/summary tag lines. Default is to remove them.
+  -h, --help  Output this help to stdout and exit.
+  -g  Use segment-style glob matching for -i/-x patterns:
+      * and ? do not match '/'; ** matches across '/'.
+  -i  Include only files whose relative path matches "<pattern>".
+  -k  Keep directory structure under outdirectory (useful with -r).
+  -n  Show planned conversions without writing output files.
+  -p  Permissive: disable strict extension checks.
+  -q  Quiet mode: suppress informational messages to stdout. Help and
+      diagnostics are not affected. There is no output to stdout in quiet mode
+      when successful.
+  -r  When input is a directory, include .md files in all subdirectories
+      (default: only .md files directly in that directory).
+  -s  Strict: Require explicit input/output extensions (when provided) to be
+      .md and .pdf respectively.
+  -t  Tool check: report available conversion toolchains and exit.
+  -v  Verbose mode: print backend diagnostics to stderr.
+  -x  Exclude files whose relative path matches "<pattern>".
+
+Environment:
+  GENPDF_STRICT  Default strict-mode setting when flags are not provided.
+                 Strict:     1, true, yes, on
+                 Permissive: 0, false, no, off
+                 Otherwise:  Raises an error.
+
+Converts Markdown to PDF after optionally removing or converting
+<details>/<summary> content for PDF output.
+
+Examples:
+  genpdf README.md
+  genpdf docs/LiteTest_Documentation_Guide
+  genpdf docs/LiteTest_Documentation_Guide.md docs/My_LiteTest_Documentation_Guide
+  genpdf docs
+  genpdf docs build
+EOF
+}
+
+strict_ext=0
+convert_details=0
+quiet=0
+verbose=0
+check_only=0
+recursive=0
+keep_structure=0
+dry_run=0
+backend=auto
+segment_glob=0
+declare -a include_patterns=()
+declare -a exclude_patterns=()
+
+validate_backend() {
+  case "$1" in
+    auto|pandoc|wkhtmltopdf|weasyprint)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+log_info() {
+  if [[ $quiet -eq 0 ]]; then
+    echo "$1"
+  fi
+}
+
+log_warn() {
+  echo "Warning: $1" >&2
+}
+
+log_debug() {
+  if [[ $verbose -eq 1 ]]; then
+    echo "Debug: $1" >&2
+  fi
+}
+
+
+log_error() {
+  echo "Error: $1" >&2
+}
+
+if [[ -n "${GENPDF_STRICT:-}" ]]; then
+  case "${GENPDF_STRICT,,}" in
+    1|true|yes|on)
+      strict_ext=1
+      ;;
+    0|false|no|off)
+      strict_ext=0
+      ;;
+    *)
+      log_error "invalid GENPDF_STRICT value: ${GENPDF_STRICT}"
+      echo "       Use one of: 1,true,yes,on,0,false,no,off" >&2
+      exit 1
+      ;;
+  esac
+fi
+
+orig_args=("$@")
+
+for arg in "${orig_args[@]}"; do
+  case "$arg" in
+    -h|--help)
+      if [[ ${#orig_args[@]} -ne 1 ]]; then
+        log_error "-h and --help must be used by themselves."
+        exit 1
+      fi
+      ;;
+    -t)
+      if [[ ${#orig_args[@]} -ne 1 ]]; then
+        log_error "-t must be used by itself."
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -s)
+      strict_ext=1
+      shift
+      ;;
+    -p)
+      strict_ext=0
+      shift
+      ;;
+    -c)
+      convert_details=1
+      shift
+      ;;
+    -n)
+      dry_run=1
+      shift
+      ;;
+    -q)
+      quiet=1
+      shift
+      ;;
+    -v)
+      verbose=1
+      shift
+      ;;
+    -t)
+      check_only=1
+      shift
+      ;;
+    -r)
+      recursive=1
+      shift
+      ;;
+    -k)
+      keep_structure=1
+      shift
+      ;;
+    -g)
+      segment_glob=1
+      shift
+      ;;
+    -b)
+      if [[ $# -lt 2 ]]; then
+        log_error "$1 requires a backend argument: auto, pandoc, wkhtmltopdf, weasyprint"
+        exit 1
+      fi
+      if ! validate_backend "$2"; then
+        log_error "invalid backend: $2"
+        echo "       Use one of: auto,pandoc,wkhtmltopdf,weasyprint" >&2
+        exit 1
+      fi
+      backend=$2
+      shift 2
+      ;;
+    -i)
+      if [[ $# -lt 2 ]]; then
+        log_error "-i requires a pattern argument."
+        exit 1
+      fi
+      include_patterns+=("$2")
+      shift 2
+      ;;
+    -x)
+      if [[ $# -lt 2 ]]; then
+        log_error "-x requires a pattern argument."
+        exit 1
+      fi
+      exclude_patterns+=("$2")
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    -*)
+      log_error "unknown option: $1"
+      usage >&2
+      exit 1
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if [[ $check_only -eq 1 ]]; then
+  if [[ $# -gt 0 ]]; then
+    log_error "-t cannot be used with positional arguments."
+    exit 1
+  fi
+
+  if command -v pandoc >/dev/null 2>&1; then
+    if command -v pdflatex >/dev/null 2>&1 || command -v lualatex >/dev/null 2>&1 || command -v xelatex >/dev/null 2>&1 || command -v tectonic >/dev/null 2>&1 || command -v wkhtmltopdf >/dev/null 2>&1 || command -v weasyprint >/dev/null 2>&1 || command -v prince >/dev/null 2>&1; then
+      log_info "Toolchain: pandoc with PDF engine available"
+      exit 0
+    fi
+    log_info "Toolchain: pandoc available (no explicit engine detected; pandoc default may still work)"
+    exit 0
+  fi
+
+  if command -v python3 >/dev/null 2>&1 && (command -v wkhtmltopdf >/dev/null 2>&1 || command -v weasyprint >/dev/null 2>&1); then
+    log_info "Toolchain: python3 + HTML-to-PDF backend available"
+    exit 0
+  fi
+
+  log_error "no supported Markdown-to-PDF toolchain found"
+  log_info "Install pandoc (recommended), or install python3 with wkhtmltopdf or weasyprint."
+  exit 1
+fi
+
+if [[ $# -gt 2 ]]; then
+  usage >&2
+  exit 1
+fi
+
+if [[ $# -eq 0 ]]; then
+  infile='.'
+else
+  infile=$1
+fi
+
+trim_trailing_slashes() {
+  local path=$1
+
+  while [[ "$path" != "/" && "$path" == */ ]]; do
+    path=${path%/}
+  done
+
+  printf '%s\n' "$path"
+}
+
+can_write_target() {
+  local target_file=$1
+  local target_dir
+
+  if [[ -e "$target_file" ]]; then
+    [[ -w "$target_file" ]]
+    return
+  fi
+
+  target_dir=$(dirname "$target_file")
+  [[ -d "$target_dir" && -w "$target_dir" ]]
+}
+
+match_any_pattern() {
+  local text=$1
+  shift
+  local pattern
+  local regex
+
+  for pattern in "$@"; do
+    if [[ $segment_glob -eq 1 ]]; then
+      regex=$(glob_to_regex_segment "$pattern")
+      if [[ "$text" =~ $regex ]]; then
+        return 0
+      fi
+    elif [[ "$text" == $pattern ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+glob_to_regex_segment() {
+  local pattern=$1
+  local regex='^'
+  local i=0
+  local len=${#pattern}
+  local ch
+  local next
+  local j
+  local cls
+
+  while (( i < len )); do
+    ch=${pattern:i:1}
+
+    if [[ "$ch" == "*" ]]; then
+      next=''
+      if (( i + 1 < len )); then
+        next=${pattern:i+1:1}
+      fi
+
+      if [[ "$next" == "*" ]]; then
+        regex+='.*'
+        ((i+=2))
+        continue
+      fi
+
+      regex+='[^/]*'
+      ((i++))
+      continue
+    fi
+
+    if [[ "$ch" == "?" ]]; then
+      regex+='[^/]'
+      ((i++))
+      continue
+    fi
+
+    if [[ "$ch" == "[" ]]; then
+      j=$((i + 1))
+      while (( j < len )) && [[ ${pattern:j:1} != "]" ]]; do
+        ((j++))
+      done
+
+      if (( j < len )); then
+        cls=${pattern:i+1:j-i-1}
+        if [[ "${cls:0:1}" == "!" ]]; then
+          cls="^${cls:1}"
+        fi
+        regex+="[$cls]"
+        i=$((j + 1))
+        continue
+      fi
+
+      regex+='\\['
+      ((i++))
+      continue
+    fi
+
+    case "$ch" in
+      .|^|$|+|\(|\)|\{|\}|\|)
+        regex+="\\$ch"
+        ;;
+      *)
+        regex+="$ch"
+        ;;
+    esac
+
+    ((i++))
+  done
+
+  regex+='$'
+  printf '%s\n' "$regex"
+}
+
+find_pandoc_engine() {
+  local engine
+
+  # Prefer native LaTeX engines first, then HTML-based engines as fallback.
+  for engine in pdflatex lualatex xelatex tectonic wkhtmltopdf weasyprint prince; do
+    if command -v "$engine" >/dev/null 2>&1; then
+      printf '%s\n' "$engine"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+render_html() {
+  local markdown_file=$1
+  local html_file=$2
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    return 1
+  fi
+
+  python3 - "$markdown_file" "$html_file" <<'PY'
+import html
+import pathlib
+import sys
+
+markdown_path = pathlib.Path(sys.argv[1])
+html_path = pathlib.Path(sys.argv[2])
+text = markdown_path.read_text(encoding='utf-8')
+
+try:
+    import mistune
+except Exception:
+    body = f"<pre>{html.escape(text)}</pre>"
+else:
+    body = mistune.html(text)
+
+doc = f"""<!doctype html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"utf-8\">
+  <title>{html.escape(markdown_path.stem)}</title>
+  <style>
+    body {{ font-family: serif; margin: 1in; line-height: 1.5; }}
+    pre {{ white-space: pre-wrap; }}
+    code {{ font-family: monospace; }}
+  </style>
+</head>
+<body>
+{body}
+</body>
+</html>
+"""
+
+html_path.write_text(doc, encoding='utf-8')
+PY
+}
+
+latex_escape() {
+  printf '%s' "$1" | \
+    sed -e 's/\\/\\textbackslash{}/g' \
+        -e 's/{/\\{/g' \
+        -e 's/}/\\}/g' \
+        -e 's/#/\\#/g' \
+        -e 's/\$/\\$/g' \
+        -e 's/%/\\%/g' \
+        -e 's/&/\\&/g' \
+        -e 's/_/\\_/g' \
+        -e 's/\^/\\textasciicircum{}/g' \
+        -e 's/~/\\textasciitilde{}/g'
+}
+
+extract_title_versions() {
+  local markdown_file=$1
+
+  awk '
+    function trim(text) {
+      sub(/^[[:space:]]+/, "", text)
+      sub(/[[:space:]]+$/, "", text)
+      return text
+    }
+
+    BEGIN {
+      in_history = 0
+      saw_table_header = 0
+      saw_separator = 0
+    }
+
+    /^### [[:space:]]*Document Version History/ {
+      in_history = 1
+      next
+    }
+
+    in_history && /^\|/ {
+      if (!saw_table_header) {
+        saw_table_header = 1
+        next
+      }
+
+      if (!saw_separator && $0 ~ /^\|[-[:space:]]+\|/) {
+        saw_separator = 1
+        next
+      }
+
+      if (saw_separator) {
+        n = split($0, parts, /\|/)
+        if (n >= 4) {
+          document_version = trim(parts[2])
+          runner_version = trim(parts[3])
+          test_version = trim(parts[4])
+          print document_version "\t" runner_version "\t" test_version
+          exit
+        }
+      }
+    }
+  ' "$markdown_file"
+}
+
+convert_to_pdf() {
+  local markdown_file=$1
+  local target_file=$2
+  local pandoc_engine
+  local html_file
+  local header_file
+  local header_title
+  local display_title
+  local status
+
+  # Remove any pre-existing target so conversion always writes a fresh file.
+  rm -f "$target_file"
+
+  header_file=$(mktemp --suffix=.tex)
+  display_title=$(basename "${target_file%.pdf}")
+  display_title=${display_title//_/ }
+  header_title=$(latex_escape "$display_title")
+
+  cat > "$header_file" <<EOF
+\\usepackage{fancyhdr}
+\\newif\\ifltaftertoc
+\\ltaftertocfalse
+\\newcommand{\\ltrunninghead}{}
+\\newcommand{\\ltsetrunninghead}[1]{\\gdef\\ltrunninghead{#1}}
+\\AtBeginDocument{\\fontsize{12}{14}\\selectfont}
+\\AtBeginDocument{\\thispagestyle{empty}}
+\\fancypagestyle{plain}{%
+  \\fancyhf{}
+  \\renewcommand{\\headrulewidth}{0pt}
+  \\renewcommand{\\footrulewidth}{0pt}
+}
+\\pagestyle{fancy}
+\\fancyhf{}
+\\fancyhead[LE]{\\nouppercase{\\ifltaftertoc\\ltrunninghead\\fi}}
+\\fancyhead[RO]{\\nouppercase{\\ifltaftertoc\\ltrunninghead\\fi}}
+\\fancyhead[RE,LO]{$header_title}
+\\fancyfoot[LE,RO]{\\thepage}
+\\renewcommand{\\headrulewidth}{0.4pt}
+\\renewcommand{\\footrulewidth}{0.4pt}
+EOF
+
+  if [[ "$backend" == "pandoc" || "$backend" == "auto" ]]; then
+    if command -v pandoc >/dev/null 2>&1; then
+      if pandoc_engine=$(find_pandoc_engine); then
+        rm -f "$target_file"
+        if pandoc -f markdown --pdf-engine "$pandoc_engine" -V geometry:margin=1in -V classoption=twoside --include-in-header "$header_file" "$markdown_file" -o "$target_file"; then
+          rm -f "$header_file"
+          log_debug "converted using pandoc with engine '$pandoc_engine'"
+          return 0
+        else
+          status=$?
+          log_warn "pandoc with engine '$pandoc_engine' failed with exit code $status for: $target_file"
+          if [[ "$backend" == "pandoc" ]]; then
+            rm -f "$header_file"
+            return 1
+          fi
+        fi
+      else
+        rm -f "$target_file"
+        if pandoc -f markdown -V geometry:margin=1in -V classoption=twoside --include-in-header "$header_file" "$markdown_file" -o "$target_file"; then
+          rm -f "$header_file"
+          log_debug "converted using pandoc default engine"
+          return 0
+        else
+          status=$?
+          log_warn "pandoc default conversion failed with exit code $status for: $target_file"
+          if [[ "$backend" == "pandoc" ]]; then
+            rm -f "$header_file"
+            return 1
+          fi
+        fi
+      fi
+
+      log_warn "trying fallback converter"
+    elif [[ "$backend" == "pandoc" ]]; then
+      rm -f "$header_file"
+      log_error "requested backend 'pandoc' is not available"
+      return 1
+    fi
+  fi
+
+  rm -f "$header_file"
+
+  if [[ "$backend" != "auto" && "$backend" != "wkhtmltopdf" && "$backend" != "weasyprint" ]]; then
+    log_error "unsupported backend selection: $backend"
+    return 1
+  fi
+
+  html_file=$(mktemp --suffix=.html)
+
+  if ! render_html "$markdown_file" "$html_file"; then
+    rm -f "$html_file"
+    log_error "no supported Markdown-to-PDF toolchain found. Install pandoc, or install python3 with wkhtmltopdf or weasyprint."
+    return 1
+  fi
+
+  if [[ "$backend" == "auto" || "$backend" == "wkhtmltopdf" ]] && command -v wkhtmltopdf >/dev/null 2>&1; then
+    rm -f "$target_file"
+    if wkhtmltopdf "$html_file" "$target_file"; then
+      rm -f "$html_file"
+      log_debug "converted using wkhtmltopdf fallback"
+      return 0
+    else
+      status=$?
+      log_warn "wkhtmltopdf failed with exit code $status for: $target_file"
+    fi
+  fi
+
+  if [[ "$backend" == "auto" || "$backend" == "weasyprint" ]] && command -v weasyprint >/dev/null 2>&1; then
+    rm -f "$target_file"
+    if weasyprint "$html_file" "$target_file"; then
+      rm -f "$html_file"
+      log_debug "converted using weasyprint fallback"
+      return 0
+    else
+      status=$?
+      log_warn "weasyprint failed with exit code $status for: $target_file"
+    fi
+  fi
+
+  rm -f "$html_file"
+  if [[ "$backend" == "wkhtmltopdf" || "$backend" == "weasyprint" ]]; then
+    log_error "requested backend '$backend' failed or is not available for: $target_file"
+    return 1
+  fi
+  log_error "all available conversion backends failed for: $target_file"
+  return 1
+}
+
+process_file() {
+  local source_file=$1
+  local target_file=$2
+  local document_version="unknown"
+  local runner_version="unknown"
+  local test_version="unknown"
+  local have_versions=0
+  local versions_line
+  local temp_file
+
+  if versions_line=$(extract_title_versions "$source_file"); then
+    if [[ -n "$versions_line" ]]; then
+      IFS=$'\t' read -r document_version runner_version test_version <<< "$versions_line"
+      have_versions=1
+    fi
+  fi
+
+  temp_file=$(mktemp)
+
+  if [[ $convert_details -eq 1 ]]; then
+    awk -v document_version="$document_version" -v runner_version="$runner_version" -v test_version="$test_version" -v have_versions="$have_versions" '
+      function tex_escape(text) {
+        gsub(/\\/, "\\textbackslash{}", text)
+        gsub(/\{/, "\\{", text)
+        gsub(/\}/, "\\}", text)
+        gsub(/#/, "\\#", text)
+        gsub(/\$/, "\\$", text)
+        gsub(/%/, "\\%", text)
+        gsub(/&/, "\\&", text)
+        gsub(/_/, "\\_", text)
+        return text
+      }
+
+      function normalize_anchor(anchor) {
+        sub(/^#/, "", anchor)
+        if (anchor ~ /^[0-9]+-/) {
+          sub(/^[0-9]+-/, "", anchor)
+        }
+        return anchor
+      }
+
+      {
+        line = $0
+        lower = tolower(line)
+
+        if (skip_why == 1) {
+          if (match(line, /^##?#?#?[[:space:]]/)) {
+            skip_why = 0
+          } else {
+            next
+          }
+        }
+
+        if (match(lower, /^[[:space:]]*####[[:space:]]*why click to view/)) {
+          skip_why = 1
+          next
+        }
+
+        if (match(lower, /^[[:space:]]*<[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/) ||
+            match(lower, /^[[:space:]]*<[[:space:]]*\/[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/)) {
+          next
+        }
+
+        if (in_summary == 1) {
+          text = line
+          if (match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+            gsub(/<[^>]+>/, "", text)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", text)
+            if (length(text) > 0) {
+              if (length(summary_text) > 0) {
+                summary_text = summary_text " " text
+              } else {
+                summary_text = text
+              }
+            }
+            if (length(summary_text) > 0) {
+              print "### " summary_text
+            }
+            summary_text = ""
+            in_summary = 0
+            next
+          }
+          gsub(/<[^>]+>/, "", text)
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", text)
+          if (length(text) > 0) {
+            if (length(summary_text) > 0) {
+              summary_text = summary_text " " text
+            } else {
+              summary_text = text
+            }
+          }
+          next
+        }
+
+        if (match(lower, /<[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+          text = line
+          gsub(/<[^>]+>/, "", text)
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", text)
+          if (match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+            if (length(text) > 0) {
+              print "### " text
+            }
+            next
+          }
+          in_summary = 1
+          summary_text = text
+          next
+        }
+
+        if (!title_done && match(line, /^#[[:space:]]+/)) {
+          title_done = 1
+
+          title_text = line
+          sub(/^#[[:space:]]+/, "", title_text)
+          title_text = tex_escape(title_text)
+
+          title_line1 = title_text
+          title_line2 = ""
+          if (match(title_text, /[[:space:]]Internal[[:space:]](Reference|Guide)$/)) {
+            title_line2 = substr(title_text, RSTART + 1)
+            title_line1 = substr(title_text, 1, RSTART - 1)
+          } else if (match(title_text, /[[:space:]](Reference|Guide)$/)) {
+            title_line2 = substr(title_text, RSTART + 1)
+            title_line1 = substr(title_text, 1, RSTART - 1)
+          }
+
+          print "```{=latex}"
+          print "\\thispagestyle{empty}"
+          print "\\vspace*{0.33in}"
+          print "\\begin{center}"
+          if (length(title_line2) > 0) {
+            print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0.25in]" title_line2 "\\par}"
+          } else {
+            print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
+          }
+          print "\\end{center}"
+          print "\\vspace*{0.22in}"
+          print "\\fontsize{12}{14}\\selectfont"
+          if (have_versions == 1) {
+            print "Document Version: " tex_escape(document_version) "\\par"
+            print "Runner Version: " tex_escape(runner_version) "\\par"
+            print "Test Version: " tex_escape(test_version) "\\par"
+            print "\\vspace*{0.12in}"
+          }
+          print "```"
+          next
+        }
+
+        if (title_done == 1 && match(line, /^Document Version:[[:space:]]/)) {
+          next
+        }
+        if (title_done == 1 && match(line, /^Runner Version:[[:space:]]/)) {
+          next
+        }
+        if (title_done == 1 && match(line, /^Test Version:[[:space:]]/)) {
+          next
+        }
+
+        if (match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
+          in_toc_md = 1
+          print line
+          print ""
+          next
+        }
+
+        if (in_toc_md == 1) {
+          if (match(line, /^##[[:space:]]+/) && !match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
+            in_toc_md = 0
+          } else if (match(line, /^[[:space:]]*\[[^]]+\]\([^)]*\)[[:space:]]*$/)) {
+            toc_text = line
+            sub(/^[[:space:]]*\[/, "", toc_text)
+            sub(/\]\([^)]*\)[[:space:]]*$/, "", toc_text)
+
+            toc_anchor = line
+            sub(/^[[:space:]]*\[[^]]+\]\(#?/, "", toc_anchor)
+            sub(/\)[[:space:]]*$/, "", toc_anchor)
+            toc_anchor = normalize_anchor(toc_anchor)
+
+            if (length(toc_anchor) > 0) {
+              print "```{=latex}"
+              print "\\noindent\\hyperref[" toc_anchor "]{" tex_escape(toc_text) "} . . . \\pageref{" toc_anchor "}\\par"
+              print "```"
+            } else {
+              print line
+            }
+            next
+          }
+        }
+
+        if (match(lower, /^###[[:space:]]*copyright/)) {
+          print "```{=latex}"
+          print "\\vfill"
+          print "```"
+          print line
+          next
+        }
+
+        if (match(lower, /^##[[:space:]]*license[[:space:]]*$/)) {
+          print "License"
+          next
+        }
+
+        if (match(lower, /^[[:space:]]*spdx-license-identifier:/)) {
+          print tex_escape(line)
+          next
+        }
+
+        if (match(line, /^## /) && !match(lower, /^## license[[:space:]]*$/)) {
+          print "\\newpage"
+        }
+
+        print line
+      }
+    ' "$source_file" > "$temp_file"
+  else
+    awk -v document_version="$document_version" -v runner_version="$runner_version" -v test_version="$test_version" -v have_versions="$have_versions" '
+      function tex_escape(text) {
+        gsub(/\\/, "\\textbackslash{}", text)
+        gsub(/\{/, "\\{", text)
+        gsub(/\}/, "\\}", text)
+        gsub(/#/, "\\#", text)
+        gsub(/\$/, "\\$", text)
+        gsub(/%/, "\\%", text)
+        gsub(/&/, "\\&", text)
+        gsub(/_/, "\\_", text)
+        return text
+      }
+
+      function normalize_anchor(anchor) {
+        sub(/^#/, "", anchor)
+        if (anchor ~ /^[0-9]+-/) {
+          sub(/^[0-9]+-/, "", anchor)
+        }
+        return anchor
+      }
+
+      {
+        line = $0
+        lower = tolower(line)
+
+        if (skip_why == 1) {
+          if (match(line, /^##?#?#?[[:space:]]/)) {
+            skip_why = 0
+          } else {
+            next
+          }
+        }
+
+        if (match(lower, /^[[:space:]]*####[[:space:]]*why click to view/)) {
+          skip_why = 1
+          next
+        }
+
+        if (match(lower, /^[[:space:]]*<[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/) ||
+            match(lower, /^[[:space:]]*<[[:space:]]*\/[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/)) {
+          next
+        }
+
+        if (in_summary == 1) {
+          if (match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+            in_summary = 0
+          }
+          next
+        }
+
+        if (match(lower, /<[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+          if (!match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+            in_summary = 1
+          }
+          next
+        }
+
+        if (!title_done && match(line, /^#[[:space:]]+/)) {
+          title_done = 1
+
+          title_text = line
+          sub(/^#[[:space:]]+/, "", title_text)
+          title_text = tex_escape(title_text)
+
+          title_line1 = title_text
+          title_line2 = ""
+          if (match(title_text, /[[:space:]]Internal[[:space:]](Reference|Guide)$/)) {
+            title_line2 = substr(title_text, RSTART + 1)
+            title_line1 = substr(title_text, 1, RSTART - 1)
+          } else if (match(title_text, /[[:space:]](Reference|Guide)$/)) {
+            title_line2 = substr(title_text, RSTART + 1)
+            title_line1 = substr(title_text, 1, RSTART - 1)
+          }
+
+          print "```{=latex}"
+          print "\\thispagestyle{empty}"
+          print "\\vspace*{0.33in}"
+          print "\\begin{center}"
+          if (length(title_line2) > 0) {
+            print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0.25in]" title_line2 "\\par}"
+          } else {
+            print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
+          }
+          print "\\end{center}"
+          print "\\vspace*{0.22in}"
+          print "\\fontsize{12}{14}\\selectfont"
+          if (have_versions == 1) {
+            print "Document Version: " tex_escape(document_version) "\\par"
+            print "Runner Version: " tex_escape(runner_version) "\\par"
+            print "Test Version: " tex_escape(test_version) "\\par"
+            print "\\vspace*{0.12in}"
+          }
+          print "```"
+          next
+        }
+
+        if (title_done == 1 && match(line, /^Document Version:[[:space:]]/)) {
+          next
+        }
+        if (title_done == 1 && match(line, /^Runner Version:[[:space:]]/)) {
+          next
+        }
+        if (title_done == 1 && match(line, /^Test Version:[[:space:]]/)) {
+          next
+        }
+
+        if (match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
+          in_toc_md = 1
+          print line
+          print ""
+          next
+        }
+
+        if (in_toc_md == 1) {
+          if (match(line, /^##[[:space:]]+/) && !match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
+            in_toc_md = 0
+          } else if (match(line, /^[[:space:]]*\[[^]]+\]\([^)]*\)[[:space:]]*$/)) {
+            toc_text = line
+            sub(/^[[:space:]]*\[/, "", toc_text)
+            sub(/\]\([^)]*\)[[:space:]]*$/, "", toc_text)
+
+            toc_anchor = line
+            sub(/^[[:space:]]*\[[^]]+\]\(#?/, "", toc_anchor)
+            sub(/\)[[:space:]]*$/, "", toc_anchor)
+            toc_anchor = normalize_anchor(toc_anchor)
+
+            if (length(toc_anchor) > 0) {
+              print "```{=latex}"
+              print "\\noindent\\hyperref[" toc_anchor "]{" tex_escape(toc_text) "} . . . \\pageref{" toc_anchor "}\\par"
+              print "```"
+            } else {
+              print line
+            }
+            next
+          }
+        }
+
+        if (match(lower, /^###[[:space:]]*copyright/)) {
+          print "```{=latex}"
+          print "\\vfill"
+          print "```"
+          print line
+          next
+        }
+
+        if (match(lower, /^##[[:space:]]*license[[:space:]]*$/)) {
+          print "License"
+          next
+        }
+
+        if (match(lower, /^[[:space:]]*spdx-license-identifier:/)) {
+          print tex_escape(line)
+          next
+        }
+
+        if (match(line, /^## /) && !match(lower, /^## license[[:space:]]*$/)) {
+          print "\\newpage"
+        }
+
+        print line
+      }
+    ' "$source_file" > "$temp_file"
+  fi
+
+  if ! convert_to_pdf "$temp_file" "$target_file"; then
+    rm -f "$temp_file"
+    return 1
+  fi
+
+  rm -f "$temp_file"
+}
+
+target_file_for_source() {
+  local source_file=$1
+  local rel_path
+
+  rel_path=${source_file#"$infile"/}
+  if [[ $keep_structure -eq 1 ]]; then
+    printf '%s\n' "$outdir/${rel_path%.md}.pdf"
+  else
+    printf '%s\n' "$outdir/$(basename "${source_file%.md}.pdf")"
+  fi
+}
+
+infile=$(trim_trailing_slashes "$infile")
+
+if [[ -d "$infile" ]]; then
+  indir=$infile
+  outdir=${2:-$indir}
+  outdir=$(trim_trailing_slashes "$outdir")
+
+  if [[ $# -gt 2 ]]; then
+    echo "Error: directory mode accepts at most two arguments." >&2
+    exit 1
+  fi
+
+  if [[ ! -d "$outdir" && $dry_run -eq 0 ]]; then
+    if ! mkdir -p "$outdir"; then
+      echo "Error: unable to create output directory: $outdir" >&2
+      exit 1
+    fi
+  fi
+
+  md_files=()
+
+  if [[ $recursive -eq 1 ]]; then
+    while IFS= read -r -d '' file; do
+      md_files+=("$file")
+    done < <(find "$infile" -type f -name '*.md' -print0 | sort -z)
+  else
+    shopt -s nullglob
+    md_files=("$infile"/*.md)
+    shopt -u nullglob
+  fi
+
+  if [[ ${#md_files[@]} -eq 0 ]]; then
+    log_error "no .md files found in directory: $infile"
+    exit 1
+  fi
+
+  filtered_md_files=()
+
+  for source_file in "${md_files[@]}"; do
+    rel_path=${source_file#"$infile"/}
+
+    if [[ ${#include_patterns[@]} -gt 0 ]] && ! match_any_pattern "$rel_path" "${include_patterns[@]}"; then
+      continue
+    fi
+
+    if [[ ${#exclude_patterns[@]} -gt 0 ]] && match_any_pattern "$rel_path" "${exclude_patterns[@]}"; then
+      continue
+    fi
+
+    filtered_md_files+=("$source_file")
+  done
+
+  if [[ ${#filtered_md_files[@]} -eq 0 ]]; then
+    log_error "no input files remain after applying include/exclude filters"
+    exit 1
+  fi
+
+  # Without -k in recursive mode, duplicate basenames would overwrite outputs.
+  if [[ $recursive -eq 1 && $keep_structure -eq 0 ]]; then
+    declare -A output_to_source=()
+
+    for source_file in "${filtered_md_files[@]}"; do
+      target_file=$(target_file_for_source "$source_file")
+
+      if [[ -n "${output_to_source[$target_file]:-}" ]]; then
+        log_error "multiple input files map to the same output file: $target_file"
+        log_error "conflicting inputs: ${output_to_source[$target_file]} and $source_file"
+        log_error "use -k to preserve directory structure"
+        exit 1
+      fi
+
+      output_to_source["$target_file"]=$source_file
+    done
+  fi
+
+  writable_targets=0
+
+  if [[ $dry_run -eq 0 ]]; then
+    for source_file in "${filtered_md_files[@]}"; do
+      target_file=$(target_file_for_source "$source_file")
+
+      if [[ $keep_structure -eq 1 ]]; then
+        if ! mkdir -p "$(dirname "$target_file")"; then
+          continue
+        fi
+      fi
+
+      if can_write_target "$target_file"; then
+        writable_targets=$((writable_targets + 1))
+      fi
+    done
+  fi
+
+  if [[ $dry_run -eq 0 && $writable_targets -eq 0 ]]; then
+    log_error "output directory is not writable: $outdir"
+    exit 1
+  fi
+
+  # Continue converting writable targets; return non-zero if any target fails checks.
+  had_errors=0
+
+  for source_file in "${filtered_md_files[@]}"; do
+    target_file=$(target_file_for_source "$source_file")
+
+    if [[ $dry_run -eq 1 ]]; then
+      log_info "Dry-run: $source_file -> $target_file"
+      continue
+    fi
+
+    if [[ $keep_structure -eq 1 ]]; then
+      if ! mkdir -p "$(dirname "$target_file")"; then
+        log_error "unable to create output path for: $target_file"
+        had_errors=1
+        continue
+      fi
+    fi
+
+    if ! can_write_target "$target_file"; then
+      log_error "output file is not writable: $target_file"
+      had_errors=1
+      continue
+    fi
+    if ! process_file "$source_file" "$target_file"; then
+      log_error "failed converting $source_file to $target_file"
+      had_errors=1
+      continue
+    fi
+    log_info "Generated $target_file"
+  done
+
+  if [[ $had_errors -ne 0 ]]; then
+    exit 1
+  fi
+
+  exit 0
+fi
+
+if [[ $recursive -eq 1 || $keep_structure -eq 1 || $segment_glob -eq 1 || ${#include_patterns[@]} -gt 0 || ${#exclude_patterns[@]} -gt 0 ]]; then
+  log_error "-g, -k, -r, -i, and -x are only allowed in directory mode."
+  exit 1
+fi
+
+input_name=${infile##*/}
+input_ext=${input_name##*.}
+
+if [[ $strict_ext -eq 1 && "$input_name" == *.* && "$input_ext" != "md" ]]; then
+  echo "Error: strict extension mode requires .md for explicit input extensions." >&2
+  exit 1
+fi
+
+if [[ "$infile" == *.md ]]; then
+  source_file=$infile
+else
+  source_file="$infile.md"
+fi
+
+if [[ ! -f "$source_file" ]]; then
+  log_error "input file not found: $source_file"
+  exit 1
+fi
+
+outfile=${2:-${source_file%.md}}
+outfile=$(trim_trailing_slashes "$outfile")
+
+if [[ $strict_ext -eq 1 && $# -eq 2 ]]; then
+  output_name=${outfile##*/}
+  output_ext=${output_name##*.}
+  if [[ "$output_name" == *.* && "$output_ext" != "pdf" ]]; then
+    log_error "strict extension mode requires .pdf for explicit output extensions."
+    exit 1
+  fi
+fi
+
+if [[ "$outfile" != *.pdf ]]; then
+  outfile="$outfile.pdf"
+fi
+
+if [[ $dry_run -eq 1 ]]; then
+  log_info "Dry-run: $source_file -> $outfile"
+  exit 0
+fi
+
+if ! can_write_target "$outfile"; then
+  log_error "output file is not writable: $outfile"
+  exit 1
+fi
+
+process_file "$source_file" "$outfile"
+
+log_info "Generated $outfile"

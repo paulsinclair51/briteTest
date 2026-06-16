@@ -45,7 +45,10 @@ run: $(TARGET)
 	./$(TARGET) --help > ./reports/litetest_help.txt
 	./$(TARGET) -h > ./reports/litetest_.txt
 
+test-genpdf:
+	bash ./scripts/test_genpdf.sh
+
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run clean
+.PHONY: all run test-genpdf clean

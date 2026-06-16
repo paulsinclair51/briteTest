@@ -45,7 +45,13 @@ SOFTWARE.
 
 This document is intended for contributors.
 
-#### Document Version History
+For a list of other LiteTest documents and the repository layout, see
+the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
+
+For a glossary of terms, see the LiteTest Glossary Reference
+(`LiteTest_Glossary_Reference.md`).
+
+### Document Version History
 
 <details>
 <summary>Click to view</summary>
@@ -64,92 +70,13 @@ The document's `u` (update) version track updates to this document and does not 
 </details>
 </details>
 
-#### Documentation
-
-<details>
-<summary>Click to view</summary>
-
-This section lists all LiteTest user and contributor documentation.
-
-**User documentation**:
-
-- `README.md` — Introduction to LiteTest.
-
-- `LiteTest_Documentation.md` — Index of LiteTest documents and repository layout.
-
-- `LiteTest_Glossary.md` — An alphabetically ordered list of terms generally used in LiteTest (emphasizing their specific meaning in LiteTest) and terms often used in the testing domain.
-
-- `LiteTest_Runner_User_Guide.md` — Concepts, usage, and examples for the LiteTest Runner framework and API.
-
-- `LiteTest_Runner_Reference.md` — Reference document for the LiteTest Runner API.
-
-- `LiteTest_Test_User_Guide.md` — Concepts, usage, and examples for the LiteTest Test API.
-
-- `LiteTest_Test_Reference.md` — Reference document for the LiteTest Test API.
-
-**Contributor documentation**:
-
-- `LiteTest_Contributor_Guide.md` — Versioning, documentation/coding guidelines, branching, testing, and CI/release checklists.
-
-- `LiteTest_Runner_Internal_Guide.md` — Implementation concepts, architecture, and high-level design for the Runner API.
-
-- `LiteTest_Runner_Internal_Reference.md` — Reference for the implementation of the Runner API.
-  
-- `LiteTest_Test_Internal_Guide.md` — Implementation concepts, architecture, and high-level design for the Test API.
-
-- `LiteTest_Test_Internal_Reference.md` — Reference for the implementation of the Test API.
-</details>
-
-#### LiteTest Repository Layout
-
-<details>
-<summary>Click to view</summary>
-
-This section shows the layout of the GitHub repository `paulsinclair51/LiteTest` (core files and directories):
-
-```text
-.github/workflows/ci.yml
-README.md
-LICENSE
-Makefile
-build_test_litetest.ps1
-build/
-docs/
-    LiteTest_Documentation.md
-    LiteTest_Glossary.md
-    LiteTest_Runner_User_Guide.md
-    LiteTest_Runner_Reference.md
-    LiteTest_Contributor_Guide.md
-    LiteTest_Runner_Internal_Guide.md
-    LiteTest_Runner_Internal_Reference.md
-    LiteTest_Test_Internal_Guide.md
-    LiteTest_Test_Internal_Reference.md
-examples/
-include/
-    litetest_runner.h
-    litetest_test.h
-reports/
-    litetest_test_report-I.txt
-    litetest_test_report.txt
-scripts/
-src/
-    litetest_runner.c
-    litetest_test.c
-tests/
-    test_litetest.c
-    test_orchestrator.c
-    test_guard1.c
-    test_guard2.c
-```
-</details>
-
 ## Table of Contents
 
 <details>
 <summary>Click to view</summary>
 
-- [**1. Introduction**](#1-introduction)  
-  - [Public and Internal Name Conventions](#public-and-internal-name-conventions)  
+[**1. Introduction**](#1-introduction)  
+[***1. Public and Internal Name Conventions](#1.1-public-and-internal-name-conventions)  
   - [Why Internal Symbols Appear in the Header](#why-internal-symbols-appear-in-the-header)
 
 
@@ -182,7 +109,7 @@ Their presence in the header reflects C implementation requirements, not intende
 usage. Contributors may modify these symbols as needed, provided the public API
 contract remains intact.
 
-#### Public and Internal Naming Conventions
+### 1.1 Public and Internal Naming Conventions
 
 <details>
 <summary>Click to view</summary>
@@ -191,8 +118,7 @@ Any framework names that are public and visible to LiteTest API users are prefix
 with `lt_...` (typically lowercase) or `LT_...` (typically uppercase).
 
 Any framework names that are internal (but technically visible to LiteTest API users)
-follow the pattern `litetest_..._internal_t`, `litetest_..._internal`, or `LITETEST_..._INTERNAL`.
-These names should not be referenced by API users.
+follow the pattern `litetest_..._internal_t`, `litetest_..._internal`, or `LITETEST_..._INTERNAL`. These names should not be referenced by API users.
 
 In general, users of the API should not define names prefixed with `lt_`, `LT`, `litetest_`,
 or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.

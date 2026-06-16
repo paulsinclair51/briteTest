@@ -1,8 +1,8 @@
 # LiteTest Glossary Reference
 
 This glossary defines generally used terms in the LiteTest documentation 
-and terms often used in the testing domain. It is a companion document to the
-LiteTest Documentation Guide.
+and terms often used in the testing domain. It is a companion document to
+the LiteTest Documentation Guide.
 
 <details>
 <summary>`Click to view` sections are used throughout this document</summary>
@@ -55,6 +55,9 @@ This document is intended for LiteTest users and contributors who need
 quick access to the definitions of terms used in LiteTest or to browse
 through the terms.
 
+For a list of other LiteTest documents and the repository layout, see
+the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
+
 <details>
 <summary>Click to view Document Version History</summary>
 
@@ -81,122 +84,15 @@ not correspond to a minor or patch version. `u` increments whenever
 this document is updated without a change to `M`, and it resets to `0`
 when `M` is incremented.
 </details>
-
-<details>
-<summary>Click to view Documentation</summary>
-
-### Documentation
-
-This section lists all LiteTest user and contributor documentation.
-
-**User documentation**:
-
-- **README.md** — Introduction to LiteTest.
-
-- **LiteTest_Documentation_Guide.md**: Guide to the LiteTest documents and
-  repository layout.
-
-- **LiteTest_Glossary_Reference.md**: An alphabetically ordered list of terms
-  generally used in LiteTest (emphasizing their specific meaning in
-  LiteTest) and terms often used in the testing domain.
-
-- **LiteTest_Runner_User_Guide.md**: Concepts, usage, and examples for
-  the LiteTest Runner framework and API.
-
-- **LiteTest_Runner_Reference.md**: Reference document for the
-  LiteTest Runner API.
-
-- **LiteTest_Test_User_Guide.md**: Concepts, usage, and examples for
-  the LiteTest Test API.
-
-- **LiteTest_Test_Reference.md**: Reference document for the LiteTest
-  Test API.
-
-**Contributor documentation**:
-
-- **LiteTest_Contributor_Guide.md**: Versioning, documentation/coding
-  guidelines, branching, testing, and CI/release checklists.
-
-- **LiteTest_Runner_Internal_Guide.md**: Implementation concepts,
-  architecture, and high-level design for the Runner API.
-
-- **LiteTest_Runner_Internal_Reference.md**: Reference for the
-  implementation of the Runner API.
-
-- **LiteTest_Test_Internal_Guide.md**: Implementation concepts,
-  architecture, and high-level design for the Test API.
-
-- **LiteTest_Test_Internal_Reference.md**: Reference for the
-  implementation of the Test API.
 </details>
 
-<details>
-<summary>Click to view LiteTest Repository Layout</summary>
-
-### LiteTest Repository Layout
-
-This section shows the layout of the GitHub repository
-`paulsinclair51/LiteTest` (core files and directories):
-
-```text
-.github/workflows/ci.yml
-README.md
-LICENSE
-.gitignore
-Makefile
-build_test_litetest.ps1
-build/                  # Build outputs and related artifacts.
-docs/                   # User and contributor documentation.
-    LiteTest_Documentation_Guide.md
-    LiteTest_Glossary_Reference.md
-    LiteTest_Runner_User_Guide.md
-    LiteTest_Runner_Reference.md
-    LiteTest_Contributor_Guide.md
-    LiteTest_Runner_Internal_Guide.md
-    LiteTest_Runner_Internal_Reference.md
-    LiteTest_Test_Internal_Guide.md
-    LiteTest_Test_Internal_Reference.md
-examples/               # Usage examples.
-include/                # Public API headers.
-    litetest_runner.h
-    litetest_test.h
-reports/                # Generated report files (non-source).
-scripts/                # Automation scripts.
-    test/
-src/                    # API source.
-    litetest_runner.c
-    litetest_test.c
-tests/                  # Testing assets.
-    src/                # Test source files.
-        test_litetest.c
-        test_orchestrator.c
-        test_file_compare_helpers.c
-        test_guard1.c
-        test_guard2.c
-    include/            # Test headers.
-    control/            # Golden/baseline files for comparison.
-    output/             # Retained test outputs needing review
-                        # (e.g., copied report file to compare
-                        # against control/)
-                        # (mismatch/new); matched outputs
-                        # removed by default (use -o to keep).
-    input/              # Static test input files.
-    tmp/                # Temporary test outputs; removed at run
-                        # start for clean start; auto-deleted by
-                        # test executable when it finishes (use -t
-                        # to keep for debugging); user can
-                        # manually remove as needed.
-```
-</details>
-</details>
-
-<details>
+<details>\
 <summary>Table of Contents</summary>
 
 ## Table of Contents
 
-- [1. Introduction](#1-introduction)
-- [2. Glossary](#2-glossary)
+[1. Introduction](#1-introduction)
+[2. Glossary](#2-glossary)
 </details>
 
 <details>
@@ -235,7 +131,16 @@ to the LiteTest Runner or Test API Reference document for information.
 <details>
 <summary>B: Click to view</summary>
 
-_No terms currently defined._
+- **Bash glob pattern**: A shell wildcard pattern used for filename
+  and path matching in Bash. In LiteTest `genpdf`, this is used for
+  relative-path filtering with `-i` and `-x`.
+  Default matching rules: `*` and `**` match any characters (including
+  `/`), `?` matches one character (including `/`), `[abc]` matches one
+  character from a set or range, and any other character matches
+  itself. This differs from common path-segment glob expectations where
+  `*` does not match `/`.
+  With the `-g` option, `genpdf` uses segment-style matching: `*` and
+  `?` do not match `/`, while `**` matches across `/`.
 </details>
 
 <details>
