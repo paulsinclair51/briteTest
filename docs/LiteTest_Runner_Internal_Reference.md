@@ -36,6 +36,11 @@ SOFTWARE.
 
 ## Preface
 
+For a list of other LiteTest documents and the LiteTest repository layout, see
+the LiteTest Documentation Guide.
+
+For a glossary of terms, see the LiteTest Glossary Reference.
+
 ### Document Version History
 
 <details>
@@ -61,28 +66,6 @@ does not correspond to LiteTest minor or patch versions. The update version is
 incremented whenever this document is updated without a change to the major version,
 and it resets to `0` when the major version increases.
 </details>
-
-### LiteTest Documentation
-
-<details>
-<summary>Click to view</summary>
-
-The user documents for the LiteTest API are the following:
-
-- **README.md** — Introduction to LiteTest.
-- **LiteTest User Guide** — Concepts, workflow, examples.
-- **LiteTest API Reference** — Public API types, enums, macros, and functions.
-
-The documents for contributors and maintainers for the LiteTest framework are
-the following:
-
-- **LiteTest Contributor Guide** — Versioning, branching, testing, documentation rules.  
-- **LiteTest Framework Guide** — Concepts, workflow, examples.
-- **LiteTest Framework Reference** — Reference for Private (internal) framework types,
-  enums, macros, functions, etc.
-
-See [Repository Layout](#repository-layout) for locations of the above documents and the
-LiteTest directories and files.
 
 #### Documentation Style Guide
 
