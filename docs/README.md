@@ -31,4 +31,4 @@ Files:
 
 
 
-See `../README.md` for a concise introduction to LiteTest.
+See `../README.md` for an introduction to LiteTest.
