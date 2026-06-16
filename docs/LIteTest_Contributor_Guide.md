@@ -3,7 +3,7 @@
 This document defines the contribution process, coding standards, documentation
 rules, and versioning guidelines for LiteTest.
 
-`Click to view` sections are used throughout this document.
+summary>`Click to view` sections are used throughout this document</summary>
 </details>
 
 <details>
@@ -40,16 +40,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 </details>
 
+<details>
+<summary>Click to view Preface</summary>
+
 ## Preface
 
-This document is intended for LiteTest contributors who need guidance on patching and
-enhancing LiteTest APIs, and updating Litetest documentation.
+This document is intended for LiteTest contributors who need
+guidance on enhancing and maintaining LiteTest.
 
 For a list of other LiteTest documents and the repository layout, see
 the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
 
 For a glossary of terms, see the LiteTest Glossary Reference
 (`LiteTest_Glossary_Reference.md`).
+
+<details>
+<summary>Click to view Document Version History</summary>
 
 ### Document Version History
 
@@ -76,8 +82,8 @@ when `M` is incremented.
 </details>
 </details>
 
-<details>\
-<summary>Table of Contents</summary>
+<details>
+<summary>Click to view Table of Contents</summary>
 
 ## Table of Contents
 
