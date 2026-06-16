@@ -12,12 +12,9 @@ Directories:
 
 Files:
 
-
-
-- `litetest_runner.h`: Header for the LiteTest Runner API.
+- **litetest_runner.h**: Header for the LiteTest Runner API.
   See `../src/litetest_runner.c` for the corresponding source file.
-
-- `litetest_test.h`: Header for the LiteTest Test API.
+- **litetest_test.h**: Header for the LiteTest Test API.
   See `../src/litetest_test.c` for the corresponding source file.
 
-See `../README.md` for a concise introduction to LiteTest.
+See **../README.md** for an introduction to LiteTest.
