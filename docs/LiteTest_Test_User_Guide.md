@@ -82,7 +82,7 @@ when `M` is incremented.
 </details>
 </details>
 
-<details>\
+<details>
 <summary>Table of Contents</summary>
 
 ## Table of Contents
