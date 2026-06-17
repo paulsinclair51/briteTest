@@ -8,7 +8,7 @@ For license details, see `../LICENSE`.
 
 See `../README.md` for an introduction to LiteTest.
 
-Files:
+## Files
 
 - **genpdf**: Convert Markdown Documentation (`.md`) to Portable Document
   Format (`,pdf`),
@@ -18,6 +18,6 @@ Files:
   Run `test_genpdf.sh --help` for usage information.
 - **README.md**: This directory guide.
 
-Subdirectories:
+## Subdirectories
 
 - None.
