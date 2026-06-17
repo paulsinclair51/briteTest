@@ -1,7 +1,7 @@
 # LiteTest Runner Reference
 
-This document defines the LiteTest Runner API. It includes types,
-structs, enums, macros, and functions.
+This document provides a reference to the LiteTest Runner API. It includes types, structs, unions,
+enums, macros, and functions.
 
 Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
