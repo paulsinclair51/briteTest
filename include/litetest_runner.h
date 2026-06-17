@@ -1,42 +1,48 @@
  /**
  * @file /paulsinclair51/include/litetest_runner.h
  * 
- * @brief LiteTest is a lightweight Application Programming Interface (API) and
- * framework for defining, running, and reporting tests in C/C++ projects. It is
- * implemented as a single .h and .c pair with no external dependencies requiring
+ * @brief LiteTest Runner is a lightweight framework and Application Programming and
+ * Interface (API) framework for defining, running, and reporting tests in C/C++ projects.
+ * It is implemented as a single .h and .c pair with no external dependencies requiring
  * only a POSIX.1‑2001 environment and a C99‑compliant compiler.
  *
- * This header is included by modules defining an orchestrator (main) and 
- * testing functions for testing, e.g., a feature, API, or a project implementation.
- * It provides declarations, definitions (other than non-inline function definitions
- * provided by litetest_runner.c in the repository src directory), and the complete
- * Doxygen documentation for LiteTest. See README.md in the repository root
- * directory for an introduction and usage guide to LiteTest.
- *
- * @note LiteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility and a
- *       C99-compliant compiler. Linux, macOS, and the BSD family natively meet these
- *       requirements. Windows requires a POSIX compatibility layer such as Cygwin,
- *       MSYS2, or WSL.
- *
- * @note LiteTest has been exercised in a POSIX environment; however, users must
- *       confirm correct behavior in their own environment.
- * 
  * @copyright Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
  * See LICENSE in the repository root for details.
  */
 
 /**
- * @section VersonMacro Version Macro
+ * @section HeaderUsage Header Usage
  *
- * @name LT_VERSION
+ * This header is included by modules defining an orchestrator (main) and 
+ * testing functions for testing, e.g., a feature, API, or a project implementation.
+ * It provides declarations, definitions (other than non-inline function definitions
+ * provided by litetest_runner.c in the repository src directory).
+ *
+ * See README.md in the repository root directory for an introduction to LiteTest.
+ *
+ * See LiteTest Docucmentation Guide for ,,,
+ *
+ * @note LiteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility and a
+ *       C99-compliant compiler. Linux, macOS, and the BSD family natively meet these
+ *       requirements. Windows requires a POSIX compatibility layer such as Cygwin,
+ *       MSYS2, or WSL.
+ *
+ * @note LiteTest Runner has been exercised in a POSIX environment; however, users must
+ *       confirm correct behavior in their own environment.
+ */
+
+/**
+ * @section RunnerVersonMacro Runner Version Macro
+ *
+ * @name LT_RUNNER_VERSION
  *
  * @brief Version "M.m.p" for litetest_runner.h which must be the same as
- *.       LT_VERSION_C for litetest_runner.c.
+ *.       LT_RUNNER_VERSION_C for litetest_runner.c.
  *
  * M, m, and p are 1 or 2 digits (e.g., O, 00, 1, 01, 24):
  +
- * - M: Major version for incompatible API changes.
+ * - M: Major version for major additions or incompatible API changes.
  * - m: Minor version for backward-compatible additions.
  * - p: Patch version for bug fixes or internal improvements.
  *
@@ -45,7 +51,7 @@
  *       and will not change without a major version increment.
  */
  
-#define LT_VERSION "1.0.0"
+#define LT_RUNNER_VERSION "1.0.0"
 
 /**
  * @section ChangeHistory Change History
@@ -53,298 +59,6 @@
  * 2026/09/27 Initial version "1.0.0.".
  *
  **/
-
-/**
- * @section Overview Overview
- *
- * @note In the following, testing the LiteTest itself is used as an example of
- *       using the LiteTest API and framework with test modules test_guards_1.c,
- *       test_guards_2.c, and test_orchestrator.c, and test orchestrator
- *       test_litetest.c in the repository tests directory.
- */
- 
-/**
- * @subsection KeyPoints Key Points
- *
- * 1. A test executable is built from:
- *
- *   - An orchestrator (main) function and optional test functions
- *     organized into one or more modules,
- *
- *   - litetest_runner.h, and litetest_runner.c, unistd.h
- *
- *   - Modules and include files from the feature/project/API under test.
- *   
- * 2. The executable produces a report grouped by category, including
- *    pass/fail/fault counts per category and totals across all categories.
- *    Fail and fault messages are appended to the report.
- *
- * 3. The orchestrator and test functions may reside in one module
- *    or multiple modules. Recommended: put the orchestrator function
- *    in one module and each test function in its own module.
- *
- * 4. The test framework requires unistd.h for POSIX fork and signal capabilities.
- */
-
-/**
- * @subsection OrchestratorMacros Orchestrator Function Macros
- *
- * Macros for use in the orchestrator (main) function:
- *
- * - LT_DECLARE_ORCHESTRATOR(funcname)[;]
- * - LT_INIT_ORCHESTRATOR(funcname, testsuitename, [maxparallel]);
- * - LT_PARSE_ARGS([maxargs], ["defaultreportfilename"]);
- * - LT_OPEN_REPORT(["reporttitle"]);
- * - test and assert macros
- * - LT_WRITE_RESULT([t], "categoryname");
- * - LT_CLOSE_REPORT(["notes"]);
- * - LT_EXIT;
- *
- * @note funcname must be main.
- * @note maxargs must be 2 or greater. The first arg is the executable name.
- *       The second optional arg is PATH. Additional args are for customization
- *       and must be parsed by custom code added to the function.
- * @note t is a test or assert macro.
- * @note For the first macro, a semicolon is required for a forward declaration;
- *       otherwise, it is omitted if is it followed by a definition in { }.
- */
-
-/**
- * @subsection TestFunctionMacros Test Function Macros
- *
- * Macros for use in a test function:
- *
- * - LT_DECLARE_TEST(funcname)[;]
- * - LT_INIT_TEST(funcname, [maxparallel]);
- * - test and assert macros
- * - LT_RETURN;
- *
- * @note funcname must not be main and must be same for the first two macros when
- *       defining a test function.
- * @note For the first macro, a semicolon is required for a forward declaration;
- *       otherwise, it is omitted if it is followed by a definition in {}.
- */
-
-/**
- * @subsection TestAndAssertMacros Test and Assert Macros
- *
- * - LT_TEST(funcname, [isolation])[;]
- * - LT_ASSERT(expression, [isolation])[;]
- * - LT_INJECT_ASSERT(expression, [isolation])[;]
- *
- * The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
- * otherwise it is required.
- *
- * LT_INJECT_ASSERT is the same as LT_ASSERT except:
- *
- * - Only executes if injection is enabled (see @ref iOption `-i` Option.
- * - Result is counted as an injected pass/fail/fault.
- *
- * Special values that can be used in any expression:
- *
- * - LT_PASS: returns 1.
- * - LT_FAIL: returns 0.
- * - LT_FAULT(type): causes a fault of the specified type:
- *.                  1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
- * 
- * For other values of type, LT_FAULT returns 0.
- */
-
-/**
- * @subsubsection FaultHandling Fault Handling
- *
- * LiteTest provides multi‑level signal guards to safely capture faults such as
- * `SIGSEGV` `SIGABRT`, and `SIGBUS`. When a fault occurs:
- *
- * - The fault is recorded
- * - Execution continues
- * - The test suite completes normally
- * - The final report includes fault counts and messages
- *
- * This allows you to test low‑level or unsafe code without aborting the entire
- * test run.
- */
-
-/**
- * @subsubsection ParallelExecution Parallel Execution
-
-Parallel execution of the test/assert macros is enabled/disabled by the
-`maxparallel` parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_TEST
-macros. Up to `maxparallel` test/assert macros are started and when one
-finishes another is started.
- */
-
-/**
- * @subsubsection ParallelGroupMacros Parallel Group Macros
-
-A group ensures that all test/assert macros inside it start together:
-
-- Groups are bracketed with:
-  - `LT_BEGIN_GROUP(groupname)`
-  - `LT_END_GROUP(groupname)`
-- Within a test function, a group cannot be nested inside another group.
-
- */
-
-/**
- * @subsubsection Isolation Levels
- *
-`isolation`:
-- 0 same thread (no parallelism)
-- 1 separate thread
-- 2 separate process
-
-Defaults:
-- Non-grouped macros: 0.
-- Grouped macros: 1.
-
- * Invalid combinations are rejected.
- */
- 
-/** old
- * @subsubsection ParallelExecution Parallel Execution
- *
- * Parallel execution of the test/assert macros is enabled/disabled by the
- * maxparallel parameter for the LT_INIT_ORCHESTRATOR and LT_INIT_TEST
- * macros. Up to maxparallel test/assert macros are started and when one
- * finishes another is started.
- *
- * @subsubsection ParallelGroupExecution Parallel Group Execution
- *
- * Test/assert macros can run in parallel as a group (that is, they
- * are not started until they can all start without exceeding maxparallel).
- * A group is bracketed using the followug macros:
- *
- * - LT_BEGIN_GROUP(groupname, [isolation])
- * - LT_END_GROUP(groupname);
- *
- * @note A group cannot be nested in a group within a test function.
- *
- * @subsubsection TextIsolation Test Isolation
- *
- * For non-grouped test/assert macro, the isolation parameter 
- * indicates whether the macro runs in the same thread as the calling
- * function (no parallelism), a separate thread, or a separate process:
- *
- *     Isolation: 0 (none), 1 (thread), 2 (process)
- *
- * @note For a test/assert macro not in a group, the default is 0 (none).
- *
- * @note For a test/assert macro in a group, isolation must be 1 (thread)
- *       or 2 (process) with a default of 1 (thread).
- */
-
-/**
- * @subsection Miscellaneous
- * 
- * Miscellaneous functions, macros, typedefs, and variables.
- * Examples include:
- *
- * - lt_executablename
- * - lt_result_t
- * - lt_dirpath
- * - LT_MAX_PATH_LEN
- * - lt_currentlevel
- * - lt_currentresult
- * - lt_maxparallel
- * - lt_isisolated
- * - lt_groupname
- * - lt_iswritedirpath
- */
-
-/**
- * @section HeaderUsage Header Usage
- * 
- * In the test orchestrator source file (e.g., test_litetest.c),
- * include the following:
- *
- * @code
-#include "litetest_runner.h"
- * @endcode
- *
- * Use the orchestrator macros, variables and functions in the test
- * orchestrator logic plus the LT_TEST macro to execute test functions.
- * 
- * In the test* modules (e.g., test_guards_1.c, test_guards_2.c, and
- * test_orchestrator.c):
- *
- * @code
- #undef LT_ORCHESTRATOR
- #include "litetest_runner.h"
- * @endcode
- *
- * Use the LT_TEST, LT_ASSERT_FAIL, and LT_ASSERT_FAULT macros in
- * the test function to execute tests.
- *
- * @note Other veriations are possible in the test orchestrator and test functions.
- */
-
-/**
- * @section BuildingTestExecutable Building a Test Executable
- * 
- * - Linux/macOS: make
- * 
- *   Defaults to use Makefile in the current directory.
- * 
- * - Windows PowerShell: .\build_test_lubtype.ps1
- */
- 
-/**
- * @section NameConventions Naming Conventions
- *
- * LiteTest - Repository name (case-jnsensitive.
- *
- * litetest_runner.h and litetest_runner.c - filenames.
- * 
- * Public API:
- *
- * 1. lt_* - functions, typedefs, and variables.
- * 2. LT_* - macros, constants, and enum values.
- * 
- * Internal and private to the LiteTest framework:
- *
- * 1. litetest_* - functions, typedefs, and variables.
- * 2. LITETEST_* - Internal macros, constants, and enum values.
- *
- * These conventions are designed to provide a clean public API, strong
- * namespace isolation, and predictable behavior when LiteTest is embedded
- * into a larger C/C++ project.
- *
- * @example Public API Names
- *
- * 1. Utility macros: LT_TOK_PASTE, LT_TOK_STR, LT_RESULT, LT_TOTAL
- *    LT_STATIC_ASSERT
- * 2. Version macros: LT_VERSION, LT_VERSION_EQ, LT_VERSION_AT_LEAST
- * 4. Utility functions: lt_current_level.
- *
- * @example Public typedef Name
- *
- * lt_result_t, lt_state_t
- *
- * @example Private Variable Names
- *
- * litetest_result_internal, litetest_total_internal
- */
-
-/**
- *
- * @section FaultGuarding Fault Guarding
- *
- * The test framework uses multi-level fault guarding to handle
- * faults (i.e., segmentation fault, bus error, or abort) during
- * test execution.
- * 
- * A test/assert macro wraps a guard around its argument, enabling
- * detection of a fault not handled at a lower level by the
- * argument rather than aborting. This allows counting pass,
- * fail, and fault without aborting due to a fault.
- * 
- * A fault detected by LT_TEST represents a fault 
- * in the use of the testing framework or in the testing framework
- * itself, and not in the feature being tested. Such a fault is
- * expected to be rare but guarding avoids a fault terminating
- * execution.
- */
 
 #pragma once
 
@@ -504,68 +218,73 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
 /**
  * @defgroup LiteTestVersionMacros LiteTest Version Macros
  *
- * @name LUB_VERSION_MAJOR, LUB_VERSION_MINOR, LUB_VERSION_PATCH,
+ * @name LT_VERSION_MAJOR, LT_VERSION_MINOR, LT_VERSION_PATCH,
  *       LT_VERSION_NUM, LT_VERSION_HEX, 
  *       LT_VERSION_CMP
  *
  * @brief Version macros for LiteTest (litetest_runner.h and litetest_runner.c):
  * 
- * LT_VERSION_MAJOR
+ * LT_MAJOR(v)
  *    Major version
  *    size_t, 1 or greater.
  * 
- * LT_VERSION_MINOR
+ * LT_MINOR(v)
  *    Minor version nunber
  *    size_t, e.g., 0, 22.
  * 
- * LT_VERSION_PATCH
+ * LT_PATCH(v)
  *    Patch version number
  *    size_t, e.g., 0, 12.
  * 
- * LT_VERSION_NUM
+ * LT_VERSION_NUM(v)
  *    size_t, form MMmmpp for comparisons, e.g., 10000 for
  *    version 1.0.0, 10200 for version 1.2.0, or 11212 for version 1.12.12.
  * 
- * LT_VERSION_HEX
+ * LT_VERSION_HEX(v)
  *    Hexadecimal form 0xMMmmpp for display/debugging, e.g.,
  *    0x010000 for version 1.0.0, 0x010200 for version 1.2.0,
  *    or 0x011212 for version 1.12.12.
  * 
- * LT_VERSION_CMP(v)
- *    1 VERSION is greater than v,
- *    0 VERSION is equal to v,
- *   -1 VERSION is less than v,
- *.  -2 v has invalid version formatting,
- *    v is a string with the same format as VERSION,
+ * LT_VERSION_CMP(v1, v2)
+ *    1 v1 is greater than v2,
+ *    0 v1 is equal to v2,
+ *   -1 v1 is less than v2,
+ *.  -2 v1 or v2 has invalid version formatting,
+ *
+ *    v1 and v2 are strings with the same format as LT_RUNNER_VERSION,
+ *    LT_RUNNER_VERFSION_C, LT_TEST_VERSION, and LT_TEST_VERISON_C.
  *
  * @{
  */
 
-size_t litetest_get_version_major_internal(void);
-#define LT_VERSION_MAJOR litetest_get_version_major_internal()
+#if !defined(LT_TEST_VERSION)
 
-size_t litetest_get_version_minor_internal(void);
-#define LT_VERSION_MINOR litetest_get_version_minor_internal()
+size_t litetest_get_runner_major_internal(v);
+#define LT_VERSION_MAJOR litetest_get_runner_major_internal()
 
-size_t litetest_get_version_patch_internal(void);
-#define LT_VERSION_PATCH litetest_get_version_patch_internal()
+size_t litetest_get_runner_minor_internal(v);
+#define LT_VERSION_MINOR litetest_get_runner_minor_internal((v))
+
+size_t litetest_get_version_patch_internal(v);
+#define LT_VERSION_PATCH litetest_get_runner_patch_internal((v))
 
 // LiteTest version as an integer for comparisons.
 
-size_t litetest_get_version_num_internal(void);
-#define LT_VERSION_NUM litetest_get_version_num_internal()
+size_t litetest_get_runner_num_internal(v);
+#define LT_VERSION_NUM litetest_get_runner_num_internal((v))
 
 // LiteTest version encoded as 0xMMmmpp (major, minor, patch) for display/debug.
 
-size_t litetest_get_version_hex_internal(void);
-#define LT_VERSION_HEX litetest_get_version_hex_internal()
+size_t litetest_get_runner_hex_internal(v);
+#define LT_VERSION_HEX litetest_get_runner_hex_internal((v))
 
 // LiteTest version compared to specified version (1 if true, otherwie 0).
 
-int litetest_version_cmp_internal
-( comst char *v);
-#define LT_VERSION_CMP(v) \
-    litetest_version_cmp_internal((v))
+int litetest_runner_cmp_internal
+( comst char *v1, comst char *v2 );
+#define LT_VERSION_CMP(v1, v2) litetest_runnner_cmp_internal((v1), (v2))
+
+#endif
 
 /** @} */ // End of Version Macros.
 
@@ -640,8 +359,6 @@ typedef struct
   lt_state_t prev;
   lt_state_t next;
 } lt_state_t;
-
-// 
 
 /**
  * @name LT_PRINT_ERR_HELP(err)
@@ -747,52 +464,17 @@ int lt_iswritefilepath(char *path);
 void lt_current_time(char *current_time, size_t size);
 
 /**
- * @section LT_TEST and LT_ASSERT* Macros
+ * @name LT_GROUP
  *
-/**
- * @subsection TestAndAssertMacros Test and Assert Macros
+ * @brief A macro to call a test group function with a fault guard.
  *
- * - LT_TEST(funcname, [isolation])[;]
- * - LT_ASSERT(expression, [isolation])[;]
- * - LT_INJECT_ASSERT(expression, [isolation])[;]
+ * - LT_GROUP(funcname, [isolation])[;]
  *
  * The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
  * otherwise it is required.
  *
- * LT_INJECT_ASSERT is the same as LT_ASSERT except:
- *
- * - Only executes if injection is enabled (see @ref iOption `-i` Option.
- * - Result is counted as an injected pass/fail/fault.
- *
- * Special values that can be used in any expression:
- *
- * - LT_PASS: returns 1.
- * - LT_FAIL: returns 0.
- * - LT_FAULT(type): causes a fault of the specified type:
- *.                  1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
- * 
- * For other values of type, LT_FAULT returns 0.
- */
- * The LT_TEST, LT_ASSERT, LT_ASSERT_FAIL, and LT_ASSERT_FAULT macros
- * provide a interface for running tests with built-in fault recovery
- * using the multi-level guard infrastructure:
- *
- * - Typically, the test orchestrator (main) function uses the LT_TEST macro
- *   to execute a test function. The LT_ASSERT, LT_ASSERT__FAIL, and
- *   LT_ASSERT_FAULT macros may be used in the test orchestrator
- *   function, but it is more common for test fucntions to  use these macros.
- *
- * - Typically, a test function uses the LT_ASSERT, LT_ASSERT_FAIL,
- *   and LT_ASSERT_FAULT macros. A test module may also use the
- *   LT_TEST macro for a test that can not reasonably be expressed as
- *   a single assertion, as a single  assertion, such as a test that
- *   involves multiple steps, looping, or requires setup and teardown.
- */
-
-/**
- * @name LT_TEST
- *
- * @brief A macro to call a test function with a fault guard.
+ * The LT_GROUP macro provides an interface for running a group of tests with
+ * built-in fault recovery using the multi-level guard infrastructure:
  *
  * Result counts and totals updated.
  *
@@ -812,55 +494,84 @@ void lt_current_time(char *current_time, size_t size);
  *       testing framework, rather than a fault in the feature being tested. The use
  *       of SIZE_MAX for the fault count allows the macro to distinguish between
  *       a function-level fault and faults counted by the function itself.
+ *
+ * @note Typically, the orchestrator (main) function uses the LT_GROUP macro
+ *       to execute a test group function. The LT_TEST macro may be used in the
+ *       orchestrator function, but it is more common for test group functions
+ *       to use these macros.
  * 
  * @example In the orchestrator module (e,g., test_litetest.c) to
  *          run the test function in a test module (e.g., test_orchestrator.c):
  *
  * @code
-LT_TEST(test_guard_2, 0);
+LT_GROUP(test_guard_2, 0);
  * @endcode
  */
 
-#define LT_TEST(func, isolation) \
+#define LT_GROUP(func, isolation, maxparallel) \
    { t_result_t func(lt_state_t *litetest_state_internal); \
-     litetest_test_internal(funcname, #funcname); }
+     litetest_group_internal(funcname, #funcname); }
 
 /**
- * @name LT_ASSERT
+ * @name LT_TEST
  *
  * @brief Evaluates expression with a fault guard and updates the
- * totals for pass/fail/fault:
+ *        totals for pass/fail/fault:
+ *
+ * - LT_TEST(expression, include, [isolation])[;]
+ *
+ * The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
+ * otherwise it is required.
+ *
+ * The LT_TEST macrosprovides an interface for running tests with
+ * built-in fault recovery using the multi-level guard infrastructure:
+ */
  *
  * - If expression is true (non-zero), increments pass count.
  * - If expressions is false (zero), increments fail count.
  * - If fault, incremenet fault count
  *
  * @param expression The expression to evaluate.
+ * @param include I or 0 to 9.
  * @param isolation 0: same thread (no paralleliam)
  *                  1: separate thread.
  *                  2: separate process.
  *
- * @note The LT_ASSERT macro uses a guard to capture a fault that may occur during the
+ * @note The LT_TEST macro uses a guard to capture a fault that may occur during the
  *       evaluation of expression. If a fault is causght, it counts as a fault.
  * 
  * @note For fail and fault, a message is appended to the test report.
  *       The message includes expression, filename of the module, and
  *       line number for debugging purposes.
+ *
+ * LT_TEST with I argument value for include:
+ *
+ * - Only executes if injection is enabled (see @ref IOption `-I` Option.
+ * - Result is counted as an injected pass/fail/fault.
+ *
+ * Special values that can be used in any expression:
+ *
+ * - LT_PASS: returns 1.
+ * - LT_FAIL: returns 0.
+ * - LT_FAULT(type): causes a fault of the specified type:
+ *.                  1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
+ * 
+ * For other values of type, LT_FAULT returns 0.
+ *
+ * @note Typically, a test group function uses the LT_TEST macro. A test group
+ *       function may also use the LT_GROUP macro.
  * 
  * @example
  * @code
-LT_ASSERT(func("hello", 'l') == 2, 0);
+LT_TEST(func("hello", 'l') == 2, 0);
  * @endcode
  */
 
-#define LT_ASSERT(expression, isolation) \
+#define LT_TEST(expression, include, isolation) \
   do \
    { int func_assert( void ) { return (int)(assert_expr); }
      litetest_guarded_assert_expr_internal
          (&func_assert, #assert_expr, __FILE__, __LINE__)
-
-
-
 
 
      litetest_guard_internal_t test_guard = { 0 }; \
@@ -886,64 +597,37 @@ LT_ASSERT(func("hello", 'l') == 2, 0);
    } while (0)
 
 /**
- * @name LT_ASSERT_FAIL
- *
- * @brief If -i option specified on command-line,
- * replaced with LT_ASSERT(1 == 0, isolation).
- * Otherwise, replaced with NULL.
- *
- * @param isolation 0: same thread (no paralleliam)
- *                  1: separate thread.
- *                  2: separate process.
+ * @section  Orchestrator Macros
  * 
+ * The orchestrator macros provide an API for running tests running tests as the
+ *  main function of an executable.
+ * 
+ * Typically, an orchestraor function uses the LT_GROUP macro. A test group function
+ * may also use the LT_GROUP macro.
+ *
  * @example
  * @code
-LT_ASSERT_FAIL(0);
+ LT_INIT_ORCHESTRATOR(,,,);
  * @endcode
  */
 
-#define LT_ASSERT_FAIL(isolation) \
-  do \
-  { \
-    if (litetest_state_internal->inject)
-    { LT_ASSERT(1 == 0, isolation); }
-    else NULL;
-  } while (0)
-
 /**
- * @name LT_ASSERT_FAULT
+ * @name LT_DECLARE_ORCHESTRATOR(funcmame)
+ * 
+ * @brief Declare the orchestrator (main) function as a forward teference by
+ *        following it with a semicolum or follow it  with a functio
+ *        body to define the orchestrator function.
+ *       The orchestrator macro provides an API for .
  *
- * @brief If -i option specified on command-line,
- * replaced with LT_ASSERT(1 == *(NULL), isolation).
- * Otherwise, replaced with NULL.
+ * @param funcname Name of the function. funcname must be main.
  *
- * @param isolation 0: same thread (no paralleliam)
- *                  1: separate thread.
- *                  2: separate process.
- * 
- * @example
- * @code
-LT_ASSERT_FAIL(0);
- * @endcode
- */
-
-#define LT_ASSERT_FAULT(isolation) \
-  do \
-   {  if (litetest_state_internal->inject)
-      { LT_ASSERT(1 == *(NULL), isolation); }
-      else NULL;
-   } while (0)
-
-/**
- * @section Orchestrator Macros
- * 
- * The orchestrator macros provide an API for running tests as the
- * main function of an executable.
- * 
- * Typically, the test orchestrator (main) function uses the LT_TEST macro
- * to execute a test function. The LT_ASSERT, LT_ASSERT__FAIL, and
- * LT_ASSERT_FAULT macros may be used in the test orchestrator, but
- * it is more common for test fucntions to use these macros.
+ * @note Compile-time error occurs if the macro is not syntactically
+ *       allowed in this context.
+ *
+ * Typically, the orchestrator (main) function uses the LT_GROUP macro
+ * to execute a test group function. The LT_Test macro may be used in the
+ * test orchestrator, but it is more common for test group functions to use
+ * the LT_Test macro.
  *
  * @example Orchestrator function:
  * @code
@@ -965,18 +649,6 @@ LT_DECLARE_ORCHESTRATOR(main)
   LT_RETURN_STATUS;
 }
  * @endcode
- */
-
-/**
- * @name LT_DECLARE_ORCHESTRATOR(funcmame)
- * 
- * @brief Declare the orchestrator (main) function as a forward teference or
- *        with a function body to define the orchestrator function.
- *
- * @param funcname Name of the function. funcname must be main.
- *
- * @note Compile-time error occurs if the macro is not syntactically
- *       alloewed in this context.
  *
  * @example Forward-reference
  * @code
@@ -1039,12 +711,7 @@ void litetest_init_orchestrator_internal
 /**
  * @name LT_PARSE_ARGS
  * 
- * @brief .
- *
- *        Exits the executable if the macro is not allowed in this context.
- * 
- * @param maxargs .
- * @param defaultreportfilename .
+ * @brief Parse optionss and the first two arguments (executabe name and PATH).
  *
  * @note Compile-time error occurs if the macro is not followed by a semicolon or
  *       the macro is not syntactically allowed in this context.
@@ -1291,24 +958,21 @@ void litetest_exit_orchestrator_internal
     while (0)
 
 /**
- * @section Test Function Macros
+ * @section Test Group Function Macros
  * 
- * The test function macros provide an API for running a set of tests.
+ * The test group function macros provide an API for running a set of tests.
  * 
- * Typically, a test function uses the LT_ASSERT, LT_ASSERT_FAIL,
- * and LT_ASSERT_FAULT macros. A test module may also use the
- * LT_TEST macro for a test that can not reasonably be expressed as
- * a single assertion, as a single  assertion, such as a test that
- * involves multiple steps, looping, or requires setup and teardown.
+ * Typically, a test group function uses the LT_TEST macro. A test module
+ * may also use the LT_GROUP macro.
  *
  * @example
  * @code
- LT_INIT_TEST_FUNCTION(test_guard1);
+ LT_INIT_GROUPN(test_guard1);
  * @endcode
  */
 
 /**
- * @name LT_DECLARE_TEST_FUNCTION(funcname)
+ * @name LT_DECLARE_GROUP(funcname)
  * 
  * @brief Declare a test function as a forward teference or
  *.       with a function body to define the test function.
@@ -1330,7 +994,7 @@ void litetest_exit_orchestrator_internal
  * @endcode
  */
 
-#define LT_DECLARE_TEST_FUNCTION(funcnane) \
+#define LT_DECLARE_GROUP(funcnane) \
     void funcname \
     ( litetest_lcl_state_internal_t *const litetest_lcl_state_internal )
 
@@ -1399,16 +1063,6 @@ void litetest_exit_orchestrator_internal
       if (rc) exit(rc); \
       return; \
     while (0)
-
-/**
- * @section Glossary
-assert
-guard
-header .h file
-module .c file
-orchestrator (main) function
-test function
- */
 
 #if defined(__cplusplus)
 }
