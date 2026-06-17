@@ -33,8 +33,8 @@ Macros used to define or declare the Orchestrator (`main`) function.
 
 ### 6.1.1. `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
 
-A semicolon is not alllowed if the macro is followed by the definition `{...}` of the
-orchestrator function; otherwise, it is required and indicates this simply a decalaration
+A semicolon is not allowed if the macro is followed by the definition `{...}` of the
+orchestrator function; otherwise, it is required and indicates this is simply a decalaration
 and a forward-reference to tne orechestrator function.
 
 
@@ -58,9 +58,14 @@ and a forward-reference to tne orechestrator function.
 
 ### 6.2 Test Group Function Macros
 
-Macros used to define or declare a test group function:
+Macros used to define or declare a test group function.
 
 ### 6.3.1. `LT_DECLARE_GROUP(funcname)`
+
+A semicolon is not allowed if the macro is followed by the definition `{...}` of the
+test group function; otherwise, it is required and indicates this is simply a decalaration
+and a forward-reference to tne orechestrator function.
+
 
 
 ### 6.3.2. `LT_INIT_GROUP(funcname, maxparallel)`
@@ -69,13 +74,12 @@ Macros used to define or declare a test group function:
 ### 6.3.3. `LT_RETURN`
 
 
-
 ### 6.3 Execute Macros
 
 - `LT_GROUP(funcname, [include], [isolation])[;]`
 - `LT_TEST(expression, [include], [isolation][;])`
 
-A semicolon is not alllowed if the macro is used as argument to LT_WRITE_RESULTS macro;
+A semicolon is not allowed if the macro is used as argument to LT_WRITE_RESULTS macro;
 otherwise, it is required.
 
 Include parameter:
@@ -91,10 +95,10 @@ Isolation parameter:
 - `1` — Separate thread.
 - `2` — Separate process.
 
-#### 6.3.1 `LT_BEGIN_CONCURRENT(blockname)])[;]``
+#### 6.3.1 `LT_GROUP(funcname, [include], [isolation])[;]
 
 
-#### 6.3.2 `LT_TEST(expression, [include], [isolation][;])``
+#### 6.3.2 `LT_TEST(expression, [include], [isolation])[;])``
 
 
 ### 6.4 Concurrent Block Macros
@@ -119,12 +123,18 @@ Isolation parameter:
 #### 6.5.4 `LT_VERSION_PATCH(v)`
 
 
+#### 6.5.4 `LT_VERSION_NUM(v)`
+
+
+#### 6.5.4 `LT_VERSION_HEX(v)`
+
+
 #### 6.5.5 `LT_VERSION_CMP(v1, v2)`
 
 
-## 7. Customization Functions
+## 7. Customization Functions`
 
-### 7.1 x
+### 7.1 `LT_FUNCNAME`
 
 
 ## 7. Golden Files
