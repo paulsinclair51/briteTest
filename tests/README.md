@@ -6,17 +6,17 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT   
 For license details, see `../LICENSE`.
 
-Directories:
+See `../README.md` for an introduction to LiteTest.
 
-- `src/`: Test source files (`*.c`).
-- `include/`: Test headers (`*.h`).
-- `control/`: Baseline files for output comparisons.
-- `output/`: Retained generated outputs for review/promotion.
-- `input/`: Input files for tests.
-- `tmp/`: Yemporary test outputs.
+## Files
 
-Files:
+- **README.md**: This directory guide.
 
-- `README.md`: This directory guide.
+## Subdirectories
 
-See `../README.md` for a concise introduction to LiteTest.
+- **src/**: Test source files (`*.c`).
+- **include/**: Test headers (`*.h`).
+- **control/**: Baseline files for output comparisons.
+- **output/**: Retained generated outputs for review/promotion.
+- **input/**: Input files for tests.
+- **tmp/**: Yemporary test outputs.
