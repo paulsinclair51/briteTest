@@ -34,8 +34,8 @@ Macros used to define or declare the Orchestrator (`main`) function.
 ### 6.1.1. `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
 
 A semicolon is not allowed if the macro is followed by its definition `{...}` of the
-orchestrator function; otherwise, it is required and indicates this is simply a decalaration
-and a forward-reference to tne orechestrator function.
+orchestrator function; otherwise, it is required and indicates this is a decalaration
+and a forward-reference to tne orchestrator function.
 
 
 ### 6.1.2. `LT_INIT_ORCHESTRATOR(funcname, project, maxparallel);`
@@ -63,8 +63,8 @@ Macros used to define or declare a test group function.
 ### 6.3.1. `LT_DECLARE_GROUP(funcname)`
 
 A semicolon is not allowed if the macro is followed by its definition `{...}` of the
-test group function; otherwise, it is required and indicates this is simply a decalaration
-and a forward-reference to tne orechestrator function.
+test group function; otherwise, it is required and indicates this is a declaration
+and a forward-reference to tne test group function.
 
 
 
@@ -79,15 +79,15 @@ and a forward-reference to tne orechestrator function.
 - `LT_GROUP(funcname, [include], [isolation])[;]`
 - `LT_TEST(expression, [include], [isolation][;])`
 
-A semicolon is not allowed if the macro is used as argument to LT_WRITE_RESULTS macro;
+A semicolon is not allowed if the macro is used as an argument to LT_WRITE_RESULTS macro;
 otherwise, it is required.
 
 Include parameter:
 
-- `0` — Never execute.
-- `1` — Always execute. 
-- `2–9` — Execute only when `-In` is provided and `n ≥ include`.
-- `I` — Execute only when `-I` is provided.
+- `0`   — Never execute.
+- `1`   — Always execute. 
+- `2–9` — Execute only when the `-In` flag is specified and n ≥ include.
+- `I`   — Execute only when the `-I` flag is specified.
 
 Isolation parameter:
 
