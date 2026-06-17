@@ -1,118 +1,179 @@
 # LiteTest Runner Reference
 
-This document defines the **public API** for the LiteTest Runner as declared in `litetest_runner.h`.  
-It includes public types, enums, macros, and functions.  
-Internal implementation details are not included.
+This document defines the LiteTest Runner API. It includes types,
+structs, enums, macros, and functions.
 
 Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
 
-## Overview
+## 1.Introduction
 
----
 
-# 1. Public Types
+## 2. Types
 
-(Extracted directly from `litetest_runner.h`)
 
-- `lt_result_t`  
-- `lt_dirpath`  
-- `lt_currentlevel`  
-- `lt_currentresult`  
-- `lt_maxparallel`  
-- `lt_blockname`  
-- `lt_iswritedirpath`  
 
----
+## 3. Structs
 
-# 2. Public Enums
 
-As defined in `litetest_runner.h`:
 
-- Result codes  
-- Fault types  
-- Isolation modes  
+## 4. Unions
 
----
 
-# 3. Public Macros
 
-## 3.1 Orchestrator Macros
+## 5. Enums
 
-- `LT_DECLARE_ORCHESTRATOR(funcname)`  
-- `LT_INIT_ORCHESTRATOR(funcname, project, maxparallel)`  
-- `LT_PARSE_ARGS(maxargs, defaultreportfilename)`  
-- `LT_OPEN_REPORT(title)`  
-- `LT_WRITE_RESULT(gtm, category)`  
-- `LT_CLOSE_REPORT(notes)`  
-- `LT_EXIT`  
 
-## 3.2 Test Group Macros
 
-- `LT_DECLARE_GROUP(funcname)`  
-- `LT_INIT_GROUP(funcname, maxparallel)`  
-- `LT_RETURN`  
+## 6. Macros
 
-## 3.3 Execution Macros
+## 6.1. Orchestrator Function Macros
 
-- `LT_GROUP(funcname, [include], [isolation])`  
-- `LT_TEST(expression, [include], [isolation])`  
+Macros used to define or declare the Orchestrator (`main`) function.
+
+### 6.1.1. `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
+
+A semicolon is not alllowed if the macro is followed by the definition `{...}` of the
+orchestrator function; otherwise, it is required and indicates this simply a decalaration
+and a forward-reference to tne orechestrator function.
+
+
+### 6.1.2. `LT_INIT_ORCHESTRATOR(funcname, project, maxparallel);`
+
+
+### 6.1.3. `LT_PARSE_ARGS(maxargs, defaultreportfilename);`
+
+
+### 6.1.4. `LT_OPEN_REPORT(title);`
+
+
+### 6.1.5. `LT_WRITE_RESULT(gtm, category);`
+
+
+### 6.1.6. `LT_CLOSE_REPORT(notes, notes_file);`
+
+
+### 6.1.7. `LT_EXIT;`
+
+
+### 6.2 Test Group Function Macros
+
+Macros used to define or declare a test group function:
+
+### 6.3.1. `LT_DECLARE_GROUP(funcname)`
+
+
+### 6.3.2. `LT_INIT_GROUP(funcname, maxparallel)`
+
+
+### 6.3.3. `LT_RETURN`
+
+
+
+### 6.3 Execute Macros
+
+- `LT_GROUP(funcname, [include], [isolation])[;]`
+- `LT_TEST(expression, [include], [isolation][;])`
+
+A semicolon is not alllowed if the macro is used as argument to LT_WRITE_RESULTS macro;
+otherwise, it is required.
 
 Include parameter:
 
-- `0` — never execute  
-- `1` — always execute  
-- `2–9` — execute only when `-In` is provided and `n ≥ include`  
-- `I` — execute only when `-I` is provided  
+- `0` — Never execute.
+- `1` — Always execute. 
+- `2–9` — Execute only when `-In` is provided and `n ≥ include`.
+- `I` — Execute only when `-I` is provided.
 
 Isolation parameter:
 
-- `0` — same thread  
-- `1` — separate thread  
-- `2` — separate process  
+- `0` — Same thread.
+- `1` — Separate thread.
+- `2` — Separate process.
 
-## 3.4 Concurrent Block Macros
+#### 6.3.1 `LT_BEGIN_CONCURRENT(blockname)])[;]``
 
-- `LT_BEGIN_CONCURRENT(blockname)`  
-- `LT_END_CONCURRENT(blockname)`  
 
----
+#### 6.3.2 `LT_TEST(expression, [include], [isolation][;])``
 
-# 4. Public Functions
 
-As declared in `litetest_runner.h`:
+### 6.4 Concurrent Block Macros
 
-### Process and Runtime Helpers
+#### 6.4.1 `LT_BEGIN_CONCURRENT(blockname)`
 
-- `int lt_execute_command(const char *command_line, int timeout_ms, char *output_buffer, size_t output_buffer_size, int *exit_code)`  
-- `int lt_wait_for_condition(int (*condition)(void *callback_context), void *callback_context, int timeout_ms, int poll_interval_ms)`  
 
-### File and Filesystem Helpers
+#### 6.4.2 `LT_END_CONCURRENT(blockname);`
 
-- `int lt_copy_file(const char *source_path, const char *destination_path)`  
-- `int lt_make_temp_dir(const char *prefix, char *out_path, size_t out_path_size)`  
 
-### Comparison and Matching Helpers
+### 6.5. Version Macros
+ 
+#### 6.5.1 `LT_RUNNER_VERSION`
 
-- `int lt_compare_files(FILE *left_file, FILE *right_file)`  
-- `int lt_compare_file_to_path(FILE *file, const char *path)`  
-- `int lt_compare_paths(const char *left_path, const char *right_path)`  
-- `int lt_compare_path_to_file(const char *path, FILE *file)`  
-- `int lt_match(const char *text, const char *pattern)`  
 
-### Environment Helpers
+#### 6.5.2  `LT_VERSION_MAJOR(v)`
 
-- `int lt_with_environment_variable(const char *variable_name, const char *temporary_value, int (*callback)(void *callback_context), void *callback_context)`  
 
----
+#### 6.5.3  `LT_VERSION_MINOR(v)`
 
-# 5. Versioning
 
-The public API follows the versioning rules described in the **LiteTest Contributor Guide**.
+#### 6.5.4 `LT_VERSION_PATCH(v)`
 
----
 
-# 6. Notes
+#### 6.5.5 `LT_VERSION_CMP(v1, v2)`
 
-- All public API symbols are declared in `include/litetest_runner.h`.  
-- Inline documentation in the header is authoritative.  
+
+## 7. Customization Functions
+
+### 7.1 x
+
+
+## 7. Golden Files
+
+- Each test output file is compared with its golden file of the same name
+  in the `tests/golden` directory to determine whether they match.
+
+- If no corresponding golden file exists, the output file is automatically
+  copied (promoted) into the `tests/golden` directory and is treated as a match.
+  The test report notes that the file was promoted.
+
+- A golden file containing only the line `##MATCH##\n` skips comparison and
+  forces a match.
+
+- A golden file containing only the line `##MISMATCH##\n` skips comparison and
+  forces a mismatch.
+
+- If an output file does not match its golden file but inspection determines
+  the output is correct, update the golden file with a copy of the output.
+  Alternatively, remove the golden file so that the next run will
+  automatically promote the output.
+
+### 7.1 Rationale for Parallel Directory for Golden Files
+
+LiteTest uses a parallel `tests/golden` directory with golden files that keep
+the exact same filename as their corresponding test output. This design avoids
+the common problems found in extension‑based naming schemes:
+
+- **No filename collisions**  
+  Different outputs such as `foo.c` and `foo.h` remain distinct (`foo.c` vs.
+  `foo.h`) instead of collapsing into a single `foo.golden`.
+
+- **No special‑case rules**  
+  Files with or without extensions follow the same rule. The golden filename is
+  always identical to the output filename.
+
+- **Preserves file type information**  
+  Because the original extension is retained, it is immediately clear whether a
+  golden file contains text, JSON, HTML, binary data, or anything else.
+
+- **Simpler mental model**  
+  Developers do not need to remember naming conventions or extension‑replacement
+  rules. Golden files simply live in a parallel directory and share the same
+  name as the output they validate.
+
+- **Identical filenames in different output directories**  
+  The above approach does not directly address this situation. If it occurs, the
+  conflict can be resolved by creating parallel subdirectories under `tests/golden`
+  so that each output file has a unique corresponding location. This can be done
+  through customization of your test runner or, when needed, by extending the
+  Runner and Test API.
+
