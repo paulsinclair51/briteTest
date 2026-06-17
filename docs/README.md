@@ -8,7 +8,7 @@ For license details, see `../LICENSE`.
 
 See `../README.md` for an introduction to LiteTest.
 
-Files:
+## Files
 
 - **LiteTest_Documentation_Guide.md**: Index of LiteTest documents and the Litetest
 	  repository layout.
@@ -26,6 +26,6 @@ Files:
 - **`.pdf` files**: PDF formatted files generated from the above files using
   `../scripts/genpdf`.
 
-Subdirectories:
+## Subdirectories
 
 - None.
