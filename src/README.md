@@ -7,11 +7,9 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT   
 For license details, see `../LICENSE`.
 
-Directories:
+See `../README.md` for an introduction to LiteTest.
 
-- None.
-
-Files:
+## Files
 
 - **LiteTest_runner.c**: Defines non-inline functions for the LiteTest Runner API.
   See `../include/litetest_runner.h` for the declarations and documentation for
@@ -20,4 +18,6 @@ Files:
   See `../include/litetest_test.h` for declarations.
 - **README.md**: This directory guide.
 
-See **../README.md** for an introduction to LiteTest.
+## Subdirectories
+
+- None.
