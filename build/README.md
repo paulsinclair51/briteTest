@@ -12,11 +12,11 @@ For license details, see `../LICENSE`.
 
 See `../README.md` for an introduction to LiteTest.
 
-Files:
+## Files
 
-- ***.o**: Object files, 
+- **`.o` files: Object files, 
 - **README.Md**: This directory guide.
 
-Directories:
+## Directories
 
 - None.
