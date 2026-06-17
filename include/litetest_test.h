@@ -22,6 +22,83 @@
 extern "C" {
 #endif
 
+/**
+ * @section LiteTestVersionMacros LiteTest Version Macros
+ */
+
+/**
+ * @defgroup LiteTestVersionMacros LiteTest Version Macros
+ *
+ * @name LT_VERSION_MAJOR, LT_VERSION_MINOR, LT_VERSION_PATCH,
+ *       LT_VERSION_NUM, LT_VERSION_HEX, 
+ *       LT_VERSION_CMP
+ *
+ * @brief Version macros for LiteTest (litetest_runner.h and litetest_runner.c):
+ * 
+ * LT_MAJOR(v)
+ *    Major version
+ *    size_t, 1 or greater.
+ * 
+ * LT_MINOR(v)
+ *    Minor version nunber
+ *    size_t, e.g., 0, 22.
+ * 
+ * LT_PATCH(v)
+ *    Patch version number
+ *    size_t, e.g., 0, 12.
+ * 
+ * LT_VERSION_NUM(v)
+ *    size_t, form MMmmpp for comparisons, e.g., 10000 for
+ *    version 1.0.0, 10200 for version 1.2.0, or 11212 for version 1.12.12.
+ * 
+ * LT_VERSION_HEX(v)
+ *    Hexadecimal form 0xMMmmpp for display/debugging, e.g.,
+ *    0x010000 for version 1.0.0, 0x010200 for version 1.2.0,
+ *    or 0x011212 for version 1.12.12.
+ * 
+ * LT_VERSION_CMP(v1, v2)
+ *    1 v1 is greater than v2,
+ *    0 v1 is equal to v2,
+ *   -1 v1 is less than v2,
+ *.  -2 v1 or v2 has invalid version formatting,
+ *
+ *    v1 and v2 are strings with the same format as LT_RUNNER_VERSION,
+ *    LT_RUNNER_VERFSION_C, LT_TEST_VERSION, and LT_TEST_VERISON_C.
+ *
+ * @{
+ */
+
+#if !defined(LT_RUNNER_VERSION)
+
+size_t litetest_get_test_major_internal(v);
+#define LT_VERSION_MAJOR(v) litetest_get_test_major_internal()
+
+size_t litetest_get_test_minor_internal(v);
+#define LT_VERSION_MINOR(v) litetest_get_test_minor_internal((v))
+
+size_t litetest_get_test_patch_internal(v);
+#define LT_VERSION_PATCH(v) litetest_get_test_patch_internal((v))
+
+// LiteTest version as an integer for comparisons.
+
+size_t litetest_get_test_num_internal(v);
+#define LT_VERSION_NUM(v) litetest_get_test_num_internal((v))
+
+// LiteTest version encoded as 0xMMmmpp (major, minor, patch) for display/debug.
+
+size_t litetest_get_test_hex_internal(v);
+#define LT_VERSION_HEX(v) litetest_get_test_hex_internal((v))
+
+// LiteTest version compared to specified version (1 if true, otherwie 0).
+
+int litetest_test_cmp_internal
+( comst char *v1, comst char *v2 );
+#define LT_VERSION_CMP(v1, v2) litetest_test_cmp_internal((v1), (v2))
+
+#endif
+
+/** @} */ // End of Version Macros.
+
 /* Structured error codes for test helper functions. */
 typedef enum {
   LT_OK = 0,
