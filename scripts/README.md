@@ -18,6 +18,6 @@ Files:
   Run `test_genpdf.sh --help` for usage information.
 - **README.md**: This directory guide.
 
-Subirectories:
+Subdirectories:
 
 - None.
