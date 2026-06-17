@@ -19,4 +19,4 @@ See `../README.md` for an introduction to LiteTest.
 - **control/**: Baseline files for output comparisons.
 - **output/**: Retained generated outputs for review/promotion.
 - **input/**: Input files for tests.
-- **tmp/**: Yemporary test outputs.
+- **tmp/**: Temporary test outputs.
