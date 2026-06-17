@@ -4,7 +4,9 @@ Directory for GitHub workflows.
 
 Copyright (c) 2026 Paul Sinclair   
 SPDX-License-Identifier: MIT   
-For license details, see `../LICENSE`.
+For license details, see `../../LICENSE`.
+
+See `../../README.md` for an introduction to LiteTest.
 
 ## Files in this Directory
 
@@ -14,5 +16,3 @@ For license details, see `../LICENSE`.
 ## Subdirectories
 
 - None.
-
-See `../README.md` for an introduction to LiteTest.
