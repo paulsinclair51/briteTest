@@ -6,12 +6,12 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT   
 For license details, see `../LICENSE`.
 
+See `../README.md` for an introduction to LiteTest.z
+
 ## Files in this Directory
 
 - None.
 
 ## Subdirectories
 
-- **workflow**: LiteTest workflow definitions
-
-See `../README.md` for an introduction to LiteTest.z
+- **workflows**: GitHub workflow definitions for LiteTest.
