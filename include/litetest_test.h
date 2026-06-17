@@ -1,7 +1,7 @@
 /**
  * @file /paulsinclair51/include/litetest_test.h
  *
- * @brief LiteTest Test API test helper declarations.
+ * @brief LiteTest Test API declarations.
  *
  * This header declares test helper functions that can be used in
  * test expressions or by their underlying functions. The helpers focus
