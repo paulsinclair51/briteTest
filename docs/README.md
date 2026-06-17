@@ -23,7 +23,8 @@ Files:
 - **LiteTest_Test_Internal_Guide.md**: Test implementation guide.
 - **LiteTest_Test_Internal_Reference.md**: Test implementation reference.
 - **README.md**: This directory guide.
-- PDF formatted files with the extension `.pdf` generated from the above files .
+- **`.pdf` files**: PDF formatted files generated from the above files using
+  `../scripts/genpdf`.
 
 Subdirectories:
 
