@@ -14,6 +14,6 @@ Files:
 - **litetest_test_report-I.txt**: Report file for an injected test run.
 - **README.md**: This directory guide.
 
-Directories:
+Subdirectories:
 
 - None.
