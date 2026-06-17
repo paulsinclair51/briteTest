@@ -4,11 +4,9 @@ Directory for public header files (including API declarations).
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see **../LICENSE**.
+For license details, see `../LICENSE`.
 
-Directories:
-
-- None.
+See `../README.md` for an introduction to LiteTest.
 
 Files:
 
@@ -17,4 +15,6 @@ Files:
 - **litetest_test.h**: Header for the LiteTest Test API.
   See ../src/litetest_test.c for the corresponding source file.
 
-See **../README.md** for an introduction to LiteTest.
+Subdirectories:
+
+- None.
