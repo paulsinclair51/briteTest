@@ -6,7 +6,7 @@ structs, enums, macros, and functions.
 Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
 
-## 1.Introduction
+## 1. Introduction
 
 
 ## 2. Types
