@@ -12,6 +12,6 @@ Directories:
 
 Files:
 
-- `README.md`: This directory guide.
+- **README.md**: This directory guide.
 
-See `../README.md` for a concise introduction to LiteTest.
+See **../README.md** for a concise introduction to LiteTest.
