@@ -1,6 +1,6 @@
 # tests/golden/
 
-Directory for golden files used for output comparison and validation.
+Directory for golden files used for output file comparison and validation.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
@@ -11,7 +11,7 @@ See `../../README.md` for an introduction to LiteTest.
 ## Files
 
 - **.golden**: Golden files that contain the expected contents of each test
-  output file .
+  output file.
 - **README.md**: This directory guide.
 - 
 ## Directories
