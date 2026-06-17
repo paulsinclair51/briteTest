@@ -10,6 +10,57 @@
  *
  * Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
+ * See LICENSE in the repository root for details.
+ */
+
+/**
+ * @section HeaderUsage Header Usage
+ *
+ * This header is included by source (.c) file for supporting esting, e.g., a feature,
+ * API, or a project implementation.
+ * It provides declarations, definitions (other than non-inline function definitions
+ * provided by litetest_test.c in the repository src directory).
+ *
+ * See README.md in the repository root directory for an introduction to LiteTest.
+ *
+ * See LiteTest Docucmentation Guide for ,,,
+ *
+ * @note LiteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility and a
+ *       C99-compliant compiler. Linux, macOS, and the BSD family natively meet these
+ *       requirements. Windows requires a POSIX compatibility layer such as Cygwin,
+ *       MSYS2, or WSL.
+ *
+ * @note LiteTest Runner has been exercised in a POSIX environment; however, users must
+ *       confirm correct behavior in their own environment.
+ */
+
+/**
+ * @name LT_TEST_VERSION
+ *
+ * @brief Version "M.m.p" for litetest_test.h which must be the same as
+ *.       LT_TEST_VERSION_C for litetest_runner.c.
+ *
+ * M, m, and p are 1 or 2 digits (e.g., O, 00, 1, 01, 24):
+ +
+ * - M: Major version for major additions or incompatible API changes.
+ * - m: Minor version for backward-compatible additions.
+ * - p: Patch version for bug fixes or internal improvements.
+ *
+ * @note Incompatible API changes: The naming conventions, error semantics,
+ *       and safety guarantees are part of the documented and stable API
+ *       and will not change without a major version increment.
+ *
+ * @note M is the same across all versioned entities in the Litetest repository..
+ */
+ 
+#define LT_TESt_VERSION "1.0.0"
+
+/**
+ * @section ChangeHistory Change History
+ *
+ * 2026/09/27 Initial version "1.0.0.".
+ *
+ **/
  */
 
 #pragma once
