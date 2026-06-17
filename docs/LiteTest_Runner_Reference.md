@@ -33,7 +33,7 @@ Macros used to define or declare the Orchestrator (`main`) function.
 
 ### 6.1.1. `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
 
-A semicolon is not allowed if the macro is followed by the definition `{...}` of the
+A semicolon is not allowed if the macro is followed by its definition `{...}` of the
 orchestrator function; otherwise, it is required and indicates this is simply a decalaration
 and a forward-reference to tne orechestrator function.
 
@@ -62,7 +62,7 @@ Macros used to define or declare a test group function.
 
 ### 6.3.1. `LT_DECLARE_GROUP(funcname)`
 
-A semicolon is not allowed if the macro is followed by the definition `{...}` of the
+A semicolon is not allowed if the macro is followed by its definition `{...}` of the
 test group function; otherwise, it is required and indicates this is simply a decalaration
 and a forward-reference to tne orechestrator function.
 
