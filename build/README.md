@@ -14,7 +14,7 @@ See `../README.md` for an introduction to LiteTest.
 
 ## Files
 
-- **`.o` files**: Object files, 
+- **.o files**: Object files, 
 - **README.Md**: This directory guide.
 
 ## Directories
