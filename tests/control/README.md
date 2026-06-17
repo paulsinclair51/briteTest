@@ -20,14 +20,20 @@ See `../../README.md` for an introduction to LiteTest.
 
 ## Golden Files
 
-- Each test output file is compared with its golden file of the same name (but with
-  the`.golden` extension  to determine whether they match.
-- If no corresponding golden file exists, the output file is automatically copied (promoted)
-  into this directory using the `.golden` extension and a match is assumed. The test report
-  notes that the file was promoted.
-- A golden file containing only the line `##MATCH##\n` skips comparison and forces a match.
-- A golden file containing only the line `##MISMATCH##\n` skips comparision and forces a
-  mismatch.  
-- If an output file does not match its golden file but inspection determines the output
-  is correct, update the golden file with a copy of the output. Alternatively, remove its
-  golden file so that the next run will promote the output automatically.
+- Each test output file is compared with its golden file of the same name
+  (but with the `.golden` extension) to determine whether they match.
+
+- If no corresponding golden file exists, the output file is automatically
+  copied (promoted) into this directory using the `.golden` extension and a
+  match is assumed. The test report notes that the file was promoted.
+
+- A golden file containing only the line `##MATCH##\n` skips comparison and
+  forces a match.
+
+- A golden file containing only the line `##MISMATCH##\n` skips comparison and
+  forces a mismatch.
+
+- If an output file does not match its golden file but inspection determines
+  the output is correct, update the golden file with a copy of the output.
+  Alternatively, remove the golden file so that the next run will  automatically
+  promote the output.
