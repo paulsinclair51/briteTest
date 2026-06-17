@@ -2,7 +2,7 @@
 # Makefile for test_litetest (Linux/macOS)
 #
 # test_liteteest is an executable that uses the LiteTest
-# framework and APIs to test itself,
+# framework and APIs to test itself.
 #
 #-----------------------------------------------------------------
 # Copyright (c) 2026 Paul Sinclair
@@ -13,12 +13,12 @@
 # test_litetest can be run by submitting a command line of the
 # following form to a shell:
 #
-#   [<direcory_path>/]test_litetest [<option>],,, [<arg>]...
+#   [<directory_path>/]test_litetest [<option>],,, [<arg>]...
 #
 # For usage information about the options and args, submit the
 # follpwing to a shell:
 #
-#   [<direcory_path>/]test_litetest --help
+#   [<directory_path>/]test_litetest --help
 #
 # For an introduction to LiteTest, see README.md in ghe root
 # directory.
@@ -58,6 +58,10 @@ $(BUILD_DIR)/%.o: %.c
 
 $(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $(OBJECTS)
+
+#run the tests.
+test: test_litetest
+    ./test_litetest
 
 run: $(TARGET)
 	mkdir -p ./reports
