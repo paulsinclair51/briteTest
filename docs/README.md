@@ -23,7 +23,7 @@ See `../README.md` for an introduction to LiteTest.
 - **LiteTest_Test_Internal_Guide.md**: Test implementation guide.
 - **LiteTest_Test_Internal_Reference.md**: Test implementation reference.
 - **README.md**: This directory guide.
-- **`.pdf` files**: PDF formatted files generated from the above files using
+- **.pdf files**: PDF formatted files generated from the above files using
   `../scripts/genpdf`.
 
 ## Subdirectories
