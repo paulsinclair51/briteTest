@@ -23,19 +23,17 @@ SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
 
 ## 5. Enums
 
-## 6. Macros
+## 6. Macros for Limits
 
-### 6.1. Limits
+## 7. Macros for Exit Codes
 
-### 6.2. Exit Codes
+## 8. Macros for Return Codes
 
-### 6.3. Return Codes
-
-### 6.4. Orchestrator Function Macros
+## 9. Macros for an Orchestrator Function
 
 Macros used to define or declare the Orchestrator (`main`) function.
 
-#### 6.4.1. `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
+### 9.1. `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
 
 A semicolon is not allowed if the macro is followed by its definition `{...}` of the
 orchestrator function; otherwise, it is required and indicates this is a decalaration
@@ -45,7 +43,7 @@ and a forward-reference to tne orchestrator function.
 
 Exit codes for failure: LT_DECLARE_ORCHESTRATOR_ERROR.
 
-#### 6.4.2. `LT_INIT_ORCHESTRATOR(funcname, project, size_t maxparallel);`
+### 9.2. `LT_INIT_ORCHESTRATOR(funcname, project, size_t maxparallel);`
 
 **funcname**: token specifying `main`.
 
@@ -55,7 +53,7 @@ Exit codes for failure: LT_DECLARE_ORCHESTRATOR_ERROR.
 
 Exit codes for failure: LT_INIT_ORCHESTRATOR_ERROR.
 
-#### 6.4.3. `LT_PARSE_ARGS(size_t maxargs, char *defaultreportfilename, size_t maxlen);`
+### 9.3. `LT_PARSE_ARGS(size_t maxargs, char *defaultreportfilename, size_t maxlen);`
 
 **maxargs**:
 
@@ -65,11 +63,11 @@ Exit codes for failure: LT_INIT_ORCHESTRATOR_ERROR.
 
 Exit codes for failure: LT_ARG_ERROR.
 
-### 6.4.4. `LT_OPEN_REPORT(char *title, size_t maxlen);`
+### 9.4. `LT_OPEN_REPORT(char *title, size_t maxlen);`
 
 Exit codes for failure: LT_OPEN_ERROR.
 
-### 6.4.5. `LT_WRITE_RESULT(gtm, char *category;`
+### 9.5. `LT_WRITE_RESULT(gtm, char *category;`
 
 **gtm**: LT_GROUP or LT_TEST macro.
 
@@ -77,7 +75,7 @@ Exit codes for failure: LT_OPEN_ERROR.
 
 Exit codes for failure: LT_WRITE_ERROR.
 
-### 6.4.6. `LT_CLOSE_REPORT(char *notes, size_t maxlen);`
+### 9.6. `LT_CLOSE_REPORT(char *notes, size_t maxlen);`
 
 **notes**: Notes to append to the test report. Each note in notes must be ended by `'\n'` (newline). NULL or 0-length
            indicate no notes to append. maxlen specifies a mxaimmum length for notes to avoid missing null terminator for
@@ -88,17 +86,15 @@ Exit codes for failure: LT_CLOSE_ERROR.
 The macro writes the totals, pre-defined explanatory notes, `notes`, notes from the temporary notes file to the
 test report file, and then closes the test report.
 
-Notes in the temporary notes file, if any, are appended after the notes for the argument value for parameter `notes`.
-
-### 6.4.7. `LT_EXIT;`
+### 9.7. `LT_EXIT;`
 
 Exit codes: LT_PASS (0), LT_FAIL (1), LT_FAULT (2), LT_FAIL_FAULT (3).
 
-### 6.5 Test Group Function Macros
+### 6.5. Macros for a Test Group Function
 
 Macros used to define or declare a test group function.
 
-### 6.5.1. `LT_DECLARE_GROUP(funcname)`
+#### 6.5.1. `LT_DECLARE_GROUP(funcname)`
 
 **funcname**: token specifying a function name other than `main`.
 
@@ -108,7 +104,7 @@ and a forward-reference to tne test group function.
 
 Exit codes for failure: LT_DECLARE_GROUP_ERROR.
 
-### 6.5.2. `LT_INIT_GROUP(funcname, maxparallel)`
+#### 6.5.2. `LT_INIT_GROUP(funcname, maxparallel)`
 
 **funcname**: the same token as the specified token for funcname in `LT_DECLARE_GROUP` macro defining the containing
               test group function.
@@ -117,10 +113,11 @@ Exit codes for failure: LT_DECLARE_GROUP_ERROR.
 
 Exit codes for failure: LT_INIT_GROUP_ERROR.
 
-### 6.5.3. `LT_RETURN`
+#### 6.5.3. `LT_RETURN`
 
+Exit codes for failure: LT_RETURN_ERROR.
 
-### 6.6. Execute Macros
+### 6.6. Macros to Execute a Test Group or a Test
 
 - `LT_GROUP(funcname, [include], [isolation])[;]`
 - `LT_TEST(expression, [include], [isolation][;])`
@@ -171,25 +168,25 @@ Exit codes for failure: LT_END_GROUP_ERROR.
 
 ### 6.5. Version Macros
  
-#### 6.5.1 `LT_RUNNER_VERSION`
+#### 6.5.1. `LT_RUNNER_VERSION`
 
 
-#### 6.5.2  `LT_VERSION_MAJOR(v)`
+#### 6.5.2. `LT_VERSION_MAJOR(v)`
 
 
-#### 6.5.3  `LT_VERSION_MINOR(v)`
+#### 6.5.3. `LT_VERSION_MINOR(v)`
 
 
-#### 6.5.4 `LT_VERSION_PATCH(v)`
+#### 6.5.4.`LT_VERSION_PATCH(v)`
 
 
-#### 6.5.4 `LT_VERSION_NUM(v)`
+#### 6.5.4.`LT_VERSION_NUM(v)`
 
 
-#### 6.5.4 `LT_VERSION_HEX(v)`
+#### 6.5.4. `LT_VERSION_HEX(v)`
 
 
-#### 6.5.5 `LT_VERSION_CMP(v1, v2)`
+#### 6.5.5. `LT_VERSION_CMP(v1, v2)`
 
 
 ## 7. Customization Functions`
