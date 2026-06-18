@@ -232,7 +232,7 @@ make run
 
 This section exists here to ensure contributors do not overlook the requirement
 for parallel structure and consistent writing patterns across all LiteTest
-documentation.
+documentation in all types of files (e,g., ,md, .h, .c, .yml, ,sh, Makefile, etc.).
 
 <details>
 <summary>Click to view 6. Documentation Style Guide</summary>
