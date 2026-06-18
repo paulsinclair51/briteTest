@@ -173,7 +173,7 @@ TODO.
 <details>
 <summary>Click to view 9. Macros for an Orchestrator Function</summary>
 
-## 9. Macros for an Orchestrator Function
+## 9. Macros for the Orchestrator Function
 
 Macros used to define or declare the Orchestrator (`main`) function
 
