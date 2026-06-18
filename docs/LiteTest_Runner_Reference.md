@@ -115,7 +115,7 @@ TODO: add introduction, common rules.
 </details>
 
 <details>
-<summary>Click to view 1. Types</summary>
+<summary>Click to view 2. Types</summary>
 
 ## 2. Types
 
@@ -123,7 +123,7 @@ TODO.
 </details>
 
 <details>
-<summary>Click to view 2. Structsn</summary>
+<summary>Click to view 3. Structsn</summary>
 
 ## 3. Structs
 
@@ -131,7 +131,7 @@ TODO.
 </details>
 
 <details>
-<summary>Click to view 2. Unions</summary>
+<summary>Click to view 4. Unions</summary>
 
 ## 4. Unions
 
@@ -139,7 +139,7 @@ TODO.
 </details>
   
 <details>
-<summary>Click to view 3. Enums</summary>
+<summary>Click to view 5. Enums</summary>
 
 ## 5. Enums
 
@@ -155,7 +155,7 @@ TODO.
 </details>
   
 <details>
-<summary>Click to view 6. Macros for Exit Codes</summary>
+<summary>Click to view 7. Macros for Exit Codes</summary>
 
 ## 7. Macros for Exit Codes
 
@@ -273,7 +273,7 @@ macro defining the containing test group function.
 </details>
   
 <details>
-<summary>Click to view 11.  Macros to Execute a Test Group or Test</summary>
+<summary>Click to view 11. Macros to Execute a Test Group or Test</summary>
 
 ## 11. Macros to Execute a Test Group or a Test
 
@@ -312,7 +312,7 @@ See "Isolation" in the LiteTest Runner Guide.
 </details>
   
 <details>
-<summary>Click to view 12.  Macros for Concurrent Blocks</summary>
+<summary>Click to view 12. Macros for Concurrent Blocks</summary>
 
 ## 12. Macros for Concurrent Blocks
 
@@ -334,7 +334,7 @@ See "Isolation" in the LiteTest Runner Guide.
 </details>
   
 <details>
-<summary>Click to view 6.  Macros for Versioning</summary>
+<summary>Click to view 13. Macros for Versioning</summary>
 
 ## 13. Macros for Versioning
  
@@ -431,7 +431,8 @@ See "Isolation" in the LiteTest Runner Guide.
 </details>
   
 <details>
-<summary>Click to view 14.  Macros for Customizations</summary>
+<summary>Click to view 14. Functions for Customizations</summary>
+  
 ## 14. Functions for Customization
 
 ## 14.1. `int lt_funcname(char *funcname, size_t outlen)`
@@ -457,7 +458,7 @@ Force a close and remove the temporary notes file. LT_EXIT macro does this autom
 </details>
   
 <details>
-<summary>Click to view 15. Test Command Lines</summary>
+<summary>Click to view 15. Test Command Line</summary>
 
 ## 15. Test Command Line
 
