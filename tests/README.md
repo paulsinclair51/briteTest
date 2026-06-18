@@ -16,7 +16,7 @@ See `../README.md` for an introduction to LiteTest.
 
 - **src/**: Test source files (`*.c`).
 - **include/**: Test headers (`*.h`).
-- **control/**: Baseline files for output comparisons.
+- **golden/**: Baseline files for output comparisons.
 - **output/**: Retained generated outputs for review/promotion.
 - **input/**: Input files for tests.
 - **tmp/**: Temporary test outputs.
