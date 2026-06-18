@@ -189,48 +189,56 @@ and a forward-reference to the orchestrator function.
 
 ### 9.2. `LT_INIT_ORCHESTRATOR(funcname, project, size_t maxparallel);`
 
-**funcname**: token specifying `main`.
+**funcname**: Token specifying `main`.
 
-**project**: token identifying the project. Token is used to generate a default
-report title,
+**project**: 
+- A token identifying the project. 
+- The token is used to generate a default report title if one is not ser by the
+  `LT_PARSE_ARGS(...)` macro.
 
-**maxparallel**: maximum number of `LT_GROUP` and `LT_TEST` macros that are
+**maxparallel**: Maximum number of `LT_GROUP` and `LT_TEST` macros that are
 allowed to execute in parallel.
 
 **Negative exit codes for Runner termination**: `LT_INIT_ORCHESTRATOR_ERROR`.
 
-### 9.3. `LT_PARSE_ARGS(size_t maxargs, char *defaultreportfilename, size_t maxlen);`
+### 9.3. `LT_PARSE_ARGS(size_t maxargs, char *defaultreportfilename);`
 
 **maxargs**:
 
-**defaultreportfilename**: 
-
-**maxlen**: 
+**defaultreportfilename**:
+- A string defining a default report file name without an extension. Yhe extension is
+  is `,md` since the report uses Markdown Document formatting.
+- The maximum length including a null terminator character is `MAX_FILENAME_LEN` (129),
 
 **Negative exit codes for Runner termination**: `LT_ARG_ERROR`.
 
-### 9.4. `LT_OPEN_REPORT(char *title, size_t maxlen);`
+### 9.4. `LT_OPEN_REPORT(char *title);`
+
+**title**:
+- A string defining the report titlw.
+- A NULL or 0-length `title` indicates ro use a generated default report title
+  "<project> Test Report".
+- The maximum length including a null terminator character is MAX_TITLE_LEN` (129),
 
 **Negative exit codes for Runner termination**: `LT_OPEN_ERROR`.
 
-### 9.5. `LT_WRITE_RESULT(gtm, char *category;`
+### 9.5. `LT_WRITE_RESULT(gtm, char *category;
 
 **gtm**: A `LT_GROUP(...)` or `LT_TEST(,,,)` macro.
 
-**category**; A pointer to a string with the name or description of the test
-category. Maximum length including null terminator character is
-`MAX_CATEOGRY_LEN` (129).
+**category**;
+- A pointer to a string with the name or description of the test category. 
+- The maximum length including a null terminator character is `MAX_CATEOGRY_LEN` (129).
 
 **Negative exit codes for Runner termination**: `LT_WRITE_ERROR`.
 
-### 9.6. `LT_CLOSE_REPORT(char *notes, size_t maxlen);`
+### 9.6. `LT_CLOSE_REPORT(char *notes);`
 
 **notes**:
 - A string of note lines to append to the test report.
 - Each note line must end with `'\n'` (newline).
 - NULL or 0-length `notes` indicate no notes to append.
-
-**maxlen**: Maximum length for `notes` to avoid a missing null terminator issues.
+- The maximum length including a null terminator character is `MAX_NOTE_LEN` (10001),
 
 **Negative exit codes for Runner termination**: `LT_CLOSE_ERROR`.
 
