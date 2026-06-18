@@ -235,7 +235,8 @@ category. Maximum length including null terminator character is
 **Negative exit codes for Runner termination**: `LT_CLOSE_ERROR`.
 
 The macro writes the totals, pre-defined explanatory notes, `notes`, notes from
-the temporary notes file to the test report file, and then closes the test report.
+the temporary notes file, and final summay line to the test report file, and then
+closes the test report.
 
 ### 9.7. `LT_EXIT;`
 
