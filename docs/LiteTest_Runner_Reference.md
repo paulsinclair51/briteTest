@@ -75,7 +75,7 @@ For a glossary of terms, see the LiteTest Glossary Reference
 - The **Test** column records the LiteTest Test API version current at
   the time this document version was published and is defined by its
   `LT_TEST_VERSION` macro.
-- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
+- Both the Runner API and Test API use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
 
@@ -111,24 +111,67 @@ when `M` is incremented.
 
 ## 1. Introduction
 
-TODO: add introction, common rules.
+TODO: add introduction, common rules.
 </details>
+
+<details>
+<summary>Click to view 1. Types</summary>
 
 ## 2. Types
 
+TODO.
+</details>
+
+<details>
+<summary>Click to view 2. Structsn</summary>
+
 ## 3. Structs
 
+TODO.
+</details>
+
+<details>
+<summary>Click to view 2. Unions</summary>
 
 ## 4. Unions
 
+TODO.
+</details>
+  
+<details>
+<summary>Click to view 3. Enums</summary>
 
 ## 5. Enums
 
+TODO.
+</details>
+  
+<details>
+<summary>Click to view 6. Macros for Limits</summary>
+
 ## 6. Macros for Limits
+
+TODO.
+</details>
+  
+<details>
+<summary>Click to view 6. Macros for Exit Codes</summary>
 
 ## 7. Macros for Exit Codes
 
+TODO.
+</details>
+  
+<details>
+<summary>Click to view 8. Macros for Return Codes</summary>
+
 ## 8. Macros for Return Codes
+
+TODO.
+</details>
+  
+<details>
+<summary>Click to view 9. Macros for an Ocrhestrator Function</summary>
 
 ## 9. Macros for an Orchestrator Function
 
@@ -195,7 +238,11 @@ test report file, and then closes the test report.
 
 **Exit codes**: `LT_PASS` (0), `LT_FAIL` (1), `LT_FAULT` (2), `LT_FAIL_FAULT` (3).
 
-**Negative exit codes for Runner termination**: `LT_EXIT_ERROR`
+**Negative exit codes for Runner termination**: `LT_EXIT_ERROR`.
+</details>
+  
+<details>
+<summary>Click to view 10. Macros for a Test Group Function</summary>
 
 ## 10. Macros for a Test Group Function
 
@@ -223,6 +270,10 @@ macro defining the containing test group function.
 ### 10.3. `LT_RETURN`
 
 **Negative exit codes for Runner termination**: `LT_RETURN_ERROR`.
+</details>
+  
+<details>
+<summary>Click to view 11.  Macros to Execute a Test Group or Test</summary>
 
 ## 11. Macros to Execute a Test Group or a Test
 
@@ -258,8 +309,12 @@ See "Isolation" in the LiteTest Runner Guide.
 ### 11.2. `LT_TEST(expression, [include], [isolation])[;])``
 
 **Negative exit codes for Runner termination**: `LT_TEST_ERROR`.
+</details>
+  
+<details>
+<summary>Click to view 12.  Macros for Concurrent Blocks</summary>
 
-## 12. Concurrent Block Macros
+## 12. Macros for Concurrent Blocks
 
 ### 12.1. `LT_BEGIN_CONCURRENT(blockname)`
 
@@ -276,8 +331,12 @@ See "Isolation" in the LiteTest Runner Guide.
 - Token must be the same as for the preceding matching `LT_BEGIN_CONCURRENT.
 
 **Negative exit codes for Runner termination**: `LT_END_GROUP_ERROR`.
+</details>
+  
+<details>
+<summary>Click to view 6.  Macros for Versioning</summary>
 
-## 13. Version Macros
+## 13. Macros for Versioning
  
 ### 13.1. `LT_RUNNER_VERSION`
 
@@ -369,7 +428,10 @@ See "Isolation" in the LiteTest Runner Guide.
 - `LT_VERSION_CMP(LT_RUNNER_VERSION, "1.10.0")` → `LT_EQUAL` (*if* `LT_RUNNER_VERSION` is `"1.10.0"`)
 - `LT_VERSION_CMP("1.10.0x", "1.10.0")` → `LT_INVALID_VERSION`
 - `LT_VERSION_CMP("1.10.0", "1.10y.0")` → `LT_INVALID_VERSION`
-
+</details>
+  
+<details>
+<summary>Click to view 14.  Macros for Customizations</summary>
 ## 14. Functions for Customization
 
 ## 14.1. `int lt_funcname(char *funcname, size_t outlen)`
@@ -392,9 +454,18 @@ Opens a temporary temporary file if not already open and writes the notes to the
 Force a close and remove the temporary notes file. LT_EXIT macro does this automactically.
 
 **Return**: `LT_SUCCESS`, `LT_NOTES_REMOVE_ERROR`.
+</details>
+  
+<details>
+<summary>Click to view 15. Test Command Lines</summary>
 
 ## 15. Test Command Line
 
+TODO.
+</details>
+  
+<details>
+<summary>Click to view 16. Golden Files</summary>
 
 ## 16. Golden Files
 
@@ -447,3 +518,4 @@ the common problems found in extension‑based naming schemes:
   so that each output file has a unique corresponding location. This can be done
   through customization of your test runner or, when needed, by extending the
   Runner and Test API.
+  </details>
