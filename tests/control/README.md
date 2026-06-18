@@ -14,7 +14,7 @@ See `../../README.md` for an introduction to LiteTest.
   corresponding output file.
 - **README.md**: This directory guide.
 
-## Subirectories
+## Subdirectories
 
 - golden1
 - golden2
@@ -33,7 +33,7 @@ file exists, the output is automatically promoted.
 Golden file contents of `##MATCH##\n` or `##MISMATCH##\n` allow forcing matches
 or mismatches, respectively.
 
-See also `,,/output/README.md`.
+See also `../output/README.md`.
 
 For full details, including customization options, see the
 LiteTest Runner User Guide.
