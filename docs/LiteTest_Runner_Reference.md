@@ -90,11 +90,11 @@ test report file, and then closes the test report.
 
 Exit codes: LT_PASS (0), LT_FAIL (1), LT_FAULT (2), LT_FAIL_FAULT (3).
 
-### 6.5. Macros for a Test Group Function
+### 10. Macros for a Test Group Function
 
 Macros used to define or declare a test group function.
 
-#### 6.5.1. `LT_DECLARE_GROUP(funcname)`
+### 10.1. `LT_DECLARE_GROUP(funcname)`
 
 **funcname**: token specifying a function name other than `main`.
 
@@ -104,7 +104,7 @@ and a forward-reference to tne test group function.
 
 Exit codes for failure: LT_DECLARE_GROUP_ERROR.
 
-#### 6.5.2. `LT_INIT_GROUP(funcname, maxparallel)`
+### 10.2. `LT_INIT_GROUP(funcname, maxparallel)`
 
 **funcname**: the same token as the specified token for funcname in `LT_DECLARE_GROUP` macro defining the containing
               test group function.
@@ -113,11 +113,11 @@ Exit codes for failure: LT_DECLARE_GROUP_ERROR.
 
 Exit codes for failure: LT_INIT_GROUP_ERROR.
 
-#### 6.5.3. `LT_RETURN`
+### 10.3. `LT_RETURN`
 
 Exit codes for failure: LT_RETURN_ERROR.
 
-### 6.6. Macros to Execute a Test Group or a Test
+## 11. Macros to Execute a Test Group or a Test
 
 - `LT_GROUP(funcname, [include], [isolation])[;]`
 - `LT_TEST(expression, [include], [isolation][;])`
@@ -142,23 +142,23 @@ See Test Command Line for details on command line flags.
 
 See "Isolation" in the LiteTest Runner Guide.
 
-#### 6.6.1. `LT_GROUP(funcname, [include], [isolation])[;]
+### 11.1. `LT_GROUP(funcname, [include], [isolation])[;]
 
 Exit codes for failure: LT_GROUP_ERROR.
 
-#### 6.6.2. `LT_TEST(expression, [include], [isolation])[;])``
+### 11.2. `LT_TEST(expression, [include], [isolation])[;])``
 
 Exit codes for failure: LT_TEST_ERROR.
 
-### 6.7. Concurrent Block Macros
+## 12. Concurrent Block Macros
 
-#### 6.7.1. `LT_BEGIN_CONCURRENT([blockname])`
+### 12.1. `LT_BEGIN_CONCURRENT([blockname])`
 
 **blockname**: token specifying blockname. Default is no block name)
 
 Exit codes for failure: LT_BEGIN_GROUP_ERROR.
 
-#### 6.7.2. `LT_END_CONCURRENT[blockname']);`
+### 12.2. `LT_END_CONCURRENT[blockname']);`
 
 **blockname**: token specifying blockname. Default is no block name.
                Token must be the same as for the preceding `LT_BEGIN_CONCURRENT`, or
@@ -166,46 +166,48 @@ Exit codes for failure: LT_BEGIN_GROUP_ERROR.
 
 Exit codes for failure: LT_END_GROUP_ERROR.
 
-### 6.5. Version Macros
+## 13. Version Macros
  
-#### 6.5.1. `LT_RUNNER_VERSION`
+### 13.1. `LT_RUNNER_VERSION`
 
 
-#### 6.5.2. `LT_VERSION_MAJOR(v)`
+### 13.2. `LT_VERSION_MAJOR(v)`
 
 
-#### 6.5.3. `LT_VERSION_MINOR(v)`
+### 13.3. `LT_VERSION_MINOR(v)`
 
 
-#### 6.5.4.`LT_VERSION_PATCH(v)`
+## 13.4.`LT_VERSION_PATCH(v)`
 
 
-#### 6.5.4.`LT_VERSION_NUM(v)`
+### 13.4.`LT_VERSION_NUM(v)`
 
 
-#### 6.5.4. `LT_VERSION_HEX(v)`
+### 13.5. `LT_VERSION_HEX(v)`
 
 
-#### 6.5.5. `LT_VERSION_CMP(v1, v2)`
+### 13.6. `LT_VERSION_CMP(v1, v2)`
 
 
-## 7. Customization Functions`
+## 14. Functions for Customization
 
-### 7.1. `int lt_funcname(char *funcname, size_t outlen)`
+## 14.1. `int lt_funcname(char *funcname, size_t outlen)`
 
-### 7.2. `int lt_print_note(const char *note, size_t len)`
+## 14.2. `int lt_print_note(const char *note, size_t len)`
 
 Opens a temporary temporary file if not already open and writes note to the the temporary file.
 
 Return: LT_SUCCESS, LT_NOTES_OPEN_ERROR, LT_PRINT_ERROR
 
-### 7.3. `lt_remove_notes()`
+## 14.3. `lt_remove_notes()`
 
 Force a close and remove the temporary notes file. LT_EXIT macro does this automactically
 
 Return: LT_SUCCESS, LT_NTOES_REMOVE.
 
-## 7. Golden Files
+## 15. Golden Files
+
+Golden files are handled as follows:
 
 - Each test output file is compared with its golden file of the same name
   in the `tests/golden` directory to determine whether they match.
@@ -225,7 +227,7 @@ Return: LT_SUCCESS, LT_NTOES_REMOVE.
   Alternatively, remove the golden file so that the next run will
   automatically promote the output.
 
-### 7.1 Rationale for Parallel Directory for Golden Files
+Rationale for Parallel Directory for Golden Files:
 
 LiteTest uses a parallel `tests/golden` directory with golden files that keep
 the exact same filename as their corresponding test output. This design avoids
