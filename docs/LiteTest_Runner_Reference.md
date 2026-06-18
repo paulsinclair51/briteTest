@@ -171,7 +171,7 @@ TODO.
 </details>
   
 <details>
-<summary>Click to view 9. Macros for an Orchestrator Function</summary>
+<summary>Click to view 9. Macros for the Orchestrator Function</summary>
 
 ## 9. Macros for the Orchestrator Function
 
