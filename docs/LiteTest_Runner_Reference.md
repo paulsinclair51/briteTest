@@ -123,7 +123,7 @@ TODO.
 </details>
 
 <details>
-<summary>Click to view 3. Structsn</summary>
+<summary>Click to view 3. Structs</summary>
 
 ## 3. Structs
 
