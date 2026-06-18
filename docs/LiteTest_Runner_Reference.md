@@ -1,7 +1,7 @@
 # LiteTest Runner Reference
 
 This document provides a reference to the LiteTest Runner API. It includes types, structs, unions,
-enums, macros, and functions.
+enums, macros, and functions. Additionally, it provides a reference to LiteTest concepts and behavior.
 
 Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
@@ -12,13 +12,10 @@ SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
 ## 2. Types
 
 
-
 ## 3. Structs
 
 
-
 ## 4. Unions
-
 
 
 ## 5. Enums
@@ -186,56 +183,58 @@ Exit codes for failure: LT_END_GROUP_ERROR.
 **v**: pointer to a version string.
 
 **Value**:
-- The major version in v cast to int.
-- Value is `LT_INVALID_VERSION` (`-2`) if `v` is an invalid version string.
+- The major version in `v` cast to `int`.
+- Value is `LT_INVALID_VERSION` (`(int)-2`) *if* `v` is an invalid version string.
 
 **Examples**:
-- `LT_VERSION_MAJOR("5.0.9")` → `5`
-
-
+- `LT_VERSION_MAJOR("5.0.9")` → `(int)5`
+- `LT_VERSION_MAJOR("5.000.9")` → `LT_INVALID_VERSION`
+- 
 ### 13.3. `LT_VERSION_MINOR(v)`
 
 **v**: pointer to a version string.
 
 **Value**:  
-- The minor version in v cast to int.
-- Value is `LT_INVALID_VERSION` (`-2`) if `v` is an invalid version string.
+- The minor version in `v` cast to `int`.
+- Value is `LT_INVALID_VERSION` (`(int)-2`) *if* `v` is an invalid version string.
 - 
 **Examples**:
-- `LT_RUNNER_VERSION` → "1.0.9"
-
+- `LT_VERSION_MINOR("5.00.9")` → `(int)0`
+- `LT_VERSION_MINOR("5.1.001")` → `LT_INVALID_VERSION`
+- 
 ### 13.4.`LT_VERSION_PATCH(v)`
 
 **v**: pointer to a version string.
 
 **Value**:  
-- The patch version in v cast to int.
-- Value is `LT_INVALID_VERSION` (`-2`)` if `v` is an invalid version string.
+- The patch version in `v` cast to `int`.
+- Value is `LT_INVALID_VERSION` (`(int)-2`)` *if* `v` is an invalid version string.
 
 **Examples**:
-- `LT_RUNNER_VERSION` → "1.0.9"
+- `LT_VERSION_PATCH("5.0.12")` → `(int)12`
+- `LT_VERSION_PATCH("5.000.9")` → `LT_INVALID_VERSION`
 
 ### 13.5.`LT_VERSION_NUM(v)`
 
 **Value**:
-- Representation of the version v cast to int.
-- Value is `LT_INVALID_VERSION` (`-2`) if `v` is an invalid version string.
+- Representation of the version `v` cast to `int`.
+- Value is `LT_INVALID_VERSION` (`-2`) *if* `v` is an invalid version string.
 
 **v**: pointer to a version string.
 
 **Examples**:
-- `LT_RUNNER_VERSION` → "1.0.9"
+- `LT_RUNNER_VERSION` → `"1.0.9"`
 
 ### 13.6. `LT_VERSION_HEX(v)`
 
 **v**: pointer to a version string.
 
 **Value**:
-- Hex representation of version v cast to int.
-- Value is `LT_INVALID_VERSION` (`-2`) if `v` is an invalid version string.
+- Hex representation of version `v` cast to `int`.
+- Value is `LT_INVALID_VERSION` (`-2`) *if* `v` is an invalid version string.
 
 **Examples**:
-- `LT_RUNNER_VERSION` → "1.0.9"
+- `LT_RUNNER_VERSION` → `"1.0.9"`
 
 ### 13.7. `LT_VERSION_CMP(v1, v2)`
 
@@ -251,11 +250,11 @@ Exit codes for failure: LT_END_GROUP_ERROR.
 - Leading zeros in `M`, `m`, and `p` are ignored during comparison.
 
 **Examples**:
-- `LT_VERSION_CMP(LT_RUNNER_VERSION, "1.10.0")` → `1` (if `LT_RUNNER_VERSION` is `"1.10.6"`)
-- `LT_VERSION_CMP(LT_RUNNER_VERSION, "1.10.0")` → `-1` (if `LT_RUNNER_VERSION` is `"1.8.0"`)
-- `LT_VERSION_CMP(LT_RUNNER_VERSION, "1.10.0")` → `0` (if `LT_RUNNER_VERSION` is `"1.10.0"`)
-- `LT_VERSION_CMP("1.10.0x", "1.10.0")` → `-2`
-- `LT_VERSION_CMP("1.10.0", "1.10y.0")` → `-2`
+- `LT_VERSION_CMP(LT_RUNNER_VERSION, "1.10.0")` → `LT_GREATER` (*if* `LT_RUNNER_VERSION` is `"1.10.6"`)
+- `LT_VERSION_CMP(LT_RUNNER_VERSION, "1.10.0")` → `LT_LESS` (*if* `LT_RUNNER_VERSION` is `"1.8.0"`)
+- `LT_VERSION_CMP(LT_RUNNER_VERSION, "1.10.0")` → `LT_EQUAL` (*if* `LT_RUNNER_VERSION` is `"1.10.0"`)
+- `LT_VERSION_CMP("1.10.0x", "1.10.0")` → `LT_INVALID_VERSION`
+- `LT_VERSION_CMP("1.10.0", "1.10y.0")` → `LT_INVALID_VERSION`
 
 ## 14. Functions for Customization
 
@@ -324,4 +323,3 @@ the common problems found in extension‑based naming schemes:
   so that each output file has a unique corresponding location. This can be done
   through customization of your test runner or, when needed, by extending the
   Runner and Test API.
-
