@@ -33,7 +33,7 @@ Macros used to define or declare the Orchestrator (`main`) function.
 ### 9.1. `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
 
 A semicolon is not allowed if the macro is followed by its definition `{...}` of the
-orchestrator function; otherwise, it is required and indicates this is a decalaration
+orchestrator function; otherwise, it is required and indicates this is a declaration
 and a forward-reference to tne orchestrator function.
 
 **funcname**: token specifying `main`.
