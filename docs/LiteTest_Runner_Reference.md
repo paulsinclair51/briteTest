@@ -36,7 +36,7 @@ A semicolon is not allowed if the macro is followed by its definition `{...}` of
 orchestrator function; otherwise, it is required and indicates this is a declaration
 and a forward-reference to the orchestrator function.
 
-**funcname**: token specifying `main`.
+**funcname**: Token specifying `main`.
 
 **Negative exit codes for Runner termination**: `LT_DECLARE_ORCHESTRATOR_ERROR`.
 
@@ -66,19 +66,21 @@ and a forward-reference to the orchestrator function.
 
 ### 9.5. `LT_WRITE_RESULT(gtm, char *category;`
 
-**gtm**: LT_GROUP or LT_TEST macro.
+**gtm**: A `LT_GROUP(...)` or `LT_TEST(,,,)` macro.
 
-**category**; 
+**category**; A pointer to a string with the name or description of the test category. Maximum length including
+              null terminator character is `MAX_CATEOGRY_LEN` (129).
 
 **Negative exit codes for Runner termination**: `LT_WRITE_ERROR`.
 
 ### 9.6. `LT_CLOSE_REPORT(char *notes, size_t maxlen);`
 
-**notes**: Notes to append to the test report. Each note in notes must be ended by `'\n'` (newline). NULL or 0-length
-           indicate no notes to append. maxlen specifies a mxaimmum length for notes to avoid missing null terminator for
-           notes.
-           
-**maxlen**: Maximum length for `notes`.
+**notes**:
+- A string of note lines to append to the test report.
+- Each note line must end with `'\n'` (newline).
+- NULL or 0-length `notes` indicate no notes to append.
+
+**maxlen**: Maximum length for `notes` to avoid a missing null terminator issues.
 
 **Negative exit codes for Runner termination**: `LT_CLOSE_ERROR`.
 
@@ -87,7 +89,7 @@ test report file, and then closes the test report.
 
 ### 9.7. `LT_EXIT;`
 
-**Exit codes**: LT_PASS (0), LT_FAIL (1), LT_FAULT (2), LT_FAIL_FAULT (3).
+**Exit codes**: `LT_PASS` (0), `LT_FAIL` (1), `LT_FAULT` (2), `LT_FAIL_FAULT` (3).
 
 **Negative exit codes for Runner termination**: `LT_EXIT_ERROR`
 
@@ -97,7 +99,7 @@ Macros used to define or declare a test group function.
 
 ### 10.1. `LT_DECLARE_GROUP(funcname)`
 
-**funcname**: token specifying a function name other than `main`.
+**funcname**: Token specifying a function name other than `main`.
 
 A semicolon is not allowed if the macro is followed by its definition `{...}` of the
 test group function; otherwise, it is required and indicates this is a declaration
@@ -107,8 +109,8 @@ and a forward-reference to the test group function.
 
 ### 10.2. `LT_INIT_GROUP(funcname, maxparallel)`
 
-**funcname**: the same token as the specified token for funcname in `LT_DECLARE_GROUP` macro defining the containing
-              test group function.
+**funcname**: the same token as the specified token for funcname in the orecedubg `LT_DECLARE_GROUP`
+macro defining the containing test group function.
 
 **maxparallel**: maximum number of `LT_GROUP` and `LT_TEST` macros that are allowed to execute in parallel.
 
@@ -126,14 +128,16 @@ and a forward-reference to the test group function.
 A semicolon is not allowed if the macro is used as an argument to the `LT_WRITE_RESULTS` macro;
 otherwise, it is required.
 
-**include**: single character token or omit (defaults to 1):
+**include**: single character token or omit (defaults to `1`).
 
-- `0`   — Never execute.
-- `1`   — Always execute. 
+- `0`   — Never execute. This useful to disable a test (e.g., failing or faulting test for which the fix has been deferred).
+- `1`   — Always execute (e.g., smoke tests).
 - `2–9` — Execute only when the `-In` flag is specified in the test command line and n ≥ include.
-- `I`   — Execute only when the `-I` flag is specified in the test command line.
+- `I`   — Execute only when the `-I` flag is specified in the test command line. This is usefull for
+          injecting a fail/fault for verifying behavior and report output if fails/faults were to occur.
+          See also `LT_FAIL` and `LT_FAULT(type)` for simulating a fail or fault, respectively.
 
-See Test Command Line for details on command line flags.
+See "Test Command Line" for details on command line flags.
 
 **isolation**: single character token or omit (defaults to 0):
 
@@ -266,21 +270,31 @@ See "Isolation" in the LiteTest Runner Guide.
 
 ## 14.1. `int lt_funcname(char *funcname, size_t outlen)`
 
-## 14.2. `int lt_print_note(const char *note, size_t len)`
+## 14.2. `int lt_print_note(const char *notes, size_t maxlen)`
 
-Opens a temporary temporary file if not already open and writes note to the the temporary file.
+Opens a temporary temporary file if not already open and writes the notes to the the temporary file.
 
-Return: LT_SUCCESS, LT_NOTES_OPEN_ERROR, LT_PRINT_ERROR
+**notes**:
+- A string of note lines to write to the temporary file.
+- Each note line must end with `'\n'` (newline).
+- NULL or 0-length `notes` indicate no notes to append.
+
+**maxlen**: Maximum length for `notes` to avoid missing null terminator issues.
+
+*Return**: `LT_SUCCESS`, `LT_NOTES_OPEN_ERROR`, `LT_PRINT_NOTE_ERROR`.
 
 ## 14.3. `lt_remove_notes()`
 
-Force a close and remove the temporary notes file. LT_EXIT macro does this automactically
+Force a close and remove the temporary notes file. LT_EXIT macro does this automactically.
 
-Return: LT_SUCCESS, LT_NTOES_REMOVE.
+**Return**: `LT_SUCCESS`, `LT_NOTES_REMOVE_ERROR`.
 
-## 15. Golden Files
+## 15. Test Command Line
 
-Golden files are handled as follows:
+
+## 16. Golden Files
+
+Golden files (located in the `tests/golden/` subdirectory of the repository root directory) are handled as follows:
 
 - Each test output file is compared with its golden file of the same name
   in the `tests/golden` directory to determine whether they match.
