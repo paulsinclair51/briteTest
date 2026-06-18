@@ -90,7 +90,7 @@ test report file, and then closes the test report.
 
 Exit codes: LT_PASS (0), LT_FAIL (1), LT_FAULT (2), LT_FAIL_FAULT (3).
 
-### 10. Macros for a Test Group Function
+## 10. Macros for a Test Group Function
 
 Macros used to define or declare a test group function.
 
@@ -170,24 +170,92 @@ Exit codes for failure: LT_END_GROUP_ERROR.
  
 ### 13.1. `LT_RUNNER_VERSION`
 
+**Value**:  
+- LiteTest Runner's version as a literal string of type `char[n]`, where `n` is between 5 and 9 (including
+  the terminating null character).
+- Format: `M.m.p`, where `M`, `m`, and `p` are one or two digits.
+- `M` is the major version, `m` is the minor version, and `p` is the patch version. 
+
+**Examples**:
+- `LT_RUNNER_VERSION` → `"1.0.9"`
+- `LT_RUNNER_VERSION` → `"1.3.11"`
+- `LT_RUNNER_VERSION` → `"12.05.18"`
 
 ### 13.2. `LT_VERSION_MAJOR(v)`
+
+**v**: pointer to a version string.
+
+**Value**:
+- The major version in v cast to int.
+- Value is `LT_INVALID_VERSION` (`-2`) if `v` is an invalid version string.
+
+**Examples**:
+- `LT_VERSION_MAJOR("5.0.9")` → `5`
 
 
 ### 13.3. `LT_VERSION_MINOR(v)`
 
+**v**: pointer to a version string.
 
-## 13.4.`LT_VERSION_PATCH(v)`
+**Value**:  
+- The minor version in v cast to int.
+- Value is `LT_INVALID_VERSION` (`-2`) if `v` is an invalid version string.
+- 
+**Examples**:
+- `LT_RUNNER_VERSION` → "1.0.9"
 
+### 13.4.`LT_VERSION_PATCH(v)`
 
-### 13.4.`LT_VERSION_NUM(v)`
+**v**: pointer to a version string.
 
+**Value**:  
+- The patch version in v cast to int.
+- Value is `LT_INVALID_VERSION` (`-2`)` if `v` is an invalid version string.
 
-### 13.5. `LT_VERSION_HEX(v)`
+**Examples**:
+- `LT_RUNNER_VERSION` → "1.0.9"
 
+### 13.5.`LT_VERSION_NUM(v)`
 
-### 13.6. `LT_VERSION_CMP(v1, v2)`
+**Value**:
+- Representation of the version v cast to int.
+- Value is `LT_INVALID_VERSION` (`-2`) if `v` is an invalid version string.
 
+**v**: pointer to a version string.
+
+**Examples**:
+- `LT_RUNNER_VERSION` → "1.0.9"
+
+### 13.6. `LT_VERSION_HEX(v)`
+
+**v**: pointer to a version string.
+
+**Value**:
+- Hex representation of version v cast to int.
+- Value is `LT_INVALID_VERSION` (`-2`) if `v` is an invalid version string.
+
+**Examples**:
+- `LT_RUNNER_VERSION` → "1.0.9"
+
+### 13.7. `LT_VERSION_CMP(v1, v2)`
+
+**v1**: pointer to a version string.  
+**v2**: pointer to a version string.
+
+**Value**:
+- Integer result comparing version `v1` to `v2`:
+  - `LT_EQUAL` (`0`) — equal
+  - `LT_LESS` (`1`) — `v1` is less than `v2`
+  - `LT_GREATER` (`1`) — `v1` is greater than `v2`
+  - `LT_INVALID_VERSION` (`-2`)` — invalid `v1` or invalid `v2`
+- Leading zeros in `M`, `m`, and `p` are ignored during comparison.
+
+**Examples**:
+- `LT_VERSION_CMP(LT_RUNNER_VERSION, "1.10.0")` → `1` (if `LT_RUNNER_VERSION` is `"1.10.6"`)
+- `LT_VERSION_CMP(LT_RUNNER_VERSION, "1.10.0")` → `-1` (if `LT_RUNNER_VERSION` is `"1.8.0"`)
+- `LT_VERSION_CMP(LT_RUNNER_VERSION, "1.10.0")` → `0` (if `LT_RUNNER_VERSION` is `"1.10.0"`)
+- `LT_VERSION_CMP("1.10.0x", "1.10.0")` → `-2`
+- `LT_VERSION_CMP("1.10.0", "1.10y.0")` → `-2`
 
 ## 14. Functions for Customization
 
