@@ -13,7 +13,7 @@ See `../../README.md` for an introduction to LiteTest.
 - **.golden**: Golden files that contain the expected contents of each test
   output file.
 - **README.md**: This directory guide.
-- 
+
 ## Subirectories
 
 - golden1
