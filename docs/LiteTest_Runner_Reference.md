@@ -28,13 +28,13 @@ SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
 
 ## 9. Macros for an Orchestrator Function
 
-Macros used to define or declare the Orchestrator (`main`) function.
+Macros used to define or declare the Orchestrator (`main`) function
 
 ### 9.1. `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
 
 A semicolon is not allowed if the macro is followed by its definition `{...}` of the
 orchestrator function; otherwise, it is required and indicates this is a declaration
-and a forward-reference to tne orchestrator function.
+and a forward-reference to the orchestrator function.
 
 **funcname**: token specifying `main`.
 
@@ -101,7 +101,7 @@ Macros used to define or declare a test group function.
 
 A semicolon is not allowed if the macro is followed by its definition `{...}` of the
 test group function; otherwise, it is required and indicates this is a declaration
-and a forward-reference to tne test group function.
+and a forward-reference to the test group function.
 
 **Negative exit codes for Runner failure**: `LT_DECLARE_GROUP_ERROR`.
 
