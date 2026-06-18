@@ -208,10 +208,10 @@ tests/                  # Testing assets.
     src/                # Test source files.
         test_*.c
     include/            # Test headers.
-    control/            # Golden/baseline files for comparison.
+    golden/             # Golden/baseline files for comparison.
     output/             # Retained test outputs needing review
                         # (e.g., a copied report file to compare
-                        # against control/)
+                        # against golden/)
                         # (mismatch/new); matched outputs
                         # removed by default (use -o to keep).
     input/              # Static test input files.
