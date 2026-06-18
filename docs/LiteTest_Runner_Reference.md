@@ -191,9 +191,11 @@ and a forward-reference to the orchestrator function.
 
 **funcname**: token specifying `main`.
 
-**project**: token identifying the project. Token is used to generate a default report title
+**project**: token identifying the project. Token is used to generate a default
+report title,
 
-**maxparallel**: maximum number of `LT_GROUP` and `LT_TEST` macros that are allowed to execute in parallel.
+**maxparallel**: maximum number of `LT_GROUP` and `LT_TEST` macros that are
+allowed to execute in parallel.
 
 **Negative exit codes for Runner termination**: `LT_INIT_ORCHESTRATOR_ERROR`.
 
@@ -215,8 +217,9 @@ and a forward-reference to the orchestrator function.
 
 **gtm**: A `LT_GROUP(...)` or `LT_TEST(,,,)` macro.
 
-**category**; A pointer to a string with the name or description of the test category. Maximum length including
-              null terminator character is `MAX_CATEOGRY_LEN` (129).
+**category**; A pointer to a string with the name or description of the test
+category. Maximum length including null terminator character is
+`MAX_CATEOGRY_LEN` (129).
 
 **Negative exit codes for Runner termination**: `LT_WRITE_ERROR`.
 
@@ -231,8 +234,8 @@ and a forward-reference to the orchestrator function.
 
 **Negative exit codes for Runner termination**: `LT_CLOSE_ERROR`.
 
-The macro writes the totals, pre-defined explanatory notes, `notes`, notes from the temporary notes file to the
-test report file, and then closes the test report.
+The macro writes the totals, pre-defined explanatory notes, `notes`, notes from
+the temporary notes file to the test report file, and then closes the test report.
 
 ### 9.7. `LT_EXIT;`
 
@@ -260,10 +263,12 @@ and a forward-reference to the test group function.
 
 ### 10.2. `LT_INIT_GROUP(funcname, maxparallel)`
 
-**funcname**: the same token as the specified token for funcname in the orecedubg `LT_DECLARE_GROUP`
+**funcname**: the same token as the specified token for funcname in the orecedubg
+`LT_DECLARE_GROUP`
 macro defining the containing test group function.
 
-**maxparallel**: maximum number of `LT_GROUP` and `LT_TEST` macros that are allowed to execute in parallel.
+**maxparallel**: maximum number of `LT_GROUP` and `LT_TEST` macros that are allowed
+to execute in parallel.
 
 **Negative exit codes for Runner termination**: `LT_INIT_GROUP_ERROR`.
 
@@ -280,17 +285,21 @@ macro defining the containing test group function.
 - `LT_GROUP(funcname, [include], [isolation])[;]`
 - `LT_TEST(expression, [include], [isolation][;])`
 
-A semicolon is not allowed if the macro is used as an argument to the `LT_WRITE_RESULTS` macro;
-otherwise, it is required.
+A semicolon is not allowed if the macro is used as an argument to the
+`LT_WRITE_RESULTS` macro; otherwise, it is required.
 
 **include**: single character token or omit (defaults to `1`).
 
-- `0`   — Never execute. This useful to disable a test (e.g., failing or faulting test for which the fix has been deferred).
+- `0`   — Never execute. This useful to disable a test (e.g., failing or
+          faulting test for which the fix has been deferred).
 - `1`   — Always execute (e.g., smoke tests).
-- `2–9` — Execute only when the `-In` flag is specified in the test command line and n ≥ include.
-- `I`   — Execute only when the `-I` flag is specified in the test command line. This is usefull for
-          injecting a fail/fault for verifying behavior and report output if fails/faults were to occur.
-          See also `LT_FAIL` and `LT_FAULT(type)` for simulating a fail or fault, respectively.
+- `2–9` — Execute only when the `-In` flag is specified in the test command line
+          and n ≥ include.
+- `I`   — Execute only when the `-I` flag is specified in the test command line.
+          This is usefull for
+          injecting a fail/fault for verifying behavior and report output if
+          fails/faults were to occur. See also `LT_FAIL` and `LT_FAULT(type)`
+          for simulating a fail or fault, respectively.
 
 See "Test Command Line" for details on command line flags.
 
