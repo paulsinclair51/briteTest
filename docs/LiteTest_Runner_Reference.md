@@ -38,17 +38,17 @@ and a forward-reference to tne orchestrator function.
 
 **funcname**: token specifying `main`.
 
-Exit codes for failure: LT_DECLARE_ORCHESTRATOR_ERROR.
+**Negative exit codes for Runner termination**: `LT_DECLARE_ORCHESTRATOR_ERROR`.
 
 ### 9.2. `LT_INIT_ORCHESTRATOR(funcname, project, size_t maxparallel);`
 
 **funcname**: token specifying `main`.
 
-**project**: token identifying the project.
+**project**: token identifying the project. Token is used to generate a default report title
 
-**maxparallel**: maximum number of LT_GROUP and LT_TEST macros that are allowed to execute in parallel.
+**maxparallel**: maximum number of `LT_GROUP` and `LT_TEST` macros that are allowed to execute in parallel.
 
-Exit codes for failure: LT_INIT_ORCHESTRATOR_ERROR.
+**Negative exit codes for Runner termination**: `LT_INIT_ORCHESTRATOR_ERROR`.
 
 ### 9.3. `LT_PARSE_ARGS(size_t maxargs, char *defaultreportfilename, size_t maxlen);`
 
@@ -58,11 +58,11 @@ Exit codes for failure: LT_INIT_ORCHESTRATOR_ERROR.
 
 **maxlen**: 
 
-Exit codes for failure: LT_ARG_ERROR.
+**Negative exit codes for Runner termination**: `LT_ARG_ERROR`.
 
 ### 9.4. `LT_OPEN_REPORT(char *title, size_t maxlen);`
 
-Exit codes for failure: LT_OPEN_ERROR.
+**Negative exit codes for Runner termination**: `LT_OPEN_ERROR`.
 
 ### 9.5. `LT_WRITE_RESULT(gtm, char *category;`
 
@@ -70,22 +70,26 @@ Exit codes for failure: LT_OPEN_ERROR.
 
 **category**; 
 
-Exit codes for failure: LT_WRITE_ERROR.
+**Negative exit codes for Runner termination**: `LT_WRITE_ERROR`.
 
 ### 9.6. `LT_CLOSE_REPORT(char *notes, size_t maxlen);`
 
 **notes**: Notes to append to the test report. Each note in notes must be ended by `'\n'` (newline). NULL or 0-length
            indicate no notes to append. maxlen specifies a mxaimmum length for notes to avoid missing null terminator for
            notes.
+           
+**maxlen**: Maximum length for `notes`.
 
-Exit codes for failure: LT_CLOSE_ERROR.
+**Negative exit codes for Runner termination**: `LT_CLOSE_ERROR`.
 
 The macro writes the totals, pre-defined explanatory notes, `notes`, notes from the temporary notes file to the
 test report file, and then closes the test report.
 
 ### 9.7. `LT_EXIT;`
 
-Exit codes: LT_PASS (0), LT_FAIL (1), LT_FAULT (2), LT_FAIL_FAULT (3).
+**Exit codes**: LT_PASS (0), LT_FAIL (1), LT_FAULT (2), LT_FAIL_FAULT (3).
+
+**Negative exit codes for Runner termination**: `LT_EXIT_ERROR`
 
 ## 10. Macros for a Test Group Function
 
@@ -99,27 +103,27 @@ A semicolon is not allowed if the macro is followed by its definition `{...}` of
 test group function; otherwise, it is required and indicates this is a declaration
 and a forward-reference to tne test group function.
 
-Exit codes for failure: LT_DECLARE_GROUP_ERROR.
+**Negative exit codes for Runner failure**: `LT_DECLARE_GROUP_ERROR`.
 
 ### 10.2. `LT_INIT_GROUP(funcname, maxparallel)`
 
 **funcname**: the same token as the specified token for funcname in `LT_DECLARE_GROUP` macro defining the containing
               test group function.
 
-**maxparallel**: maximum number of LT_GROUP and LT_TEST macros that are allowed to execute in parallel.
+**maxparallel**: maximum number of `LT_GROUP` and `LT_TEST` macros that are allowed to execute in parallel.
 
-Exit codes for failure: LT_INIT_GROUP_ERROR.
+**Negative exit codes for Runner termination**: `LT_INIT_GROUP_ERROR`.
 
 ### 10.3. `LT_RETURN`
 
-Exit codes for failure: LT_RETURN_ERROR.
+**Negative exit codes for Runner termination**: `LT_RETURN_ERROR`.
 
 ## 11. Macros to Execute a Test Group or a Test
 
 - `LT_GROUP(funcname, [include], [isolation])[;]`
 - `LT_TEST(expression, [include], [isolation][;])`
 
-A semicolon is not allowed if the macro is used as an argument to LT_WRITE_RESULTS macro;
+A semicolon is not allowed if the macro is used as an argument to the `LT_WRITE_RESULTS` macro;
 otherwise, it is required.
 
 **include**: single character token or omit (defaults to 1):
@@ -141,27 +145,29 @@ See "Isolation" in the LiteTest Runner Guide.
 
 ### 11.1. `LT_GROUP(funcname, [include], [isolation])[;]
 
-Exit codes for failure: LT_GROUP_ERROR.
+**Negative exit codes for Runner termination**: `LT_GROUP_ERROR`.
 
 ### 11.2. `LT_TEST(expression, [include], [isolation])[;])``
 
-Exit codes for failure: LT_TEST_ERROR.
+**Negative exit codes for Runner termination**: `LT_TEST_ERROR`.
 
 ## 12. Concurrent Block Macros
 
-### 12.1. `LT_BEGIN_CONCURRENT([blockname])`
+### 12.1. `LT_BEGIN_CONCURRENT(blockname)`
 
-**blockname**: token specifying blockname. Default is no block name)
+**blockname**:
+- Token specifying the name of the block.
+- Token must be the same as for the subsequent matching `LT_END_CONCURRENT`.
 
-Exit codes for failure: LT_BEGIN_GROUP_ERROR.
+**Negative exit codes for Runner termination**: `LT_BEGIN_GROUP_ERROR`.
 
-### 12.2. `LT_END_CONCURRENT[blockname']);`
+### 12.2. `LT_END_CONCURRENT(blockname);`
 
-**blockname**: token specifying blockname. Default is no block name.
-               Token must be the same as for the preceding `LT_BEGIN_CONCURRENT`, or
-               if omitted, token must be omitted in the preceding ``LT_BEGIN_CONCURRENT`.
+**blockname**:
+- Token specifying the name of the block.
+- Token must be the same as for the preceding matching `LT_BEGIN_CONCURRENT.
 
-Exit codes for failure: LT_END_GROUP_ERROR.
+**Negative exit codes for Runner termination**: `LT_END_GROUP_ERROR`.
 
 ## 13. Version Macros
  
