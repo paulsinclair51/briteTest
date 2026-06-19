@@ -130,8 +130,9 @@ when `M` is incremented.
 [**11. Test Command Line**](#11-test-command-line)<br>
 
 [**12. Output and Golden Files**](#12-output-and-golden-files)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**12.1. Golden Files**](#121-golden-files)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**12.2. Golden Rationale**](#122-goldan-rationale)
+&nbsp;&nbsp;&nbsp;&nbsp;[**12.1. Output Files**](#121-output-files)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**12.2. Golden Files**](#122-golden-files)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**12.3. Golden Rationale**](#123-goldan-rationale)
 </details>
 
 <details>
@@ -921,6 +922,14 @@ TODO.
 
 ## 12. Output and Golden Files
 
+Output file in `tests/output/` and golden files in `tests/golden/` provide a
+directory layout for capturing and validating test output.
+
+<details>
+<summary>12.1. Output Files</summary>
+
+## 12.1. Output Files
+
 Named output files are captured as output files using their name.
 
 A copy of `stdout` is captured as an output file named `stdout-<uid>` and a copy of
@@ -947,11 +956,12 @@ to `tests/output/`:
 
 An output file and its metadata file in `tests/output/` may be copied (promoted) to the
 `tests/golden/` subdirectory of the repository root directory. See the following section.
+</details>
 
 <details>
 <summary>12.1. Golden Files</summary>
 
-## 12.1. Golden Files
+## 12.2. Golden Files
 
 A metadata golden file having a name with the form <name>.<ext> applies to all
 golden files named <name>-<uid>.ext and can be added manually or by customization
@@ -986,7 +996,7 @@ automatically promote the output.
 <details>
 <summary>12.2. Rationale for Design</summary>
 
-### 12.2. Golden Rationale
+### 12.3. Golden Rationale
 
 LiteTest uses a parallel `tests/golden` directory with golden files that keep
 the exact same filename as their corresponding test output. This design avoids
