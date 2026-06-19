@@ -5,22 +5,12 @@ API and framework. It is intended for maintainers and contributors working on th
 implementation. It is companion document to the LiteTest Runner Internals
 Reference document.
 
-`Click to view` sections are used throughout this document.
+**Copyright (c) 2026 Paul Sinclair**
 
 <details>
-<summary>Why "Click to view"?</summary>
+<summary>Click to view License</summary>
 
-- Keeps documents readable while accommodating large amounts of technical detail.
-  
-- Allows scanning the structure and expanding only what you need.
-
-- Reduces visual noise and makes navigation easier.
-</details>
-
-#### Copyright (c) 2026 Paul Sinclair  
-
-<details>
-<summary>Click to view SPDX-License-Identifier: MIT</summary>
+#### **License**
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -41,6 +31,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 </details>
 
+<details>
+<summary>Click to view Preface</summary>
+
 ## Preface
 
 This document is intended for contributors.
@@ -49,6 +42,10 @@ For a list of other LiteTest documents and the LiteTest repository layout, see
 the LiteTest Documentation Guide.
 
 For a glossary of terms, see the LiteTest Glossary Reference.
+</details>
+
+<details>
+<summary>Click to view Document Version History</summary>
 
 ### Document Version History
 
@@ -68,6 +65,10 @@ Both Runner and Test versions specify a string of the form `"M.m.p"` (Major, min
 The document's `u` (update) version track updates to this document and does not correspond to a `m` (minor) or `p` (patch) version. `u` increments whenever this document is updated without a change to `M`, and it resets to `0` when `M` is incremented.
 </details>
 </details>
+</details>
+
+<details>
+<summary>Click to view Table of Contents</summary>
 
 ## Table of Contents
 
@@ -81,6 +82,10 @@ The document's `u` (update) version track updates to this document and does not 
 
 - [**Glossary**](#glossary)
 </details>
+</details>
+
+<details>
+<summary>Click to view 1. Introduction</summary>
 
 ## 1. Introduction
 
@@ -98,6 +103,7 @@ In this document, a *symbol* refers to any named entity in the LiteTest framewor
 - variables
 - functions
 </details>
+</details>
 
 LiteTest exposes some internal symbols in `litetest_runner.h` because the framework’s
 macros expand into code that depends on internal types and helper functions.
@@ -107,6 +113,9 @@ but they are not part of the public API and should not be used directly.
 Their presence in the header reflects C implementation requirements, not intended
 usage. Contributors may modify these symbols as needed, provided the public API
 contract remains intact.
+
+<details>
+<summary>Click to view 1.1 Public and Internal Naming Conventions</summary>
 
 ### 1.1 Public and Internal Naming Conventions
 
@@ -123,6 +132,10 @@ In general, users of the API should not define names prefixed with `lt_`, `LT`, 
 or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 </details>
 </details>
+</details>
+
+<details>
+<summary>Click to view 2. Architecture Overview</summary>
 
 ## 2. Architecture Overview
 - Process model  
@@ -132,6 +145,10 @@ or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 - Execution flow  
 
 ---
+</details>
+
+<details>
+<summary>Click to view 3. Orchestrator Internals</summary>
 
 ## 3. Orchestrator Internals
 - Initialization  
@@ -140,6 +157,10 @@ or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 - Category aggregation  
 
 ---
+</details>
+
+<details>
+<summary>Click to view 4. Test Group Internals</summary>
 
 ## 4. Test Group Internals
 - Group initialization  
@@ -147,6 +168,10 @@ or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 - Result accumulation  
 
 ---
+</details>
+
+<details>
+<summary>Click to view 5. Test Execution Engine</summary>
 
 ## 5. Test Execution Engine
 - Expression evaluation  
@@ -155,6 +180,10 @@ or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 - Error and fault propagation  
 
 ---
+</details>
+
+<details>
+<summary>Click to view 6. Process‑Isolated Execution</summary>
 
 ## 6. Process‑Isolated Execution
 - Child process creation  
@@ -163,6 +192,10 @@ or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 - Fault mapping  
 
 ---
+</details>
+
+<details>
+<summary>Click to view 7. Thread‑Isolated Execution</summary>
 
 ## 7. Thread‑Isolated Execution
 - Thread creation  
@@ -170,6 +203,10 @@ or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 - Fault boundaries  
 
 ---
+</details>
+
+<details>
+<summary>Click to view 8. Signal Guard System</summary>
 
 ## 8. Signal Guard System
 - Installed handlers  
@@ -178,6 +215,10 @@ or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 - Recovery behavior  
 
 ---
+</details>
+
+<details>
+<summary>Click to view 9. Report Generation Internals</summary>
 
 ## 9. Report Generation Internals
 - Output formatting  
@@ -186,16 +227,28 @@ or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 - Notes and metadata  
 
 ---
+</details>
+
+<details>
+<summary>Click to view 10. Internal State and Global Variables</summary>
 
 ## 10. Internal State and Global Variables
 (Placeholder for internal state descriptions.)
 
 ---
+</details>
+
+<details>
+<summary>Click to view 11. Error Handling and Safety Guarantees</summary>
 
 ## 11. Error Handling and Safety Guarantees
 (Placeholder for internal error semantics.)
 
 ---
+</details>
+
+<details>
+<summary>Click to view 12. Implementation Notes</summary>
 
 ## 12. Implementation Notes
 - Portability considerations  
@@ -203,9 +256,17 @@ or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 - Platform differences  
 
 ---
+</details>
+
+<details>
+<summary>Click to view 13. Future Improvements</summary>
 
 ## 13. Future Improvements
 (Placeholder for roadmap items.)
+</details>
+
+<details>
+<summary>Click to view Repository Layout</summary>
 
 ## Repository Layout
 
@@ -250,6 +311,10 @@ LiteTest/
 
 Use this as a reference when adapting LiteTest into your own project structure.
 </details>
+</details>
+
+<details>
+<summary>Click to view Glossary</summary>
 
 ## Glossary
 
@@ -279,4 +344,5 @@ Runner‑Specific Terms:
   groups and how isolation and concurrency propagate through nested structures.
 - **Concurrent Block Behavior**: The semantics of executing multiple tests in
   parallel within a concurrent block, including ordering and isolation rules.
+</details>
 </details>

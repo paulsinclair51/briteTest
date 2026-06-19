@@ -8,6 +8,9 @@ For license details, see `../LICENSE`.
 
 See `../README.md` for an introduction to LiteTest.
 
+<details>
+<summary>Click to view Files</summary>
+
 ## Files
 
 - **LiteTest_Documentation_Guide.md**: Index of LiteTest documents and the Litetest
@@ -25,7 +28,12 @@ See `../README.md` for an introduction to LiteTest.
 - **README.md**: This directory guide.
 - **.pdf files**: PDF formatted files generated from the above files using
   `../scripts/genpdf`.
+</details>
+
+<details>
+<summary>Click to view Subdirectories</summary>
 
 ## Subdirectories
 
 - None.
+</details>

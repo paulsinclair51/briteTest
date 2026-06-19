@@ -2,25 +2,12 @@
 
 This .
 
-<details>
-<summary>`Click to view` sections are used throughout this document</summary>
-
-#### Why Click to view?
-
-- Keeps documents readable while accommodating large amounts of
-  technical detail.
-
-- Allows scanning the structure and expanding only what you need.
-
-- Reduces visual noise and makes navigation easier.
-</details>
-
-### Copyright (c) 2026 Paul Sinclair
+**Copyright (c) 2026 Paul Sinclair**
 
 <details>
 <summary>Click to view License</summary>
 
-## License
+#### **License**
 
 SPDX-License-Identifier: MIT
 
@@ -87,16 +74,24 @@ when `M` is incremented.
 <details>
 <summary>Table of Contents</summary>
 
+<details>
+<summary>Click to view Table of Contents</summary>
+
 ## Table of Contents
 
 [1. Introduction](#1-introduction)
+</details>
 </details>
 
 <details>
 <summary>Introduction</summary>
 
+<details>
+<summary>Click to view 1. Introduction</summary>
+
 ## 1. Introduction
 
 The 
+</details>
 </details>
 

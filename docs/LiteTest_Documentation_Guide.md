@@ -3,25 +3,12 @@
 This document is a guide to the LiteTest documentation and the LiteTest
 repository layout.
 
-<details>
-<summary>`Click to view` sections are used throughout this document</summary>
-
-#### Why Click to view?
-
-- Keeps documents readable while accommodating large amounts of
-  technical detail.
-
-- Allows scanning the structure and expanding only what you need.
-
-- Reduces visual noise and makes navigation easier.
-</details>
-
-### Copyright (c) 2026 Paul Sinclair
+**Copyright (c) 2026 Paul Sinclair**
 
 <details>
 <summary>Click to view License</summary>
 
-## License
+#### **License**
 
 SPDX-License-Identifier: MIT
 

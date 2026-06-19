@@ -4,23 +4,14 @@ This document summarizes the public Test API declared in `include/litetest_test.
 It focuses on the helper-specific return conventions and the option structs used by the
 comparison helpers.
 
-`Click to view` sections are used throughout this document.
+**Copyright (c) 2026 Paul Sinclair**
 
 <details>
-<summary>Why "Click to view"?</summary>
+<summary>Click to view License</summary>
 
-- Keeps documents readable while accommodating large amounts of technical detail.
-  
-- Allows scanning the structure and expanding only what you need.
+#### **License**
 
-- Reduces visual noise and makes navigation easier.
-</details>
-
-Copyright (c) 2026 Paul Sinclair
-SPDX-License-Identifier: MIT. For license details, see ../LICENSE.
-
-details>
-<summary>Click to view license</summary>
+SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -41,6 +32,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 </details>
 
+<details>
+<summary>Click to view Preface</summary>
+
 ## Preface
 
 This document is intended for LiteTest users and contributors who need
@@ -51,6 +45,10 @@ For a list of other LiteTest documents and the LiteTest repository layout, see
 the LiteTest Documentation Guide.
 
 For a glossary of terms, see the LiteTest Glossary Reference.
+</details>
+
+<details>
+<summary>Click to view Document Version History</summary>
 
 #### Document Version History
 
@@ -67,6 +65,7 @@ The `Test` column records the LiteTest Test version current at the time this doc
 The current LiteTest Runner version is defined by the `LT_RUNNER_VERSION` macro in the LiteTest RUNNER API. The current LiteTest Test version is defined by the `LT_TEST_VERSION` macro in the LiteTest Test API. Both specify a string of the form `"M.m.p"` (Major, minor, patch). The 
 
 The document’s `M` (Major) version matches the LiteTest Runner's `M` (Major) version which matches the LiteTest Test's `M` (Major) version. The document's `u` (update) version track updates to this document and does not correspond to a `m` (minor) or `p` (patch) version. `u` increments whenever this document is updated without a change to `M`, and it resets to `0` when `M` is incremented.
+</details>
 </details>
 
 <details>
@@ -88,7 +87,14 @@ The document’s `M` (Major) version matches the LiteTest Runner's `M` (Major) v
   - [4. Convenience Forms](#4-convenience-forms)
 </details>
 
+<details>
+<summary>Click to view 1. Return Conventions</summary>
+
 ## 1. Return Conventions
+</details>
+
+<details>
+<summary>Click to view 1.1 Return Styles</summary>
 
 ### 1.1 Return Styles
 
@@ -97,6 +103,10 @@ LiteTest test helpers use three return styles:
 - Structured helpers return `LT_OK`, `LT_MISMATCH`, `LT_TIMEOUT`, or an `LT_E*` error code.
 - Predicate helpers return `1` for true or match, `0` for false or no match, and `-1` on invalid input or runtime error.
 - Process helpers that model command completion return `0` for success, `1` for timeout, and `-1` for invalid input or setup failure.
+</details>
+
+<details>
+<summary>Click to view 1.2 Assertion Guidance</summary>
 
 ### 1.2 Assertion Guidance
 
@@ -105,10 +115,18 @@ Use the helper family to decide what to check:
 - File, JSON, metadata, and normalized-text comparisons should usually be checked against `LT_OK` or `LT_MISMATCH`.
 - Existence, string, wildcard, and regex predicates should usually be checked against `1` or `0`.
 - Command-execution helpers should usually be checked against `0` or `1`.
+</details>
+
+<details>
+<summary>Click to view 2. Comparison Option Structs</summary>
 
 ## 2. Comparison Option Structs
 
 The comparison helpers use small option structs instead of mixed boolean and flag parameter lists.
+</details>
+
+<details>
+<summary>Click to view 2.1 `lt_path_compare_options_t`</summary>
 
 ### 2.1 `lt_path_compare_options_t`
 
@@ -133,6 +151,10 @@ Default initializer:
 ```c
 #define LT_PATH_COMPARE_OPTIONS_INIT {0}
 ```
+</details>
+
+<details>
+<summary>Click to view 2.2 `lt_path_metadata_compare_options_t`</summary>
 
 ### 2.2 `lt_path_metadata_compare_options_t`
 
@@ -159,6 +181,10 @@ Default initializer:
 ```
 
 Passing `NULL` or the default initializer uses the common default metadata set: size, permissions, and type.
+</details>
+
+<details>
+<summary>Click to view 2.3 `lt_json_compare_options_t`</summary>
 
 ### 2.3 `lt_json_compare_options_t`
 
@@ -178,6 +204,10 @@ Default initializer:
 ```
 
 Use `ignore_key_order` when semantic JSON equality matters more than source ordering. Use `max_bytes` when the caller wants a tighter bound than the implementation default.
+</details>
+
+<details>
+<summary>Click to view 2.4 `lt_text_compare_options_t`</summary>
 
 ### 2.4 `lt_text_compare_options_t`
 
@@ -195,8 +225,16 @@ Default initializer:
 ```c
 #define LT_TEXT_COMPARE_OPTIONS_INIT {0, 0}
 ```
+</details>
+
+<details>
+<summary>Click to view 3. Common Usage Patterns</summary>
 
 ## 3. Common Usage Patterns
+</details>
+
+<details>
+<summary>Click to view 3.1 Compare Two Paths While Ignoring Timestamps</summary>
 
 ### 3.1 Compare Two Paths While Ignoring Timestamps
 
@@ -207,6 +245,10 @@ const lt_path_compare_options_t options = {
 
 LT_ASSERT(lt_compare_paths_with_options(expected_path, actual_path, &options) == LT_OK, 0);
 ```
+</details>
+
+<details>
+<summary>Click to view 3.2 Compare Path Metadata Including Modification Time</summary>
 
 ### 3.2 Compare Path Metadata Including Modification Time
 
@@ -217,6 +259,10 @@ const lt_path_metadata_compare_options_t options = {
 
 LT_ASSERT(lt_compare_path_metadata(left_path, right_path, &options) == LT_OK, 0);
 ```
+</details>
+
+<details>
+<summary>Click to view 3.3 Compare JSON While Ignoring Object Key Order</summary>
 
 ### 3.3 Compare JSON While Ignoring Object Key Order
 
@@ -228,6 +274,10 @@ const lt_json_compare_options_t options = {
 
 LT_ASSERT(lt_compare_json_with_limit(expected_json, actual_json, &options) == LT_OK, 0);
 ```
+</details>
+
+<details>
+<summary>Click to view 3.4 Compare Text While Ignoring Whitespace and Line Endings</summary>
 
 ### 3.4 Compare Text While Ignoring Whitespace and Line Endings
 
@@ -239,6 +289,10 @@ const lt_text_compare_options_t options = {
 
 LT_ASSERT(lt_compare_text_normalized(left_text, right_text, &options) == LT_OK, 0);
 ```
+</details>
+
+<details>
+<summary>Click to view 4. Convenience Forms</summary>
 
 ## 4. Convenience Forms
 
@@ -247,3 +301,4 @@ LT_ASSERT(lt_compare_text_normalized(left_text, right_text, &options) == LT_OK, 
 - `lt_compare_file_lines` compares files line-by-line and returns `LT_OK` or `LT_MISMATCH`.
 
 For the full declaration list and per-function comments, see `include/litetest_test.h`.
+</details>
