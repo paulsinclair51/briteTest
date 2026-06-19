@@ -83,6 +83,8 @@ when `M` is incremented.
 [**2. Types**](#2-types)<br>
 
 [**3. Enums**](#3-enums)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**3.1. lt_exit_code_t**](#51-lt_exit_code_t)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**3.2. lt_return_code_t**](#52-lt_return_code_t)<br>
 
 [**4. Macros for Limits**](#4-macros-for-limits)<br>
 
@@ -260,13 +262,18 @@ typedef enum
     LT_FATAL_SYSTEM_THREAD = 305
 } lt_exit_code_t;
 ```
+</details>
+
+<details>
+<summary>Click to view 3.2. `lt_return_code_t`</summary>
 
 ### 3.1. `lt_return_code_t`
 
-Return codes are grouped into classes:
-- `LT_RETURN_*`
-- `LT_CMP_*`
-- `LT_IS_*`
+Return codes are for functions that return an integer (e.g., `int`) and
+are grouped into classes:
+- Success
+- Compare
+- Boolean
 - `LT_INVALID[_*]` invalid usage codes (invalid arguments).
 - `LT_SYSTEM[_*]` failed system codes (OS/runtime/resource failures).
 
@@ -276,32 +283,34 @@ code does not apply for the class.
 ```c
 typedef enum
 {
-  //
-    LT_RETURN_OK = 0,
+  // Success
+    LT_OK = 0,
     
   // Compare
-    LT_CMP_LESS = -1,
-    LT_CMP_EQUAL = 0,
-    LT_CMP_GREATER = 1,
+    LT_LESS = -1,
+    LT_EQUAL = 0,
+    LT_GREATER = 1,
     
-  // IS
-    LT_IS_FALSE = 0,
-    LT_IS_TRUE = 1,
+  // Boolean
+    LT_FALSE = 0,
+    LT_TRUE = 1,
 
-  // 100-199: Invalid Usage.
-    LT_INVALID = 100,
-    LT_INVALID_ARG = -3,
-    LT_INVALID_VERSION = -2,
+  // -100 to -199: Invalid Usage.
+    LT_INVALID = -100,
+    LT_INVALID_ARG = -101,
+    LT_INVALID_ARG_VERSION = -102,
+    LT_INVALID_ARG_TOO_LONG = -103,
 
-  // 300-399: Failed system call.
-    LT_SYSTEM = 300,
-    LT_SYSTEM_OPEN = 301,
-    LT_SYSTEM_READ = 302,
-    LT_SYSTEM_WRITE = 303,
-    LT_SYSTEM_FORK = 304,
-    LT_SYSTEM_THREAD = 305
+  // -300 to -399: Failed system call.
+    LT_SYSTEM = -300,
+    LT_SYSTEM_OPEN = -301,
+    LT_SYSTEM_READ = -302,
+    LT_SYSTEM_WRITE = -303,
+    LT_SYSTEM_FORK = -304,
+    LT_SYSTEM_THREAD = -305
 } lt_return_code_t;
 ```
+</details>
 </details>
 
 <details>
