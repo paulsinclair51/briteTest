@@ -1,4 +1,4 @@
-# LiteTest Runner Reference
+i# LiteTest Runner Reference
 
 This document provides a reference to the LiteTest Runner API. It includes types, structs, unions,
 enums, macros, and functions. Additionally, it provides a reference to LiteTest framework concepts .
@@ -930,30 +930,30 @@ TODO.
 
 ## 13. Output and Golden Files
 
-Output file in `tests/output/` and golden files in `tests/golden/` provide a
-directory layout for capturing and validating test output.
+Output files in `tests/output/` and golden files in `tests/golden/` subdirectories
+of the repository root provide a directory layout for capturing and validating
+test output.
 
 <details>
 <summary>13.1. Output Files</summary>
 
 ## 13.1. Output Files
 
-Named output files are captured as output files using their name.
-
-A copy of `stdout` is captured as an output file named `stdout-<uid>` and a copy of
-`stderr` is captured as an output file named `stderr-<uid>`.
-
-`<uid>` is a unique id string for each captured output file within a test run. It
-is used to avoid filename collisions when the same output name appears multiple times.
-
-Temporary files are not captured.
-
-A captured output file is copied to `tests/output/` subdirectory of the repository
-root directory:
+A oopy of a named output file is captured to `tests/output/` :
 - If the output file name has the form <name>.<ext>, the `tests/output/` file is named
   <name>-<uid>.ext.
 - If the output file name has the form <name> (with no extension), the `tests/output/`
   file is named <name>-<uid>.
+
+A copy of `stdout` is captured in `tests/output/` output file named `stdout-<uid>`
+and a copy of `stderr` is captured as an output file named `stderr-<uid>`.
+
+`<uid>` is a unique id string for each captured output file within a test run. It
+is used to avoid filename collisions when the same output file name appears multiple
+times (e.g., tests of a command line varying options each generationg stdout and
+stderrj).
+
+Temporary files are not captured in `tests/output/`.
 
 A metadata file (in Markdown Document format) for each output file is also written
 to `tests/output/`:
