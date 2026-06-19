@@ -122,17 +122,19 @@ when `M` is incremented.
 &nbsp;&nbsp;&nbsp;&nbsp;[**9.6. LT_VERSION_HEX**](#96-lt_version_hexv)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**9.7. LT_VERSION_CMP**](#97-lt_version_cmpv1-v2)<br>
 
-[**10. Functions for Customization**](#10-functions-for-customization)<br>
+[**10. Macros for Customization**](#10-functions-for-customization)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**10.1. LT_PRINT_ERR_HELP**](#101-lt_print_err_helpchar-err-char-help)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**10.2. lt_funcname**](#102-int-lt_funcnamechar-funcname-size_t-outlen)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**10.3. lt_print_note**](#103-int-lt_print_noteconst-char-notes)<br>
 
-[**11. Test Command Line**](#11-test-command-line)<br>
+[**11. Functions for Customization**](#10-functions-for-customization)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**11.1. lt_funcname**](#111-int-lt_funcnamechar-funcname-size_t-outlen)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**11.2. lt_print_note**](#112-int-lt_print_noteconst-char-notes)<br>
 
-[**12. Output and Golden Files**](#12-output-and-golden-files)<br>
+[**12. Test Command Line**](#11-test-command-line)<br>
+
+[**13. Output and Golden Files**](#12-output-and-golden-files)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**12.1. Output Files**](#121-output-files)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**12.2. Golden Files**](#122-golden-files)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**12.3. Golden Rationale**](#123-goldan-rationale)
+&nbsp;&nbsp;&nbsp;&nbsp;[**12.3. Output/Golden Rationale**](#123-outputgoldan-rationale)
 </details>
 
 <details>
@@ -779,7 +781,7 @@ or 0x011212 for version 1.12.12.
 <details>
 <summary>10. Functions for Customization</summary>
 
-## 10. Functions for Customization
+## 10. Macros for Customization
 
 <details>
 <summary>10.1. `LT_PRINT_ERR_HELP(char *err, char help)`</summary>
@@ -801,17 +803,23 @@ Note: Use `lt_set_err_prefix()` to set the prefix.
 
 Note: Use `lt_set_usage()` and/or `lt_set_help()` to define the help text.
 </details>
+</details>
 
 <details>
-<summary>10.2. `int lt_funcname(char *funcname, size_t outlen)`</summary>
+<summary>11. Functions for Customization</summary>
 
-### 10.2. `int lt_funcname(char *funcname, size_t outlen)`
+## 11. Functions for Customization
+
+<details>
+<summary>11.1. `int lt_funcname(char *funcname, size_t outlen)`</summary>
+
+### 11.1. `int lt_funcname(char *funcname, size_t outlen)`
 </details>
 
 <details>
 <summary>10.3. `int lt_print_note(const char *notes)`</summary>
 
-### 10.3. `int lt_print_note(const char *notes)`
+### 11.2. `int lt_print_note(const char *notes)`
 
 Opens a temporary file if not already open and writes the notes to the temporary file.
 
@@ -899,36 +907,36 @@ Note: On error, current_time is set to "unknown time".
 **Return**: 1 true, 0 false
 `int lt_isfilename(char *name)`
 
-**Return**: 1 true, 0 false, -1 not a directory path.
+**Return**: 1 true, 0 false, -101 invalid directory path.
 `int lt_isreaddirpath(char *path)`
 `int lt_iswritedirpath(char *path)`
 
-**Return** 1 true, 0 false, -1 not a file path.
+**Return** 1 true, 0 false, -103 invalid file path.
 `int lt_isreadfilepath(char *path)`
 `int lt_iswritefilepath(char *path)`
 </details>
 </details>
 
 <details>
-<summary>11. Test Command Line</summary>
+<summary>12. Test Command Line</summary>
 
-## 11. Test Command Line
+## 12. Test Command Line
 
 TODO.
 </details>
 
 <details>
-<summary>12. Output and Golden Files</summary>
+<summary>13. Output and Golden Files</summary>
 
-## 12. Output and Golden Files
+## 13. Output and Golden Files
 
 Output file in `tests/output/` and golden files in `tests/golden/` provide a
 directory layout for capturing and validating test output.
 
 <details>
-<summary>12.1. Output Files</summary>
+<summary>13.1. Output Files</summary>
 
-## 12.1. Output Files
+## 13.1. Output Files
 
 Named output files are captured as output files using their name.
 
@@ -959,9 +967,9 @@ An output file and its metadata file in `tests/output/` may be copied (promoted)
 </details>
 
 <details>
-<summary>12.1. Golden Files</summary>
+<summary>13.1. Golden Files</summary>
 
-## 12.2. Golden Files
+## 13.2. Golden Files
 
 A metadata golden file having a name with the form <name>.<ext> applies to all
 golden files named <name>-<uid>.ext and can be added manually or by customization
@@ -994,9 +1002,9 @@ automatically promote the output.
 </details>
 
 <details>
-<summary>12.2. Rationale for Design</summary>
+<summary>13.3. Output/Golden Rationale</summary>
 
-### 12.3. Golden Rationale
+### 13.3. Output/Golden Rationale
 
 LiteTest uses a parallel `tests/golden` directory with golden files that keep
 the exact same filename as their corresponding test output. This design avoids
@@ -1012,7 +1020,7 @@ the common problems found in extension‑based naming schemes:
 - **Preserves file type information**
   Because the original extension is retained, it is immediately clear whether a
   golden file contains text, Markdown Document, JSON, HTML, binary data, or
-  anything else.
+  something else.
 
 - **Simpler mental model**
   Developers do not need to remember naming conventions or extension‑replacement
