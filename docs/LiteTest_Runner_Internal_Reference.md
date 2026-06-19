@@ -9,7 +9,13 @@ components precisely while the Guide explains their design and interaction.
 LiteTest is a lightweight API and framework for defining, running, and
 reporting tests in C/C++ projects.
 
-Copyright (c) 2026 Paul Sinclair  
+**Copyright (c) 2026 Paul Sinclair**
+
+<details>
+<summary>Click to view License</summary>
+
+#### **License**
+
 SPDX-License-Identifier: MIT.
 
 <details>
@@ -34,12 +40,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 </details>
 
+<details>
+<summary>Click to view Preface</summary>
+
 ## Preface
 
 For a list of other LiteTest documents and the LiteTest repository layout, see
 the LiteTest Documentation Guide.
 
 For a glossary of terms, see the LiteTest Glossary Reference.
+</details>
+
+<details>
+<summary>Click to view Document Version History</summary>
 
 ### Document Version History
 
@@ -66,6 +79,10 @@ does not correspond to LiteTest minor or patch versions. The update version is
 incremented whenever this document is updated without a change to the major version,
 and it resets to `0` when the major version increases.
 </details>
+</details>
+
+<details>
+<summary>Click to view Documentation Style Guide</summary>
 
 #### Documentation Style Guide
 
@@ -104,6 +121,10 @@ and it resets to `0` when the major version increases.
    - Rewrite items as needed so the list reads smoothly and uniformly.
 </details>
 </details>
+</details>
+
+<details>
+<summary>Click to view Table of Contents</summary>
 
 ## Table of Contents
 
@@ -149,6 +170,10 @@ and it resets to `0` when the major version increases.
 
 - [**Glossary**](#glossary)
 </details>
+</details>
+
+<details>
+<summary>Click to view 1. Overview</summary>
 
 ## 1. Overview
 
@@ -174,6 +199,10 @@ In this document, a *symbol* refers to any named entity in the LiteTest framewor
 - variables
 - functions
 </details>
+</details>
+
+<details>
+<summary>Click to view Public and Internal Naming Conventions</summary>
 
 #### Public and Internal Naming Conventions
 
@@ -191,6 +220,10 @@ In general, users of the API should not define names prefixed with `lt_`, `LT`, 
 or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 </details>
 </details>
+</details>
+
+<details>
+<summary>Click to view 2. Symbols Defined in `litetest_runner.h`</summary>
 
 ## 2. Symbols Defined in `litetest_runner.h`
 
@@ -199,6 +232,10 @@ or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 
 These are used by `litetest_runner.h` and `litetest_runner.c`, and are public or internal
 based on their name per the naming conventions.
+</details>
+
+<details>
+<summary>Click to view 2.1. Types</summary>
 
 ### 2.1. Types
 
@@ -206,37 +243,56 @@ based on their name per the naming conventions.
 <summary>Click to view</summary>
 
 These typedefs declare fundamental internal types used throughout the LiteTest framework.
+</details>
 
-#### <TypeName>
+<details>
+<summary>Click to view lt_result_t</summary>
+
+#### lt_result_t
 
 <details>
 <summary>Click to view</summary>
 
 **Declaration**
 ```c
-typedef <underlying-type> <TypeName>;
+typedef struct
+{ size_t pass;
+  size_t fail;
+  size_t fault;
+  size_t injected_fail;
+  size_t injected_fault;
+} lt_result_t;
 ```
 
 **Description**  
-A concise explanation of what this type represents within the LiteTest framework and
-how it is intended to be used.
+Result counters produced by test execution and propagated through group and
+orchestrator aggregation logic.
 
 **Usage Notes**  
-- Key behavioral expectations  
-- Lifetime or ownership rules (if any)  
-- Relationships to other LiteTest types
+- `fault == SIZE_MAX` is a sentinel meaning a function-level fault was captured.
+- Function-level fault sentinel values are introduced by the signal-guard path.
+- This sentinel is distinct from ordinary fault counts returned by test logic.
+- Related helpers include `lt_currentresult(void)` and result-merging macros.
 
 **Example**
 ```c
-<TypeName> value = ...;
+lt_result_t result = {0, 0, 0, 0, 0};
 ```
 </details>
 </details>
+</details>
+
+<details>
+<summary>Click to view 2.2. Structs</summary>
 
 ### 2.2. Structs
 
 <details>
 <summary>Click to view</summary>
+</details>
+
+<details>
+<summary>Click to view struct <StructName></summary>
 
 #### struct <StructName>
 
@@ -268,11 +324,19 @@ Explain the purpose of this struct, what data it aggregates, and how it particip
 ```
 </details>
 </details>
+</details>
+
+<details>
+<summary>Click to view 2.3. Enums and Enum Values</summary>
 
 ### 2.3. Enums and Enum Values
 
 <details>
 <summary>Click to view</summary>
+</details>
+
+<details>
+<summary>Click to view enum <EnumName></summary>
 
 #### enum <EnumName>
 
@@ -305,11 +369,19 @@ Explain what conceptual category this enum models and how the values are used by
 ```
 </details>
 </details>
+</details>
+
+<details>
+<summary>Click to view 2.4. Global Variables</summary>
 
 ### 2.4. Global Variables
 
 <details>
 <summary>Click to view</summary>
+</details>
+
+<details>
+<summary>Click to view <VariableName></summary>
 
 #### <VariableName>
 
@@ -338,11 +410,19 @@ if (<VariableName> == ...) {
 ```
 </details>
 </details>
+</details>
+
+<details>
+<summary>Click to view 2.5. Macros</summary>
 
 ### 2.5. Macros
 
 <details>
 <summary>Click to view</summary>
+</details>
+
+<details>
+<summary>Click to view <MACRO_NAME></summary>
 
 #### <MACRO_NAME>
 
@@ -372,6 +452,10 @@ Describe the purpose of this macro, what it expands to conceptually, and how it 
 ```
 </details>
 </details>
+</details>
+
+<details>
+<summary>Click to view 2.6. Functions</summary>
 
 ### 2.6. Functions
 
@@ -380,6 +464,10 @@ Describe the purpose of this macro, what it expands to conceptually, and how it 
 
 The functions in this section may be `static`, `static inline`, or (by default) `extern`,
 depending on how they are used within the framework.
+</details>
+
+<details>
+<summary>Click to view <FunctionName>()</summary>
 
 #### <FunctionName>()
 
@@ -416,6 +504,10 @@ Describe what is returned and under what conditions.
 ```
 </details>
 </details>
+</details>
+
+<details>
+<summary>Click to view 3. Symbols Defined in `litetest_runner.c`</summary>
 
 ## 3. Symbols Defined in `litetest_runner.c`
 
@@ -425,6 +517,10 @@ Describe what is returned and under what conditions.
 These symbols are local to `litetest_runner.c` unless specified or defaulting to
 extern. Symbols that are local do not have to conform to the internal naming
 conventions and more natural names may be used.
+</details>
+
+<details>
+<summary>Click to view 3.1. Types</summary>
 
 ### 3.1. Types
 
@@ -433,6 +529,10 @@ conventions and more natural names may be used.
 
 (Placeholder)
 </details>
+</details>
+
+<details>
+<summary>Click to view 3.2. Structs</summary>
 
 ### 3.2. Structs
 
@@ -441,6 +541,10 @@ conventions and more natural names may be used.
 
 (Placeholder)
 </details>
+</details>
+
+<details>
+<summary>Click to view 3.3. Enums and Enum Values</summary>
 
 ### 3.3. Enums and Enum Values
 
@@ -449,6 +553,10 @@ conventions and more natural names may be used.
 
 (Placeholder)
 </details>
+</details>
+
+<details>
+<summary>Click to view 3.4. Global Variables</summary>
 
 ### 3.4. Global Variables
 
@@ -457,6 +565,10 @@ conventions and more natural names may be used.
 
 (Placeholder)
 </details>
+</details>
+
+<details>
+<summary>Click to view 3.5. Macros</summary>
 
 ### 3.5. Macros
 
@@ -465,6 +577,10 @@ conventions and more natural names may be used.
 
 (Placeholder)
 </details>
+</details>
+
+<details>
+<summary>Click to view 3.6. Functions (declared as a forward reference) in `litetest_runner.h`</summary>
 
 ### 3.6. Functions (declared as a forward reference) in `litetest_runner.h`
 
@@ -476,6 +592,10 @@ These functions are (by default) extern and must conform to the internal name co
 
 (Placeholder)
 </details>
+</details>
+
+<details>
+<summary>Click to view 3.7. Functions (not declared in `litetest_runner.h`)</summary>
 
 ### 3.7. Functions (not declared in `litetest_runner.h`)
 
@@ -489,6 +609,10 @@ internal name conventions and more natural names may be used.
 (Placeholder)
 </details>
 </details>
+</details>
+
+<details>
+<summary>Click to view 4. Execution Engine</summary>
 
 ## 4. Execution Engine
 
@@ -497,6 +621,10 @@ internal name conventions and more natural names may be used.
 
 (Placeholder for execution helpers.)
 </details>
+</details>
+
+<details>
+<summary>Click to view 5. Signal Handling</summary>
 
 ## 5. Signal Handling
 
@@ -505,6 +633,10 @@ internal name conventions and more natural names may be used.
 
 (Placeholder for signal guard helpers.)
 </details>
+</details>
+
+<details>
+<summary>Click to view 6. Process Management</summary>
 
 ## 6. Process Management
 
@@ -513,6 +645,10 @@ internal name conventions and more natural names may be used.
 
 (Placeholder for fork/exec/wait logic.)
 </details>
+</details>
+
+<details>
+<summary>Click to view 7. Thread Management</summary>
 
 ## 7. Thread Management
 
@@ -521,6 +657,10 @@ internal name conventions and more natural names may be used.
 
 (Placeholder for pthread logic.)
 </details>
+</details>
+
+<details>
+<summary>Click to view 8. File and Path Support</summary>
 
 ## 8. File and Path Support
 
@@ -529,6 +669,10 @@ internal name conventions and more natural names may be used.
 
 (Placeholder for filesystem support helpers.)
 </details>
+</details>
+
+<details>
+<summary>Click to view 9. Matching and Comparison Support</summary>
 
 ## 9. Matching and Comparison Support
 
@@ -537,6 +681,10 @@ internal name conventions and more natural names may be used.
 
 (Placeholder for comparison support helpers.)
 </details>
+</details>
+
+<details>
+<summary>Click to view 10. Environment Support</summary>
 
 ## 10. Environment Support
 
@@ -545,6 +693,10 @@ internal name conventions and more natural names may be used.
 
 (Placeholder for environment support helpers.)
 </details>
+</details>
+
+<details>
+<summary>Click to view Repository Layout</summary>
 
 ## Repository Layout
 
@@ -589,8 +741,16 @@ LiteTest/
 
 Use this as a reference when adapting LiteTest into your own project structure.
 </details>
+</details>
+
+<details>
+<summary>Click to view Glossary</summary>
 
 ## Glossary
+</details>
+
+<details>
+<summary>Click to view General Terms</summary>
 
 ### General Terms
 
@@ -662,6 +822,10 @@ Use this as a reference when adapting LiteTest into your own project structure.
 - `Semantic Versioning`: Versioning scheme using `M.m.p`.
 - `Report Format`: The output structure produced by LiteTest test runs.
 </details>
+</details>
+
+<details>
+<summary>Click to view Framework‑Specific Terms</summary>
 
 ### Framework‑Specific Terms
 
@@ -687,4 +851,5 @@ Use this as a reference when adapting LiteTest into your own project structure.
   groups and how isolation and concurrency propagate through nested structures.
 - **Concurrent Block Behavior**: The semantics of executing multiple tests in
   parallel within a concurrent block, including ordering and isolation rules.
+</details>
 </details>

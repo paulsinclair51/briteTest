@@ -37,18 +37,23 @@
  *
  * @name LT_RUNNER_VERSION
  *
- * @brief Version "M.m.p" for litetest_runner.h which must be the same as
+ * @brief Version for litetest_runner.h which must be the same as
  *.       LT_RUNNER_VERSION_C for litetest_runner.c.
  *
- * M, m, and p are 1 or 2 digits (e.g., O, 00, 1, 01, 24):
- +
- * - M: Major version for major additions or incompatible API changes.
- * - m: Minor version for backward-compatible additions.
- * - p: Patch version for bug fixes or internal improvements.
+ * The version is a literal string of type char[n], where n is
+ * between 5 and 9 (including the terminating null character).
+ * 
+ * Format: "M.m.p", where M, m, and p are one or two digits.
+ * 
+ * M is the major version, m is the minor version, and p is the patch version.
  *
- * @note Incompatible API changes: The naming conventions, error semantics,
- *       and safety guarantees are part of the documented and stable API
- *       and will not change without a major version increment.
+ * The major version is incremented for major additions, removal of
+ * deprecated features, or unavoidable incompatible API changes.
+ *
+ * The minor version is incremented for backward-compatible additions or
+ * deprecating features.
+ *
+ * The patch version is incremented for bug fixes or internal improvements.
  */
  
 #define LT_RUNNER_VERSION "1.0.0"
@@ -223,66 +228,35 @@ typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
  *       LT_VERSION_CMP
  *
  * @brief Version macros for LiteTest (litetest_runner.h and litetest_runner.c):
- * 
- * LT_MAJOR(v)
- *    Major version
- *    size_t, 1 or greater.
- * 
- * LT_MINOR(v)
- *    Minor version nunber
- *    size_t, e.g., 0, 22.
- * 
- * LT_PATCH(v)
- *    Patch version number
- *    size_t, e.g., 0, 12.
- * 
- * LT_VERSION_NUM(v)
- *    size_t, form MMmmpp for comparisons, e.g., 10000 for
- *    version 1.0.0, 10200 for version 1.2.0, or 11212 for version 1.12.12.
- * 
- * LT_VERSION_HEX(v)
- *    Hexadecimal form 0xMMmmpp for display/debugging, e.g.,
- *    0x010000 for version 1.0.0, 0x010200 for version 1.2.0,
- *    or 0x011212 for version 1.12.12.
- * 
- * LT_VERSION_CMP(v1, v2)
- *    1 v1 is greater than v2,
- *    0 v1 is equal to v2,
- *   -1 v1 is less than v2,
- *.  -2 v1 or v2 has invalid version formatting,
- *
- *    v1 and v2 are strings with the same format as LT_RUNNER_VERSION,
- *    LT_RUNNER_VERFSION_C, LT_TEST_VERSION, and LT_TEST_VERISON_C.
- *
  * @{
  */
 
 #if !defined(LT_TEST_VERSION)
 
-size_t litetest_get_runner_major_internal(v);
+int litetest_get_runner_major_internal(v);
 #define LT_VERSION_MAJOR litetest_get_runner_major_internal()
 
-size_t litetest_get_runner_minor_internal(v);
+int litetest_get_runner_minor_internal(v);
 #define LT_VERSION_MINOR litetest_get_runner_minor_internal((v))
 
-size_t litetest_get_version_patch_internal(v);
+int litetest_get_version_patch_internal(v);
 #define LT_VERSION_PATCH litetest_get_runner_patch_internal((v))
 
 // LiteTest version as an integer for comparisons.
 
-size_t litetest_get_runner_num_internal(v);
+int litetest_get_runner_num_internal(v);
 #define LT_VERSION_NUM litetest_get_runner_num_internal((v))
 
 // LiteTest version encoded as 0xMMmmpp (major, minor, patch) for display/debug.
 
-size_t litetest_get_runner_hex_internal(v);
+int litetest_get_runner_hex_internal(v);
 #define LT_VERSION_HEX litetest_get_runner_hex_internal((v))
 
 // LiteTest version compared to specified version (1 if true, otherwie 0).
 
 int litetest_runner_cmp_internal
-( comst char *v1, comst char *v2 );
-#define LT_VERSION_CMP(v1, v2) litetest_runnner_cmp_internal((v1), (v2))
+( const char *v1, const char *v2 );
+#define LT_VERSION_CMP(v1, v2) litetest_runner_cmp_internal((v1), (v2))
 
 #endif
 
@@ -297,16 +271,11 @@ int litetest_runner_cmp_internal
  * 
  * @brief Maximum values for path length, filename length,
  *        and guard levels.
- *
- * @note The limit of 32 levels in unlikely to be
- *       exceeded if there are 2 or more TEST/ASSERT* macros at each level.
- *       It is expected that a level will generally have 2 or
- *       more per level.
  */
 
-#define LT_MAX_PATH_LEN      ((size_T)4096)
-#define LT_MAX_FILENAME_LEN  ((size_T)255)
-#define LT_MAX_LEVEL         ((size_T)32)
+#define LT_MAX_PATH_LEN      ((size_t)4096)
+#define LT_MAX_FILENAME_LEN  ((size_t)255)
+#define LT_MAX_LEVEL         ((size_t)32)
 
 /**
  * @section result_t Result Type
@@ -363,7 +332,7 @@ typedef struct
 /**
  * @name LT_PRINT_ERR_HELP(err)
  *
- * @brief Print optionsl err and help text to stdout.
+ * @brief Print err and help text to stdout.
  *        err is prefixed with lt_err_prefix().
  *.       help text is formed using lt_usage() and lt_help().
  *
@@ -595,21 +564,6 @@ LT_TEST(func("hello", 'l') == 2, 0);
      } \
      litetest_restore_guard_internal(); \
    } while (0)
-
-/**
- * @section  Orchestrator Macros
- * 
- * The orchestrator macros provide an API for running tests running tests as the
- *  main function of an executable.
- * 
- * Typically, an orchestraor function uses the LT_GROUP macro. A test group function
- * may also use the LT_GROUP macro.
- *
- * @example
- * @code
- LT_INIT_ORCHESTRATOR(,,,);
- * @endcode
- */
 
 /**
  * @name LT_DECLARE_ORCHESTRATOR(funcmame)
@@ -956,20 +910,6 @@ void litetest_exit_orchestrator_internal
       exit(litetest_exit_internal \
              (__func__, #funcname, litetest_state_internal, (notes)); \
     while (0)
-
-/**
- * @section Test Group Function Macros
- * 
- * The test group function macros provide an API for running a set of tests.
- * 
- * Typically, a test group function uses the LT_TEST macro. A test module
- * may also use the LT_GROUP macro.
- *
- * @example
- * @code
- LT_INIT_GROUPN(test_guard1);
- * @endcode
- */
 
 /**
  * @name LT_DECLARE_GROUP(funcname)

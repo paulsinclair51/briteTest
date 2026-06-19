@@ -5,25 +5,12 @@ covering concepts, workflow, execution model, examples, and practical,usage
 patterns. It complements the LiteTest Runner Reference, which documents
 the Runner API in detail.
 
-<details>
-<summary>`Click to view` sections are used throughout this document</summary>
-
-<strong>Why Click to view?</strong>
-
-- Keeps documents readable while accommodating large amounts of
-  technical detail.
-
-- Allows scanning the structure and expanding only what you need.
-
-- Reduces visual noise and makes navigation easier.
-</details>
-
-### Copyright (c) 2026 Paul Sinclair
+**Copyright (c) 2026 Paul Sinclair**
 
 <details>
 <summary>Click to view License</summary>
 
-## License
+#### **License**
 
 SPDX-License-Identifier: MIT
 
@@ -115,6 +102,9 @@ A typical test executable includes:
 - Project headers and sources under test
 </details>
 
+<details>
+<summary>Click to view 2. Execution Model</summary>
+
 ## 2. Execution Model
 
 LiteTest runs test expressions and test group functions under a configurable
@@ -129,6 +119,10 @@ controls how many tests or groups may run concurrently.
 
 Faults such as `SIGSEGV`, `SIGBUS`, `SIGILL`, and `SIGFPE` are detected and
 reported without aborting the test run.
+</details>
+
+<details>
+<summary>Click to view 3. Test Group Functions</summary>
 
 ## 3. Test Group Functions
 
@@ -152,6 +146,10 @@ static LT_DECLARE_GROUP(test_math)
   LT_RETURN;
 }
 ```
+</details>
+
+<details>
+<summary>Click to view 4. Orchestrator (`main`) Function</summary>
 
 ## 4. Orchestrator (`main`) Function
 
@@ -179,6 +177,10 @@ LT_DECLARE_ORCHESTRATOR(main)
   LT_EXIT;
 }
 ```
+</details>
+
+<details>
+<summary>Click to view 5. Test Inclusion Control (`-I` / `-In`)</summary>
 
 ## 5. Test Inclusion Control (`-I` / `-In`)
 
@@ -190,6 +192,10 @@ Each `LT_TEST` and `LT_GROUP` macro includes an optional **include parameter** t
 - `0` — never execute  
 
 This allows selective execution of test subsets.
+</details>
+
+<details>
+<summary>Click to view 6. Concurrent Blocks</summary>
 
 ## 6. Concurrent Blocks
 
@@ -203,16 +209,32 @@ LT_END_CONCURRENT(block1);
 ```
 
 Concurrent blocks cannot be nested within a test function.
+</details>
+
+<details>
+<summary>Click to view 7. Isolation Modes</summary>
 
 ## 7. Isolation Modes
 
 LiteTest supports:
+</details>
+
+<details>
+<summary>Click to view Same‑Thread Mode (default)</summary>
 
 ### Same‑Thread Mode (default)
 Fastest execution; faults are caught via signal guards.
+</details>
+
+<details>
+<summary>Click to view Thread‑Isolated Mode</summary>
 
 ### Thread‑Isolated Mode
 Each test runs in a separate thread.
+</details>
+
+<details>
+<summary>Click to view Process‑Isolated Mode</summary>
 
 ### Process‑Isolated Mode
 Each test runs in a separate process. This isolates:
@@ -224,8 +246,16 @@ Each test runs in a separate process. This isolates:
 - Sanitizer aborts  
 
 Recommended for CI and fault‑injection testing.
+</details>
+
+<details>
+<summary>Click to view 8. Building the Test Executable</summary>
 
 ## 8. Building the Test Executable
+</details>
+
+<details>
+<summary>Click to view Linux / macOS</summary>
 
 ### Linux / macOS
 
@@ -238,6 +268,10 @@ To use gcc:
 ```sh
 make CC=gcc run
 ```
+</details>
+
+<details>
+<summary>Click to view Windows (POSIX toolchain required)</summary>
 
 ### Windows (POSIX toolchain required)
 
@@ -247,6 +281,10 @@ Use MSYS2 UCRT64 or Clang64:
 ./build_test_litetest.ps1
 .\test_litetest.exe
 ```
+</details>
+
+<details>
+<summary>Click to view 9. Executable Usage</summary>
 
 ## 9. Executable Usage
 
@@ -259,6 +297,10 @@ test_<name> [-I | -In] [PATH]
 - If omitted, the report is written to the current directory.  
 
 Use `--help` or `-h` to display usage information.
+</details>
+
+<details>
+<summary>Click to view 10. Troubleshooting</summary>
 
 ## 10. Troubleshooting
 
@@ -266,6 +308,10 @@ Use `--help` or `-h` to display usage information.
 - Report not found → check whether PATH was a file or directory  
 - Paths with spaces → quote them  
 - Unexpected behavior → ensure code and docs match the same LiteTest version  
+</details>
+
+<details>
+<summary>Click to view 11. Further Reading</summary>
 
 ## 11. Further Reading
 
@@ -273,6 +319,10 @@ See:
 
 - **LiteTest Runner Reference** for detailed API semantics.
 - **LiteTest Contributor Guide** for development and versioning rules.
+</details>
+
+<details>
+<summary>Click to view Quick Start</summary>
 
 ## Quick Start
 
@@ -345,6 +395,7 @@ LT_DECLARE_ORCHESTRATOR(main)
 }
 ```
 </details>
+</details>
 
 4. Build the executable `test_quick` in your current directory:
 
@@ -385,6 +436,9 @@ See the [Core API Macros](#core-api-macros) and other sections for more detail.
 See [Building the Test Executable](#building-the-test-executable) for
 platform-specific notes and options.
 
+<details>
+<summary>Click to view Key Features</summary>
+
 ## Key Features
 
 <details>
@@ -397,6 +451,10 @@ platform-specific notes and options.
 - Comprehensive reporting: pass/fail/fault counts per category and overall totals.
 - Test support functions that simplify writing and organizing tests.
 </details>
+</details>
+
+<details>
+<summary>Click to view API Usage Requirements</summary>
 
 ## API Usage Requirements
 
@@ -416,6 +474,10 @@ Supported environments:
 LiteTest has been exercised in POSIX environments; users should
 validate behavior in their own systems.
 </details>
+</details>
+
+<details>
+<summary>Click to view How LiteTest Compares</summary>
 
 ## How LiteTest Compares
 
@@ -430,6 +492,10 @@ validate behavior in their own systems.
 | **Criterion** | C, auto‑discovery | libc, POSIX | Yes             | Modern, fast, rich output | LiteTest is simpler, portable, and avoids auto‑discovery complexity. |
 | **LiteTest**  | C99, macro‑driven | None        | Yes (POSIX signals) | Minimal, portable, easy to embed | Designed for small C projects needing fault isolation without heavy frameworks. |
 </details>
+</details>
+
+<details>
+<summary>Click to view What LiteTest Does Not Provide</summary>
 
 ## What LiteTest Does Not Provide
 
@@ -452,6 +518,10 @@ LiteTest focuses on executing tests and reporting results. It does not:
 - Produce rich reporting formats such as JUnit XML or HTML output.
 - Provide functionality outside the features explicitly described in this document.
 </details>
+</details>
+
+<details>
+<summary>Click to view Introduction</summary>
 
 ## Introduction
 
@@ -497,6 +567,10 @@ When executed, LiteTest produces a report summarizing tests by category, includi
 - Pass/fail/fault counts per category.
 - Totals across all categories.
 - Notes describing each failure or fault.
+</details>
+
+<details>
+<summary>Click to view Core API</summary>
 
 ## Core API
 
@@ -508,6 +582,10 @@ functions. These macros fall into 3 types:
 | **Orchestrator** | Define and run the test runner | ``LT_DECLARE_*``, ``LT_INIT_*``, ``LT_*`` |
 | **Test Group Functions** | Define test group functions | ``LT_DECLARE_GROUP``, ``LT_INIT_GROUP``, ``LT_RETURN`` |
 | **Execution** | Execute groups or test expressions | ``LT_GROUP``, ``LT_TEST`` |
+</details>
+
+<details>
+<summary>Click to view Macros for the Orchestrator (`main`) Function</summary>
 
 ### Macros for the Orchestrator (`main`) Function
 
@@ -528,6 +606,10 @@ Note:
 - `gtm` is an `LT_GROUP` or `LT_TEST` macro.
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, omit the semicolon and follow with a definition in `{ }`.
+</details>
+
+<details>
+<summary>Click to view Macros for a Test Group Function</summary>
 
 ### Macros for a Test Group Function
 
@@ -541,6 +623,10 @@ Note:
   defining a test group function.
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, omit the semicolon and follow with a definition in `{ }`.
+</details>
+
+<details>
+<summary>Click to view Macros for Executing a Test Group Function or Test Expression</summary>
 
 ### Macros for Executing a Test Group Function or Test Expression
 
@@ -578,12 +664,20 @@ Special values that can be used in any expression:
   expression evaluates to 0.
 -` LT_FAULT(type)`: causes a fault of the specified type: 1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
   For other values of type, LT_FAULT returns 0.
+</details>
+
+<details>
+<summary>Click to view Parallel Execution</summary>
 
 #### Parallel Execution
 
 LiteTest starts up to `maxparallel` test group functions or test expressions concurrently.
 When one finishes, another begins, until all are complete. `maxparallel` is set by the
 `LT_INIT_ORCHESTRATOR` and `LT_INIT_GROUP` macros.
+</details>
+
+<details>
+<summary>Click to view  Macros for Concurrent Execution</summary>
 
 ###  Macros for Concurrent Execution
 
@@ -594,6 +688,10 @@ The concurrent block macros ensure that all `LT_TEST` macros inside it start tog
   - `LT_END_CONCURRENT(blockname)`
 - Within a test group function body, a concurrent block cannot be nested inside
   concurrent block.
+</details>
+
+<details>
+<summary>Click to view Isolation Modes and Fault Handling</summary>
 
 ### Isolation Modes and Fault Handling
 
@@ -692,11 +790,14 @@ Summary:
 Both modes use the same `LT_GROUP` and `LT_TEST` macros. The choice of isolation
 mode affects only how test group functions and test expressions are executed,
 not how they are written.
+</details>
+
+<details>
+<summary>Click to view LiteTest Runner Customization</summary>
 
 ## LiteTest Runner Customization
 
-Typedefs, struct, enums, variables, and Functions are provided in the LiteTest
-Runner API  to support customization of the orchestrator and test group functions..
+Typedefs, enums for exit code and return codes, macros for limits, and functions are provided in the LiteTest Runner API to support customization of the orchestrator and test group functions..
 
 Examples include:
 
@@ -710,7 +811,15 @@ Examples include:
 - `lt_blockname`
 - `lt_iswritedirpath`
 
+`lt_result_t` carries pass/fail/fault and injected-fault counters for a test or
+group. A function-level fault is represented by setting the fault count to
+`SIZE_MAX`.
+
 See the LiteTest Runner Reference for details on each of these.
+</details>
+
+<details>
+<summary>Click to view LiteTest Test API</summary>
 
 ## LiteTest Test API
 
@@ -742,9 +851,13 @@ Example of Environment helpers:
 
 - `int lt_with_environment_variable(const char *variable_name, const char *temporary_value, int (*callback)(void *callback_context), void *callback_context)`
 </details>
+</details>
 
 See the LiteTest Test Reference for details on each of these.
   
+<details>
+<summary>Click to view Headers (.h) and Sources (.c)</summary>
+
 ## Headers (.h) and Sources (.c)
 
 Source files containing the orchestrator or test group functions must include `litetest_runner.h` and
@@ -769,6 +882,10 @@ the LiteTest API and framework.
 ```c
 #include "litetest_runner.h"
 ```
+</details>
+
+<details>
+<summary>Click to view Orchestrator (`main`) Function Template</summary>
 
 ## Orchestrator (`main`) Function Template
 
@@ -798,6 +915,7 @@ LT_DECLARE_ORCHESTRATOR(main)
 }
 ```
 </details>
+</details>
 
 `LT_WRITE_RESULT` writes one category and resets its counts. Totals accumulate
 across the full run.
@@ -815,6 +933,9 @@ Forward-declaration:
 ```c
 LT_DECLARE_ORCHESTRATOR(main);
 ```
+
+<details>
+<summary>Click to view Test Group Function Template</summary>
 
 ## Test Group Function Template
 
@@ -838,6 +959,7 @@ LT_DECLARE_ORCHESTRATOR(main);
 }
 ```
 </details>
+</details>
 
 Use `static` when the function is only referenced in the same module.
 
@@ -856,6 +978,9 @@ or support testing.  Added code may use test support functions (see
 
 **Recommended**: do not intermix code with the tests; such code is
 handled as if it occurs before the tests.
+
+<details>
+<summary>Click to view Example of Using the LiteTest API</summary>
 
 ## Example of Using the LiteTest API
 
@@ -877,9 +1002,13 @@ the LiteTest API and framework. It includes:
 - `test_guard2.c` defines the `test_guard2` function for testing the other
    part of the "Guard" category.
 </details>
+</details>
 
 The results of `test_guard1` and `test_guard2` are combined by the orchestrator
 into a single result for the "Guard 1 and 2" category.
+
+<details>
+<summary>Click to view Building the Test Executable</summary>
 
 ## Building the Test Executable
  
@@ -888,6 +1017,10 @@ a project to a Makefile for your project. For example, use the Makefile
 for testing the lubtype project or the Makefile for self-testing this
 LiteTest project as a starting point for creating your Makefile in your
 project root directory.
+</details>
+
+<details>
+<summary>Click to view Linux / macOS</summary>
 
 #### Linux / macOS
 
@@ -912,6 +1045,10 @@ To build with gcc instead of clang:
 ```sh
 make CC=gcc run
 ```
+</details>
+
+<details>
+<summary>Click to view Windows (POSIX Toolchain Required)</summary>
 
 #### Windows (POSIX Toolchain Required)
 
@@ -934,6 +1071,10 @@ Ensure the MSYS2 `bin` directory is on `PATH` before running PowerShell.
 
 Clang64 is also suitable if `cc`, `clang`, or `gcc` resolves to a
 POSIX-capable compiler.
+</details>
+
+<details>
+<summary>Click to view Executable Usage</summary>
 
 ## Executable Usage
 
@@ -947,6 +1088,10 @@ test_<testname> [-I|-In] [PATH]
 By default, if `PATH` is not specified, LiteTest writes the report to the
 current working directory using the default report filename configured by
 your test setup.
+</details>
+
+<details>
+<summary>Click to view PATH</summary>
 
 ### PATH
 
@@ -960,6 +1105,10 @@ You may override the output location using the PATH argument:
 
 - If `PATH` is a directory path, LiteTest writes the report in that directory
   using the default report filename configured by your test setup.
+</details>
+
+<details>
+<summary>Click to view `-I` and `-In` Option</summary>
 
 ### `-I` and `-In` Option
 
@@ -979,6 +1128,10 @@ Only one of these forms may be specified.
   argument that is `1` – `9` execute by default.
 
 See [Macros for Executing a Test Group Function or Test Expression](#macros-for-executing-a-test-group-function-or-test-expression) for the `include` parameter and its interaction with the `-I` and `-In` options.
+</details>
+
+<details>
+<summary>Click to view `--help` and `-h` Help Options</summary>
 
 ### `--help` and `-h` Help Options
 
@@ -990,6 +1143,10 @@ For example:
 ```
 This (or using -h instead of --help) prints a summary of all command-line
 options and usage details.
+</details>
+
+<details>
+<summary>Click to view Common Mistakes</summary>
 
 ## Common Mistakes
 
@@ -997,6 +1154,10 @@ options and usage details.
 - Existing report files may be overwritten; use unique paths if you need history.
 - On Windows, use a POSIX-capable toolchain (for example, MSYS2 UCRT64).
 - Keep macro examples in your project aligned with the version of `litetest_runner.h` in use.
+</details>
+
+<details>
+<summary>Click to view Troubleshooting</summary>
 
 ## Troubleshooting
 
@@ -1010,6 +1171,10 @@ options and usage details.
 - Unexpected behavior after macro updates: ensure code and docs match the same
   LiteTest version (`LT_VERSION` in `litetest_runner.h` and `LT_VERSION_C` in
   `litetest_runner.c`).
+</details>
+
+<details>
+<summary>Click to view Example Test Report</summary>
 
 ## Example Test Report
 
@@ -1022,6 +1187,10 @@ LiteTest Report
 --------------------------------------------------
                       Total    10
 ```
+</details>
+
+<details>
+<summary>Click to view Example Test Report for -i Option</summary>
 
 ## Example Test Report for -i Option
 
@@ -1034,6 +1203,10 @@ LiteTest Report (-i)
 2. Guard 1 and 2                6      2         1
 --------------------------------------------------
                       Total    10      3         2
+</details>
+
+<details>
+<summary>Click to view Further Reading</summary>
 
 ## Further Reading
 
@@ -1334,3 +1507,4 @@ Defaults:
  * expected to be rare but guarding avoids a fault terminating
  * execution.
  */
+</details>
