@@ -6,7 +6,7 @@ enums, macros, and functions. Additionally, it provides a reference to LiteTest 
 **Copyright (c) 2026 Paul Sinclair**
 
 <details>
-<summary>Click to view License</summary>
+<summary>License</summary>
 
 #### **License**
 
@@ -32,7 +32,7 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>Click to view Preface</summary>
+<summary>Preface</summary>
 
 ## Preface
 
@@ -46,7 +46,7 @@ For a glossary of terms, see the LiteTest Glossary Reference
 (`LiteTest_Glossary_Reference.md`).
 
 <details>
-<summary>Click to view Document Version History</summary>
+<summary>Document Version History</summary>
 
 ### Document Version History
 
@@ -74,7 +74,7 @@ when `M` is incremented.
 </details>
 
 <details>
-<summary>Click to view Table of Contents</summary>
+<summary>Table of Contents</summary>
 
 ## Table of Contents
 
@@ -132,7 +132,7 @@ when `M` is incremented.
 </details>
 
 <details>
-<summary>Click to view 1. Introduction</summary>
+<summary>1. Introduction</summary>
 
 ## 1. Introduction
 
@@ -140,12 +140,12 @@ TODO: add introduction, common rules.
 </details>
 
 <details>
-<summary>Click to view 2. Types</summary>
+<summary>2. Types</summary>
 
 ## 2. Types
 
 <details>
-<summary>Click to view 2.1. `lt_result_t`</summary>
+<summary>2.1. `lt_result_t`</summary>
 
 ### 2.1. `lt_result_t`
 
@@ -171,7 +171,7 @@ typedef struct
 </details>
 
 <details>
-<summary>Click to view 2.2 `lt_state_t`</summary>
+<summary>2.2 `lt_state_t`</summary>
 
 ### 2.2 `lt_state_t`
 
@@ -207,12 +207,12 @@ typedef struct
 </details>
 
 <details>
-<summary>Click to view 3. Enums</summary>
+<summary>3. Enums</summary>
 
 ## 3. Enums
 
 <details>
-<summary>Click to view 3.1. `lt_exit_code_t`</summary>
+<summary>3.1. `lt_exit_code_t`</summary>
 
 ### 3.1. `lt_exit_code_t`
 
@@ -265,7 +265,7 @@ typedef enum
 </details>
 
 <details>
-<summary>Click to view 3.2. `lt_return_code_t`</summary>
+<summary>3.2. `lt_return_code_t`</summary>
 
 ### 3.1. `lt_return_code_t`
 
@@ -314,7 +314,7 @@ typedef enum
 </details>
 
 <details>
-<summary>Click to view 4. Macros for Limits</summary>
+<summary>4. Macros for Limits</summary>
 
 ## 4. Macros for Limits
 
@@ -329,14 +329,14 @@ more `LT_GROUP` or `LT_TEST` macros at each level. It is expected that a level w
 </details>
 
 <details>
-<summary>Click to view 5. Macros for the Orchestrator Function</summary>
+<summary>5. Macros for the Orchestrator Function</summary>
 
 ## 5. Macros for the Orchestrator Function
 
 Macros used to define or declare the Orchestrator (`main`) function
 
 <details>
-<summary>Click to view 5.1. `LT_DECLARE_ORCHESTRATOR(funcname)[;]`</summary>
+<summary>5.1. `LT_DECLARE_ORCHESTRATOR(funcname)[;]`</summary>
 
 ### 5.1. `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
 
@@ -352,7 +352,7 @@ and a forward-reference to the orchestrator function.
 </details>
 
 <details>
-<summary>Click to view 5.2. `LT_INIT_ORCHESTRATOR(funcname, id, project, size_t maxparallel);`</summary>
+<summary>5.2. `LT_INIT_ORCHESTRATOR(funcname, id, project, size_t maxparallel);`</summary>
 
 ### 5.2. `LT_INIT_ORCHESTRATOR(funcname, id, project, size_t maxparallel);`
 
@@ -380,7 +380,7 @@ allowed to execute in parallel.
 </details>
 
 <details>
-<summary>Click to view 5.3. `LT_PARSE_ARGS(size_t maxargs, char *customflags, char *defaultreportfilename);`</summary>
+<summary>5.3. `LT_PARSE_ARGS(size_t maxargs, char *customflags, char *defaultreportfilename);`</summary>
 
 ### 5.3. `LT_PARSE_ARGS(size_t maxargs, char *customflags, char *defaultreportfilename);`
 
@@ -408,7 +408,7 @@ See "Test Command Line" for details on command-line argument and flags.
 </details>
 
 <details>
-<summary>Click to view 5.4. `LT_OPEN_REPORT(char *title);`</summary>
+<summary>5.4. `LT_OPEN_REPORT(char *title);`</summary>
 
 ### 5.4. `LT_OPEN_REPORT(char *title);`
 
@@ -423,7 +423,7 @@ See "Test Command Line" for details on command-line argument and flags.
 </details>
 
 <details>
-<summary>Click to view 5.5. `LT_WRITE_RESULT(gtm, char *category);`</summary>
+<summary>5.5. `LT_WRITE_RESULT(gtm, char *category);`</summary>
 
 ### 5.5. `LT_WRITE_RESULT(gtm, char *category);`
 
@@ -438,7 +438,7 @@ See "Test Command Line" for details on command-line argument and flags.
 </details>
 
 <details>
-<summary>Click to view 5.6. `LT_CLOSE_REPORT(char *notes);`</summary>
+<summary>5.6. `LT_CLOSE_REPORT(char *notes);`</summary>
 
 ### 5.6. `LT_CLOSE_REPORT(char *notes);`
 
@@ -457,7 +457,7 @@ closes the test report.
 </details>
 
 <details>
-<summary>Click to view 5.7. `LT_EXIT;`</summary>
+<summary>5.7. `LT_EXIT;`</summary>
 
 ### 5.7. `LT_EXIT;`
 
@@ -473,14 +473,14 @@ closes the test report.
 </details>
 
 <details>
-<summary>Click to view 6. Macros for a Test Group Function</summary>
+<summary>6. Macros for a Test Group Function</summary>
 
 ## 6. Macros for a Test Group Function
 
 Macros used to define or declare a test group function.
 
 <details>
-<summary>Click to view 6.1. `LT_DECLARE_GROUP(funcname)`</summary>
+<summary>6.1. `LT_DECLARE_GROUP(funcname)`</summary>
 
 ### 6.1. `LT_DECLARE_GROUP(funcname)`
 
@@ -496,7 +496,7 @@ and a forward-reference to the test group function.
 </details>
 
 <details>
-<summary>Click to view 6.2. `LT_INIT_GROUP(funcname, id, maxparallel)`</summary>
+<summary>6.2. `LT_INIT_GROUP(funcname, id, maxparallel)`</summary>
 
 ### 6.2. `LT_INIT_GROUP(funcname, id, maxparallel)`
 
@@ -521,7 +521,7 @@ and a forward-reference to the test group function.
 </details>
 
 <details>
-<summary>Click to view 6.3. `LT_RETURN`</summary>
+<summary>6.3. `LT_RETURN`</summary>
 
 ### 6.3. `LT_RETURN`
 
@@ -531,7 +531,7 @@ and a forward-reference to the test group function.
 </details>
 
 <details>
-<summary>Click to view 7. Macros to Execute a Test Group or Test</summary>
+<summary>7. Macros to Execute a Test Group or Test</summary>
 
 ## 7. Macros to Execute a Test Group or a Test
 
@@ -574,7 +574,7 @@ See "Test Command Line" for details on command line flags.
 See "Isolation" in the LiteTest Runner Guide.
 
 <details>
-<summary>Click to view 7.1. `LT_GROUP(funcname, id, [include], [isolation])[;]`</summary>
+<summary>7.1. `LT_GROUP(funcname, id, [include], [isolation])[;]`</summary>
 
 ### 7.1. `LT_GROUP(funcname, id, [include], [isolation])[;]`
 
@@ -583,7 +583,7 @@ See "Isolation" in the LiteTest Runner Guide.
 </details>
 
 <details>
-<summary>Click to view 7.2. `LT_TEST(expression, id, [include], [isolation])[;]`</summary>
+<summary>7.2. `LT_TEST(expression, id, [include], [isolation])[;]`</summary>
 
 ### 7.2. `LT_TEST(expression, id, [include], [isolation])[;]`
 
@@ -593,12 +593,12 @@ See "Isolation" in the LiteTest Runner Guide.
 </details>
 
 <details>
-<summary>Click to view 8. Macros for Concurrent Blocks</summary>
+<summary>8. Macros for Concurrent Blocks</summary>
 
 ## 8. Macros for Concurrent Blocks
 
 <details>
-<summary>Click to view 8.1. `LT_BEGIN_CONCURRENT(blockname)`</summary>
+<summary>8.1. `LT_BEGIN_CONCURRENT(blockname)`</summary>
 
 ### 8.1. `LT_BEGIN_CONCURRENT(blockname)`
 
@@ -611,7 +611,7 @@ See "Isolation" in the LiteTest Runner Guide.
 </details>
 
 <details>
-<summary>Click to view 8.2. `LT_END_CONCURRENT(blockname);`</summary>
+<summary>8.2. `LT_END_CONCURRENT(blockname);`</summary>
 
 ### 8.2. `LT_END_CONCURRENT(blockname);`
 
@@ -625,12 +625,12 @@ See "Isolation" in the LiteTest Runner Guide.
 </details>
 
 <details>
-<summary>Click to view 9. Macros for Versioning</summary>
+<summary>9. Macros for Versioning</summary>
 
 ## 9. Macros for Versioning
 
 <details>
-<summary>Click to view 9.1. `LT_RUNNER_VERSION`</summary>
+<summary>9.1. `LT_RUNNER_VERSION`</summary>
 
 ### 9.1. `LT_RUNNER_VERSION`
 
@@ -654,7 +654,7 @@ The patch version is incremented for bug fixes or internal improvements.
 </details>
 
 <details>
-<summary>Click to view 9.2. `LT_VERSION_MAJOR(v)`</summary>
+<summary>9.2. `LT_VERSION_MAJOR(v)`</summary>
 
 ### 9.2. `LT_VERSION_MAJOR(v)`
 
@@ -670,7 +670,7 @@ The patch version is incremented for bug fixes or internal improvements.
 </details>
 
 <details>
-<summary>Click to view 9.3. `LT_VERSION_MINOR(v)`</summary>
+<summary>9.3. `LT_VERSION_MINOR(v)`</summary>
 
 ### 9.3. `LT_VERSION_MINOR(v)`
 
@@ -686,7 +686,7 @@ The patch version is incremented for bug fixes or internal improvements.
 </details>
 
 <details>
-<summary>Click to view 9.4. `LT_VERSION_PATCH(v)`</summary>
+<summary>9.4. `LT_VERSION_PATCH(v)`</summary>
 
 ### 9.4. `LT_VERSION_PATCH(v)`
 
@@ -702,7 +702,7 @@ The patch version is incremented for bug fixes or internal improvements.
 </details>
 
 <details>
-<summary>Click to view 9.5. `LT_VERSION_NUM(v)`</summary>
+<summary>9.5. `LT_VERSION_NUM(v)`</summary>
 
 ### 9.5. `LT_VERSION_NUM(v)`
 
@@ -721,7 +721,7 @@ version 1.0.0, 10200 for version 1.2.0, or 11212 for version 1.12.12.
 </details>
 
 <details>
-<summary>Click to view 9.6. `LT_VERSION_HEX(v)`</summary>
+<summary>9.6. `LT_VERSION_HEX(v)`</summary>
 
 ### 9.6. `LT_VERSION_HEX(v)`
 
@@ -742,7 +742,7 @@ or 0x011212 for version 1.12.12.
 </details>
 
 <details>
-<summary>Click to view 9.7. `LT_VERSION_CMP(v1, v2)`</summary>
+<summary>9.7. `LT_VERSION_CMP(v1, v2)`</summary>
 
 ### 9.7. `LT_VERSION_CMP(v1, v2)`
 
@@ -773,12 +773,12 @@ or 0x011212 for version 1.12.12.
 </details>
 
 <details>
-<summary>Click to view 10. Functions for Customization</summary>
+<summary>10. Functions for Customization</summary>
 
 ## 10. Functions for Customization
 
 <details>
-<summary>Click to view 10.1. `LT_PRINT_ERR_HELP(char *err, char help)`</summary>
+<summary>10.1. `LT_PRINT_ERR_HELP(char *err, char help)`</summary>
 
 ### 10.1. `LT_PRINT_ERR_HELP(char *err, char help)`
 
@@ -799,13 +799,13 @@ Note: Use `lt_set_usage()` and/or `lt_set_help()` to define the help text.
 </details>
 
 <details>
-<summary>Click to view 10.2. `int lt_funcname(char *funcname, size_t outlen)`</summary>
+<summary>10.2. `int lt_funcname(char *funcname, size_t outlen)`</summary>
 
 ### 10.2. `int lt_funcname(char *funcname, size_t outlen)`
 </details>
 
 <details>
-<summary>Click to view 10.3. `int lt_print_note(const char *notes)`</summary>
+<summary>10.3. `int lt_print_note(const char *notes)`</summary>
 
 ### 10.3. `int lt_print_note(const char *notes)`
 
@@ -825,7 +825,7 @@ Opens a temporary file if not already open and writes the notes to the temporary
 </details>
 
 <details>
-<summary>Click to view `void lt_current_time(char *current_time, size_t size)`</summary>
+<summary>`void lt_current_time(char *current_time, size_t size)`</summary>
 
 ### `void lt_current_time(char *current_time, size_t size)`
 
@@ -840,7 +840,7 @@ Note: On error, current_time is set to "unknown time".
 </details>
 
 <details>
-<summary>Click to view Customization: Get and set.</summary>
+<summary>Customization: Get and set.</summary>
 
 ### Customization: Get and set.
 
@@ -859,7 +859,7 @@ Note: On error, current_time is set to "unknown time".
 </details>
 
 <details>
-<summary>Click to view Customization Helper Functions</summary>
+<summary>Customization Helper Functions</summary>
 
 ### Customization Helper Functions
 
@@ -906,7 +906,7 @@ Note: On error, current_time is set to "unknown time".
 </details>
 
 <details>
-<summary>Click to view 11. Test Command Line</summary>
+<summary>11. Test Command Line</summary>
 
 ## 11. Test Command Line
 
@@ -914,7 +914,7 @@ TODO.
 </details>
 
 <details>
-<summary>Click to view 12. Output and Golden Files</summary>
+<summary>12. Output and Golden Files</summary>
 
 ## 12. Output and Golden Files
 
@@ -946,7 +946,7 @@ An output file and its metadata file in `tests/output/` may be copied (promoted)
 `tests/golden/` subdirectory of the repository root directory. See the following section.
 
 <details>
-<summary>Click to view 12.1. Golden Files</summary>
+<summary>12.1. Golden Files</summary>
 
 ## 12.1. Golden Files
 
@@ -981,7 +981,7 @@ automatically promote the output.
 </details>
 
 <details>
-<summary>Click to view 12.2. Rationale for Design</summary>
+<summary>12.2. Rationale for Design</summary>
 
 ### 12.2. Rationale for Design
 
