@@ -81,10 +81,13 @@ when `M` is incremented.
 [**1. Introduction**](#1-introduction)<br>
 
 [**2. Types**](#2-types)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**2.1. lt_result_t**](#21-lt_result_tt)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**2.2. lt_state_t**](#22-lt_stste_t)<br>
+
 
 [**3. Enums**](#3-enums)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**3.1. lt_exit_code_t**](#51-lt_exit_code_t)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**3.2. lt_return_code_t**](#52-lt_return_code_t)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**3.1. lt_exit_code_t**](#31-lt_exit_code_t)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**3.2. lt_return_code_t**](#32-lt_return_code_t)<br>
 
 [**4. Macros for Limits**](#4-macros-for-limits)<br>
 
