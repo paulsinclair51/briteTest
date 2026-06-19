@@ -131,7 +131,7 @@ when `M` is incremented.
 
 [**12. Output and Golden Files**](#12-output-and-golden-files)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**12.1. Golden Files**](#121-golden-files)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**12.2. Rationale for Design**](#122-rationale-for-design)
+&nbsp;&nbsp;&nbsp;&nbsp;[**12.2. Golden Rationale**](#122-goldan-rationale)
 </details>
 
 <details>
@@ -986,7 +986,7 @@ automatically promote the output.
 <details>
 <summary>12.2. Rationale for Design</summary>
 
-### 12.2. Rationale for Design
+### 12.2. Golden Rationale
 
 LiteTest uses a parallel `tests/golden` directory with golden files that keep
 the exact same filename as their corresponding test output. This design avoids
