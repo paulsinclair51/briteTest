@@ -209,30 +209,37 @@ typedef struct
 
 ## 3. Enums
 
-### 3.1. Enums for Exit Codes
+<details>
+<summary>Click to view 3.1. `lt_exit_code_t`</summary>
 
-Exit and termination codes are grouped into non-overlapping classes:
+### 3.1. `lt_exit_code_t`
 
-- `0-99`: `LT_EXIT_*` test outcome codes.
-- `100-199`: `LT_FATAL_USAGE[_*]` fatal usage codes (invalid arguments, invalid caller
+Exit codes are grouped into classes:
+- `LT_EXIT[_*]`  normal exit codes.
+- `LT_TEST[_]*` test outcome codes.
+- `LT_FATAL_USAGE[_*]` fatal usage codes (invalid arguments, invalid caller
    state, API misuse).
-- `200-299`: `LT_FATAL_INTERNAL[_*]` fatal internal codes (assert/invariant/internal
+- `LT_FATAL_INTERNAL[_*]` fatal internal codes (assert/invariant/internal
    failures).
-- `300-399`: `LT_FATAL_SYSTEM[_*]` fatal system codes (OS/runtime/resource failures).
+- `LT_FATAL_SYSTEM[_*]` fatal system codes (OS/runtime/resource failures).
 
-Fatal codes are not test outcomes. They indicate that the runner could not
-complete normal execution.
+Fatal codes indicate that the runner could not complete normal or test
+execution.
 
-Class constants (`LT_FATAL_USAGE`, `LT_FATAL_INTERNAL`, `LT_FATAL_SYSTEM`) are
-general fallback codes when no more specific fatal code applies.
+`LT_FATAL_USAGE`, `LT_FATAL_INTERNAL`, and `LT_FATAL_SYSTEM` are
+general codes for when a more specific code does not apply for the class.
 
 ```c
-typedef enum {
+typedef enum
+{
+  // 0-99: Exit codes.
+    LT_EXIT_OK = 0,
+    
   // 0-99: Test outcome codes.
-    LT_EXIT_PASS = 0,
-    LT_EXIT_FAIL = 1,
-    LT_EXIT_FAULT = 2,
-    LT_EXIT_FAIL_FAULT = 3,
+    LT_TEST_PASS = 0,
+    LT_TEST_FAIL = 1,
+    LT_TEST_FAULT = 2,
+    LT_TEST_FAIL_FAULT = 3,
 
   // 100-199: Fatal usage codes.
   LT_FATAL_USAGE = 100,
@@ -254,8 +261,47 @@ typedef enum {
 } lt_exit_code_t;
 ```
 
-### 3.2. Enums for Return Codes
+### 3.1. `lt_return_code_t`
 
+Return codes are grouped into classes:
+- `LT_RETURN_*`
+- `LT_CMP_*`
+- `LT_IS_*`
+- `LT_INVALID[_*]` invalid usage codes (invalid arguments).
+- `LT_SYSTEM[_*]` failed system codes (OS/runtime/resource failures).
+
+`LT_INVALID` and `LT_SYSTEM`) are general codes for when a more specific
+code does not apply for the class.
+
+```c
+typedef enum
+{
+  //
+    LT_RETURN_OK = 0,
+    
+  // Compare
+    LT_CMP_LESS = -1,
+    LT_CMP_EQUAL = 0,
+    LT_CMP_GREATER = 1,
+    
+  // IS
+    LT_IS_FALSE = 0,
+    LT_IS_TRUE = 1,
+
+  // 100-199: Invalid Usage.
+    LT_INVALID = 100,
+    LT_INVALID_ARG = -3,
+    LT_INVALID_VERSION = -2,
+
+  // 300-399: Failed system call.
+    LT_SYSTEM = 300,
+    LT_SYSTEM_OPEN = 301,
+    LT_SYSTEM_READ = 302,
+    LT_SYSTEM_WRITE = 303,
+    LT_SYSTEM_FORK = 304,
+    LT_SYSTEM_THREAD = 305
+} lt_return_code_t;
+```
 </details>
 
 <details>
