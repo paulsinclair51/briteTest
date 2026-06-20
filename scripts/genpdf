@@ -587,6 +587,7 @@ convert_to_pdf() {
   cat > "$header_file" <<EOF
 \usepackage{xcolor}
 \\usepackage{hyperref}
+\\usepackage{graphicx}
 \definecolor{ltlinkblue}{RGB}{30,92,160}
 \hypersetup{
   colorlinks=true,
@@ -622,21 +623,6 @@ convert_to_pdf() {
 \\renewcommand{\\headrulewidth}{0.4pt}
 \\renewcommand{\\footrulewidth}{0.4pt}
 EOF
-
-  # Inject logo into upper-left corner of title page if a PNG is available.
-  local _logo_png=""
-  _logo_png=$(_genpdf_logo_png 2>/dev/null || true)
-  if [[ -n "$_logo_png" ]]; then
-    cat >> "$header_file" <<LOGO_EOF
-\usepackage{eso-pic}
-\usepackage{graphicx}
-\AddToShipoutPictureBG*{%
-  \put(\LenToUnit{1.2cm},\LenToUnit{\dimexpr\paperheight-3.0cm\relax}){%
-    \includegraphics[width=2.8cm]{$_logo_png}%
-  }%
-}
-LOGO_EOF
-  fi
 
   if [[ "$backend" == "pandoc" || "$backend" == "auto" ]]; then
     if command -v pandoc >/dev/null 2>&1; then
@@ -735,6 +721,10 @@ process_file() {
   local have_versions=0
   local versions_line
   local temp_file
+  local logo_png=""
+
+  # Ensure a PNG logo is available for inline title-page placement.
+  logo_png=$(_genpdf_logo_png 2>/dev/null || true)
 
   if versions_line=$(extract_title_versions "$source_file"); then
     if [[ -n "$versions_line" ]]; then
@@ -746,7 +736,7 @@ process_file() {
   temp_file=$(mktemp)
 
   if [[ $convert_details -eq 1 ]]; then
-    awk -v document_version="$document_version" -v runner_version="$runner_version" -v test_version="$test_version" -v have_versions="$have_versions" '
+    awk -v document_version="$document_version" -v runner_version="$runner_version" -v test_version="$test_version" -v have_versions="$have_versions" -v logo_png="$logo_png" '
       function tex_escape(text) {
         gsub(/\\/, "\\textbackslash{}", text)
         gsub(/\{/, "\\{", text)
@@ -870,10 +860,27 @@ process_file() {
           print "\\thispagestyle{empty}"
           print "\\vspace*{0.33in}"
           print "\\begin{center}"
-          if (length(title_line2) > 0) {
-            print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0.25in]" title_line2 "\\par}"
+          if (length(logo_png) > 0) {
+            print "\\setlength{\\tabcolsep}{0pt}"
+            print "\\begin{tabular*}{0.92\\textwidth}{@{}p{0.68\\textwidth}@{\\extracolsep{\\fill}}p{0.24\\textwidth}@{}}"
+            print "\\begin{minipage}[t]{0.68\\textwidth}"
+            print "\\centering"
+            if (length(title_line2) > 0) {
+              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
+            } else {
+              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
+            }
+            print "\\end{minipage} &"
+            print "\\begin{minipage}[t]{0.24\\textwidth}"
+            print "\\raggedleft\\includegraphics[height=2.82cm]{\\detokenize{" logo_png "}}"
+            print "\\end{minipage}\\\\"
+            print "\\end{tabular*}"
           } else {
-            print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
+            if (length(title_line2) > 0) {
+              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
+            } else {
+              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
+            }
           }
           print "\\end{center}"
           print "\\vspace*{1.22in}"
@@ -995,7 +1002,7 @@ process_file() {
       }
     ' "$source_file" > "$temp_file"
   else
-    awk -v document_version="$document_version" -v runner_version="$runner_version" -v test_version="$test_version" -v have_versions="$have_versions" '
+    awk -v document_version="$document_version" -v runner_version="$runner_version" -v test_version="$test_version" -v have_versions="$have_versions" -v logo_png="$logo_png" '
       function tex_escape(text) {
         gsub(/\\/, "\\textbackslash{}", text)
         gsub(/\{/, "\\{", text)
@@ -1087,10 +1094,27 @@ process_file() {
           print "\\thispagestyle{empty}"
           print "\\vspace*{0.33in}"
           print "\\begin{center}"
-          if (length(title_line2) > 0) {
-            print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0.25in]" title_line2 "\\par}"
+          if (length(logo_png) > 0) {
+            print "\\setlength{\\tabcolsep}{0pt}"
+            print "\\begin{tabular*}{0.92\\textwidth}{@{}p{0.68\\textwidth}@{\\extracolsep{\\fill}}p{0.24\\textwidth}@{}}"
+            print "\\begin{minipage}[t]{0.68\\textwidth}"
+            print "\\centering"
+            if (length(title_line2) > 0) {
+              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
+            } else {
+              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
+            }
+            print "\\end{minipage} &"
+            print "\\begin{minipage}[t]{0.24\\textwidth}"
+            print "\\raggedleft\\includegraphics[height=2.82cm]{\\detokenize{" logo_png "}}"
+            print "\\end{minipage}\\\\"
+            print "\\end{tabular*}"
           } else {
-            print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
+            if (length(title_line2) > 0) {
+              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
+            } else {
+              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
+            }
           }
           print "\\end{center}"
           print "\\vspace*{1.22in}"
