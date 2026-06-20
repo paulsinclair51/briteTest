@@ -47,7 +47,7 @@ the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
 
 For a glossary of general terms, see the LiteTest Glossary Reference
 (`LiteTest_Glossary_Reference.md`) and, for specific terms for this document,
-the Glossary appendix,
+the Glossary appendix.
 
 A printer-friendly PDF file for this document is available in `docs/pdf/`,/`,
 
