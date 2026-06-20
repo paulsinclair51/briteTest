@@ -5,10 +5,10 @@ covering concepts, workflow, execution model, examples, and practical,usage
 patterns. It complements the LiteTest Runner Reference, which documents
 the Runner API in detail.
 
-**Copyright (c) 2026 Paul Sinclair**
+#### Copyright (c) 2026 Paul Sinclair
 
 <details>
-<summary>Click to view License</summary>
+<summary>License</summary>
 
 #### **License**
 
@@ -34,7 +34,7 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>Click to view Preface</summary>
+<summary>Preface</summary>
 
 ## Preface
 
@@ -47,7 +47,7 @@ the LiteTest Documentation Guide.
 For a glossary of terms, see the LiteTest Glossary Reference.
 
 <details>
-<summary>Click to view Document Version History</summary>
+<summary>Document Version History</summary>
 
 ### Document Version History
 
@@ -75,7 +75,7 @@ when `M` is incremented.
 </details>
 
 <details>
-<summary>Click to view Table of Contents</summary>
+<summary>Table of Contents</summary>
 
 ## Table of Contents
 
@@ -83,7 +83,7 @@ when `M` is incremented.
 </details>
 
 <details>
-<summary>Click to view 1. Introduction</summary>
+<summary>1. Introduction</summary>
 
 ## 1. Introduction
 
@@ -103,7 +103,7 @@ A typical test executable includes:
 </details>
 
 <details>
-<summary>Click to view 2. Execution Model</summary>
+<summary>2. Execution Model</summary>
 
 ## 2. Execution Model
 
@@ -122,7 +122,7 @@ reported without aborting the test run.
 </details>
 
 <details>
-<summary>Click to view 3. Test Group Functions</summary>
+<summary>3. Test Group Functions</summary>
 
 ## 3. Test Group Functions
 
@@ -149,7 +149,7 @@ static LT_DECLARE_GROUP(test_math)
 </details>
 
 <details>
-<summary>Click to view 4. Orchestrator (`main`) Function</summary>
+<summary>4. Orchestrator (`main`) Function</summary>
 
 ## 4. Orchestrator (`main`) Function
 
@@ -180,7 +180,7 @@ LT_DECLARE_ORCHESTRATOR(main)
 </details>
 
 <details>
-<summary>Click to view 5. Test Inclusion Control (`-I` / `-In`)</summary>
+<summary>5. Test Inclusion Control (`-I` / `-In`)</summary>
 
 ## 5. Test Inclusion Control (`-I` / `-In`)
 
@@ -195,7 +195,7 @@ This allows selective execution of test subsets.
 </details>
 
 <details>
-<summary>Click to view 6. Concurrent Blocks</summary>
+<summary>6. Concurrent Blocks</summary>
 
 ## 6. Concurrent Blocks
 
@@ -212,7 +212,7 @@ Concurrent blocks cannot be nested within a test function.
 </details>
 
 <details>
-<summary>Click to view 7. Isolation Modes</summary>
+<summary>7. Isolation Modes</summary>
 
 ## 7. Isolation Modes
 
@@ -220,21 +220,21 @@ LiteTest supports:
 </details>
 
 <details>
-<summary>Click to view Same‑Thread Mode (default)</summary>
+<summary>Same‑Thread Mode (default)</summary>
 
 ### Same‑Thread Mode (default)
 Fastest execution; faults are caught via signal guards.
 </details>
 
 <details>
-<summary>Click to view Thread‑Isolated Mode</summary>
+<summary>Thread‑Isolated Mode</summary>
 
 ### Thread‑Isolated Mode
 Each test runs in a separate thread.
 </details>
 
 <details>
-<summary>Click to view Process‑Isolated Mode</summary>
+<summary>Process‑Isolated Mode</summary>
 
 ### Process‑Isolated Mode
 Each test runs in a separate process. This isolates:
@@ -249,13 +249,13 @@ Recommended for CI and fault‑injection testing.
 </details>
 
 <details>
-<summary>Click to view 8. Building the Test Executable</summary>
+<summary>8. Building the Test Executable</summary>
 
 ## 8. Building the Test Executable
 </details>
 
 <details>
-<summary>Click to view Linux / macOS</summary>
+<summary>Linux / macOS</summary>
 
 ### Linux / macOS
 
@@ -271,7 +271,7 @@ make CC=gcc run
 </details>
 
 <details>
-<summary>Click to view Windows (POSIX toolchain required)</summary>
+<summary>Windows (POSIX toolchain required)</summary>
 
 ### Windows (POSIX toolchain required)
 
@@ -284,7 +284,7 @@ Use MSYS2 UCRT64 or Clang64:
 </details>
 
 <details>
-<summary>Click to view 9. Executable Usage</summary>
+<summary>9. Executable Usage</summary>
 
 ## 9. Executable Usage
 
@@ -300,7 +300,7 @@ Use `--help` or `-h` to display usage information.
 </details>
 
 <details>
-<summary>Click to view 10. Troubleshooting</summary>
+<summary>10. Troubleshooting</summary>
 
 ## 10. Troubleshooting
 
@@ -311,7 +311,7 @@ Use `--help` or `-h` to display usage information.
 </details>
 
 <details>
-<summary>Click to view 11. Further Reading</summary>
+<summary>11. Further Reading</summary>
 
 ## 11. Further Reading
 
@@ -322,7 +322,7 @@ See:
 </details>
 
 <details>
-<summary>Click to view Quick Start</summary>
+<summary>Quick Start</summary>
 
 ## Quick Start
 
@@ -341,7 +341,7 @@ cp /path/to/litetest_runner.c .
 3. Copy and paste the code into `test_quick.c`:
 
 <details>
-<summary>💻 Click to view and copy</summary>
+<summary>💻 and copy</summary>
 
 ```c
 #include "litetest_runner.h"
@@ -437,7 +437,7 @@ See [Building the Test Executable](#building-the-test-executable) for
 platform-specific notes and options.
 
 <details>
-<summary>Click to view Key Features</summary>
+<summary>Key Features</summary>
 
 ## Key Features
 
@@ -454,7 +454,7 @@ platform-specific notes and options.
 </details>
 
 <details>
-<summary>Click to view API Usage Requirements</summary>
+<summary>API Usage Requirements</summary>
 
 ## API Usage Requirements
 
@@ -477,7 +477,7 @@ validate behavior in their own systems.
 </details>
 
 <details>
-<summary>Click to view How LiteTest Compares</summary>
+<summary>How LiteTest Compares</summary>
 
 ## How LiteTest Compares
 
@@ -495,7 +495,7 @@ validate behavior in their own systems.
 </details>
 
 <details>
-<summary>Click to view What LiteTest Does Not Provide</summary>
+<summary>What LiteTest Does Not Provide</summary>
 
 ## What LiteTest Does Not Provide
 
@@ -521,7 +521,7 @@ LiteTest focuses on executing tests and reporting results. It does not:
 </details>
 
 <details>
-<summary>Click to view Introduction</summary>
+<summary>Introduction</summary>
 
 ## Introduction
 
@@ -570,7 +570,7 @@ When executed, LiteTest produces a report summarizing tests by category, includi
 </details>
 
 <details>
-<summary>Click to view Core API</summary>
+<summary>Core API</summary>
 
 ## Core API
 
@@ -585,7 +585,7 @@ functions. These macros fall into 3 types:
 </details>
 
 <details>
-<summary>Click to view Macros for the Orchestrator (`main`) Function</summary>
+<summary>Macros for the Orchestrator (`main`) Function</summary>
 
 ### Macros for the Orchestrator (`main`) Function
 
@@ -609,7 +609,7 @@ Note:
 </details>
 
 <details>
-<summary>Click to view Macros for a Test Group Function</summary>
+<summary>Macros for a Test Group Function</summary>
 
 ### Macros for a Test Group Function
 
@@ -626,7 +626,7 @@ Note:
 </details>
 
 <details>
-<summary>Click to view Macros for Executing a Test Group Function or Test Expression</summary>
+<summary>Macros for Executing a Test Group Function or Test Expression</summary>
 
 ### Macros for Executing a Test Group Function or Test Expression
 
@@ -667,7 +667,7 @@ Special values that can be used in any expression:
 </details>
 
 <details>
-<summary>Click to view Parallel Execution</summary>
+<summary>Parallel Execution</summary>
 
 #### Parallel Execution
 
@@ -677,7 +677,7 @@ When one finishes, another begins, until all are complete. `maxparallel` is set 
 </details>
 
 <details>
-<summary>Click to view  Macros for Concurrent Execution</summary>
+<summary> Macros for Concurrent Execution</summary>
 
 ###  Macros for Concurrent Execution
 
@@ -691,7 +691,7 @@ The concurrent block macros ensure that all `LT_TEST` macros inside it start tog
 </details>
 
 <details>
-<summary>Click to view Isolation Modes and Fault Handling</summary>
+<summary>Isolation Modes and Fault Handling</summary>
 
 ### Isolation Modes and Fault Handling
 
@@ -793,7 +793,7 @@ not how they are written.
 </details>
 
 <details>
-<summary>Click to view LiteTest Runner Customization</summary>
+<summary>LiteTest Runner Customization</summary>
 
 ## LiteTest Runner Customization
 
@@ -819,7 +819,7 @@ See the LiteTest Runner Reference for details on each of these.
 </details>
 
 <details>
-<summary>Click to view LiteTest Test API</summary>
+<summary>LiteTest Test API</summary>
 
 ## LiteTest Test API
 
@@ -856,7 +856,7 @@ Example of Environment helpers:
 See the LiteTest Test Reference for details on each of these.
   
 <details>
-<summary>Click to view Headers (.h) and Sources (.c)</summary>
+<summary>Headers (.h) and Sources (.c)</summary>
 
 ## Headers (.h) and Sources (.c)
 
@@ -885,12 +885,12 @@ the LiteTest API and framework.
 </details>
 
 <details>
-<summary>Click to view Orchestrator (`main`) Function Template</summary>
+<summary>Orchestrator (`main`) Function Template</summary>
 
 ## Orchestrator (`main`) Function Template
 
 <details>
-<summary>💻 Click to view and copy</summary>
+<summary>💻 and copy</summary>
 
 ```c
 LT_DECLARE_ORCHESTRATOR(main)
@@ -935,12 +935,12 @@ LT_DECLARE_ORCHESTRATOR(main);
 ```
 
 <details>
-<summary>Click to view Test Group Function Template</summary>
+<summary>Test Group Function Template</summary>
 
 ## Test Group Function Template
 
 <details>
-<summary>💻 Click to view and copy</summary>
+<summary>💻 and copy</summary>
 
 ```c
 [static] LT_DECLARE_GROUP(funcname)
@@ -980,7 +980,7 @@ or support testing.  Added code may use test support functions (see
 handled as if it occurs before the tests.
 
 <details>
-<summary>Click to view Example of Using the LiteTest API</summary>
+<summary>Example of Using the LiteTest API</summary>
 
 ## Example of Using the LiteTest API
 
@@ -1008,7 +1008,7 @@ The results of `test_guard1` and `test_guard2` are combined by the orchestrator
 into a single result for the "Guard 1 and 2" category.
 
 <details>
-<summary>Click to view Building the Test Executable</summary>
+<summary>Building the Test Executable</summary>
 
 ## Building the Test Executable
  
@@ -1020,7 +1020,7 @@ project root directory.
 </details>
 
 <details>
-<summary>Click to view Linux / macOS</summary>
+<summary>Linux / macOS</summary>
 
 #### Linux / macOS
 
@@ -1048,7 +1048,7 @@ make CC=gcc run
 </details>
 
 <details>
-<summary>Click to view Windows (POSIX Toolchain Required)</summary>
+<summary>Windows (POSIX Toolchain Required)</summary>
 
 #### Windows (POSIX Toolchain Required)
 
@@ -1074,7 +1074,7 @@ POSIX-capable compiler.
 </details>
 
 <details>
-<summary>Click to view Executable Usage</summary>
+<summary>Executable Usage</summary>
 
 ## Executable Usage
 
@@ -1091,7 +1091,7 @@ your test setup.
 </details>
 
 <details>
-<summary>Click to view PATH</summary>
+<summary>PATH</summary>
 
 ### PATH
 
@@ -1108,7 +1108,7 @@ You may override the output location using the PATH argument:
 </details>
 
 <details>
-<summary>Click to view `-I` and `-In` Option</summary>
+<summary>`-I` and `-In` Option</summary>
 
 ### `-I` and `-In` Option
 
@@ -1131,7 +1131,7 @@ See [Macros for Executing a Test Group Function or Test Expression](#macros-for-
 </details>
 
 <details>
-<summary>Click to view `--help` and `-h` Help Options</summary>
+<summary>`--help` and `-h` Help Options</summary>
 
 ### `--help` and `-h` Help Options
 
@@ -1146,7 +1146,7 @@ options and usage details.
 </details>
 
 <details>
-<summary>Click to view Common Mistakes</summary>
+<summary>Common Mistakes</summary>
 
 ## Common Mistakes
 
@@ -1157,7 +1157,7 @@ options and usage details.
 </details>
 
 <details>
-<summary>Click to view Troubleshooting</summary>
+<summary>Troubleshooting</summary>
 
 ## Troubleshooting
 
@@ -1174,7 +1174,7 @@ options and usage details.
 </details>
 
 <details>
-<summary>Click to view Example Test Report</summary>
+<summary>Example Test Report</summary>
 
 ## Example Test Report
 
@@ -1190,7 +1190,7 @@ LiteTest Report
 </details>
 
 <details>
-<summary>Click to view Example Test Report for -i Option</summary>
+<summary>Example Test Report for -i Option</summary>
 
 ## Example Test Report for -i Option
 
@@ -1206,7 +1206,7 @@ LiteTest Report (-i)
 </details>
 
 <details>
-<summary>Click to view Further Reading</summary>
+<summary>Further Reading</summary>
 
 ## Further Reading
 
