@@ -537,6 +537,7 @@ convert_to_pdf() {
   header_title=$(latex_escape "$display_title")
 
   cat > "$header_file" <<EOF
+\\usepackage{hyperref}
 \\usepackage{fancyhdr}
 \\newif\\ifltaftertoc
 \\ltaftertocfalse
@@ -841,20 +842,20 @@ process_file() {
         if (in_toc_md == 1) {
           if (match(line, /^##[[:space:]]+/) && !match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
             in_toc_md = 0
-          } else if (match(line, /^[[:space:]]*\[[^]]+\]\([^)]*\)[[:space:]]*$/)) {
+          } else if (match(line, /^[[:space:]]*\[[^]]+\]\([^)]*\)/)) {
             toc_text = line
             sub(/^[[:space:]]*\[/, "", toc_text)
-            sub(/\]\([^)]*\)[[:space:]]*$/, "", toc_text)
+            sub(/\]\([^)]*\).*/, "", toc_text)
             gsub(/\*\*/, "", toc_text)
 
             toc_anchor = line
             sub(/^[[:space:]]*\[[^]]+\]\(#?/, "", toc_anchor)
-            sub(/\)[[:space:]]*$/, "", toc_anchor)
+            sub(/\).*/, "", toc_anchor)
             toc_anchor = normalize_anchor(toc_anchor)
 
             if (length(toc_anchor) > 0) {
               print "```{=latex}"
-              print "\\noindent\\hyperref[" toc_anchor "]{" tex_escape(toc_text) "}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\pageref{" toc_anchor "}\\par"
+              print "\\noindent\\hyperref[" toc_anchor "]{" tex_escape(toc_text) "}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\pageref*{" toc_anchor "}}\\par"
               print "```"
             } else {
               print line
@@ -1026,20 +1027,20 @@ process_file() {
         if (in_toc_md == 1) {
           if (match(line, /^##[[:space:]]+/) && !match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
             in_toc_md = 0
-          } else if (match(line, /^[[:space:]]*\[[^]]+\]\([^)]*\)[[:space:]]*$/)) {
+          } else if (match(line, /^[[:space:]]*\[[^]]+\]\([^)]*\)/)) {
             toc_text = line
             sub(/^[[:space:]]*\[/, "", toc_text)
-            sub(/\]\([^)]*\)[[:space:]]*$/, "", toc_text)
+            sub(/\]\([^)]*\).*/, "", toc_text)
             gsub(/\*\*/, "", toc_text)
 
             toc_anchor = line
             sub(/^[[:space:]]*\[[^]]+\]\(#?/, "", toc_anchor)
-            sub(/\)[[:space:]]*$/, "", toc_anchor)
+            sub(/\).*/, "", toc_anchor)
             toc_anchor = normalize_anchor(toc_anchor)
 
             if (length(toc_anchor) > 0) {
               print "```{=latex}"
-              print "\\noindent\\hyperref[" toc_anchor "]{" tex_escape(toc_text) "}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\pageref{" toc_anchor "}\\par"
+              print "\\noindent\\hyperref[" toc_anchor "]{" tex_escape(toc_text) "}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\pageref*{" toc_anchor "}}\\par"
               print "```"
             } else {
               print line
