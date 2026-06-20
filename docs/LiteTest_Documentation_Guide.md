@@ -178,7 +178,7 @@ config/                 # Repository configuration files.
     markdownlint.json
 docs/                   # User and contributor documentation .
     LiteTest_*.md
-    pdf/                # Generated PDF docs from docs/*.md and README.MD
+    pdf/                # Generated LiteTest_*.pdf PDF documentation.
 examples/               # Usage examples.
 -include/               # Public API .h headers.
     litetest_runner.h
