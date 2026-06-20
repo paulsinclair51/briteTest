@@ -36,19 +36,13 @@ SOFTWARE.
 
 ## Preface
 
-This document is intended for LiteTest contributors who need
-guidance on enhancing and maintaining LiteTest.
+This document is for LiteTest contributors who need guidance on enhancing
+and maintaining LiteTest.
 
 For a list of other LiteTest documents and the repository layout, see
 the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
 
-For a glossary of terms, see the LiteTest Glossary Reference
-(`LiteTest_Glossary_Reference.md`).
-
-For a glossary of general LiteTest terms, see the LiteTest Glossary
-Reference document. For contributor‑Sspecific terms: see the Glossary
-appendix at end of this document.
-
+A printer-friendly PDF file for this document is available in `docs/pdf/`,
 
 <details>
 <summary>Document Version History</summary>
@@ -281,7 +275,9 @@ Before submitting a PR:
 
 ## Glossary
 
-For general LiteTest terms, see the LiteTest Glossary Reference document.
+For a glossary of general LiteTest terms, see the LiteTest Glossary Reference document.
+For a glossary of terms, see the LiteTest Glossary Reference
+(`LiteTest_Glossary_Reference.md`).
 
 Contributor‑Specific Terms:
 
