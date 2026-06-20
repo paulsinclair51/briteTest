@@ -3,7 +3,7 @@
 This document is a guide to the LiteTest documentation and the LiteTest
 repository layout.
 
-## Copyright (c) 2026 Paul Sinclair
+#### Copyright (c) 2026 Paul Sinclair
 
 <details>
 <summary>License</summary>
