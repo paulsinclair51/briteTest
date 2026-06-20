@@ -1,4 +1,4 @@
-# include
+# include/
 
 Directory for public header files (including API declarations).
 

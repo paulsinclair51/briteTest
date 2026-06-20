@@ -1,4 +1,4 @@
-# examples
+# examples/
 
 Directory for usage examples.
 
@@ -12,6 +12,6 @@ See `../README.md` for an introduction to LiteTest.
 
 - **README.md**: This directory guide.
 
-## Subirectories
+## Subdirectories
 
 - None.

@@ -1,4 +1,4 @@
-# .github/workflows
+# .github/workflows/
 
 Directory for GitHub workflows.
 
@@ -8,7 +8,7 @@ For license details, see `../../LICENSE`.
 
 See `../../README.md` for an introduction to LiteTest.
 
-## Files in this Directory
+## Files
 
 - **ci.yml**: GitHub CI workflow for Litetest.
 - **README.md**: This directory guide.

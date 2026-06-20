@@ -1,4 +1,4 @@
-# tests
+# tests/
 
 Directory for test assets.
 

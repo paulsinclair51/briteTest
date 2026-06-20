@@ -16,9 +16,9 @@ See `../../README.md` for an introduction to LiteTest.
 
 ## Subdirectories
 
-- golden1
-- golden2
-- golden3
+- golden1/
+- golden2/
+- golden3/
 
 Create additional subdirectories golden4, golden5, etc. and corresponding output
 subdirectories as needed for outputs that have the same name but are written
@@ -27,7 +27,7 @@ to different directories.
 ## Golden Files and Output Files
 
 LiteTest compares each output file with a corresponding golden file of
-the same name in `tests/golden` or `tests/golden<n>`. If no corresponding golden
+the same name in `tests/golden/` or `tests/golden<n>/`. If no corresponding golden
 file exists, the output is automatically promoted.
 
 Golden file contents of `##MATCH##\n` or `##MISMATCH##\n` allow forcing matches
