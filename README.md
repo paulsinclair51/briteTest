@@ -159,7 +159,7 @@ cp /path/to/litetest_runner.c .
 3. Copy and paste the code into `test_quick.c`:
 
 <details>
-<summary>💻 and copy</summary>
+<summary>💻 Copy</summary>
 
 ```c
 #include "litetest_runner.h"
@@ -410,9 +410,9 @@ These helpers cover file and directory-related functions in the Test API.
 
 Examples include:
 
-- `lt_exists`, `lt_is_file`, `lt_is_directory`, `lt_get_size`, `lt_file_age`, and `lt_path_has_extension`
-- `lt_copy_file`, `lt_make_dirs`, `lt_path_join`, `lt_read_file`, `lt_write_file`, `lt_remove_tree`, and related file-system helpers
-- `lt_make_temp_dir`, `lt_make_temp_file`, `lt_cleanup_register`, and `lt_temp_file_auto`
+- Filesystem predicates: `lt_exists`
+- File and directory operations: `lt_copy_file`
+- Temporary and cleanup helpers: `lt_make_temp_dir`
 </details>
 
 <details>
@@ -424,9 +424,9 @@ These helpers cover comparison and matching functions in the Test API.
 
 Examples include:
 
-- `lt_compare_dirs`, `lt_compare_files`, `lt_compare_paths`, `lt_compare_path_metadata`, and `lt_compare_file_lines`
-- `lt_compare_paths_with_options`, `lt_compare_paths_ignoring_patterns`, `lt_compare_paths_masking_fields`, and `lt_compare_paths_masking_ranges`
-- `lt_compare_json`, `lt_compare_json_with_limit`, `lt_json_extract`, and `lt_json_has_path`
-- `lt_compare_text_normalized`, `lt_match`, `lt_match_regex`, `lt_string_contains`, `lt_string_starts_with`, and `lt_string_ends_with`
+- Path, file, and directory comparisons: `lt_compare_dirs`
+- Metadata and binary comparisons: `lt_compare_path_metadata`
+- JSON helpers: `lt_compare_json`
+- Text and pattern helpers: `lt_compare_text_normalized`
 </details>
 </details>
