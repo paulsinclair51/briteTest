@@ -84,9 +84,6 @@ when `M` is incremented.
 </details>
 
 <details>
-<summary>Introduction</summary>
-
-<details>
 <summary>1. Introduction</summary>
 
 ## 1. Introduction
@@ -101,10 +98,6 @@ meaning of the term in the testing domain or other contexts.
 Note: For specific API macros and functions not included in the glossary, refer
 to the LiteTest Runner or Test API Reference document for information.
 </details>
-</details>
-
-<details>
-<summary>A: Glossary</summary>
 
 <details>
 <summary>2. Glossary</summary>
@@ -112,7 +105,7 @@ to the LiteTest Runner or Test API Reference document for information.
 ## 2. Glossary
 
 <details>
-<summary>A: Click to view</summary>
+<summary>-- A --</summary>
 
 - **API**: Application Programming Interface: public typedefs,
   structs, enums, macros, and functions that provide a well-defined
@@ -122,10 +115,9 @@ to the LiteTest Runner or Test API Reference document for information.
   workflow and stored for later download (e.g., build outputs, logs,
   reports). See also test artifact.
 </details>
-</details>
 
 <details>
-<summary>B: Click to view</summary>
+<summary>B: </summary>
 
 - **Bash glob pattern**: A shell wildcard pattern used for filename
   and path matching in Bash. In LiteTest `genpdf`, this is used for
@@ -180,14 +172,14 @@ to the LiteTest Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>D: Click to view</summary>
+<summary>D: </summary>
 
 - **default report filename**: (LiteTest) The report filename used
   when only a directory path (or no `PATH`) is provided.
 </details>
 
 <details>
-<summary>E: Click to view</summary>
+<summary>E: </summary>
 
 - **executable**: A compiled/linked program, for example, one that
   contains, for LiteTest, the orchestrator, test groups, test
@@ -196,7 +188,7 @@ to the LiteTest Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>F: Click to view</summary>
+<summary>F: </summary>
 
 - **fail**: (LiteTest) A counted failure where the test expression for
   an `LT_TEST` macro evaluates to zero.
@@ -213,7 +205,7 @@ to the LiteTest Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>G: Click to view</summary>
+<summary>G: </summary>
 
 - **group**: See test group.
 - **guard**: (LiteTest) The protection mechanism used to catch faults
@@ -224,13 +216,13 @@ to the LiteTest Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>H: Click to view</summary>
+<summary>H: </summary>
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>I: Click to view</summary>
+<summary>I: </summary>
 
 - **`-I`**: (LiteTest) An optional command‑line flag that enables an
   `LT_TEST` macro with an argument value of `I` to be executed.
@@ -253,7 +245,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>J: Click to view</summary>
+<summary>J: </summary>
 
 - **job**: A unit of work within a workflow. A job runs a series of
   steps in a specified environment (such as a container or virtual
@@ -262,13 +254,13 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>K: Click to view</summary>
+<summary>K: </summary>
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>L: Click to view</summary>
+<summary>L: </summary>
 
 - **LiteTest framework**: (LiteTest) Guidelines, templates, APIs,
   tools, and documentation for building and running LiteTest test
@@ -301,7 +293,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>M: Click to view</summary>
+<summary>M: </summary>
 
 - **`maxargs`**: (LiteTest) The maximum number of command‑line
   arguments allowed by the `LT_PARSE_ARGS` macro. This macro parses
@@ -315,7 +307,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>N: Click to view</summary>
+<summary>N: </summary>
 
 - **`notes`**: (LiteTest) A string parameter for the `LT_CLOSE_REPORT`
   macro. This macro appends the string (which must include `\n` at the
@@ -325,7 +317,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>O: Click to view</summary>
+<summary>O: </summary>
 
 - **orchestrator**: (LiteTest) See orchestrator (`main`) function.
 - **orchestrator function**: (LiteTest) See orchestrator (`main`)
@@ -338,7 +330,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>P: Click to view</summary>
+<summary>P: </summary>
 
 - **pass**: (LiteTest) A counted success where the test expression for
   an `LT_TEST` macro evaluates to non-zero.
@@ -357,13 +349,13 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>Q: Click to view</summary>
+<summary>Q: </summary>
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>R: Click to view</summary>
+<summary>R: </summary>
 
 - **report**: See test report.
 - **report header**: (LiteTest) Lines of text written at the beginning
@@ -378,7 +370,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>S: Click to view</summary>
+<summary>S: </summary>
 
 - **semantic versioning**: A versioning scheme for artifacts. For
   example, in LiteTest, `M.m.p` (for `.h` and `.c` files) or `M.u`
@@ -394,7 +386,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>T: Click to view</summary>
+<summary>T: </summary>
 
 - **test**: See test expression.
 - **test artifact**: (LiteTest) A specific kind of artifact, i.e.,
@@ -445,19 +437,19 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>U: Click to view</summary>
+<summary>U: </summary>
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>V: Click to view</summary>
+<summary>V: </summary>
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>W: Click to view</summary>
+<summary>W: </summary>
 
 - **workflow**: A defined sequence of automated steps executed by a CI
   (continuous‑integration) system. In GitHub Actions, a workflow is
@@ -468,19 +460,19 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>X: Click to view</summary>
+<summary>X: </summary>
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>Y: Click to view</summary>
+<summary>Y: </summary>
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>Z: Click to view</summary>
+<summary>-- Z --</summary>
 
 _No terms currently defined._
 </details>
