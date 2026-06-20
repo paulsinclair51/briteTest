@@ -101,10 +101,10 @@ Document types:
 
 Document formats:
 
-- **,md**: Markdown Documentation format for online viewing,
+- **.md**: Markdown documentation format for online viewing.
 
-- **,pdf**: Portable Document Format for printing. A LiteTest ,pdf file is  generated
-  from a LiteTest ,md file using genpdf in the scripts directory of the repository
+- **.pdf**: Portable Document Format for printing. A LiteTest .pdf file is generated
+  from a LiteTest .md file using genpdf in the scripts directory of the repository
   root.
 </details>
 
@@ -122,7 +122,7 @@ The following are the LiteTest user and contributor documents.
 - **LiteTest_Documentation_Guide.md**: A guide to LiteTest documents and the
   repository layout.
 
-- **LiteTest_Glossary_Reference.Md**: An alphabetically ordered list of terms
+- **LiteTest_Glossary_Reference.md**: An alphabetically ordered list of terms
   generally used in LiteTest (emphasizing their specific meaning in
   LiteTest) and terms often used in the testing domain.
 
@@ -176,11 +176,11 @@ build_test_litetest.ps1
 build/                  # Build outputs and related artifacts.
 config/                 # Repository configuration files.
     markdownlint.json
-docs/                   # User and contributor documentation .
+docs/                   # User and contributor documentation.
     LiteTest_*.md
-    pdf/                # Generated LiteTest_*.pdf PDF documentation.
+    pdf/                # Generated LiteTest_*.pdf files.
 examples/               # Usage examples.
--include/               # Public API .h headers.
+include/                # Public API .h headers.
     litetest_runner.h
     litetest_test.h
 reports/                # Generated report files.
