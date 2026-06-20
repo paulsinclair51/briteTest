@@ -11,7 +11,7 @@ See `../README.md` for an introduction to LiteTest.
 ## Files
 
 - **LiteTest_Documentation_Guide.md**: Index of LiteTest documents and the LiteTest
-	repository layout.
+  repository layout.
 - **LiteTest_Glossary_Reference.md**: Glossary of LiteTest and testing terms.
 - **LiteTest_Runner_User_Guide.md**: Runner API concepts, usage, and examples.
 - **LiteTest_Runner_Reference.md**: Runner API reference.
