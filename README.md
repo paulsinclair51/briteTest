@@ -114,14 +114,7 @@ when `M` is incremented.
 
 [**13. LiteTest Test API**](#13-litetest-test-api)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**13.1 File Functions**](#131-file-functions)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[**13.1.1 Filesystem Predicate Functions**](#1311-filesystem-predicate-functions)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[**13.1.2 File and Directory Operation Functions**](#1312-file-and-directory-operation-functions)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[**13.1.3 Temporary and Cleanup Helpers**](#1313-temporary-and-cleanup-helpers)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**13.2 Compare Functions**](#132-compare-functions)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[**13.2.1 Path, File, and Directory Comparisons**](#1321-path-file-and-directory-comparisons)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[**13.2.2 Metadata and Binary Comparisons**](#1322-metadata-and-binary-comparisons)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[**13.2.3 JSON Helpers**](#1323-json-helpers)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[**13.2.4 Text and Pattern Helpers**](#1324-text-and-pattern-helpers)
+&nbsp;&nbsp;&nbsp;&nbsp;[**13.2 Compare Functions**](#132-compare-functions)
 </details>
 
 <details>
@@ -413,88 +406,13 @@ setup/teardown logic.
 
 ### 13.1 File Functions
 
-These helpers create, inspect, read, and modify files and directories.
+These helpers cover file and directory-related functions in the Test API.
 
-<details>
-<summary>13.1.1 Filesystem Predicate Functions</summary>
+Examples include:
 
-#### 13.1.1 Filesystem Predicate Functions
-
-These helpers answer simple questions about a path or file.
-
-- `lt_exists`
-- `lt_is_file`
-- `lt_is_directory`
-- `lt_get_size`
-- `lt_file_age`
-- `lt_path_has_extension`
-
-Example:
-
-```c
-if (lt_exists(path) == 1 && lt_is_file(path) == 1) {
-  LT_ASSERT(lt_path_has_extension(path, ".txt") == 1, 0);
-}
-```
-</details>
-
-<details>
-<summary>13.1.2 File and Directory Operation Functions</summary>
-
-#### 13.1.2 File and Directory Operation Functions
-
-These helpers create, read, write, and transform file-system content.
-
-- `lt_copy_file`
-- `lt_make_dirs`
-- `lt_path_join`
-- `lt_read_file`
-- `lt_read_file_with_limit`
-- `lt_read_file_into`
-- `lt_remove_tree`
-- `lt_stat_check`
-- `lt_touch`
-- `lt_write_file`
-- `lt_append_file`
-- `lt_rename_file`
-- `lt_symlink`
-
-Example:
-
-```c
-char output_path[1024];
-
-LT_ASSERT(lt_path_join(root, "tmp/output.txt", output_path, sizeof output_path) == LT_OK, 0);
-LT_ASSERT(lt_write_file(output_path, data, length) == LT_OK, 0);
-```
-</details>
-
-<details>
-<summary>13.1.3 Temporary and Cleanup Helpers</summary>
-
-#### 13.1.3 Temporary and Cleanup Helpers
-
-These helpers create temporary resources and clean them up when a test ends.
-
-- `lt_make_temp_dir`
-- `lt_make_temp_file`
-- `lt_cleanup_register`
-- `lt_temp_file_auto`
-
-Example:
-
-```c
-static void cleanup_temp_file(void *context)
-{
-  (void)lt_remove_tree((const char *)context);
-}
-
-char temp_path[1024];
-
-LT_ASSERT(lt_make_temp_file(".txt", temp_path, sizeof temp_path) == LT_OK, 0);
-LT_ASSERT(lt_cleanup_register(cleanup_temp_file, temp_path) == LT_OK, 0);
-```
-</details>
+- `lt_exists`, `lt_is_file`, `lt_is_directory`, `lt_get_size`, `lt_file_age`, and `lt_path_has_extension`
+- `lt_copy_file`, `lt_make_dirs`, `lt_path_join`, `lt_read_file`, `lt_write_file`, `lt_remove_tree`, and related file-system helpers
+- `lt_make_temp_dir`, `lt_make_temp_file`, `lt_cleanup_register`, and `lt_temp_file_auto`
 </details>
 
 <details>
@@ -502,93 +420,13 @@ LT_ASSERT(lt_cleanup_register(cleanup_temp_file, temp_path) == LT_OK, 0);
 
 ### 13.2 Compare Functions
 
-These helpers compare files, metadata, JSON, text, and patterns. Most return
-`LT_OK` / `LT_MISMATCH` or `1` / `0` depending on the helper family.
+These helpers cover comparison and matching functions in the Test API.
 
-<details>
-<summary>13.2.1 Path, File, and Directory Comparisons</summary>
+Examples include:
 
-#### 13.2.1 Path, File, and Directory Comparisons
-
-These helpers compare file contents, paths, and directory trees.
-
-- `lt_compare_dirs`
-- `lt_compare_files`
-- `lt_compare_file_to_path`
-- `lt_compare_paths`
-- `lt_compare_path_to_file`
-- `lt_compare_paths_with_options`
-- `lt_compare_paths_ignoring_patterns`
-- `lt_compare_paths_masking_fields`
-- `lt_compare_paths_masking_ranges`
-- `lt_compare_file_lines`
-
-Example:
-
-```c
-const lt_path_compare_options_t options = LT_PATH_COMPARE_OPTIONS_INIT;
-
-LT_ASSERT(lt_compare_paths_with_options(expected_path, actual_path, &options) == LT_OK, 0);
-```
-</details>
-
-<details>
-<summary>13.2.2 Metadata and Binary Comparisons</summary>
-
-#### 13.2.2 Metadata and Binary Comparisons
-
-These helpers compare file metadata and low-level binary content.
-
-- `lt_compare_path_metadata`
-- `lt_hexdump_diff`
-- `lt_compare_memory_detail`
-
-Example:
-
-```c
-const lt_path_metadata_compare_options_t options = LT_PATH_METADATA_COMPARE_OPTIONS_INIT;
-
-LT_ASSERT(lt_compare_path_metadata(left_path, right_path, &options) == LT_OK, 0);
-```
-</details>
-
-<details>
-<summary>13.2.3 JSON Helpers</summary>
-
-#### 13.2.3 JSON Helpers
-
-These helpers compare or query JSON documents.
-
-- `lt_compare_json`
-- `lt_compare_json_with_limit`
-- `lt_json_extract`
-- `lt_json_has_path`
-
-Example:
-
-```c
-LT_ASSERT(lt_json_has_path(json_text, "response.items[0].id") == 1, 0);
-```
-</details>
-
-<details>
-<summary>13.2.4 Text and Pattern Helpers</summary>
-
-#### 13.2.4 Text and Pattern Helpers
-
-These helpers compare or match text data.
-
-- `lt_compare_text_normalized`
-- `lt_match`
-- `lt_match_regex`
-- `lt_string_contains`
-- `lt_string_starts_with`
-- `lt_string_ends_with`
-
-Example:
-
-```c
-LT_ASSERT(lt_string_contains(message, "success", NULL) == 1, 0);
-```
+- `lt_compare_dirs`, `lt_compare_files`, `lt_compare_paths`, `lt_compare_path_metadata`, and `lt_compare_file_lines`
+- `lt_compare_paths_with_options`, `lt_compare_paths_ignoring_patterns`, `lt_compare_paths_masking_fields`, and `lt_compare_paths_masking_ranges`
+- `lt_compare_json`, `lt_compare_json_with_limit`, `lt_json_extract`, and `lt_json_has_path`
+- `lt_compare_text_normalized`, `lt_match`, `lt_match_regex`, `lt_string_contains`, `lt_string_starts_with`, and `lt_string_ends_with`
 </details>
 </details>
