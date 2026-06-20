@@ -3,7 +3,7 @@
 This document defines the contribution process, coding standards, documentation
 rules, and versioning guidelines for LiteTest.
 
-**Copyright (c) 2026 Paul Sinclair**
+#### Copyright (c) 2026 Paul Sinclair
 
 <details>
 <summary>License</summary>
