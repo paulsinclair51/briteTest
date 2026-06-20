@@ -562,7 +562,7 @@ A semicolon is not allowed if the macro is used as an argument to the
             faulting test for which the fix has been deferred).
   - `1`   — Always execute (e.g., smoke tests).
   - `2–9` — Execute only when the `-In` flag is specified in the test command line
-            and n ≥ include.
+            and n >= include.
   - `I`   — Execute only when the `-I` flag is specified in the test command line.
             This is useful for
             injecting a fail/fault for verifying behavior and report output if

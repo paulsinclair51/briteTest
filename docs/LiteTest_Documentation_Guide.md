@@ -167,7 +167,7 @@ The following shows the layout of the GitHub repository
 `paulsinclair51/LiteTest` (core files and directories):
 
 ```text
-.github/workflows/ci.yml
+.github/workflows/litetest_ci.yml
 README.md
 LICENSE
 .gitignore
@@ -179,8 +179,9 @@ config/                 # Repository configuration files.
 docs/                   # User and contributor documentation .
     LiteTest_*_Guide.md
     LiteTest_*_Reference.md
-    LiteTest_*_Guide.pdf
-    LiteTest_*_Reference.pdf
+    pdf/                # Generated PDF docs from docs/*.md
+        LiteTest_*.pdf
+        README.md
 examples/               # Usage examples.
 include/                # Public API headers.
     litetest_runner.h
@@ -188,7 +189,8 @@ include/                # Public API headers.
 reports/                # Generated report files (non-source).
 scripts/                # Automation scripts.
     genpdf
-    test_genpdf,sh
+    test_genpdf.sh
+    check_directory_readmes.sh
 src/                    # API source.
     litetest_runner.c
     litetest_test.c

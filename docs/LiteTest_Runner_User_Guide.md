@@ -187,7 +187,7 @@ LT_DECLARE_ORCHESTRATOR(main)
 Each `LT_TEST` and `LT_GROUP` macro includes an optional **include parameter** that determines whether it executes based on command‑line options.
 
 - `1` — always execute (default)  
-- `2–9` — execute only when `-In` is provided and `n` is ≥ the include value  
+- `2–9` — execute only when `-In` is provided and `n` is >= the include value  
 - `I` — execute only when `-I` is provided  
 - `0` — never execute  
 
@@ -552,12 +552,12 @@ A typical test executable includes:
 - The headers and source files for the project being tested.
 
 main()
- ├── test_group1()
- │     ├── test1
- │     ├── test2
- │     └── ...
- └── test_group2()
-       ├── ...
+ |- test_group1()
+ |    |- test1
+ |    |- test2
+ |    `- ...
+ `- test_group2()
+  `- ...
 
 Recommended: Put the orchestrator function in one source file and each test group function
 in its own source file.
@@ -1448,7 +1448,7 @@ Defaults:
  * 
  *   Defaults to use Makefile in the current directory.
  * 
- * - Windows PowerShell: .\build_test_lubtype.ps1
+ * - Windows PowerShell: `.\build_test_lubtype.ps1`
  */
  
 /**

@@ -19,6 +19,10 @@ See `../README.md` for an introduction to LiteTest.
 - **check_directory_readmes.sh**: Validate that subdirectories contain
   `README.md` files that follow the standardized directory README format.
   Run `check_directory_readmes.sh` to validate locally.
+- **check_major_release_consistency.sh**: Validate that docs markdown files
+  (excluding `docs/README.md`), `include/*.h`, and `src/*.c` are aligned on
+  the same major release value.
+  Run `check_major_release_consistency.sh` to validate locally.
 - **README.md**: This directory guide.
 
 ## Subdirectories
