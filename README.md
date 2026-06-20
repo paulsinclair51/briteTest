@@ -7,7 +7,7 @@ fault‑tolerant execution, and clear reporting. It is ideal for small to medium
 C projects that need reliable testing without heavy tooling and dependencies.
 It can be used for unit and command-line testing.
 
-**Copyright (c) 2026 Paul Sinclair**
+#### Copyright (c) 2026 Paul Sinclair
 
 <details>
 <summary>License</summary>
