@@ -4,7 +4,7 @@ This glossary defines generally used terms in the LiteTest documentation
 and terms often used in the testing domain. It is a companion document to
 the LiteTest Documentation Guide.
 
-**Copyright (c) 2026 Paul Sinclair**
+#### Copyright (c) 2026 Paul Sinclair
 
 <details>
 <summary>License</summary>
