@@ -185,18 +185,18 @@ include/                # Public API .h headers.
     litetest_test.h
 reports/                # Generated report files.
 scripts/                # Automation scripts.
+    check_directory_readmes.sh
     genpdf
     test_genpdf.sh
-    check_directory_readmes.sh
 src/                    # API .c sources.
     litetest_runner.c
     litetest_test.c
 tests/                  # Testing assets.
-    src/                # Test .c source files.
-    include/            # Test .h headers.
     golden/             # Golden/baseline files for comparison.
-    output/             # Captured test outputs to compare against golden/.
+    include/            # Test .h headers.
     input/              # Test input files.
+    output/             # Captured test outputs to compare against golden/.
+    src/                # Test .c source files.
     tmp/                # Temporary test outputs.
 ```
 </details>
