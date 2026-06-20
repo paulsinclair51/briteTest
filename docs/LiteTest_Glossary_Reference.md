@@ -42,10 +42,14 @@ This document is for LiteTest users and contributors who need
 quick access to the definitions of terms used in LiteTest or to browse
 through the terms.
 
-For a list of other LiteTest documents and the LiteTest repository layout, see
-the LiteTest Documentation Guide.
+For a list of other LiteTest documents and the repository layout, see
+the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
 
-A printer-friendly PDF file for this document is available in `docs/pdf/`,
+For a glossary of general terms, see the LiteTest Glossary Reference
+(`LiteTest_Glossary_Reference.md`) and, for specific terms for this document,
+the Glossary appendix,
+
+A printer-friendly PDF file for this document is available in `docs/pdf/`,/`,
 
 <details>
 <summary>Document Version History</summary>
