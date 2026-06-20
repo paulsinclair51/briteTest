@@ -177,38 +177,26 @@ build/                  # Build outputs and related artifacts.
 config/                 # Repository configuration files.
     markdownlint.json
 docs/                   # User and contributor documentation .
-    LiteTest_*_Guide.md
-    LiteTest_*_Reference.md
-    pdf/                # Generated PDF docs from docs/*.md
-        LiteTest_*.pdf
-        README.md
+    LiteTest_*.md
+    pdf/                # Generated PDF docs from docs/*.md and README.MD
 examples/               # Usage examples.
-include/                # Public API headers.
+-include/               # Public API .h headers.
     litetest_runner.h
     litetest_test.h
-reports/                # Generated report files (non-source).
+reports/                # Generated report files.
 scripts/                # Automation scripts.
     genpdf
     test_genpdf.sh
     check_directory_readmes.sh
-src/                    # API source.
+src/                    # API .c sources.
     litetest_runner.c
     litetest_test.c
 tests/                  # Testing assets.
-    src/                # Test source files.
-        test_*.c
-    include/            # Test headers.
+    src/                # Test .c source files.
+    include/            # Test .h headers.
     golden/             # Golden/baseline files for comparison.
-    output/             # Retained test outputs needing review
-                        # (e.g., a copied report file to compare
-                        # against golden/)
-                        # (mismatch/new); matched outputs
-                        # removed by default (use -o to keep).
-    input/              # Static test input files.
-    tmp/                # Temporary test outputs; removed at run
-                        # start for clean start; auto-removed by
-                        # test executable when it finishes (use -t
-                        # to keep for debugging); user can
-                        # manually remove as needed.
+    output/             # Captured test outputs to compare against golden/.
+    input/              # Test input files.
+    tmp/                # Temporary test outputs.
 ```
 </details>

@@ -27,4 +27,4 @@ See `../README.md` for an introduction to LiteTest.
 ## Subdirectories
 
 - **pdf/**: PDF formatted files generated using `../scripts/genpdf` from the
-	above files and from `../README.md`.
+	above files (except `README.md`) and from `../README.md`.
