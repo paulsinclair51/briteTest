@@ -1,3 +1,29 @@
+#-----------------------------------------------------------------
+# Build Powershell script for test_litetest (Linux/macOS)
+#
+# test_liteteest.exe is an executable that uses the LiteTest
+# framework and APIs to test itself.
+#
+#-----------------------------------------------------------------
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see the LICENSE file in the root directory.
+#-----------------------------------------------------------------
+#
+# test_litetest can be run by submitting a command line of the
+# following form to a shell:
+#
+#   [<directory_path>/]test_litetest [<option>],,, [<arg>]...
+#
+# For usage information about the options and args, submit the
+# follpwing to a shell:
+#
+#   [<directory_path>/]test_litetest --help
+#
+# For an introduction to LiteTest, see README.md in ghe root
+# directory.
+#----------------------------------------------------------------
+
 param(
     [string]$Compiler = 'gcc',
     [string]$BuildDir = 'build',
