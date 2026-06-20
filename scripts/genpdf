@@ -623,7 +623,7 @@ convert_to_pdf() {
 \\renewcommand{\\footrulewidth}{0.4pt}
 EOF
 
-  # Inject logo into upper-right corner of title page if a PNG is available.
+  # Inject logo into upper-left corner of title page if a PNG is available.
   local _logo_png=""
   _logo_png=$(_genpdf_logo_png 2>/dev/null || true)
   if [[ -n "$_logo_png" ]]; then
@@ -631,7 +631,7 @@ EOF
 \usepackage{eso-pic}
 \usepackage{graphicx}
 \AddToShipoutPictureBG*{%
-  \put(\LenToUnit{\dimexpr\paperwidth-3.3cm\relax},\LenToUnit{\dimexpr\paperheight-3.0cm\relax}){%
+  \put(\LenToUnit{1.2cm},\LenToUnit{\dimexpr\paperheight-3.0cm\relax}){%
     \includegraphics[width=2.8cm]{$_logo_png}%
   }%
 }
