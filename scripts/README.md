@@ -16,6 +16,9 @@ See `../README.md` for an introduction to LiteTest.
   Run `genpdf --help` for usage information.
 - **test_genpdf.sh**: Lightweight self-test for `genpdf`.
   Run `test_genpdf.sh --help` for usage information.
+- **check_directory_readmes.sh**: Validate that subdirectories contain
+  `README.md` files that follow the standardized directory README format.
+  Run `check_directory_readmes.sh` to validate locally.
 - **README.md**: This directory guide.
 
 ## Subdirectories

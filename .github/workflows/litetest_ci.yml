@@ -42,6 +42,18 @@ jobs:
       - name: Checkout # LiteTest repository code.
         uses: actions/checkout@v4
 
+      - name: Validate directory README format
+        run: bash ./scripts/check_directory_readmes.sh
+
+      - name: Install PDF generation dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wkhtmltopdf
+
+      - name: Generate docs PDFs (excluding docs/README.md)
+        run: |
+          bash ./scripts/genpdf -i "*.md" -x "README.md" docs docs
+
       - name: Build
         run: make test
 
