@@ -405,10 +405,14 @@ The Test API also includes execution/runtime, filesystem/path, environment,
 process-result, string/text, extended file operation, JSON data extraction,
 and resource management helpers.
 
+See the LiteTest Test Reference for a complete list of helpers provided by the API.
+
+The following two sections provide examples of file and compare functions.
+
 <details>
 <summary>13.1 File Functions</summary>
 
-### 13.1 File Functions
+### 13.1 File Function Examples
 
 These helpers cover file and directory-related functions in the Test API.
 
@@ -422,7 +426,7 @@ Examples include:
 <details>
 <summary>13.2 Compare Functions</summary>
 
-### 13.2 Compare Functions
+### 13.2 Compare Function Examples
 
 These helpers cover comparison and matching functions in the Test API.
 
