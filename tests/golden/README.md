@@ -16,13 +16,7 @@ See `../../README.md` for an introduction to LiteTest.
 
 ## Subdirectories
 
-- golden1/
-- golden2/
-- golden3/
-
-Create additional subdirectories golden4, golden5, etc. and corresponding output
-subdirectories as needed for outputs that have the same name but are written
-to different directories.
+- None.
 
 ## Golden Files and Output Files
 
