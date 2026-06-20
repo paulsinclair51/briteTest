@@ -4,7 +4,7 @@ This document provides a reference to the LiteTest Runner API. It includes
 types, structs, unions, enums, macros, and functions. Additionally, it
 provides a reference to LiteTest framework concepts.
 
-**Copyright (c) 2026 Paul Sinclair**
+#### Copyright (c) 2026 Paul Sinclair
 
 <details>
 <summary>License</summary>
