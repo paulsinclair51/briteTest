@@ -543,6 +543,7 @@ convert_to_pdf() {
 \\newcommand{\\ltrunninghead}{}
 \\newcommand{\\ltsetrunninghead}[1]{\\gdef\\ltrunninghead{#1}}
 \\AtBeginDocument{\\fontsize{12}{14}\\selectfont}
+\AtBeginDocument{\pagenumbering{roman}}
 \\AtBeginDocument{\\thispagestyle{empty}}
 \\fancypagestyle{plain}{%
   \\fancyhf{}
@@ -805,6 +806,31 @@ process_file() {
           next
         }
 
+        if (title_done == 1 && title_footer_pushed != 1 &&
+            (match(line, /^\*\*Copyright/) || match(line, /^Copyright/))) {
+          print "```{=latex}"
+          print "\\vfill"
+          print "```"
+          title_footer_pushed = 1
+        }
+
+        if (match(line, /^##[[:space:]]+/)) {
+          section_title = line
+          sub(/^##[[:space:]]+/, "", section_title)
+          if (tolower(section_title) != "license") {
+            print "```{=latex}"
+            print "\\clearpage"
+            if (main_numbering_started != 1 && section_title ~ /^1\./) {
+              print "\\pagenumbering{arabic}"
+              print "\\setcounter{page}{1}"
+              main_numbering_started = 1
+            }
+            print "\\ltsetrunninghead{" tex_escape(section_title) "}"
+            print "\\global\\ltaftertoctrue"
+            print "```"
+          }
+        }
+
         if (match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
           in_toc_md = 1
           print line
@@ -819,6 +845,7 @@ process_file() {
             toc_text = line
             sub(/^[[:space:]]*\[/, "", toc_text)
             sub(/\]\([^)]*\)[[:space:]]*$/, "", toc_text)
+            gsub(/\*\*/, "", toc_text)
 
             toc_anchor = line
             sub(/^[[:space:]]*\[[^]]+\]\(#?/, "", toc_anchor)
@@ -827,7 +854,7 @@ process_file() {
 
             if (length(toc_anchor) > 0) {
               print "```{=latex}"
-              print "\\noindent\\hyperref[" toc_anchor "]{" tex_escape(toc_text) "} . . . \\pageref{" toc_anchor "}\\par"
+              print "\\noindent\\hyperref[" toc_anchor "]{" tex_escape(toc_text) "}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\pageref{" toc_anchor "}\\par"
               print "```"
             } else {
               print line
@@ -852,10 +879,6 @@ process_file() {
         if (match(lower, /^[[:space:]]*spdx-license-identifier:/)) {
           print tex_escape(line)
           next
-        }
-
-        if (match(line, /^## /) && !match(lower, /^## license[[:space:]]*$/)) {
-          print "\\newpage"
         }
 
         print line
@@ -968,6 +991,31 @@ process_file() {
           next
         }
 
+        if (title_done == 1 && title_footer_pushed != 1 &&
+            (match(line, /^\*\*Copyright/) || match(line, /^Copyright/))) {
+          print "```{=latex}"
+          print "\\vfill"
+          print "```"
+          title_footer_pushed = 1
+        }
+
+        if (match(line, /^##[[:space:]]+/)) {
+          section_title = line
+          sub(/^##[[:space:]]+/, "", section_title)
+          if (tolower(section_title) != "license") {
+            print "```{=latex}"
+            print "\\clearpage"
+            if (main_numbering_started != 1 && section_title ~ /^1\./) {
+              print "\\pagenumbering{arabic}"
+              print "\\setcounter{page}{1}"
+              main_numbering_started = 1
+            }
+            print "\\ltsetrunninghead{" tex_escape(section_title) "}"
+            print "\\global\\ltaftertoctrue"
+            print "```"
+          }
+        }
+
         if (match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
           in_toc_md = 1
           print line
@@ -982,6 +1030,7 @@ process_file() {
             toc_text = line
             sub(/^[[:space:]]*\[/, "", toc_text)
             sub(/\]\([^)]*\)[[:space:]]*$/, "", toc_text)
+            gsub(/\*\*/, "", toc_text)
 
             toc_anchor = line
             sub(/^[[:space:]]*\[[^]]+\]\(#?/, "", toc_anchor)
@@ -990,7 +1039,7 @@ process_file() {
 
             if (length(toc_anchor) > 0) {
               print "```{=latex}"
-              print "\\noindent\\hyperref[" toc_anchor "]{" tex_escape(toc_text) "} . . . \\pageref{" toc_anchor "}\\par"
+              print "\\noindent\\hyperref[" toc_anchor "]{" tex_escape(toc_text) "}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\pageref{" toc_anchor "}\\par"
               print "```"
             } else {
               print line
@@ -1015,10 +1064,6 @@ process_file() {
         if (match(lower, /^[[:space:]]*spdx-license-identifier:/)) {
           print tex_escape(line)
           next
-        }
-
-        if (match(line, /^## /) && !match(lower, /^## license[[:space:]]*$/)) {
-          print "\\newpage"
         }
 
         print line
