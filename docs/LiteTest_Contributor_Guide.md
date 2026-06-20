@@ -42,8 +42,10 @@ and maintaining LiteTest.
 For a list of other LiteTest documents and the repository layout, see
 the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
 
-A printer-friendly PDF file for this document is available in `docs/pdf/`,
+For a glossary of terms, see the LiteTest Glossary Reference
+(`LiteTest_Glossary_Reference.md`).
 
+A printer-friendly PDF file for this document is available in `docs/pdf/`,
 <details>
 <summary>Document Version History</summary>
 
