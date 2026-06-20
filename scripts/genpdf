@@ -1157,6 +1157,11 @@ target_file_for_source() {
   local source_file=$1
   local rel_path
 
+  if [[ -n "${extra_root_readme:-}" && "$source_file" == "$extra_root_readme" ]]; then
+    printf '%s\n' "$outdir/LiteTest_README.pdf"
+    return
+  fi
+
   rel_path=${source_file#"$infile"/}
   if [[ $keep_structure -eq 1 ]]; then
     printf '%s\n' "$outdir/${rel_path%.md}.pdf"
@@ -1216,6 +1221,15 @@ if [[ -d "$infile" ]]; then
 
     filtered_md_files+=("$source_file")
   done
+
+  extra_root_readme=''
+  if [[ "$(basename "$infile")" == "docs" && "$(basename "$outdir")" == "pdf" && "$(dirname "$outdir")" == "$infile" ]]; then
+    candidate_root_readme="$(dirname "$infile")/README.md"
+    if [[ -f "$candidate_root_readme" ]]; then
+      extra_root_readme=$candidate_root_readme
+      filtered_md_files+=("$extra_root_readme")
+    fi
+  fi
 
   if [[ ${#filtered_md_files[@]} -eq 0 ]]; then
     log_error "no input files remain after applying include/exclude filters"

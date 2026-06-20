@@ -445,6 +445,29 @@ EOF
   assert_file_exists "$tmpdir/noarg/noarg.pdf"
 }
 
+test_docs_directory_includes_root_readme() {
+  phase "docs directory includes root readme"
+
+  mkdir -p "$tmpdir/project/docs/pdf"
+  cat > "$tmpdir/project/README.md" <<'EOF'
+# Project Root README
+EOF
+  cat > "$tmpdir/project/docs/guide.md" <<'EOF'
+# Guide
+EOF
+  cat > "$tmpdir/project/docs/README.md" <<'EOF'
+# Docs README
+EOF
+
+  pushd "$tmpdir/project" >/dev/null
+  PATH="$test_path" "$script" docs docs/pdf >/dev/null
+  popd >/dev/null
+
+  assert_file_exists "$tmpdir/project/docs/pdf/guide.pdf"
+  assert_file_exists "$tmpdir/project/docs/pdf/README.pdf"
+  assert_file_exists "$tmpdir/project/docs/pdf/LiteTest_README.pdf"
+}
+
 run_all_tests() {
   test_help_and_usage
   test_toolchain_check
@@ -460,6 +483,7 @@ run_all_tests() {
   test_backend_failure_propagation
   test_directory_only_option_guards
   test_no_argument_default_directory_mode
+  test_docs_directory_includes_root_readme
 }
 
 run_all_tests
