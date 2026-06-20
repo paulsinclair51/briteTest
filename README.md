@@ -10,7 +10,7 @@ It can be used for unit and command-line testing.
 **Copyright (c) 2026 Paul Sinclair**
 
 <details>
-<summary>Click to view License</summary>
+<summary>License</summary>
 
 #### **License**
 
