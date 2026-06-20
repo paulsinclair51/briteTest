@@ -6,7 +6,7 @@ rules, and versioning guidelines for LiteTest.
 **Copyright (c) 2026 Paul Sinclair**
 
 <details>
-<summary>Click to view License</summary>
+<summary>License</summary>
 
 #### **License**
 
@@ -32,7 +32,7 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>Click to view Preface</summary>
+<summary>Preface</summary>
 
 ## Preface
 
@@ -51,7 +51,7 @@ appendix at end of this document.
 
 
 <details>
-<summary>Click to view Document Version History</summary>
+<summary>Document Version History</summary>
 
 ### Document Version History
 
@@ -79,7 +79,7 @@ when `M` is incremented.
 </details>
 
 <details>
-<summary>Click to view Table of Contents</summary>
+<summary>Table of Contents</summary>
 
 ## Table of Contents
 
@@ -101,7 +101,7 @@ when `M` is incremented.
 </details>
 
 <details>
-<summary>Click to view 1. Introduction</summary>
+<summary>1. Introduction</summary>
 
 ## 1. Introduction
 
@@ -114,7 +114,7 @@ consistency across the LiteTest codebase and documentation.
 </details>
 
 <details>
-<summary>Click to view 2. Versioning Rules</summary>
+<summary>2. Versioning Rules</summary>
 
 ## 2. Versioning Rules
 
@@ -172,7 +172,7 @@ API compatibility rules:
 </details>
 
 <details>
-<summary>Click to view 3. Testing Requirements</summary>
+<summary>3. Testing Requirements</summary>
 
 ## 3. Testing Requirements
 
@@ -187,7 +187,7 @@ make run
 </details>
 
 <details>
-<summary>Click to view 4. Documentation Rules</summary>
+<summary>4. Documentation Rules</summary>
 
 ## 4. Documentation Rules
 
@@ -199,7 +199,7 @@ make run
 </details>
 
 <details>
-<summary>Click to view 5. Code Style</summary>
+<summary>5. Code Style</summary>
 
 ## 5. Code Style
 
@@ -211,7 +211,7 @@ make run
 </details>
 
 <details>
-<summary>Click to view 6. Writing Style Consistency</summary>
+<summary>6. Writing Style Consistency</summary>
 
 ## 6. Writing Style Consistency
 
@@ -222,7 +222,7 @@ for parallel structure and consistent writing patterns across all LiteTest
 documentation in all types of files (e,g., ,md, .h, .c, .yml, ,sh, Makefile, etc.).
 
 <details>
-<summary>Click to view 6. Documentation Style Guide</summary>
+<summary>6. Documentation Style Guide</summary>
 
 ### 6.1 Documentation Style Guide
 
@@ -264,7 +264,7 @@ This guideline applies to all LiteTest documentation (.md files).
 </details>
 
 <details>
-<summary>Click to view 7. Pull Requests</summary>
+<summary>7. Pull Requests</summary>
 
 ## 7. Pull Requests
 
@@ -277,7 +277,7 @@ Before submitting a PR:
 </details>
 
 <details>
-<summary>Click to view Glossary</summary>
+<summary>Glossary</summary>
 
 ## Glossary
 
