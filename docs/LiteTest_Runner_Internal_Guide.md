@@ -36,7 +36,7 @@ SOFTWARE.
 
 ## Preface
 
-This document is intended for contributors.
+This document is for contributors.
 
 For a list of other LiteTest documents and the LiteTest repository layout, see
 the LiteTest Documentation Guide.
