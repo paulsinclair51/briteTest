@@ -7,16 +7,12 @@ fault‑tolerant execution, and clear reporting. It is ideal for small to medium
 C projects that need reliable testing without heavy tooling and dependencies.
 It can be used for unit and command-line testing.
 
-LiteTest provides a Runner API and a Test API, each implemented with a single
-.h / .c pair with no external dependencies and requiring only a POSIX.1‑2001
-environment and a C99‑compliant compiler.
-
 **Copyright (c) 2026 Paul Sinclair**
 
 <details>
-<summary>License</summary>
+<summary>Click to view License</summary>
 
-## License
+#### **License**
 
 SPDX-License-Identifier: MIT
 
@@ -44,8 +40,42 @@ SOFTWARE.
 
 ## Preface
 
-For LiteTest documentation and the repository layout, see the
-**[LiteTest Documentation Guide](docs/LiteTest_Documentation_Guide.md)**.
+LiteTest provides a Runner API and a Test API, each implemented with a single
+.h / .c pair with no external dependencies and requiring only a POSIX.1‑2001
+environment and a C99‑compliant compiler.
+
+For a list of other LiteTest documents and the repository layout, see
+the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
+
+For a glossary of terms, see the LiteTest Glossary Reference
+(`LiteTest_Glossary_Reference.md`).
+
+<details>
+<summary>Document Version History</summary>
+
+### Document Version History
+
+| Document | Runner | Test | Date | Comment | Author/Editor |
+|----------|------|--------|------|---------|---------------|
+| 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
+
+- The **Document** column records the document's version with the
+  format `M.u` (Major, update).
+- The **Runner** column records the LiteTest Runner API version
+  current at the time this document version was published and is
+  defined by its `LT_RUNNER_VERSION` macro.
+- The **Test** column records the LiteTest Test API version current at
+  the time this document version was published and is defined by its
+  `LT_TEST_VERSION` macro.
+- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
+  patch).
+- `M` is the same for the Document, Runner, and Test versions.
+
+The document's update version tracks updates to this document and does
+not correspond to a minor or patch version. `u` increments whenever
+this document is updated without a change to `M`, and it resets to `0`
+when `M` is incremented.
+</details>
 </details>
 
 <details>
@@ -256,7 +286,14 @@ tests, and define optional setup/teardown logic.
 
 ### 2.1. What the Runner Framework and API Does
 
-TODO
+The Runner framework coordinates test execution from the orchestrator down to
+individual test groups. It initializes the run, applies include and
+concurrency settings, executes the requested groups, captures pass/fail/fault
+results, and writes the final report.
+
+The Runner API provides the macros and helper types used to define the
+orchestrator, declare test groups, control execution flow, and handle fault
+detection and reporting.
 </details>
 </details>
 
@@ -343,7 +380,16 @@ safely.
 
 ## 12. Isolation
 
-isolation ...
+Isolation controls how much separation LiteTest uses when running tests.
+
+- **Same-thread execution** is the default and has the lowest overhead.
+- **Thread-isolated execution** keeps tests separated without switching to a
+  separate process.
+- **Process-isolated execution** provides the strongest containment for
+  faults, crashes, aborts, and other disruptive failures.
+
+Use the lightest mode that still gives you the safety you need for the code
+under test.
 </details>
 
 <details>
@@ -360,7 +406,15 @@ setup/teardown logic.
 
 ### 13.1 File Functions
 
-Examples of file functions:
+These helpers compare file paths and file metadata.
+
+- `lt_compare_paths_with_options` compares file contents with configurable
+  comparison flags.
+- `lt_compare_path_metadata` compares file metadata such as size,
+  permissions, type, and modification time.
+
+Use these helpers when you want an `LT_OK` / `LT_MISMATCH` style result for
+file-based comparisons.
 </details>
 
 <details>
@@ -368,6 +422,14 @@ Examples of file functions:
 
 ### 13.2 Compare Functions
 
-Examples of compare functions:
+These helpers compare higher-level data such as JSON and normalized text.
+
+- `lt_compare_json_with_limit` compares JSON text with a size limit and
+  optional key-order handling.
+- `lt_compare_text_normalized` compares text while optionally ignoring
+  whitespace and line-ending differences.
+
+Use these helpers when you need semantic comparisons instead of exact raw
+string equality.
 </details>
 </details>
