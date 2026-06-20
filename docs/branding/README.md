@@ -31,6 +31,16 @@ Selected tagline for the monogram logo: "Catch it before it breaks."
 On 2026-06-20, the project owner requested additional bird-shape refinement:
 the tail element was removed and the beak was changed to point straight out.
 
+On 2026-06-20, the beak angle was adjusted by request to point about 10
+degrees downward from straight-forward across all SVG logo variants.
+
+On 2026-06-20, the beak angle was adjusted by an additional ~10 degrees
+downward across all SVG logo variants (about 20 degrees total from
+straight-forward) and PNG exports were regenerated.
+
+On 2026-06-20, the beak length was reduced by about one-third across all
+SVG logo variants and PNG exports were regenerated.
+
 On 2026-06-20, the project owner requested canary-clarity refinements:
 the beak was shortened, a crest was added, a perch line was added, a cheek
 patch was added around the eye, and head/body proportions were adjusted.
