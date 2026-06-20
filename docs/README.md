@@ -10,12 +10,12 @@ See `../README.md` for an introduction to LiteTest.
 
 ## Files
 
-- **LiteTest_Documentation_Guide.md**: Index of LiteTest documents and the Litetest
-	  repository layout.
+- **LiteTest_Documentation_Guide.md**: Index of LiteTest documents and the LiteTest
+	repository layout.
 - **LiteTest_Glossary_Reference.md**: Glossary of LiteTest and testing terms.
 - **LiteTest_Runner_User_Guide.md**: Runner API concepts, usage, and examples.
 - **LiteTest_Runner_Reference.md**: Runner API reference.
-- **LIteTest_Contributor_Guide.md**: Contributor process and standards.
+- **LiteTest_Contributor_Guide.md**: Contributor process and standards.
 - **LiteTest_Runner_Internal_Guide.md**: Runner implementation guide.
 - **LiteTest_Runner_Internal_Reference.md**: Runner implementation reference.
 - **LiteTest_Test_User_Guide.md**: Test API concepts, usage, and examples.
@@ -23,9 +23,8 @@ See `../README.md` for an introduction to LiteTest.
 - **LiteTest_Test_Internal_Guide.md**: Test implementation guide.
 - **LiteTest_Test_Internal_Reference.md**: Test implementation reference.
 - **README.md**: This directory guide.
-- **.pdf files**: PDF formatted files generated from the above files using
-  `../scripts/genpdf`.
 
 ## Subdirectories
 
-- None.
+- **pdf/**: PDF formatted files generated from the above files (except for
+  `README.md`) using `../scripts/genpdf`.
