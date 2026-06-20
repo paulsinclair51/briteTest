@@ -406,23 +406,27 @@ setup/teardown logic.
 
 ### 13.1 File Functions
 
-These helpers compare file paths and file metadata.
+Use these helpers when you want to handle files.
+
+For example:
+
+-`lt_path_has_extension` check if path has specified extension.
+<details>
+<summary>13.2. Compare Functions</summary>
+
+### 13.2 Compare Functions
+
+Use these helpers when you want an `LT_OK` / `LT_MISMATCH` style result for
+file-based comparisons.
+
+For example, these helpers compare file paths and file metadata:
 
 - `lt_compare_paths_with_options` compares file contents with configurable
   comparison flags.
 - `lt_compare_path_metadata` compares file metadata such as size,
   permissions, type, and modification time.
 
-Use these helpers when you want an `LT_OK` / `LT_MISMATCH` style result for
-file-based comparisons.
-</details>
-
-<details>
-<summary>13.2. Compare Functions</summary>
-
-### 13.2 Compare Functions
-
-These helpers compare higher-level data such as JSON and normalized text.
+And these helpers compare higher-level data such as JSON and normalized text:
 
 - `lt_compare_json_with_limit` compares JSON text with a size limit and
   optional key-order handling.
@@ -431,5 +435,6 @@ These helpers compare higher-level data such as JSON and normalized text.
 
 Use these helpers when you need semantic comparisons instead of exact raw
 string equality.
+
 </details>
 </details>
