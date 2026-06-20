@@ -8,7 +8,7 @@ Reference document.
 **Copyright (c) 2026 Paul Sinclair**
 
 <details>
-<summary>Click to view License</summary>
+<summary>License</summary>
 
 #### **License**
 
@@ -32,20 +32,22 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>Click to view Preface</summary>
+<summary>Preface</summary>
 
 ## Preface
 
 This document is for contributors.
 
-For a list of other LiteTest documents and the LiteTest repository layout, see
-the LiteTest Documentation Guide.
+For a list of other LiteTest documents and the repository layout, see
+the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
 
-For a glossary of terms, see the LiteTest Glossary Reference.
-</details>
+For a glossary of terms, see the LiteTest Glossary Reference
+(`LiteTest_Glossary_Reference.md`).
+
+A printer-friendly PDF file for this document is available in `docs/pdf/`,
 
 <details>
-<summary>Click to view Document Version History</summary>
+<summary>Document Version History</summary>
 
 ### Document Version History
 
@@ -65,34 +67,28 @@ Both Runner and Test versions specify a string of the form `"M.m.p"` (Major, min
 The document's `u` (update) version track updates to this document and does not correspond to a `m` (minor) or `p` (patch) version. `u` increments whenever this document is updated without a change to `M`, and it resets to `0` when `M` is incremented.
 </details>
 </details>
-</details>
 
 <details>
-<summary>Click to view Table of Contents</summary>
+<summary>Table of Contents</summary>
 
 ## Table of Contents
 
 <details>
-<summary>Click to view</summary>
+<summary>Table of Contents</summary>
 
 [**1. Introduction**](#1-introduction)  
 [***1. Public and Internal Name Conventions](#1.1-public-and-internal-name-conventions)  
   - [Why Internal Symbols Appear in the Header](#why-internal-symbols-appear-in-the-header)
 
-
 - [**Glossary**](#glossary)
-</details>
 </details>
 
 <details>
-<summary>Click to view 1. Introduction</summary>
+<summary>1. Introduction</summary>
 
 ## 1. Introduction
 
 Basic concepts and high‑level description of the framework internals and design goals.
-
-<details>
-<summary>Click to view</summary>
 
 In this document, a *symbol* refers to any named entity in the LiteTest framework, including:
 
@@ -102,8 +98,6 @@ In this document, a *symbol* refers to any named entity in the LiteTest framewor
 - macros
 - variables
 - functions
-</details>
-</details>
 
 LiteTest exposes some internal symbols in `litetest_runner.h` because the framework’s
 macros expand into code that depends on internal types and helper functions.
@@ -115,12 +109,9 @@ usage. Contributors may modify these symbols as needed, provided the public API
 contract remains intact.
 
 <details>
-<summary>Click to view 1.1 Public and Internal Naming Conventions</summary>
+<summary>1.1 Public and Internal Naming Conventions</summary>
 
 ### 1.1 Public and Internal Naming Conventions
-
-<details>
-<summary>Click to view</summary>
 
 Any framework names that are public and visible to LiteTest API users are prefixed
 with `lt_...` (typically lowercase) or `LT_...` (typically uppercase).
@@ -132,194 +123,131 @@ In general, users of the API should not define names prefixed with `lt_`, `LT`, 
 or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 </details>
 </details>
-</details>
 
 <details>
-<summary>Click to view 2. Architecture Overview</summary>
+<summary>2. Architecture Overview</summary>
 
 ## 2. Architecture Overview
+
 - Process model  
 - Thread model  
 - Signal handling  
 - Fault detection  
 - Execution flow  
-
----
 </details>
 
 <details>
-<summary>Click to view 3. Orchestrator Internals</summary>
+<summary>3. Orchestrator Internals</summary>
 
 ## 3. Orchestrator Internals
+
 - Initialization  
 - Argument parsing  
 - Report lifecycle  
 - Category aggregation  
-
----
 </details>
 
 <details>
-<summary>Click to view 4. Test Group Internals</summary>
+<summary>4. Test Group Internals</summary>
 
 ## 4. Test Group Internals
-- Group initialization  
-- Execution scheduling  
-- Result accumulation  
 
----
+- Group initialization
+- Execution scheduling
+- Result accumulation
 </details>
 
 <details>
-<summary>Click to view 5. Test Execution Engine</summary>
+<summary>5. Test Execution Engine</summary>
 
 ## 5. Test Execution Engine
+
 - Expression evaluation  
 - Isolation modes  
 - Concurrency model  
 - Error and fault propagation  
-
----
 </details>
 
 <details>
-<summary>Click to view 6. Process‑Isolated Execution</summary>
+<summary>6. Process‑Isolated Execution</summary>
 
 ## 6. Process‑Isolated Execution
+
 - Child process creation  
 - Monitoring and timeouts  
 - Exit code interpretation  
 - Fault mapping  
-
----
 </details>
 
 <details>
-<summary>Click to view 7. Thread‑Isolated Execution</summary>
+<summary>7. Thread‑Isolated Execution</summary>
 
 ## 7. Thread‑Isolated Execution
+
 - Thread creation  
 - Synchronization  
 - Fault boundaries  
-
----
 </details>
 
 <details>
-<summary>Click to view 8. Signal Guard System</summary>
+<summary>8. Signal Guard System</summary>
 
 ## 8. Signal Guard System
 - Installed handlers  
 - Supported signals  
 - Fault classification  
 - Recovery behavior  
-
----
 </details>
 
 <details>
-<summary>Click to view 9. Report Generation Internals</summary>
+<summary>9. Report Generation Internals</summary>
 
 ## 9. Report Generation Internals
+
 - Output formatting  
 - Category totals  
 - Fault messages  
 - Notes and metadata  
-
----
 </details>
 
 <details>
-<summary>Click to view 10. Internal State and Global Variables</summary>
+<summary>10. Internal State and Global Variables</summary>
 
 ## 10. Internal State and Global Variables
-(Placeholder for internal state descriptions.)
 
----
+(Placeholder for internal state descriptions.)
 </details>
 
 <details>
-<summary>Click to view 11. Error Handling and Safety Guarantees</summary>
+<summary>11. Error Handling and Safety Guarantees</summary>
 
 ## 11. Error Handling and Safety Guarantees
-(Placeholder for internal error semantics.)
 
----
+(Placeholder for internal error semantics.)
 </details>
 
 <details>
-<summary>Click to view 12. Implementation Notes</summary>
+<summary>12. Implementation Notes</summary>
 
 ## 12. Implementation Notes
+
 - Portability considerations  
 - POSIX dependencies  
 - Platform differences  
-
----
 </details>
 
 <details>
-<summary>Click to view 13. Future Improvements</summary>
+<summary>13. Future Improvements</summary>
 
 ## 13. Future Improvements
+
 (Placeholder for roadmap items.)
 </details>
 
 <details>
-<summary>Click to view Repository Layout</summary>
-
-## Repository Layout
-
-<details>
-<summary>Click to view</summary>
-  
-GitHub repository: `paulsinclair51/LiteTest`
-
-Repository layout (listing core files):
-
-```text
-LiteTest/
-|- .github/
-|  \- workflows/
-|     \- ci.yml
-|- README.md
-|- LICENSE
-|- Makefile
-|- build_test_litetest.ps1
-|- build/
-|- docs/
-|  \- LiteTest_API_User_Guide.md
-|  \- LiteTest_API_Reference.md
-|  \- LiteTest_Contributor_Guide.md
-|  \- LiteTest_Framework_Guide.md
-|  \- LiteTest_Framework_Reference.md
-|- examples/
-|- include/
-|  \- litetest_runner.h
-|- reports/
-|  |- litetest_test_report-I.txt
-|  \- litetest_test_report.txt
-|- scripts/
-|- src/
-|  \- litetest_runner.c
-|- tests/
-|  |- test_litetest.c
-|  |- test_orchestrator.c
-|  |- test_guard1.c
-|  \- test_guard2.c
-```
-
-Use this as a reference when adapting LiteTest into your own project structure.
-</details>
-</details>
-
-<details>
-<summary>Click to view Glossary</summary>
+<summary>Glossary</summary>
 
 ## Glossary
-
-<details>
-<summary>Click to view</summary>
 
 For general LiteTest terms, see the LiteTest Glossary document.
 
@@ -344,5 +272,4 @@ Runner‑Specific Terms:
   groups and how isolation and concurrency propagate through nested structures.
 - **Concurrent Block Behavior**: The semantics of executing multiple tests in
   parallel within a concurrent block, including ordering and isolation rules.
-</details>
 </details>
