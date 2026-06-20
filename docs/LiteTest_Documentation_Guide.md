@@ -37,10 +37,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Preface
 
-This document is intended for LiteTest users and contributors who need
+This document is for LiteTest users and contributors who need
 a guide to the LiteTest documentation and the LiteTest repository layout.
 
-For a glossary of terms, see the LiteTest Glossary Reference.
+A printer-friendly PDF file for this document is available in `docs/pdf/`,
 
 <details>
 <summary>Document Version History</summary>
@@ -76,7 +76,9 @@ when `M` is incremented.
 ## Table of Contents
 
 [1. Introduction](#1-introduction)
+
 [2. LiteTest Documents](#2-litetest-documents)
+
 [3. LiteTest Repository Layout](#3-litetest-repository-layout)
 </details>
 
