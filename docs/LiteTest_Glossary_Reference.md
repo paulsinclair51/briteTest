@@ -45,6 +45,8 @@ through the terms.
 For a list of other LiteTest documents and the LiteTest repository layout, see
 the LiteTest Documentation Guide.
 
+A printer-friendly PDF file for this document is available in `docs/pdf/`,
+
 <details>
 <summary>Document Version History</summary>
 
