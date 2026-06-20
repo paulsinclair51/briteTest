@@ -6,7 +6,7 @@ It includes types, structs, unions, enums, macros, and functions.
 #### Copyright (c) 2026 Paul Sinclair
 
 <details>
-<summary>Click to view License</summary>
+<summary>License</summary>
 
 #### **License**
 
@@ -35,7 +35,7 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>Click to view Preface</summary>
+<summary>Preface</summary>
 
 ## Preface
 
@@ -46,7 +46,7 @@ For a glossary of terms, see the LiteTest Glossary Reference.
 </details>
 
 <details>
-<summary>Click to view Document Version History</summary>
+<summary>Document Version History</summary>
 
 ### Document Version History
 
@@ -76,7 +76,7 @@ and it resets to `0` when the major version increases.
 </details>
 
 <details>
-<summary>Click to view Documentation Style Guide</summary>
+<summary>Documentation Style Guide</summary>
 
 #### Documentation Style Guide
 
@@ -118,7 +118,7 @@ and it resets to `0` when the major version increases.
 </details>
 
 <details>
-<summary>Click to view Table of Contents</summary>
+<summary>Table of Contents</summary>
 
 ## Table of Contents
 
@@ -167,7 +167,7 @@ and it resets to `0` when the major version increases.
 </details>
 
 <details>
-<summary>Click to view 1. Overview</summary>
+<summary>1. Overview</summary>
 
 ## 1. Overview
 
@@ -202,7 +202,7 @@ and interaction.
 </details>
 
 <details>
-<summary>Click to view Public and Internal Naming Conventions</summary>
+<summary>Public and Internal Naming Conventions</summary>
 
 #### Public and Internal Naming Conventions
 
@@ -223,7 +223,7 @@ or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 </details>
 
 <details>
-<summary>Click to view 2. Symbols Defined in `litetest_runner.h`</summary>
+<summary>2. Symbols Defined in `litetest_runner.h`</summary>
 
 ## 2. Symbols Defined in `litetest_runner.h`
 
@@ -235,7 +235,7 @@ based on their name per the naming conventions.
 </details>
 
 <details>
-<summary>Click to view 2.1. Types</summary>
+<summary>2.1. Types</summary>
 
 ### 2.1. Types
 
@@ -246,7 +246,7 @@ These typedefs declare fundamental internal types used throughout the LiteTest f
 </details>
 
 <details>
-<summary>Click to view lt_result_t</summary>
+<summary>lt_result_t</summary>
 
 #### lt_result_t
 
@@ -283,7 +283,7 @@ lt_result_t result = {0, 0, 0, 0, 0};
 </details>
 
 <details>
-<summary>Click to view 2.2. Structs</summary>
+<summary>2.2. Structs</summary>
 
 ### 2.2. Structs
 
@@ -292,7 +292,7 @@ lt_result_t result = {0, 0, 0, 0, 0};
 </details>
 
 <details>
-<summary>Click to view struct <StructName></summary>
+<summary>struct <StructName></summary>
 
 #### struct <StructName>
 
@@ -327,7 +327,7 @@ Explain the purpose of this struct, what data it aggregates, and how it particip
 </details>
 
 <details>
-<summary>Click to view 2.3. Enums and Enum Values</summary>
+<summary>2.3. Enums and Enum Values</summary>
 
 ### 2.3. Enums and Enum Values
 
@@ -336,7 +336,7 @@ Explain the purpose of this struct, what data it aggregates, and how it particip
 </details>
 
 <details>
-<summary>Click to view enum <EnumName></summary>
+<summary>enum <EnumName></summary>
 
 #### enum <EnumName>
 
@@ -372,7 +372,7 @@ Explain what conceptual category this enum models and how the values are used by
 </details>
 
 <details>
-<summary>Click to view 2.4. Global Variables</summary>
+<summary>2.4. Global Variables</summary>
 
 ### 2.4. Global Variables
 
@@ -381,7 +381,7 @@ Explain what conceptual category this enum models and how the values are used by
 </details>
 
 <details>
-<summary>Click to view <VariableName></summary>
+<summary><VariableName></summary>
 
 #### <VariableName>
 
@@ -413,7 +413,7 @@ if (<VariableName> == ...) {
 </details>
 
 <details>
-<summary>Click to view 2.5. Macros</summary>
+<summary>2.5. Macros</summary>
 
 ### 2.5. Macros
 
@@ -422,7 +422,7 @@ if (<VariableName> == ...) {
 </details>
 
 <details>
-<summary>Click to view <MACRO_NAME></summary>
+<summary><MACRO_NAME></summary>
 
 #### <MACRO_NAME>
 
@@ -455,7 +455,7 @@ Describe the purpose of this macro, what it expands to conceptually, and how it 
 </details>
 
 <details>
-<summary>Click to view 2.6. Functions</summary>
+<summary>2.6. Functions</summary>
 
 ### 2.6. Functions
 
@@ -467,7 +467,7 @@ depending on how they are used within the framework.
 </details>
 
 <details>
-<summary>Click to view <FunctionName>()</summary>
+<summary><FunctionName>()</summary>
 
 #### <FunctionName>()
 
@@ -507,7 +507,7 @@ Describe what is returned and under what conditions.
 </details>
 
 <details>
-<summary>Click to view 3. Symbols Defined in `litetest_runner.c`</summary>
+<summary>3. Symbols Defined in `litetest_runner.c`</summary>
 
 ## 3. Symbols Defined in `litetest_runner.c`
 
@@ -520,7 +520,7 @@ conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view 3.1. Types</summary>
+<summary>3.1. Types</summary>
 
 ### 3.1. Types
 
@@ -532,7 +532,7 @@ conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view 3.2. Structs</summary>
+<summary>3.2. Structs</summary>
 
 ### 3.2. Structs
 
@@ -544,7 +544,7 @@ conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view 3.3. Enums and Enum Values</summary>
+<summary>3.3. Enums and Enum Values</summary>
 
 ### 3.3. Enums and Enum Values
 
@@ -556,7 +556,7 @@ conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view 3.4. Global Variables</summary>
+<summary>3.4. Global Variables</summary>
 
 ### 3.4. Global Variables
 
@@ -568,7 +568,7 @@ conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view 3.5. Macros</summary>
+<summary>3.5. Macros</summary>
 
 ### 3.5. Macros
 
@@ -580,7 +580,7 @@ conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view 3.6. Functions (declared as a forward reference) in `litetest_runner.h`</summary>
+<summary>3.6. Functions (declared as a forward reference) in `litetest_runner.h`</summary>
 
 ### 3.6. Functions (declared as a forward reference) in `litetest_runner.h`
 
@@ -595,7 +595,7 @@ These functions are (by default) extern and must conform to the internal name co
 </details>
 
 <details>
-<summary>Click to view 3.7. Functions (not declared in `litetest_runner.h`)</summary>
+<summary>3.7. Functions (not declared in `litetest_runner.h`)</summary>
 
 ### 3.7. Functions (not declared in `litetest_runner.h`)
 
@@ -612,7 +612,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view 4. Execution Engine</summary>
+<summary>4. Execution Engine</summary>
 
 ## 4. Execution Engine
 
@@ -624,7 +624,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view 5. Signal Handling</summary>
+<summary>5. Signal Handling</summary>
 
 ## 5. Signal Handling
 
@@ -636,7 +636,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view 6. Process Management</summary>
+<summary>6. Process Management</summary>
 
 ## 6. Process Management
 
@@ -648,7 +648,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view 7. Thread Management</summary>
+<summary>7. Thread Management</summary>
 
 ## 7. Thread Management
 
@@ -660,7 +660,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view 8. File and Path Support</summary>
+<summary>8. File and Path Support</summary>
 
 ## 8. File and Path Support
 
@@ -672,7 +672,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view 9. Matching and Comparison Support</summary>
+<summary>9. Matching and Comparison Support</summary>
 
 ## 9. Matching and Comparison Support
 
@@ -684,7 +684,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view 10. Environment Support</summary>
+<summary>10. Environment Support</summary>
 
 ## 10. Environment Support
 
@@ -696,7 +696,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Click to view Repository Layout</summary>
+<summary>Repository Layout</summary>
 
 ## Repository Layout
 
@@ -744,13 +744,13 @@ Use this as a reference when adapting LiteTest into your own project structure.
 </details>
 
 <details>
-<summary>Click to view Glossary</summary>
+<summary>Glossary</summary>
 
 ## Glossary
 </details>
 
 <details>
-<summary>Click to view General Terms</summary>
+<summary>General Terms</summary>
 
 ### General Terms
 
@@ -825,7 +825,7 @@ Use this as a reference when adapting LiteTest into your own project structure.
 </details>
 
 <details>
-<summary>Click to view Framework‑Specific Terms</summary>
+<summary>Framework‑Specific Terms</summary>
 
 ### Framework‑Specific Terms
 
