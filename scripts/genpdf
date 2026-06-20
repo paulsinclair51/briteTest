@@ -547,6 +547,11 @@ convert_to_pdf() {
   citecolor=ltlinkblue,
   pdfborder={0 0 0}
 }
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}{-3.5ex \@plus -1ex \@minus -.2ex}{2.3ex \@plus .2ex}{\normalfont\fontsize{17}{21}\selectfont\bfseries}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}{-3.25ex\@plus -1ex \@minus -.2ex}{1.5ex \@plus .2ex}{\normalfont\fontsize{15}{19}\selectfont\bfseries}}
+\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}{-3.0ex\@plus -1ex \@minus -.2ex}{1.0ex \@plus .2ex}{\normalfont\fontsize{13}{16}\selectfont\bfseries}}
+\makeatother
 \\usepackage{fancyhdr}
 \\newif\\ifltaftertoc
 \\ltaftertocfalse
@@ -1158,7 +1163,7 @@ target_file_for_source() {
   local rel_path
 
   if [[ -n "${extra_root_readme:-}" && "$source_file" == "$extra_root_readme" ]]; then
-    printf '%s\n' "$outdir/LiteTest_README.pdf"
+    printf '%s\n' "$outdir/README.pdf"
     return
   fi
 
@@ -1207,9 +1212,18 @@ if [[ -d "$infile" ]]; then
   fi
 
   filtered_md_files=()
+  docs_to_pdf_mode=0
+
+  if [[ "$(basename "$infile")" == "docs" && "$(basename "$outdir")" == "pdf" && "$(dirname "$outdir")" == "$infile" ]]; then
+    docs_to_pdf_mode=1
+  fi
 
   for source_file in "${md_files[@]}"; do
     rel_path=${source_file#"$infile"/}
+
+    if [[ $docs_to_pdf_mode -eq 1 && "$rel_path" == "README.md" ]]; then
+      continue
+    fi
 
     if [[ ${#include_patterns[@]} -gt 0 ]] && ! match_any_pattern "$rel_path" "${include_patterns[@]}"; then
       continue
@@ -1223,7 +1237,7 @@ if [[ -d "$infile" ]]; then
   done
 
   extra_root_readme=''
-  if [[ "$(basename "$infile")" == "docs" && "$(basename "$outdir")" == "pdf" && "$(dirname "$outdir")" == "$infile" ]]; then
+  if [[ $docs_to_pdf_mode -eq 1 ]]; then
     candidate_root_readme="$(dirname "$infile")/README.md"
     if [[ -f "$candidate_root_readme" ]]; then
       extra_root_readme=$candidate_root_readme

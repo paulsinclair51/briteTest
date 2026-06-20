@@ -1,13 +1,7 @@
 # LiteTest Runner Internal Reference
 
-This document is organized by the named entities in the LiteTest Runner
-impplementation. Each symbol (type, macro, function, etc.) is described individually,
-including its purpose, behavior, and usage. It serves as the reference
-companion to the LiteTest Framework Guide, defining the framework’s
-components precisely while the Guide explains their design and interaction.
-
-LiteTest is a lightweight API and framework for defining, running, and
-reporting tests in C/C++ projects.
+This document provides a reference to the LiteTest Runner API internals.
+It includes types, structs, unions, enums, macros, and functions.
 
 **Copyright (c) 2026 Paul Sinclair**
 
@@ -198,6 +192,12 @@ In this document, a *symbol* refers to any named entity in the LiteTest framewor
 - macros
 - variables
 - functions
+
+This document is organized by the named entities in the LiteTest Runner
+implementation. Each symbol (type, macro, function, etc.) is described individually, including its purpose, behavior, and usage. It serves as
+the reference companion to the LiteTest Framework Guide, defining the
+framework’s components precisely while the Guide explains their design
+and interaction.
 </details>
 </details>
 
