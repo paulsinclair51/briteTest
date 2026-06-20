@@ -1163,7 +1163,7 @@ target_file_for_source() {
   local rel_path
 
   if [[ -n "${extra_root_readme:-}" && "$source_file" == "$extra_root_readme" ]]; then
-    printf '%s\n' "$outdir/LiteTest_README.pdf"
+    printf '%s\n' "$outdir/LiteTest.pdf"
     return
   fi
 
