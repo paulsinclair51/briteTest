@@ -401,6 +401,10 @@ The Test API provides macros and functions for writing tests. Developers use
 this API to express expected behavior, group related tests, and define optional
 setup/teardown logic.
 
+The Test API also includes execution/runtime, filesystem/path, environment,
+process-result, string/text, extended file operation, JSON data extraction,
+and resource management helpers.
+
 <details>
 <summary>13.1 File Functions</summary>
 
