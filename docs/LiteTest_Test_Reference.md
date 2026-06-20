@@ -298,7 +298,8 @@ LT_ASSERT(lt_compare_text_normalized(left_text, right_text, &options) == LT_OK, 
 
 - `lt_compare_paths` performs a byte-for-byte path comparison.
 - `lt_compare_json` performs a strict JSON comparison using default limits.
-- `lt_compare_file_lines` compares files line-by-line and returns `LT_OK` or `LT_MISMATCH`.
+- `lt_compare_file_lines` compares files line-by-line and returns `LT_OK` or
+  `LT_MISMATCH`.
 
 For the full declaration list and per-function comments, see `include/litetest_test.h`.
 </details>
