@@ -4,7 +4,7 @@ This guide documents the internal architecture and design of the LiteTest framew
 and Runner API. It is companion document to the LiteTest Runner Internal
 Reference document.
 
-### Copyright (c) 2026 Paul Sinclair
+#### Copyright (c) 2026 Paul Sinclair
 
 <details>
 <summary>License</summary>
