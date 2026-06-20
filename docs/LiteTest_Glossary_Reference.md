@@ -79,6 +79,7 @@ when `M` is incremented.
 ## Table of Contents
 
 [1. Introduction](#1-introduction)
+
 [2. Glossary](#2-glossary)
 </details>
 
