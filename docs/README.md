@@ -1,4 +1,4 @@
-# docs
+# docs/
 
 Directory for LiteTest user and contributor documentation.
 
@@ -7,9 +7,6 @@ SPDX-License-Identifier: MIT
 For license details, see `../LICENSE`.
 
 See `../README.md` for an introduction to LiteTest.
-
-<details>
-<summary>Click to view Files</summary>
 
 ## Files
 
@@ -28,12 +25,7 @@ See `../README.md` for an introduction to LiteTest.
 - **README.md**: This directory guide.
 - **.pdf files**: PDF formatted files generated from the above files using
   `../scripts/genpdf`.
-</details>
-
-<details>
-<summary>Click to view Subdirectories</summary>
 
 ## Subdirectories
 
 - None.
-</details>

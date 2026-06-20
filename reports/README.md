@@ -1,4 +1,4 @@
-# reports
+# reports/
 
 Directory for generated report files.
 

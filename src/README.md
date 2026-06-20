@@ -1,4 +1,4 @@
-# src
+# src/
 
 Directory for `.c` files, internal headers (if not meant for public use), and
 implementation code.

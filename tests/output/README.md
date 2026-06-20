@@ -1,6 +1,6 @@
-# tests/output
+# tests/output/
 
-Directory for oopies of generated outputs.
+Directory for copies of generated outputs.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
@@ -10,16 +10,16 @@ See `../../README.md` for an introduction to LiteTest.
 
 ## Files
 
-- `README.md`: This directory guide.
--  Cooies of output files.
+- **README.md**: This directory guide.
+- **Output files**: Copies of generated output files.
 
 ## Subdirectories
 
-- output1
-- output2
-- output3
+- output1/
+- output2/
+- output3/
 
-Create additional subdirectories output4, output5, etc. and corresponding golden
+Create additional subdirectories output4/, output5/, etc. and corresponding golden
 subdirectories as needed for outputs that have the same name but are written
 to different directories.
 
@@ -32,6 +32,6 @@ to different directories.
 - stdout is copied to stdout.txt, stderr is copied to stderr.txt, and named output
   files are copied to a file with the same name.
 - If an output file has the same name as another output file, the first such file
-  is placed in subdirectory output1, the second in output2, etc.
+  is placed in subdirectory `output1/`, the second in `output2/`, etc.
 - Matching files are removed unless the -o flag is specified in a test
   command line.

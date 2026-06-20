@@ -1,6 +1,6 @@
-# build
+# build/
 
-Directory for build artifacts (mainly ,o files). 
+Directory for build artifacts (mainly `.o` files).
 
 Note: For other than this README.md file, files in this directory are generated
 by builds and may be removed automatically and recreated. They also may be
@@ -14,9 +14,9 @@ See `../README.md` for an introduction to LiteTest.
 
 ## Files
 
-- **.o files**: Object files, 
-- **README.Md**: This directory guide.
+- **.o files**: Object files.
+- **README.md**: This directory guide.
 
-## Directories
+## Subdirectories
 
 - None.

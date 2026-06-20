@@ -1,4 +1,4 @@
-# tests/include
+# tests/include/
 
 Directory for test-only header files (`*.h`).
 
@@ -6,12 +6,12 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `../../LICENSE`.
 
-Directories:
+See `../../README.md` for an introduction to LiteTest.
+
+## Files
+
+- **README.md**: This directory guide.
+
+## Subdirectories
 
 - None.
-
-Files:
-
-- `README.md`: This directory guide.
-
-See `../../README.md` for a concise introduction to LiteTest.

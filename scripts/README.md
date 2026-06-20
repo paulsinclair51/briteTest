@@ -1,4 +1,4 @@
-# scripts
+# scripts/
 
 Directory for automation scripts.
 

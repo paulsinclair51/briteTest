@@ -1,4 +1,4 @@
-# tests/tmp
+# tests/tmp/
 
 This directory is for transient files created during test execution.
 Files are removed:
@@ -10,12 +10,12 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `../../LICENSE`.
 
-Directories:
+See `../../README.md` for an introduction to LiteTest.
+
+## Files
+
+- **README.md**: This directory guide.
+
+## Subdirectories
 
 - None.
-
-Files:
-
-- `README.md`: This directory guide.
-
-See `../../README.md` for a concise introduction to LiteTest.

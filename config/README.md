@@ -1,4 +1,4 @@
-# config
+# config/
 
 Directory for repository configuration files.
 
