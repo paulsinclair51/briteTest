@@ -70,9 +70,6 @@ The document's `u` (update) version track updates to this document and does not 
 
 ## Table of Contents
 
-<details>
-<summary>Table of Contents</summary>
-
 [**1. Introduction**](#1-introduction)  
 [***1. Public and Internal Name Conventions](#1.1-public-and-internal-name-conventions)  
   - [Why Internal Symbols Appear in the Header](#why-internal-symbols-appear-in-the-header)
