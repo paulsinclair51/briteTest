@@ -3,7 +3,7 @@
 This document provides a reference to the LiteTest Runner API internals.
 It includes types, structs, unions, enums, macros, and functions.
 
-**Copyright (c) 2026 Paul Sinclair**
+#### Copyright (c) 2026 Paul Sinclair
 
 <details>
 <summary>Click to view License</summary>
