@@ -7,7 +7,7 @@ the LiteTest Documentation Guide.
 **Copyright (c) 2026 Paul Sinclair**
 
 <details>
-<summary>Click to view License</summary>
+<summary>License</summary>
 
 #### **License**
 
@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 </details>
 
 <details>
-<summary>Click to view Preface</summary>
+<summary>Preface</summary>
 
 ## Preface
 
@@ -46,7 +46,7 @@ For a list of other LiteTest documents and the LiteTest repository layout, see
 the LiteTest Documentation Guide.
 
 <details>
-<summary>Click to view Document Version History</summary>
+<summary>Document Version History</summary>
 
 ### Document Version History
 
@@ -76,21 +76,17 @@ when `M` is incremented.
 <details>\
 <summary>Table of Contents</summary>
 
-<details>
-<summary>Click to view Table of Contents</summary>
-
 ## Table of Contents
 
 [1. Introduction](#1-introduction)
 [2. Glossary](#2-glossary)
-</details>
 </details>
 
 <details>
 <summary>Introduction</summary>
 
 <details>
-<summary>Click to view 1. Introduction</summary>
+<summary>1. Introduction</summary>
 
 ## 1. Introduction
 
@@ -107,10 +103,10 @@ to the LiteTest Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>A: Click to view Glossary</summary>
+<summary>A: Glossary</summary>
 
 <details>
-<summary>Click to view 2. Glossary</summary>
+<summary>2. Glossary</summary>
 
 ## 2. Glossary
 
@@ -143,7 +139,7 @@ to the LiteTest Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>C: Click to view </summary>
+<summary>C: </summary>
 
 - **category**: (LiteTest) A named set of `LT_GROUP` and `LT_TEST`
   macros whose combined results are written by `LT_WRITE_RESULT` to
