@@ -2,10 +2,10 @@
 
 This .
 
-**Copyright (c) 2026 Paul Sinclair**
+#### Copyright (c) 2026 Paul Sinclair
 
 <details>
-<summary>Click to view License</summary>
+<summary>License</summary>
 
 #### **License**
 
@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 </details>
 
 <details>
-<summary>Click to view Preface</summary>
+<summary>Preface</summary>
 
 ## Preface
 
@@ -44,7 +44,7 @@ the LiteTest Documentation Guide.
 For a glossary of terms, see the LiteTest Glossary Reference.
 
 <details>
-<summary>Click to view Document Version History</summary>
+<summary>Document Version History</summary>
 
 ### Document Version History
 
@@ -74,24 +74,15 @@ when `M` is incremented.
 <details>
 <summary>Table of Contents</summary>
 
-<details>
-<summary>Click to view Table of Contents</summary>
-
 ## Table of Contents
 
 [1. Introduction](#1-introduction)
 </details>
-</details>
 
 <details>
-<summary>Introduction</summary>
-
-<details>
-<summary>Click to view 1. Introduction</summary>
+<summary>1. Introduction</summary>
 
 ## 1. Introduction
 
 The 
 </details>
-</details>
-
