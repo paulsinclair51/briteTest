@@ -858,32 +858,33 @@ process_file() {
 
           print "```{=latex}"
           print "\\thispagestyle{empty}"
-          print "\\vspace*{0.33in}"
-          print "\\begin{center}"
+          print "\\vspace*{0.165in}"
           if (length(logo_png) > 0) {
+            print "\\noindent"
             print "\\setlength{\\tabcolsep}{0pt}"
-            print "\\begin{tabular*}{0.92\\textwidth}{@{}p{0.68\\textwidth}@{\\extracolsep{\\fill}}p{0.24\\textwidth}@{}}"
-            print "\\begin{minipage}[t]{0.68\\textwidth}"
+            print "\\begin{tabular*}{\\textwidth}{@{}p{0.34\\textwidth}@{\\extracolsep{\\fill}}p{0.56\\textwidth}@{}}"
+            print "\\begin{minipage}[c]{0.34\\textwidth}"
+            print "\\noindent\\includegraphics[height=5.64cm]{\\detokenize{" logo_png "}}"
+            print "\\end{minipage} &"
+            print "\\begin{minipage}[c]{0.56\\textwidth}"
             print "\\centering"
             if (length(title_line2) > 0) {
               print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
             } else {
               print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
             }
-            print "\\end{minipage} &"
-            print "\\begin{minipage}[t]{0.24\\textwidth}"
-            print "\\raggedleft\\includegraphics[height=2.82cm]{\\detokenize{" logo_png "}}"
             print "\\end{minipage}\\\\"
             print "\\end{tabular*}"
           } else {
+            print "\\begin{center}"
             if (length(title_line2) > 0) {
               print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
             } else {
               print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
             }
+            print "\\end{center}"
           }
-          print "\\end{center}"
-          print "\\vspace*{1.22in}"
+          print "\\vspace*{1.0in}"
           print "\\fontsize{12}{14}\\selectfont"
           if (have_versions == 1) {
             print "Document Version: " tex_escape(document_version) "\\par"
@@ -1092,32 +1093,33 @@ process_file() {
 
           print "```{=latex}"
           print "\\thispagestyle{empty}"
-          print "\\vspace*{0.33in}"
-          print "\\begin{center}"
+          print "\\vspace*{0.165in}"
           if (length(logo_png) > 0) {
+            print "\\noindent"
             print "\\setlength{\\tabcolsep}{0pt}"
-            print "\\begin{tabular*}{0.92\\textwidth}{@{}p{0.68\\textwidth}@{\\extracolsep{\\fill}}p{0.24\\textwidth}@{}}"
-            print "\\begin{minipage}[t]{0.68\\textwidth}"
+            print "\\begin{tabular*}{\\textwidth}{@{}p{0.34\\textwidth}@{\\extracolsep{\\fill}}p{0.56\\textwidth}@{}}"
+            print "\\begin{minipage}[c]{0.34\\textwidth}"
+            print "\\noindent\\includegraphics[height=5.64cm]{\\detokenize{" logo_png "}}"
+            print "\\end{minipage} &"
+            print "\\begin{minipage}[c]{0.56\\textwidth}"
             print "\\centering"
             if (length(title_line2) > 0) {
               print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
             } else {
               print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
             }
-            print "\\end{minipage} &"
-            print "\\begin{minipage}[t]{0.24\\textwidth}"
-            print "\\raggedleft\\includegraphics[height=2.82cm]{\\detokenize{" logo_png "}}"
             print "\\end{minipage}\\\\"
             print "\\end{tabular*}"
           } else {
+            print "\\begin{center}"
             if (length(title_line2) > 0) {
               print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
             } else {
               print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
             }
+            print "\\end{center}"
           }
-          print "\\end{center}"
-          print "\\vspace*{1.22in}"
+          print "\\vspace*{1.0in}"
           print "\\fontsize{12}{14}\\selectfont"
           if (have_versions == 1) {
             print "Document Version: " tex_escape(document_version) "\\par"
