@@ -145,6 +145,23 @@ Section one content.
 Section two content.
 EOF
 
+cat > "$tmpdir/in/toc_bullets.md" <<'EOF'
+# TOC Bullets
+
+## Table of Contents
+
+- [1. Introduction](#1-introduction)
+  - [1.1 Subsection](#11-subsection)
+
+## 1. Introduction
+
+Intro text.
+
+## 1.1 Subsection
+
+Subsection text.
+EOF
+
 cat > "$tmpdir/in/sub/two.md" <<'EOF'
 # Two
 EOF
@@ -352,14 +369,27 @@ test_details_conversion() {
   fi
   assert_contains "Visible body text" "$tmpdir/out/multisummary_default.pdf.src"
 
-  # Default mode must remove "Why Click to view?" blocks and insert \newpage before ## headings.
+  # Default mode must remove "Why Click to view?" blocks and insert \clearpage before ## headings.
   PATH="$test_path" "$script" "$tmpdir/in/whyclick.md" "$tmpdir/out/whyclick.pdf" >/dev/null
   assert_file_exists "$tmpdir/out/whyclick.pdf.src"
   if grep -Fq "This should be removed." "$tmpdir/out/whyclick.pdf.src"; then
     fail "default mode should remove Why Click to view? content"
   fi
-  assert_contains "\\newpage" "$tmpdir/out/whyclick.pdf.src"
+  assert_contains "\\clearpage" "$tmpdir/out/whyclick.pdf.src"
   assert_contains "Section one content." "$tmpdir/out/whyclick.pdf.src"
+
+}
+
+test_toc_bullet_link_rewrite() {
+  phase "toc bullet link rewrite"
+
+  PATH="$test_path" "$script" "$tmpdir/in/toc_bullets.md" "$tmpdir/out/toc_bullets.pdf" >/dev/null
+  assert_file_exists "$tmpdir/out/toc_bullets.pdf.src"
+  assert_contains "\\hyperref[introduction]{\\textcolor{ltlinkblue}{1. Introduction}}" "$tmpdir/out/toc_bullets.pdf.src"
+  assert_contains "\\hyperref[subsection]{\\textcolor{ltlinkblue}{\\pageref*{subsection}}}" "$tmpdir/out/toc_bullets.pdf.src"
+  if grep -Fq "\\tableofcontents" "$tmpdir/out/toc_bullets.pdf.src"; then
+    fail "manual TOC path should not inject \\tableofcontents"
+  fi
 }
 
 test_collision_detection_without_k() {
@@ -375,7 +405,7 @@ test_collision_detection_without_k() {
 test_backend_failure_propagation() {
   phase "backend failure propagation"
 
-  if PANDOC_FAIL_CODE=37 PATH="$test_path" "$script" "$tmpdir/in/one.md" "$tmpdir/out/failbackend.pdf" >/dev/null 2>"$tmpdir/backend.err"; then
+  if PANDOC_FAIL_CODE=37 PATH="$test_path" "$script" -b pandoc "$tmpdir/in/one.md" "$tmpdir/out/failbackend.pdf" >/dev/null 2>"$tmpdir/backend.err"; then
     fail "backend failure check unexpectedly passed"
   fi
   assert_contains "exit code 37" "$tmpdir/backend.err"
@@ -425,6 +455,7 @@ run_all_tests() {
   test_recursive_filters_and_patterns
   test_quiet_mode_output_behavior
   test_details_conversion
+  test_toc_bullet_link_rewrite
   test_collision_detection_without_k
   test_backend_failure_propagation
   test_directory_only_option_guards

@@ -537,7 +537,16 @@ convert_to_pdf() {
   header_title=$(latex_escape "$display_title")
 
   cat > "$header_file" <<EOF
+\usepackage{xcolor}
 \\usepackage{hyperref}
+\definecolor{ltlinkblue}{RGB}{30,92,160}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=ltlinkblue,
+  urlcolor=ltlinkblue,
+  citecolor=ltlinkblue,
+  pdfborder={0 0 0}
+}
 \\usepackage{fancyhdr}
 \\newif\\ifltaftertoc
 \\ltaftertocfalse
@@ -684,10 +693,24 @@ process_file() {
 
       function normalize_anchor(anchor) {
         sub(/^#/, "", anchor)
-        if (anchor ~ /^[0-9]+-/) {
-          sub(/^[0-9]+-/, "", anchor)
+        sub(/^user-content-/, "", anchor)
+        if (anchor ~ /^[0-9]+([.-][0-9]+)*-/) {
+          sub(/^[0-9]+([.-][0-9]+)*-/, "", anchor)
         }
         return anchor
+      }
+
+      function normalize_title(text,    t) {
+        t = tolower(text)
+        gsub(/\*\*/, "", t)
+        gsub(/[*`_]/, "", t)
+        gsub(/<[^>]+>/, "", t)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", t)
+        if (t ~ /^[0-9]+([.][0-9]+)*[.)]?[[:space:]]+/) {
+          sub(/^[0-9]+([.][0-9]+)*[.)]?[[:space:]]+/, "", t)
+        }
+        gsub(/[[:space:]]+/, " ", t)
+        return t
       }
 
       {
@@ -819,12 +842,21 @@ process_file() {
           section_title = line
           sub(/^##[[:space:]]+/, "", section_title)
           if (tolower(section_title) != "license") {
+            section_key = normalize_title(section_title)
+            section_anchor = ""
+            if (section_key in toc_title_to_anchor) {
+              section_anchor = toc_title_to_anchor[section_key]
+            }
             print "```{=latex}"
             print "\\clearpage"
             if (main_numbering_started != 1 && section_title ~ /^1\./) {
               print "\\pagenumbering{arabic}"
               print "\\setcounter{page}{1}"
               main_numbering_started = 1
+            }
+            if (length(section_anchor) > 0) {
+              print "\\phantomsection"
+              print "\\label{" section_anchor "}"
             }
             print "\\ltsetrunninghead{" tex_escape(section_title) "}"
             print "\\global\\ltaftertoctrue"
@@ -842,24 +874,33 @@ process_file() {
         if (in_toc_md == 1) {
           if (match(line, /^##[[:space:]]+/) && !match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
             in_toc_md = 0
-          } else if (match(line, /^[[:space:]]*\[[^]]+\]\([^)]*\)/)) {
-            toc_text = line
-            sub(/^[[:space:]]*\[/, "", toc_text)
-            sub(/\]\([^)]*\).*/, "", toc_text)
+          } else if (match(line, /\[[^]]+\]\([^)]*\)/)) {
+            toc_item = substr(line, RSTART, RLENGTH)
+
+            toc_text = toc_item
+            sub(/^\[/, "", toc_text)
+            sub(/\]\([^)]*\)$/, "", toc_text)
             gsub(/\*\*/, "", toc_text)
 
-            toc_anchor = line
-            sub(/^[[:space:]]*\[[^]]+\]\(#?/, "", toc_anchor)
-            sub(/\).*/, "", toc_anchor)
+            toc_anchor = toc_item
+            sub(/^\[[^]]+\]\(#?/, "", toc_anchor)
+            sub(/\)$/, "", toc_anchor)
             toc_anchor = normalize_anchor(toc_anchor)
+
+            toc_key = normalize_title(toc_text)
+            if (length(toc_anchor) > 0 && !(toc_key in toc_title_to_anchor)) {
+              toc_title_to_anchor[toc_key] = toc_anchor
+            }
 
             if (length(toc_anchor) > 0) {
               print "```{=latex}"
-              print "\\noindent\\hyperref[" toc_anchor "]{" tex_escape(toc_text) "}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\pageref*{" toc_anchor "}}\\par"
+              print "\\noindent\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" tex_escape(toc_text) "}}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{\\pageref*{" toc_anchor "}}}\\par"
               print "```"
             } else {
               print line
             }
+            next
+          } else {
             next
           }
         }
@@ -901,10 +942,24 @@ process_file() {
 
       function normalize_anchor(anchor) {
         sub(/^#/, "", anchor)
-        if (anchor ~ /^[0-9]+-/) {
-          sub(/^[0-9]+-/, "", anchor)
+        sub(/^user-content-/, "", anchor)
+        if (anchor ~ /^[0-9]+([.-][0-9]+)*-/) {
+          sub(/^[0-9]+([.-][0-9]+)*-/, "", anchor)
         }
         return anchor
+      }
+
+      function normalize_title(text,    t) {
+        t = tolower(text)
+        gsub(/\*\*/, "", t)
+        gsub(/[*`_]/, "", t)
+        gsub(/<[^>]+>/, "", t)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", t)
+        if (t ~ /^[0-9]+([.][0-9]+)*[.)]?[[:space:]]+/) {
+          sub(/^[0-9]+([.][0-9]+)*[.)]?[[:space:]]+/, "", t)
+        }
+        gsub(/[[:space:]]+/, " ", t)
+        return t
       }
 
       {
@@ -1004,12 +1059,21 @@ process_file() {
           section_title = line
           sub(/^##[[:space:]]+/, "", section_title)
           if (tolower(section_title) != "license") {
+            section_key = normalize_title(section_title)
+            section_anchor = ""
+            if (section_key in toc_title_to_anchor) {
+              section_anchor = toc_title_to_anchor[section_key]
+            }
             print "```{=latex}"
             print "\\clearpage"
             if (main_numbering_started != 1 && section_title ~ /^1\./) {
               print "\\pagenumbering{arabic}"
               print "\\setcounter{page}{1}"
               main_numbering_started = 1
+            }
+            if (length(section_anchor) > 0) {
+              print "\\phantomsection"
+              print "\\label{" section_anchor "}"
             }
             print "\\ltsetrunninghead{" tex_escape(section_title) "}"
             print "\\global\\ltaftertoctrue"
@@ -1027,24 +1091,33 @@ process_file() {
         if (in_toc_md == 1) {
           if (match(line, /^##[[:space:]]+/) && !match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
             in_toc_md = 0
-          } else if (match(line, /^[[:space:]]*\[[^]]+\]\([^)]*\)/)) {
-            toc_text = line
-            sub(/^[[:space:]]*\[/, "", toc_text)
-            sub(/\]\([^)]*\).*/, "", toc_text)
+          } else if (match(line, /\[[^]]+\]\([^)]*\)/)) {
+            toc_item = substr(line, RSTART, RLENGTH)
+
+            toc_text = toc_item
+            sub(/^\[/, "", toc_text)
+            sub(/\]\([^)]*\)$/, "", toc_text)
             gsub(/\*\*/, "", toc_text)
 
-            toc_anchor = line
-            sub(/^[[:space:]]*\[[^]]+\]\(#?/, "", toc_anchor)
-            sub(/\).*/, "", toc_anchor)
+            toc_anchor = toc_item
+            sub(/^\[[^]]+\]\(#?/, "", toc_anchor)
+            sub(/\)$/, "", toc_anchor)
             toc_anchor = normalize_anchor(toc_anchor)
+
+            toc_key = normalize_title(toc_text)
+            if (length(toc_anchor) > 0 && !(toc_key in toc_title_to_anchor)) {
+              toc_title_to_anchor[toc_key] = toc_anchor
+            }
 
             if (length(toc_anchor) > 0) {
               print "```{=latex}"
-              print "\\noindent\\hyperref[" toc_anchor "]{" tex_escape(toc_text) "}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\pageref*{" toc_anchor "}}\\par"
+              print "\\noindent\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" tex_escape(toc_text) "}}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{\\pageref*{" toc_anchor "}}}\\par"
               print "```"
             } else {
               print line
             }
+            next
+          } else {
             next
           }
         }
