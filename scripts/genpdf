@@ -808,7 +808,7 @@ process_file() {
             print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
           }
           print "\\end{center}"
-          print "\\vspace*{0.72in}"
+          print "\\vspace*{1.22in}"
           print "\\fontsize{12}{14}\\selectfont"
           if (have_versions == 1) {
             print "Document Version: " tex_escape(document_version) "\\par"
@@ -1025,7 +1025,7 @@ process_file() {
             print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
           }
           print "\\end{center}"
-          print "\\vspace*{0.72in}"
+          print "\\vspace*{1.22in}"
           print "\\fontsize{12}{14}\\selectfont"
           if (have_versions == 1) {
             print "Document Version: " tex_escape(document_version) "\\par"
