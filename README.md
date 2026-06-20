@@ -1,18 +1,22 @@
 # LiteTest
 
 LiteTest is a lightweight framework and Application Programming Interface (API)
-for defining, running, and reporting tests in C/C++ projects. It provides a simple
-core macro-driven Runner API plus a function-based Test API, fault‑tolerant execution, and clear reporting — ideal for small to medium C projects that need reliable testing 
-without heavy tooling and dependencies. It can be used for unit and command-line testing.
+for defining, running, and reporting tests in C/C++ projects. It provides a
+simple core macro-driven Runner API plus a function-based Test API,
+fault‑tolerant execution, and clear reporting. It is ideal for small to medium
+C projects that need reliable testing without heavy tooling and dependencies.
+It can be used for unit and command-line testing.
 
-LiteTest provides a Runner API and a Test API, each implemented with a single .h / .c pair with no external dependencies requiring only a POSIX.1‑2001 environment and a C99‑compliant compiler.
+LiteTest provides a Runner API and a Test API, each implemented with a single
+.h / .c pair with no external dependencies and requiring only a POSIX.1‑2001
+environment and a C99‑compliant compiler.
 
 **Copyright (c) 2026 Paul Sinclair**
 
 <details>
 <summary>License</summary>
 
-#### **License**
+## License
 
 SPDX-License-Identifier: MIT
 
@@ -40,78 +44,80 @@ SOFTWARE.
 
 ## Preface
 
-For user documentation of the LiteTest framework, Runner API, and Test API, see:
-
-- **README.md** — Introduction and quick summary atart to LiteTest.
-- **LiteTest User Guide** — Concepts, workflow, examples.
-- **LiteTest API Reference** — Public API types, enums, macros, and functions.
-
-for contributor and maintainer documentation of the LiteTest framework,
-additionally see:
-
-- **LiteTest Contributor Guide** — Versioning, branching, testing, documentation rules.  
-- **LiteTest Framesork Guide** — Concepts, workflow, examples.
-- **LiteTest API Reference** — Private (internal) framework types, enums, macros, functions, etc.
-
-See [Repository Layout](#repository-layout) for locations of the above and the
-LiteTest directories and files,
+For LiteTest documentation and the repository layout, see the
+**[LiteTest Documentation Guide](docs/LiteTest_Documentation_Guide.md)**.
 </details>
 
 <details>
-<summary>Table of Contets</summary>
+<summary>Table of Contents</summary>
 
 ## Table of Contents
 
-- [Quick Start](#quick-start)
-- [Documentation](#documentation)
-- [Key Features](#key-features)
-- [API Usage Requirements](#api-usage-requirements)
-- [How LiteTest Compares](#how-litetest-compares)
-- [What LiteTest Does Not Provide](#what-litetest-does-not-provide)
-- [Overview](#overview)
-- [Core API Macros](#core-api-macros)
-  - [Macros for the Orchestrator (main) Function](#macros-for-the-orchestrator-main-function)
-  - [Macros for a Test Group Function](#macros-for-a-test-group-function)
-  - [Macros for Executing a Test Group Function or Test Expression](#macros-for-executing-a-test-group-function-or-test-expression)
-    - [Parallel Execution](#parallel-execution)
-  - [Macros for Concurrent Execution](#macros-for-concurrent-execution)
-  - [Isolation Modes and Fault Handling](#isolation-modes-and-fault-handling)
-- [Customization Support API](#customization-support-api)
-- [Test Support API](#test-support-api)
-- [Repository Layout](#repository-layout)
-- [Further Reading](#further-reading)
-- [Glossary](#glossary)
+[**1. Introduction**](#1-introduction)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**1.1. Key Features**](#11-key-features)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**1.2. Quick Start**](#12-quick-start)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**1.3. Requirements**](#13-requirements)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**1.4. Installation**](#14-installation)<br>
+
+[**2. LiteTest Runner Framework and API**](#2-litetest-runner-framework-and-api)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**2.1. What the Runner Framework and API Does**](#21-what-the-runner-framework-and-api-does)<br>
+
+[**3. Running Tests**](#3-running-tests)<br>
+
+[**4. Report Generation**](#4-report-generation)<br>
+
+[**5. Customization**](#5-customization)<br>
+
+[**6. Test Report**](#6-test-report)<br>
+
+[**7. Advanced Features and Topics**](#7-advanced-features-and-topics)<br>
+
+[**8. Test Expressions**](#8-test-expressions)<br>
+
+[**9. Setup and Teardown**](#9-setup-and-teardown)<br>
+
+[**10. Test Groups**](#10-test-groups)<br>
+
+[**11. Concurrent Tests**](#11-concurrent-tests)<br>
+
+[**12. Isolation**](#12-isolation)<br>
+
+[**13. LiteTest Test API**](#13-litetest-test-api)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**13.1 File Functions**](#131-file-functions)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**13.2 Compare Functions**](#132-compare-functions)
 </details>
+
+<details>
+
+<summary>1. Introduction</summary>
 
 ## 1. Introduction
 
+<details>
+<summary>1.1. Key Features</summary>
+
+### 1.1. Key Features
+
+- Pure C implementation
+- Minimal footprint (single header + source)
+- Fault detection using POSIX signals
+- Optional process‑isolated execution
+- Parallel and concurrent test execution
+- Clear pass/fail/fault reporting
+- Simple API based on macros and test group functions
+
 </details>
 
 <details>
-<summary>Key Features</summary>
-
-### 1.1.Key Features
-
-- Pure C implementation  
-- Minimal footprint (single header + source)  
-- Fault detection using POSIX signals  
-- Optional process‑isolated execution  
-- Parallel and concurrent test execution  
-- Clear pass/fail/fault reporting  
-- Simple API based on macros and test group functions  
+<summary>1.2. Quick Start</summary>
 
 ### 1.2. Quick Start
 
-A test executable onsists of your tests as C/C++ expressions/functions, and the
+A test executable consists of your tests as C/C++ expressions/functions, and the
 orchestrator and test group functions you write using the LiteTest API that
 manages the execution.
 
-To try LiteTest, simply follow these 6 steps:
-
-<details>
-<summary><strong></strong></summary>
-
-1, copy 'litetest_runner.h' and 'litetest_runner.c' to your current directory:
+1. Copy 'litetest_runner.h' and 'litetest_runner.c' to your current directory:
 
 ```sh
 cp /path/to/litetest_runner.h .
@@ -123,7 +129,7 @@ cp /path/to/litetest_runner.c .
 3. Copy and paste the code into `test_quick.c`:
 
 <details>
-<summary>💻  and copy</summary>
+<summary>💻 and copy</summary>
 
 ```c
 #include "litetest_runner.h"
@@ -176,6 +182,7 @@ LT_DECLARE_ORCHESTRATOR(main)
   LT_EXIT;
 }
 ```
+
 </details>
 
 4. Build the executable `test_quick` in your current directory:
@@ -196,10 +203,9 @@ cc -std=c99 -Wall -Wextra -o test_quick test_quick.c litetest_runner.c
 less quick_test_report.txt   # Press 'q' to quit
 ```
 
-Example of the report:
-
 <details>
-<summary>💻 </summary>
+<summary>💻Example of the Report </summary>
+Example of the report:
 
 ```text
 LiteTest Report
@@ -210,30 +216,26 @@ LiteTest Report
 --------------------------------------------------
                       Total    10
 ```
+
+</details>
 </details>
 
 <details>
-<summary>Getting Started</summary>
+<summary>1.3. Requirements</summary>
 
-### 1.3. Getting Started
-
-TODO
-</details>
-
-<details>
-<summary>Requirements</summary>
-
-### 1.4.Requirements
+### 1.3. Requirements
 
 Supported compilers, C standard level, and any platform notes.
 </details>
 
 <details>
-<summary>Installation</summary>
+<summary>1.4. Installation</summary>
 
-### 1.5. Installation
+### 1.4. Installation
 
-How to add LiteTest to your project—copying the header, adding the source file, or integrating via your build system.
+How to add LiteTest to your project, including copying the header, adding the
+source file, or integrating via your build system.
+</details>
 </details>
 
 <details>
@@ -242,117 +244,130 @@ How to add LiteTest to your project—copying the header, adding the source file
 ## 2. LiteTest Runner Framework and API
 
 The Runner framework (implemented using the Runner API) executes all test
-expressions (that implemennt the tests), aggregates results, and produces
+expressions (that implement the tests), aggregates results, and produces
 the report. This is the framework used by your test executable.
 
+The Runner API provides typedefs, enums, macros, and functions for writing
+tests. Developers use this API to express expected behavior, group related
+tests, and define optional setup/teardown logic.
+
 <details>
-<summary>What the Runner Framework and API Does</summary>
+<summary>2.1. What the Runner Framework and API Does</summary>
 
 ### 2.1. What the Runner Framework and API Does
 
-<details>
-<summary>Running Tests</summary>
-
-### 2.2. Running Tests
-
-How to invoke the runner from `main()`, including optional parameters such as output paths or configuration flags.
+TODO
+</details>
 </details>
 
 <details>
-<summary>Report Generation</summary>
+<summary>3. Running Tests</summary>
 
-## Report Generation
+## 3. Running Tests
+
+How to invoke the runner from `main()`, including optional parameters such as
+output paths or configuration flags.
+</details>
+
+<details>
+<summary>4. Report Generation</summary>
+
+## 4. Report Generation
 
 How LiteTest collects pass/fail information and formats it for output.
 </details>
 
 <details>
-<summary>Customization</summary>
+<summary>5. Customization</summary>
 
-### Customization
+## 5. Customization
 
-Notes that you can build your own runner logic if you need custom ordering, filtering, or integration behavior.
+Notes that you can build your own runner logic if you need custom ordering,
+filtering, or integration behavior.
 </details>
 
 <details>
-<summary>Test Report</summary>
+<summary>6. Test Report</summary>
 
-### Test Report
+## 6. Test Report
 
-Describes the structure of the test report, failures, optional details—an
-d how to consume it in tooling or CI.
+Describes the structure of the test report, failures, optional details, and
+how to consume it in tooling or CI.
 </details>
 
 <details>
-<summary>Advanced Features and Topic</summary>
+<summary>7. Advanced Features and Topics</summary>
 
-### Advanced Features and Topics
+## 7. Advanced Features and Topics
 
 *Filtering tests and custom report writers are available in the User Guide.*
 </details>
+
+<details>
+<summary>8. Test Expressions</summary>
+
+## 8. Test Expressions
+
+How to write a test expression for `LT_TEST(expr)` and how expressions are
+evaluated.
 </details>
 
 <details>
-<summary>Test Expressions</summary>
+<summary>9. Setup and Teardown</summary>
 
-## Test Expressions
-
-How to write a test expression for `LT_TEST(expr)` and how expressions are evaluated.
-</details>
-
-<details>
-<summary>Setup and Teardow</summary>
-
-### Setup and Teardown
+## 9. Setup and Teardown
 
 Optional per‑group or per‑test initialization and cleanup helpers.
 </details>
 
 <details>
-<summary>Test Groups</summary>
+<summary>10. Test Groups</summary>
 
-### Test Groups
+## 10. Test Groups
 
-How to organize related tests into groups for readability and logical structure.
+How to organize related tests into groups for readability and logical
+structure.
 </details>
 
 <details>
-<summary>Concurrent Tests</summary>
+<summary>11. Concurrent Tests</summary>
 
-### Concurrent Tests
+## 11. Concurrent Tests
 
-How to mark tests as concurrent and how LiteTest handles parallel execution safely.
+How to mark tests as concurrent and how LiteTest handles parallel execution
+safely.
 </details>
 
 <details>
-<summary>Isolation</summary>
+<summary>12. Isolation</summary>
 
-### Isolation
+## 12. Isolation
 
 isolation ...
 </details>
-</details>
 
 <details>
-<summary>LiteTest Test API</summary>
+<summary>13. LiteTest Test API</summary>
 
-## LiteTest Test API
+## 13. LiteTest Test API
 
-The Test API provides the macros and structure for writing tests. Developers use this API to express expected behavior, group related tests, and define optional setup/teardown logic.
+The Test API provides macros and functions for writing tests. Developers use
+this API to express expected behavior, group related tests, and define optional
+setup/teardown logic.
 
 <details>
-<summary>File Functions</summary>
+<summary>13.1 File Functions</summary>
 
-### File Functions
+### 13.1 File Functions
 
 Examples of file functions:
 </details>
 
 <details>
-<summary>Compare Fucnctions</summary>
+<summary>13.2. Compare Functions</summary>
 
-### Compare Functions
+### 13.2 Compare Functions
 
-Examples of compare Functions:
+Examples of compare functions:
 </details>
 </details>

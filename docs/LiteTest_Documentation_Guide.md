@@ -169,12 +169,13 @@ The following shows the layout of the GitHub repository
 ```text
 .github/workflows/ci.yml
 README.md
-README.pdf
 LICENSE
 .gitignore
 Makefile
 build_test_litetest.ps1
 build/                  # Build outputs and related artifacts.
+config/                 # Repository configuration files.
+    markdownlint.json
 docs/                   # User and contributor documentation .
     LiteTest_*_Guide.md
     LiteTest_*_Reference.md
