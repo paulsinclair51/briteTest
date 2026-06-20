@@ -4,10 +4,10 @@ This document summarizes the public Test API declared in `include/litetest_test.
 It focuses on the helper-specific return conventions and the option structs used by the
 comparison helpers.
 
-**Copyright (c) 2026 Paul Sinclair**
+#### Copyright (c) 2026 Paul Sinclair
 
 <details>
-<summary>Click to view License</summary>
+<summary>License</summary>
 
 #### **License**
 
@@ -33,7 +33,7 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>Click to view Preface</summary>
+<summary>Preface</summary>
 
 ## Preface
 
@@ -48,7 +48,7 @@ For a glossary of terms, see the LiteTest Glossary Reference.
 </details>
 
 <details>
-<summary>Click to view Document Version History</summary>
+<summary>Document Version History</summary>
 
 #### Document Version History
 
@@ -88,13 +88,13 @@ The document’s `M` (Major) version matches the LiteTest Runner's `M` (Major) v
 </details>
 
 <details>
-<summary>Click to view 1. Return Conventions</summary>
+<summary>1. Return Conventions</summary>
 
 ## 1. Return Conventions
 </details>
 
 <details>
-<summary>Click to view 1.1 Return Styles</summary>
+<summary>1.1 Return Styles</summary>
 
 ### 1.1 Return Styles
 
@@ -106,7 +106,7 @@ LiteTest test helpers use three return styles:
 </details>
 
 <details>
-<summary>Click to view 1.2 Assertion Guidance</summary>
+<summary>1.2 Assertion Guidance</summary>
 
 ### 1.2 Assertion Guidance
 
@@ -118,7 +118,7 @@ Use the helper family to decide what to check:
 </details>
 
 <details>
-<summary>Click to view 2. Comparison Option Structs</summary>
+<summary>2. Comparison Option Structs</summary>
 
 ## 2. Comparison Option Structs
 
@@ -126,7 +126,7 @@ The comparison helpers use small option structs instead of mixed boolean and fla
 </details>
 
 <details>
-<summary>Click to view 2.1 `lt_path_compare_options_t`</summary>
+<summary>2.1 `lt_path_compare_options_t`</summary>
 
 ### 2.1 `lt_path_compare_options_t`
 
@@ -154,7 +154,7 @@ Default initializer:
 </details>
 
 <details>
-<summary>Click to view 2.2 `lt_path_metadata_compare_options_t`</summary>
+<summary>2.2 `lt_path_metadata_compare_options_t`</summary>
 
 ### 2.2 `lt_path_metadata_compare_options_t`
 
@@ -184,7 +184,7 @@ Passing `NULL` or the default initializer uses the common default metadata set: 
 </details>
 
 <details>
-<summary>Click to view 2.3 `lt_json_compare_options_t`</summary>
+<summary>2.3 `lt_json_compare_options_t`</summary>
 
 ### 2.3 `lt_json_compare_options_t`
 
@@ -207,7 +207,7 @@ Use `ignore_key_order` when semantic JSON equality matters more than source orde
 </details>
 
 <details>
-<summary>Click to view 2.4 `lt_text_compare_options_t`</summary>
+<summary>2.4 `lt_text_compare_options_t`</summary>
 
 ### 2.4 `lt_text_compare_options_t`
 
@@ -228,13 +228,13 @@ Default initializer:
 </details>
 
 <details>
-<summary>Click to view 3. Common Usage Patterns</summary>
+<summary>3. Common Usage Patterns</summary>
 
 ## 3. Common Usage Patterns
 </details>
 
 <details>
-<summary>Click to view 3.1 Compare Two Paths While Ignoring Timestamps</summary>
+<summary>3.1 Compare Two Paths While Ignoring Timestamps</summary>
 
 ### 3.1 Compare Two Paths While Ignoring Timestamps
 
@@ -248,7 +248,7 @@ LT_ASSERT(lt_compare_paths_with_options(expected_path, actual_path, &options) ==
 </details>
 
 <details>
-<summary>Click to view 3.2 Compare Path Metadata Including Modification Time</summary>
+<summary>3.2 Compare Path Metadata Including Modification Time</summary>
 
 ### 3.2 Compare Path Metadata Including Modification Time
 
@@ -262,7 +262,7 @@ LT_ASSERT(lt_compare_path_metadata(left_path, right_path, &options) == LT_OK, 0)
 </details>
 
 <details>
-<summary>Click to view 3.3 Compare JSON While Ignoring Object Key Order</summary>
+<summary>3.3 Compare JSON While Ignoring Object Key Order</summary>
 
 ### 3.3 Compare JSON While Ignoring Object Key Order
 
@@ -277,7 +277,7 @@ LT_ASSERT(lt_compare_json_with_limit(expected_json, actual_json, &options) == LT
 </details>
 
 <details>
-<summary>Click to view 3.4 Compare Text While Ignoring Whitespace and Line Endings</summary>
+<summary>3.4 Compare Text While Ignoring Whitespace and Line Endings</summary>
 
 ### 3.4 Compare Text While Ignoring Whitespace and Line Endings
 
@@ -292,7 +292,7 @@ LT_ASSERT(lt_compare_text_normalized(left_text, right_text, &options) == LT_OK, 
 </details>
 
 <details>
-<summary>Click to view 4. Convenience Forms</summary>
+<summary>4. Convenience Forms</summary>
 
 ## 4. Convenience Forms
 
