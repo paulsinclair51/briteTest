@@ -12,7 +12,7 @@ It can be used for unit and command-line testing.
 <details>
 <summary>License</summary>
 
-#### **License**
+#### License
 
 SPDX-License-Identifier: MIT
 
@@ -49,6 +49,8 @@ the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
 
 For a glossary of terms, see the LiteTest Glossary Reference
 (`LiteTest_Glossary_Reference.md`).
+
+For a printer-friendly PDF file for this document, see `docs/pdf/LiteTest.pdf`.
 
 <details>
 <summary>Document Version History</summary>
