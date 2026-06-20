@@ -61,7 +61,7 @@ $(TARGET): $(OBJECTS)
 
 #run the tests.
 test: test_litetest
-    ./test_litetest
+	./test_litetest
 
 run: $(TARGET)
 	mkdir -p ./reports
@@ -70,10 +70,14 @@ run: $(TARGET)
 	./$(TARGET) --help > ./reports/litetest_help.txt
 	./$(TARGET) -h > ./reports/litetest_.txt
 
+lint-md:
+	@find . -type f -name '*.md' ! -path './.git/*' -print0 | \
+		xargs -0 npx -y markdownlint-cli --config config/markdownlint.json
+
 test-genpdf:
 	bash ./scripts/test_genpdf.sh
 
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run test-genpdf clean
+.PHONY: all run lint-md test-genpdf clean
