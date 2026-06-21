@@ -71,10 +71,10 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
 
-The document's update version tracks updates to this document and does
-not correspond to a minor or patch version. `u` increments whenever
-this document is updated without a change to `M`, and it resets to `0`
-when `M` is incremented.
+The document's update version tracks released updates to this document and does
+not correspond to a minor or patch version. `u` increments when document
+changes are published in a release without a change to `M`, and it resets to
+`0` when `M` is incremented.
 </details>
 </details>
 
@@ -96,6 +96,8 @@ when `M` is incremented.
 [**6. Writing Style Consistency**](#6-writing-style-consistency)
 
 [**7. Pull Requests**](#7-pull-requests)
+
+[**8. Alternative Project Names and Rename Plan**](#8-alternative-project-names-and-rename-plan)
 
 [**Glossary**](#glossary)
 </details>
@@ -158,9 +160,10 @@ When updating the version for the Test API:
 - Update `LT_TEST_VERSION_C` in `litetest_test.c`.
 
 When updating the version for a document:
-- Add a new new entry to the top of the Document Verion History table
-  for the document, with an incremented value for u if major is not
-  incremented, otherwise with with 0.
+- Add a new entry to the top of the Document Version History table only when
+  the document changes are being published in a release.
+- Increment `u` if the major version is not incremented.
+- Reset the update value to `0` when the major version is incremented.
 
 API compatibility rules:
 - Public APIs are additive by default.
@@ -274,6 +277,90 @@ Before submitting a PR:
 - Update version numbers if needed.
 - Update documentation as needed.
 - Keep changes focused and well‑scoped.
+</details>
+
+<details>
+<summary>8. Alternative Project Names and Rename Plan</summary>
+
+## 8. Alternative Project Names and Rename Plan
+
+Preferred alternative names for LiteTest:
+
+- CanaryRunner
+- CanaryAssert
+- CanaryProof
+- CanaryTestRunner
+
+These names are reserved as fallback options if a naming conflict requires a
+project rename.
+
+Additional two-letter abbreviation candidates:
+
+These notes are an informal naming screen only. They are based on how generic,
+descriptive, or commonly used the terms appear in software and testing. They
+are not a trademark search or legal clearance.
+
+| Name | Abbrev. | Informal conflict note | Likelihood |
+|------|---------|------------------------|------------|
+| LiteTest | LT | Clear and close to the project's lightweight positioning, but both `lite` and `test` are common software terms, so overlap with existing package or tool names is plausible. | Medium |
+| CanaryTest | CT | Strong fit for the canary theme, but `canary` and `canary testing` are already common software terms, which makes the name less distinctive. | Higher |
+| CoreTest | CT | Clear and technical, but both `core` and `test` are common product words and may overlap with existing tools or internal packages. | Medium |
+| ClearTest | CT | Readable and descriptive, but the name is broad and likely to overlap with existing testing or QA branding. | Medium |
+| TinyTest | TT | Good match for a lightweight framework, but it is fairly descriptive and similar in shape to other small-test framework names. | Medium |
+| TraceTest | TT | More distinctive than generic `test` compounds, though `trace` is still a common engineering term. | Medium-Low |
+| SwiftTest | ST | Memorable, but `Swift` has strong existing association with Apple's Swift ecosystem, which could create confusion. | Higher |
+| QuickTest | QT | Familiar and easy to say, but `QuickTest` has long-standing use in software testing and QA tooling. | Higher |
+| CompactTest | CT | Fits the lightweight positioning and is somewhat more distinctive than `CoreTest` or `ClearTest`, though still descriptive. | Medium-Low |
+| PublicTest | PT | Descriptive and understandable, but `public` is a common language and API term, which makes the name fairly broad. | Medium |
+| APITest | AT | Directly describes API testing, but the term is highly generic and already widely used across tools, articles, and packages. | Higher |
+| FastTest | FT | Strong performance-oriented signal, but `fast` and `test` are both generic terms and likely to overlap with existing tooling names. | Medium-High |
+
+Working preference among the two-letter candidates:
+
+- `CompactTest (CT)` for a lower-conflict descriptive option.
+- `TraceTest (TT)` for a more distinctive technical option.
+- `CanaryTest (CT)` only if the canary theme is more important than name distinctiveness.
+
+Fast low-risk rename plan:
+
+1. Branch and freeze scope
+- Create a dedicated rename branch.
+- Restrict the change to naming and branding only.
+
+2. Choose one approved replacement name
+- Select one of the four preferred alternatives.
+- Use the chosen name consistently across code, docs, and assets.
+
+3. Update user-facing names first
+- Update the project title in `README.md`.
+- Update top-level headings in LiteTest documentation files.
+- Add a temporary note in `README.md` that the project was renamed from LiteTest.
+
+4. Update branding assets
+- Duplicate existing branding files to the new naming scheme.
+- Regenerate PNG files from SVG files.
+- Keep old logo files temporarily for one release to avoid broken references.
+
+5. Update generator and file references
+- Update `scripts/genpdf` to use the new document branding file names.
+- Update markdown image references to point to renamed branding files.
+- Regenerate all PDFs and verify output paths.
+
+6. Update source identifiers carefully
+- Update only external identifiers that represent the project brand.
+- Avoid changing public API symbols unless explicitly required.
+- If API symbol changes are required, treat them as a major-version change.
+
+7. Validate and test
+- Run `make run`.
+- Run full PDF generation and verify branding and title pages.
+- Verify no stale references remain with a repository-wide text search.
+
+8. Ship with rollback safety
+- Commit the rename in one focused commit.
+- Keep a rollback commit point before removing old compatibility references.
+- In the next release, remove temporary compatibility references after verification.
+
 </details>
 
 <details>

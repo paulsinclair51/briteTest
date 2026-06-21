@@ -66,14 +66,14 @@ For a glossary of terms, see the LiteTest Glossary Reference
 - The **Test** column records the LiteTest Test API version current at
   the time this document version was published and is defined by its
   `LT_TEST_VERSION` macro.
-- Both the Runner API and Test API use the version format `"M.m.p"` (Major, minor,
+- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
 
-The document's update version tracks updates to this document and does
-not correspond to a minor or patch version. `u` increments whenever
-this document is updated without a change to `M`, and it resets to `0`
-when `M` is incremented.
+The document's update version tracks released updates to this document and does
+not correspond to a minor or patch version. `u` increments when document
+changes are published in a release without a change to `M`, and it resets to
+`0` when `M` is incremented.
 </details>
 </details>
 

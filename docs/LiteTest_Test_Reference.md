@@ -53,22 +53,28 @@ For a glossary of terms, see the LiteTest Glossary Reference.
 <details>
 <summary>Document Version History</summary>
 
-#### Document Version History
+### Document Version History
 
-<details>
-<summary>Click to view</summary>
+| Document | Runner | Test | Date | Comment | Author/Editor |
+|----------|------|--------|------|---------|---------------|
+| 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
 
-| Document | Date | Runner ! Test | Comment | Author/Editor |
-|----------|------|----------|---------|---------------|
-| 1.0 | 2026‑06‑11 | 1.0.0 | 1.0.0 ! Initial version. | Paul Sinclair |
+- The **Document** column records the document's version with the
+  format `M.u` (Major, update).
+- The **Runner** column records the LiteTest Runner API version
+  current at the time this document version was published and is
+  defined by its `LT_RUNNER_VERSION` macro.
+- The **Test** column records the LiteTest Test API version current at
+  the time this document version was published and is defined by its
+  `LT_TEST_VERSION` macro.
+- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
+  patch).
+- `M` is the same for the Document, Runner, and Test versions.
 
-The `Document` column uses the version format `M.u` (Major, update). The `Runner` column records the LiteTest Runner version current at the time this document version was published.
-The `Test` column records the LiteTest Test version current at the time this document version was published.
-
-The current LiteTest Runner version is defined by the `LT_RUNNER_VERSION` macro in the LiteTest RUNNER API. The current LiteTest Test version is defined by the `LT_TEST_VERSION` macro in the LiteTest Test API. Both specify a string of the form `"M.m.p"` (Major, minor, patch). The 
-
-The document’s `M` (Major) version matches the LiteTest Runner's `M` (Major) version which matches the LiteTest Test's `M` (Major) version. The document's `u` (update) version track updates to this document and does not correspond to a `m` (minor) or `p` (patch) version. `u` increments whenever this document is updated without a change to `M`, and it resets to `0` when `M` is incremented.
-</details>
+The document's update version tracks released updates to this document and does
+not correspond to a minor or patch version. `u` increments when document
+changes are published in a release without a change to `M`, and it resets to
+`0` when `M` is incremented.
 </details>
 
 <details>
