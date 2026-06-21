@@ -445,6 +445,59 @@ _genpdf_logo_png() {
   echo "$png"
 }
 
+_genpdf_doc_logo_png() {
+  # Prefer the PNG image reference on the next non-blank line after line 1.
+  local markdown_file=$1
+  local image_ref=""
+  local candidate=""
+
+  image_ref=$(awk '
+    NR == 1 { next }
+    {
+      if ($0 ~ /^[[:space:]]*$/) {
+        next
+      }
+      if (match($0, /!\[[^]]*\]\(([^)]+\.[Pp][Nn][Gg]([^)]*)?)\)/)) {
+        value = substr($0, RSTART, RLENGTH)
+        sub(/^!\[[^]]*\]\(/, "", value)
+        sub(/\)$/, "", value)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+        if (value ~ /^<.*>$/) {
+          sub(/^</, "", value)
+          sub(/>$/, "", value)
+        }
+        split(value, parts, /[[:space:]]+/)
+        print parts[1]
+      }
+      exit
+    }
+  ' "$markdown_file")
+
+  if [[ -z "$image_ref" ]]; then
+    log_error "missing PNG logo reference on the next non-blank line after line 1 in: $markdown_file"
+    return 1
+  fi
+
+  if [[ "$image_ref" == /* ]]; then
+    candidate="$image_ref"
+  else
+    candidate="$(dirname "$markdown_file")/$image_ref"
+  fi
+
+  if [[ ! -f "$candidate" ]]; then
+    log_error "referenced logo file not found: $candidate"
+    return 1
+  fi
+
+  if [[ "${candidate##*.}" != "png" ]]; then
+    log_error "referenced logo is not a PNG file: $candidate"
+    return 1
+  fi
+
+  printf '%s\n' "$candidate"
+  return 0
+}
+
 render_html() {
   local markdown_file=$1
   local html_file=$2
@@ -453,27 +506,26 @@ render_html() {
     return 1
   fi
 
-  local _logo_svg=""
-  _logo_svg=$(_genpdf_find_logo ".svg" 2>/dev/null || true)
+  local _logo_png=""
+  _logo_png=$(_genpdf_doc_logo_png "$markdown_file" 2>/dev/null || true)
 
-  python3 - "$markdown_file" "$html_file" "$_logo_svg" <<'PY'
+  python3 - "$markdown_file" "$html_file" "$_logo_png" <<'PY'
 import html
 import pathlib
 import sys
 
 markdown_path = pathlib.Path(sys.argv[1])
 html_path = pathlib.Path(sys.argv[2])
-logo_svg = sys.argv[3] if len(sys.argv) > 3 else ""
+logo_png = sys.argv[3] if len(sys.argv) > 3 else ""
 text = markdown_path.read_text(encoding='utf-8')
 
 logo_html = ""
-if logo_svg:
-    logo_path = pathlib.Path(logo_svg)
+if logo_png:
+    logo_path = pathlib.Path(logo_png)
     if logo_path.exists():
-        svg_content = logo_path.read_text(encoding='utf-8')
         logo_html = (
-          '<div style="position:absolute;top:0.6in;left:0;width:80px">'
-          + svg_content
+          '<div style="position:absolute;top:0.6in;left:0">'
+          + f'<img src="{html.escape(logo_path.as_uri())}" style="height:2.2in" alt="Document logo" />'
           + '</div>'
         )
 
@@ -723,8 +775,11 @@ process_file() {
   local temp_file
   local logo_png=""
 
-  # Ensure a PNG logo is available for inline title-page placement.
-  logo_png=$(_genpdf_logo_png 2>/dev/null || true)
+  # Require a PNG logo reference from the markdown's next non-blank line after line 1.
+  if ! logo_png=$(_genpdf_doc_logo_png "$source_file"); then
+    return 1
+  fi
+  log_debug "selected title logo: ${logo_png:-<none>} for source: $source_file"
 
   if versions_line=$(extract_title_versions "$source_file"); then
     if [[ -n "$versions_line" ]]; then
@@ -841,49 +896,14 @@ process_file() {
 
         if (!title_done && match(line, /^#[[:space:]]+/)) {
           title_done = 1
-
-          title_text = line
-          sub(/^#[[:space:]]+/, "", title_text)
-          title_text = tex_escape(title_text)
-
-          title_line1 = title_text
-          title_line2 = ""
-          if (match(title_text, /[[:space:]]Internal[[:space:]](Reference|Guide)$/)) {
-            title_line2 = substr(title_text, RSTART + 1)
-            title_line1 = substr(title_text, 1, RSTART - 1)
-          } else if (match(title_text, /[[:space:]](Reference|Guide)$/)) {
-            title_line2 = substr(title_text, RSTART + 1)
-            title_line1 = substr(title_text, 1, RSTART - 1)
-          }
+          expect_title_image = 1
 
           print "```{=latex}"
           print "\\thispagestyle{empty}"
           print "\\vspace*{0.165in}"
           if (length(logo_png) > 0) {
             print "\\noindent"
-            print "\\setlength{\\tabcolsep}{0pt}"
-            print "\\begin{tabular*}{\\textwidth}{@{}p{0.30\\textwidth}@{\\extracolsep{\\fill}}p{0.66\\textwidth}@{}}"
-            print "\\begin{minipage}[c]{0.30\\textwidth}"
             print "\\noindent\\includegraphics[height=5.64cm]{\\detokenize{" logo_png "}}"
-            print "\\end{minipage} &"
-            print "\\begin{minipage}[c]{0.66\\textwidth}"
-            print "\\raggedright"
-            print "\\hspace*{-0.5in}"
-            if (length(title_line2) > 0) {
-              print "{\\fontsize{22}{27}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
-            } else {
-              print "{\\fontsize{22}{27}\\selectfont\\bfseries " title_line1 "\\par}"
-            }
-            print "\\end{minipage}\\\\"
-            print "\\end{tabular*}"
-          } else {
-            print "\\begin{center}"
-            if (length(title_line2) > 0) {
-              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
-            } else {
-              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
-            }
-            print "\\end{center}"
           }
           print "\\vspace*{1.0in}"
           print "\\fontsize{12}{14}\\selectfont"
@@ -895,6 +915,17 @@ process_file() {
           }
           print "```"
           next
+        }
+
+        if (title_done == 1 && expect_title_image == 1) {
+          if (match(line, /^[[:space:]]*$/)) {
+            next
+          }
+          if (match(line, /^[[:space:]]*!\[[^]]*\]\([^)]*\.[Pp][Nn][Gg]([[:space:]][^)]+)?\)[[:space:]]*$/)) {
+            expect_title_image = 0
+            next
+          }
+          expect_title_image = 0
         }
 
         if (title_done == 1 && match(line, /^Document Version:[[:space:]]/)) {
@@ -1077,48 +1108,14 @@ process_file() {
 
         if (!title_done && match(line, /^#[[:space:]]+/)) {
           title_done = 1
-
-          title_text = line
-          sub(/^#[[:space:]]+/, "", title_text)
-          title_text = tex_escape(title_text)
-
-          title_line1 = title_text
-          title_line2 = ""
-          if (match(title_text, /[[:space:]]Internal[[:space:]](Reference|Guide)$/)) {
-            title_line2 = substr(title_text, RSTART + 1)
-            title_line1 = substr(title_text, 1, RSTART - 1)
-          } else if (match(title_text, /[[:space:]](Reference|Guide)$/)) {
-            title_line2 = substr(title_text, RSTART + 1)
-            title_line1 = substr(title_text, 1, RSTART - 1)
-          }
+          expect_title_image = 1
 
           print "```{=latex}"
           print "\\thispagestyle{empty}"
           print "\\vspace*{0.165in}"
           if (length(logo_png) > 0) {
             print "\\noindent"
-            print "\\setlength{\\tabcolsep}{0pt}"
-            print "\\begin{tabular*}{\\textwidth}{@{}p{0.34\\textwidth}@{\\extracolsep{\\fill}}p{0.56\\textwidth}@{}}"
-            print "\\begin{minipage}[c]{0.34\\textwidth}"
             print "\\noindent\\includegraphics[height=5.64cm]{\\detokenize{" logo_png "}}"
-            print "\\end{minipage} &"
-            print "\\begin{minipage}[c]{0.56\\textwidth}"
-            print "\\centering"
-            if (length(title_line2) > 0) {
-              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
-            } else {
-              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
-            }
-            print "\\end{minipage}\\\\"
-            print "\\end{tabular*}"
-          } else {
-            print "\\begin{center}"
-            if (length(title_line2) > 0) {
-              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
-            } else {
-              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
-            }
-            print "\\end{center}"
           }
           print "\\vspace*{1.0in}"
           print "\\fontsize{12}{14}\\selectfont"
@@ -1130,6 +1127,17 @@ process_file() {
           }
           print "```"
           next
+        }
+
+        if (title_done == 1 && expect_title_image == 1) {
+          if (match(line, /^[[:space:]]*$/)) {
+            next
+          }
+          if (match(line, /^[[:space:]]*!\[[^]]*\]\([^)]*\.[Pp][Nn][Gg]([[:space:]][^)]+)?\)[[:space:]]*$/)) {
+            expect_title_image = 0
+            next
+          }
+          expect_title_image = 0
         }
 
         if (title_done == 1 && match(line, /^Document Version:[[:space:]]/)) {
