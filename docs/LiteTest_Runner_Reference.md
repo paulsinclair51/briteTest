@@ -227,13 +227,11 @@ typedef struct
 ### 3.1. `lt_exit_code_t`
 
 Exit codes are grouped into classes:
-- `LT_EXIT[_*]`  normal exit codes.
-- `LT_TEST[_]*` test outcome codes.
-- `LT_FATAL_USAGE[_*]` fatal usage codes (invalid arguments, invalid caller
-   state, API misuse).
-- `LT_FATAL_INTERNAL[_*]` fatal internal codes (assert/invariant/internal
-   failures).
-- `LT_FATAL_SYSTEM[_*]` fatal system codes (OS/runtime/resource failures).
+- Normal exit (*if* not a test run request): `LT_EXIT[_*]`(0-99).
+- Test outcome (*if* a test run request): `LT_TEST[_]*` (0-99).
+- Fatal usage (of framework): `LT_FATAL_USAGE[_*]` (100-199).
+- Fatal internal (in framework): `LT_FATAL_INTERNAL[_*]` (200-299).
+- Fatal system (call failed): `LT_FATAL_SYSTEM[_*]` (300-399j.
 
 Fatal codes indicate that the runner could not complete normal or test
 execution.
@@ -244,27 +242,27 @@ general codes for when a more specific code does not apply for the class.
 ```c
 typedef enum
 {
-  // 0-99: Exit codes.
+  // Normal Exit (*if* not a test run request): 0-99.
     LT_EXIT_OK = 0,
     
-  // 0-99: Test outcome codes.
+  // Test Outcome (*if* a test run request): 0-99.
     LT_TEST_PASS = 0,
     LT_TEST_FAIL = 1,
     LT_TEST_FAULT = 2,
     LT_TEST_FAIL_FAULT = 3,
 
-  // 100-199: Fatal usage codes.
-  LT_FATAL_USAGE = 100,
+  // Fatal Usage (of framework): 100-199.
+    LT_FATAL_USAGE = 100,
     LT_FATAL_USAGE_INVALID_ARG = 101,
     LT_FATAL_USAGE_INVALID_STATE = 102,
 
-  // 200-299: Fatal internal codes.
-  LT_FATAL_INTERNAL = 200,
+  // Fatal Internal (in framewok): 200-299,
+    LT_FATAL_INTERNAL = 200,
     LT_FATAL_INTERNAL_ASSERT = 201,
     LT_FATAL_INTERNAL_INVARIANT = 202,
 
-  // 300-399: Fatal system codes.
-  LT_FATAL_SYSTEM = 300,
+  // Fatal System (call failed) 300-399.
+    LT_FATAL_SYSTEM = 300,
     LT_FATAL_SYSTEM_OPEN = 301,
     LT_FATAL_SYSTEM_READ = 302,
     LT_FATAL_SYSTEM_WRITE = 303,
