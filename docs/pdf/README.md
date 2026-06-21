@@ -12,7 +12,7 @@ See `../../README.md` for an introduction to LiteTest.
 
 - **LiteTest_*.pdf**: Generated PDF versions (using `../../scripts/genpdf`) of
   LiteTest documentation files from `../`.
-- **LiteTest.pdf**: Generated PDF version of `../../README.md`.
+- **LiteTest.pdf**: Generated PDF version from `../../README.md`.
 - **README.md**: This directory guide.
 
 ## Subdirectories
