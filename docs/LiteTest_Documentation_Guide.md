@@ -89,7 +89,7 @@ when `M` is incremented.
 
 The LiteTest documentation consists of documents for:
 
-- **Users**: Public-facing framework and API documents,
+- **Users**: Public-facing framework and API documents.
 
 - **Contributors**; Guide and API internal documents.
 
