@@ -1,5 +1,7 @@
 # LiteTest
 
+![LiteTest Logo](docs/branding/LiteTest_Logo.png)
+
 LiteTest is a lightweight framework and Application Programming Interface (API)
 for defining, running, and reporting tests in C/C++ projects. It provides a
 simple core macro-driven Runner API plus a function-based Test API,
