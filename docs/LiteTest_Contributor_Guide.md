@@ -284,6 +284,8 @@ Before submitting a PR:
 
 ## 8. Alternative Project Names and Rename Plan
 
+TODO: add OpemTest to table.
+
 Preferred alternative names for LiteTest:
 
 - CanaryRunner
