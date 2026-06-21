@@ -128,13 +128,13 @@ The following are the LiteTest user and contributor documents.
   generally used in LiteTest (emphasizing their specific meaning in
   LiteTest) and terms often used in the testing domain.
 
-- **LiteTest_Runner_User_Guide.md**: Concepts, usage, and examples for
+- **LiteTest_Runner_Guide.md**: Concepts, usage, and examples for
   the LiteTest Runner framework and API.
 
 - **LiteTest_Runner_Reference.md**: Reference document for the
   LiteTest Runner API.
 
-- **LiteTest_Test_User_Guide.md**: Concepts, usage, and examples for
+- **LiteTest_Test_Guide.md**: Concepts, usage, and examples for
   the LiteTest Test API.
 
 - **LiteTest_Test_Reference.md**: Reference document for the LiteTest

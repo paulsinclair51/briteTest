@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="320" viewBox="0 0 960 320" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="886" height="190" viewBox="74 66 886 190" role="img" aria-labelledby="title desc">
   <title id="title">LiteTest LT Canary Monogram Logo</title>
   <desc id="desc">An LT monogram with a small canary accent and accompanying LiteTest wordmark.</desc>
   <rect width="960" height="320" fill="#FCFCFD"/>
@@ -8,11 +8,7 @@
   <path d="M116 104v112h60" fill="none" stroke="#FFEB66" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M156 108h94M203 108v108" fill="none" stroke="#F7F8FA" stroke-width="16" stroke-linecap="round"/>
 
-  <ellipse cx="210" cy="88" rx="14" ry="10" fill="#FFEB66"/>
-  <circle cx="224" cy="76" r="9" fill="#FFEB66"/>
-  <path d="M206 85c6 2 10 6 10 10-5 0-9-3-10-10z" fill="#1F2430"/>
-  <circle cx="226" cy="76" r="1.6" fill="#1F2430"/>
-  <path d="M232.26 79.02l3.87 3-4.89-0.18z" fill="#CFA07F"/>
+  <image href="canary.svg" x="190" y="66" width="44" height="55" preserveAspectRatio="xMidYMid meet"/>
 
   <text x="300" y="164" font-family="Verdana, Geneva, sans-serif" font-size="84" font-weight="700" fill="#1F2430">LiteTest</text>
 </svg>

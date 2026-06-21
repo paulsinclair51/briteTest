@@ -1,4 +1,4 @@
-# LiteTest Test User Guide
+# LiteTest Test Guide
 
 This .
 

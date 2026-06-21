@@ -472,9 +472,9 @@ if logo_svg:
     if logo_path.exists():
         svg_content = logo_path.read_text(encoding='utf-8')
         logo_html = (
-            '<div style="position:absolute;top:0.6in;right:0.5in;width:80px">'
-            + svg_content
-            + '</div>'
+          '<div style="position:absolute;top:0.6in;left:0;width:80px">'
+          + svg_content
+          + '</div>'
         )
 
 try:
@@ -862,16 +862,17 @@ process_file() {
           if (length(logo_png) > 0) {
             print "\\noindent"
             print "\\setlength{\\tabcolsep}{0pt}"
-            print "\\begin{tabular*}{\\textwidth}{@{}p{0.34\\textwidth}@{\\extracolsep{\\fill}}p{0.56\\textwidth}@{}}"
-            print "\\begin{minipage}[c]{0.34\\textwidth}"
+            print "\\begin{tabular*}{\\textwidth}{@{}p{0.30\\textwidth}@{\\extracolsep{\\fill}}p{0.66\\textwidth}@{}}"
+            print "\\begin{minipage}[c]{0.30\\textwidth}"
             print "\\noindent\\includegraphics[height=5.64cm]{\\detokenize{" logo_png "}}"
             print "\\end{minipage} &"
-            print "\\begin{minipage}[c]{0.56\\textwidth}"
-            print "\\centering"
+            print "\\begin{minipage}[c]{0.66\\textwidth}"
+            print "\\raggedright"
+            print "\\hspace*{-0.5in}"
             if (length(title_line2) > 0) {
-              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
+              print "{\\fontsize{22}{27}\\selectfont\\bfseries " title_line1 "\\\\[0pt]" title_line2 "\\par}"
             } else {
-              print "{\\fontsize{27}{32}\\selectfont\\bfseries " title_line1 "\\par}"
+              print "{\\fontsize{22}{27}\\selectfont\\bfseries " title_line1 "\\par}"
             }
             print "\\end{minipage}\\\\"
             print "\\end{tabular*}"
