@@ -355,8 +355,10 @@ and a forward-reference to the orchestrator function.
 **funcname**:
 - Token specifying `main`.
 
-**Termination Exit Codes**:
-- `LT_DECLARE_ORCHESTRATOR_ERROR`
+**Fatal exit**:
+- FATAL_USAGE_DECLARE_ORCHESTRATOR
+- FATAL_INTERNAL
+- FATAL_SYSTEM
 </details>
 
 <details>
@@ -383,8 +385,10 @@ and a forward-reference to the orchestrator function.
 **maxparallel**: Maximum number of `LT_GROUP` and `LT_TEST` macros that are
 allowed to execute in parallel.
 
-**Termination Exit Codes**:
-- `LT_INIT_ORCHESTRATOR_ERROR`
+**Fatal exit**:
+- FATAL_USAGE_INIT_ORCHESTRATOR
+- FATAL_INTERNAL
+- FATAL_SYSTEM
 </details>
 
 <details>
@@ -781,7 +785,7 @@ or 0x011212 for version 1.12.12.
 </details>
 
 <details>
-<summary>10. Functions for Customization</summary>
+<summary>10. Macros for Customization</summary>
 
 ## 10. Macros for Customization
 
@@ -800,6 +804,11 @@ Print err and help text to stdout.
 **help**
 - 0: don't print help text.
 - non-zero: print help text.
+
+**Fatal exit**:
+- FATAL_USAGE
+- FATAL_INTERNAL
+- FATAL_SYSTEM
 
 Note: Use `lt_set_err_prefix()` to set the prefix.
 
