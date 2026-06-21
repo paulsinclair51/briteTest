@@ -4,10 +4,14 @@ This folder contains SVG and PNG logo assets for LiteTest using a canary theme.
 
 ## Files
 
+- `canary.svg`: Traced standalone canary silhouette as vector artwork.
+- `canary2.svg`: Standalone canary silhouette with legs and feet accented in the beak palette.
 - `LiteTest_Logo.svg`: Monogram-only LT logo with canary accent.
 - `LiteTest_Logo.png`: Monogram-only LT logo with canary accent (PNG export).
-- `LiteTest_Logo_with_LiteTest.svg`: LT monogram with canary accent and LiteTest wordmark.
-- `LiteTest_Logo_with_LiteTest.png`: LT monogram with canary accent and LiteTest wordmark (PNG export).
+- `LiteTest_Logo_with_LiteTest.svg`: LT monogram with canary accent and LiteTest
+  wordmark.
+- `LiteTest_Logo_with_LiteTest.png`: LT monogram with canary accent and LiteTest
+  wordmark (PNG export).
 - `LiteTest_Logo_with_Tagline.svg`: LT monogram with canary accent, LiteTest, and tagline
   "Catch it before it breaks."
 - `LiteTest_Logo_with_Tagline.png`: LT monogram with canary accent, LiteTest, and tagline (PNG export).
@@ -30,16 +34,6 @@ Selected tagline for the monogram logo: "Catch it before it breaks."
 
 On 2026-06-20, the project owner requested additional bird-shape refinement:
 the tail element was removed and the beak was changed to point straight out.
-
-On 2026-06-20, the beak angle was adjusted by request to point about 10
-degrees downward from straight-forward across all SVG logo variants.
-
-On 2026-06-20, the beak angle was adjusted by an additional ~10 degrees
-downward across all SVG logo variants (about 20 degrees total from
-straight-forward) and PNG exports were regenerated.
-
-On 2026-06-20, the beak length was reduced by about one-third across all
-SVG logo variants and PNG exports were regenerated.
 
 On 2026-06-20, the project owner requested canary-clarity refinements:
 the beak was shortened, a crest was added, a perch line was added, a cheek
