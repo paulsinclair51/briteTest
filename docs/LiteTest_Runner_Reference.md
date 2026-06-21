@@ -1,5 +1,8 @@
 # LiteTest Runner Reference
 
+![LiteTest Runner Reference](branding/LiteTest_Runner_Reference.png)
+
+
 This document provides a reference to the LiteTest Runner API. It includes
 types, structs, unions, enums, macros, and functions. Additionally, it
 provides a reference to LiteTest framework concepts.

@@ -1,5 +1,8 @@
 # LiteTest Test Guide
 
+![LiteTest Test Guide](branding/LiteTest_Test_Guide.png)
+
+
 This .
 
 #### Copyright (c) 2026 Paul Sinclair
