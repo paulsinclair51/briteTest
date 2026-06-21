@@ -70,10 +70,10 @@ For a glossary of terms, see the LiteTest Glossary Reference.
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
 
-The document's update version tracks updates to this document and does
-not correspond to a minor or patch version. `u` increments whenever
-this document is updated without a change to `M`, and it resets to `0`
-when `M` is incremented.
+The document's update version tracks released updates to this document and does
+not correspond to a minor or patch version. `u` increments when document
+changes are published in a release without a change to `M`, and it resets to
+`0` when `M` is incremented.
 </details>
 </details>
 
@@ -420,9 +420,6 @@ less quick_test_report.txt   # Press 'q' to quit
 
 Example of the report:
 
-<details>
-<summary>💻 Click to view</summary>
-
 ```text
 LiteTest Report
                              Pass   Fail     Fault
@@ -432,7 +429,6 @@ LiteTest Report
 --------------------------------------------------
                       Total    10
 ```
-</details>
 
 See the [Core API Macros](#core-api-macros) and other sections for more detail.
 
@@ -444,9 +440,6 @@ platform-specific notes and options.
 
 ## Key Features
 
-<details>
-<summary>Click to view</summary>
-
 - Pure C implementation.
 - Fault handling with nested guard levels.
 - Minimal footprint — a single header and source file define the entire API.
@@ -454,15 +447,11 @@ platform-specific notes and options.
 - Comprehensive reporting: pass/fail/fault counts per category and overall totals.
 - Test support functions that simplify writing and organizing tests.
 </details>
-</details>
 
 <details>
 <summary>API Usage Requirements</summary>
 
 ## API Usage Requirements
-
-<details>
-<summary>Click to view</summary>
 
 LiteTest requires:
 
@@ -477,15 +466,11 @@ Supported environments:
 LiteTest has been exercised in POSIX environments; users should
 validate behavior in their own systems.
 </details>
-</details>
 
 <details>
 <summary>How LiteTest Compares</summary>
 
 ## How LiteTest Compares
-
-<details>
-<summary>Click to view</summary>
 
 | Framework     | Language / Style | Dependencies | Fault Isolation | Strengths | How LiteTest Differs |
 |---------------|------------------|--------------|-----------------|-----------|------------------------|
@@ -495,15 +480,11 @@ validate behavior in their own systems.
 | **Criterion** | C, auto‑discovery | libc, POSIX | Yes             | Modern, fast, rich output | LiteTest is simpler, portable, and avoids auto‑discovery complexity. |
 | **LiteTest**  | C99, macro‑driven | None        | Yes (POSIX signals) | Minimal, portable, easy to embed | Designed for small C projects needing fault isolation without heavy frameworks. |
 </details>
-</details>
 
 <details>
 <summary>What LiteTest Does Not Provide</summary>
 
 ## What LiteTest Does Not Provide
-
-<details>
-<summary>Click to view</summary>
 
 LiteTest focuses on executing tests and reporting results. It does not:
 
@@ -520,7 +501,6 @@ LiteTest focuses on executing tests and reporting results. It does not:
 - Track versioning or history of test artifacts.
 - Produce rich reporting formats such as JUnit XML or HTML output.
 - Provide functionality outside the features explicitly described in this document.
-</details>
 </details>
 
 <details>
@@ -990,9 +970,6 @@ handled as if it occurs before the tests.
 The `tests` directory for this repository provides a self-test implementation of
 the LiteTest API and framework. It includes:
 
-<details>
-<summary>Click to view</summary>
-
 - `test_litetest.c` defines the orchestrator (`main`) with two test
    categories "Orchestrator" and "Guard".
 
@@ -1004,7 +981,6 @@ the LiteTest API and framework. It includes:
 
 - `test_guard2.c` defines the `test_guard2` function for testing the other
    part of the "Guard" category.
-</details>
 </details>
 
 The results of `test_guard1` and `test_guard2` are combined by the orchestrator

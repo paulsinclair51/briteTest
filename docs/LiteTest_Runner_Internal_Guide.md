@@ -53,17 +53,26 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`,
 
 ### Document Version History
 
-| Document | Date | Runner | Test | Comment | Author/Editor |
+| Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0 | 2026‑06‑11 | 1.0.0 | 1.0.0 | Initial version. | Paul Sinclair |
+| 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
 
-- The `Document` column records the document's version and uses the version format `M.u` (Major, update).
-- The `Runner` column records the LiteTest Runner API version current at the time this document version was published and is defined by its `LT_RUNNER_VERSION` macro.
-- The `Test` column records the LiteTest Test API version current at the time this document version was published and is defined by its `LT_TEST_VERSION` macro.
+- The **Document** column records the document's version with the
+  format `M.u` (Major, update).
+- The **Runner** column records the LiteTest Runner API version
+  current at the time this document version was published and is
+  defined by its `LT_RUNNER_VERSION` macro.
+- The **Test** column records the LiteTest Test API version current at
+  the time this document version was published and is defined by its
+  `LT_TEST_VERSION` macro.
+- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
+  patch).
+- `M` is the same for the Document, Runner, and Test versions.
 
-Both Runner and Test versions specify a string of the form `"M.m.p"` (Major, minor, patch). `M` is the same for the document, Runner, and Test.
-
-The document's `u` (update) version track updates to this document and does not correspond to a `m` (minor) or `p` (patch) version. `u` increments whenever this document is updated without a change to `M`, and it resets to `0` when `M` is incremented.
+The document's update version tracks released updates to this document and does
+not correspond to a minor or patch version. `u` increments when document
+changes are published in a release without a change to `M`, and it resets to
+`0` when `M` is incremented.
 </details>
 </details>
 

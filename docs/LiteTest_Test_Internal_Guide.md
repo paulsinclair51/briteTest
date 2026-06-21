@@ -67,15 +67,12 @@ For a glossary of terms, see the LiteTest Glossary Reference.
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
 
-The document's update version tracks updates to this document and does
-not correspond to a minor or patch version. `u` increments whenever
-this document is updated without a change to `M`, and it resets to `0`
-when `M` is incremented.
+The document's update version tracks released updates to this document and does
+not correspond to a minor or patch version. `u` increments when document
+changes are published in a release without a change to `M`, and it resets to
+`0` when `M` is incremented.
 </details>
 </details>
-
-<details>\
-<summary>Table of Contents</summary>
 
 <details>
 <summary>Table of Contents</summary>
@@ -84,10 +81,6 @@ when `M` is incremented.
 
 [1. Introduction](#1-introduction)
 </details>
-</details>
-
-<details>
-<summary>Introduction</summary>
 
 <details>
 <summary>1. Introduction</summary>
@@ -95,5 +88,4 @@ when `M` is incremented.
 ## 1. Introduction
 
 The 
-</details>
 </details>

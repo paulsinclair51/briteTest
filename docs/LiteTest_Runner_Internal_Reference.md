@@ -15,9 +15,6 @@ It includes types, structs, unions, enums, macros, and functions.
 
 SPDX-License-Identifier: MIT.
 
-<details>
-<summary>Click to view</summary>
-
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -35,7 +32,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-</details>
 
 <details>
 <summary>Preface</summary>
@@ -53,28 +49,26 @@ For a glossary of terms, see the LiteTest Glossary Reference.
 
 ### Document Version History
 
-<details>
-<summary>Click to view</summary>
+| Document | Runner | Test | Date | Comment | Author/Editor |
+|----------|------|--------|------|---------|---------------|
+| 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
 
-| Document | Date       | LiteTest | Description                                   | Author/Editor    |
-|----------|------------|----------------------------------------------------------|------------------|
-| 1.0      | 2026‑06‑11 | 1.0.0    | Initial LiteTest Framework Reference.         | paulsinclair51   |
+- The **Document** column records the document's version with the
+  format `M.u` (Major, update).
+- The **Runner** column records the LiteTest Runner API version
+  current at the time this document version was published and is
+  defined by its `LT_RUNNER_VERSION` macro.
+- The **Test** column records the LiteTest Test API version current at
+  the time this document version was published and is defined by its
+  `LT_TEST_VERSION` macro.
+- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
+  patch).
+- `M` is the same for the Document, Runner, and Test versions.
 
-The **Document** column tracks the version `M.u` (major, update) of this Framework
-Reference document. The **LiteTest** column records the latest LiteTest version
-at the time this document version was published.
-
-The current LiteTest version is defined in `litetest_runner.h` by the macro `LT_VERSION`,
-which specifies a string of the form `"M.m.p"` (major, minor, patch).
-`litetest_runner.c` defines a matching version string `LT_VERSION_C`. For details, see
-the public API and framework documentation.
-
-A **major LiteTest release requires a corresponding major update to this
-document** and therefore the document’s major version must match the LiteTest
-major version. The **update** version tracks updates to this document itself and
-does not correspond to LiteTest minor or patch versions. The update version is
-incremented whenever this document is updated without a change to the major version,
-and it resets to `0` when the major version increases.
+The document's update version tracks released updates to this document and does
+not correspond to a minor or patch version. `u` increments when document
+changes are published in a release without a change to `M`, and it resets to
+`0` when `M` is incremented.
 </details>
 </details>
 
@@ -82,9 +76,6 @@ and it resets to `0` when the major version increases.
 <summary>Documentation Style Guide</summary>
 
 #### Documentation Style Guide
-
-<details>
-<summary>Click to view</summary>
 
 1. Tone
    - Technical, precise, and neutral.
@@ -102,8 +93,8 @@ and it resets to `0` when the major version increases.
    - Keep paragraphs short.
    - Use lists for enumerations.
 
-4. `Click to view`
-   - Use `Click to view` sections and subsections to keep the document readable while
+4. `details/summary sections`
+   - Use `details/summary` sections and subsections to keep the document readable while
      still accommodating large amounts of technical detail:
     - Collapsing sections allows readers to scan the structure and expand only what
       they need.
@@ -117,16 +108,11 @@ and it resets to `0` when the major version increases.
    - Avoid mixing styles such as “Keep paragraphs short” with “Using lists for enumerations.”
    - Rewrite items as needed so the list reads smoothly and uniformly.
 </details>
-</details>
-</details>
 
 <details>
 <summary>Table of Contents</summary>
 
 ## Table of Contents
-
-<details>
-<summary>Click to view</summary>
 
 - [**1. Overview**](#1-overview)  
   - [Public and Internal Name Conventions](#public-and-internal-name-conventions)  
@@ -167,15 +153,11 @@ and it resets to `0` when the major version increases.
 
 - [**Glossary**](#glossary)
 </details>
-</details>
 
 <details>
 <summary>1. Overview</summary>
 
 ## 1. Overview
-
-<details>
-<summary>Click to view</summary>
 
 LiteTest’s internal architecture consists of several cooperating subsystems,
 including the implementation of API macros and functions, the execution engine,
@@ -202,15 +184,11 @@ the reference companion to the LiteTest Framework Guide, defining the
 framework’s components precisely while the Guide explains their design
 and interaction.
 </details>
-</details>
 
 <details>
 <summary>Public and Internal Naming Conventions</summary>
 
 #### Public and Internal Naming Conventions
-
-<details>
-<summary>Click to view</summary>
 
 Any framework names that are public and visible to LiteTest API users are prefixed
 with `lt_...` (typically lowercase) or `LT_...` (typically uppercase).
@@ -222,39 +200,26 @@ These names should not be referenced by API users.
 In general, users of the API should not define names prefixed with `lt_`, `LT`, `litetest_`,
 or `LITETEST`, or reference names prefixed with `litetest_` or `LITETEST_`.
 </details>
-</details>
-</details>
 
 <details>
 <summary>2. Symbols Defined in `litetest_runner.h`</summary>
 
 ## 2. Symbols Defined in `litetest_runner.h`
 
-<details>
-<summary>Click to view</summary>
-
 These are used by `litetest_runner.h` and `litetest_runner.c`, and are public or internal
 based on their name per the naming conventions.
-</details>
 
 <details>
 <summary>2.1. Types</summary>
 
 ### 2.1. Types
 
-<details>
-<summary>Click to view</summary>
-
 These typedefs declare fundamental internal types used throughout the LiteTest framework.
-</details>
 
 <details>
 <summary>lt_result_t</summary>
 
 #### lt_result_t
-
-<details>
-<summary>Click to view</summary>
 
 **Declaration**
 ```c
@@ -283,7 +248,6 @@ lt_result_t result = {0, 0, 0, 0, 0};
 ```
 </details>
 </details>
-</details>
 
 <details>
 <summary>2.2. Structs</summary>
@@ -291,16 +255,9 @@ lt_result_t result = {0, 0, 0, 0, 0};
 ### 2.2. Structs
 
 <details>
-<summary>Click to view</summary>
-</details>
-
-<details>
 <summary>struct <StructName></summary>
 
 #### struct <StructName>
-
-<details>
-<summary>Click to view</summary>
 
 **Declaration**
 ```c
@@ -327,7 +284,6 @@ Explain the purpose of this struct, what data it aggregates, and how it particip
 ```
 </details>
 </details>
-</details>
 
 <details>
 <summary>2.3. Enums and Enum Values</summary>
@@ -335,16 +291,9 @@ Explain the purpose of this struct, what data it aggregates, and how it particip
 ### 2.3. Enums and Enum Values
 
 <details>
-<summary>Click to view</summary>
-</details>
-
-<details>
 <summary>enum <EnumName></summary>
 
 #### enum <EnumName>
-
-<details>
-<summary>Click to view</summary>
 
 **Declaration**
 ```c
@@ -372,7 +321,6 @@ Explain what conceptual category this enum models and how the values are used by
 ```
 </details>
 </details>
-</details>
 
 <details>
 <summary>2.4. Global Variables</summary>
@@ -380,16 +328,9 @@ Explain what conceptual category this enum models and how the values are used by
 ### 2.4. Global Variables
 
 <details>
-<summary>Click to view</summary>
-</details>
-
-<details>
 <summary><VariableName></summary>
 
 #### <VariableName>
-
-<details>
-<summary>Click to view</summary>
 
 **Declaration**
 ```c
@@ -413,7 +354,6 @@ if (<VariableName> == ...) {
 ```
 </details>
 </details>
-</details>
 
 <details>
 <summary>2.5. Macros</summary>
@@ -421,16 +361,9 @@ if (<VariableName> == ...) {
 ### 2.5. Macros
 
 <details>
-<summary>Click to view</summary>
-</details>
-
-<details>
 <summary><MACRO_NAME></summary>
 
 #### <MACRO_NAME>
-
-<details>
-<summary>Click to view</summary>
 
 **Definition**
 ```c
@@ -455,27 +388,19 @@ Describe the purpose of this macro, what it expands to conceptually, and how it 
 ```
 </details>
 </details>
-</details>
 
 <details>
 <summary>2.6. Functions</summary>
 
 ### 2.6. Functions
 
-<details>
-<summary>Click to view</summary>
-
 The functions in this section may be `static`, `static inline`, or (by default) `extern`,
 depending on how they are used within the framework.
-</details>
 
 <details>
 <summary><FunctionName>()</summary>
 
 #### <FunctionName>()
-
-<details>
-<summary>Click to view</summary>
 
 **Signature**
 ```c
@@ -507,31 +432,22 @@ Describe what is returned and under what conditions.
 ```
 </details>
 </details>
-</details>
 
 <details>
 <summary>3. Symbols Defined in `litetest_runner.c`</summary>
 
 ## 3. Symbols Defined in `litetest_runner.c`
 
-<details>
-<summary>Click to view</summary>
-
 These symbols are local to `litetest_runner.c` unless specified or defaulting to
 extern. Symbols that are local do not have to conform to the internal naming
 conventions and more natural names may be used.
-</details>
 
 <details>
 <summary>3.1. Types</summary>
 
 ### 3.1. Types
 
-<details>
-<summary>Click to view</summary>
-
 (Placeholder)
-</details>
 </details>
 
 <details>
@@ -539,11 +455,7 @@ conventions and more natural names may be used.
 
 ### 3.2. Structs
 
-<details>
-<summary>Click to view</summary>
-
 (Placeholder)
-</details>
 </details>
 
 <details>
@@ -551,11 +463,7 @@ conventions and more natural names may be used.
 
 ### 3.3. Enums and Enum Values
 
-<details>
-<summary>Click to view</summary>
-
 (Placeholder)
-</details>
 </details>
 
 <details>
@@ -563,11 +471,7 @@ conventions and more natural names may be used.
 
 ### 3.4. Global Variables
 
-<details>
-<summary>Click to view</summary>
-
 (Placeholder)
-</details>
 </details>
 
 <details>
@@ -575,11 +479,7 @@ conventions and more natural names may be used.
 
 ### 3.5. Macros
 
-<details>
-<summary>Click to view</summary>
-
 (Placeholder)
-</details>
 </details>
 
 <details>
@@ -587,23 +487,16 @@ conventions and more natural names may be used.
 
 ### 3.6. Functions (declared as a forward reference) in `litetest_runner.h`
 
-<details>
-<summary>Click to view</summary>
-
 These functions are referenced internally by `litetest_runner.h` but defined in `litetest_runner.c`.
 These functions are (by default) extern and must conform to the internal name conventions.
 
 (Placeholder)
-</details>
 </details>
 
 <details>
 <summary>3.7. Functions (not declared in `litetest_runner.h`)</summary>
 
 ### 3.7. Functions (not declared in `litetest_runner.h`)
-
-<details>
-<summary>Click to view</summary>
 
 These functions are local to `litetest_runner.c` and defined as static.
 Since these are local, these names do not have to conform to the
@@ -612,18 +505,13 @@ internal name conventions and more natural names may be used.
 (Placeholder)
 </details>
 </details>
-</details>
 
 <details>
 <summary>4. Execution Engine</summary>
 
 ## 4. Execution Engine
 
-<details>
-<summary>Click to view</summary>
-
 (Placeholder for execution helpers.)
-</details>
 </details>
 
 <details>
@@ -631,11 +519,7 @@ internal name conventions and more natural names may be used.
 
 ## 5. Signal Handling
 
-<details>
-<summary>Click to view</summary>
-
 (Placeholder for signal guard helpers.)
-</details>
 </details>
 
 <details>
@@ -643,11 +527,7 @@ internal name conventions and more natural names may be used.
 
 ## 6. Process Management
 
-<details>
-<summary>Click to view</summary>
-
 (Placeholder for fork/exec/wait logic.)
-</details>
 </details>
 
 <details>
@@ -655,11 +535,7 @@ internal name conventions and more natural names may be used.
 
 ## 7. Thread Management
 
-<details>
-<summary>Click to view</summary>
-
 (Placeholder for pthread logic.)
-</details>
 </details>
 
 <details>
@@ -667,11 +543,7 @@ internal name conventions and more natural names may be used.
 
 ## 8. File and Path Support
 
-<details>
-<summary>Click to view</summary>
-
 (Placeholder for filesystem support helpers.)
-</details>
 </details>
 
 <details>
@@ -679,11 +551,7 @@ internal name conventions and more natural names may be used.
 
 ## 9. Matching and Comparison Support
 
-<details>
-<summary>Click to view</summary>
-
 (Placeholder for comparison support helpers.)
-</details>
 </details>
 
 <details>
@@ -691,20 +559,13 @@ internal name conventions and more natural names may be used.
 
 ## 10. Environment Support
 
-<details>
-<summary>Click to view</summary>
-
 (Placeholder for environment support helpers.)
-</details>
 </details>
 
 <details>
 <summary>Repository Layout</summary>
 
 ## Repository Layout
-
-<details>
-<summary>Click to view</summary>
   
 GitHub repository: `paulsinclair51/LiteTest`
 
@@ -756,9 +617,6 @@ Use this as a reference when adapting LiteTest into your own project structure.
 <summary>General Terms</summary>
 
 ### General Terms
-
-<details>
-<summary>Click to view</summary>
 
 - `API`: Application Programming Interface.
 - `category`: A labeled set of `LT_GROUP` and `LT_TEST` macros whose combined
@@ -825,15 +683,11 @@ Use this as a reference when adapting LiteTest into your own project structure.
 - `Semantic Versioning`: Versioning scheme using `M.m.p`.
 - `Report Format`: The output structure produced by LiteTest test runs.
 </details>
-</details>
 
 <details>
 <summary>Framework‑Specific Terms</summary>
 
 ### Framework‑Specific Terms
-
-<details>
-<summary>Click to view</summary>
 
 - **Orchestrator Lifecycle**: The sequence of initialization, group execution,
   test execution, and report finalization performed by the LiteTest framework.
@@ -854,5 +708,4 @@ Use this as a reference when adapting LiteTest into your own project structure.
   groups and how isolation and concurrency propagate through nested structures.
 - **Concurrent Block Behavior**: The semantics of executing multiple tests in
   parallel within a concurrent block, including ordering and isolation rules.
-</details>
 </details>

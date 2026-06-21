@@ -75,10 +75,10 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`,/`,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
 
-The document's update version tracks updates to this document and does
-not correspond to a minor or patch version. `u` increments whenever
-this document is updated without a change to `M`, and it resets to `0`
-when `M` is incremented.
+The document's update version tracks released updates to this document and does
+not correspond to a minor or patch version. `u` increments when document
+changes are published in a release without a change to `M`, and it resets to
+`0` when `M` is incremented.
 </details>
 </details>
 
