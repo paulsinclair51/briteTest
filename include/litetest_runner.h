@@ -92,6 +92,39 @@ extern "C" {
 #endif
 
 /**
+ * @section Enums
+ */
+
+typedef enum
+{
+  // Success
+    LT_OK = 0,
+    
+  // Compare
+    LT_LESS = -1,
+    LT_EQUAL = 0,
+    LT_GREATER = 1,
+    
+  // Boolean
+    LT_FALSE = 0,
+    LT_TRUE = 1,
+
+  // -100 to -199: Invalid Usage.
+    LT_INVALID = -100,
+    LT_INVALID_ARG = -101,
+    LT_INVALID_ARG_VERSION = -102,
+    LT_INVALID_ARG_TOO_LONG = -103,
+
+  // -300 to -399: Failed system call.
+    LT_SYSTEM = -300,
+    LT_SYSTEM_OPEN = -301,
+    LT_SYSTEM_READ = -302,
+    LT_SYSTEM_WRITE = -303,
+    LT_SYSTEM_FORK = -304,
+    LT_SYSTEM_THREAD = -305
+} lt_return_code_t;
+
+/**
  * @section UtilityMacros Utility Macros
  */
 
