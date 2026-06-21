@@ -618,6 +618,168 @@ extract_title_versions() {
   ' "$markdown_file"
 }
 
+scan_markdown_metadata() {
+  local markdown_file=$1
+
+  awk '
+    function trim(text) {
+      sub(/^[[:space:]]+/, "", text)
+      sub(/[[:space:]]+$/, "", text)
+      return text
+    }
+
+    function to_lower_trim(text,    t) {
+      t = trim(text)
+      return tolower(t)
+    }
+
+    function parse_png_ref(line,    value, parts, m) {
+      if (match(line, /!\[[^]]*\]\(([^)]+\.[Pp][Nn][Gg]([^)]+)?)\)/, m)) {
+        value = trim(m[1])
+        if (value ~ /^<.*>$/) {
+          sub(/^</, "", value)
+          sub(/>$/, "", value)
+        }
+        split(value, parts, /[[:space:]]+/)
+        return parts[1]
+      }
+      return ""
+    }
+
+    function parse_history_row(line,    n, parts, doc, run, test) {
+      n = split(line, parts, /\|/)
+      if (n < 4) {
+        return ""
+      }
+      doc = trim(parts[2])
+      run = trim(parts[3])
+      test = trim(parts[4])
+      if (length(doc) == 0 || length(run) == 0 || length(test) == 0) {
+        return ""
+      }
+      return doc "\t" run "\t" test
+    }
+
+    BEGIN {
+      title_skipped = 0
+      in_history = 0
+      saw_table_header = 0
+      saw_separator = 0
+      has_toc = 0
+      png_ref = ""
+      doc_ver = ""
+      runner_ver = ""
+      test_ver = ""
+    }
+
+    {
+      line = $0
+
+      if (title_skipped == 0) {
+        if (match(line, /^#[[:space:]]+/)) {
+          title_skipped = 1
+        }
+        next
+      }
+
+      if (match(line, /^[[:space:]]*$/)) {
+        next
+      }
+
+      lower = to_lower_trim(line)
+
+      if (match(lower, /^<[[:space:]]*details([[:space:]][^>]*)?>$/) ||
+          match(lower, /^<[[:space:]]*\/[[:space:]]*details([[:space:]][^>]*)?>$/) ||
+          match(lower, /^<[[:space:]]*summary([[:space:]][^>]*)?>$/) ||
+          match(lower, /^<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>$/)) {
+        next
+      }
+
+      if (has_toc == 0 && match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
+        has_toc = 1
+      }
+
+      if (length(png_ref) == 0) {
+        parsed_png = parse_png_ref(line)
+        if (length(parsed_png) > 0) {
+          png_ref = parsed_png
+        }
+      }
+
+      if (length(doc_ver) == 0 && match(line, /^[[:space:]]*Document Version:[[:space:]]*/)) {
+        value = line
+        sub(/^[[:space:]]*Document Version:[[:space:]]*/, "", value)
+        value = trim(value)
+        if (length(value) > 0) {
+          doc_ver = value
+        }
+      }
+
+      if (length(runner_ver) == 0 && match(line, /^[[:space:]]*Runner Version:[[:space:]]*/)) {
+        value = line
+        sub(/^[[:space:]]*Runner Version:[[:space:]]*/, "", value)
+        value = trim(value)
+        if (length(value) > 0) {
+          runner_ver = value
+        }
+      }
+
+      if (length(test_ver) == 0 && match(line, /^[[:space:]]*Test Version:[[:space:]]*/)) {
+        value = line
+        sub(/^[[:space:]]*Test Version:[[:space:]]*/, "", value)
+        value = trim(value)
+        if (length(value) > 0) {
+          test_ver = value
+        }
+      }
+
+      if (match(line, /^###[[:space:]]*Document Version History/)) {
+        in_history = 1
+        saw_table_header = 0
+        saw_separator = 0
+        next
+      }
+
+      if (in_history == 1 && match(line, /^\|/)) {
+        if (saw_table_header == 0) {
+          saw_table_header = 1
+          next
+        }
+
+        if (saw_separator == 0 && line ~ /^\|[-[:space:]]+\|/) {
+          saw_separator = 1
+          next
+        }
+
+        if (saw_separator == 1 && (length(doc_ver) == 0 || length(runner_ver) == 0 || length(test_ver) == 0)) {
+          row_versions = parse_history_row(line)
+          if (length(row_versions) > 0) {
+            split(row_versions, rows, /\t/)
+            if (length(doc_ver) == 0) {
+              doc_ver = rows[1]
+            }
+            if (length(runner_ver) == 0) {
+              runner_ver = rows[2]
+            }
+            if (length(test_ver) == 0) {
+              test_ver = rows[3]
+            }
+          }
+          in_history = 0
+        }
+      }
+    }
+
+    END {
+      print "PNG\t" png_ref
+      print "DOC\t" doc_ver
+      print "RUNNER\t" runner_ver
+      print "TEST\t" test_ver
+      print "HAS_TOC\t" has_toc
+    }
+  ' "$markdown_file"
+}
+
 convert_to_pdf() {
   local markdown_file=$1
   local target_file=$2
@@ -767,26 +929,56 @@ EOF
 process_file() {
   local source_file=$1
   local target_file=$2
-  local document_version="unknown"
-  local runner_version="unknown"
-  local test_version="unknown"
+  local document_version=""
+  local runner_version=""
+  local test_version=""
   local have_versions=0
-  local versions_line
+  local scan_key
+  local scan_value
+  local logo_ref=""
+  local has_toc=0
+  local candidate_logo=""
   local temp_file
   local logo_png=""
 
-  # Require a PNG logo reference from the markdown's next non-blank line after line 1.
-  if ! logo_png=$(_genpdf_doc_logo_png "$source_file"); then
-    return 1
-  fi
-  log_debug "selected title logo: ${logo_png:-<none>} for source: $source_file"
+  while IFS=$'\t' read -r scan_key scan_value; do
+    case "$scan_key" in
+      PNG)
+        logo_ref=$scan_value
+        ;;
+      DOC)
+        document_version=$scan_value
+        ;;
+      RUNNER)
+        runner_version=$scan_value
+        ;;
+      TEST)
+        test_version=$scan_value
+        ;;
+      HAS_TOC)
+        has_toc=$scan_value
+        ;;
+    esac
+  done < <(scan_markdown_metadata "$source_file")
 
-  if versions_line=$(extract_title_versions "$source_file"); then
-    if [[ -n "$versions_line" ]]; then
-      IFS=$'\t' read -r document_version runner_version test_version <<< "$versions_line"
-      have_versions=1
+  if [[ -n "$logo_ref" ]]; then
+    if [[ "$logo_ref" == /* ]]; then
+      candidate_logo=$logo_ref
+    else
+      candidate_logo="$(dirname "$source_file")/$logo_ref"
+    fi
+    if [[ -f "$candidate_logo" && "${candidate_logo##*.}" == "png" ]]; then
+      logo_png=$candidate_logo
+    else
+      log_warn "PNG logo reference found but not usable: $candidate_logo"
     fi
   fi
+
+  if [[ -n "$document_version" && -n "$runner_version" && -n "$test_version" ]]; then
+    have_versions=1
+  fi
+
+  log_debug "scan metadata: logo=${logo_png:-<none>} versions=${have_versions} toc=${has_toc} source=$source_file"
 
   temp_file=$(mktemp)
 
@@ -900,19 +1092,18 @@ process_file() {
 
           print "```{=latex}"
           print "\\thispagestyle{empty}"
-          print "\\vspace*{0.165in}"
+          print "\\par\\par\\par"
           if (length(logo_png) > 0) {
-            print "\\noindent"
             print "\\noindent\\includegraphics[height=5.64cm]{\\detokenize{" logo_png "}}"
           }
-          print "\\vspace*{1.0in}"
+          print "\\par\\par\\par"
           print "\\fontsize{12}{14}\\selectfont"
           if (have_versions == 1) {
             print "Document Version: " tex_escape(document_version) "\\par"
             print "Runner Version: " tex_escape(runner_version) "\\par"
             print "Test Version: " tex_escape(test_version) "\\par"
-            print "\\vspace*{0.12in}"
           }
+          print "\\par\\par\\par"
           print "```"
           next
         }
@@ -939,7 +1130,19 @@ process_file() {
         }
 
         if (title_done == 1 && title_footer_pushed != 1 &&
-            (match(line, /^\*\*Copyright/) || match(line, /^Copyright/))) {
+            (match(line, /^\*\*Copyright/) || match(line, /^Copyright/) ||
+             match(lower, /^#[[:space:]]*copyright/) ||
+             match(lower, /^##[[:space:]]*copyright/) ||
+             match(lower, /^###[[:space:]]*copyright/) ||
+             match(lower, /^####[[:space:]]*copyright/) ||
+             match(lower, /^#####[[:space:]]*copyright/) ||
+             match(lower, /^######[[:space:]]*copyright/) ||
+             match(lower, /^#[[:space:]]*license/) ||
+             match(lower, /^##[[:space:]]*license/) ||
+             match(lower, /^###[[:space:]]*license/) ||
+             match(lower, /^####[[:space:]]*license/) ||
+             match(lower, /^#####[[:space:]]*license/) ||
+             match(lower, /^######[[:space:]]*license/))) {
           print "```{=latex}"
           print "\\vfill"
           print "```"
@@ -1013,10 +1216,17 @@ process_file() {
           }
         }
 
-        if (match(lower, /^###[[:space:]]*copyright/)) {
+        if (title_footer_pushed != 1 &&
+            (match(lower, /^#[[:space:]]*copyright/) ||
+            match(lower, /^##[[:space:]]*copyright/) ||
+            match(lower, /^###[[:space:]]*copyright/) ||
+            match(lower, /^####[[:space:]]*copyright/) ||
+            match(lower, /^#####[[:space:]]*copyright/) ||
+            match(lower, /^######[[:space:]]*copyright/))) {
           print "```{=latex}"
           print "\\vfill"
           print "```"
+          title_footer_pushed = 1
           print line
           next
         }
@@ -1112,19 +1322,18 @@ process_file() {
 
           print "```{=latex}"
           print "\\thispagestyle{empty}"
-          print "\\vspace*{0.165in}"
+          print "\\par\\par\\par"
           if (length(logo_png) > 0) {
-            print "\\noindent"
             print "\\noindent\\includegraphics[height=5.64cm]{\\detokenize{" logo_png "}}"
           }
-          print "\\vspace*{1.0in}"
+          print "\\par\\par\\par"
           print "\\fontsize{12}{14}\\selectfont"
           if (have_versions == 1) {
             print "Document Version: " tex_escape(document_version) "\\par"
             print "Runner Version: " tex_escape(runner_version) "\\par"
             print "Test Version: " tex_escape(test_version) "\\par"
-            print "\\vspace*{0.12in}"
           }
+          print "\\par\\par\\par"
           print "```"
           next
         }
@@ -1151,7 +1360,19 @@ process_file() {
         }
 
         if (title_done == 1 && title_footer_pushed != 1 &&
-            (match(line, /^\*\*Copyright/) || match(line, /^Copyright/))) {
+            (match(line, /^\*\*Copyright/) || match(line, /^Copyright/) ||
+             match(lower, /^#[[:space:]]*copyright/) ||
+             match(lower, /^##[[:space:]]*copyright/) ||
+             match(lower, /^###[[:space:]]*copyright/) ||
+             match(lower, /^####[[:space:]]*copyright/) ||
+             match(lower, /^#####[[:space:]]*copyright/) ||
+             match(lower, /^######[[:space:]]*copyright/) ||
+             match(lower, /^#[[:space:]]*license/) ||
+             match(lower, /^##[[:space:]]*license/) ||
+             match(lower, /^###[[:space:]]*license/) ||
+             match(lower, /^####[[:space:]]*license/) ||
+             match(lower, /^#####[[:space:]]*license/) ||
+             match(lower, /^######[[:space:]]*license/))) {
           print "```{=latex}"
           print "\\vfill"
           print "```"
@@ -1225,10 +1446,17 @@ process_file() {
           }
         }
 
-        if (match(lower, /^###[[:space:]]*copyright/)) {
+        if (title_footer_pushed != 1 &&
+            (match(lower, /^#[[:space:]]*copyright/) ||
+            match(lower, /^##[[:space:]]*copyright/) ||
+            match(lower, /^###[[:space:]]*copyright/) ||
+            match(lower, /^####[[:space:]]*copyright/) ||
+            match(lower, /^#####[[:space:]]*copyright/) ||
+            match(lower, /^######[[:space:]]*copyright/))) {
           print "```{=latex}"
           print "\\vfill"
           print "```"
+          title_footer_pushed = 1
           print line
           next
         }

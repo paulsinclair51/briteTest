@@ -464,9 +464,10 @@ EOF
   popd >/dev/null
 
   assert_file_exists "$tmpdir/project/docs/pdf/guide.pdf"
-  assert_file_exists "$tmpdir/project/docs/pdf/README.pdf"
+  assert_file_exists "$tmpdir/project/docs/pdf/LiteTest.pdf"
+  assert_file_not_exists "$tmpdir/project/docs/pdf/README.pdf"
   assert_file_not_exists "$tmpdir/project/docs/pdf/LiteTest_README.pdf"
-  assert_contains "Project Root README" "$tmpdir/project/docs/pdf/README.pdf.src"
+  assert_contains "\\thispagestyle{empty}" "$tmpdir/project/docs/pdf/LiteTest.pdf.src"
 }
 
 run_all_tests() {
