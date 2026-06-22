@@ -82,7 +82,7 @@ changes are published in a release without a change to `M`, and it resets to
 [**1. Introduction**](#1-introduction)<br>
 
 [**2. Types**](#2-types)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**2.1. bt_resubt_t**](#21-bt_resubt_tt)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**2.1. bt_result_t**](#21-bt_result_tt)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**2.2. bt_state_t**](#22-bt_stste_t)<br>
 
 
@@ -152,9 +152,9 @@ TODO: add introduction, common rules.
 ## 2. Types
 
 <details>
-<summary>2.1. `bt_resubt_t`</summary>
+<summary>2.1. `bt_result_t`</summary>
 
-### 2.1. `bt_resubt_t`
+### 2.1. `bt_result_t`
 
 Type for result counters.
 
@@ -173,7 +173,7 @@ typedef struct
   size_t fault;
   size_t injected_fail;
   size_t injected_fault;
-} bt_resubt_t;
+} bt_result_t;
 ```
 </details>
 
@@ -884,7 +884,7 @@ Note: On error, current_time is set to "unknown time".
 ### Customization Helper Functions
 
 `size_t bt_currentlevel(void)`
-`bt_resubt_t bt_currentresult(void)`
+`bt_result_t bt_currentresult(void)`
 `bt_total_t bt_currenttotal(void)`
 `size_t bt_maxparallel(size@_t level)`
 `size_t bt_currentparallel(void)`
