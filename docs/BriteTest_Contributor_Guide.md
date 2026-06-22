@@ -282,19 +282,22 @@ Before submitting a PR:
 
 ## 8. Alternative Project Names and Rename Plan
 
-TODO: add OpemTest to table.
+Initial: LiteTest, April 2026.
+Changed: BriteTest, June 21,2026.
 
-Preferred alternative names for BriteTest:
+These names are suggested alternatives if a naming conflict requires a
+project rename:
 
+- LiteTest
 - CanaryRunner
 - CanaryAssert
 - CanaryProof
 - CanaryTestRunner
 
-These names are reserved as fallback options if a naming conflict requires a
-project rename.
+TODO: add briteTest, BriteTest, OpenTest, CanaryRunnet, CanaryAssert, CanaryProof,
+CanaryTestRunner to table.
 
-Additional two-letter abbreviation candidates:
+Candidats alternatives with two-letter abbreviations:
 
 These notes are an informal naming screen only. They are based on how generic,
 descriptive, or commonly used the terms appear in software and testing. They
@@ -302,7 +305,7 @@ are not a trademark search or legal clearance.
 
 | Name | Abbrev. | Informal conflict note | Likelihood |
 |------|---------|------------------------|------------|
-| BriteTest | LT | Clear and close to the project's lightweight positioning, but both `lite` and `test` are common software terms, so overlap with existing package or tool names is plausible. | Medium |
+| LiteTest | LT | Clear and close to the project's lightweight positioning, but both `lite` and `test` are common software terms, so overlap with existing package or tool names is plausible. | Medium |
 | CanaryTest | CT | Strong fit for the canary theme, but `canary` and `canary testing` are already common software terms, which makes the name less distinctive. | Higher |
 | CoreTest | CT | Clear and technical, but both `core` and `test` are common product words and may overlap with existing tools or internal packages. | Medium |
 | ClearTest | CT | Readable and descriptive, but the name is broad and likely to overlap with existing testing or QA branding. | Medium |
@@ -327,26 +330,25 @@ Fast low-risk rename plan:
 - Create a dedicated rename branch.
 - Restrict the change to naming and branding only.
 
-2. Choose one approved replacement name
-- Select one of the four preferred alternatives.
+2. Choose a replacement name
 - Use the chosen name consistently across code, docs, and assets.
 
 3. Update user-facing names first
 - Update the project title in `README.md`.
 - Update top-level headings in BriteTest documentation files.
-- Add a temporary note in `README.md` that the project was renamed from BriteTest.
+- Add a temporary note in `README.md` that the project was renamed from LiteTest.
 
 4. Update branding assets
-- Duplicate existing branding files to the new naming scheme.
+- Update SVG branding files to the new namE.
 - Regenerate PNG files from SVG files.
-- Keep old logo files temporarily for one release to avoid broken references.
 
-5. Update generator and file references
-- Update `scripts/genpdf` to use the new document branding file names.
+5. Update file references
 - Update markdown image references to point to renamed branding files.
 - Regenerate all PDFs and verify output paths.
 
-6. Update source identifiers carefully
+6. Update name in all files carefully
+- Update Contributor Guide for name change. Ensure entry in alternatives table for
+the old name is not changed to the new name.
 - Update only external identifiers that represent the project brand.
 - Avoid changing public API symbols unless explicitly required.
 - If API symbol changes are required, treat them as a major-version change.
