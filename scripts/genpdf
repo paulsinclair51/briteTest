@@ -76,8 +76,8 @@ Converts Markdown to PDF after optionally removing or converting
 
 Examples:
   genpdf README.md
-  genpdf docs/LiteTest_Documentation_Guide
-  genpdf docs/LiteTest_Documentation_Guide.md docs/My_LiteTest_Documentation_Guide
+  genpdf docs/BriteTest_Documentation_Guide
+  genpdf docs/BriteTest_Documentation_Guide.md docs/My_BriteTest_Documentation_Guide
   genpdf docs
   genpdf docs build
 EOF
@@ -419,7 +419,7 @@ _genpdf_find_logo() {
   # Find a logo file by extension in docs/branding/ relative to repo root or CWD.
   local ext=$1 root f
   for root in "$(dirname "$SCRIPT_DIR")" "$PWD"; do
-    f="$root/docs/branding/LiteTest_Logo${ext}"
+    f="$root/docs/branding/BriteTest_Logo${ext}"
     [[ -f "$f" ]] && echo "$f" && return 0
   done
   return 1
@@ -1506,7 +1506,7 @@ target_file_for_source() {
   local rel_path
 
   if [[ -n "${extra_root_readme:-}" && "$source_file" == "$extra_root_readme" ]]; then
-    printf '%s\n' "$outdir/LiteTest.pdf"
+    printf '%s\n' "$outdir/BriteTest.pdf"
     return
   fi
 

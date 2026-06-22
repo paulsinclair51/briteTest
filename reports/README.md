@@ -6,12 +6,12 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT   
 For license details, see `../LICENSE`.
 
-See `../README.md` for an introduction to LiteTest.
+See `../README.md` for an introduction to BriteTest.
 
 ## Files
 
-- **litetest_test_report.txt**: Report file for a standard test run.
-- **litetest_test_report-I.txt**: Report file for an injected test run.
+- **britetest_test_report.txt**: Report file for a standard test run.
+- **britetest_test_report-I.txt**: Report file for an injected test run.
 - **README.md**: This directory guide.
 
 ## Subdirectories

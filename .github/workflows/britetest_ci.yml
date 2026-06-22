@@ -1,0 +1,79 @@
+name: BriteTest CI
+
+# Define the CI workflow for BriteTest.
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see ../LICENSE.
+
+#----------------------------------------------------------------------------------
+# CI (Continuous Integration) is an automated practice where every change to the
+# codebase is built and tested in a shared environment. CI helps detect errors
+# early and ensures consistent build quality. Use continuous‑integration or CI
+# when used as an adjective.
+#
+# A CI workflow typically:
+# - Compiles the project.
+# - Runs tests.
+# - Validates formatting or static‑analysis rules.
+# - Produces artifacts such as logs or reports.
+# 
+# YAML is a plain‑text, human‑readable format where indentation defines structure.
+# Files (with the extension .yml) contain YAML text and are used by GitHub Actions.
+#----------------------------------------------------------------------------------
+
+# Set workflow to run on push events to the main branch:
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-test:
+    name: Build and Test (Linux)
+    # Set the operating system:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout # BriteTest repository code.
+        uses: actions/checkout@v4
+
+      - name: Validate directory README format
+        run: bash ./scripts/check_directory_readmes.sh
+
+      - name: Validate major release consistency
+        run: bash ./scripts/check_major_release_consistency.sh
+
+      - name: Install PDF generation dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wkhtmltopdf
+
+      - name: Generate docs PDFs (excluding docs/README.md)
+        run: |
+          bash ./scripts/genpdf -i "*.md" -x "README.md" docs docs/pdf
+
+      - name: Upload docs PDF artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-pdf-${{ github.sha }}
+          path: docs/pdf/*.pdf
+
+      - name: Publish docs PDFs to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: docs/pdf/*.pdf
+
+      - name: Build
+        run: make test
+
+      - name: Run tests
+        run: ./test_britetest

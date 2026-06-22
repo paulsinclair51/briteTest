@@ -6,7 +6,7 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT   
 For license details, see `../LICENSE`.
 
-See `../README.md` for an introduction to LiteTest.
+See `../README.md` for an introduction to BriteTest.
 
 ## Files
 
@@ -14,8 +14,10 @@ See `../README.md` for an introduction to LiteTest.
   Format (`,pdf`),
   after removing lines with details/summary tags;
   Run `genpdf --help` for usage information.
+- **genpng.sh**: Generate all branding PNGs from `docs/branding/BriteTest_*.svg`.
+  Run `genpng.sh --help` for usage information.
 - **genalldocs.sh**: Generate all documentation PDFs by invoking `genpdf`
-  once per document (`README.md` and `docs/LiteTest_*.md`) into `docs/pdf/`.
+  once per document (`README.md` and `docs/BriteTest_*.md`) into `docs/pdf/`.
   Run `genalldocs.sh --help` for usage information.
 - **test_genpdf.sh**: Lightweight self-test for `genpdf`.
   Run `test_genpdf.sh --help` for usage information.

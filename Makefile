@@ -1,7 +1,7 @@
 #-----------------------------------------------------------------
-# Makefile for test_litetest (Linux/macOS)
+# Makefile for test_britetest (Linux/macOS)
 #
-# test_liteteest is an executable that uses the LiteTest
+# test_liteteest is an executable that uses the BriteTest
 # framework and APIs to test itself.
 #
 #-----------------------------------------------------------------
@@ -10,17 +10,17 @@
 # For license details, see the LICENSE file in the root directory.
 #-----------------------------------------------------------------
 #
-# test_litetest can be run by submitting a command line of the
+# test_britetest can be run by submitting a command line of the
 # following form to a shell:
 #
-#   [<directory_path>/]test_litetest [<option>],,, [<arg>]...
+#   [<directory_path>/]test_britetest [<option>],,, [<arg>]...
 #
 # For usage information about the options and args, submit the
 # follpwing to a shell:
 #
-#   [<directory_path>/]test_litetest --help
+#   [<directory_path>/]test_britetest --help
 #
-# For an introduction to LiteTest, see README.md in ghe root
+# For an introduction to BriteTest, see README.md in ghe root
 # directory.
 #-----------------------------------------------------------------
 
@@ -29,12 +29,12 @@ CFLAGS ?= -std=c11 -Wall -Wextra -Wno-clobbered -O2
 CPPFLAGS ?= -Iinclude -D_POSIX_C_SOURCE=200809L
 
 BUILD_DIR := build
-TARGET := test_litetest
+TARGET := test_britetest
 
 SOURCES := \
-	litetest_runner.c \
-	litetest_test.c \
-	test_litetest.c \
+	britetest_runner.c \
+	britetest_test.c \
+	test_britetest.c \
 	test_orchestrator.c \
 	test_file_compare_helpers.c \
 	test_guard1.c \
@@ -46,7 +46,7 @@ OBJECTS := $(addprefix $(BUILD_DIR)/,$(SOURCES:.c=.o))
 
 all: $(TARGET)
 
-# Build litetest.o (provides all API function bodies)
+# Build britetest.o (provides all API function bodies)
 
 # Pattern rule for all .c -> build/*.o.
 
@@ -54,21 +54,21 @@ $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-# Link test_litetest executable.
+# Link test_britetest executable.
 
 $(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $(OBJECTS)
 
 #run the tests.
-test: test_litetest
-	./test_litetest
+test: test_britetest
+	./test_britetest
 
 run: $(TARGET)
 	mkdir -p ./reports
 	./$(TARGET) ./reports
 	./$(TARGET) -i ./reports
-	./$(TARGET) --help > ./reports/litetest_help.txt
-	./$(TARGET) -h > ./reports/litetest_.txt
+	./$(TARGET) --help > ./reports/britetest_help.txt
+	./$(TARGET) -h > ./reports/britetest_.txt
 
 lint-md:
 	@find . -type f -name '*.md' ! -path './.git/*' -print0 | \
@@ -80,7 +80,10 @@ test-genpdf:
 gendocs:
 	bash ./scripts/genalldocs.sh
 
+genpng:
+	bash ./scripts/genpng.sh
+
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run lint-md test-genpdf gendocs clean
+.PHONY: all run lint-md test-genpdf gendocs genpng clean

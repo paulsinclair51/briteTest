@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate all LiteTest documentation PDFs by invoking scripts/genpdf for
+# Generate all BriteTest documentation PDFs by invoking scripts/genpdf for
 # each source document individually.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -15,12 +15,12 @@ Usage:
   genalldocs.sh
   genalldocs.sh -h | --help
 
-Generates all LiteTest documentation PDFs by calling scripts/genpdf once per
+Generates all BriteTest documentation PDFs by calling scripts/genpdf once per
 source document.
 
 Outputs:
-  docs/pdf/LiteTest.pdf                         (from README.md)
-  docs/pdf/LiteTest_*.pdf                       (from docs/LiteTest_*.md)
+  docs/pdf/BriteTest.pdf                         (from README.md)
+  docs/pdf/BriteTest_*.pdf                       (from docs/BriteTest_*.md)
 EOF
 }
 
@@ -42,12 +42,12 @@ fi
 
 mkdir -p "$out_dir"
 
-"$genpdf_script" "$repo_root/README.md" "$out_dir/LiteTest.pdf"
+"$genpdf_script" "$repo_root/README.md" "$out_dir/BriteTest.pdf"
 
-mapfile -t docs_files < <(find "$docs_dir" -maxdepth 1 -type f -name 'LiteTest_*.md' | sort)
+mapfile -t docs_files < <(find "$docs_dir" -maxdepth 1 -type f -name 'BriteTest_*.md' | sort)
 
 if [[ ${#docs_files[@]} -eq 0 ]]; then
-  echo "Error: no docs/LiteTest_*.md files found." >&2
+  echo "Error: no docs/BriteTest_*.md files found." >&2
   exit 1
 fi
 

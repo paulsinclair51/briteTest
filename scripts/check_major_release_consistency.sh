@@ -35,7 +35,7 @@ header_major() {
   local file="$1"
   local semver
 
-  semver="$(grep -Ei '^#[[:space:]]*define[[:space:]]+LT_[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' "$file" \
+  semver="$(grep -Ei '^#[[:space:]]*define[[:space:]]+BT_[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' "$file" \
     | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' \
     | head -n 1 || true)"
 
@@ -60,12 +60,12 @@ source_major() {
     return 0
   fi
 
-  include_line="$(grep -E '^#[[:space:]]*include[[:space:]]+"litetest_(runner|test)\.h"' "$file" | head -n 1 || true)"
+  include_line="$(grep -E '^#[[:space:]]*include[[:space:]]+"britetest_(runner|test)\.h"' "$file" | head -n 1 || true)"
 
-  if [[ "$include_line" == *'"litetest_runner.h"'* ]]; then
-    semver="$(header_major "include/litetest_runner.h")"
-  elif [[ "$include_line" == *'"litetest_test.h"'* ]]; then
-    semver="$(header_major "include/litetest_test.h")"
+  if [[ "$include_line" == *'"britetest_runner.h"'* ]]; then
+    semver="$(header_major "include/britetest_runner.h")"
+  elif [[ "$include_line" == *'"britetest_test.h"'* ]]; then
+    semver="$(header_major "include/britetest_test.h")"
   else
     semver="$(extract_semver "$file")"
   fi

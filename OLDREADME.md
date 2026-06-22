@@ -1,10 +1,10 @@
-# LiteTest
+# BriteTest
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/LiteTest?display_name=tag)](https://github.com/paulsinclair51/LiteTest/releases)
-[![CI](https://github.com/paulsinclair51/LiteTest/actions/workflows/ci.yml/badge.svg)](https://github.com/paulsinclair51/LiteTest/actions/workflows/ci.yml)
+[![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/BriteTest?display_name=tag)](https://github.com/paulsinclair51/BriteTest/releases)
+[![CI](https://github.com/paulsinclair51/BriteTest/actions/workflows/britetest_ci.yml/badge.svg)](https://github.com/paulsinclair51/BriteTest/actions/workflows/britetest_ci.yml)
 
-LiteTest is a lightweight Application Programming Interface (API) and framework for defining,
+BriteTest is a lightweight Application Programming Interface (API) and framework for defining,
 running, and reporting tests in C/C++ projects. It is implemented as a single `.h` and `.c` pair
 with no external dependencies requiring only a POSIX.1‑2001 environment and a C99‑compliant compiler.
 
@@ -18,8 +18,8 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [Documentation Scope](#documentation-scope)
 - [Key Features](#key-features)
 - [API Usage Requirements](#api-usage-requirements)
-- [How LiteTest Compares](#how-litetest-compares)
-- [What LiteTest Does Not Provide](#what-litetest-does-not-provide)
+- [How BriteTest Compares](#how-britetest-compares)
+- [What BriteTest Does Not Provide](#what-britetest-does-not-provide)
 - [Overview](#overview)
 - [Core API Macros](#core-api-macros)
   - [Macros for the Orchestrator (main) Function](#macros-for-the-orchestrator-main-function)
@@ -33,7 +33,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [Headers (.h) and Sources (.c)](#headers-h-and-sources-c)
 - [Orchestrator (main) Function Template](#orchestrator-main-function-template)
 - [Test Group Function Template](#test-group-function-template)
-- [Example of Using the LiteTest API](#example-of-using-the-litetest-api)
+- [Example of Using the BriteTest API](#example-of-using-the-britetest-api)
 - [Building the Test Executable](#building-the-test-executable)
   - [Linux / macOS](#linux--macos)
   - [Windows (POSIX Toolchain Required)](#windows-posix-toolchain-required)
@@ -53,14 +53,14 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 
 ## Quick Start
 
-LiteTest tests are C/C++ expressions/functions, and the orchestrator controls
+BriteTest tests are C/C++ expressions/functions, and the orchestrator controls
 reporting and execution.
 
-1. To try LiteTest, copy 'litetest_runner.h' and 'litetest_runner.c' to your current directory:
+1. To try BriteTest, copy 'britetest_runner.h' and 'britetest_runner.c' to your current directory:
 
 ```sh
-cp /path/to/litetest_runner.h .
-cp /path/to/litetest_runner.c .
+cp /path/to/britetest_runner.h .
+cp /path/to/britetest_runner.c .
 ```
 
 2. Create a file named `test_quick.c` in the same directory.
@@ -71,45 +71,45 @@ cp /path/to/litetest_runner.c .
 <summary>💻 Click to view and copy</summary>
 
 ```c
-#include "litetest_runner.h"
+#include "britetest_runner.h"
 
 // A simple test group function.
 
-static LT_DECLARE_GROUP(test_quick)
+static BT_DECLARE_GROUP(test_quick)
 {
-  LT_INIT_GROUP(test_quick, 1);
+  BT_INIT_GROUP(test_quick, 1);
 
   int a = 2;
   int b = 2;
 
   // 4 test assertions.
-  LT_TEST(a == b, , 0);        // Pass
-  LT_TEST(a + b == 4, ,  0);    // Pass
-  LT_TEST(a - b == 1, , 0);    // Fail
-  LT_TEST(LT_FAULT(1), , 0);   // Fault
+  BT_TEST(a == b, , 0);        // Pass
+  BT_TEST(a + b == 4, ,  0);    // Pass
+  BT_TEST(a - b == 1, , 0);    // Fail
+  BT_TEST(BT_FAULT(1), , 0);   // Fault
 
-  LT_RETURN;
+  BT_RETURN;
 }
 
 // A simple orchestrator (main) function.
 
-LT_DECLARE_ORCHESTRATOR(main)
+BT_DECLARE_ORCHESTRATOR(main)
 {
-  LT_INIT_ORCHESTRATOR(main, quick, 1);
-  LT_PARSE_ARGS(2, "quick_test_report.txt");
-  LT_OPEN_REPORT("Test Quick Report");
+  BT_INIT_ORCHESTRATOR(main, quick, 1);
+  BT_PARSE_ARGS(2, "quick_test_report.txt");
+  BT_OPEN_REPORT("Test Quick Report");
 
   // Single test category.
-  LT_WRITE_RESULT(LT_GROUP(test_quick), "Quick tests");
+  BT_WRITE_RESULT(BT_GROUP(test_quick), "Quick tests");
 
-  LT_CLOSE_REPORT("Note: This report is a very simple example of using LiteTest.\n"
+  BT_CLOSE_REPORT("Note: This report is a very simple example of using BriteTest.\n"
                   "Note: Multiple test categories can be added using multiple\n"
                   "      test functions.\n"
                   "Note: Orchestrator (`main`) and test functions can be placed in\n"
                   "      individual modules (.c files).\n"
                   "Note: Parameters can be set to run tests in parallel, isolate\n"
                   "      a test to a separate thread or process, etc.\n"
-                  "Note: The expression for LT_TEST can reference functions to\n"
+                  "Note: The expression for BT_TEST can reference functions to\n"
                   "      provide a more complex test. A non-zero result indicates\n"
                   "      pass and a zero result indicates fail. If a fault occurs\n"
                   "      executing the expression, it is detected and counted in\n"
@@ -117,8 +117,8 @@ LT_DECLARE_ORCHESTRATOR(main)
                   "Note: Larger projects can place files in a more conventional\n"
                   "      layout (e.g., `include/` and `src/`, but this example keeps\n"
                   "      everything in your current directory for simplification.\n"
-                  "Note: See README.md for LiteTest for additional API features.\n");
-  LT_EXIT;
+                  "Note: See README.md for BriteTest for additional API features.\n");
+  BT_EXIT;
 }
 ```
 </details>
@@ -126,7 +126,7 @@ LT_DECLARE_ORCHESTRATOR(main)
 4. Build the executable `test_quick` in your current directory:
 
 ```sh
-cc -std=c99 -Wall -Wextra -o test_quick test_quick.c litetest_runner.c
+cc -std=c99 -Wall -Wextra -o test_quick test_quick.c britetest_runner.c
 ```
 
 5. Run it:
@@ -147,7 +147,7 @@ Example of the report:
 <summary>💻 Click to view</summary>
 
 ```text
-LiteTest Report
+BriteTest Report
                              Pass   Fail     Fault
 --------------------------------------------------
 1. Orchestrator                 4
@@ -164,11 +164,11 @@ platform-specific notes and options.
 
 ## Documentation Scope
 
-This README serves as the introduction and usage guide to LiteTest. It focuses on concepts,
-workflow, and practical examples to help you quickly integrate LiteTest into your project.
+This README serves as the introduction and usage guide to BriteTest. It focuses on concepts,
+workflow, and practical examples to help you quickly integrate BriteTest into your project.
 
 Detailed API behavior, macro semantics, and lower‑level implementation details are documented
-directly in `include/litetest_runner.h`.
+directly in `include/britetest_runner.h`.
 
 ## Key Features
 
@@ -188,7 +188,7 @@ directly in `include/litetest_runner.h`.
 <details>
 <summary>Click to view</summary>
 
-LiteTest requires:
+BriteTest requires:
 
 - POSIX.1‑2001 (IEEE Std 1003.1‑2001) compatibility.
 - A C99‑compliant compiler.
@@ -198,37 +198,37 @@ Supported environments:
 - Linux, macOS, BSD — fully compatible.
 - Windows — requires a POSIX layer such as Cygwin, MSYS2, or WSL.
 
-LiteTest has been exercised in POSIX environments; users should
+BriteTest has been exercised in POSIX environments; users should
 validate behavior in their own systems.
 </details>
 
-## How LiteTest Compares
+## How BriteTest Compares
 
 <details>
 <summary>Click to view</summary>
 
-| Framework     | Language / Style | Dependencies | Fault Isolation | Strengths | How LiteTest Differs |
+| Framework     | Language / Style | Dependencies | Fault Isolation | Strengths | How BriteTest Differs |
 |---------------|------------------|--------------|-----------------|-----------|------------------------|
-| **Unity**     | C, macro‑heavy   | None         | No              | Widely used, simple API | LiteTest adds POSIX signal‑based fault isolation and category‑level reporting. |
-| **cmocka**    | C, function‑based | None        | Yes (setjmp)    | Mature, feature‑rich | LiteTest is smaller, header‑driven, and easier to embed in small projects. |
-| **Check**     | C, process‑based | POSIX tools  | Yes (fork)      | Strong isolation, fixtures | LiteTest avoids process spawning and keeps a minimal footprint. |
-| **Criterion** | C, auto‑discovery | libc, POSIX | Yes             | Modern, fast, rich output | LiteTest is simpler, portable, and avoids auto‑discovery complexity. |
-| **LiteTest**  | C99, macro‑driven | None        | Yes (POSIX signals) | Minimal, portable, easy to embed | Designed for small C projects needing fault isolation without heavy frameworks. |
+| **Unity**     | C, macro‑heavy   | None         | No              | Widely used, simple API | BriteTest adds POSIX signal‑based fault isolation and category‑level reporting. |
+| **cmocka**    | C, function‑based | None        | Yes (setjmp)    | Mature, feature‑rich | BriteTest is smaller, header‑driven, and easier to embed in small projects. |
+| **Check**     | C, process‑based | POSIX tools  | Yes (fork)      | Strong isolation, fixtures | BriteTest avoids process spawning and keeps a minimal footprint. |
+| **Criterion** | C, auto‑discovery | libc, POSIX | Yes             | Modern, fast, rich output | BriteTest is simpler, portable, and avoids auto‑discovery complexity. |
+| **BriteTest**  | C99, macro‑driven | None        | Yes (POSIX signals) | Minimal, portable, easy to embed | Designed for small C projects needing fault isolation without heavy frameworks. |
 </details>
 
-## What LiteTest Does Not Provide
+## What BriteTest Does Not Provide
 
 <details>
 <summary>Click to view</summary>
 
-LiteTest focuses on executing tests and reporting results. It does not:
+BriteTest focuses on executing tests and reporting results. It does not:
 
 - Generate test source files — users write their own test modules.
 - Perform automatic test discovery — tests are invoked explicitly by the orchestrator or from within test functions.
 - Provide mocking or stubbing frameworks — users implement their own mocking and stubbing.
 - Include built‑in setup/teardown systems — users implement their own patterns as needed.
 - Handle memory management or leak detection — external tools (e.g., Valgrind) must be used.
-- Manage source control or repository structure — LiteTest does not define SCM workflows.
+- Manage source control or repository structure — BriteTest does not define SCM workflows.
 - Integrate with build systems or CI pipelines — users configure these as needed.
 - Manage test artifacts such as expected‑output (“control”) files.
 - Define or enforce directory layouts for tests or project structure.
@@ -240,30 +240,30 @@ LiteTest focuses on executing tests and reporting results. It does not:
 
 ## Overview
 
-LiteTest is a lightweight C/C++ testing framework built around a simple execution model:
+BriteTest is a lightweight C/C++ testing framework built around a simple execution model:
 1. You write C test expressions (that typically invoke functions) for each test and wrap each
-   of these expressions with the `LT_TEST` macro in a test group function.
-2. You wrap each test group function name with the `LT_GROUP` macro in the orchestrator.
+   of these expressions with the `BT_TEST` macro in a test group function.
+2. You wrap each test group function name with the `BT_GROUP` macro in the orchestrator.
 3. The orchestrator (`main`) function runs the test group functions and reports results.
 
-The LiteTest Runner API files:
+The BriteTest Runner API files:
 
- - [`include/litetest_runner.h`](include/litetest_runner.h) — public API (typedefs, enums, constants, macros,
+ - [`include/britetest_runner.h`](include/britetest_runner.h) — public API (typedefs, enums, constants, macros,
    function declarations, and static inline function definitions).
- - [`src/litetest_runner.c`](src/litetest_runner.c) — function definitions for the LiteTest framework.
+ - [`src/britetest_runner.c`](src/britetest_runner.c) — function definitions for the BriteTest framework.
 
-The LiteTest Test API files:
+The BriteTest Test API files:
 
- - [`include/litetest_test.h`](include/litetest_test.h) — test support/helper function declarations.
- - [`src/litetest_test.c`](src/litetest_test.c) — test support/helper function definitions.
+ - [`include/britetest_test.h`](include/britetest_test.h) — test support/helper function declarations.
+ - [`src/britetest_test.c`](src/britetest_test.c) — test support/helper function definitions.
 
 A typical test executable includes:
 
 - An orchestrator (`main`) function that opens the report, invokes test group functions,
   writes category results, and closes the report.
 - Multiple test group functions that execute the tests.
-- The LiteTest Runner API files (`litetest_runner.h`, `litetest_runner.c`).
-- The LiteTest Test API files (`litetest_test.h`, `litetest_test.c`).
+- The BriteTest Runner API files (`britetest_runner.h`, `britetest_runner.c`).
+- The BriteTest Test API files (`britetest_test.h`, `britetest_test.c`).
 - The headers and source files for the project being tested.
 
 main()
@@ -277,7 +277,7 @@ main()
 Recommended: Put the orchestrator function in one source file and each test group function
 in its own source file.
    
-When executed, LiteTest produces a report summarizing tests by category, including:
+When executed, BriteTest produces a report summarizing tests by category, including:
 
 - Pass/fail/fault counts per category.
 - Totals across all categories.
@@ -290,36 +290,36 @@ functions. These macros fall into 3 types:
 
 | Type | Purpose | Naming Pattern |
 | --- | --- | --- |
-| **Orchestrator** | Define and run the test runner | ``LT_DECLARE_*``, ``LT_INIT_*``, ``LT_*`` |
-| **Test Group Functions** | Define test group functions | ``LT_DECLARE_GROUP``, ``LT_INIT_GROUP``, ``LT_RETURN`` |
-| **Execution** | Execute groups or test expressions | ``LT_GROUP``, ``LT_TEST`` |
+| **Orchestrator** | Define and run the test runner | ``BT_DECLARE_*``, ``BT_INIT_*``, ``BT_*`` |
+| **Test Group Functions** | Define test group functions | ``BT_DECLARE_GROUP``, ``BT_INIT_GROUP``, ``BT_RETURN`` |
+| **Execution** | Execute groups or test expressions | ``BT_GROUP``, ``BT_TEST`` |
 
 ### Macros for the Orchestrator (`main`) Function
 
-- `LT_DECLARE_ORCHESTRATOR(funcname)[;]`
-- `LT_INIT_ORCHESTRATOR(funcname, project, maxparallel);`
-- `LT_PARSE_ARGS(maxargs, defaultreportfilename);`
-- `LT_OPEN_REPORT(title]);`
+- `BT_DECLARE_ORCHESTRATOR(funcname)[;]`
+- `BT_INIT_ORCHESTRATOR(funcname, project, maxparallel);`
+- `BT_PARSE_ARGS(maxargs, defaultreportfilename);`
+- `BT_OPEN_REPORT(title]);`
 - test group and test expression macros,
-- `LT_WRITE_RESULT(gtm, category);`
-- `LT_CLOSE_REPORT(notes]);`
-- `LT_EXIT;`
+- `BT_WRITE_RESULT(gtm, category);`
+- `BT_CLOSE_REPORT(notes]);`
+- `BT_EXIT;`
 
 Note:
 - `funcname` must be main.
 - `maxargs` must be 2 or greater. The first arg is the executable name.
   The second optional arg is `PATH`. Additional args are for customization
   and must be parsed by custom code added to the function.
-- `gtm` is an `LT_GROUP` or `LT_TEST` macro.
+- `gtm` is an `BT_GROUP` or `BT_TEST` macro.
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, omit the semicolon and follow with a definition in `{ }`.
 
 ### Macros for a Test Group Function
 
-- `LT_DECLARE_GROUP(funcname)[;]`
-- `LT_INIT_GROUP(funcname, maxparallel);`
+- `BT_DECLARE_GROUP(funcname)[;]`
+- `BT_INIT_GROUP(funcname, maxparallel);`
 - test expression and test group macros.
-- `LT_RETURN;`
+- `BT_RETURN;`
 
 Note:
 - `funcname` must not be main and must be same for the first two macros when
@@ -329,10 +329,10 @@ Note:
 
 ### Macros for Executing a Test Group Function or Test Expression
 
-- `LT_GROUP(funcname, [include], isolation)[;]`
-- `LT_TEST(expression, [include], isolation)[;]`
+- `BT_GROUP(funcname, [include], isolation)[;]`
+- `BT_TEST(expression, [include], isolation)[;]`
 
-When an  `LT_GROUP `or `LT_TEST` macro is passed as the first argument to LT_WRITE_RESULT,
+When an  `BT_GROUP `or `BT_TEST` macro is passed as the first argument to BT_WRITE_RESULT,
 omit the trailing semicolon. Otherwise, a semicolon is required.
 
 `funcname`: name of the group function to execute.
@@ -349,7 +349,7 @@ based on the test executable's `-I` or `-In` option (see [`-I` and `-In` Option]
 - 1 — always execute.
 - 2 – 9 — execute only when the user specifies an `-In` option and the value is less than or
 -         equal to n (a single non-zero digit).
-- I — execute only when the user specifies `-I` without a digit (valid only for LT_TEST),
+- I — execute only when the user specifies `-I` without a digit (valid only for BT_TEST),
       Result is counted as an injected pass/fail/fault as well as the usual
       a pass/fail/fault count.
 - omitted — defaults to `1`.
@@ -358,31 +358,31 @@ For `isolation`, see [Isolation Modes and Fault Handling](isolation-modes-and-fa
 
 Special values that can be used in any expression:
 
-- `LT_PASS`: returns 1.
-- `LT_FAIL`: returns 0. Note this does force a fail. A fail occurs only if the test
+- `BT_PASS`: returns 1.
+- `BT_FAIL`: returns 0. Note this does force a fail. A fail occurs only if the test
   expression evaluates to 0.
--` LT_FAULT(type)`: causes a fault of the specified type: 1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
-  For other values of type, LT_FAULT returns 0.
+-` BT_FAULT(type)`: causes a fault of the specified type: 1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
+  For other values of type, BT_FAULT returns 0.
 
 #### Parallel Execution
 
-LiteTest starts up to `maxparallel` test group functions or test expressions concurrently.
+BriteTest starts up to `maxparallel` test group functions or test expressions concurrently.
 When one finishes, another begins, until all are complete. `maxparallel` is set by the
-`LT_INIT_ORCHESTRATOR` and `LT_INIT_GROUP` macros.
+`BT_INIT_ORCHESTRATOR` and `BT_INIT_GROUP` macros.
 
 ###  Macros for Concurrent Execution
 
-The concurrent block macros ensure that all `LT_TEST` macros inside it start together:
+The concurrent block macros ensure that all `BT_TEST` macros inside it start together:
 
-- The `LT_TEST` macros are bracketed with:
-  - `LT_BEGIN_CONCURRENT(blockname)`
-  - `LT_END_CONCURRENT(blockname)`
+- The `BT_TEST` macros are bracketed with:
+  - `BT_BEGIN_CONCURRENT(blockname)`
+  - `BT_END_CONCURRENT(blockname)`
 - Within a test group function body, a concurrent block cannot be nested inside
   concurrent block.
 
 ### Isolation Modes and Fault Handling
 
-LiteTest supports two execution isolation modes that balance speed and fault‑isolation. Both modes run
+BriteTest supports two execution isolation modes that balance speed and fault‑isolation. Both modes run
 tests in a single thread within each process; the difference is whether all test groups and tests run
 inside one process or each runs in its own process.
 
@@ -418,7 +418,7 @@ test run.
 In this mode, all test groups and tests run sequentially inside a single process and a single thread.
 This provides the fastest execution and the simplest debugging experience.
 
-LiteTest installs a signal guard that can detect and report certain synchronous faults,
+BriteTest installs a signal guard that can detect and report certain synchronous faults,
 including:
 
 - `SIGSEGV` (invalid memory access)
@@ -429,7 +429,7 @@ including:
 These faults can be caught and reported without terminating the test run.
 
 However, some failures cannot be isolated in a single process. If a test triggers
-one of the following, the entire LiteTest process terminates:
+one of the following, the entire BriteTest process terminates:
 
 - `SIGABRT` (abort(), assert() failures, malloc corruption).
 - `SIGKILL`, `SIGSTOP`.
@@ -443,10 +443,10 @@ provide complete fault isolation.
 
 2. Process‑Isolated Mode (parallel or serial)
 
-In this mode, each test group function and test expression runs in its own child process. LiteTest monitors each child and
+In this mode, each test group function and test expression runs in its own child process. BriteTest monitors each child and
 reports its result after the process exits.
 
-Because each test group function and test expression runs in a separate process, LiteTest can isolate:
+Because each test group function and test expression runs in a separate process, BriteTest can isolate:
 
 - `SIGABRT` and all abort‑based failures.
 - Memory corruption that triggers allocator aborts.
@@ -474,7 +474,7 @@ Summary:
 | Single‑Process    | One process, one thread       | Partial (cannot isolate aborts/hangs)  | Fast local runs, debugging  |
 | Process‑Isolated  | One process per test group    | Full (survives all faults)             | CI, fault injection, parallel runs |
 
-Both modes use the same `LT_GROUP` and `LT_TEST` macros. The choice of isolation
+Both modes use the same `BT_GROUP` and `BT_TEST` macros. The choice of isolation
 mode affects only how test group functions and test expressions are executed,
 not how they are written.
 
@@ -487,18 +487,18 @@ Examples include:
 <details>
 <summary>Click here to view</summary>
 
-- `lt_executablename`
-- `lt_result_t`
-- `lt_dirpath`
-- `LT_MAX_PATH_LEN`
-- `lt_currentlevel`
-- `lt_currentresult`
-- `lt_maxparallel`
-- `lt_blockname`
-- `lt_iswritedirpath`
+- `bt_executablename`
+- `bt_resubt_t`
+- `bt_dirpath`
+- `BT_MAX_PATH_LEN`
+- `bt_currentlevel`
+- `bt_currentresult`
+- `bt_maxparallel`
+- `bt_blockname`
+- `bt_iswritedirpath`
 </details>
 
-See [include/litetest_runner.h](include/litetest_runner.h) for documentation on the provided
+See [include/britetest_runner.h](include/britetest_runner.h) for documentation on the provided
 customization functions.
 
 ## Test Support API
@@ -510,33 +510,33 @@ Additional functions are provided to support writing tests.
 
 Examples of Process and runtime helpers include:
 
-- `int lt_execute_command(const char *command_line, int timeout_ms, char *output_buffer, size_t output_buffer_size, int *exit_code)`
-- `int lt_wait_for_condition(int (*condition)(void *callback_context), void *callback_context, int timeout_ms, int poll_interval_ms)`
+- `int bt_execute_command(const char *command_line, int timeout_ms, char *output_buffer, size_t output_buffer_size, int *exit_code)`
+- `int bt_wait_for_condition(int (*condition)(void *callback_context), void *callback_context, int timeout_ms, int poll_interval_ms)`
 
 Examples of File and filesystem helpers include:
 
-- `int lt_copy_file(const char *source_path, const char *destination_path)`
-- `int lt_make_temp_dir(const char *prefix, char *out_path, size_t out_path_size)`
+- `int bt_copy_file(const char *source_path, const char *destination_path)`
+- `int bt_make_temp_dir(const char *prefix, char *out_path, size_t out_path_size)`
   
 Examples of Comparison and matching helpers include:
 
-- `int lt_compare_files(FILE *left_file, FILE *right_file)`
-- `int lt_compare_file_to_path(FILE *file, const char *path)`
-- `int lt_compare_paths(const char *left_path, const char *right_path)`
-- `int lt_compare_path_to_file(const char *path, FILE *file)`
-- `int lt_match(const char *text, const char *pattern)`
+- `int bt_compare_files(FILE *left_file, FILE *right_file)`
+- `int bt_compare_file_to_path(FILE *file, const char *path)`
+- `int bt_compare_paths(const char *left_path, const char *right_path)`
+- `int bt_compare_path_to_file(const char *path, FILE *file)`
+- `int bt_match(const char *text, const char *pattern)`
 
 Example of Environment helpers:
 
-- `int lt_with_environment_variable(const char *variable_name, const char *temporary_value, int (*callback)(void *callback_context), void *callback_context)`
+- `int bt_with_environment_variable(const char *variable_name, const char *temporary_value, int (*callback)(void *callback_context), void *callback_context)`
 </details>
 
-See [include/litetest_test.h](include/litetest_test.h) for documentation on the provided
+See [include/britetest_test.h](include/britetest_test.h) for documentation on the provided
 test support functions.
   
 ## Headers (.h) and Sources (.c)
 
-Source files containing the orchestrator or test group functions must include `litetest_runner.h` and
+Source files containing the orchestrator or test group functions must include `britetest_runner.h` and
 any required project headers.
 
 Example: Testing lubtype Project
@@ -547,16 +547,16 @@ source file includes these two headers:
 
 ```c
 #include "lubtype.h"
-#include "litetest_runner.h"
+#include "britetest_runner.h"
 ```
 
-Example: Self-Testing LiteTest Project
+Example: Self-Testing BriteTest Project
 
 The `tests` directory for this repository provides an example self-test for
-the LiteTest API and framework.
+the BriteTest API and framework.
 
 ```c
-#include "litetest_runner.h"
+#include "britetest_runner.h"
 ```
 
 ## Orchestrator (`main`) Function Template
@@ -565,30 +565,30 @@ the LiteTest API and framework.
 <summary>💻 Click to view and copy</summary>
 
 ```c
-LT_DECLARE_ORCHESTRATOR(main)
+BT_DECLARE_ORCHESTRATOR(main)
 {
-  LT_INIT_ORCHESTRATOR(main, project, [maxparallel]);
-  LT_PARSE_ARGS([maxargs], ["defaultfilename"]);
-  LT_OPEN_REPORT(["title"]);
+  BT_INIT_ORCHESTRATOR(main, project, [maxparallel]);
+  BT_PARSE_ARGS([maxargs], ["defaultfilename"]);
+  BT_OPEN_REPORT(["title"]);
 
   // Insert group/test/write calls here:
-  //   LT_GROUP(funcname, [isolation]);
-  //   LT_TEST(expression, [isolation]);
-  //   LT_TEST_I(expression, [isolation]);
-  //   LT_WRITE_RESULT(LT_GROUP(funcname, [isolation]), "category");
-  //   LT_WRITE_RESULT(LT_TEST(expression, [isolation]), "category");
+  //   BT_GROUP(funcname, [isolation]);
+  //   BT_TEST(expression, [isolation]);
+  //   BT_TEST_I(expression, [isolation]);
+  //   BT_WRITE_RESULT(BT_GROUP(funcname, [isolation]), "category");
+  //   BT_WRITE_RESULT(BT_TEST(expression, [isolation]), "category");
   // Group test/assert calls using:
-  //   LT_BEGIN_CONCURRENT(groupname);
-  //   LT_END_CONCURRENT(groupname);
+  //   BT_BEGIN_CONCURRENT(groupname);
+  //   BT_END_CONCURRENT(groupname);
 
-  LT_CLOSE_REPORT(["notes"]);
+  BT_CLOSE_REPORT(["notes"]);
 
-  LT_EXIT;
+  BT_EXIT;
 }
 ```
 </details>
 
-`LT_WRITE_RESULT` writes one category and resets its counts. Totals accumulate
+`BT_WRITE_RESULT` writes one category and resets its counts. Totals accumulate
 across the full run.
 
 Optional typedefs, variables, functions, and code may be added to customize
@@ -602,7 +602,7 @@ as if it occurs before the tests.
 Forward-declaration:
 
 ```c
-LT_DECLARE_ORCHESTRATOR(main);
+BT_DECLARE_ORCHESTRATOR(main);
 ```
 
 ## Test Group Function Template
@@ -611,19 +611,19 @@ LT_DECLARE_ORCHESTRATOR(main);
 <summary>💻 Click to view and copy</summary>
 
 ```c
-[static] LT_DECLARE_GROUP(funcname)
+[static] BT_DECLARE_GROUP(funcname)
 {
-  LT_INIT_GROUP(funcname, [maxparallel]);
+  BT_INIT_GROUP(funcname, [maxparallel]);
 
   // Insert test/group calls here:
-  //   LT_TEST(expression, [isolation]);
-  //   LT_TEST_I(expression, [isolation]);
-  //   LT_GROUP(funcname, [isolation]);
+  //   BT_TEST(expression, [isolation]);
+  //   BT_TEST_I(expression, [isolation]);
+  //   BT_GROUP(funcname, [isolation]);
   // Group test/assert calls using:
-  //   LT_BEGIN_CONCURRENT(groupname);
-  //   LT_END_CONCURRENT(groupname);
+  //   BT_BEGIN_CONCURRENT(groupname);
+  //   BT_END_CONCURRENT(groupname);
 
-  LT_RETURN;
+  BT_RETURN;
 }
 ```
 </details>
@@ -633,7 +633,7 @@ Use `static` when the function is only referenced in the same module.
 Forward declaration:
 
 ```c
-[static] LT_DECLARE_GROUP(func);
+[static] BT_DECLARE_GROUP(func);
 ```
 
 Specify `static` if the above definition of the function specifies `static`.
@@ -646,15 +646,15 @@ or support testing.  Added code may use test support functions (see
 **Recommended**: do not intermix code with the tests; such code is
 handled as if it occurs before the tests.
 
-## Example of Using the LiteTest API
+## Example of Using the BriteTest API
 
 The `tests` directory for this repository provides a self-test implementation of
-the LiteTest API and framework. It includes:
+the BriteTest API and framework. It includes:
 
 <details>
 <summary>Click to view</summary>
 
-- `test_litetest.c` defines the orchestrator (`main`) with two test
+- `test_britetest.c` defines the orchestrator (`main`) with two test
    categories "Orchestrator" and "Guard".
 
 - `test_orchestrator.c` defines the test_orchestrator function for
@@ -675,7 +675,7 @@ into a single result for the "Guard 1 and 2" category.
 Modify a copy of an existing Makefile that builds a test executable for
 a project to a Makefile for your project. For example, use the Makefile
 for testing the lubtype project or the Makefile for self-testing this
-LiteTest project as a starting point for creating your Makefile in your
+BriteTest project as a starting point for creating your Makefile in your
 project root directory.
 
 #### Linux / macOS
@@ -706,11 +706,11 @@ make CC=gcc run
 
 Use a POSIX‑capable toolchain such as MSYS2 UCRT64 or Clang64.
 
-On Windows, use `build_test_litetest.ps1` to build and run the test executable:
+On Windows, use `build_test_britetest.ps1` to build and run the test executable:
 
 ```powershell
-./build_test_litetest.ps1
-.\test_litetest.exe
+./build_test_britetest.ps1
+.\test_britetest.exe
 ```
 
 A common setup is MSYS2 UCRT64 with:
@@ -733,7 +733,7 @@ existing writable file is overwritten):
 test_<testname> [-I|-In] [PATH]
 ```
 
-By default, if `PATH` is not specified, LiteTest writes the report to the
+By default, if `PATH` is not specified, BriteTest writes the report to the
 current working directory using the default report filename configured by
 your test setup.
 
@@ -744,27 +744,27 @@ You may override the output location using the PATH argument:
 - `PATH` can point to either a report file or a directory. Quote it only when
   it contains spaces (for example, `"my reports/"`).
 
-- If `PATH` is a file path (existing or new), LiteTest writes the report to
+- If `PATH` is a file path (existing or new), BriteTest writes the report to
   that file.
 
-- If `PATH` is a directory path, LiteTest writes the report in that directory
+- If `PATH` is a directory path, BriteTest writes the report in that directory
   using the default report filename configured by your test setup.
 
 ### `-I` and `-In` Option
 
 The  `-I` and `-In` options control which tests execute based on the `include`
-parameter of the `LT_GROUP` and `LT_TEST` macros. `n` is a single non-zero digit.
+parameter of the `BT_GROUP` and `BT_TEST` macros. `n` is a single non-zero digit.
 Only one of these forms may be specified.
 
-- Use `-In` to enable `LT_GROUP` and `LT_TEST` macros that have an `include` argument
+- Use `-In` to enable `BT_GROUP` and `BT_TEST` macros that have an `include` argument
   that is a non-zero digit less than or equal to `n`.
 
-- Use `-I` to enable `LT_TEST` macros that have an `include`  argument that is `I`. This
-  can be used to exercise the LiteTest framework and verify report formatting
-  (typically, these `LT_TEST` macros have a test expression that is coded to
+- Use `-I` to enable `BT_TEST` macros that have an `include`  argument that is `I`. This
+  can be used to exercise the BriteTest framework and verify report formatting
+  (typically, these `BT_TEST` macros have a test expression that is coded to
   cause a failures or a fault.
 
-- If neither option is provided, all  `LT_GROUP` and `LT_TEST` macros with an `include`
+- If neither option is provided, all  `BT_GROUP` and `BT_TEST` macros with an `include`
   argument that is `1` – `9` execute by default.
 
 See [Macros for Executing a Test Group Function or Test Expression](#macros-for-executing-a-test-group-function-or-test-expression) for the `include` parameter and its interaction with the `-I` and `-In` options.
@@ -775,7 +775,7 @@ You can display usage information at any time with the `--help` or `-h` option.
 For example:
 
 ```sh
-./test_litetest --help
+./test_britetest --help
 ```
 This (or using -h instead of --help) prints a summary of all command-line
 options and usage details.
@@ -785,7 +785,7 @@ options and usage details.
 - If `PATH` contains spaces, quote it (for example, `"my reports/report.txt"`).
 - Existing report files may be overwritten; use unique paths if you need history.
 - On Windows, use a POSIX-capable toolchain (for example, MSYS2 UCRT64).
-- Keep macro examples in your project aligned with the version of `litetest_runner.h` in use.
+- Keep macro examples in your project aligned with the version of `britetest_runner.h` in use.
 
 ## Troubleshooting
 
@@ -797,8 +797,8 @@ options and usage details.
 - Output path with spaces fails: quote `PATH` (for example,
   `"my reports/report.txt"`).
 - Unexpected behavior after macro updates: ensure code and docs match the same
-  LiteTest version (`LT_VERSION` in `litetest_runner.h` and `LT_VERSION_C` in
-  `litetest_runner.c`).
+  BriteTest version (`BT_VERSION` in `britetest_runner.h` and `BT_VERSION_C` in
+  `britetest_runner.c`).
 
 ## Contributing
 
@@ -806,7 +806,7 @@ Contributions are welcome. Before opening a pull request:
 
 - Create a feature branch for your work (for example, `docs/readme-update`).
 
-- Update `LT_VERSION` in `litetest_runner.h` and `LT_VERSION_C` in `litetest_runner.c` if either is
+- Update `BT_VERSION` in `britetest_runner.h` and `BT_VERSION_C` in `britetest_runner.c` if either is
   updated. Update major version for incompatible API changes. Update minor
   version for backward-compatible additions. Update patch version for bug
   fixes or implementation improvements.
@@ -845,7 +845,7 @@ API compatibility policy:
 ## Example Test Report
 
 ```text
-LiteTest Report
+BriteTest Report
                              Pass   Fail     Fault
 --------------------------------------------------
 1. Orchestrator                 4
@@ -857,7 +857,7 @@ LiteTest Report
 ## Example Test Report for -i Option
 
 ```text
-LiteTest Report (-i)
+BriteTest Report (-i)
 
                              Pass   Fail     Fault
 --------------------------------------------------
@@ -869,7 +869,7 @@ LiteTest Report (-i)
 
 ## Repository Layout
 
-GitHub repository: `paulsinclair51/LiteTest`
+GitHub repository: `paulsinclair51/BriteTest`
 
 Repository layout (with core files listed):
 
@@ -877,27 +877,27 @@ Repository layout (with core files listed):
 <summary>Click to view</summary>
 
 ```text
-LiteTest/
+BriteTest/
 |- .github/
 |  \- workflows/
-|     \- ci.yml
+|     \- britetest_ci.yml
 |- LICENSE
 |- Makefile
 |- README.md
-|- build_test_litetest.ps1
+|- build_test_britetest.ps1
 |- build/
 |- docs/
 |- examples/
 |- include/
-|  \- litetest_runner.h
+|  \- britetest_runner.h
 |- reports/
-|  |- litetest_test_report-i.txt
-|  \- litetest_test_report.txt
+|  |- britetest_test_report-i.txt
+|  \- britetest_test_report.txt
 |- scripts/
 |- src/
-|  \- litetest_runner.c
+|  \- britetest_runner.c
 |- tests/
-|  |- test_litetest.c
+|  |- test_britetest.c
 |  |- test_orchestrator.c
 |  |- test_guard1.c
 |  \- test_guard2.c
@@ -905,7 +905,7 @@ LiteTest/
 <details>
 <summary>Click to view</summary>k
 
-Use this as a reference when adapting LiteTest into your own project structure.
+Use this as a reference when adapting BriteTest into your own project structure.
 
 ## Further Reading
 
@@ -920,8 +920,8 @@ Use this as a reference when adapting LiteTest into your own project structure.
 <summary>Click to view</summary>
 
 - `API`: Application Programming Interface.
-- `category`: A labeled set of `LT_GROUP` and `LT_TEST` macro whose combined
-             results are written by `LT_WRITE_RESULT` to the report with a
+- `category`: A labeled set of `BT_GROUP` and `BT_TEST` macro whose combined
+             results are written by `BT_WRITE_RESULT` to the report with a
              specified category name.
 - `control file`: A previously generated file that can be compared to a newly
                   generated file for differences (typically, if there are
@@ -932,35 +932,35 @@ Use this as a reference when adapting LiteTest into your own project structure.
 - `customization suppport functions`: API functions provided to support
    customizing the orchestrator and test group functions.
    See [Customization Support Functions](#customization-support-functions).
-- `default report filename`: The report filename LiteTest uses when only a
+- `default report filename`: The report filename BriteTest uses when only a
   directory path (or no `PATH`) is provided.
 - `executable`: The compiled test program that runs the orchestrator and test
   functions.
-- `fail`: A counted test failure where the LT_TEST or LT_INJECT_TEST
+- `fail`: A counted test failure where the BT_TEST or BT_INJECT_TEST
    expression evaluates to false (i.e., zero).
-- `fault`: A counted runtime fault captured by LiteTest guards (for example,
+- `fault`: A counted runtime fault captured by BriteTest guards (for example,
   invalid memory access).
-- `Concurrent block`: A set of tests (LT_TEST and LT_INJECT_TEST macros)
-   bracketed by `LT_BEGIN_CONCURRENT` and `LT_END_CONCURRENT;`.
+- `Concurrent block`: A set of tests (BT_TEST and BT_INJECT_TEST macros)
+   bracketed by `BT_BEGIN_CONCURRENT` and `BT_END_CONCURRENT;`.
 - `group': see `test group`.
 - `guard`: The protection mechanism used to catch runtime faults and continue
   test execution.
 - `guard level`: The nesting depth of active guards while test groups and tests run.
-- `inject mode (-i)`: Optional command-line flag that enables an LT_INJECT_TEST to
+- `inject mode (-i)`: Optional command-line flag that enables an BT_INJECT_TEST to
    be executed.
-- `isolation`: Execution mode for LT_GROUP, LT_TEST, or LT_INJECT_TEST.
+- `isolation`: Execution mode for BT_GROUP, BT_TEST, or BT_INJECT_TEST.
   `0` = same thread, `1` = separate thread, `2` = separate process.
 - `maxargs`: The maximum number of command-line arguments accepted by
   orchestrator parsing. Optional arguments may be omitted.
-  `LT_PARSE_ARGS` handles the first two arguments (executable name and optional
+  `BT_PARSE_ARGS` handles the first two arguments (executable name and optional
   `PATH`) when provided. Any additional arguments must be parsed by custom code
   added to the orchestrator.
-- `maxparallel`: Upper bound on concurrent LT_GROUP, LT_TEST, LT_INJECT_TEST. Value set in
-   LT_INIT_ORCHESTRATOR and LT_GROUP macros.
-- `notes`: Optional text for LT_CLOSE_REPORT to append to the report before closing it.
-- `orchestrator`: The `main` function that initializes LiteTest, runs groups or tests,
+- `maxparallel`: Upper bound on concurrent BT_GROUP, BT_TEST, BT_INJECT_TEST. Value set in
+   BT_INIT_ORCHESTRATOR and BT_GROUP macros.
+- `notes`: Optional text for BT_CLOSE_REPORT to append to the report before closing it.
+- `orchestrator`: The `main` function that initializes BriteTest, runs groups or tests,
   and writes report output.
-- `pass`: A counted successful test where the LT_TEST or LT_INJECT_TEST
+- `pass`: A counted successful test where the BT_TEST or BT_INJECT_TEST
    expression evaluates to true (i.e., non-zero).
 - `PATH`: Optional command-line output destination; can be a report file path
   or directory path.
@@ -968,22 +968,22 @@ Use this as a reference when adapting LiteTest into your own project structure.
   separate process.
 - `project`: Project identifier used in orchestrator initialization and default
   report naming.
-- `test group`: a grouping of `LT_TEST` and, optionally, `LT_GROUP` macros.
-- `test group function`: A function declared with the `LT_DECLARE_GROUP` macro
-   that contains 'LT_TEST' and 'LT_GROUP` macros.
+- `test group`: a grouping of `BT_TEST` and, optionally, `BT_GROUP` macros.
+- `test group function`: A function declared with the `BT_DECLARE_GROUP` macro
+   that contains 'BT_TEST' and 'BT_GROUP` macros.
 - `thread isolation`: Isolation mode where a test/assert call runs in a
   separate thread.
-- `test case`: This term is not used in LiteTest. In some contexts, it means
-   a single individual test and, in other contexts, a set of tests, In LiteTest, the former
+- `test case`: This term is not used in BriteTest. In some contexts, it means
+   a single individual test and, in other contexts, a set of tests, In BriteTest, the former
    is referred to as a test (or test expression) and the latter, as a test group.
 - `test`: see test expression.
-- `test expression`: An expression passed to an `LT_TEST` macro that can be cast
+- `test expression`: An expression passed to an `BT_TEST` macro that can be cast
    to `int`; `0` means fail and a nonzero value means pass. The expression
    typically is a function call or contains function calls. A function could
    be in the project being tested or a testing function to implement the test.
 - `testing artifact`: typically, a file generated by the test executable (e.g.,
    a test report) but also stdout and stderr output plus anything that is captured
-   by the test executable or the LiteTest framework.
+   by the test executable or the BriteTest framework.
 - `testing function`; a user written function to implement or help implement a
    test expression.
 - `test support functions`: API functions provided to simplifying writing

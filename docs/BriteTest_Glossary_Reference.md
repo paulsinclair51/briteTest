@@ -1,0 +1,485 @@
+![BriteTest Glossary Reference](branding/BriteTest_Glossary_Reference.png)
+
+This glossary defines generally used terms in the BriteTest documentation 
+and terms often used in the testing domain. It is a companion document to
+the BriteTest Documentation Guide.
+
+#### Copyright (c) 2026 Paul Sinclair
+
+<details>
+<summary>License</summary>
+
+#### **License**
+
+SPDX-License-Identifier: MIT
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+</details>
+
+<details>
+<summary>Preface</summary>
+
+## Preface
+
+This document is for BriteTest users and contributors who need
+quick access to the definitions of terms used in BriteTest or to browse
+through the terms.
+
+For a list of other BriteTest documents and the repository layout, see
+the BriteTest Documentation Guide (`BriteTest_Documentation_Guide.md`).
+
+For a glossary of general terms, see the BriteTest Glossary Reference
+(`BriteTest_Glossary_Reference.md`) and, for specific terms for this document,
+the Glossary appendix.
+
+A printer-friendly PDF file for this document is available in `docs/pdf/`,/`,
+
+<details>
+<summary>Document Version History</summary>
+
+### Document Version History
+
+| Document | Runner | Test | Date | Comment | Author/Editor |
+|----------|------|--------|------|---------|---------------|
+| 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
+
+- The **Document** column records the document's version with the
+  format `M.u` (Major, update).
+- The **Runner** column records the BriteTest Runner API version
+  current at the time this document version was published and is
+  defined by its `BT_RUNNER_VERSION` macro.
+- The **Test** column records the BriteTest Test API version current at
+  the time this document version was published and is defined by its
+  `BT_TEST_VERSION` macro.
+- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
+  patch).
+- `M` is the same for the Document, Runner, and Test versions.
+
+The document's update version tracks released updates to this document and does
+not correspond to a minor or patch version. `u` increments when document
+changes are published in a release without a change to `M`, and it resets to
+`0` when `M` is incremented.
+</details>
+</details>
+
+<details>\
+<summary>Table of Contents</summary>
+
+## Table of Contents
+
+[1. Introduction](#1-introduction)
+
+[2. Glossary](#2-glossary)
+</details>
+
+<details>
+<summary>1. Introduction</summary>
+
+## 1. Introduction
+
+The glossary defines generally used terms in BriteTest documentation and terms
+often used in the testing domain.
+
+Note: '(BriteTest)' indicates the definition of a term that
+has a specific meaning for BriteTest which may differ from the
+meaning of the term in the testing domain or other contexts.
+
+Note: For specific API macros and functions not included in the glossary, refer
+to the BriteTest Runner or Test API Reference document for information.
+</details>
+
+<details>
+<summary>2. Glossary</summary>
+
+## 2. Glossary
+
+<details>
+<summary>-- A --</summary>
+
+- **API**: Application Programming Interface: public typedefs,
+  structs, enums, macros, and functions that provide a well-defined
+  service. For example, the BriteTest Runner API and the BriteTest Test
+  API.
+- **artifact**: A file or bundle of files produced by a GitHub Actions
+  workflow and stored for later download (e.g., build outputs, logs,
+  reports). See also test artifact.
+</details>
+
+<details>
+<summary>-- B --</summary>
+
+- **Bash glob pattern**: A shell wildcard pattern used for filename
+  and path matching in Bash. In BriteTest `genpdf`, this is used for
+  relative-path filtering with `-i` and `-x`.
+  Default matching rules: `*` and `**` match any characters (including
+  `/`), `?` matches one character (including `/`), `[abc]` matches one
+  character from a set or range, and any other character matches
+  itself. This differs from common path-segment glob expectations where
+  `*` does not match `/`.
+  With the `-g` option, `genpdf` uses segment-style matching: `*` and
+  `?` do not match `/`, while `**` matches across `/`.
+</details>
+
+<details>
+<summary>-- C --</summary>
+
+- **category**: (BriteTest) A named set of `BT_GROUP` and `BT_TEST`
+  macros whose combined results are written by `BT_WRITE_RESULT` to
+  the report with a specified category name.
+- **CD (Continuous Delivery/Deployment)**: Automated practices that
+  extend CI (Continuous Integration) by packaging, releasing, or
+  deploying software after it has passed all required tests.
+  Continuous Delivery prepares release artifacts for manual approval,
+  while Continuous Deployment automatically deploys every passing
+  change to a target environment. Use continuous-delivery,
+  continuous-deployment, or CI when used as an adjective.
+- **CI (Continuous Integration)**: An automated practice where every
+  change to a codebase is built and tested in a shared environment. A
+  CI system runs workflows that compile the project, execute tests,
+  validate formatting or static analysis rules, and produce artifacts
+  such as logs or reports. CI helps detect errors early, ensures
+  consistent build quality, and provides rapid feedback to developers.
+  Use continuous-integration or CI when used as an adjective.
+- **command line**: A line of text entered into a shell that specifies
+  an executable and optional arguments or flags (options). Use
+  command-line when used as an adjective.
+- **concurrent block**: (BriteTest) A set of tests bracketed by
+  `BT_BEGIN_CONCURRENT` and `BT_END_CONCURRENT` macros.
+- **contributor**: (BriteTest) Any person or agent that may commit to
+  BriteTest `main`. The implementation changes and documentation
+  updates for a commit to `main` must conform to the BriteTest
+  contribution guidelines and must have approval by a designated
+  approver or agent.
+- **control file**: A previously generated file that can be compared
+  to a newly generated file for differences. Differences (other than
+  expected ones like timestamps) typically indicate a test failure.
+  Sometimes the control file is out of date and must be replaced by
+  promoting the new file.
+- **customization function**: (BriteTest) A Runner API function that
+  can be used to help customize the orchestrator (main) function and
+  test group functions.
+</details>
+
+<details>
+<summary>-- D --</summary>
+
+- **default report filename**: (BriteTest) The report filename used
+  when only a directory path (or no `PATH`) is provided.
+</details>
+
+<details>
+<summary>-- E --</summary>
+
+- **executable**: A compiled/linked program, for example, one that
+  contains, for BriteTest, the orchestrator, test groups, test
+  expressions (and underlying functions), and the BriteTest APIs. It is
+  run from a shell using a command line.
+</details>
+
+<details>
+<summary>-- F --</summary>
+
+- **fail**: (BriteTest) A counted failure where the test expression for
+  an `BT_TEST` macro evaluates to zero.
+- **fault**: (BriteTest) A counted test group or test fault (e.g.,
+  invalid memory access) captured by a BriteTest guard. See also fault
+  type, guard, `BT_FAULT`, and isolation.
+- **fault type**: (BriteTest) The various types of faults (e.g.,
+  `SIGSEGV`, `SIGBUS`, `SIGABRT`) that can occur or be injected. See
+  also fault, `BT_FAULT` and `-I`.
+- **framework**: (BriteTest) Guidelines, templates, APIs, tools, and
+  documentation for a class of projects that simplify development
+  within that class. For example, the BriteTest framework simplifies
+  test development.
+</details>
+
+<details>
+<summary>-- G --</summary>
+
+- **group**: See test group.
+- **guard**: (BriteTest) The protection mechanism used to catch faults
+  and continue test execution. See also fault, fault type, isolation,
+  isolation mode, thread isolation, and process isolation.
+- **guard level**: (BriteTest) The nesting depth of active guards for
+  test groups and test expressions.
+</details>
+
+<details>
+<summary>-- H --</summary>
+
+_No terms currently defined._
+</details>
+
+<details>
+<summary>-- I --</summary>
+
+- **`-I`**: (BriteTest) An optional command‑line flag that enables an
+  `BT_TEST` macro with an argument value of `I` to be executed.
+  Typically used to inject a fail or fault into a run of a test
+  executable. Default is to skip the `BT_TEST` macro if it has an
+  argument value of `I`. See also fault, `BT_FAIL`, and `BT_FAULT`.
+- **`-I<n>`**: (BriteTest) An optional command‑line flag that enables
+  an `BT_TEST` macro with an argument value of `<m>` between 1 and 9
+  to execute if `<m>` is between 1 and `<n>`. `<n>` must be between 1
+  and 9. Default for `<n>` is 9 if this flag is not specified and, for
+  `<m>` is 1. If `<m>` is 0, the `BT_TEST` macro is not enabled (i.e.,
+  it is skipped). At most one `-I<n>` flag specified for a command
+  line.
+- **isolation**: A mechanism that prevents failures and faults in one
+  component from affecting other components of an executable or
+  system.
+- **isolation mode**: (BriteTest) An execution mode for `BT_GROUP` and
+  `BT_TEST` macros: `0` = same thread, `1` = separate thread, `2` =
+  separate process.
+</details>
+
+<details>
+<summary>-- J --</summary>
+
+- **job**: A unit of work within a workflow. A job runs a series of
+  steps in a specified environment (such as a container or virtual
+  machine). Jobs may run sequentially or in parallel, based on their
+  dependencies.
+</details>
+
+<details>
+<summary>-- K --</summary>
+
+_No terms currently defined._
+</details>
+
+<details>
+<summary>-- L --</summary>
+
+- **BriteTest framework**: (BriteTest) Guidelines, templates, APIs,
+  tools, and documentation for building and running BriteTest test
+  executables.
+- **BriteTest Runner API**: (BriteTest) An API that helps simplify
+  implementing a test runner.
+- **BriteTest Test API**: (BriteTest) An API that helps simplify
+  implementing tests.
+- **`britetest_*`**: (BriteTest) A prefix for internal names. Do not
+  define, declare or use names with this prefix.
+- **`BRITETEST_*`**: (BriteTest) A prefix for internal names. Do not
+  define, declare or use names with this prefix.
+- **`bt_*`**: (BriteTest) Prefix for BriteTest Runner and Test API
+  functions, typedefs, structs, and variable names. See BriteTest
+  Runner API Reference and BriteTest Test API Reference.
+- **`BT_*`**: (BriteTest) Prefix for BriteTest Runner and Test API
+  macros and enum values. See BriteTest Runner API Reference and
+  BriteTest Test API Reference.
+- **`BT_GROUP`**: (BriteTest) A Runner API macro that executes a test
+  group function with a given isolation mode, maxparallel, and other
+  parameters. See BriteTest Runner API Reference.
+- **`BT_TEST`**: (BriteTest) A Runner API macro that executes a test
+  expression with a given isolation mode and other parameters. See
+  BriteTest Runner API Reference.
+- **`BT_FAIL`**: (BriteTest) A macro that returns 0. Typically used in
+  the `BT_TEST` macro to conditionally inject a fail. See also `-I`.
+- **`BT_FAULT`**: (BriteTest) A macro that injects (signals) a fault.
+  Typically used in the `BT_TEST` macro to conditionally inject a
+  fault. See also fault, `-I`, and BriteTest Runner API Reference.
+</details>
+
+<details>
+<summary>-- M --</summary>
+
+- **`maxargs`**: (BriteTest) The maximum number of command‑line
+  arguments allowed by the `BT_PARSE_ARGS` macro. This macro parses
+  only the first two arguments; additional arguments require custom
+  code.
+- **`maxparallel`**: (BriteTest) The upper bound on concurrent
+  `BT_GROUP` and `BT_TEST` macros. That is, when the number of macros
+  executing equals `maxparallel`, the next macro to execute is delayed
+  until one of the executing macros finishes. `maxparallel` is a
+  parameter for the `BT_INIT_ORCHESTRATOR` and `BT_GROUP` macros.
+</details>
+
+<details>
+<summary>-- N --</summary>
+
+- **`notes`**: (BriteTest) A string parameter for the `BT_CLOSE_REPORT`
+  macro. This macro appends the string (which must include `\n` at the
+  end of each line in the string) if the string is not NULL or empty.
+  Alternatively or in addition, notes can be appended from a file
+  containing notes.
+</details>
+
+<details>
+<summary>-- O --</summary>
+
+- **orchestrator**: (BriteTest) See orchestrator (`main`) function.
+- **orchestrator function**: (BriteTest) See orchestrator (`main`)
+  function.
+- **orchestrator (`main`) function**: (BriteTest) The `main` function
+  of a BriteTest executable (i.e., the test runner) that uses
+  `BT_GROUP` macros to execute sets of tests (i.e., a test group) or
+  `BT_TEST` macros to execute a specific test (i.e., a test
+  expression).
+</details>
+
+<details>
+<summary>-- P --</summary>
+
+- **pass**: (BriteTest) A counted success where the test expression for
+  an `BT_TEST` macro evaluates to non-zero.
+- **PATH**: (BriteTest) Optional command‑line argument indicating the
+  output destination; may be a report file path or directory path.
+  Argument must be quoted if it contains spaces.
+- **process guard**: (BriteTest) The guard used for process isolation.
+  Unlike thread guards, a process guard can capture all signals but
+  increases test execution time. For proven tests, use thread guards;
+  otherwise, use process guards.
+- **process isolation**: (BriteTest) An isolation mode where a test
+  group or test expression runs in a separate process. See also
+  isolation mode.
+- **project**: (BriteTest) A single-token project identifier used in
+  orchestrator initialization and default report naming.
+</details>
+
+<details>
+<summary>-- Q --</summary>
+
+_No terms currently defined._
+</details>
+
+<details>
+<summary>-- R --</summary>
+
+- **report**: See test report.
+- **report header**: (BriteTest) Lines of text written at the beginning
+  of a test report that include the report title, a timestamp, etc.
+- **runner**: (BriteTest) See test runner.
+- **runner**: (GitHub) A machine or environment that executes the jobs
+  defined in a GitHub Actions workflow. A runner provides the
+  operating system, tools, and runtime needed to perform workflow
+  steps such as building, testing, or packaging a project. GitHub
+  provides hosted runners, and users may also configure self‑hosted
+  runners.
+</details>
+
+<details>
+<summary>-- S --</summary>
+
+- **semantic versioning**: A versioning scheme for artifacts. For
+  example, in BriteTest, `M.m.p` (for `.h` and `.c` files) or `M.u`
+  (document `.md` files) where M, m, p, and u are one or two digits
+  and M indicates the major release, m indicates the minor release, p
+  indicates the patch version, and u the document update version.
+- **shell**: A command-line interface that allows a user or script to
+  submit command lines. Examples include `pwsh`, `powershell.exe`,
+  `bash`, `sh`, `zsh`, and `cmd.exe`.
+- **step**: An individual action within a job. A step may run a shell
+  command, execute a script, or invoke a reusable action. Steps run in
+  order and share the job’s execution environment.
+</details>
+
+<details>
+<summary>-- T --</summary>
+
+- **test**: See test expression.
+- **test artifact**: (BriteTest) A specific kind of artifact, i.e.,
+  file or output generated by a BriteTest executable (for example, a
+  test report, `stdout`, and `stderr`).
+- **test case**: This term is not used in BriteTest. In other contexts,
+  it may mean a single test or a set of tests; BriteTest uses test
+  expression for an individual test and test group for a set of test
+  expressions.
+- **test expression**: (BriteTest) An expression that is an argument of
+  an `BT_TEST` macro that can be cast to `int`; zero means fail,
+  non‑zero means pass. A test expression and its underlying functions
+  are user-written. The BriteTest Test API is provided to help simplify
+  writing a test expression and its underlying functions.
+- **test group**: (BriteTest) A grouping of `BT_TEST` macros and
+  optionally `BT_GROUP` macros.
+- **test group function**: (BriteTest) A function declared with a
+  `BT_DECLARE_GROUP` macro and followed by a function body in `{ }`.
+- **test function**: (BriteTest) A user‑written function used in
+  implementing a test expression.
+- **test helper function**: (BriteTest) A Test API function that helps
+  simplify implementing a test expression.
+- **test report**: (BriteTest) A file written by a BriteTest executable
+  that records the results of a test run, including pass/fail counts,
+  faults, and optional notes. See also report header, title, and
+  notes.
+- **test runner**: (BriteTest) An executable that runs a set of tests.
+- **test suite**: A complete set of tests for a project or a subset of
+  tests for a project. BriteTest uses the term test group if it is a
+  subset of the tests for a project. BriteTest does not use the term
+  *test suite* since whether a set of tests is *complete* for a
+  project is not well-defined.
+- **testing artifact**: (BriteTest) See test artifact.
+- **thread guard**: (BriteTest) The guard used for thread isolation. A
+  thread guard can only reliably capture synchronous signals
+  (`SIGSEGV`, `SIGBUS`, `SIGFPE`, and `SIGILL`). Other signals
+  (`SIGABRT`, `SIGKILL`, `SIGSTOP`, `SIGTERM`, `SIGINT`, `SIGHUP`,
+  `SIGQUIT`, `SIGPIPE`, `SIGALRM`, `SIGCHLD`, `SIGUSR1`, and
+  `SIGUSR2`) cause the executable to terminate. A process guard can
+  capture all signals but increases the time to run the tests. For
+  already proven tests, use thread guards; otherwise, use process
+  guards.
+- **thread isolation**: (BriteTest) An isolation mode where a test
+  group or test expression executes in a separate thread. See also
+  isolation mode.
+- **title**: (BriteTest) An optional report header text provided when
+  opening the report with an `BT_OPEN_REPORT` macro.
+</details>
+
+<details>
+<summary>-- U --</summary>
+
+_No terms currently defined._
+</details>
+
+<details>
+<summary>-- V --</summary>
+
+_No terms currently defined._
+</details>
+
+<details>
+<summary>-- W --</summary>
+
+- **workflow**: A defined sequence of automated steps executed by a CI
+  (continuous‑integration) system. In GitHub Actions, a workflow is
+  triggered by an event (such as a push, pull request, or scheduled
+  run) and runs one or more jobs that perform tasks like building,
+  testing, or packaging a project. Workflows may produce artifacts
+  such as logs, reports, or build outputs.
+</details>
+
+<details>
+<summary>-- X --</summary>
+
+_No terms currently defined._
+</details>
+
+<details>
+<summary>-- Y --</summary>
+
+_No terms currently defined._
+</details>
+
+<details>
+<summary>-- Z --</summary>
+
+_No terms currently defined._
+</details>
+</details>
