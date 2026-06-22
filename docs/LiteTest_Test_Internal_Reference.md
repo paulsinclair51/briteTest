@@ -1,7 +1,4 @@
-# LiteTest Test Internal Reference
-
 ![LiteTest Test Internal Reference](branding/LiteTest_Test_Internal_Reference.png)
-
 
 This .
 

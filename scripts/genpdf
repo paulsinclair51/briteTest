@@ -446,17 +446,13 @@ _genpdf_logo_png() {
 }
 
 _genpdf_doc_logo_png() {
-  # Prefer the PNG image reference on the next non-blank line after line 1.
+  # Prefer the first PNG image reference found in the document.
   local markdown_file=$1
   local image_ref=""
   local candidate=""
 
   image_ref=$(awk '
-    NR == 1 { next }
     {
-      if ($0 ~ /^[[:space:]]*$/) {
-        next
-      }
       if (match($0, /!\[[^]]*\]\(([^)]+\.[Pp][Nn][Gg]([^)]*)?)\)/)) {
         value = substr($0, RSTART, RLENGTH)
         sub(/^!\[[^]]*\]\(/, "", value)
@@ -468,13 +464,13 @@ _genpdf_doc_logo_png() {
         }
         split(value, parts, /[[:space:]]+/)
         print parts[1]
+        exit
       }
-      exit
     }
   ' "$markdown_file")
 
   if [[ -z "$image_ref" ]]; then
-    log_error "missing PNG logo reference on the next non-blank line after line 1 in: $markdown_file"
+    log_error "missing PNG logo reference in: $markdown_file"
     return 1
   fi
 
@@ -510,6 +506,7 @@ render_html() {
   _logo_png=$(_genpdf_doc_logo_png "$markdown_file" 2>/dev/null || true)
 
   python3 - "$markdown_file" "$html_file" "$_logo_png" <<'PY'
+import base64
 import html
 import pathlib
 import sys
@@ -523,9 +520,10 @@ logo_html = ""
 if logo_png:
     logo_path = pathlib.Path(logo_png)
     if logo_path.exists():
+        logo_data = base64.b64encode(logo_path.read_bytes()).decode("ascii")
         logo_html = (
           '<div style="position:absolute;top:0.6in;left:0">'
-          + f'<img src="{html.escape(logo_path.as_uri())}" style="height:2.2in" alt="Document logo" />'
+          + f'<img src="data:image/png;base64,{logo_data}" style="height:2.2in" alt="Document logo" />'
           + '</div>'
         )
 
@@ -661,7 +659,6 @@ scan_markdown_metadata() {
     }
 
     BEGIN {
-      title_skipped = 0
       in_history = 0
       saw_table_header = 0
       saw_separator = 0
@@ -674,13 +671,6 @@ scan_markdown_metadata() {
 
     {
       line = $0
-
-      if (title_skipped == 0) {
-        if (match(line, /^#[[:space:]]+/)) {
-          title_skipped = 1
-        }
-        next
-      }
 
       if (match(line, /^[[:space:]]*$/)) {
         next
@@ -783,6 +773,7 @@ scan_markdown_metadata() {
 convert_to_pdf() {
   local markdown_file=$1
   local target_file=$2
+  local source_dir=${3:-.}
   local pandoc_engine
   local html_file
   local header_file
@@ -842,7 +833,7 @@ EOF
     if command -v pandoc >/dev/null 2>&1; then
       if pandoc_engine=$(find_pandoc_engine); then
         rm -f "$target_file"
-        if pandoc -f markdown --pdf-engine "$pandoc_engine" -V geometry:margin=1in -V classoption=twoside --include-in-header "$header_file" "$markdown_file" -o "$target_file"; then
+        if pandoc -f markdown-implicit_figures --pdf-engine "$pandoc_engine" --resource-path "$source_dir:." -V geometry:margin=1in -V classoption=twoside --include-in-header "$header_file" "$markdown_file" -o "$target_file"; then
           rm -f "$header_file"
           log_debug "converted using pandoc with engine '$pandoc_engine'"
           return 0
@@ -856,7 +847,7 @@ EOF
         fi
       else
         rm -f "$target_file"
-        if pandoc -f markdown -V geometry:margin=1in -V classoption=twoside --include-in-header "$header_file" "$markdown_file" -o "$target_file"; then
+        if pandoc -f markdown-implicit_figures --resource-path "$source_dir:." -V geometry:margin=1in -V classoption=twoside --include-in-header "$header_file" "$markdown_file" -o "$target_file"; then
           rm -f "$header_file"
           log_debug "converted using pandoc default engine"
           return 0
@@ -929,6 +920,7 @@ EOF
 process_file() {
   local source_file=$1
   local target_file=$2
+  local source_dir
   local document_version=""
   local runner_version=""
   local test_version=""
@@ -981,6 +973,7 @@ process_file() {
   log_debug "scan metadata: logo=${logo_png:-<none>} versions=${have_versions} toc=${has_toc} source=$source_file"
 
   temp_file=$(mktemp)
+  source_dir=$(dirname "$source_file")
 
   if [[ $convert_details -eq 1 ]]; then
     awk -v document_version="$document_version" -v runner_version="$runner_version" -v test_version="$test_version" -v have_versions="$have_versions" -v logo_png="$logo_png" '
@@ -994,6 +987,22 @@ process_file() {
         gsub(/&/, "\\&", text)
         gsub(/_/, "\\_", text)
         return text
+      }
+
+      function png_path_from_line(line,    value, parts) {
+        if (match(line, /!\[[^]]*\]\(([^)]+\.[Pp][Nn][Gg]([[:space:]][^)]+)?)\)/)) {
+          value = substr(line, RSTART, RLENGTH)
+          sub(/^!\[[^]]*\]\(/, "", value)
+          sub(/\)$/, "", value)
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+          if (value ~ /^<.*>$/) {
+            sub(/^</, "", value)
+            sub(/>$/, "", value)
+          }
+          split(value, parts, /[[:space:]]+/)
+          return parts[1]
+        }
+        return ""
       }
 
       function normalize_anchor(anchor) {
@@ -1086,37 +1095,33 @@ process_file() {
           next
         }
 
-        if (!title_done && match(line, /^#[[:space:]]+/)) {
-          title_done = 1
-          expect_title_image = 1
-
-          print "```{=latex}"
-          print "\\thispagestyle{empty}"
-          print "\\par\\par\\par"
-          if (length(logo_png) > 0) {
-            print "\\noindent\\includegraphics[height=5.64cm]{\\detokenize{" logo_png "}}"
+        if (match(line, /^[[:space:]]*!\[[^]]*\]\([^)]*\.[Pp][Nn][Gg]([[:space:]][^)]+)?\)[[:space:]]*$/)) {
+          if (NR == 1) {
+            png_path = logo_png
+            if (length(png_path) == 0) {
+              png_path = png_path_from_line(line)
+            }
+            title_done = 1
+            print "```{=latex}"
+            print "\\vspace*{\\baselineskip}"
+            print "\\vspace*{\\baselineskip}"
+            print "\\noindent\\includegraphics[width=\\textwidth]{\\detokenize{" png_path "}}"
+            print "```"
+            if (have_versions == 1) {
+              print "```{=latex}"
+              print "\\vspace{\\baselineskip}"
+              print "\\vspace{\\baselineskip}"
+              print "\\noindent Document Version: " tex_escape(document_version) "\\\\"
+              print "\\noindent Runner Version: " tex_escape(runner_version) "\\\\"
+              print "\\noindent Test Version: " tex_escape(test_version) "\\\\"
+              print "\\vspace{\\baselineskip}"
+              print "\\vspace{\\baselineskip}"
+              print "```"
+            }
+            next
           }
-          print "\\par\\par\\par"
-          print "\\fontsize{12}{14}\\selectfont"
-          if (have_versions == 1) {
-            print "Document Version: " tex_escape(document_version) "\\par"
-            print "Runner Version: " tex_escape(runner_version) "\\par"
-            print "Test Version: " tex_escape(test_version) "\\par"
-          }
-          print "\\par\\par\\par"
-          print "```"
+          print line
           next
-        }
-
-        if (title_done == 1 && expect_title_image == 1) {
-          if (match(line, /^[[:space:]]*$/)) {
-            next
-          }
-          if (match(line, /^[[:space:]]*!\[[^]]*\]\([^)]*\.[Pp][Nn][Gg]([[:space:]][^)]+)?\)[[:space:]]*$/)) {
-            expect_title_image = 0
-            next
-          }
-          expect_title_image = 0
         }
 
         if (title_done == 1 && match(line, /^Document Version:[[:space:]]/)) {
@@ -1258,6 +1263,22 @@ process_file() {
         return text
       }
 
+      function png_path_from_line(line,    value, parts) {
+        if (match(line, /!\[[^]]*\]\(([^)]+\.[Pp][Nn][Gg]([[:space:]][^)]+)?)\)/)) {
+          value = substr(line, RSTART, RLENGTH)
+          sub(/^!\[[^]]*\]\(/, "", value)
+          sub(/\)$/, "", value)
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+          if (value ~ /^<.*>$/) {
+            sub(/^</, "", value)
+            sub(/>$/, "", value)
+          }
+          split(value, parts, /[[:space:]]+/)
+          return parts[1]
+        }
+        return ""
+      }
+
       function normalize_anchor(anchor) {
         sub(/^#/, "", anchor)
         sub(/^user-content-/, "", anchor)
@@ -1316,37 +1337,33 @@ process_file() {
           next
         }
 
-        if (!title_done && match(line, /^#[[:space:]]+/)) {
-          title_done = 1
-          expect_title_image = 1
-
-          print "```{=latex}"
-          print "\\thispagestyle{empty}"
-          print "\\par\\par\\par"
-          if (length(logo_png) > 0) {
-            print "\\noindent\\includegraphics[height=5.64cm]{\\detokenize{" logo_png "}}"
+        if (match(line, /^[[:space:]]*!\[[^]]*\]\([^)]*\.[Pp][Nn][Gg]([[:space:]][^)]+)?\)[[:space:]]*$/)) {
+          if (NR == 1) {
+            png_path = logo_png
+            if (length(png_path) == 0) {
+              png_path = png_path_from_line(line)
+            }
+            title_done = 1
+            print "```{=latex}"
+            print "\\vspace*{\\baselineskip}"
+            print "\\vspace*{\\baselineskip}"
+            print "\\noindent\\includegraphics[width=\\textwidth]{\\detokenize{" png_path "}}"
+            print "```"
+            if (have_versions == 1) {
+              print "```{=latex}"
+              print "\\vspace{\\baselineskip}"
+              print "\\vspace{\\baselineskip}"
+              print "\\noindent Document Version: " tex_escape(document_version) "\\\\"
+              print "\\noindent Runner Version: " tex_escape(runner_version) "\\\\"
+              print "\\noindent Test Version: " tex_escape(test_version) "\\\\"
+              print "\\vspace{\\baselineskip}"
+              print "\\vspace{\\baselineskip}"
+              print "```"
+            }
+            next
           }
-          print "\\par\\par\\par"
-          print "\\fontsize{12}{14}\\selectfont"
-          if (have_versions == 1) {
-            print "Document Version: " tex_escape(document_version) "\\par"
-            print "Runner Version: " tex_escape(runner_version) "\\par"
-            print "Test Version: " tex_escape(test_version) "\\par"
-          }
-          print "\\par\\par\\par"
-          print "```"
+          print line
           next
-        }
-
-        if (title_done == 1 && expect_title_image == 1) {
-          if (match(line, /^[[:space:]]*$/)) {
-            next
-          }
-          if (match(line, /^[[:space:]]*!\[[^]]*\]\([^)]*\.[Pp][Nn][Gg]([[:space:]][^)]+)?\)[[:space:]]*$/)) {
-            expect_title_image = 0
-            next
-          }
-          expect_title_image = 0
         }
 
         if (title_done == 1 && match(line, /^Document Version:[[:space:]]/)) {
@@ -1476,7 +1493,7 @@ process_file() {
     ' "$source_file" > "$temp_file"
   fi
 
-  if ! convert_to_pdf "$temp_file" "$target_file"; then
+  if ! convert_to_pdf "$temp_file" "$target_file" "$source_dir"; then
     rm -f "$temp_file"
     return 1
   fi

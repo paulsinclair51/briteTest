@@ -1,7 +1,4 @@
-# LiteTest Runner Guide
-
 ![LiteTest Runner Guide](branding/LiteTest_Runner_Guide.png)
-
 
 This guide explains how to use the LiteTest Runner framework and Runner API
 covering concepts, workflow, execution model, examples, and practical,usage

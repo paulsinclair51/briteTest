@@ -1,7 +1,4 @@
-# LiteTest Runner Internal Reference
-
 ![LiteTest Runner Internal Reference](branding/LiteTest_Runner_Internal_Reference.png)
-
 
 This document provides a reference to the LiteTest Runner API internals.
 It includes types, structs, unions, enums, macros, and functions.

@@ -14,6 +14,9 @@ See `../README.md` for an introduction to LiteTest.
   Format (`,pdf`),
   after removing lines with details/summary tags;
   Run `genpdf --help` for usage information.
+- **genalldocs.sh**: Generate all documentation PDFs by invoking `genpdf`
+  once per document (`README.md` and `docs/LiteTest_*.md`) into `docs/pdf/`.
+  Run `genalldocs.sh --help` for usage information.
 - **test_genpdf.sh**: Lightweight self-test for `genpdf`.
   Run `test_genpdf.sh --help` for usage information.
 - **check_directory_readmes.sh**: Validate that subdirectories contain

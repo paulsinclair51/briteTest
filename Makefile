@@ -77,7 +77,10 @@ lint-md:
 test-genpdf:
 	bash ./scripts/test_genpdf.sh
 
+gendocs:
+	bash ./scripts/genalldocs.sh
+
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run lint-md test-genpdf clean
+.PHONY: all run lint-md test-genpdf gendocs clean

@@ -1,7 +1,4 @@
-# LiteTest Glossary Reference
-
 ![LiteTest Glossary Reference](branding/LiteTest_Glossary_Reference.png)
-
 
 This glossary defines generally used terms in the LiteTest documentation 
 and terms often used in the testing domain. It is a companion document to

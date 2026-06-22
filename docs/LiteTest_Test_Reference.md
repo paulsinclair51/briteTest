@@ -1,7 +1,4 @@
-# LiteTest Test Reference
-
 ![LiteTest Test Reference](branding/LiteTest_Test_Reference.png)
-
 
 This document summarizes the public Test API declared in `include/litetest_test.h`.
 It focuses on the helper-specific return conventions and the option structs used by the
