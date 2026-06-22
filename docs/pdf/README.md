@@ -10,9 +10,9 @@ See `../../README.md` for an introduction to BriteTest.
 
 ## Files
 
-- **BriteTest_*.pdf**: Generated PDF versions (using `../../scripts/genpdf`) of
-  BriteTest documentation files from `../`.
-- **BriteTest.pdf**: Generated PDF version from `../../README.md`.
+- **BriteTest_*.pdf**: Generated PDF files (using `../../scripts/genpdf`) from
+  BriteTest documentation files in `../`.
+- **BriteTest.pdf**: Generated PDF file from `../../README.md`.
 - **README.md**: This directory guide.
 
 ## Subdirectories
