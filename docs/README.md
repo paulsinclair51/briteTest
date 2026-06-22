@@ -37,6 +37,6 @@ See `../README.md` for an introduction to BriteTest.
 
 ## Subdirectories
 
-- **docx/**: MS Word .docx formatted files.
+- **docx/**: MS Word .docx formatted files generated from .md files.
 
-- **pdf/**: PDF formatted files.
+- **pdf/**: PDF formatted files generated from .md files.
