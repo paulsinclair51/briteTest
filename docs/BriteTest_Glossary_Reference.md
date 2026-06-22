@@ -111,7 +111,9 @@ to the BriteTest Runner or Test API Reference document for information.
 ## 2. Glossary
 
 <details>
-<summary>-- A --</summary>
+<summary>A</summary>
+
+### --A--
 
 - **API**: Application Programming Interface: public typedefs,
   structs, enums, macros, and functions that provide a well-defined
@@ -121,10 +123,10 @@ to the BriteTest Runner or Test API Reference document for information.
   workflow and stored for later download (e.g., build outputs, logs,
   reports). See also test artifact.
 </details>
-
 <details>
-<summary>-- B --</summary>
+<summary>B</summary>
 
+### --B--
 - **Bash glob pattern**: A shell wildcard pattern used for filename
   and path matching in Bash. In BriteTest `genpdf`, this is used for
   relative-path filtering with `-i` and `-x`.
@@ -138,7 +140,9 @@ to the BriteTest Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>-- C --</summary>
+<summary>C</summary>
+
+### --C--
 
 - **category**: (BriteTest) A named set of `BT_GROUP` and `BT_TEST`
   macros whose combined results are written by `BT_WRITE_RESULT` to
@@ -178,14 +182,18 @@ to the BriteTest Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>-- D --</summary>
+<summary>D</summary>
+
+### --D--
 
 - **default report filename**: (BriteTest) The report filename used
   when only a directory path (or no `PATH`) is provided.
 </details>
 
 <details>
-<summary>-- E --</summary>
+<summary>E</summary>
+
+### --E--
 
 - **executable**: A compiled/linked program, for example, one that
   contains, for BriteTest, the orchestrator, test groups, test
@@ -194,7 +202,9 @@ to the BriteTest Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>-- F --</summary>
+<summary>F</summary>
+
+### --F--
 
 - **fail**: (BriteTest) A counted failure where the test expression for
   an `BT_TEST` macro evaluates to zero.
@@ -211,7 +221,9 @@ to the BriteTest Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>-- G --</summary>
+<summary>G</summary>
+
+### --G--
 
 - **group**: See test group.
 - **guard**: (BriteTest) The protection mechanism used to catch faults
@@ -222,13 +234,17 @@ to the BriteTest Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>-- H --</summary>
+<summary>H</summary>
+
+### --H--
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>-- I --</summary>
+<summary>I</summary>
+
+### --I--
 
 - **`-I`**: (BriteTest) An optional command‑line flag that enables an
   `BT_TEST` macro with an argument value of `I` to be executed.
@@ -251,7 +267,9 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>-- J --</summary>
+<summary>J</summary>
+
+### --J--
 
 - **job**: A unit of work within a workflow. A job runs a series of
   steps in a specified environment (such as a container or virtual
@@ -260,13 +278,17 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>-- K --</summary>
+<summary>K</summary>
+
+### --K--
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>-- L --</summary>
+<summary>L</summary>
+
+### --L--
 
 - **BriteTest framework**: (BriteTest) Guidelines, templates, APIs,
   tools, and documentation for building and running BriteTest test
@@ -299,7 +321,9 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>-- M --</summary>
+<summary>M</summary>
+
+### --M--
 
 - **`maxargs`**: (BriteTest) The maximum number of command‑line
   arguments allowed by the `BT_PARSE_ARGS` macro. This macro parses
@@ -313,7 +337,10 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>-- N --</summary>
+<summary>N</summary>
+
+
+### --N--
 
 - **`notes`**: (BriteTest) A string parameter for the `BT_CLOSE_REPORT`
   macro. This macro appends the string (which must include `\n` at the
@@ -323,7 +350,9 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>-- O --</summary>
+<summary>O</summary>
+
+### --O--
 
 - **orchestrator**: (BriteTest) See orchestrator (`main`) function.
 - **orchestrator function**: (BriteTest) See orchestrator (`main`)
@@ -336,7 +365,9 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>-- P --</summary>
+<summary>P</summary>
+
+### --P--
 
 - **pass**: (BriteTest) A counted success where the test expression for
   an `BT_TEST` macro evaluates to non-zero.
@@ -355,13 +386,17 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>-- Q --</summary>
+<summary>Q</summary>
+
+### --Q--
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>-- R --</summary>
+<summary>R</summary>
+
+### --R--
 
 - **report**: See test report.
 - **report header**: (BriteTest) Lines of text written at the beginning
@@ -376,7 +411,9 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>-- S --</summary>
+<summary>S</summary>
+
+### --S--
 
 - **semantic versioning**: A versioning scheme for artifacts. For
   example, in BriteTest, `M.m.p` (for `.h` and `.c` files) or `M.u`
@@ -392,7 +429,9 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>-- T --</summary>
+<summary>T</summary>
+
+### --T--
 
 - **test**: See test expression.
 - **test artifact**: (BriteTest) A specific kind of artifact, i.e.,
@@ -443,19 +482,25 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>-- U --</summary>
+<summary>U</summary>
+
+### --U--
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>-- V --</summary>
+<summary>V</summary>
+
+### --V--
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>-- W --</summary>
+<summary>W</summary>
+
+### --W--
 
 - **workflow**: A defined sequence of automated steps executed by a CI
   (continuous‑integration) system. In GitHub Actions, a workflow is
@@ -466,19 +511,25 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>-- X --</summary>
+<summary>X</summary>
+
+### --X--
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>-- Y --</summary>
+<summary>Y</summary>
+
+### --Y--
 
 _No terms currently defined._
 </details>
 
 <details>
-<summary>-- Z --</summary>
+<summary>Z</summary>
+
+### --Z--
 
 _No terms currently defined._
 </details>

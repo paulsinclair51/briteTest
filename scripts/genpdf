@@ -494,9 +494,120 @@ _genpdf_doc_logo_png() {
   return 0
 }
 
+_genpdf_title_from_first_line() {
+  # Derive a document title from the first non-badge Markdown line.
+  # Priority on that first line:
+  # 1) Markdown heading text (# ...)
+  # 2) Markdown image alt text (![alt](...))
+  # 3) Basename of referenced image path
+  # 4) Source filename stem (fallback)
+  local markdown_file=$1
+  local fallback_title
+
+  fallback_title=$(basename "${markdown_file%.*}")
+
+  awk -v fallback_title="$fallback_title" '
+    function trim(text) {
+      sub(/^[[:space:]]+/, "", text)
+      sub(/[[:space:]]+$/, "", text)
+      return text
+    }
+
+    function is_badge_line(line,    t) {
+      # Badge lines are typically linked images like:
+      # [![badge](img-url)](link-url)
+      t = trim(line)
+      return (t ~ /^\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*[[:space:]]*$/)
+    }
+
+    function image_alt(line,   alt) {
+      if (match(line, /^![[][^]]*[]][[:space:]]*\(/)) {
+        alt = line
+        sub(/^![[]/, "", alt)
+        sub(/[]][[:space:]]*\(.*/, "", alt)
+        return trim(alt)
+      }
+      return ""
+    }
+
+    function image_path(line,   path, parts, n) {
+      if (match(line, /^![[][^]]*[]][[:space:]]*\([^)]*\)/)) {
+        path = line
+        sub(/^![[][^]]*[]][[:space:]]*\(/, "", path)
+        sub(/\)[[:space:]]*$/, "", path)
+        path = trim(path)
+        if (path ~ /^<.*>$/) {
+          sub(/^</, "", path)
+          sub(/>$/, "", path)
+        }
+        n = split(path, parts, /[[:space:]]+/)
+        return trim(parts[1])
+      }
+      return ""
+    }
+
+    {
+      line = trim($0)
+
+      if (line == "") {
+        next
+      }
+
+      if (is_badge_line(line)) {
+        next
+      }
+
+      lower = tolower(line)
+      if (lower ~ /^<[[:space:]]*details([[:space:]][^>]*)?>$/ ||
+          lower ~ /^<[[:space:]]*\/[[:space:]]*details([[:space:]][^>]*)?>$/ ||
+          lower ~ /^<[[:space:]]*summary([[:space:]][^>]*)?>$/ ||
+          lower ~ /^<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>$/) {
+        next
+      }
+
+      if (line ~ /^#{1,6}[[:space:]]+/) {
+        sub(/^#{1,6}[[:space:]]+/, "", line)
+        emitted = 1
+        print trim(line)
+        exit
+      }
+
+      if (line ~ /^![[][^]]*[]][[:space:]]*\(/) {
+        alt = image_alt(line)
+        if (alt != "") {
+          emitted = 1
+          print alt
+          exit
+        }
+
+        path = image_path(line)
+        if (path != "") {
+          gsub(/^.*\//, "", path)
+          sub(/\.[^.]*$/, "", path)
+          gsub(/[_-]+/, " ", path)
+          emitted = 1
+          print trim(path)
+          exit
+        }
+      }
+
+      emitted = 1
+      print fallback_title
+      exit
+    }
+
+    END {
+      if (emitted != 1) {
+        print fallback_title
+      }
+    }
+  ' "$markdown_file"
+}
+
 render_html() {
   local markdown_file=$1
   local html_file=$2
+  local html_title=${3:-}
 
   if ! command -v python3 >/dev/null 2>&1; then
     return 1
@@ -505,7 +616,7 @@ render_html() {
   local _logo_png=""
   _logo_png=$(_genpdf_doc_logo_png "$markdown_file" 2>/dev/null || true)
 
-  python3 - "$markdown_file" "$html_file" "$_logo_png" <<'PY'
+  python3 - "$markdown_file" "$html_file" "$html_title" "$_logo_png" <<'PY'
 import base64
 import html
 import pathlib
@@ -513,7 +624,8 @@ import sys
 
 markdown_path = pathlib.Path(sys.argv[1])
 html_path = pathlib.Path(sys.argv[2])
-logo_png = sys.argv[3] if len(sys.argv) > 3 else ""
+html_title = sys.argv[3] if len(sys.argv) > 3 else ""
+logo_png = sys.argv[4] if len(sys.argv) > 4 else ""
 text = markdown_path.read_text(encoding='utf-8')
 
 logo_html = ""
@@ -538,7 +650,7 @@ doc = f"""<!doctype html>
 <html lang=\"en\">
 <head>
   <meta charset=\"utf-8\">
-  <title>{html.escape(markdown_path.stem)}</title>
+  <title>{html.escape(html_title if html_title else markdown_path.stem)}</title>
   <style>
     body {{ font-family: serif; margin: 1in; line-height: 1.5; position: relative; }}
     pre {{ white-space: pre-wrap; }}
@@ -774,22 +886,48 @@ convert_to_pdf() {
   local markdown_file=$1
   local target_file=$2
   local source_dir=${3:-.}
+  local doc_title=${4:-}
   local pandoc_engine
   local html_file
-  local header_file
+  local header_file=""
   local header_title
   local display_title
   local status
+  local use_latex_header=0
+  local -a common_args=()
+  local -a latex_header_args=()
+  local -a title_args=()
 
   # Remove any pre-existing target so conversion always writes a fresh file.
   rm -f "$target_file"
 
-  header_file=$(mktemp --suffix=.tex)
   display_title=$(basename "${target_file%.pdf}")
   display_title=${display_title//_/ }
   header_title=$(latex_escape "$display_title")
+  common_args=(-f markdown-implicit_figures --resource-path "$source_dir:." -V geometry:margin=1in)
 
-  cat > "$header_file" <<EOF
+  if [[ "$backend" == "pandoc" || "$backend" == "auto" ]]; then
+    if command -v pandoc >/dev/null 2>&1; then
+      if pandoc_engine=$(find_pandoc_engine); then
+        case "$pandoc_engine" in
+          pdflatex|lualatex|xelatex|tectonic)
+            use_latex_header=1
+            common_args+=(-V classoption=twoside)
+            ;;
+          *)
+            use_latex_header=0
+            if [[ -n "$doc_title" ]]; then
+              title_args=(--metadata "title=$doc_title")
+            fi
+            ;;
+        esac
+      fi
+    fi
+  fi
+
+  if [[ $use_latex_header -eq 1 ]]; then
+    header_file=$(mktemp --suffix=.tex)
+    cat > "$header_file" <<EOF
 \usepackage{xcolor}
 \\usepackage{hyperref}
 \\usepackage{graphicx}
@@ -828,34 +966,36 @@ convert_to_pdf() {
 \\renewcommand{\\headrulewidth}{0.4pt}
 \\renewcommand{\\footrulewidth}{0.4pt}
 EOF
+    latex_header_args=(--include-in-header "$header_file")
+  fi
 
   if [[ "$backend" == "pandoc" || "$backend" == "auto" ]]; then
     if command -v pandoc >/dev/null 2>&1; then
-      if pandoc_engine=$(find_pandoc_engine); then
+      if [[ -n "${pandoc_engine:-}" ]]; then
         rm -f "$target_file"
-        if pandoc -f markdown-implicit_figures --pdf-engine "$pandoc_engine" --resource-path "$source_dir:." -V geometry:margin=1in -V classoption=twoside --include-in-header "$header_file" "$markdown_file" -o "$target_file"; then
-          rm -f "$header_file"
+        if pandoc "${common_args[@]}" --pdf-engine "$pandoc_engine" "${latex_header_args[@]}" "${title_args[@]}" "$markdown_file" -o "$target_file"; then
+          rm -f "$header_file" 2>/dev/null || true
           log_debug "converted using pandoc with engine '$pandoc_engine'"
           return 0
         else
           status=$?
           log_warn "pandoc with engine '$pandoc_engine' failed with exit code $status for: $target_file"
           if [[ "$backend" == "pandoc" ]]; then
-            rm -f "$header_file"
+            rm -f "$header_file" 2>/dev/null || true
             return 1
           fi
         fi
       else
         rm -f "$target_file"
-        if pandoc -f markdown-implicit_figures --resource-path "$source_dir:." -V geometry:margin=1in -V classoption=twoside --include-in-header "$header_file" "$markdown_file" -o "$target_file"; then
-          rm -f "$header_file"
+        if pandoc "${common_args[@]}" "${title_args[@]}" "$markdown_file" -o "$target_file"; then
+          rm -f "$header_file" 2>/dev/null || true
           log_debug "converted using pandoc default engine"
           return 0
         else
           status=$?
           log_warn "pandoc default conversion failed with exit code $status for: $target_file"
           if [[ "$backend" == "pandoc" ]]; then
-            rm -f "$header_file"
+            rm -f "$header_file" 2>/dev/null || true
             return 1
           fi
         fi
@@ -863,13 +1003,13 @@ EOF
 
       log_warn "trying fallback converter"
     elif [[ "$backend" == "pandoc" ]]; then
-      rm -f "$header_file"
+      rm -f "$header_file" 2>/dev/null || true
       log_error "requested backend 'pandoc' is not available"
       return 1
     fi
   fi
 
-  rm -f "$header_file"
+  rm -f "$header_file" 2>/dev/null || true
 
   if [[ "$backend" != "auto" && "$backend" != "wkhtmltopdf" && "$backend" != "weasyprint" ]]; then
     log_error "unsupported backend selection: $backend"
@@ -878,7 +1018,7 @@ EOF
 
   html_file=$(mktemp --suffix=.html)
 
-  if ! render_html "$markdown_file" "$html_file"; then
+  if ! render_html "$markdown_file" "$html_file" "$doc_title"; then
     rm -f "$html_file"
     log_error "no supported Markdown-to-PDF toolchain found. Install pandoc, or install python3 with wkhtmltopdf or weasyprint."
     return 1
@@ -932,6 +1072,9 @@ process_file() {
   local candidate_logo=""
   local temp_file
   local logo_png=""
+  local doc_title=""
+
+  doc_title=$(_genpdf_title_from_first_line "$source_file" 2>/dev/null || true)
 
   while IFS=$'\t' read -r scan_key scan_value; do
     case "$scan_key" in
@@ -1030,6 +1173,12 @@ process_file() {
       {
         line = $0
         lower = tolower(line)
+
+        # Skip badge-only lines (typically linked badge images) so PDF
+        # generation does not depend on remote badge URLs.
+        if (match(line, /^[[:space:]]*\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*[[:space:]]*$/)) {
+          next
+        }
 
         if (skip_why == 1) {
           if (match(line, /^##?#?#?[[:space:]]/)) {
@@ -1305,6 +1454,12 @@ process_file() {
         line = $0
         lower = tolower(line)
 
+        # Skip badge-only lines (typically linked badge images) so PDF
+        # generation does not depend on remote badge URLs.
+        if (match(line, /^[[:space:]]*\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*[[:space:]]*$/)) {
+          next
+        }
+
         if (skip_why == 1) {
           if (match(line, /^##?#?#?[[:space:]]/)) {
             skip_why = 0
@@ -1493,7 +1648,7 @@ process_file() {
     ' "$source_file" > "$temp_file"
   fi
 
-  if ! convert_to_pdf "$temp_file" "$target_file" "$source_dir"; then
+  if ! convert_to_pdf "$temp_file" "$target_file" "$source_dir" "$doc_title"; then
     rm -f "$temp_file"
     return 1
   fi

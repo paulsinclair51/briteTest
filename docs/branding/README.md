@@ -20,6 +20,12 @@ This folder contains SVG and PNG logo assets for BriteTest using a canary theme.
 
 Use `../../scripts/genpng.sh` to regenerate the PNG exports from the SVG sources.
 
+Source-of-truth policy:
+
+- `BriteTest_*.svg` files are the authoritative source for branding artwork.
+- `BriteTest_*.png` files are generated artifacts exported from the SVG files.
+- Do not edit branding PNG files directly; edit the corresponding SVG file and regenerate PNGs.
+
 ## Palette
 
 - Background: `#FCFCFD` (off-white)
