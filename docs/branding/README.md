@@ -1,20 +1,24 @@
-# LiteTest Logo
+# BriteTest Logo
 
-This folder contains SVG and PNG logo assets for LiteTest using a canary theme.
+This folder contains SVG and PNG logo assets for BriteTest using a canary theme.
 
 ## Files
 
 - `canary.svg`: Traced standalone canary silhouette as vector artwork.
 - `canary2.svg`: Standalone canary silhouette with legs and feet accented in the beak palette.
-- `LiteTest_Logo.svg`: Monogram-only LT logo with canary accent.
-- `LiteTest_Logo.png`: Monogram-only LT logo with canary accent (PNG export).
-- `LiteTest_Logo_with_LiteTest.svg`: LT monogram with canary accent and LiteTest
+- `BriteTest_Logo.svg`: Monogram-only LT logo with canary accent.
+- `BriteTest_Logo.png`: Monogram-only LT logo with canary accent (PNG export).
+- `BriteTest_Logo_with_BriteTest.svg`: LT monogram with canary accent and BriteTest
   wordmark.
-- `LiteTest_Logo_with_LiteTest.png`: LT monogram with canary accent and LiteTest
+- `BriteTest_Logo_with_BriteTest.png`: LT monogram with canary accent and BriteTest
   wordmark (PNG export).
-- `LiteTest_Logo_with_Tagline.svg`: LT monogram with canary accent, LiteTest, and tagline
+- `BriteTest_Logo_with_Tagline.svg`: LT monogram with canary accent, BriteTest, and tagline
   "Catch it before it breaks."
-- `LiteTest_Logo_with_Tagline.png`: LT monogram with canary accent, LiteTest, and tagline (PNG export).
+- `BriteTest_Logo_with_Tagline.png`: LT monogram with canary accent, BriteTest, and tagline (PNG export).
+
+## Generation
+
+Use `../../scripts/genpng.sh` to regenerate the PNG exports from the SVG sources.
 
 ## Palette
 
@@ -54,3 +58,4 @@ On 2026-06-20, the crest and cheek patch were removed by request. #FFF5B5
 removed from palette as it is no longer in use.
 
 On 2026-06-20, PNG exports were added for all three logo variants.
+Use `scripts/genpng.sh` to regenerate them from the SVG sources.

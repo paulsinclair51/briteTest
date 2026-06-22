@@ -6,7 +6,7 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `../../LICENSE`.
 
-See `../../README.md` for an introduction to LiteTest.
+See `../../README.md` for an introduction to BriteTest.
 
 ## Files
 
@@ -20,7 +20,7 @@ See `../../README.md` for an introduction to LiteTest.
 
 ## Golden Files and Output Files
 
-LiteTest compares each output file with a corresponding golden file of
+BriteTest compares each output file with a corresponding golden file of
 the same name in `tests/golden/` or `tests/golden<n>/`. If no corresponding golden
 file exists, the output is automatically promoted.
 
@@ -30,4 +30,4 @@ or mismatches, respectively.
 See also `../output/README.md`.
 
 For full details, including customization options, see the
-LiteTest Runner User Guide.
+BriteTest Runner User Guide.

@@ -6,13 +6,13 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `../../LICENSE`.
 
-See `../../README.md` for an introduction to LiteTest.
+See `../../README.md` for an introduction to BriteTest.
 
 ## Files
 
-- **LiteTest_*.pdf**: Generated PDF versions (using `../../scripts/genpdf`) of
-  LiteTest documentation files from `../`.
-- **LiteTest.pdf**: Generated PDF version from `../../README.md`.
+- **BriteTest_*.pdf**: Generated PDF versions (using `../../scripts/genpdf`) of
+  BriteTest documentation files from `../`.
+- **BriteTest.pdf**: Generated PDF version from `../../README.md`.
 - **README.md**: This directory guide.
 
 ## Subdirectories

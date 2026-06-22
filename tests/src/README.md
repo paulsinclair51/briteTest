@@ -6,11 +6,11 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `../../LICENSE`.
 
-See `../../README.md` for an introduction to LiteTest.
+See `../../README.md` for an introduction to BriteTest.
 
 ## Files
 
-- **test_litetest.c**: Orchestrator (`main`) module for running test
+- **test_britetest.c**: Orchestrator (`main`) module for running test
   groups and test expressions.
 - **test_orchestrator.c**: Tests for orchestrator API behavior.
 - **test_file_compare_helpers.c**: Tests for file-compare helper

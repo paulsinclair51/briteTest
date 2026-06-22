@@ -6,14 +6,14 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `../LICENSE`.
 
-See `../README.md` for an introduction to LiteTest.
+See `../README.md` for an introduction to BriteTest.
 
 ## Files
 
-- **litetest_runner.h**: Header for the LiteTest Runner API.
-  See `../src/litetest_runner.c` for the corresponding source file.
-- **litetest_test.h**: Header for the LiteTest Test API.
-  See `../src/litetest_test.c` for the corresponding source file.
+- **britetest_runner.h**: Header for the BriteTest Runner API.
+  See `../src/britetest_runner.c` for the corresponding source file.
+- **britetest_test.h**: Header for the BriteTest Test API.
+  See `../src/britetest_test.c` for the corresponding source file.
 
 ## Subdirectories
 

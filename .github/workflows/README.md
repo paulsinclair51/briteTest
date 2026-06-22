@@ -6,11 +6,11 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT   
 For license details, see `../../LICENSE`.
 
-See `../../README.md` for an introduction to LiteTest.
+See `../../README.md` for an introduction to BriteTest.
 
 ## Files
 
-- **ci.yml**: GitHub CI workflow for Litetest.
+- **britetest_ci.yml**: GitHub CI workflow for BriteTest.
 - **README.md**: This directory guide.
 
 ## Subdirectories

@@ -66,7 +66,7 @@ for dir in "${dirs[@]}"; do
   expected_heading="# ${rel_dir}/"
   expected_prefix="$(relative_parent_prefix "$rel_dir")"
   expected_license_line="For license details, see \`${expected_prefix}LICENSE\`."
-  expected_intro_line="See \`${expected_prefix}README.md\` for an introduction to LiteTest."
+  expected_intro_line="See \`${expected_prefix}README.md\` for an introduction to BriteTest."
 
   heading_line="$(sed -n '1p' "$readme")"
 

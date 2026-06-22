@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="886" height="190" viewBox="74 66 886 190" role="img" aria-labelledby="title desc">
+  <title id="title">BriteTest Test Reference Logo</title>
+  <desc id="desc">An BT monogram with a small canary accent and accompanying BriteTest wordmark with Test Reference tagline.</desc>
+  <rect width="960" height="320" fill="#FCFCFD"/>
+
+  <rect x="74" y="66" width="190" height="190" rx="28" fill="#1F2430"/>
+
+  <path d="M118 110v100h28c17 0 28-8 28-20s-11-19-28-19h-28M118 160h31c18 0 31 9 31 23s-13 23-31 23h-31" fill="none" stroke="#FFEB66" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M156 108h94M203 108v108" fill="none" stroke="#F7F8FA" stroke-width="16" stroke-linecap="round"/>
+
+  <image href="canary.svg" x="190" y="66" width="44" height="55" preserveAspectRatio="xMidYMid meet"/>
+
+  <text x="300" y="164" font-family="Verdana, Geneva, sans-serif" font-size="84" font-weight="700" fill="#1F2430">BriteTest</text>
+  <text x="304" y="216" font-family="Verdana, Geneva, sans-serif" font-size="43" font-weight="700" fill="#1F2430">Test Reference</text>
+</svg>

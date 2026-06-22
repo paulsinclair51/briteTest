@@ -1,27 +1,27 @@
 /**
- * @file /paulsinclair51/LiteTest/tests/test_orchestrator.c
+ * @file /paulsinclair51/BriteTest/tests/test_orchestrator.c
  *
  * @brief Test orchestrator related functions and macros declared
- *        in /paulsinclair51/LiteTest/include/litetest_runner.h (e.g., 
- *        LT_INIT_ORCHESTRATOR, LT_EXIT).
+ *        in /paulsinclair51/BriteTest/include/britetest_runner.h (e.g., 
+ *        BT_INIT_ORCHESTRATOR, BT_EXIT).
  *
  * @copyright Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
  * For license details, see @ref ../LICENSE "LICENSE" in the
- * paulsinclair51/LiteTest GitHub repository.
+ * paulsinclair51/BriteTest GitHub repository.
  */
 
-#include "litetest_runner.h"
+#include "britetest_runner.h"
 
-LT_DECLARE_TEST(test_orchestrator)
+BT_DECLARE_TEST(test_orchestrator)
 { 
-  LT_INIT_TEST(test_orchestrator, 1);
+  BT_INIT_TEST(test_orchestrator, 1);
  
-  LT_ASSERT(!strcmp("dummy", "dummy"), 0);
-  LT_ASSERT_FAIL(0);
-  LT_ASSERT(!strcmp("dummy", "dummy"), 0);
-  LT_ASSERT_FAULT(0);
-  LT_ASSERT(!strcmp("dummy", "dummy"), 0);
+  BT_ASSERT(!strcmp("dummy", "dummy"), 0);
+  BT_ASSERT_FAIL(0);
+  BT_ASSERT(!strcmp("dummy", "dummy"), 0);
+  BT_ASSERT_FAULT(0);
+  BT_ASSERT(!strcmp("dummy", "dummy"), 0);
 
-  LT_RETURN;
+  BT_RETURN;
 }

@@ -1,6 +1,6 @@
-![LiteTest Logo](docs/branding/LiteTest_Logo_with_LiteTest.png)
+![BriteTest Logo](docs/branding/BriteTest_Logo_with_BriteTest.png)
 
-LiteTest is a lightweight framework and Application Programming Interface (API)
+BriteTest is a lightweight framework and Application Programming Interface (API)
 for defining, running, and reporting tests in C/C++ projects. It provides a
 simple core macro-driven Runner API plus a function-based Test API,
 fault‑tolerant execution, and clear reporting. It is ideal for small to medium
@@ -40,17 +40,17 @@ SOFTWARE.
 
 ## Preface
 
-LiteTest provides a Runner API and a Test API, each implemented with a single
+BriteTest provides a Runner API and a Test API, each implemented with a single
 .h / .c pair with no external dependencies and requiring only a POSIX.1‑2001
 environment and a C99‑compliant compiler.
 
-For a list of other LiteTest documents and the repository layout, see
-the LiteTest Documentation Guide (`LiteTest_Documentation_Guide.md`).
+For a list of other BriteTest documents and the repository layout, see
+the BriteTest Documentation Guide (`BriteTest_Documentation_Guide.md`).
 
-For a glossary of terms, see the LiteTest Glossary Reference
-(`LiteTest_Glossary_Reference.md`).
+For a glossary of terms, see the BriteTest Glossary Reference
+(`BriteTest_Glossary_Reference.md`).
 
-For a printer-friendly PDF file for this document, see `docs/pdf/LiteTest.pdf`.
+For a printer-friendly PDF file for this document, see `docs/pdf/BriteTest.pdf`.
 
 <details>
 <summary>Document Version History</summary>
@@ -63,12 +63,12 @@ For a printer-friendly PDF file for this document, see `docs/pdf/LiteTest.pdf`.
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
-- The **Runner** column records the LiteTest Runner API version
+- The **Runner** column records the BriteTest Runner API version
   current at the time this document version was published and is
-  defined by its `LT_RUNNER_VERSION` macro.
-- The **Test** column records the LiteTest Test API version current at
+  defined by its `BT_RUNNER_VERSION` macro.
+- The **Test** column records the BriteTest Test API version current at
   the time this document version was published and is defined by its
-  `LT_TEST_VERSION` macro.
+  `BT_TEST_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
@@ -91,7 +91,7 @@ changes are published in a release without a change to `M`, and it resets to
 &nbsp;&nbsp;&nbsp;&nbsp;[**1.3. Requirements**](#13-requirements)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**1.4. Installation**](#14-installation)<br>
 
-[**2. LiteTest Runner Framework and API**](#2-litetest-runner-framework-and-api)<br>
+[**2. BriteTest Runner Framework and API**](#2-britetest-runner-framework-and-api)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**2.1. What the Runner Framework and API Does**](#21-what-the-runner-framework-and-api-does)<br>
 
 [**3. Running Tests**](#3-running-tests)<br>
@@ -114,7 +114,7 @@ changes are published in a release without a change to `M`, and it resets to
 
 [**12. Isolation**](#12-isolation)<br>
 
-[**13. LiteTest Test API**](#13-litetest-test-api)<br>
+[**13. BriteTest Test API**](#13-britetest-test-api)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**13.1 File Functions**](#131-file-functions)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**13.2 Compare Functions**](#132-compare-functions)
 </details>
@@ -146,14 +146,14 @@ changes are published in a release without a change to `M`, and it resets to
 ### 1.2. Quick Start
 
 A test executable consists of your tests as C/C++ expressions/functions, and the
-orchestrator and test group functions you write using the LiteTest API that
+orchestrator and test group functions you write using the BriteTest API that
 manages the execution.
 
-1. Copy 'litetest_runner.h' and 'litetest_runner.c' to your current directory:
+1. Copy 'britetest_runner.h' and 'britetest_runner.c' to your current directory:
 
 ```sh
-cp /path/to/litetest_runner.h .
-cp /path/to/litetest_runner.c .
+cp /path/to/britetest_runner.h .
+cp /path/to/britetest_runner.c .
 ```
 
 2. Create a file named `test_quick.c` in the same directory.
@@ -164,45 +164,45 @@ cp /path/to/litetest_runner.c .
 <summary>💻 Copy</summary>
 
 ```c
-#include "litetest_runner.h"
+#include "britetest_runner.h"
 
 // A simple test group function.
 
-static LT_DECLARE_GROUP(test_quick)
+static BT_DECLARE_GROUP(test_quick)
 {
-  LT_INIT_GROUP(test_quick, 1);
+  BT_INIT_GROUP(test_quick, 1);
 
   int a = 2;
   int b = 2;
 
   // 4 test assertions.
-  LT_TEST(a == b, , 0);        // Pass
-  LT_TEST(a + b == 4, ,  0);    // Pass
-  LT_TEST(a - b == 1, , 0);    // Fail
-  LT_TEST(LT_FAULT(1), , 0);   // Fault
+  BT_TEST(a == b, , 0);        // Pass
+  BT_TEST(a + b == 4, ,  0);    // Pass
+  BT_TEST(a - b == 1, , 0);    // Fail
+  BT_TEST(BT_FAULT(1), , 0);   // Fault
 
-  LT_RETURN;
+  BT_RETURN;
 }
 
 // A simple orchestrator (main) function.
 
-LT_DECLARE_ORCHESTRATOR(main)
+BT_DECLARE_ORCHESTRATOR(main)
 {
-  LT_INIT_ORCHESTRATOR(main, quick, 1);
-  LT_PARSE_ARGS(2, "quick_test_report.txt");
-  LT_OPEN_REPORT("Test Quick Report");
+  BT_INIT_ORCHESTRATOR(main, quick, 1);
+  BT_PARSE_ARGS(2, "quick_test_report.txt");
+  BT_OPEN_REPORT("Test Quick Report");
 
   // Single test category.
-  LT_WRITE_RESULT(LT_GROUP(test_quick), "Quick tests");
+  BT_WRITE_RESULT(BT_GROUP(test_quick), "Quick tests");
 
-  LT_CLOSE_REPORT("Note: This report is a very simple example of using LiteTest.\n"
+  BT_CLOSE_REPORT("Note: This report is a very simple example of using BriteTest.\n"
                   "Note: Multiple test categories can be added using multiple\n"
                   "      test functions.\n"
                   "Note: Orchestrator (`main`) and test functions can be placed in\n"
                   "      individual modules (.c files).\n"
                   "Note: Parameters can be set to run tests in parallel, isolate\n"
                   "      a test to a separate thread or process, etc.\n"
-                  "Note: The expression for LT_TEST can reference functions to\n"
+                  "Note: The expression for BT_TEST can reference functions to\n"
                   "      provide a more complex test. A non-zero result indicates\n"
                   "      pass and a zero result indicates fail. If a fault occurs\n"
                   "      executing the expression, it is detected and counted in\n"
@@ -210,8 +210,8 @@ LT_DECLARE_ORCHESTRATOR(main)
                   "Note: Larger projects can place files in a more conventional\n"
                   "      layout (e.g., `include/` and `src/`, but this example keeps\n"
                   "      everything in your current directory for simplification.\n"
-                  "Note: See README.md for LiteTest for additional API features.\n");
-  LT_EXIT;
+                  "Note: See README.md for BriteTest for additional API features.\n");
+  BT_EXIT;
 }
 ```
 
@@ -220,7 +220,7 @@ LT_DECLARE_ORCHESTRATOR(main)
 4. Build the executable `test_quick` in your current directory:
 
 ```sh
-cc -std=c99 -Wall -Wextra -o test_quick test_quick.c litetest_runner.c
+cc -std=c99 -Wall -Wextra -o test_quick test_quick.c britetest_runner.c
 ```
 
 5. Run it:
@@ -240,7 +240,7 @@ less quick_test_report.txt   # Press 'q' to quit
 Example of the report:
 
 ```text
-LiteTest Report
+BriteTest Report
                              Pass   Fail     Fault
 --------------------------------------------------
 1. Orchestrator                 4
@@ -265,15 +265,15 @@ Supported compilers, C standard level, and any platform notes.
 
 ### 1.4. Installation
 
-How to add LiteTest to your project, including copying the header, adding the
+How to add BriteTest to your project, including copying the header, adding the
 source file, or integrating via your build system.
 </details>
 </details>
 
 <details>
-<summary>2. LiteTest Runner Framework and API</summary>
+<summary>2. BriteTest Runner Framework and API</summary>
 
-## 2. LiteTest Runner Framework and API
+## 2. BriteTest Runner Framework and API
 
 The Runner framework (implemented using the Runner API) executes all test
 expressions (that implement the tests), aggregates results, and produces
@@ -313,7 +313,7 @@ output paths or configuration flags.
 
 ## 4. Report Generation
 
-How LiteTest collects pass/fail information and formats it for output.
+How BriteTest collects pass/fail information and formats it for output.
 </details>
 
 <details>
@@ -347,7 +347,7 @@ how to consume it in tooling or CI.
 
 ## 8. Test Expressions
 
-How to write a test expression for `LT_TEST(expr)` and how expressions are
+How to write a test expression for `BT_TEST(expr)` and how expressions are
 evaluated.
 </details>
 
@@ -373,7 +373,7 @@ structure.
 
 ## 11. Concurrent Tests
 
-How to mark tests as concurrent and how LiteTest handles parallel execution
+How to mark tests as concurrent and how BriteTest handles parallel execution
 safely.
 </details>
 
@@ -382,7 +382,7 @@ safely.
 
 ## 12. Isolation
 
-Isolation controls how much separation LiteTest uses when running tests.
+Isolation controls how much separation BriteTest uses when running tests.
 
 - **Same-thread execution** is the default and has the lowest overhead.
 - **Thread-isolated execution** keeps tests separated without switching to a
@@ -395,9 +395,9 @@ under test.
 </details>
 
 <details>
-<summary>13. LiteTest Test API</summary>
+<summary>13. BriteTest Test API</summary>
 
-## 13. LiteTest Test API
+## 13. BriteTest Test API
 
 The Test API provides macros and functions for writing tests. Developers use
 this API to express expected behavior, group related tests, and define optional
@@ -407,7 +407,7 @@ The Test API also includes execution/runtime, filesystem/path, environment,
 process-result, string/text, extended file operation, JSON data extraction,
 and resource management helpers.
 
-See the LiteTest Test Reference for a complete list of helpers provided by the API.
+See the BriteTest Test Reference for a complete list of helpers provided by the API.
 
 The following two sections provide examples of file and compare functions.
 
@@ -420,9 +420,9 @@ These helpers cover file and directory-related functions in the Test API.
 
 Examples include:
 
-- Filesystem predicates: `lt_exists`
-- File and directory operations: `lt_copy_file`
-- Temporary and cleanup helpers: `lt_make_temp_dir`
+- Filesystem predicates: `bt_exists`
+- File and directory operations: `bt_copy_file`
+- Temporary and cleanup helpers: `bt_make_temp_dir`
 </details>
 
 <details>
@@ -434,9 +434,9 @@ These helpers cover comparison and matching functions in the Test API.
 
 Examples include:
 
-- Path, file, and directory comparisons: `lt_compare_dirs`
-- Metadata and binary comparisons: `lt_compare_path_metadata`
-- JSON helpers: `lt_compare_json`
-- Text and pattern helpers: `lt_compare_text_normalized`
+- Path, file, and directory comparisons: `bt_compare_dirs`
+- Metadata and binary comparisons: `bt_compare_path_metadata`
+- JSON helpers: `bt_compare_json`
+- Text and pattern helpers: `bt_compare_text_normalized`
 </details>
 </details>
