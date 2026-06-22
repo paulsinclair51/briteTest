@@ -26,5 +26,8 @@ See `../README.md` for an introduction to BriteTest.
 
 ## Subdirectories
 
+- **docx/**: MS Word .docx formatted files generated using `../scripts/genpdf` from the
+	above files (except `README.md`) and from `../README.md`.
+
 - **pdf/**: PDF formatted files generated using `../scripts/genpdf` from the
 	above files (except `README.md`) and from `../README.md`.
