@@ -450,7 +450,15 @@ test_docs_directory_includes_root_readme() {
 
   mkdir -p "$tmpdir/project/docs/pdf"
   cat > "$tmpdir/project/README.md" <<'EOF'
-# Project Root README
+![LiteTest Logo](docs/branding/LiteTest_Logo_with_LiteTest.png)
+
+Document Version: 9.9.9
+Runner Version: 8.8.8
+Test Version: 7.7.7
+
+![Second Logo](docs/branding/LiteTest_Logo_with_Tagline.png)
+
+Project Root README
 EOF
   cat > "$tmpdir/project/docs/guide.md" <<'EOF'
 # Guide
@@ -467,7 +475,46 @@ EOF
   assert_file_exists "$tmpdir/project/docs/pdf/LiteTest.pdf"
   assert_file_not_exists "$tmpdir/project/docs/pdf/README.pdf"
   assert_file_not_exists "$tmpdir/project/docs/pdf/LiteTest_README.pdf"
-  assert_contains "\\thispagestyle{empty}" "$tmpdir/project/docs/pdf/LiteTest.pdf.src"
+  if ! perl -0777 -ne 'exit 0 if /```\{=latex\}\n\\vspace\*\{\\baselineskip\}\n\\vspace\*\{\\baselineskip\}\n\\noindent\\includegraphics\[width=\\textwidth\]\{\\detokenize\{docs\/branding\/LiteTest_Logo_with_LiteTest\.png\}\}\n```\n```\{=latex\}\n\\vspace\{\\baselineskip\}\n\\vspace\{\\baselineskip\}\n\\noindent Document Version: 9\.9\.9\\\\\n\\noindent Runner Version: 8\.8\.8\\\\\n\\noindent Test Version: 7\.7\.7\\\\\n\\vspace\{\\baselineskip\}\n\\vspace\{\\baselineskip\}\n```/s; exit 1' "$tmpdir/project/docs/pdf/LiteTest.pdf.src"; then
+    fail "expected first-line PNG to be emitted as raw LaTeX with 2 forced pre-image blank lines (vspace*), 2 blank lines before version lines, and 2 blank lines after version lines in $tmpdir/project/docs/pdf/LiteTest.pdf.src"
+  fi
+  if ! grep -Fq -- "![Second Logo](docs/branding/LiteTest_Logo_with_Tagline.png)" "$tmpdir/project/docs/pdf/LiteTest.pdf.src"; then
+    fail "expected non-first PNG reference to pass through unchanged in $tmpdir/project/docs/pdf/LiteTest.pdf.src"
+  fi
+  if grep -Fq -- "Figure 1:" "$tmpdir/project/docs/pdf/LiteTest.pdf.src"; then
+    fail "did not expect figure-caption text in generated markdown source: $tmpdir/project/docs/pdf/LiteTest.pdf.src"
+  fi
+  if perl -0777 -ne 'exit 0 if /<br>\n<br>\n<br>\n!\[Second Logo\]\(docs\/branding\/LiteTest_Logo_with_Tagline\.png\)/s; exit 1' "$tmpdir/project/docs/pdf/LiteTest.pdf.src"; then
+    fail "did not expect 3 rendered blank lines before non-first PNG in $tmpdir/project/docs/pdf/LiteTest.pdf.src"
+  fi
+}
+
+test_first_png_not_on_line_one_no_special_handling() {
+  phase "first PNG not on line one has no special handling"
+
+  mkdir -p "$tmpdir/noline1"
+  cat > "$tmpdir/noline1/notline1.md" <<'EOF'
+# Not Line 1
+![LiteTest Logo](docs/branding/LiteTest_Logo_with_LiteTest.png)
+
+Document Version: 3.2.1
+Runner Version: 2.1.0
+Test Version: 1.0.9
+EOF
+
+  PATH="$test_path" "$script" "$tmpdir/noline1/notline1.md" "$tmpdir/out/notline1.pdf" >/dev/null
+
+  assert_file_exists "$tmpdir/out/notline1.pdf.src"
+  assert_contains "![LiteTest Logo](docs/branding/LiteTest_Logo_with_LiteTest.png)" "$tmpdir/out/notline1.pdf.src"
+  if grep -Fq -- "\\includegraphics[width=0.55\\textwidth]" "$tmpdir/out/notline1.pdf.src"; then
+    fail "did not expect raw LaTeX includegraphics title-page handling when first line is not PNG"
+  fi
+  if grep -Fq -- "\\noindent Document Version: 3.2.1\\" "$tmpdir/out/notline1.pdf.src"; then
+    fail "did not expect injected version lines when first line is not PNG"
+  fi
+  assert_contains "Document Version: 3.2.1" "$tmpdir/out/notline1.pdf.src"
+  assert_contains "Runner Version: 2.1.0" "$tmpdir/out/notline1.pdf.src"
+  assert_contains "Test Version: 1.0.9" "$tmpdir/out/notline1.pdf.src"
 }
 
 run_all_tests() {
@@ -486,6 +533,7 @@ run_all_tests() {
   test_directory_only_option_guards
   test_no_argument_default_directory_mode
   test_docs_directory_includes_root_readme
+  test_first_png_not_on_line_one_no_special_handling
 }
 
 run_all_tests

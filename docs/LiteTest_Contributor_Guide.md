@@ -1,7 +1,4 @@
-# LiteTest Contributor Guide
-
 ![LiteTest Contributor Guide](branding/LiteTest_Contributor_Guide.png)
-
 
 This document defines the contribution process, coding standards, documentation
 rules, and versioning guidelines for LiteTest.

@@ -11,5 +11,5 @@
   <image href="canary.svg" x="190" y="66" width="44" height="55" preserveAspectRatio="xMidYMid meet"/>
 
   <text x="300" y="164" font-family="Verdana, Geneva, sans-serif" font-size="84" font-weight="700" fill="#1F2430">LiteTest</text>
-  <text x="304" y="216" font-family="Verdana, Geneva, sans-serif" font-size="52" font-weight="700" fill="#1F2430">Documentation Guide</text>
+  <text x="304" y="216" font-family="Verdana, Geneva, sans-serif" font-size="43" font-weight="700" fill="#1F2430">Documentation Guide</text>
 </svg>

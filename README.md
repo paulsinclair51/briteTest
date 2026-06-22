@@ -1,5 +1,3 @@
-# LiteTest
-
 ![LiteTest Logo](docs/branding/LiteTest_Logo_with_LiteTest.png)
 
 LiteTest is a lightweight framework and Application Programming Interface (API)

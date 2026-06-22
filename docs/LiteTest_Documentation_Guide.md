@@ -1,7 +1,4 @@
-# LiteTest Documentation Guide
-
 ![LiteTest Documentation Guide](branding/LiteTest_Documentation_Guide.png)
-
 
 This document is a guide to the LiteTest documentation and the LiteTest
 repository layout.

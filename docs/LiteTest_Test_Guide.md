@@ -1,7 +1,4 @@
-# LiteTest Test Guide
-
 ![LiteTest Test Guide](branding/LiteTest_Test_Guide.png)
-
 
 This .
 
