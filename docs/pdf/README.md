@@ -8,6 +8,8 @@ For license details, see `../../LICENSE`.
 
 See `../../README.md` for an introduction to BriteTest.
 
+.pdf files are generated using `../../scripts/genpdf`) from .md files.
+
 ## Files
 
 - **BriteTest.pdf**: file generated from `../../README.md`.
