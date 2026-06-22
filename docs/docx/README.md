@@ -1,6 +1,6 @@
 # docs/docx/
 
-Directory for MS Word .docx documentation generated from markdown files in `docs/`.
+Directory for MS Word .docx documentation generated from .md files in `docs/`.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
@@ -13,6 +13,7 @@ See `../../README.md` for an introduction to BriteTest.
 ## Files
 
 - **BriteTest.docx**: file generated from `../../README.md`.
+
 - **BriteTest_*.docx**: files generated from BriteTest .md documentation
   files in `../`.
 
