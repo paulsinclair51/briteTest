@@ -57,13 +57,13 @@ For a glossary of terms, see the BriteTest Glossary Reference.
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
-- The **Runner** column records the BriteTest Runner API version
+- The **Runner** column records the Runner API version
   current at the time this document version was published and is
-  defined by its `BT_RUNNER_VERSION` macro.
-- The **Test** column records the BriteTest Test API version current at
+  defined by its `RA_VERSION` macro.
+- The **Test** column records the Test API version current at
   the time this document version was published and is defined by its
-  `BT_TEST_VERSION` macro.
-- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
+  `TA_VERSION` macro.
+- Both the Runner API and Test API use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
 
@@ -89,7 +89,7 @@ changes are published in a release without a change to `M`, and it resets to
 
 BriteTest is built around three ideas:
 
-1. **Test expressions**:C expressions wrapped with `BT_TEST`.
+1. **Test expressions**:C expressions wrapped with `RA_TEST`.
 2. **Test group functions**:Functions that contain related tests.
 3. **The orchestrator**: A `main` function that runs test groups and writes the
    report.
@@ -98,17 +98,17 @@ A typical test executable includes:
 
 - An orchestrator (`main`)
 - One or more test group functions
-- `britetest_runner.h` and `britetest_runner.c`
+- `runnerapi.h` and `runnerapi.c`
 - Project headers and sources under test
 </details>
 
 <details>
 <summary>2. Execution Model</summary>
 
-## 2. Execution Model
+## 2. Execution Modes
 
 BriteTest runs test expressions and test group functions under a configurable
-isolation model:
+isolation mode:
 
 - **Same‑thread execution** (default)
 - **Thread‑isolated execution**
@@ -128,22 +128,22 @@ reported without aborting the test run.
 
 A test group function:
 
-- Is declared with `BT_DECLARE_GROUP`
-- Begins with `BT_INIT_GROUP`
-- Contains `BT_TEST` and/or `BT_GROUP` calls
-- Ends with `BT_RETURN`
+- Is declared with `RA_DECLARE_GROUP`
+- Begins with `RA_INIT_GROUP`
+- Contains `RA_TEST` and/or `RA_GROUP` calls
+- Ends with `RA_RETURN`
 
 Example:
 
 ```c
-static BT_DECLARE_GROUP(test_math)
+static RA_DECLARE_GROUP(test_math)
 {
-  BT_INIT_GROUP(test_math, 1);
+  RA_INIT_GROUP(test_math, 1);
 
-  BT_TEST(1 + 1 == 2, 1);
-  BT_TEST(2 * 3 == 6, 1);
+  RA_TEST(1 + 1 == 2, 1);
+  RA_TEST(2 * 3 == 6, 1);
 
-  BT_RETURN;
+  RA_RETURN;
 }
 ```
 </details>
@@ -165,16 +165,16 @@ The orchestrator:
 Example:
 
 ```c
-BT_DECLARE_ORCHESTRATOR(main)
+RA_DECLARE_ORCHESTRATOR(main)
 {
-  BT_INIT_ORCHESTRATOR(main, project, 1);
-  BT_PARSE_ARGS(2, "report.txt");
-  BT_OPEN_REPORT("Example Report");
+  RA_INIT_ORCHESTRATOR(main, project, 1);
+  RA_PARSE_ARGS(2, "report.txt");
+  RA_OPEN_REPORT("Example Report");
 
-  BT_WRITE_RESULT(BT_GROUP(test_math), "Math Tests");
+  RA_WRITE_RESULT(RA_GROUP(test_math), "Math Tests");
 
-  BT_CLOSE_REPORT(NULL);
-  BT_EXIT;
+  RA_CLOSE_REPORT(NULL);
+  RA_EXIT;
 }
 ```
 </details>
@@ -184,7 +184,7 @@ BT_DECLARE_ORCHESTRATOR(main)
 
 ## 5. Test Inclusion Control (`-I` / `-In`)
 
-Each `BT_TEST` and `BT_GROUP` macro includes an optional **include parameter** that determines whether it executes based on command‑line options.
+Each `RA_TEST` and `RA_GROUP` macro includes an optional **include parameter** that determines whether it executes based on command‑line options.
 
 - `1` — always execute (default)  
 - `2–9` — execute only when `-In` is provided and `n` is >= the include value  
@@ -199,13 +199,13 @@ This allows selective execution of test subsets.
 
 ## 6. Concurrent Blocks
 
-Concurrent blocks ensure that all enclosed `BT_TEST` calls begin execution together:
+Concurrent blocks ensure that all enclosed `RA_TEST` calls begin execution together:
 
 ```c
-BT_BEGIN_CONCURRENT(block1);
-BT_TEST(expr1, 1);
-BT_TEST(expr2, 1);
-BT_END_CONCURRENT(block1);
+RA_BEGIN_CONCURRENT(block1);
+RA_TEST(expr1, 1);
+RA_TEST(expr2, 1);
+RA_END_CONCURRENT(block1);
 ```
 
 Concurrent blocks cannot be nested within a test function.
@@ -278,7 +278,7 @@ make CC=gcc run
 Use MSYS2 UCRT64 or Clang64:
 
 ```powershell
-./build_test_britetest.ps1
+./build_test_runner.ps1
 .\test_britetest.exe
 ```
 </details>
@@ -329,11 +329,11 @@ See:
 BriteTest tests are C/C++ expressions/functions, and the orchestrator controls
 reporting and execution.
 
-1. To try BriteTest, copy 'britetest_runner.h' and 'britetest_runner.c' to your current directory:
+1. To try BriteTest, copy 'runnerapi.h' and 'runnerapi.c' to your current directory:
 
 ```sh
-cp /path/to/britetest_runner.h .
-cp /path/to/britetest_runner.c .
+cp /path/to/runnerapi.h .
+cp /path/to/runnerapi.c .
 ```
 
 2. Create a file named `test_quick.c` in the same directory.
@@ -344,45 +344,45 @@ cp /path/to/britetest_runner.c .
 <summary>💻 and copy</summary>
 
 ```c
-#include "britetest_runner.h"
+#include "runnerapi.h"
 
 // A simple test group function.
 
-static BT_DECLARE_GROUP(test_quick)
+static RA_DECLARE_GROUP(test_quick)
 {
-  BT_INIT_GROUP(test_quick, 1);
+  RA_INIT_GROUP(test_quick, 1);
 
   int a = 2;
   int b = 2;
 
   // 4 test assertions.
-  BT_TEST(a == b, , 0);        // Pass
-  BT_TEST(a + b == 4, ,  0);    // Pass
-  BT_TEST(a - b == 1, , 0);    // Fail
-  BT_TEST(BT_FAULT(1), , 0);   // Fault
+  RA_TEST(a == b, , 0);        // Pass
+  RA_TEST(a + b == 4, ,  0);    // Pass
+  RA_TEST(a - b == 1, , 0);    // Fail
+  RA_TEST(RA_FAULT(1), , 0);   // Fault
 
-  BT_RETURN;
+  RA_RETURN;
 }
 
 // A simple orchestrator (main) function.
 
-BT_DECLARE_ORCHESTRATOR(main)
+RA_DECLARE_ORCHESTRATOR(main)
 {
-  BT_INIT_ORCHESTRATOR(main, quick, 1);
-  BT_PARSE_ARGS(2, "quick_test_report.txt");
-  BT_OPEN_REPORT("Test Quick Report");
+  RA_INIT_ORCHESTRATOR(main, quick, 1);
+  RA_PARSE_ARGS(2, "quick_test_report.txt");
+  RA_OPEN_REPORT("Test Quick Report");
 
   // Single test category.
-  BT_WRITE_RESULT(BT_GROUP(test_quick), "Quick tests");
+  RA_WRITE_RESULT(RA_GROUP(test_quick), "Quick tests");
 
-  BT_CLOSE_REPORT("Note: This report is a very simple example of using BriteTest.\n"
+  RA_CLOSE_REPORT("Note: This report is a very simple example of using BriteTest.\n"
                   "Note: Multiple test categories can be added using multiple\n"
                   "      test functions.\n"
                   "Note: Orchestrator (`main`) and test functions can be placed in\n"
                   "      individual modules (.c files).\n"
                   "Note: Parameters can be set to run tests in parallel, isolate\n"
                   "      a test to a separate thread or process, etc.\n"
-                  "Note: The expression for BT_TEST can reference functions to\n"
+                  "Note: The expression for RA_TEST can reference functions to\n"
                   "      provide a more complex test. A non-zero result indicates\n"
                   "      pass and a zero result indicates fail. If a fault occurs\n"
                   "      executing the expression, it is detected and counted in\n"
@@ -391,7 +391,7 @@ BT_DECLARE_ORCHESTRATOR(main)
                   "      layout (e.g., `include/` and `src/`, but this example keeps\n"
                   "      everything in your current directory for simplification.\n"
                   "Note: See README.md for BriteTest for additional API features.\n");
-  BT_EXIT;
+  RA_EXIT;
 }
 ```
 </details>
@@ -507,28 +507,28 @@ BriteTest focuses on executing tests and reporting results. It does not:
 
 BriteTest is a lightweight C/C++ testing framework built around a simple execution model:
 1. You write C test expressions (that typically invoke functions) for each test and wrap each
-   of these expressions with the `BT_TEST` macro in a test group function.
-2. You wrap each test group function name with the `BT_GROUP` macro in the orchestrator.
+   of these expressions with the `RA_TEST` macro in a test group function.
+2. You wrap each test group function name with the `RA_GROUP` macro in the orchestrator.
 3. The orchestrator (`main`) function runs the test group functions and reports results.
 
-The BriteTest Runner API files:
+The Runner API files:
 
- - [`include/britetest_runner.h`](include/britetest_runner.h) — public API (typedefs, enums, constants, macros,
+ - [`include/runnerapi.h`](include/runnerapi.h) — public API (typedefs, enums, constants, macros,
    function declarations, and static inline function definitions).
- - [`src/britetest_runner.c`](src/britetest_runner.c) — function definitions for the BriteTest framework.
+ - [`src/runnerapi.c`](src/runnerapi.c) — function definitions for the BriteTest framework.
 
-The BriteTest Test API files:
+The Test API files:
 
- - [`include/britetest_test.h`](include/britetest_test.h) — test support/helper function declarations.
- - [`src/britetest_test.c`](src/britetest_test.c) — test support/helper function definitions.
+ - [`include/testapi.h`](include/testapi.h) — test support/helper function declarations.
+ - [`src/testapi.c`](src/testapi.c) — test support/helper function definitions.
 
 A typical test executable includes:
 
 - An orchestrator (`main`) function that opens the report, invokes test group functions,
   writes category results, and closes the report.
 - Multiple test group functions that execute the tests.
-- The BriteTest Runner API files (`britetest_runner.h`, `britetest_runner.c`).
-- The BriteTest Test API files (`britetest_test.h`, `britetest_test.c`).
+- The Runner API files (`runnerapi.h`, `runnerapi.c`).
+- The Test API files (`testapi.h`, `testapi.c`).
 - The headers and source files for the project being tested.
 
 main()
@@ -552,16 +552,16 @@ When executed, BriteTest produces a report summarizing tests by category, includ
 <details>
 <summary>Core API</summary>
 
-## Core API
+## Core Runner API
 
-The core API is set of macros used to define the orchestrator and test group
+The core runner API is set of macros used to define the orchestrator and test group
 functions. These macros fall into 3 types:
 
 | Type | Purpose | Naming Pattern |
 | --- | --- | --- |
-| **Orchestrator** | Define and run the test runner | ``BT_DECLARE_*``, ``BT_INIT_*``, ``BT_*`` |
-| **Test Group Functions** | Define test group functions | ``BT_DECLARE_GROUP``, ``BT_INIT_GROUP``, ``BT_RETURN`` |
-| **Execution** | Execute groups or test expressions | ``BT_GROUP``, ``BT_TEST`` |
+| **Orchestrator** | Define and run the test runner | ``RA_DECLARE_*``, ``RA_INIT_*``, ``RA_*`` |
+| **Test Group Functions** | Define test group functions | ``RA_DECLARE_GROUP``, ``RA_INIT_GROUP``, ``RA_RETURN`` |
+| **Execution** | Execute groups or test expressions | ``RA_GROUP``, ``RA_TEST`` |
 </details>
 
 <details>
@@ -569,21 +569,21 @@ functions. These macros fall into 3 types:
 
 ### Macros for the Orchestrator (`main`) Function
 
-- `BT_DECLARE_ORCHESTRATOR(funcname)[;]`
-- `BT_INIT_ORCHESTRATOR(funcname, project, maxparallel);`
-- `BT_PARSE_ARGS(maxargs, defaultreportfilename);`
-- `BT_OPEN_REPORT(title]);`
+- `RA_DECLARE_ORCHESTRATOR(funcname)[;]`
+- `RA_INIT_ORCHESTRATOR(funcname, project, maxparallel);`
+- `RA_PARSE_ARGS(maxargs, defaultreportfilename);`
+- `RA_OPEN_REPORT(title]);`
 - test group and test expression macros,
-- `BT_WRITE_RESULT(gtm, category);`
-- `BT_CLOSE_REPORT(notes]);`
-- `BT_EXIT;`
+- `RA_WRITE_RESULT(gtm, category);`
+- `RA_CLOSE_REPORT(notes]);`
+- `RA_EXIT;`
 
 Note:
 - `funcname` must be main.
 - `maxargs` must be 2 or greater. The first arg is the executable name.
   The second optional arg is `PATH`. Additional args are for customization
   and must be parsed by custom code added to the function.
-- `gtm` is an `BT_GROUP` or `BT_TEST` macro.
+- `gtm` is an `RA_GROUP` or `RA_TEST` macro.
 - For the first macro, a semicolon is required for a forward declaration;
   otherwise, omit the semicolon and follow with a definition in `{ }`.
 </details>
@@ -593,10 +593,10 @@ Note:
 
 ### Macros for a Test Group Function
 
-- `BT_DECLARE_GROUP(funcname)[;]`
-- `BT_INIT_GROUP(funcname, maxparallel);`
+- `RA_DECLARE_GROUP(funcname)[;]`
+- `RA_INIT_GROUP(funcname, maxparallel);`
 - test expression and test group macros.
-- `BT_RETURN;`
+- `RA_RETURN;`
 
 Note:
 - `funcname` must not be main and must be same for the first two macros when
@@ -610,10 +610,10 @@ Note:
 
 ### Macros for Executing a Test Group Function or Test Expression
 
-- `BT_GROUP(funcname, [include], isolation)[;]`
-- `BT_TEST(expression, [include], isolation)[;]`
+- `RA_GROUP(funcname, [include], isolation)[;]`
+- `RA_TEST(expression, [include], isolation)[;]`
 
-When an  `BT_GROUP `or `BT_TEST` macro is passed as the first argument to BT_WRITE_RESULT,
+When an `RA_GROUP `or `RA_TEST` macro is passed as the first argument to RA_WRITE_RESULT,
 omit the trailing semicolon. Otherwise, a semicolon is required.
 
 `funcname`: name of the group function to execute.
@@ -630,7 +630,7 @@ based on the test executable's `-I` or `-In` option (see [`-I` and `-In` Option]
 - 1 — always execute.
 - 2 – 9 — execute only when the user specifies an `-In` option and the value is less than or
 -         equal to n (a single non-zero digit).
-- I — execute only when the user specifies `-I` without a digit (valid only for BT_TEST),
+- I — execute only when the user specifies `-I` without a digit (valid only for RA_TEST),
       Result is counted as an injected pass/fail/fault as well as the usual
       a pass/fail/fault count.
 - omitted — defaults to `1`.
@@ -639,11 +639,11 @@ For `isolation`, see [Isolation Modes and Fault Handling](isolation-modes-and-fa
 
 Special values that can be used in any expression:
 
-- `BT_PASS`: returns 1.
-- `BT_FAIL`: returns 0. Note this does force a fail. A fail occurs only if the test
+- `RA_PASS`: returns 1.
+- `RA_FAIL`: returns 0. Note this does force a fail. A fail occurs only if the test
   expression evaluates to 0.
--` BT_FAULT(type)`: causes a fault of the specified type: 1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
-  For other values of type, BT_FAULT returns 0.
+-` RA_FAULT(type)`: causes a fault of the specified type: 1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
+  For other values of type, RA_FAULT returns 0.
 </details>
 
 <details>
@@ -653,7 +653,7 @@ Special values that can be used in any expression:
 
 BriteTest starts up to `maxparallel` test group functions or test expressions concurrently.
 When one finishes, another begins, until all are complete. `maxparallel` is set by the
-`BT_INIT_ORCHESTRATOR` and `BT_INIT_GROUP` macros.
+`RA_INIT_ORCHESTRATOR` and `RA_INIT_GROUP` macros.
 </details>
 
 <details>
@@ -661,11 +661,11 @@ When one finishes, another begins, until all are complete. `maxparallel` is set 
 
 ###  Macros for Concurrent Execution
 
-The concurrent block macros ensure that all `BT_TEST` macros inside it start together:
+The concurrent block macros ensure that all `RA_TEST` macros inside it start together:
 
-- The `BT_TEST` macros are bracketed with:
-  - `BT_BEGIN_CONCURRENT(blockname)`
-  - `BT_END_CONCURRENT(blockname)`
+- The `RA_TEST` macros are bracketed with:
+  - `RA_BEGIN_CONCURRENT(blockname)`
+  - `RA_END_CONCURRENT(blockname)`
 - Within a test group function body, a concurrent block cannot be nested inside
   concurrent block.
 </details>
@@ -767,7 +767,7 @@ Summary:
 | Single‑Process    | One process, one thread       | Partial (cannot isolate aborts/hangs)  | Fast local runs, debugging  |
 | Process‑Isolated  | One process per test group    | Full (survives all faults)             | CI, fault injection, parallel runs |
 
-Both modes use the same `BT_GROUP` and `BT_TEST` macros. The choice of isolation
+Both modes use the same `RA_GROUP` and `RA_TEST` macros. The choice of isolation
 mode affects only how test group functions and test expressions are executed,
 not how they are written.
 </details>
@@ -781,17 +781,17 @@ Typedefs, enums for exit code and return codes, macros for limits, and functions
 
 Examples include:
 
-- `bt_executablename`
-- `bt_resubt_t`
-- `bt_dirpath`
-- `BT_MAX_PATH_LEN`
-- `bt_currentlevel`
-- `bt_currentresult`
-- `bt_maxparallel`
-- `bt_blockname`
-- `bt_iswritedirpath`
+- `RA_executablename`
+- `RA_resuRA_t`
+- `RA_dirpath`
+- `RA_MAX_PATH_LEN`
+- `RA_currentlevel`
+- `RA_currentresult`
+- `RA_maxparallel`
+- `RA_blockname`
+- `RA_iswritedirpath`
 
-`bt_resubt_t` carries pass/fail/fault and injected-fault counters for a test or
+`RA_resuRA_t` carries pass/fail/fault and injected-fault counters for a test or
 group. A function-level fault is represented by setting the fault count to
 `SIZE_MAX`.
 
@@ -811,25 +811,25 @@ writing tests.
 
 Examples of Process and runtime helpers include:
 
-- `int bt_execute_command(const char *command_line, int timeout_ms, char *output_buffer, size_t output_buffer_size, int *exit_code)`
-- `int bt_wait_for_condition(int (*condition)(void *callback_context), void *callback_context, int timeout_ms, int poll_interval_ms)`
+- `int RA_execute_command(const char *command_line, int timeout_ms, char *output_buffer, size_t output_buffer_size, int *exit_code)`
+- `int RA_wait_for_condition(int (*condition)(void *callback_context), void *callback_context, int timeout_ms, int poll_interval_ms)`
 
 Examples of File and filesystem helpers include:
 
-- `int bt_copy_file(const char *source_path, const char *destination_path)`
-- `int bt_make_temp_dir(const char *prefix, char *out_path, size_t out_path_size)`
+- `int RA_copy_file(const char *source_path, const char *destination_path)`
+- `int RA_make_temp_dir(const char *prefix, char *out_path, size_t out_path_size)`
   
 Examples of Comparison and matching helpers include:
 
-- `int bt_compare_files(FILE *left_file, FILE *right_file)`
-- `int bt_compare_file_to_path(FILE *file, const char *path)`
-- `int bt_compare_paths(const char *left_path, const char *right_path)`
-- `int bt_compare_path_to_file(const char *path, FILE *file)`
-- `int bt_match(const char *text, const char *pattern)`
+- `int RA_compare_files(FILE *left_file, FILE *right_file)`
+- `int RA_compare_file_to_path(FILE *file, const char *path)`
+- `int RA_compare_paths(const char *left_path, const char *right_path)`
+- `int RA_compare_path_to_file(const char *path, FILE *file)`
+- `int RA_match(const char *text, const char *pattern)`
 
 Example of Environment helpers:
 
-- `int bt_with_environment_variable(const char *variable_name, const char *temporary_value, int (*callback)(void *callback_context), void *callback_context)`
+- `int RA_with_environment_variable(const char *variable_name, const char *temporary_value, int (*callback)(void *callback_context), void *callback_context)`
 </details>
 </details>
 
@@ -873,31 +873,31 @@ the BriteTest API and framework.
 <summary>💻 and copy</summary>
 
 ```c
-BT_DECLARE_ORCHESTRATOR(main)
+RA_DECLARE_ORCHESTRATOR(main)
 {
-  BT_INIT_ORCHESTRATOR(main, project, [maxparallel]);
-  BT_PARSE_ARGS([maxargs], ["defaultfilename"]);
-  BT_OPEN_REPORT(["title"]);
+  RA_INIT_ORCHESTRATOR(main, project, [maxparallel]);
+  RA_PARSE_ARGS([maxargs], ["defaultfilename"]);
+  RA_OPEN_REPORT(["title"]);
 
   // Insert group/test/write calls here:
-  //   BT_GROUP(funcname, [isolation]);
-  //   BT_TEST(expression, [isolation]);
-  //   BT_TEST_I(expression, [isolation]);
-  //   BT_WRITE_RESULT(BT_GROUP(funcname, [isolation]), "category");
-  //   BT_WRITE_RESULT(BT_TEST(expression, [isolation]), "category");
+  //   RA_GROUP(funcname, [isolation]);
+  //   RA_TEST(expression, [isolation]);
+  //   RA_TEST_I(expression, [isolation]);
+  //   RA_WRITE_RESULT(RA_GROUP(funcname, [isolation]), "category");
+  //   RA_WRITE_RESULT(RA_TEST(expression, [isolation]), "category");
   // Group test/assert calls using:
-  //   BT_BEGIN_CONCURRENT(groupname);
-  //   BT_END_CONCURRENT(groupname);
+  //   RA_BEGIN_CONCURRENT(groupname);
+  //   RA_END_CONCURRENT(groupname);
 
-  BT_CLOSE_REPORT(["notes"]);
+  RA_CLOSE_REPORT(["notes"]);
 
-  BT_EXIT;
+  RA_EXIT;
 }
 ```
 </details>
 </details>
 
-`BT_WRITE_RESULT` writes one category and resets its counts. Totals accumulate
+`RA_WRITE_RESULT` writes one category and resets its counts. Totals accumulate
 across the full run.
 
 Optional typedefs, variables, functions, and code may be added to customize
@@ -911,7 +911,7 @@ as if it occurs before the tests.
 Forward-declaration:
 
 ```c
-BT_DECLARE_ORCHESTRATOR(main);
+RA_DECLARE_ORCHESTRATOR(main);
 ```
 
 <details>
@@ -923,19 +923,19 @@ BT_DECLARE_ORCHESTRATOR(main);
 <summary>💻 and copy</summary>
 
 ```c
-[static] BT_DECLARE_GROUP(funcname)
+[static] RA_DECLARE_GROUP(funcname)
 {
-  BT_INIT_GROUP(funcname, [maxparallel]);
+  RA_INIT_GROUP(funcname, [maxparallel]);
 
   // Insert test/group calls here:
-  //   BT_TEST(expression, [isolation]);
-  //   BT_TEST_I(expression, [isolation]);
-  //   BT_GROUP(funcname, [isolation]);
+  //   RA_TEST(expression, [isolation]);
+  //   RA_TEST_I(expression, [isolation]);
+  //   RA_GROUP(funcname, [isolation]);
   // Group test/assert calls using:
-  //   BT_BEGIN_CONCURRENT(groupname);
-  //   BT_END_CONCURRENT(groupname);
+  //   RA_BEGIN_CONCURRENT(groupname);
+  //   RA_END_CONCURRENT(groupname);
 
-  BT_RETURN;
+  RA_RETURN;
 }
 ```
 </details>
@@ -946,7 +946,7 @@ Use `static` when the function is only referenced in the same module.
 Forward declaration:
 
 ```c
-[static] BT_DECLARE_GROUP(func);
+[static] RA_DECLARE_GROUP(func);
 ```
 
 Specify `static` if the above definition of the function specifies `static`.
@@ -1089,18 +1089,18 @@ You may override the output location using the PATH argument:
 ### `-I` and `-In` Option
 
 The  `-I` and `-In` options control which tests execute based on the `include`
-parameter of the `BT_GROUP` and `BT_TEST` macros. `n` is a single non-zero digit.
+parameter of the `RA_GROUP` and `RA_TEST` macros. `n` is a single non-zero digit.
 Only one of these forms may be specified.
 
-- Use `-In` to enable `BT_GROUP` and `BT_TEST` macros that have an `include` argument
+- Use `-In` to enable `RA_GROUP` and `RA_TEST` macros that have an `include` argument
   that is a non-zero digit less than or equal to `n`.
 
-- Use `-I` to enable `BT_TEST` macros that have an `include`  argument that is `I`. This
+- Use `-I` to enable `RA_TEST` macros that have an `include`  argument that is `I`. This
   can be used to exercise the BriteTest framework and verify report formatting
-  (typically, these `BT_TEST` macros have a test expression that is coded to
+  (typically, these `RA_TEST` macros have a test expression that is coded to
   cause a failures or a fault.
 
-- If neither option is provided, all  `BT_GROUP` and `BT_TEST` macros with an `include`
+- If neither option is provided, all  `RA_GROUP` and `RA_TEST` macros with an `include`
   argument that is `1` – `9` execute by default.
 
 See [Macros for Executing a Test Group Function or Test Expression](#macros-for-executing-a-test-group-function-or-test-expression) for the `include` parameter and its interaction with the `-I` and `-In` options.
@@ -1145,7 +1145,7 @@ options and usage details.
 - Output path with spaces fails: quote `PATH` (for example,
   `"my reports/report.txt"`).
 - Unexpected behavior after macro updates: ensure code and docs match the same
-  BriteTest version (`BT_VERSION` in `britetest_runner.h` and `BT_VERSION_C` in
+  BriteTest version (`RA_VERSION` in `britetest_runner.h` and `RA_VERSION_C` in
   `britetest_runner.c`).
 </details>
 
@@ -1229,14 +1229,14 @@ BriteTest Report (-i)
  *
  * Macros for use in the orchestrator (main) function:
  *
- * - BT_DECLARE_ORCHESTRATOR(funcname)[;]
- * - BT_INIT_ORCHESTRATOR(funcname, testsuitename, [maxparallel]);
- * - BT_PARSE_ARGS([maxargs], ["defaultreportfilename"]);
- * - BT_OPEN_REPORT(["reporttitle"]);
+ * - RA_DECLARE_ORCHESTRATOR(funcname)[;]
+ * - RA_INIT_ORCHESTRATOR(funcname, testsuitename, [maxparallel]);
+ * - RA_PARSE_ARGS([maxargs], ["defaultreportfilename"]);
+ * - RA_OPEN_REPORT(["reporttitle"]);
  * - test and assert macros
- * - BT_WRITE_RESULT([t], "categoryname");
- * - BT_CLOSE_REPORT(["notes"]);
- * - BT_EXIT;
+ * - RA_WRITE_RESULT([t], "categoryname");
+ * - RA_CLOSE_REPORT(["notes"]);
+ * - RA_EXIT;
  *
  * @note funcname must be main.
  * @note maxargs must be 2 or greater. The first arg is the executable name.
@@ -1252,10 +1252,10 @@ BriteTest Report (-i)
  *
  * Macros for use in a test function:
  *
- * - BT_DECLARE_TEST(funcname)[;]
- * - BT_INIT_TEST(funcname, [maxparallel]);
+ * - RA_DECLARE_TEST(funcname)[;]
+ * - RA_INIT_TEST(funcname, [maxparallel]);
  * - test and assert macros
- * - BT_RETURN;
+ * - RA_RETURN;
  *
  * @note funcname must not be main and must be same for the first two macros when
  *       defining a test function.
@@ -1266,26 +1266,26 @@ BriteTest Report (-i)
 /**
  * @subsection TestAndAssertMacros Test and Assert Macros
  *
- * - BT_TEST(funcname, [isolation])[;]
- * - BT_ASSERT(expression, [isolation])[;]
- * - BT_INJECT_ASSERT(expression, [isolation])[;]
+ * - RA_TEST(funcname, [isolation])[;]
+ * - RA_ASSERT(expression, [isolation])[;]
+ * - RA_INJECT_ASSERT(expression, [isolation])[;]
  *
- * The semicolon is omitted if used as an argument to the BT_WRITE_RESULT macro;
+ * The semicolon is omitted if used as an argument to the RA_WRITE_RESULT macro;
  * otherwise it is required.
  *
- * BT_INJECT_ASSERT is the same as BT_ASSERT except:
+ * RA_INJECT_ASSERT is the same as RA_ASSERT except:
  *
  * - Only executes if injection is enabled (see @ref iOption `-i` Option.
  * - Result is counted as an injected pass/fail/fault.
  *
  * Special values that can be used in any expression:
  *
- * - BT_PASS: returns 1.
- * - BT_FAIL: returns 0.
- * - BT_FAULT(type): causes a fault of the specified type:
+ * - RA_PASS: returns 1.
+ * - RA_FAIL: returns 0.
+ * - RA_FAULT(type): causes a fault of the specified type:
  *.                  1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
  * 
- * For other values of type, BT_FAULT returns 0.
+ * For other values of type, RA_FAULT returns 0.
  */
 
 /**
@@ -1307,7 +1307,7 @@ BriteTest Report (-i)
  * @subsubsection ParallelExecution Parallel Execution
 
 Parallel execution of the test/assert macros is enabled/disabled by the
-`maxparallel` parameter for the BT_INIT_ORCHESTRATOR and BT_INIT_TEST
+`maxparallel` parameter for the RA_INIT_ORCHESTRATOR and RA_INIT_TEST
 macros. Up to `maxparallel` test/assert macros are started and when one
 finishes another is started.
  */
@@ -1318,8 +1318,8 @@ finishes another is started.
 A group ensures that all test/assert macros inside it start together:
 
 - Groups are bracketed with:
-  - `BT_BEGIN_GROUP(groupname)`
-  - `BT_END_GROUP(groupname)`
+  - `RA_BEGIN_GROUP(groupname)`
+  - `RA_END_GROUP(groupname)`
 - Within a test function, a group cannot be nested inside another group.
 
  */
@@ -1343,7 +1343,7 @@ Defaults:
  * @subsubsection ParallelExecution Parallel Execution
  *
  * Parallel execution of the test/assert macros is enabled/disabled by the
- * maxparallel parameter for the BT_INIT_ORCHESTRATOR and BT_INIT_TEST
+ * maxparallel parameter for the RA_INIT_ORCHESTRATOR and RA_INIT_TEST
  * macros. Up to maxparallel test/assert macros are started and when one
  * finishes another is started.
  *
@@ -1353,8 +1353,8 @@ Defaults:
  * are not started until they can all start without exceeding maxparallel).
  * A group is bracketed using the followug macros:
  *
- * - BT_BEGIN_GROUP(groupname, [isolation])
- * - BT_END_GROUP(groupname);
+ * - RA_BEGIN_GROUP(groupname, [isolation])
+ * - RA_END_GROUP(groupname);
  *
  * @note A group cannot be nested in a group within a test function.
  *
@@ -1378,16 +1378,16 @@ Defaults:
  * Miscellaneous functions, macros, typedefs, and variables.
  * Examples include:
  *
- * - bt_executablename
- * - bt_resubt_t
- * - bt_dirpath
- * - BT_MAX_PATH_LEN
- * - bt_currentlevel
- * - bt_currentresult
- * - bt_maxparallel
- * - bt_isisolated
- * - bt_groupname
- * - bt_iswritedirpath
+ * - RA_executablename
+ * - RA_resuRA_t
+ * - RA_dirpath
+ * - RA_MAX_PATH_LEN
+ * - RA_currentlevel
+ * - RA_currentresult
+ * - RA_maxparallel
+ * - RA_isisolated
+ * - RA_groupname
+ * - RA_iswritedirpath
  */
 
 /**
@@ -1401,17 +1401,17 @@ Defaults:
  * @endcode
  *
  * Use the orchestrator macros, variables and functions in the test
- * orchestrator logic plus the BT_TEST macro to execute test functions.
+ * orchestrator logic plus the RA_TEST macro to execute test functions.
  * 
  * In the test* modules (e.g., test_guards_1.c, test_guards_2.c, and
  * test_orchestrator.c):
  *
  * @code
- #undef BT_ORCHESTRATOR
+ #undef RA_ORCHESTRATOR
  #include "britetest_runner.h"
  * @endcode
  *
- * Use the BT_TEST, BT_ASSERT_FAIL, and BT_ASSERT_FAULT macros in
+ * Use the RA_TEST, RA_ASSERT_FAIL, and RA_ASSERT_FAULT macros in
  * the test function to execute tests.
  *
  * @note Other veriations are possible in the test orchestrator and test functions.
@@ -1430,19 +1430,19 @@ Defaults:
 /**
  * @section NameConventions Naming Conventions
  *
- * BriteTest - Repository name (case-jnsensitive.
+ * BriteTest - Project/Repository name.
  *
- * britetest_runner.h and britetest_runner.c - filenames.
+ * runner_api.h and runner_api.c - filenames.
  * 
  * Public API:
  *
- * 1. bt_* - functions, typedefs, and variables.
- * 2. BT_* - macros, constants, and enum values.
+ * 1. ra_* - functions, typedefs, and variables.
+ * 2. RA_* - macros, constants, and enum values.
  * 
  * Internal and private to the BriteTest framework:
  *
- * 1. britetest_* - functions, typedefs, and variables.
- * 2. BRITETEST_* - Internal macros, constants, and enum values.
+ * 1. runnerapi_* - functions, typedefs, and variables.
+ * 2. RUNNER_* - Internal macros, constants, and enum values.
  *
  * These conventions are designed to provide a clean public API, strong
  * namespace isolation, and predictable behavior when BriteTest is embedded
@@ -1450,18 +1450,18 @@ Defaults:
  *
  * @example Public API Names
  *
- * 1. Utility macros: BT_TOK_PASTE, BT_TOK_STR, BT_RESULT, BT_TOTAL
- *    BT_STATIC_ASSERT
- * 2. Version macros: BT_VERSION, BT_VERSION_EQ, BT_VERSION_AT_LEAST
- * 4. Utility functions: bt_current_level.
+ * 1. Utility macros: RA_TOK_PASTE, RA_TOK_STR, RA_RESULT, RA_TOTAL
+ *    RA_STATIC_ASSERT
+ * 2. Version macros: RA_VERSION, RA_VERSION_EQ, RA_VERSION_AT_LEAST
+ * 4. Utility functions: ra_current_level.
  *
  * @example Public typedef Name
  *
- * bt_resubt_t, bt_state_t
+ * ra_result_t, ra_state_t
  *
  * @example Private Variable Names
  *
- * britetest_resubt_internal, britetest_total_internal
+ * runnerapi_result_internal, runnerapi_total_internal
  */
 
 /**
