@@ -12,7 +12,7 @@ See `../../README.md` for an introduction to BriteTest.
 
 - **BriteTest.pdf**: file generated from `../../README.md`.
 
-- **BriteTest_*.pdf**: files generated from BriteTest documentation files
+- **BriteTest_*.pdf**: files generated from BriteTest .md documentation files
   in `../`.
 
 - **README.md**: This directory guide.
