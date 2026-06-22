@@ -196,6 +196,7 @@ make run
 - A API Reference contains public API definitions only.
 - An internal guide or reference must not leak into public docs.
 - Update documentation when enhancing macros, behavior, or report format.
+- For branding assets in `docs/branding/`: `BriteTest_*.svg` files are the source of truth and `BriteTest_*.png` files are generated from SVG using `scripts/genpng.sh`; do not directly edit branding PNG files.
 </details>
 
 <details>

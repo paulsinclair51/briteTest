@@ -1,3 +1,7 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/BriteTest?display_name=tag)](https://github.com/paulsinclair51/BriteTest/releases)
+[![CI](https://github.com/paulsinclair51/BriteTest/actions/workflows/britetest_ci.yml/badge.svg)](https://github.com/paulsinclair51/BriteTest/actions/workflows/britetest_ci.yml)
+
 ![BriteTest Logo](docs/branding/BriteTest_Logo_with_BriteTest.png)
 
 BriteTest is a lightweight framework and Application Programming Interface (API)
@@ -51,6 +55,11 @@ For a glossary of terms, see the BriteTest Glossary Reference
 (`BriteTest_Glossary_Reference.md`).
 
 For a printer-friendly PDF file for this document, see `docs/pdf/BriteTest.pdf`.
+
+Branding asset policy:
+- In `docs/branding/`, `BriteTest_*.svg` files are the source of truth.
+- Corresponding `BriteTest_*.png` files are generated exports from SVG via `scripts/genpng.sh`.
+- Do not directly edit branding PNG files.
 
 <details>
 <summary>Document Version History</summary>
