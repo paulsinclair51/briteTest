@@ -8,11 +8,14 @@ For license details, see `../../LICENSE`.
 
 See `../../README.md` for an introduction to BriteTest.
 
+.docx files are generated using `../../scripts/genpdf`) from .md files..
+
 ## Files
 
-- **BriteTest_*.docx**: Generated .docx files (using `../../scripts/genpdf`) from
-  BriteTest .md documentation files in `../`.
-- **BriteTest.docx**: Generated .docx file from `../../README.md`.
+- **BriteTest.docx**: file generated from `../../README.md`.
+- **BriteTest_*.docx**: files generated from BriteTest .md documentation
+  files in `../`.
+
 - **README.md**: This directory guide.
 
 ## Subdirectories
