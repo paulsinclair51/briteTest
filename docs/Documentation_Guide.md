@@ -1,6 +1,6 @@
 ![Documentation Guide](branding/Documentation_Guide.png)
 
-This document is a guide to the BriteTest documentation and the BriteTest
+This document is a guide to the BriteTest documentation and
 repository layout.
 
 #### Copyright (c) 2026 Paul Sinclair
@@ -37,10 +37,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Preface
 
-This document is for BriteTest users and contributors who need
-a guide to the BriteTest documentation and the BriteTest repository layout.
+This document is for users and contributors who need
+a guide to the documentation and repository layout.
 
-A printer-friendly PDF file for this document is available in `docs/pdf/`,
+A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 <details>
 <summary>Document Version History</summary>
@@ -53,12 +53,12 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`,
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
-- The **Runner** column records the BriteTest Runner API version
+- The **Runner** column records the Runner API version
   current at the time this document version was published and is
-  defined by its `RA_RUNNER_VERSION` macro.
-- The **Test** column records the BriteTest Test API version current at
+  defined by its `RA_VERSION` macro.
+- The **Test** column records the Test API version current at
   the time this document version was published and is defined by its
-  `RA_TEST_VERSION` macro.
+  `TA_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
@@ -75,11 +75,11 @@ changes are published in a release without a change to `M`, and it resets to
 
 ## Table of Contents
 
-[1. Introduction](#1-introduction)
+1. [Introduction](#1-introduction)
 
-[2. BriteTest Documents](#2-britetest-documents)
+2. [Documents](#2-documents)
 
-[3. BriteTest Repository Layout](#3-britetest-repository-layout)
+3. [Repository Layout](#3-repository-layout)
 </details>
 
 <details>
@@ -87,7 +87,7 @@ changes are published in a release without a change to `M`, and it resets to
 
 ## 1. Introduction
 
-The BriteTest documentation consists of documents for:
+The  documentation consists of documents for:
 
 - **Users**: Public-facing framework and API documents.
 
@@ -111,34 +111,33 @@ Document formats:
 </details>
 
 <details>
-<summary>2. BriteTest Documents</summary>
+<summary>2. Documents</summary>
 
-## 2. BriteTest Documents
+## 2. Documents
 
-The following are the BriteTest user and contributor documents.
+The following are the user and contributor documents.
 
 **User documentation**:
 
 - **README.md** — Introduction to BriteTest.
 
-- **Documentation_Guide.md**: A guide to BriteTest documents and the
+- **Documentation_Guide.md**: A guide to documents and the
   repository layout.
 
 - **Glossary_Reference.md**: An alphabetically ordered list of terms
-  generally used in BriteTest (emphasizing their specific meaning in
+  generally used in the documentation (emphasizing their specific meaning in
   BriteTest) and terms often used in the testing domain.
 
 - **Runner_Guide.md**: Concepts, usage, and examples for
-  the BriteTest Runner framework and API.
+  the Runner Framework and API.
 
 - **Runner_Reference.md**: Reference document for the
-  BriteTest Runner API.
+  Runner API.
 
 - **Test_Guide.md**: Concepts, usage, and examples for
-  the BriteTest Test API.
+  the Test API.
 
-- **Test_Reference.md**: Reference document for the BriteTest
-  Test API.
+- **Test_Reference.md**: Reference document for the Test API.
 
 **Contributor documentation**:
 
@@ -161,12 +160,12 @@ The following are the BriteTest user and contributor documents.
 </details>
 
 <details>
-<summary>3. BriteTest Repository Layout</summary>
+<summary>3. Repository Layout</summary>
 
-## 3. BriteTest Repository Layout
+## 3. Repository Layout
 
 The following shows the layout of the GitHub repository
-`paulsinclair51/BriteTest` (core files and directories):
+(core files and directories):
 
 ```text
 .github/workflows/ci.yml
@@ -174,15 +173,16 @@ README.md
 LICENSE
 .gitignore
 Makefile
-build_test_britetest.ps1
+build_test_runner.ps1
 build/                  # Build outputs and related artifacts.
 config/                 # Repository configuration files.
     markdownlint.json
 docs/                   # User and contributor documentation.
-    BriteTest_*.md
-    pdf/                # Generated BriteTest_*.pdf files.
+    *.md
+    pdf/                # Generated `*.pdf` files.
+    docx/               # Generated `*.docx` files.
 examples/               # Usage examples.
-include/                # Public API .h headers.
+include/                # Public API `.h` headers.
     runnerapi.h
     testapi.h
 reports/                # Generated report files.
@@ -190,15 +190,15 @@ scripts/                # Automation scripts.
     check_directory_readmes.sh
     genpdf
     test_genpdf.sh
-src/                    # API .c sources.
+src/                    # API `.c` sources.
     runnerapi.c
     testapi.c
 tests/                  # Testing assets.
     golden/             # Golden/baseline files for comparison.
-    include/            # Test .h headers.
+    include/            # Test `.h` headers.
     input/              # Test input files.
     output/             # Captured test outputs to compare against golden/.
-    src/                # Test .c source files.
+    src/                # Test `.c` source files.
     tmp/                # Temporary test outputs.
 ```
 </details>

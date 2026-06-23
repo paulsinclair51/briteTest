@@ -92,28 +92,28 @@ changes are published in a release without a change to `M`, and it resets to
 4. [**Macros for Limits**](#4-macros-for-limits)<br>
 
 5. [**Macros for the Orchestrator Function**](#5-macros-for-the-orchestrator-function)<br>
-   5.1. [**RA_DECLARE_ORCHESTRATOR**](#51-ra_declare_orchestratorfuncname)<br>
-   5.2. [**RA_INIT_ORCHESTRATOR**](#52-ra_init_orchestratorfuncname-id-project-size_t-maxparallel)<br>
-   5.3. [**RA_PARSE_ARGS**](#53-ra_parse_argssize_t-maxargs-char-customflags-char-defaultreportfilename)<br>
-   5.4. [**RA_OPEN_REPORT**](#54-ra_open_reportchar-title)<br>
-   5.5. [**RA_WRITE_RESULT**](#55-ra_write_resultgtm-char-category)<br>
-   5.6. [**RA_CLOSE_REPORT**](#56-ra_close_reportchar-notes)<br>
-   5.7. [**RA_EXIT**](#57-ra_exit)<br>
+   5.1. [RA_DECLARE_ORCHESTRATOR](#51-ra_declare_orchestratorfuncname)<br>
+   5.2. [RA_INIT_ORCHESTRATOR](#52-ra_init_orchestratorfuncname-id-project-size_t-maxparallel)<br>
+   5.3. [RA_PARSE_ARGS](#53-ra_parse_argssize_t-maxargs-char-customflags-char-defaultreportfilename)<br>
+   5.4. [RA_OPEN_REPORT](#54-ra_open_reportchar-title)<br>
+   5.5. [RA_WRITE_RESULT](#55-ra_write_resultgtm-char-category)<br>
+   5.6. [RA_CLOSE_REPORT](#56-ra_close_reportchar-notes)<br>
+   5.7. [RA_EXIT](#57-ra_exit)<br>
 
-[**6. Macros for a Test Group Function**](#6-macros-for-a-test-group-function)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**6.1. RA_DECLARE_GROUP**](#61-ra_declare_groupfuncname)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**6.2. RA_INIT_GROUP**](#62-ra_init_groupfuncname-id-maxparallel)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**6.3. RA_RETURN**](#63-ra_return)<br>
+6. [**Macros for a Test Group Function**](#6-macros-for-a-test-group-function)<br>
+    6.1. [RA_DECLARE_GROUP](#61-ra_declare_groupfuncname)<br>
+    6.2. [RA_INIT_GROUP](#62-ra_init_groupfuncname-id-maxparallel)<br>
+    6.3. [RA_RETURN**](#63-ra_return)<br>
 
-[**7. Macros to Execute a Test Group or a Test**](#7-macros-to-execute-a-test-group-or-a-test)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**7.1. RA_GROUP**](#71-ra_groupfuncname-id-include-isolation)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**7.2. RA_TEST**](#72-ra_testexpression-id-include-isolation)<br>
+7. [**Macros to Execute a Test Group or a Test**](#7-macros-to-execute-a-test-group-or-a-test)<br>
+7.1. [RA_GROUP](#71-ra_groupfuncname-id-include-isolation)<br>
+     7.2. [RA_TEST](#72-ra_testexpression-id-include-isolation)<br>
 
-[**8. Macros for Concurrent Blocks**](#8-macros-for-concurrent-blocks)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**8.1. RA_BEGIN_CONCURRENT**](#81-ra_begin_concurrentblockname)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**8.2. RA_END_CONCURRENT**](#82-ra_end_concurrentblockname)<br>
+8. [**Macros for Concurrent Blocks**](#8-macros-for-concurrent-blocks)<br>
+   8.1. [RA_BEGIN_CONCURRENT](#81-ra_begin_concurrentblockname)<br>
+   8.2. [RA_END_CONCURRENT](#82-ra_end_concurrentblockname)<br>
 
-[**9. Macros for Versioning**](#9-macros-for-versioning)<br>
+9. [**Macros for Versioning**](#9-macros-for-versioning)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**9.1. RA_RUNNER_VERSION**](#91-ra_runner_version)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**9.2. RA_VERSION_MAJOR**](#92-ra_version_majorv)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**9.3. RA_VERSION_MINOR**](#93-ra_version_minorv)<br>

@@ -79,9 +79,9 @@ changes are published in a release without a change to `M`, and it resets to
 
 ## Table of Contents
 
-[1. Introduction](#1-introduction)
+1. [Introduction](#1-introduction)
 
-[2. Glossary](#2-glossary)
+2. [Glossary](#2-glossary)
 </details>
 
 <details>

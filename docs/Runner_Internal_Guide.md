@@ -1,8 +1,7 @@
 ![Runner Internal Guide](branding/Runner_Internal_Guide.png)
 
-This guide documents the internal architecture and design of the BriteTest framework
-and Runner API. It is companion document to the BriteTest Runner Internal
-Reference document.
+This guide documents the internal architecture and design of the Runner Famework
+and API. It complements the Runner Internal Reference.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -37,7 +36,7 @@ SOFTWARE.
 
 This document is for contributors.
 
-For a list of other BriteTest documents and the repository layout, see
+For a list of other documents and the repository layout, see
 the Documentation Guide (`Documentation_Guide.md`).
 
 For a glossary of terms, see the Glossary Reference
@@ -56,12 +55,12 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`,
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
-- The **Runner** column records the BriteTest Runner API version
+- The **Runner** column records the Runner API version
   current at the time this document version was published and is
-  defined by its `RA_RUNNER_VERSION` macro.
-- The **Test** column records the BriteTest Test API version current at
+  defined by its `RA_VERSION` macro.
+- The **Test** column records the Test API version current at
   the time this document version was published and is defined by its
-  `RA_TEST_VERSION` macro.
+  `TA_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
@@ -78,11 +77,10 @@ changes are published in a release without a change to `M`, and it resets to
 
 ## Table of Contents
 
-[**1. Introduction**](#1-introduction)  
-[***1. Public and Internal Name Conventions](#1.1-public-and-internal-name-conventions)  
-  - [Why Internal Symbols Appear in the Header](#why-internal-symbols-appear-in-the-header)
-
-- [**Glossary**](#glossary)
+1. [**Introduction**](#1-introduction)  
+   1.1. [Public and Internal Name Conventions](#1.1-public-and-internal-name-conventions)
+     
+    [**Glossary**](#glossary)
 </details>
 
 <details>
@@ -92,7 +90,7 @@ changes are published in a release without a change to `M`, and it resets to
 
 Basic concepts and high‑level description of the framework internals and design goals.
 
-In this document, a *symbol* refers to any named entity in the BriteTest framework, including:
+In this document, a *symbol* refers to any named entity in the framework, including:
 
 - typedefs
 - structs
@@ -101,7 +99,7 @@ In this document, a *symbol* refers to any named entity in the BriteTest framewo
 - variables
 - functions
 
-BriteTest exposes some internal symbols in `runnerapi.h` because the framework’s
+Some internal symbols in `runnerapi.h` are exposed because the API
 macros expand into code that depends on internal types and helper functions.
 These symbols must be visible to user code for the macros to compile correctly,
 but they are not part of the public API and should not be used directly.
@@ -115,14 +113,15 @@ contract remains intact.
 
 ### 1.1 Public and Internal Naming Conventions
 
-Any framework names that are public and visible to BriteTest API users are prefixed
+Any Runner API names that are public and visible to Runner API users are prefixed
 with `ra_...` (typically lowercase) or `RA_...` (typically uppercase).
 
-Any framework names that are internal (but technically visible to BriteTest API users)
-follow the pattern `britetest_..._internal_t`, `britetest_..._internal`, or `BRITETEST_..._INTERNAL`. These names should not be referenced by API users.
+Any framework names that are internal (but technically visible to Bunner API users)
+have the prefix `ra_internal_` or `RA_INTERNAL_`. These names should not be referenced
+by Runner API users.
 
-In general, users of the API should not define names prefixed with `ra_`, `BT`,
-`britetest_`, or `BRITETEST_`, or reference names prefixed with `britetest_` or `BRITETEST_`.
+In general, users of the API should not define names prefixed with `ra_` or `RA_`,
+`, or reference names prefixed with `ra_internal_` or `RA_INTERNAL_`.
 </details>
 </details>
 
@@ -251,7 +250,7 @@ In general, users of the API should not define names prefixed with `ra_`, `BT`,
 
 ## Glossary
 
-For general BriteTest terms, see the BriteTest Glossary document.
+For general terms used the documentation, see the Glossary document.
 
 Runner‑Specific Terms:
 

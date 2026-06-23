@@ -28,6 +28,9 @@ See `README.md` in the root directory for an introduction to the project.
   Format (`.pdf`), after removing lines with details/summary tags and applying
   formatting for PDF output. Run `genpdf --help` for usage information.
 
+- **gendocx**: Convert Portable Document Format (`.pdf`) files to Microsoft
+  Word (`.docx`) files. Run `gendocx --help` for usage information.
+
 - **genpng.sh**: Generate all branding PNGs from `docs/branding/*.svg`.
   Run `genpng.sh --help` for usage information.
 

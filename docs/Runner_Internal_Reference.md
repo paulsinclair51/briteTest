@@ -70,91 +70,51 @@ changes are published in a release without a change to `M`, and it resets to
 </details>
 
 <details>
-<summary>Documentation Style Guide</summary>
-
-#### Documentation Style Guide
-
-1. Tone
-   - Technical, precise, and neutral.
-   - No marketing language.
-   - Prefer clarity over cleverness.
-
-2. Formatting
-   - Use backticks for code identifiers.
-   - Use fenced code blocks for file trees, examples, and commands.
-   - Keep line lengths reasonable for GitHub rendering.
-
-3. Writing Guidelines
-   - Define terms once, and then use them consistently.
-   - Avoid synonyms for technical concepts (e.g., always “update version,” never “revision”).
-   - Keep paragraphs short.
-   - Use lists for enumerations.
-
-4. `details/summary sections`
-   - Use `details/summary` sections and subsections to keep the document readable while
-     still accommodating large amounts of technical detail:
-    - Collapsing sections allows readers to scan the structure and expand only what
-      they need.
-    - This keeps the document manageable, avoids overwhelming readers with unrelated
-      detail, and makes the document easier to navigate.
-
-5. Writing Style Consistency: To keep BriteTest documentation clear and easy to read, maintain **parallel
-   structure** within lists and related sentences. In practice:
-   - Start list items with the same part of speech (typically a verb).
-   - Keep grammatical patterns consistent across bullets.
-   - Avoid mixing styles such as “Keep paragraphs short” with “Using lists for enumerations.”
-   - Rewrite items as needed so the list reads smoothly and uniformly.
-</details>
-
-<details>
 <summary>Table of Contents</summary>
 
 ## Table of Contents
 
-- [**1. Overview**](#1-overview)  
-  - [Public and Internal Name Conventions](#public-and-internal-name-conventions)  
-  - [Why Internal Symbols Appear in the Header](#why-internal-symbols-appear-in-the-header)
+1. [**Introduction**](#1-introduction)  
+   1.1. [Public and Internal Name Conventions](#public-and-internal-name-conventions)  
 
-- [**2. Symbols Defined in `runnerapi.h`**](#2-symbols-defined-in-britetesth)  
-  - [2.1. Types](#21-types)  
-  - [2.2. Structs](#22-structs)  
-  - [2.3. Enums and Enum Values](#23-enums-and-enum-values)  
-  - [2.4. Global Variables](#24-global-variables)  
-  - [2.5. Macros](#25-macros)  
-  - [2.6. Functions](#26-functions)
+2. [**Symbols Defined in `runnerapi.h`**](#2-symbols-defined-in-britetesth)  
+   2.1. [Types](#21-types)  
+   2.2. [Structs](#22-structs)  
+   2.3. [Enums and Enum Values](#23-enums-and-enum-values)  
+   2.4. [Global Variables](#24-global-variables)  
+   2.5. [Macros](#25-macros)  
+   2.6. [Functions](#26-functions)
 
-- [**3. Symbols Defined in `runnerapi.c`**](#3-symbols-defined-in-britetestc)  
-  - [3.1. Types](#31-types)  
-  - [3.2. Structs](#32-structs)  
-  - [3.3. Enums and Enum Values](#33-enums-and-enum-values)  
-  - [3.4. Global Variables](#34-global-variables)  
-  - [3.5. Macros](#35-macros)  
-  - [3.6. Functions (declared as a forward reference) in `runnerapi.h`](#36-functions-declared-as-a-forward-reference-in-britetesth)  
-  - [3.7. Functions (not declared in `runnerapi.h`)](#37-functions-not-declared-in-britetesth)
+3. [**Symbols Defined in `runnerapi.c`**](#3-symbols-defined-in-britetestc)  
+   3.1. [Types](#31-types)  
+   3.2. [Structs](#32-structs)  
+   3.3. [Enums and Enum Values](#33-enums-and-enum-values)  
+   3.4. [Global Variables](#34-global-variables)  
+   3.5. [Macros](#35-macros)  
+   3.6. [Functions (declared as a forward reference) in `runnerapi.h`](#36-functions-declared-as-a-forward-reference-in-britetesth)  
+   3.7. [Functions (not declared in `runnerapi.h`)](#37-functions-not-declared-in-britetesth)
 
-- [**4. Execution Engine**](#4-execution-engine)
+4. [**Execution Engine**](#4-execution-engine)
 
-- [**5. Signal Handling**](#5-signal-handling)
+5. [**Signal Handling**](#5-signal-handling)
 
-- [**6. Process Management**](#6-process-management)
+6. [**Process Management**](#6-process-management)
 
-- [**7. Thread Management**](#7-thread-management)
+7. [**Thread Management**](#7-thread-management)
 
-- [**8. File and Path Support**](#8-file-and-path-support)
+8. [**File and Path Support**](#8-file-and-path-support)
 
-- [**9. Matching and Comparison Support**](#9-matching-and-comparison-support)
+9. [**Matching and Comparison Support**](#9-matching-and-comparison-support)
 
-- [**10. Environment Support**](#10-environment-support)
+10. [**Environment Support**](#10-environment-support)
 
-- [**Repository Layout**](#repository-layout)
-
-- [**Glossary**](#glossary)
+    [**Glossary**](#glossary)
 </details>
 
 <details>
-<summary>1. Overview</summary>
+<summary>1. Introduction</summary>
 
-## 1. Overview
+## 1. Introduction
 
 BriteTest’s internal architecture consists of several cooperating subsystems,
 including the implementation of API macros and functions, the execution engine,
@@ -183,9 +143,9 @@ and interaction.
 </details>
 
 <details>
-<summary>Public and Internal Naming Conventions</summary>
+<summary>1.1. Public and Internal Naming Conventions</summary>
 
-#### Public and Internal Naming Conventions
+###1.2. Public and Internal Naming Conventions
 
 Any framework names that are public and visible to BriteTest API users are prefixed
 with `ra_...` (typically lowercase) or `RA_...` (typically uppercase).
@@ -608,77 +568,6 @@ Use this as a reference when adapting BriteTest into your own project structure.
 <summary>Glossary</summary>
 
 ## Glossary
-</details>
-
-<details>
-<summary>General Terms</summary>
-
-### General Terms
-
-- `API`: Application Programming Interface.
-- `category`: A labeled set of `RA_GROUP` and `RA_TEST` macros whose combined
-  results are written by `RA_WRITE_RESULT` to the report with a specified
-  category name.
-- `control file`: A previously generated file that can be compared to a newly
-  generated file for differences. Differences (other than expected ones like
-  timestamps) typically indicate a test failure. Sometimes the control file is
-  out of date and must be replaced by promoting the new file.
-- `customization support functions`: API functions provided to support
-  customizing the orchestrator and test group functions.
-- `default report filename`: The report filename BriteTest uses when only a
-  directory path (or no `PATH`) is provided.
-- `executable`: The compiled test program that runs the orchestrator and test
-  functions.
-- `fail`: A counted test failure where the `RA_TEST` or `RA_INJECT_TEST`
-  expression evaluates to zero.
-- `fault`: A counted runtime fault captured by BriteTest guards (e.g., invalid
-  memory access).
-- `Concurrent block`: A set of tests bracketed by `RA_BEGIN_CONCURRENT` and
-  `RA_END_CONCURRENT`.
-- `group`: See `test group`.
-- `guard`: The protection mechanism used to catch runtime faults and continue
-  test execution.
-- `guard level`: The nesting depth of active guards while test groups and tests
-  run.
-- `inject mode (-i)`: Optional command‑line flag that enables an
-  `RA_INJECT_TEST` to be executed.
-- `isolation`: Execution mode for `RA_GROUP`, `RA_TEST`, or `RA_INJECT_TEST`.
-  `0` = same thread, `1` = separate thread, `2` = separate process.
-- `maxargs`: Maximum number of command‑line arguments accepted by orchestrator
-  parsing. `RA_PARSE_ARGS` handles the first two arguments; additional arguments
-  must be parsed by custom code.
-- `maxparallel`: Upper bound on concurrent `RA_GROUP`, `RA_TEST`,
-  `RA_INJECT_TEST`. Set in `RA_INIT_ORCHESTRATOR` and `RA_GROUP`.
-- `notes`: Optional text appended to the report by `RA_CLOSE_REPORT`.
-- `orchestrator`: The `main` function that initializes BriteTest, runs groups or
-  tests, and writes report output.
-- `pass`: A counted successful test where the expression evaluates to non‑zero.
-- `PATH`: Optional command‑line output destination; may be a report file path or
-  directory path.
-- `process isolation`: Isolation mode where a test group or test runs in a
-  separate process.
-- `project`: Project identifier used in orchestrator initialization and default
-  report naming.
-- `test group`: A grouping of `RA_TEST` and optionally nested `RA_GROUP` macros.
-- `test group function`: A function declared with `RA_DECLARE_GROUP` that
-  contains `RA_TEST` and `RA_GROUP` macros.
-- `thread isolation`: Isolation mode where a test/assert call runs in a
-  separate thread.
-- `test case`: Not used in BriteTest. In other contexts it may mean a single
-  test or a set of tests; BriteTest uses “test expression” and “test group.”
-- `test`: See `test expression`.
-- `test expression`: An expression passed to an `RA_TEST` macro that can be cast
-  to `int`; zero means fail, non‑zero means pass.
-- `testing artifact`: A file or output generated by the test executable (e.g.,
-  test report, stdout, stderr).
-- `testing function`: A user‑written function used to implement or support a
-  test expression.
-- `test support functions`: API functions provided to simplify writing tests.
-- `title`: Optional report header text provided when opening the report.
-- `Public API`: Functions, macros, and types intended for external use.
-- `Internal API`: Framework‑only symbols not intended for external use.
-- `Semantic Versioning`: Versioning scheme using `M.m.p`.
-- `Report Format`: The output structure produced by BriteTest test runs.
 </details>
 
 <details>
