@@ -967,9 +967,7 @@ generate_awk_convert_details() {
             print "\\vspace{\\baselineskip}"
             print "\\noindent Document Version: " tex_escape(document_version) "\\\\"
             print "\\noindent Runner Version: " tex_escape(runner_version) "\\\\"
-            print "\\noindent Test Version: " tex_escape(test_version)
-            print "\\vspace{\\baselineskip}"
-            print "\\vspace{\\baselineskip}"
+            print "\\noindent Test Version: " tex_escape(test_version) "\\\\"
             print "```"
           }
           next
@@ -1221,9 +1219,7 @@ generate_awk_remove_details() {
             print "\\vspace{\\baselineskip}"
             print "\\noindent Document Version: " tex_escape(document_version) "\\\\"
             print "\\noindent Runner Version: " tex_escape(runner_version) "\\\\"
-            print "\\noindent Test Version: " tex_escape(test_version)
-            print "\\vspace{\\baselineskip}"
-            print "\\vspace{\\baselineskip}"
+            print "\\noindent Test Version: " tex_escape(test_version) "\\\\"
             print "```"
           }
           next
