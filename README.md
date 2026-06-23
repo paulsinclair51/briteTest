@@ -133,7 +133,16 @@ changes are published in a release without a change to `M`, and it resets to
 <details>
 <summary>1.1. Key Features</summary>
 
-### 1.1. Key Features
+### 1.1. Key Featurrs
+
+Key strengths
+
+• Lightweight design — minimal files, minimal API surface, easy to embed.
+• Macro‑based Runner API — simple orchestration with predictable control flow.
+• Function‑based Test API — tests are just C functions, easy to organize and debug.
+• Fault‑tolerant execution — protects the test suite from crashes and undefined behavior.
+• Clear reporting — readable summaries of passes, failures, and faults.
+
 
 - Pure C implementation
 - Minimal footprint (single header + source)
