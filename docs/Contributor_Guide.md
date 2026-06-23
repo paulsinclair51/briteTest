@@ -36,10 +36,10 @@ SOFTWARE.
 
 ## Preface
 
-This document is for BriteTest contributors who need guidance on enhancing
+This document is for contributors who need guidance on enhancing
 and maintaining BriteTest.
 
-For a list of other BriteTest documents and the repository layout, see
+For a list of other documents and the repository layout, see
 the Documentation Guide (`Documentation_Guide.md`).
 
 For a glossary of terms, see the Glossary Reference
@@ -58,12 +58,12 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
-- The **Runner** column records the BriteTest Runner API version
+- The **Runner** column records the Runner API version
   current at the time this document version was published and is
-  defined by its `RA_RUNNER_VERSION` macro.
-- The **Test** column records the BriteTest Test API version current at
+  defined by its `RA_VERSION` macro.
+- The **Test** column records the Test API version current at
   the time this document version was published and is defined by its
-  `RA_TEST_VERSION` macro.
+  `TA_TEST_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
@@ -80,23 +80,23 @@ changes are published in a release without a change to `M`, and it resets to
 
 ## Table of Contents
 
-[**1. Introduction**](#1-introduction)
+1. [**Introduction**](#1-introduction)
 
-[**2. Versioning Rules**](#2-versioning-rules)
+2. [**Versioning Rules**](#2-versioning-rules)
 
-[**3. Testing Requirements**](#3-testing-requirements)
+3. [**Testing Requirements**](#3-testing-requirements)
 
-[**4. Documentation Rules**](#4-documentation-rules)
+4. [**Documentation Rules**](#4-documentation-rules)
 
-[**5. Code Style**](#5-code-style)
+5. [**Code Style**](#5-code-style)
 
-[**6. Writing Style Consistency**](#6-writing-style-consistency)
+6. [**Writing Style Consistency**](#6-writing-style-consistency)
 
-[**7. Pull Requests**](#7-pull-requests)
+7. [**Pull Requests**](#7-pull-requests)
 
-[**8. Alternative Project Names and Rename Plan**](#8-alternative-project-names-and-rename-plan)
+8. [**Alternative Project Names and Rename Plan**](#8-alternative-project-names-and-rename-plan)
 
-[**Glossary**](#glossary)
+    [**Glossary**](#glossary)
 </details>
 
 <details>
@@ -109,7 +109,7 @@ BriteTest. It covers versioning, testing, documentation, code style, and pull
 request requirements.
 
 Contributors should read this document before submitting changes to ensure
-consistency across the BriteTest codebase and documentation.
+consistency across the codebase and documentation.
 </details>
 
 <details>

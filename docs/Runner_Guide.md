@@ -1,6 +1,6 @@
 ![Runner Guide](branding/Runner_Guide.png)
 
-This guide explains how to use the BriteTest Runner framework and Runner API
+This guide explains how to use the Runner Framework and API
 covering concepts, workflow, execution model, examples, and practical,usage
 patterns. It complements the Runner Reference, which documents
 the Runner API in detail.
@@ -38,10 +38,10 @@ SOFTWARE.
 
 ## Preface
 
-This document is intended for BriteTest contributors who need
-guidance on enhancing and maintaining BriteTest.
+This document is intended for user and contributors who need
+guidance on using the Runner Framework and API.
 
-For a list of other BriteTest documents and the BriteTest repository layout, see
+For a list of other documents and the repository layout, see
 the Documentation Guide.
 
 For a glossary of terms, see the Glossary Reference.
@@ -57,12 +57,12 @@ For a glossary of terms, see the Glossary Reference.
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
-- The **Runner** column records the BriteTest Runner API version
+- The **Runner** column records the Runner API version
   current at the time this document version was published and is
-  defined by its `RA_RUNNER_VERSION` macro.
-- The **Test** column records the BriteTest Test API version current at
+  defined by its `RA_VERSION` macro.
+- The **Test** column records the Test API version current at
   the time this document version was published and is defined by its
-  `RA_TEST_VERSION` macro.
+  `TA_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
@@ -79,7 +79,7 @@ changes are published in a release without a change to `M`, and it resets to
 
 ## Table of Contents
 
-[**1. Introduction**](#1-introduction)
+1. [**Introduction**](#1-introduction)
 </details>
 
 <details>

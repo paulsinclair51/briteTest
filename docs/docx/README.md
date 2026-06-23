@@ -8,7 +8,7 @@ For license details, see `LICENSE` in the root directory.
 
 See `README.md` in the root directory for an introduction to the project.
 
-.docx files are generated using `../../scripts/genpdf` from .md files.
+.docx files are generated using `../../scripts/gendocx` from .pdf files.
 
 ## Files
 
