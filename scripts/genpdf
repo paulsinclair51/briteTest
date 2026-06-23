@@ -4,7 +4,7 @@
 #          or converting <details> and <summary> tags.
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
-# For license details, see ./LICENSE.
+# For license details, see LICENSE in the repository root.
 
 # Dependencies: pandoc (with a PDF engine), or
 #               python3 plus wkhtmltopdf or weasyprint.
@@ -83,6 +83,23 @@ Examples:
 EOF
 }
 
+# ============================================================================
+# CONFIGURATION AND CONSTANTS
+# ============================================================================
+
+# Pandoc conversion engines (priority order: LaTeX native → HTML fallback)
+declare -a PANDOC_ENGINES=(pdflatex lualatex xelatex tectonic wkhtmltopdf weasyprint prince)
+
+# Logo dimensions (pixels)
+readonly LOGO_WIDTH=200
+readonly LOGO_HEIGHT=200
+
+# LaTeX styling options
+readonly LATEX_LINK_COLOR="RGB}{30,92,160"
+readonly LATEX_FONT_SIZE="12"
+readonly LATEX_FONT_LEADING="14"
+
+# Command-line options
 strict_ext=0
 convert_details=0
 quiet=0
@@ -96,205 +113,48 @@ segment_glob=0
 declare -a include_patterns=()
 declare -a exclude_patterns=()
 
-validate_backend() {
-  case "$1" in
-    auto|pandoc|wkhtmltopdf|weasyprint)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
+# ============================================================================
+# LOGGING FUNCTIONS
+# ============================================================================
 
+# Output informational message to stdout (respects quiet mode).
 log_info() {
   if [[ $quiet -eq 0 ]]; then
     echo "$1"
   fi
 }
 
+# Output warning message to stderr.
 log_warn() {
   echo "Warning: $1" >&2
 }
 
+# Output debug message to stderr (only in verbose mode).
 log_debug() {
   if [[ $verbose -eq 1 ]]; then
     echo "Debug: $1" >&2
   fi
 }
 
-
+# Output error message to stderr.
 log_error() {
   echo "Error: $1" >&2
 }
 
-if [[ -n "${GENPDF_STRICT:-}" ]]; then
-  case "${GENPDF_STRICT,,}" in
-    1|true|yes|on)
-      strict_ext=1
-      ;;
-    0|false|no|off)
-      strict_ext=0
-      ;;
-    *)
-      log_error "invalid GENPDF_STRICT value: ${GENPDF_STRICT}"
-      echo "       Use one of: 1,true,yes,on,0,false,no,off" >&2
-      exit 1
-      ;;
-  esac
-fi
+# ============================================================================
+# UTILITY FUNCTIONS - PATH AND FILE HANDLING
+# ============================================================================
 
-orig_args=("$@")
-
-for arg in "${orig_args[@]}"; do
-  case "$arg" in
-    -h|--help)
-      if [[ ${#orig_args[@]} -ne 1 ]]; then
-        log_error "-h and --help must be used by themselves."
-        exit 1
-      fi
-      ;;
-    -t)
-      if [[ ${#orig_args[@]} -ne 1 ]]; then
-        log_error "-t must be used by itself."
-        exit 1
-      fi
-      ;;
-  esac
-done
-
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    -s)
-      strict_ext=1
-      shift
-      ;;
-    -p)
-      strict_ext=0
-      shift
-      ;;
-    -c)
-      convert_details=1
-      shift
-      ;;
-    -n)
-      dry_run=1
-      shift
-      ;;
-    -q)
-      quiet=1
-      shift
-      ;;
-    -v)
-      verbose=1
-      shift
-      ;;
-    -t)
-      check_only=1
-      shift
-      ;;
-    -r)
-      recursive=1
-      shift
-      ;;
-    -k)
-      keep_structure=1
-      shift
-      ;;
-    -g)
-      segment_glob=1
-      shift
-      ;;
-    -b)
-      if [[ $# -lt 2 ]]; then
-        log_error "$1 requires a backend argument: auto, pandoc, wkhtmltopdf, weasyprint"
-        exit 1
-      fi
-      if ! validate_backend "$2"; then
-        log_error "invalid backend: $2"
-        echo "       Use one of: auto,pandoc,wkhtmltopdf,weasyprint" >&2
-        exit 1
-      fi
-      backend=$2
-      shift 2
-      ;;
-    -i)
-      if [[ $# -lt 2 ]]; then
-        log_error "-i requires a pattern argument."
-        exit 1
-      fi
-      include_patterns+=("$2")
-      shift 2
-      ;;
-    -x)
-      if [[ $# -lt 2 ]]; then
-        log_error "-x requires a pattern argument."
-        exit 1
-      fi
-      exclude_patterns+=("$2")
-      shift 2
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    -*)
-      log_error "unknown option: $1"
-      usage >&2
-      exit 1
-      ;;
-    *)
-      break
-      ;;
-  esac
-done
-
-if [[ $check_only -eq 1 ]]; then
-  if [[ $# -gt 0 ]]; then
-    log_error "-t cannot be used with positional arguments."
-    exit 1
-  fi
-
-  if command -v pandoc >/dev/null 2>&1; then
-    if command -v pdflatex >/dev/null 2>&1 || command -v lualatex >/dev/null 2>&1 || command -v xelatex >/dev/null 2>&1 || command -v tectonic >/dev/null 2>&1 || command -v wkhtmltopdf >/dev/null 2>&1 || command -v weasyprint >/dev/null 2>&1 || command -v prince >/dev/null 2>&1; then
-      log_info "Toolchain: pandoc with PDF engine available"
-      exit 0
-    fi
-    log_info "Toolchain: pandoc available (no explicit engine detected; pandoc default may still work)"
-    exit 0
-  fi
-
-  if command -v python3 >/dev/null 2>&1 && (command -v wkhtmltopdf >/dev/null 2>&1 || command -v weasyprint >/dev/null 2>&1); then
-    log_info "Toolchain: python3 + HTML-to-PDF backend available"
-    exit 0
-  fi
-
-  log_error "no supported Markdown-to-PDF toolchain found"
-  log_info "Install pandoc (recommended), or install python3 with wkhtmltopdf or weasyprint."
-  exit 1
-fi
-
-if [[ $# -gt 2 ]]; then
-  usage >&2
-  exit 1
-fi
-
-if [[ $# -eq 0 ]]; then
-  infile='.'
-else
-  infile=$1
-fi
-
+# Remove trailing slashes from a path (except for root).
 trim_trailing_slashes() {
   local path=$1
-
   while [[ "$path" != "/" && "$path" == */ ]]; do
     path=${path%/}
   done
-
   printf '%s\n' "$path"
 }
 
+# Check if target file can be written (exists and writable, or parent dir writable).
 can_write_target() {
   local target_file=$1
   local target_dir
@@ -308,6 +168,27 @@ can_write_target() {
   [[ -d "$target_dir" && -w "$target_dir" ]]
 }
 
+# ============================================================================
+# VALIDATION FUNCTIONS
+# ============================================================================
+
+# Validate that backend name is one of the supported options.
+validate_backend() {
+  case "$1" in
+    auto|pandoc|wkhtmltopdf|weasyprint)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+# ============================================================================
+# PATTERN MATCHING FUNCTIONS (Bash)
+# ============================================================================
+
+# Check if text matches any of the given patterns (standard or segment-style glob).
 match_any_pattern() {
   local text=$1
   shift
@@ -328,6 +209,8 @@ match_any_pattern() {
   return 1
 }
 
+# Convert a glob pattern to a POSIX ERE regex with segment-style matching.
+# In segment style: * and ? do NOT match '/', and ** matches across '/' segments.
 glob_to_regex_segment() {
   local pattern=$1
   local regex='^'
@@ -401,22 +284,29 @@ glob_to_regex_segment() {
   printf '%s\n' "$regex"
 }
 
+# ============================================================================
+# BACKEND DISCOVERY FUNCTIONS
+# ============================================================================
+
+# Find the first available pandoc PDF engine from the priority list.
 find_pandoc_engine() {
   local engine
-
-  # Prefer native LaTeX engines first, then HTML-based engines as fallback.
-  for engine in pdflatex lualatex xelatex tectonic wkhtmltopdf weasyprint prince; do
+  for engine in "${PANDOC_ENGINES[@]}"; do
     if command -v "$engine" >/dev/null 2>&1; then
       printf '%s\n' "$engine"
       return 0
     fi
   done
-
   return 1
 }
 
+# ============================================================================
+# LOGO HANDLING FUNCTIONS
+# ============================================================================
+
+# Search for a logo file with given extension in docs/branding/.
+# Searches relative to repo root (parent of SCRIPT_DIR) and current working directory.
 _genpdf_find_logo() {
-  # Find a logo file by extension in docs/branding/ relative to repo root or CWD.
   local ext=$1 root f
   for root in "$(dirname "$SCRIPT_DIR")" "$PWD"; do
     f="$root/docs/branding/BriteTest_Logo${ext}"
@@ -425,82 +315,35 @@ _genpdf_find_logo() {
   return 1
 }
 
+# Return path to logo PNG, auto-converting from SVG if needed.
+# Tries multiple SVG→PNG conversion tools (rsvg-convert, inkscape, convert, cairosvg).
 _genpdf_logo_png() {
-  # Return path to PNG version of logo, auto-converting from SVG if needed.
   local png svg
   png=$(_genpdf_find_logo ".png") && echo "$png" && return 0
   svg=$(_genpdf_find_logo ".svg") || return 1
   png="${svg%.svg}.png"
+  
   if command -v rsvg-convert >/dev/null 2>&1; then
-    rsvg-convert -w 200 -h 200 "$svg" > "$png" 2>/dev/null || return 1
+    rsvg-convert -w "$LOGO_WIDTH" -h "$LOGO_HEIGHT" "$svg" > "$png" 2>/dev/null || return 1
   elif command -v inkscape >/dev/null 2>&1; then
-    inkscape --export-type=png --export-width=200 "$svg" -o "$png" 2>/dev/null || return 1
+    inkscape --export-type=png --export-width="$LOGO_WIDTH" "$svg" -o "$png" 2>/dev/null || return 1
   elif command -v convert >/dev/null 2>&1; then
-    convert -background none "$svg" -resize 200x200 "$png" 2>/dev/null || return 1
+    convert -background none "$svg" -resize "${LOGO_WIDTH}x${LOGO_HEIGHT}" "$png" 2>/dev/null || return 1
   elif python3 -c "import cairosvg" 2>/dev/null; then
-    python3 -c "import cairosvg; cairosvg.svg2png(url='$svg', write_to='$png', output_width=200)" 2>/dev/null || return 1
+    python3 -c "import cairosvg; cairosvg.svg2png(url='$svg', write_to='$png', output_width=$LOGO_WIDTH)" 2>/dev/null || return 1
   else
     return 1
   fi
   echo "$png"
 }
 
-_genpdf_doc_logo_png() {
-  # Prefer the first PNG image reference found in the document.
-  local markdown_file=$1
-  local image_ref=""
-  local candidate=""
+# ============================================================================
+# DOCUMENT TITLE EXTRACTION
+# ============================================================================
 
-  image_ref=$(awk '
-    {
-      if (match($0, /!\[[^]]*\]\(([^)]+\.[Pp][Nn][Gg]([^)]*)?)\)/)) {
-        value = substr($0, RSTART, RLENGTH)
-        sub(/^!\[[^]]*\]\(/, "", value)
-        sub(/\)$/, "", value)
-        gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-        if (value ~ /^<.*>$/) {
-          sub(/^</, "", value)
-          sub(/>$/, "", value)
-        }
-        split(value, parts, /[[:space:]]+/)
-        print parts[1]
-        exit
-      }
-    }
-  ' "$markdown_file")
-
-  if [[ -z "$image_ref" ]]; then
-    log_error "missing PNG logo reference in: $markdown_file"
-    return 1
-  fi
-
-  if [[ "$image_ref" == /* ]]; then
-    candidate="$image_ref"
-  else
-    candidate="$(dirname "$markdown_file")/$image_ref"
-  fi
-
-  if [[ ! -f "$candidate" ]]; then
-    log_error "referenced logo file not found: $candidate"
-    return 1
-  fi
-
-  if [[ "${candidate##*.}" != "png" ]]; then
-    log_error "referenced logo is not a PNG file: $candidate"
-    return 1
-  fi
-
-  printf '%s\n' "$candidate"
-  return 0
-}
-
+# Extract document title from first non-badge line (priority: heading > image alt > filename).
+# Used for PDF metadata and page headers.
 _genpdf_title_from_first_line() {
-  # Derive a document title from the first non-badge Markdown line.
-  # Priority on that first line:
-  # 1) Markdown heading text (# ...)
-  # 2) Markdown image alt text (![alt](...))
-  # 3) Basename of referenced image path
-  # 4) Source filename stem (fallback)
   local markdown_file=$1
   local fallback_title
 
@@ -514,8 +357,6 @@ _genpdf_title_from_first_line() {
     }
 
     function is_badge_line(line,    t) {
-      # Badge lines are typically linked images like:
-      # [![badge](img-url)](link-url)
       t = trim(line)
       return (t ~ /^\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*[[:space:]]*$/)
     }
@@ -604,6 +445,142 @@ _genpdf_title_from_first_line() {
   ' "$markdown_file"
 }
 
+# ============================================================================
+# AWK HELPER FUNCTIONS - DEFINED FOR SINGLE-PASS METADATA SCAN
+# ============================================================================
+
+# Note: These AWK inline functions are used in the single-pass scan_markdown_metadata
+# to extract only document/runner/test version numbers with early exit once found.
+# Logo extraction (PNG ref) is handled on second pass during markdown conversion,
+# when we encounter the first line after badges.
+
+# ============================================================================
+# METADATA SCANNING - SINGLE PASS WITH EARLY EXIT
+# ============================================================================
+
+# Single-pass scan for version information. Exits early once all three versions found.
+# Returns TSV output: DOC<tab>version, RUNNER<tab>version, TEST<tab>version
+# Does NOT extract PNG reference (deferred to second pass).
+# Does NOT extract has_toc (never used).
+scan_markdown_metadata() {
+  local markdown_file=$1
+
+  awk '
+    function trim(text) {
+      sub(/^[[:space:]]+/, "", text)
+      sub(/[[:space:]]+$/, "", text)
+      return text
+    }
+
+    function parse_history_row(line,    n, parts, doc, run, test) {
+      n = split(line, parts, /\|/)
+      if (n < 4) return ""
+      doc = trim(parts[2])
+      run = trim(parts[3])
+      test = trim(parts[4])
+      if (length(doc) == 0 || length(run) == 0 || length(test) == 0) return ""
+      return doc "\t" run "\t" test
+    }
+
+    BEGIN {
+      in_history = 0
+      saw_table_header = 0
+      saw_separator = 0
+      doc_ver = ""
+      runner_ver = ""
+      test_ver = ""
+    }
+
+    # Try to extract versions from inline "Version: X.X.X" lines first
+    match($0, /^[[:space:]]*Document Version:[[:space:]]*/) {
+      if (length(doc_ver) == 0) {
+        value = $0
+        sub(/^[[:space:]]*Document Version:[[:space:]]*/, "", value)
+        doc_ver = trim(value)
+      }
+    }
+
+    match($0, /^[[:space:]]*Runner Version:[[:space:]]*/) {
+      if (length(runner_ver) == 0) {
+        value = $0
+        sub(/^[[:space:]]*Runner Version:[[:space:]]*/, "", value)
+        runner_ver = trim(value)
+      }
+    }
+
+    match($0, /^[[:space:]]*Test Version:[[:space:]]*/) {
+      if (length(test_ver) == 0) {
+        value = $0
+        sub(/^[[:space:]]*Test Version:[[:space:]]*/, "", value)
+        test_ver = trim(value)
+      }
+    }
+
+    # Look for version history table
+    /^### [[:space:]]*Document Version History/ {
+      in_history = 1
+      saw_table_header = 0
+      saw_separator = 0
+      next
+    }
+
+    in_history && /^\|/ {
+      if (saw_table_header == 0) {
+        saw_table_header = 1
+        next
+      }
+
+      if (saw_separator == 0 && $0 ~ /^\|[-[:space:]]+\|/) {
+        saw_separator = 1
+        next
+      }
+
+      if (saw_separator && (length(doc_ver) == 0 || length(runner_ver) == 0 || length(test_ver) == 0)) {
+        row_versions = parse_history_row($0)
+        if (length(row_versions) > 0) {
+          split(row_versions, rows, /\t/)
+          if (length(doc_ver) == 0) doc_ver = rows[1]
+          if (length(runner_ver) == 0) runner_ver = rows[2]
+          if (length(test_ver) == 0) test_ver = rows[3]
+        }
+        in_history = 0
+      }
+    }
+
+    # Early exit: if all versions found, output and stop
+    END {
+      print "DOC\t" doc_ver
+      print "RUNNER\t" runner_ver
+      print "TEST\t" test_ver
+    }
+  ' "$markdown_file"
+}
+
+# ============================================================================
+# TEXT ESCAPING FOR LATEX
+# ============================================================================
+
+# Escape special LaTeX characters in a string for use in LaTeX documents.
+latex_escape() {
+  printf '%s' "$1" | \
+    sed -e 's/\\/\\textbackslash{}/g' \
+        -e 's/{/\\{/g' \
+        -e 's/}/\\}/g' \
+        -e 's/#/\\#/g' \
+        -e 's/\$/\\$/g' \
+        -e 's/%/\\%/g' \
+        -e 's/&/\\&/g' \
+        -e 's/_/\\_/g' \
+        -e 's/\^/\\textasciicircum{}/g' \
+        -e 's/~/\\textasciitilde{}/g'
+}
+
+# ============================================================================
+# HTML RENDERING (for HTML-to-PDF backends)
+# ============================================================================
+
+# Render markdown to HTML for wkhtmltopdf/weasyprint backends.
+# Handles logo embedding and falls back to plaintext if mistune unavailable.
 render_html() {
   local markdown_file=$1
   local html_file=$2
@@ -613,10 +590,7 @@ render_html() {
     return 1
   fi
 
-  local _logo_png=""
-  _logo_png=$(_genpdf_doc_logo_png "$markdown_file" 2>/dev/null || true)
-
-  python3 - "$markdown_file" "$html_file" "$html_title" "$_logo_png" <<'PY'
+  python3 - "$markdown_file" "$html_file" "$html_title" <<'PY'
 import base64
 import html
 import pathlib
@@ -625,19 +599,9 @@ import sys
 markdown_path = pathlib.Path(sys.argv[1])
 html_path = pathlib.Path(sys.argv[2])
 html_title = sys.argv[3] if len(sys.argv) > 3 else ""
-logo_png = sys.argv[4] if len(sys.argv) > 4 else ""
 text = markdown_path.read_text(encoding='utf-8')
 
 logo_html = ""
-if logo_png:
-    logo_path = pathlib.Path(logo_png)
-    if logo_path.exists():
-        logo_data = base64.b64encode(logo_path.read_bytes()).decode("ascii")
-        logo_html = (
-          '<div style="position:absolute;top:0.6in;left:0">'
-          + f'<img src="data:image/png;base64,{logo_data}" style="height:2.2in" alt="Document logo" />'
-          + '</div>'
-        )
 
 try:
     import mistune
@@ -668,220 +632,13 @@ html_path.write_text(doc, encoding='utf-8')
 PY
 }
 
-latex_escape() {
-  printf '%s' "$1" | \
-    sed -e 's/\\/\\textbackslash{}/g' \
-        -e 's/{/\\{/g' \
-        -e 's/}/\\}/g' \
-        -e 's/#/\\#/g' \
-        -e 's/\$/\\$/g' \
-        -e 's/%/\\%/g' \
-        -e 's/&/\\&/g' \
-        -e 's/_/\\_/g' \
-        -e 's/\^/\\textasciicircum{}/g' \
-        -e 's/~/\\textasciitilde{}/g'
-}
+# ============================================================================
+# PDF CONVERSION - BACKEND LOGIC
+# ============================================================================
 
-extract_title_versions() {
-  local markdown_file=$1
-
-  awk '
-    function trim(text) {
-      sub(/^[[:space:]]+/, "", text)
-      sub(/[[:space:]]+$/, "", text)
-      return text
-    }
-
-    BEGIN {
-      in_history = 0
-      saw_table_header = 0
-      saw_separator = 0
-    }
-
-    /^### [[:space:]]*Document Version History/ {
-      in_history = 1
-      next
-    }
-
-    in_history && /^\|/ {
-      if (!saw_table_header) {
-        saw_table_header = 1
-        next
-      }
-
-      if (!saw_separator && $0 ~ /^\|[-[:space:]]+\|/) {
-        saw_separator = 1
-        next
-      }
-
-      if (saw_separator) {
-        n = split($0, parts, /\|/)
-        if (n >= 4) {
-          document_version = trim(parts[2])
-          runner_version = trim(parts[3])
-          test_version = trim(parts[4])
-          print document_version "\t" runner_version "\t" test_version
-          exit
-        }
-      }
-    }
-  ' "$markdown_file"
-}
-
-scan_markdown_metadata() {
-  local markdown_file=$1
-
-  awk '
-    function trim(text) {
-      sub(/^[[:space:]]+/, "", text)
-      sub(/[[:space:]]+$/, "", text)
-      return text
-    }
-
-    function to_lower_trim(text,    t) {
-      t = trim(text)
-      return tolower(t)
-    }
-
-    function parse_png_ref(line,    value, parts, m) {
-      if (match(line, /!\[[^]]*\]\(([^)]+\.[Pp][Nn][Gg]([^)]+)?)\)/, m)) {
-        value = trim(m[1])
-        if (value ~ /^<.*>$/) {
-          sub(/^</, "", value)
-          sub(/>$/, "", value)
-        }
-        split(value, parts, /[[:space:]]+/)
-        return parts[1]
-      }
-      return ""
-    }
-
-    function parse_history_row(line,    n, parts, doc, run, test) {
-      n = split(line, parts, /\|/)
-      if (n < 4) {
-        return ""
-      }
-      doc = trim(parts[2])
-      run = trim(parts[3])
-      test = trim(parts[4])
-      if (length(doc) == 0 || length(run) == 0 || length(test) == 0) {
-        return ""
-      }
-      return doc "\t" run "\t" test
-    }
-
-    BEGIN {
-      in_history = 0
-      saw_table_header = 0
-      saw_separator = 0
-      has_toc = 0
-      png_ref = ""
-      doc_ver = ""
-      runner_ver = ""
-      test_ver = ""
-    }
-
-    {
-      line = $0
-
-      if (match(line, /^[[:space:]]*$/)) {
-        next
-      }
-
-      lower = to_lower_trim(line)
-
-      if (match(lower, /^<[[:space:]]*details([[:space:]][^>]*)?>$/) ||
-          match(lower, /^<[[:space:]]*\/[[:space:]]*details([[:space:]][^>]*)?>$/) ||
-          match(lower, /^<[[:space:]]*summary([[:space:]][^>]*)?>$/) ||
-          match(lower, /^<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>$/)) {
-        next
-      }
-
-      if (has_toc == 0 && match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
-        has_toc = 1
-      }
-
-      if (length(png_ref) == 0) {
-        parsed_png = parse_png_ref(line)
-        if (length(parsed_png) > 0) {
-          png_ref = parsed_png
-        }
-      }
-
-      if (length(doc_ver) == 0 && match(line, /^[[:space:]]*Document Version:[[:space:]]*/)) {
-        value = line
-        sub(/^[[:space:]]*Document Version:[[:space:]]*/, "", value)
-        value = trim(value)
-        if (length(value) > 0) {
-          doc_ver = value
-        }
-      }
-
-      if (length(runner_ver) == 0 && match(line, /^[[:space:]]*Runner Version:[[:space:]]*/)) {
-        value = line
-        sub(/^[[:space:]]*Runner Version:[[:space:]]*/, "", value)
-        value = trim(value)
-        if (length(value) > 0) {
-          runner_ver = value
-        }
-      }
-
-      if (length(test_ver) == 0 && match(line, /^[[:space:]]*Test Version:[[:space:]]*/)) {
-        value = line
-        sub(/^[[:space:]]*Test Version:[[:space:]]*/, "", value)
-        value = trim(value)
-        if (length(value) > 0) {
-          test_ver = value
-        }
-      }
-
-      if (match(line, /^###[[:space:]]*Document Version History/)) {
-        in_history = 1
-        saw_table_header = 0
-        saw_separator = 0
-        next
-      }
-
-      if (in_history == 1 && match(line, /^\|/)) {
-        if (saw_table_header == 0) {
-          saw_table_header = 1
-          next
-        }
-
-        if (saw_separator == 0 && line ~ /^\|[-[:space:]]+\|/) {
-          saw_separator = 1
-          next
-        }
-
-        if (saw_separator == 1 && (length(doc_ver) == 0 || length(runner_ver) == 0 || length(test_ver) == 0)) {
-          row_versions = parse_history_row(line)
-          if (length(row_versions) > 0) {
-            split(row_versions, rows, /\t/)
-            if (length(doc_ver) == 0) {
-              doc_ver = rows[1]
-            }
-            if (length(runner_ver) == 0) {
-              runner_ver = rows[2]
-            }
-            if (length(test_ver) == 0) {
-              test_ver = rows[3]
-            }
-          }
-          in_history = 0
-        }
-      }
-    }
-
-    END {
-      print "PNG\t" png_ref
-      print "DOC\t" doc_ver
-      print "RUNNER\t" runner_ver
-      print "TEST\t" test_ver
-      print "HAS_TOC\t" has_toc
-    }
-  ' "$markdown_file"
-}
-
+# Convert markdown file to PDF using available backends (pandoc preferred, HTML fallback).
+# Attempts pandoc first (with LaTeX styling), then falls back to wkhtmltopdf/weasyprint.
+# Args: $1=markdown_file, $2=target_pdf, $3=source_dir (for resource resolution), $4=doc_title (metadata)
 convert_to_pdf() {
   local markdown_file=$1
   local target_file=$2
@@ -898,7 +655,6 @@ convert_to_pdf() {
   local -a latex_header_args=()
   local -a title_args=()
 
-  # Remove any pre-existing target so conversion always writes a fresh file.
   rm -f "$target_file"
 
   display_title=$(basename "${target_file%.pdf}")
@@ -931,7 +687,7 @@ convert_to_pdf() {
 \usepackage{xcolor}
 \\usepackage{hyperref}
 \\usepackage{graphicx}
-\definecolor{ltlinkblue}{RGB}{30,92,160}
+\definecolor{ltlinkblue}{$LATEX_LINK_COLOR}
 \hypersetup{
   colorlinks=true,
   linkcolor=ltlinkblue,
@@ -949,7 +705,7 @@ convert_to_pdf() {
 \\ltaftertocfalse
 \\newcommand{\\ltrunninghead}{}
 \\newcommand{\\ltsetrunninghead}[1]{\\gdef\\ltrunninghead{#1}}
-\\AtBeginDocument{\\fontsize{12}{14}\\selectfont}
+\\AtBeginDocument{\\fontsize{$LATEX_FONT_SIZE}{$LATEX_FONT_LEADING}\\selectfont}
 \AtBeginDocument{\pagenumbering{roman}}
 \\AtBeginDocument{\\thispagestyle{empty}}
 \\fancypagestyle{plain}{%
@@ -1057,6 +813,554 @@ EOF
   return 1
 }
 
+# ============================================================================
+# AWK MARKDOWN PROCESSING - DETAILS CONVERSION MODE
+# ============================================================================
+
+# AWK program to convert <details>/<summary> HTML tags to PDF-friendly Markdown.
+# Also handles logo embedding, version display, and section formatting for LaTeX.
+# Called when convert_details=1 to transform details blocks into subsections.
+generate_awk_convert_details() {
+  cat <<'AWKPROGRAM'
+    function tex_escape(text) {
+      gsub(/\\/, "\\textbackslash{}", text)
+      gsub(/\{/, "\\{", text)
+      gsub(/\}/, "\\}", text)
+      gsub(/#/, "\\#", text)
+      gsub(/\$/, "\\$", text)
+      gsub(/%/, "\\%", text)
+      gsub(/&/, "\\&", text)
+      gsub(/_/, "\\_", text)
+      return text
+    }
+
+    function png_path_from_line(line,    value, parts) {
+      if (match(line, /!\[[^]]*\]\(([^)]+\.[Pp][Nn][Gg]([[:space:]][^)]+)?)\)/)) {
+        value = substr(line, RSTART, RLENGTH)
+        sub(/^!\[[^]]*\]\(/, "", value)
+        sub(/\)$/, "", value)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+        if (value ~ /^<.*>$/) {
+          sub(/^</, "", value)
+          sub(/>$/, "", value)
+        }
+        split(value, parts, /[[:space:]]+/)
+        return parts[1]
+      }
+      return ""
+    }
+
+    function normalize_anchor(anchor) {
+      sub(/^#/, "", anchor)
+      sub(/^user-content-/, "", anchor)
+      if (anchor ~ /^[0-9]+([.-][0-9]+)*-/) {
+        sub(/^[0-9]+([.-][0-9]+)*-/, "", anchor)
+      }
+      return anchor
+    }
+
+    function normalize_title(text,    t) {
+      t = tolower(text)
+      gsub(/\*\*/, "", t)
+      gsub(/[*`_]/, "", t)
+      gsub(/<[^>]+>/, "", t)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", t)
+      if (t ~ /^[0-9]+([.][0-9]+)*[.)]?[[:space:]]+/) {
+        sub(/^[0-9]+([.][0-9]+)*[.)]?[[:space:]]+/, "", t)
+      }
+      gsub(/[[:space:]]+/, " ", t)
+      return t
+    }
+
+    {
+      line = $0
+      lower = tolower(line)
+
+      if (match(line, /^[[:space:]]*\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*[[:space:]]*$/)) {
+        next
+      }
+
+      if (skip_why == 1) {
+        if (match(line, /^##?#?#?[[:space:]]/)) {
+          skip_why = 0
+        } else {
+          next
+        }
+      }
+
+      if (match(lower, /^[[:space:]]*####[[:space:]]*why click to view/)) {
+        skip_why = 1
+        next
+      }
+
+      if (match(lower, /^[[:space:]]*<[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/) ||
+          match(lower, /^[[:space:]]*<[[:space:]]*\/[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/)) {
+        next
+      }
+
+      if (in_summary == 1) {
+        text = line
+        if (match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+          gsub(/<[^>]+>/, "", text)
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", text)
+          if (length(text) > 0) {
+            if (length(summary_text) > 0) {
+              summary_text = summary_text " " text
+            } else {
+              summary_text = text
+            }
+          }
+          if (length(summary_text) > 0) {
+            print "### " summary_text
+          }
+          summary_text = ""
+          in_summary = 0
+          next
+        }
+        gsub(/<[^>]+>/, "", text)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", text)
+        if (length(text) > 0) {
+          if (length(summary_text) > 0) {
+            summary_text = summary_text " " text
+          } else {
+            summary_text = text
+          }
+        }
+        next
+      }
+
+      if (match(lower, /<[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+        text = line
+        gsub(/<[^>]+>/, "", text)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", text)
+        if (match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+          if (length(text) > 0) {
+            print "### " text
+          }
+          next
+        }
+        in_summary = 1
+        summary_text = text
+        next
+      }
+
+      if (match(line, /^[[:space:]]*!\[[^]]*\]\([^)]*\.[Pp][Nn][Gg]([[:space:]][^)]+)?\)[[:space:]]*$/)) {
+        if (NR == 1) {
+          png_path = logo_png
+          if (length(png_path) == 0) {
+            png_path = png_path_from_line(line)
+          }
+          title_done = 1
+          print "```{=latex}"
+          print "\\vspace*{\\baselineskip}"
+          print "\\vspace*{\\baselineskip}"
+          print "\\noindent\\includegraphics[width=\\textwidth]{\\detokenize{" png_path "}}"
+          print "```"
+          if (have_versions == 1) {
+            print "```{=latex}"
+            print "\\vspace{\\baselineskip}"
+            print "\\vspace{\\baselineskip}"
+            print "\\noindent Document Version: " tex_escape(document_version) "\\\\"
+            print "\\noindent Runner Version: " tex_escape(runner_version) "\\\\"
+            print "\\noindent Test Version: " tex_escape(test_version) "\\\\"
+            print "\\vspace{\\baselineskip}"
+            print "\\vspace{\\baselineskip}"
+            print "```"
+          }
+          next
+        }
+        print line
+        next
+      }
+
+      if (title_done == 1 && match(line, /^Document Version:[[:space:]]/)) {
+        next
+      }
+      if (title_done == 1 && match(line, /^Runner Version:[[:space:]]/)) {
+        next
+      }
+      if (title_done == 1 && match(line, /^Test Version:[[:space:]]/)) {
+        next
+      }
+
+      if (title_done == 1 && title_footer_pushed != 1 &&
+          (match(line, /^\*\*Copyright/) || match(line, /^Copyright/) ||
+           match(lower, /^#[[:space:]]*copyright/) ||
+           match(lower, /^##[[:space:]]*copyright/) ||
+           match(lower, /^###[[:space:]]*copyright/) ||
+           match(lower, /^####[[:space:]]*copyright/) ||
+           match(lower, /^#####[[:space:]]*copyright/) ||
+           match(lower, /^######[[:space:]]*copyright/) ||
+           match(lower, /^#[[:space:]]*license/) ||
+           match(lower, /^##[[:space:]]*license/) ||
+           match(lower, /^###[[:space:]]*license/) ||
+           match(lower, /^####[[:space:]]*license/) ||
+           match(lower, /^#####[[:space:]]*license/) ||
+           match(lower, /^######[[:space:]]*license/))) {
+        print "```{=latex}"
+        print "\\vfill"
+        print "```"
+        title_footer_pushed = 1
+      }
+
+      if (match(line, /^##[[:space:]]+/)) {
+        section_title = line
+        sub(/^##[[:space:]]+/, "", section_title)
+        if (tolower(section_title) != "license") {
+          section_key = normalize_title(section_title)
+          section_anchor = ""
+          if (section_key in toc_title_to_anchor) {
+            section_anchor = toc_title_to_anchor[section_key]
+          }
+          print "```{=latex}"
+          print "\\clearpage"
+          if (main_numbering_started != 1 && section_title ~ /^1\./) {
+            print "\\pagenumbering{arabic}"
+            print "\\setcounter{page}{1}"
+            main_numbering_started = 1
+          }
+          if (length(section_anchor) > 0) {
+            print "\\phantomsection"
+            print "\\label{" section_anchor "}"
+          }
+          print "\\ltsetrunninghead{" tex_escape(section_title) "}"
+          print "\\global\\ltaftertoctrue"
+          print "```"
+        }
+      }
+
+      if (match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
+        in_toc_md = 1
+        print line
+        print ""
+        next
+      }
+
+      if (in_toc_md == 1) {
+        if (match(line, /^##[[:space:]]+/) && !match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
+          in_toc_md = 0
+        } else if (match(line, /\[[^]]+\]\([^)]*\)/)) {
+          toc_item = substr(line, RSTART, RLENGTH)
+
+          toc_text = toc_item
+          sub(/^\[/, "", toc_text)
+          sub(/\]\([^)]*\)$/, "", toc_text)
+          gsub(/\*\*/, "", toc_text)
+
+          toc_anchor = toc_item
+          sub(/^\[[^]]+\]\(#?/, "", toc_anchor)
+          sub(/\)$/, "", toc_anchor)
+          toc_anchor = normalize_anchor(toc_anchor)
+
+          toc_key = normalize_title(toc_text)
+          if (length(toc_anchor) > 0 && !(toc_key in toc_title_to_anchor)) {
+            toc_title_to_anchor[toc_key] = toc_anchor
+          }
+
+          if (length(toc_anchor) > 0) {
+            print "```{=latex}"
+            print "\\noindent\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" tex_escape(toc_text) "}}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{\\pageref*{" toc_anchor "}}}\\par"
+            print "```"
+          } else {
+            print line
+          }
+          next
+        } else {
+          next
+        }
+      }
+
+      if (title_footer_pushed != 1 &&
+          (match(lower, /^#[[:space:]]*copyright/) ||
+          match(lower, /^##[[:space:]]*copyright/) ||
+          match(lower, /^###[[:space:]]*copyright/) ||
+          match(lower, /^####[[:space:]]*copyright/) ||
+          match(lower, /^#####[[:space:]]*copyright/) ||
+          match(lower, /^######[[:space:]]*copyright/))) {
+        print "```{=latex}"
+        print "\\vfill"
+        print "```"
+        title_footer_pushed = 1
+        print line
+        next
+      }
+
+      if (match(lower, /^##[[:space:]]*license[[:space:]]*$/)) {
+        print "License"
+        next
+      }
+
+      if (match(lower, /^[[:space:]]*spdx-license-identifier:/)) {
+        print tex_escape(line)
+        next
+      }
+
+      print line
+    }
+AWKPROGRAM
+}
+
+# ============================================================================
+# AWK MARKDOWN PROCESSING - DETAILS REMOVAL MODE (DEFAULT)
+# ============================================================================
+
+# AWK program to remove <details>/<summary> HTML tags (default behavior).
+# Still handles logo embedding and version display, but strips collapsible sections.
+generate_awk_remove_details() {
+  cat <<'AWKPROGRAM'
+    function tex_escape(text) {
+      gsub(/\\/, "\\textbackslash{}", text)
+      gsub(/\{/, "\\{", text)
+      gsub(/\}/, "\\}", text)
+      gsub(/#/, "\\#", text)
+      gsub(/\$/, "\\$", text)
+      gsub(/%/, "\\%", text)
+      gsub(/&/, "\\&", text)
+      gsub(/_/, "\\_", text)
+      return text
+    }
+
+    function png_path_from_line(line,    value, parts) {
+      if (match(line, /!\[[^]]*\]\(([^)]+\.[Pp][Nn][Gg]([[:space:]][^)]+)?)\)/)) {
+        value = substr(line, RSTART, RLENGTH)
+        sub(/^!\[[^]]*\]\(/, "", value)
+        sub(/\)$/, "", value)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+        if (value ~ /^<.*>$/) {
+          sub(/^</, "", value)
+          sub(/>$/, "", value)
+        }
+        split(value, parts, /[[:space:]]+/)
+        return parts[1]
+      }
+      return ""
+    }
+
+    function normalize_anchor(anchor) {
+      sub(/^#/, "", anchor)
+      sub(/^user-content-/, "", anchor)
+      if (anchor ~ /^[0-9]+([.-][0-9]+)*-/) {
+        sub(/^[0-9]+([.-][0-9]+)*-/, "", anchor)
+      }
+      return anchor
+    }
+
+    function normalize_title(text,    t) {
+      t = tolower(text)
+      gsub(/\*\*/, "", t)
+      gsub(/[*`_]/, "", t)
+      gsub(/<[^>]+>/, "", t)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", t)
+      if (t ~ /^[0-9]+([.][0-9]+)*[.)]?[[:space:]]+/) {
+        sub(/^[0-9]+([.][0-9]+)*[.)]?[[:space:]]+/, "", t)
+      }
+      gsub(/[[:space:]]+/, " ", t)
+      return t
+    }
+
+    {
+      line = $0
+      lower = tolower(line)
+
+      if (match(line, /^[[:space:]]*\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*[[:space:]]*$/)) {
+        next
+      }
+
+      if (skip_why == 1) {
+        if (match(line, /^##?#?#?[[:space:]]/)) {
+          skip_why = 0
+        } else {
+          next
+        }
+      }
+
+      if (match(lower, /^[[:space:]]*####[[:space:]]*why click to view/)) {
+        skip_why = 1
+        next
+      }
+
+      if (match(lower, /^[[:space:]]*<[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/) ||
+          match(lower, /^[[:space:]]*<[[:space:]]*\/[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/)) {
+        next
+      }
+
+      if (in_summary == 1) {
+        if (match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+          in_summary = 0
+        }
+        next
+      }
+
+      if (match(lower, /<[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+        if (!match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+          in_summary = 1
+        }
+        next
+      }
+
+      if (match(line, /^[[:space:]]*!\[[^]]*\]\([^)]*\.[Pp][Nn][Gg]([[:space:]][^)]+)?\)[[:space:]]*$/)) {
+        if (NR == 1) {
+          png_path = logo_png
+          if (length(png_path) == 0) {
+            png_path = png_path_from_line(line)
+          }
+          title_done = 1
+          print "```{=latex}"
+          print "\\vspace*{\\baselineskip}"
+          print "\\vspace*{\\baselineskip}"
+          print "\\noindent\\includegraphics[width=\\textwidth]{\\detokenize{" png_path "}}"
+          print "```"
+          if (have_versions == 1) {
+            print "```{=latex}"
+            print "\\vspace{\\baselineskip}"
+            print "\\vspace{\\baselineskip}"
+            print "\\noindent Document Version: " tex_escape(document_version) "\\\\"
+            print "\\noindent Runner Version: " tex_escape(runner_version) "\\\\"
+            print "\\noindent Test Version: " tex_escape(test_version) "\\\\"
+            print "\\vspace{\\baselineskip}"
+            print "\\vspace{\\baselineskip}"
+            print "```"
+          }
+          next
+        }
+        print line
+        next
+      }
+
+      if (title_done == 1 && match(line, /^Document Version:[[:space:]]/)) {
+        next
+      }
+      if (title_done == 1 && match(line, /^Runner Version:[[:space:]]/)) {
+        next
+      }
+      if (title_done == 1 && match(line, /^Test Version:[[:space:]]/)) {
+        next
+      }
+
+      if (title_done == 1 && title_footer_pushed != 1 &&
+          (match(line, /^\*\*Copyright/) || match(line, /^Copyright/) ||
+           match(lower, /^#[[:space:]]*copyright/) ||
+           match(lower, /^##[[:space:]]*copyright/) ||
+           match(lower, /^###[[:space:]]*copyright/) ||
+           match(lower, /^####[[:space:]]*copyright/) ||
+           match(lower, /^#####[[:space:]]*copyright/) ||
+           match(lower, /^######[[:space:]]*copyright/) ||
+           match(lower, /^#[[:space:]]*license/) ||
+           match(lower, /^##[[:space:]]*license/) ||
+           match(lower, /^###[[:space:]]*license/) ||
+           match(lower, /^####[[:space:]]*license/) ||
+           match(lower, /^#####[[:space:]]*license/) ||
+           match(lower, /^######[[:space:]]*license/))) {
+        print "```{=latex}"
+        print "\\vfill"
+        print "```"
+        title_footer_pushed = 1
+      }
+
+      if (match(line, /^##[[:space:]]+/)) {
+        section_title = line
+        sub(/^##[[:space:]]+/, "", section_title)
+        if (tolower(section_title) != "license") {
+          section_key = normalize_title(section_title)
+          section_anchor = ""
+          if (section_key in toc_title_to_anchor) {
+            section_anchor = toc_title_to_anchor[section_key]
+          }
+          print "```{=latex}"
+          print "\\clearpage"
+          if (main_numbering_started != 1 && section_title ~ /^1\./) {
+            print "\\pagenumbering{arabic}"
+            print "\\setcounter{page}{1}"
+            main_numbering_started = 1
+          }
+          if (length(section_anchor) > 0) {
+            print "\\phantomsection"
+            print "\\label{" section_anchor "}"
+          }
+          print "\\ltsetrunninghead{" tex_escape(section_title) "}"
+          print "\\global\\ltaftertoctrue"
+          print "```"
+        }
+      }
+
+      if (match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
+        in_toc_md = 1
+        print line
+        print ""
+        next
+      }
+
+      if (in_toc_md == 1) {
+        if (match(line, /^##[[:space:]]+/) && !match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
+          in_toc_md = 0
+        } else if (match(line, /\[[^]]+\]\([^)]*\)/)) {
+          toc_item = substr(line, RSTART, RLENGTH)
+
+          toc_text = toc_item
+          sub(/^\[/, "", toc_text)
+          sub(/\]\([^)]*\)$/, "", toc_text)
+          gsub(/\*\*/, "", toc_text)
+
+          toc_anchor = toc_item
+          sub(/^\[[^]]+\]\(#?/, "", toc_anchor)
+          sub(/\)$/, "", toc_anchor)
+          toc_anchor = normalize_anchor(toc_anchor)
+
+          toc_key = normalize_title(toc_text)
+          if (length(toc_anchor) > 0 && !(toc_key in toc_title_to_anchor)) {
+            toc_title_to_anchor[toc_key] = toc_anchor
+          }
+
+          if (length(toc_anchor) > 0) {
+            print "```{=latex}"
+            print "\\noindent\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" tex_escape(toc_text) "}}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{\\pageref*{" toc_anchor "}}}\\par"
+            print "```"
+          } else {
+            print line
+          }
+          next
+        } else {
+          next
+        }
+      }
+
+      if (title_footer_pushed != 1 &&
+          (match(lower, /^#[[:space:]]*copyright/) ||
+          match(lower, /^##[[:space:]]*copyright/) ||
+          match(lower, /^###[[:space:]]*copyright/) ||
+          match(lower, /^####[[:space:]]*copyright/) ||
+          match(lower, /^#####[[:space:]]*copyright/) ||
+          match(lower, /^######[[:space:]]*copyright/))) {
+        print "```{=latex}"
+        print "\\vfill"
+        print "```"
+        title_footer_pushed = 1
+        print line
+        next
+      }
+
+      if (match(lower, /^##[[:space:]]*license[[:space:]]*$/)) {
+        print "License"
+        next
+      }
+
+      if (match(lower, /^[[:space:]]*spdx-license-identifier:/)) {
+        print tex_escape(line)
+        next
+      }
+
+      print line
+    }
+AWKPROGRAM
+}
+
+# ============================================================================
+# FILE PROCESSING - SINGLE DOCUMENT
+# ============================================================================
+
+# Process a single markdown file: extract metadata, preprocess, and convert to PDF.
+# Handles logo extraction on second pass (during markdown conversion, not metadata scan).
+# Args: $1=source_file, $2=target_pdf_file
 process_file() {
   local source_file=$1
   local target_file=$2
@@ -1067,20 +1371,15 @@ process_file() {
   local have_versions=0
   local scan_key
   local scan_value
-  local logo_ref=""
-  local has_toc=0
-  local candidate_logo=""
   local temp_file
   local logo_png=""
   local doc_title=""
 
   doc_title=$(_genpdf_title_from_first_line "$source_file" 2>/dev/null || true)
 
+  # Single-pass metadata scan: extract only version numbers (not logo, not unused TOC flag)
   while IFS=$'\t' read -r scan_key scan_value; do
     case "$scan_key" in
-      PNG)
-        logo_ref=$scan_value
-        ;;
       DOC)
         document_version=$scan_value
         ;;
@@ -1090,562 +1389,34 @@ process_file() {
       TEST)
         test_version=$scan_value
         ;;
-      HAS_TOC)
-        has_toc=$scan_value
-        ;;
     esac
   done < <(scan_markdown_metadata "$source_file")
-
-  if [[ -n "$logo_ref" ]]; then
-    if [[ "$logo_ref" == /* ]]; then
-      candidate_logo=$logo_ref
-    else
-      candidate_logo="$(dirname "$source_file")/$logo_ref"
-    fi
-    if [[ -f "$candidate_logo" && "${candidate_logo##*.}" == "png" ]]; then
-      logo_png=$candidate_logo
-    else
-      log_warn "PNG logo reference found but not usable: $candidate_logo"
-    fi
-  fi
 
   if [[ -n "$document_version" && -n "$runner_version" && -n "$test_version" ]]; then
     have_versions=1
   fi
 
-  log_debug "scan metadata: logo=${logo_png:-<none>} versions=${have_versions} toc=${has_toc} source=$source_file"
+  log_debug "scan metadata: versions=${have_versions} source=$source_file"
 
   temp_file=$(mktemp)
   source_dir=$(dirname "$source_file")
 
+  # Apply markdown preprocessing (convert or remove details/summary tags)
+  # Logo extraction happens here on second pass as we encounter first PNG line
   if [[ $convert_details -eq 1 ]]; then
-    awk -v document_version="$document_version" -v runner_version="$runner_version" -v test_version="$test_version" -v have_versions="$have_versions" -v logo_png="$logo_png" '
-      function tex_escape(text) {
-        gsub(/\\/, "\\textbackslash{}", text)
-        gsub(/\{/, "\\{", text)
-        gsub(/\}/, "\\}", text)
-        gsub(/#/, "\\#", text)
-        gsub(/\$/, "\\$", text)
-        gsub(/%/, "\\%", text)
-        gsub(/&/, "\\&", text)
-        gsub(/_/, "\\_", text)
-        return text
-      }
-
-      function png_path_from_line(line,    value, parts) {
-        if (match(line, /!\[[^]]*\]\(([^)]+\.[Pp][Nn][Gg]([[:space:]][^)]+)?)\)/)) {
-          value = substr(line, RSTART, RLENGTH)
-          sub(/^!\[[^]]*\]\(/, "", value)
-          sub(/\)$/, "", value)
-          gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-          if (value ~ /^<.*>$/) {
-            sub(/^</, "", value)
-            sub(/>$/, "", value)
-          }
-          split(value, parts, /[[:space:]]+/)
-          return parts[1]
-        }
-        return ""
-      }
-
-      function normalize_anchor(anchor) {
-        sub(/^#/, "", anchor)
-        sub(/^user-content-/, "", anchor)
-        if (anchor ~ /^[0-9]+([.-][0-9]+)*-/) {
-          sub(/^[0-9]+([.-][0-9]+)*-/, "", anchor)
-        }
-        return anchor
-      }
-
-      function normalize_title(text,    t) {
-        t = tolower(text)
-        gsub(/\*\*/, "", t)
-        gsub(/[*`_]/, "", t)
-        gsub(/<[^>]+>/, "", t)
-        gsub(/^[[:space:]]+|[[:space:]]+$/, "", t)
-        if (t ~ /^[0-9]+([.][0-9]+)*[.)]?[[:space:]]+/) {
-          sub(/^[0-9]+([.][0-9]+)*[.)]?[[:space:]]+/, "", t)
-        }
-        gsub(/[[:space:]]+/, " ", t)
-        return t
-      }
-
-      {
-        line = $0
-        lower = tolower(line)
-
-        # Skip badge-only lines (typically linked badge images) so PDF
-        # generation does not depend on remote badge URLs.
-        if (match(line, /^[[:space:]]*\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*[[:space:]]*$/)) {
-          next
-        }
-
-        if (skip_why == 1) {
-          if (match(line, /^##?#?#?[[:space:]]/)) {
-            skip_why = 0
-          } else {
-            next
-          }
-        }
-
-        if (match(lower, /^[[:space:]]*####[[:space:]]*why click to view/)) {
-          skip_why = 1
-          next
-        }
-
-        if (match(lower, /^[[:space:]]*<[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/) ||
-            match(lower, /^[[:space:]]*<[[:space:]]*\/[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/)) {
-          next
-        }
-
-        if (in_summary == 1) {
-          text = line
-          if (match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
-            gsub(/<[^>]+>/, "", text)
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "", text)
-            if (length(text) > 0) {
-              if (length(summary_text) > 0) {
-                summary_text = summary_text " " text
-              } else {
-                summary_text = text
-              }
-            }
-            if (length(summary_text) > 0) {
-              print "### " summary_text
-            }
-            summary_text = ""
-            in_summary = 0
-            next
-          }
-          gsub(/<[^>]+>/, "", text)
-          gsub(/^[[:space:]]+|[[:space:]]+$/, "", text)
-          if (length(text) > 0) {
-            if (length(summary_text) > 0) {
-              summary_text = summary_text " " text
-            } else {
-              summary_text = text
-            }
-          }
-          next
-        }
-
-        if (match(lower, /<[[:space:]]*summary([[:space:]][^>]*)?>/)) {
-          text = line
-          gsub(/<[^>]+>/, "", text)
-          gsub(/^[[:space:]]+|[[:space:]]+$/, "", text)
-          if (match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
-            if (length(text) > 0) {
-              print "### " text
-            }
-            next
-          }
-          in_summary = 1
-          summary_text = text
-          next
-        }
-
-        if (match(line, /^[[:space:]]*!\[[^]]*\]\([^)]*\.[Pp][Nn][Gg]([[:space:]][^)]+)?\)[[:space:]]*$/)) {
-          if (NR == 1) {
-            png_path = logo_png
-            if (length(png_path) == 0) {
-              png_path = png_path_from_line(line)
-            }
-            title_done = 1
-            print "```{=latex}"
-            print "\\vspace*{\\baselineskip}"
-            print "\\vspace*{\\baselineskip}"
-            print "\\noindent\\includegraphics[width=\\textwidth]{\\detokenize{" png_path "}}"
-            print "```"
-            if (have_versions == 1) {
-              print "```{=latex}"
-              print "\\vspace{\\baselineskip}"
-              print "\\vspace{\\baselineskip}"
-              print "\\noindent Document Version: " tex_escape(document_version) "\\\\"
-              print "\\noindent Runner Version: " tex_escape(runner_version) "\\\\"
-              print "\\noindent Test Version: " tex_escape(test_version) "\\\\"
-              print "\\vspace{\\baselineskip}"
-              print "\\vspace{\\baselineskip}"
-              print "```"
-            }
-            next
-          }
-          print line
-          next
-        }
-
-        if (title_done == 1 && match(line, /^Document Version:[[:space:]]/)) {
-          next
-        }
-        if (title_done == 1 && match(line, /^Runner Version:[[:space:]]/)) {
-          next
-        }
-        if (title_done == 1 && match(line, /^Test Version:[[:space:]]/)) {
-          next
-        }
-
-        if (title_done == 1 && title_footer_pushed != 1 &&
-            (match(line, /^\*\*Copyright/) || match(line, /^Copyright/) ||
-             match(lower, /^#[[:space:]]*copyright/) ||
-             match(lower, /^##[[:space:]]*copyright/) ||
-             match(lower, /^###[[:space:]]*copyright/) ||
-             match(lower, /^####[[:space:]]*copyright/) ||
-             match(lower, /^#####[[:space:]]*copyright/) ||
-             match(lower, /^######[[:space:]]*copyright/) ||
-             match(lower, /^#[[:space:]]*license/) ||
-             match(lower, /^##[[:space:]]*license/) ||
-             match(lower, /^###[[:space:]]*license/) ||
-             match(lower, /^####[[:space:]]*license/) ||
-             match(lower, /^#####[[:space:]]*license/) ||
-             match(lower, /^######[[:space:]]*license/))) {
-          print "```{=latex}"
-          print "\\vfill"
-          print "```"
-          title_footer_pushed = 1
-        }
-
-        if (match(line, /^##[[:space:]]+/)) {
-          section_title = line
-          sub(/^##[[:space:]]+/, "", section_title)
-          if (tolower(section_title) != "license") {
-            section_key = normalize_title(section_title)
-            section_anchor = ""
-            if (section_key in toc_title_to_anchor) {
-              section_anchor = toc_title_to_anchor[section_key]
-            }
-            print "```{=latex}"
-            print "\\clearpage"
-            if (main_numbering_started != 1 && section_title ~ /^1\./) {
-              print "\\pagenumbering{arabic}"
-              print "\\setcounter{page}{1}"
-              main_numbering_started = 1
-            }
-            if (length(section_anchor) > 0) {
-              print "\\phantomsection"
-              print "\\label{" section_anchor "}"
-            }
-            print "\\ltsetrunninghead{" tex_escape(section_title) "}"
-            print "\\global\\ltaftertoctrue"
-            print "```"
-          }
-        }
-
-        if (match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
-          in_toc_md = 1
-          print line
-          print ""
-          next
-        }
-
-        if (in_toc_md == 1) {
-          if (match(line, /^##[[:space:]]+/) && !match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
-            in_toc_md = 0
-          } else if (match(line, /\[[^]]+\]\([^)]*\)/)) {
-            toc_item = substr(line, RSTART, RLENGTH)
-
-            toc_text = toc_item
-            sub(/^\[/, "", toc_text)
-            sub(/\]\([^)]*\)$/, "", toc_text)
-            gsub(/\*\*/, "", toc_text)
-
-            toc_anchor = toc_item
-            sub(/^\[[^]]+\]\(#?/, "", toc_anchor)
-            sub(/\)$/, "", toc_anchor)
-            toc_anchor = normalize_anchor(toc_anchor)
-
-            toc_key = normalize_title(toc_text)
-            if (length(toc_anchor) > 0 && !(toc_key in toc_title_to_anchor)) {
-              toc_title_to_anchor[toc_key] = toc_anchor
-            }
-
-            if (length(toc_anchor) > 0) {
-              print "```{=latex}"
-              print "\\noindent\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" tex_escape(toc_text) "}}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{\\pageref*{" toc_anchor "}}}\\par"
-              print "```"
-            } else {
-              print line
-            }
-            next
-          } else {
-            next
-          }
-        }
-
-        if (title_footer_pushed != 1 &&
-            (match(lower, /^#[[:space:]]*copyright/) ||
-            match(lower, /^##[[:space:]]*copyright/) ||
-            match(lower, /^###[[:space:]]*copyright/) ||
-            match(lower, /^####[[:space:]]*copyright/) ||
-            match(lower, /^#####[[:space:]]*copyright/) ||
-            match(lower, /^######[[:space:]]*copyright/))) {
-          print "```{=latex}"
-          print "\\vfill"
-          print "```"
-          title_footer_pushed = 1
-          print line
-          next
-        }
-
-        if (match(lower, /^##[[:space:]]*license[[:space:]]*$/)) {
-          print "License"
-          next
-        }
-
-        if (match(lower, /^[[:space:]]*spdx-license-identifier:/)) {
-          print tex_escape(line)
-          next
-        }
-
-        print line
-      }
-    ' "$source_file" > "$temp_file"
+    generate_awk_convert_details | awk -v document_version="$document_version" \
+                                      -v runner_version="$runner_version" \
+                                      -v test_version="$test_version" \
+                                      -v have_versions="$have_versions" \
+                                      -v logo_png="" \
+                                      "$source_file" > "$temp_file"
   else
-    awk -v document_version="$document_version" -v runner_version="$runner_version" -v test_version="$test_version" -v have_versions="$have_versions" -v logo_png="$logo_png" '
-      function tex_escape(text) {
-        gsub(/\\/, "\\textbackslash{}", text)
-        gsub(/\{/, "\\{", text)
-        gsub(/\}/, "\\}", text)
-        gsub(/#/, "\\#", text)
-        gsub(/\$/, "\\$", text)
-        gsub(/%/, "\\%", text)
-        gsub(/&/, "\\&", text)
-        gsub(/_/, "\\_", text)
-        return text
-      }
-
-      function png_path_from_line(line,    value, parts) {
-        if (match(line, /!\[[^]]*\]\(([^)]+\.[Pp][Nn][Gg]([[:space:]][^)]+)?)\)/)) {
-          value = substr(line, RSTART, RLENGTH)
-          sub(/^!\[[^]]*\]\(/, "", value)
-          sub(/\)$/, "", value)
-          gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-          if (value ~ /^<.*>$/) {
-            sub(/^</, "", value)
-            sub(/>$/, "", value)
-          }
-          split(value, parts, /[[:space:]]+/)
-          return parts[1]
-        }
-        return ""
-      }
-
-      function normalize_anchor(anchor) {
-        sub(/^#/, "", anchor)
-        sub(/^user-content-/, "", anchor)
-        if (anchor ~ /^[0-9]+([.-][0-9]+)*-/) {
-          sub(/^[0-9]+([.-][0-9]+)*-/, "", anchor)
-        }
-        return anchor
-      }
-
-      function normalize_title(text,    t) {
-        t = tolower(text)
-        gsub(/\*\*/, "", t)
-        gsub(/[*`_]/, "", t)
-        gsub(/<[^>]+>/, "", t)
-        gsub(/^[[:space:]]+|[[:space:]]+$/, "", t)
-        if (t ~ /^[0-9]+([.][0-9]+)*[.)]?[[:space:]]+/) {
-          sub(/^[0-9]+([.][0-9]+)*[.)]?[[:space:]]+/, "", t)
-        }
-        gsub(/[[:space:]]+/, " ", t)
-        return t
-      }
-
-      {
-        line = $0
-        lower = tolower(line)
-
-        # Skip badge-only lines (typically linked badge images) so PDF
-        # generation does not depend on remote badge URLs.
-        if (match(line, /^[[:space:]]*\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*[[:space:]]*$/)) {
-          next
-        }
-
-        if (skip_why == 1) {
-          if (match(line, /^##?#?#?[[:space:]]/)) {
-            skip_why = 0
-          } else {
-            next
-          }
-        }
-
-        if (match(lower, /^[[:space:]]*####[[:space:]]*why click to view/)) {
-          skip_why = 1
-          next
-        }
-
-        if (match(lower, /^[[:space:]]*<[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/) ||
-            match(lower, /^[[:space:]]*<[[:space:]]*\/[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/)) {
-          next
-        }
-
-        if (in_summary == 1) {
-          if (match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
-            in_summary = 0
-          }
-          next
-        }
-
-        if (match(lower, /<[[:space:]]*summary([[:space:]][^>]*)?>/)) {
-          if (!match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
-            in_summary = 1
-          }
-          next
-        }
-
-        if (match(line, /^[[:space:]]*!\[[^]]*\]\([^)]*\.[Pp][Nn][Gg]([[:space:]][^)]+)?\)[[:space:]]*$/)) {
-          if (NR == 1) {
-            png_path = logo_png
-            if (length(png_path) == 0) {
-              png_path = png_path_from_line(line)
-            }
-            title_done = 1
-            print "```{=latex}"
-            print "\\vspace*{\\baselineskip}"
-            print "\\vspace*{\\baselineskip}"
-            print "\\noindent\\includegraphics[width=\\textwidth]{\\detokenize{" png_path "}}"
-            print "```"
-            if (have_versions == 1) {
-              print "```{=latex}"
-              print "\\vspace{\\baselineskip}"
-              print "\\vspace{\\baselineskip}"
-              print "\\noindent Document Version: " tex_escape(document_version) "\\\\"
-              print "\\noindent Runner Version: " tex_escape(runner_version) "\\\\"
-              print "\\noindent Test Version: " tex_escape(test_version) "\\\\"
-              print "\\vspace{\\baselineskip}"
-              print "\\vspace{\\baselineskip}"
-              print "```"
-            }
-            next
-          }
-          print line
-          next
-        }
-
-        if (title_done == 1 && match(line, /^Document Version:[[:space:]]/)) {
-          next
-        }
-        if (title_done == 1 && match(line, /^Runner Version:[[:space:]]/)) {
-          next
-        }
-        if (title_done == 1 && match(line, /^Test Version:[[:space:]]/)) {
-          next
-        }
-
-        if (title_done == 1 && title_footer_pushed != 1 &&
-            (match(line, /^\*\*Copyright/) || match(line, /^Copyright/) ||
-             match(lower, /^#[[:space:]]*copyright/) ||
-             match(lower, /^##[[:space:]]*copyright/) ||
-             match(lower, /^###[[:space:]]*copyright/) ||
-             match(lower, /^####[[:space:]]*copyright/) ||
-             match(lower, /^#####[[:space:]]*copyright/) ||
-             match(lower, /^######[[:space:]]*copyright/) ||
-             match(lower, /^#[[:space:]]*license/) ||
-             match(lower, /^##[[:space:]]*license/) ||
-             match(lower, /^###[[:space:]]*license/) ||
-             match(lower, /^####[[:space:]]*license/) ||
-             match(lower, /^#####[[:space:]]*license/) ||
-             match(lower, /^######[[:space:]]*license/))) {
-          print "```{=latex}"
-          print "\\vfill"
-          print "```"
-          title_footer_pushed = 1
-        }
-
-        if (match(line, /^##[[:space:]]+/)) {
-          section_title = line
-          sub(/^##[[:space:]]+/, "", section_title)
-          if (tolower(section_title) != "license") {
-            section_key = normalize_title(section_title)
-            section_anchor = ""
-            if (section_key in toc_title_to_anchor) {
-              section_anchor = toc_title_to_anchor[section_key]
-            }
-            print "```{=latex}"
-            print "\\clearpage"
-            if (main_numbering_started != 1 && section_title ~ /^1\./) {
-              print "\\pagenumbering{arabic}"
-              print "\\setcounter{page}{1}"
-              main_numbering_started = 1
-            }
-            if (length(section_anchor) > 0) {
-              print "\\phantomsection"
-              print "\\label{" section_anchor "}"
-            }
-            print "\\ltsetrunninghead{" tex_escape(section_title) "}"
-            print "\\global\\ltaftertoctrue"
-            print "```"
-          }
-        }
-
-        if (match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
-          in_toc_md = 1
-          print line
-          print ""
-          next
-        }
-
-        if (in_toc_md == 1) {
-          if (match(line, /^##[[:space:]]+/) && !match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
-            in_toc_md = 0
-          } else if (match(line, /\[[^]]+\]\([^)]*\)/)) {
-            toc_item = substr(line, RSTART, RLENGTH)
-
-            toc_text = toc_item
-            sub(/^\[/, "", toc_text)
-            sub(/\]\([^)]*\)$/, "", toc_text)
-            gsub(/\*\*/, "", toc_text)
-
-            toc_anchor = toc_item
-            sub(/^\[[^]]+\]\(#?/, "", toc_anchor)
-            sub(/\)$/, "", toc_anchor)
-            toc_anchor = normalize_anchor(toc_anchor)
-
-            toc_key = normalize_title(toc_text)
-            if (length(toc_anchor) > 0 && !(toc_key in toc_title_to_anchor)) {
-              toc_title_to_anchor[toc_key] = toc_anchor
-            }
-
-            if (length(toc_anchor) > 0) {
-              print "```{=latex}"
-              print "\\noindent\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" tex_escape(toc_text) "}}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{\\pageref*{" toc_anchor "}}}\\par"
-              print "```"
-            } else {
-              print line
-            }
-            next
-          } else {
-            next
-          }
-        }
-
-        if (title_footer_pushed != 1 &&
-            (match(lower, /^#[[:space:]]*copyright/) ||
-            match(lower, /^##[[:space:]]*copyright/) ||
-            match(lower, /^###[[:space:]]*copyright/) ||
-            match(lower, /^####[[:space:]]*copyright/) ||
-            match(lower, /^#####[[:space:]]*copyright/) ||
-            match(lower, /^######[[:space:]]*copyright/))) {
-          print "```{=latex}"
-          print "\\vfill"
-          print "```"
-          title_footer_pushed = 1
-          print line
-          next
-        }
-
-        if (match(lower, /^##[[:space:]]*license[[:space:]]*$/)) {
-          print "License"
-          next
-        }
-
-        if (match(lower, /^[[:space:]]*spdx-license-identifier:/)) {
-          print tex_escape(line)
-          next
-        }
-
-        print line
-      }
-    ' "$source_file" > "$temp_file"
+    generate_awk_remove_details | awk -v document_version="$document_version" \
+                                      -v runner_version="$runner_version" \
+                                      -v test_version="$test_version" \
+                                      -v have_versions="$have_versions" \
+                                      -v logo_png="" \
+                                      "$source_file" > "$temp_file"
   fi
 
   if ! convert_to_pdf "$temp_file" "$target_file" "$source_dir" "$doc_title"; then
@@ -1656,6 +1427,12 @@ process_file() {
   rm -f "$temp_file"
 }
 
+# ============================================================================
+# DIRECTORY PROCESSING UTILITIES
+# ============================================================================
+
+# Determine output PDF path for a given source markdown file in directory mode.
+# Respects -k (keep_structure) flag and special docs→pdf conversion mode.
 target_file_for_source() {
   local source_file=$1
   local rel_path
@@ -1673,7 +1450,175 @@ target_file_for_source() {
   fi
 }
 
-infile=$(trim_trailing_slashes "$infile")
+# ============================================================================
+# MAIN ENTRY POINT AND ARGUMENT PROCESSING
+# ============================================================================
+
+# Parse GENPDF_STRICT environment variable (can be overridden by -s/-p flags)
+if [[ -n "${GENPDF_STRICT:-}" ]]; then
+  case "${GENPDF_STRICT,,}" in
+    1|true|yes|on)
+      strict_ext=1
+      ;;
+    0|false|no|off)
+      strict_ext=0
+      ;;
+    *)
+      log_error "invalid GENPDF_STRICT value: ${GENPDF_STRICT}"
+      echo "       Use one of: 1,true,yes,on,0,false,no,off" >&2
+      exit 1
+      ;;
+  esac
+fi
+
+orig_args=("$@")
+
+# Validate standalone-only options
+for arg in "${orig_args[@]}"; do
+  case "$arg" in
+    -h|--help)
+      if [[ ${#orig_args[@]} -ne 1 ]]; then
+        log_error "-h and --help must be used by themselves."
+        exit 1
+      fi
+      ;;
+    -t)
+      if [[ ${#orig_args[@]} -ne 1 ]]; then
+        log_error "-t must be used by itself."
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -s)
+      strict_ext=1
+      shift
+      ;;
+    -p)
+      strict_ext=0
+      shift
+      ;;
+    -c)
+      convert_details=1
+      shift
+      ;;
+    -n)
+      dry_run=1
+      shift
+      ;;
+    -q)
+      quiet=1
+      shift
+      ;;
+    -v)
+      verbose=1
+      shift
+      ;;
+    -t)
+      check_only=1
+      shift
+      ;;
+    -r)
+      recursive=1
+      shift
+      ;;
+    -k)
+      keep_structure=1
+      shift
+      ;;
+    -g)
+      segment_glob=1
+      shift
+      ;;
+    -b)
+      if [[ $# -lt 2 ]]; then
+        log_error "$1 requires a backend argument: auto, pandoc, wkhtmltopdf, weasyprint"
+        exit 1
+      fi
+      if ! validate_backend "$2"; then
+        log_error "invalid backend: $2"
+        echo "       Use one of: auto,pandoc,wkhtmltopdf,weasyprint" >&2
+        exit 1
+      fi
+      backend=$2
+      shift 2
+      ;;
+    -i)
+      if [[ $# -lt 2 ]]; then
+        log_error "-i requires a pattern argument."
+        exit 1
+      fi
+      include_patterns+=("$2")
+      shift 2
+      ;;
+    -x)
+      if [[ $# -lt 2 ]]; then
+        log_error "-x requires a pattern argument."
+        exit 1
+      fi
+      exclude_patterns+=("$2")
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    -*)
+      log_error "unknown option: $1"
+      usage >&2
+      exit 1
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+# Handle toolchain check mode (-t)
+if [[ $check_only -eq 1 ]]; then
+  if [[ $# -gt 0 ]]; then
+    log_error "-t cannot be used with positional arguments."
+    exit 1
+  fi
+
+  if command -v pandoc >/dev/null 2>&1; then
+    if command -v pdflatex >/dev/null 2>&1 || command -v lualatex >/dev/null 2>&1 || command -v xelatex >/dev/null 2>&1 || command -v tectonic >/dev/null 2>&1 || command -v wkhtmltopdf >/dev/null 2>&1 || command -v weasyprint >/dev/null 2>&1 || command -v prince >/dev/null 2>&1; then
+      log_info "Toolchain: pandoc with PDF engine available"
+      exit 0
+    fi
+    log_info "Toolchain: pandoc available (no explicit engine detected; pandoc default may still work)"
+    exit 0
+  fi
+
+  if command -v python3 >/dev/null 2>&1 && (command -v wkhtmltopdf >/dev/null 2>&1 || command -v weasyprint >/dev/null 2>&1); then
+    log_info "Toolchain: python3 + HTML-to-PDF backend available"
+    exit 0
+  fi
+
+  log_error "no supported Markdown-to-PDF toolchain found"
+  log_info "Install pandoc (recommended), or install python3 with wkhtmltopdf or weasyprint."
+  exit 1
+fi
+
+# Handle input/output argument processing
+if [[ $# -gt 2 ]]; then
+  usage >&2
+  exit 1
+fi
+
+if [[ $# -eq 0 ]]; then
+  infile='.'
+else
+  infile=$1
+fi
+
+# ============================================================================
+# DIRECTORY MODE PROCESSING
+# ============================================================================
 
 if [[ -d "$infile" ]]; then
   indir=$infile
@@ -1789,7 +1734,6 @@ if [[ -d "$infile" ]]; then
     exit 1
   fi
 
-  # Continue converting writable targets; return non-zero if any target fails checks.
   had_errors=0
 
   for source_file in "${filtered_md_files[@]}"; do
@@ -1827,6 +1771,10 @@ if [[ -d "$infile" ]]; then
 
   exit 0
 fi
+
+# ============================================================================
+# SINGLE DOCUMENT MODE PROCESSING
+# ============================================================================
 
 if [[ $recursive -eq 1 || $keep_structure -eq 1 || $segment_glob -eq 1 || ${#include_patterns[@]} -gt 0 || ${#exclude_patterns[@]} -gt 0 ]]; then
   log_error "-g, -k, -r, -i, and -x are only allowed in directory mode."
