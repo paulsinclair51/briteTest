@@ -639,15 +639,18 @@ PY
 # Convert markdown file to PDF using available backends (pandoc preferred, HTML fallback).
 # Attempts pandoc first (with LaTeX styling), then falls back to wkhtmltopdf/weasyprint.
 # Args: $1=markdown_file, $2=target_pdf, $3=source_dir (for resource resolution), $4=doc_title (metadata)
+#       $5=copyright_text (optional, centered in running footer)
 convert_to_pdf() {
   local markdown_file=$1
   local target_file=$2
   local source_dir=${3:-.}
   local doc_title=${4:-}
+  local copyright_text=${5:-}
   local pandoc_engine
   local html_file
   local header_file=""
   local header_title
+  local copyright_footer
   local display_title
   local status
   local use_latex_header=0
@@ -683,6 +686,7 @@ convert_to_pdf() {
 
   if [[ $use_latex_header -eq 1 ]]; then
     header_file=$(mktemp --suffix=.tex)
+    copyright_footer=$(latex_escape "${copyright_text}")
     cat > "$header_file" <<EOF
 \usepackage{xcolor}
 \\usepackage{hyperref}
@@ -719,6 +723,7 @@ convert_to_pdf() {
 \\fancyhead[RO]{\\nouppercase{\\ifltaftertoc\\ltrunninghead\\fi}}
 \\fancyhead[RE,LO]{$header_title}
 \\fancyfoot[LE,RO]{\\thepage}
+\\fancyfoot[C]{\\small $copyright_footer}
 \\renewcommand{\\headrulewidth}{0.4pt}
 \\renewcommand{\\footrulewidth}{0.4pt}
 EOF
@@ -962,7 +967,7 @@ generate_awk_convert_details() {
             print "\\vspace{\\baselineskip}"
             print "\\noindent Document Version: " tex_escape(document_version) "\\\\"
             print "\\noindent Runner Version: " tex_escape(runner_version) "\\\\"
-            print "\\noindent Test Version: " tex_escape(test_version) "\\\\"
+            print "\\noindent Test Version: " tex_escape(test_version)
             print "\\vspace{\\baselineskip}"
             print "\\vspace{\\baselineskip}"
             print "```"
@@ -1216,7 +1221,7 @@ generate_awk_remove_details() {
             print "\\vspace{\\baselineskip}"
             print "\\noindent Document Version: " tex_escape(document_version) "\\\\"
             print "\\noindent Runner Version: " tex_escape(runner_version) "\\\\"
-            print "\\noindent Test Version: " tex_escape(test_version) "\\\\"
+            print "\\noindent Test Version: " tex_escape(test_version)
             print "\\vspace{\\baselineskip}"
             print "\\vspace{\\baselineskip}"
             print "```"
@@ -1415,6 +1420,9 @@ process_file() {
 
   log_debug "scan metadata: logo=${logo_png} versions=${have_versions} source=$source_file"
 
+  # Extract copyright line for centered running footer (strip heading markup)
+  copyright_text=$(grep -im1 '^[[:space:]#*]*copyright' "$source_file" | sed 's/^[[:space:]#*]*//' || true)
+
   # Apply markdown preprocessing (convert or remove details/summary tags)
   if [[ $convert_details -eq 1 ]]; then
     generate_awk_convert_details | awk -v document_version="$document_version" \
@@ -1434,7 +1442,7 @@ process_file() {
                                       "$source_file" > "$temp_file"
   fi
 
-  if ! convert_to_pdf "$temp_file" "$target_file" "$source_dir" "$doc_title"; then
+  if ! convert_to_pdf "$temp_file" "$target_file" "$source_dir" "$doc_title" "$copyright_text"; then
     rm -f "$temp_file"
     return 1
   fi
