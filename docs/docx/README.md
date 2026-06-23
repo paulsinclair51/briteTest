@@ -12,7 +12,7 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
-- **<brandname>.docx**: file generated from `../../README.md` where `<brandname>` is
+- **`<brandname>`.docx**: file generated from `../../README.md` where `<brandname>` is
   the brand name for the project.
 
 - ***.docs**: other `.docx` files generated from the `../docs/*.md` files.
@@ -21,4 +21,4 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Subdirectories
 
-- None.`
+- None.
