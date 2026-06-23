@@ -1,21 +1,21 @@
 # docs/pdf/
 
-Directory for PDF documentation generated from .md files.
+Directory for PDF documentation `pdf` files generated from `.md` files.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `../../LICENSE`.
+For license details, see `LICENSE` in the root directory.
 
-See `../../README.md` for an introduction to BriteTest.
+See `README.md` in the root directory for an introduction to the project.
 
-.pdf files are generated using `../../scripts/genpdf`) from .md files.
+.pdf files are generated using `../../scripts/genpdf` from `.md` files.
 
 ## Files
 
-- **BriteTest.pdf**: file generated from `../../README.md`.
+- **<brandname>.pdf**: file generated from `../../README.md` where `<brandname>` is
+  the brand name for the project.
 
-- **BriteTest_*.pdf**: files generated from BriteTest .md documentation files
-  in `../`.
+- ***.pdf**: other `.pdf` files generated from the `../docs/*.md` files.
 
 - **README.md**: This directory guide.
 

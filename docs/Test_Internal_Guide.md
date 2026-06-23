@@ -1,4 +1,4 @@
-![BriteTest Test Internal Guide](branding/BriteTest_Test_Internal_Guide.png)
+![Test Internal Guide](branding/Test_Internal_Guide.png)
 
 This .
 
@@ -39,9 +39,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 This document is intended for contributors who .
 
 For a list of other BriteTest documents and the BriteTest repository layout, see
-the BriteTest Documentation Guide.
+the Documentation Guide.
 
-For a glossary of terms, see the BriteTest Glossary Reference.
+For a glossary of terms, see the Glossary Reference.
 
 <details>
 <summary>Document Version History</summary>
@@ -56,10 +56,10 @@ For a glossary of terms, see the BriteTest Glossary Reference.
   format `M.u` (Major, update).
 - The **Runner** column records the BriteTest Runner API version
   current at the time this document version was published and is
-  defined by its `BT_RUNNER_VERSION` macro.
+  defined by its `RA_RUNNER_VERSION` macro.
 - The **Test** column records the BriteTest Test API version current at
   the time this document version was published and is defined by its
-  `BT_TEST_VERSION` macro.
+  `RA_TEST_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.

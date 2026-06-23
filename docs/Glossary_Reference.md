@@ -1,8 +1,8 @@
-![BriteTest Glossary Reference](branding/BriteTest_Glossary_Reference.png)
+![Glossary Reference](branding/Glossary_Reference.png)
 
 This glossary defines generally used terms in the BriteTest documentation 
 and terms often used in the testing domain. It is a companion document to
-the BriteTest Documentation Guide.
+the Documentation Guide.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -43,10 +43,10 @@ quick access to the definitions of terms used in BriteTest or to browse
 through the terms.
 
 For a list of other BriteTest documents and the repository layout, see
-the BriteTest Documentation Guide (`BriteTest_Documentation_Guide.md`).
+the Documentation Guide (`Documentation_Guide.md`).
 
-For a glossary of general terms, see the BriteTest Glossary Reference
-(`BriteTest_Glossary_Reference.md`) and, for specific terms for this document,
+For a glossary of general terms, see the Glossary Reference
+(`Glossary_Reference.md`) and, for specific terms for this document,
 the Glossary appendix.
 
 A printer-friendly PDF file for this document is available in `docs/pdf/`,/`,
@@ -64,10 +64,10 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`,/`,
   format `M.u` (Major, update).
 - The **Runner** column records the BriteTest Runner API version
   current at the time this document version was published and is
-  defined by its `BT_RUNNER_VERSION` macro.
+  defined by its `RA_RUNNER_VERSION` macro.
 - The **Test** column records the BriteTest Test API version current at
   the time this document version was published and is defined by its
-  `BT_TEST_VERSION` macro.
+  `RA_TEST_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
@@ -144,8 +144,8 @@ to the BriteTest Runner or Test API Reference document for information.
 
 ### --C--
 
-- **category**: (BriteTest) A named set of `BT_GROUP` and `BT_TEST`
-  macros whose combined results are written by `BT_WRITE_RESULT` to
+- **category**: (BriteTest) A named set of `RA_GROUP` and `RA_TEST`
+  macros whose combined results are written by `RA_WRITE_RESULT` to
   the report with a specified category name.
 - **CD (Continuous Delivery/Deployment)**: Automated practices that
   extend CI (Continuous Integration) by packaging, releasing, or
@@ -165,7 +165,7 @@ to the BriteTest Runner or Test API Reference document for information.
   an executable and optional arguments or flags (options). Use
   command-line when used as an adjective.
 - **concurrent block**: (BriteTest) A set of tests bracketed by
-  `BT_BEGIN_CONCURRENT` and `BT_END_CONCURRENT` macros.
+  `RA_BEGIN_CONCURRENT` and `RA_END_CONCURRENT` macros.
 - **contributor**: (BriteTest) Any person or agent that may commit to
   BriteTest `main`. The implementation changes and documentation
   updates for a commit to `main` must conform to the BriteTest
@@ -207,13 +207,13 @@ to the BriteTest Runner or Test API Reference document for information.
 ### --F--
 
 - **fail**: (BriteTest) A counted failure where the test expression for
-  an `BT_TEST` macro evaluates to zero.
+  an `RA_TEST` macro evaluates to zero.
 - **fault**: (BriteTest) A counted test group or test fault (e.g.,
   invalid memory access) captured by a BriteTest guard. See also fault
-  type, guard, `BT_FAULT`, and isolation.
+  type, guard, `RA_FAULT`, and isolation.
 - **fault type**: (BriteTest) The various types of faults (e.g.,
   `SIGSEGV`, `SIGBUS`, `SIGABRT`) that can occur or be injected. See
-  also fault, `BT_FAULT` and `-I`.
+  also fault, `RA_FAULT` and `-I`.
 - **framework**: (BriteTest) Guidelines, templates, APIs, tools, and
   documentation for a class of projects that simplify development
   within that class. For example, the BriteTest framework simplifies
@@ -247,22 +247,22 @@ _No terms currently defined._
 ### --I--
 
 - **`-I`**: (BriteTest) An optional command‑line flag that enables an
-  `BT_TEST` macro with an argument value of `I` to be executed.
+  `RA_TEST` macro with an argument value of `I` to be executed.
   Typically used to inject a fail or fault into a run of a test
-  executable. Default is to skip the `BT_TEST` macro if it has an
-  argument value of `I`. See also fault, `BT_FAIL`, and `BT_FAULT`.
+  executable. Default is to skip the `RA_TEST` macro if it has an
+  argument value of `I`. See also fault, `RA_FAIL`, and `RA_FAULT`.
 - **`-I<n>`**: (BriteTest) An optional command‑line flag that enables
-  an `BT_TEST` macro with an argument value of `<m>` between 1 and 9
+  an `RA_TEST` macro with an argument value of `<m>` between 1 and 9
   to execute if `<m>` is between 1 and `<n>`. `<n>` must be between 1
   and 9. Default for `<n>` is 9 if this flag is not specified and, for
-  `<m>` is 1. If `<m>` is 0, the `BT_TEST` macro is not enabled (i.e.,
+  `<m>` is 1. If `<m>` is 0, the `RA_TEST` macro is not enabled (i.e.,
   it is skipped). At most one `-I<n>` flag specified for a command
   line.
 - **isolation**: A mechanism that prevents failures and faults in one
   component from affecting other components of an executable or
   system.
-- **isolation mode**: (BriteTest) An execution mode for `BT_GROUP` and
-  `BT_TEST` macros: `0` = same thread, `1` = separate thread, `2` =
+- **isolation mode**: (BriteTest) An execution mode for `RA_GROUP` and
+  `RA_TEST` macros: `0` = same thread, `1` = separate thread, `2` =
   separate process.
 </details>
 
@@ -301,22 +301,22 @@ _No terms currently defined._
   define, declare or use names with this prefix.
 - **`BRITETEST_*`**: (BriteTest) A prefix for internal names. Do not
   define, declare or use names with this prefix.
-- **`bt_*`**: (BriteTest) Prefix for BriteTest Runner and Test API
+- **`ra_*`**: (BriteTest) Prefix for BriteTest Runner and Test API
   functions, typedefs, structs, and variable names. See BriteTest
   Runner API Reference and BriteTest Test API Reference.
-- **`BT_*`**: (BriteTest) Prefix for BriteTest Runner and Test API
+- **`RA_*`**: (BriteTest) Prefix for BriteTest Runner and Test API
   macros and enum values. See BriteTest Runner API Reference and
   BriteTest Test API Reference.
-- **`BT_GROUP`**: (BriteTest) A Runner API macro that executes a test
+- **`RA_GROUP`**: (BriteTest) A Runner API macro that executes a test
   group function with a given isolation mode, maxparallel, and other
   parameters. See BriteTest Runner API Reference.
-- **`BT_TEST`**: (BriteTest) A Runner API macro that executes a test
+- **`RA_TEST`**: (BriteTest) A Runner API macro that executes a test
   expression with a given isolation mode and other parameters. See
   BriteTest Runner API Reference.
-- **`BT_FAIL`**: (BriteTest) A macro that returns 0. Typically used in
-  the `BT_TEST` macro to conditionally inject a fail. See also `-I`.
-- **`BT_FAULT`**: (BriteTest) A macro that injects (signals) a fault.
-  Typically used in the `BT_TEST` macro to conditionally inject a
+- **`RA_FAIL`**: (BriteTest) A macro that returns 0. Typically used in
+  the `RA_TEST` macro to conditionally inject a fail. See also `-I`.
+- **`RA_FAULT`**: (BriteTest) A macro that injects (signals) a fault.
+  Typically used in the `RA_TEST` macro to conditionally inject a
   fault. See also fault, `-I`, and BriteTest Runner API Reference.
 </details>
 
@@ -326,14 +326,14 @@ _No terms currently defined._
 ### --M--
 
 - **`maxargs`**: (BriteTest) The maximum number of command‑line
-  arguments allowed by the `BT_PARSE_ARGS` macro. This macro parses
+  arguments allowed by the `RA_PARSE_ARGS` macro. This macro parses
   only the first two arguments; additional arguments require custom
   code.
 - **`maxparallel`**: (BriteTest) The upper bound on concurrent
-  `BT_GROUP` and `BT_TEST` macros. That is, when the number of macros
+  `RA_GROUP` and `RA_TEST` macros. That is, when the number of macros
   executing equals `maxparallel`, the next macro to execute is delayed
   until one of the executing macros finishes. `maxparallel` is a
-  parameter for the `BT_INIT_ORCHESTRATOR` and `BT_GROUP` macros.
+  parameter for the `RA_INIT_ORCHESTRATOR` and `RA_GROUP` macros.
 </details>
 
 <details>
@@ -342,7 +342,7 @@ _No terms currently defined._
 
 ### --N--
 
-- **`notes`**: (BriteTest) A string parameter for the `BT_CLOSE_REPORT`
+- **`notes`**: (BriteTest) A string parameter for the `RA_CLOSE_REPORT`
   macro. This macro appends the string (which must include `\n` at the
   end of each line in the string) if the string is not NULL or empty.
   Alternatively or in addition, notes can be appended from a file
@@ -359,8 +359,8 @@ _No terms currently defined._
   function.
 - **orchestrator (`main`) function**: (BriteTest) The `main` function
   of a BriteTest executable (i.e., the test runner) that uses
-  `BT_GROUP` macros to execute sets of tests (i.e., a test group) or
-  `BT_TEST` macros to execute a specific test (i.e., a test
+  `RA_GROUP` macros to execute sets of tests (i.e., a test group) or
+  `RA_TEST` macros to execute a specific test (i.e., a test
   expression).
 </details>
 
@@ -370,7 +370,7 @@ _No terms currently defined._
 ### --P--
 
 - **pass**: (BriteTest) A counted success where the test expression for
-  an `BT_TEST` macro evaluates to non-zero.
+  an `RA_TEST` macro evaluates to non-zero.
 - **PATH**: (BriteTest) Optional command‑line argument indicating the
   output destination; may be a report file path or directory path.
   Argument must be quoted if it contains spaces.
@@ -442,14 +442,14 @@ _No terms currently defined._
   expression for an individual test and test group for a set of test
   expressions.
 - **test expression**: (BriteTest) An expression that is an argument of
-  an `BT_TEST` macro that can be cast to `int`; zero means fail,
+  an `RA_TEST` macro that can be cast to `int`; zero means fail,
   non‑zero means pass. A test expression and its underlying functions
   are user-written. The BriteTest Test API is provided to help simplify
   writing a test expression and its underlying functions.
-- **test group**: (BriteTest) A grouping of `BT_TEST` macros and
-  optionally `BT_GROUP` macros.
+- **test group**: (BriteTest) A grouping of `RA_TEST` macros and
+  optionally `RA_GROUP` macros.
 - **test group function**: (BriteTest) A function declared with a
-  `BT_DECLARE_GROUP` macro and followed by a function body in `{ }`.
+  `RA_DECLARE_GROUP` macro and followed by a function body in `{ }`.
 - **test function**: (BriteTest) A user‑written function used in
   implementing a test expression.
 - **test helper function**: (BriteTest) A Test API function that helps
@@ -478,7 +478,7 @@ _No terms currently defined._
   group or test expression executes in a separate thread. See also
   isolation mode.
 - **title**: (BriteTest) An optional report header text provided when
-  opening the report with an `BT_OPEN_REPORT` macro.
+  opening the report with an `RA_OPEN_REPORT` macro.
 </details>
 
 <details>

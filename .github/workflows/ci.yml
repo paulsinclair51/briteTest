@@ -1,6 +1,6 @@
-name: BriteTest CI
+name: CI
 
-# Define the CI workflow for BriteTest.
+# Define the CI workflow for the project.
 
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT

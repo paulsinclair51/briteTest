@@ -1,20 +1,34 @@
-# BriteTest Logo
+# branding/
 
-This folder contains SVG and PNG logo assets for BriteTest using a canary theme.
+This folder contains SVG and PNG logo assets for the brand name and monogram.
+
+Copyright (c) 2026 Paul Sinclair  
+SPDX-License-Identifier: MIT  
+For license details, see `LICENSE` in the root directory.
+
+See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
-- `canary.svg`: Traced standalone canary silhouette as vector artwork.
-- `canary2.svg`: Standalone canary silhouette with legs and feet accented in the beak palette.
-- `BriteTest_Logo.svg`: Monogram-only LT logo with canary accent.
-- `BriteTest_Logo.png`: Monogram-only LT logo with canary accent (PNG export).
-- `BriteTest_Logo_with_BriteTest.svg`: LT monogram with canary accent and BriteTest
-  wordmark.
-- `BriteTest_Logo_with_BriteTest.png`: LT monogram with canary accent and BriteTest
-  wordmark (PNG export).
-- `BriteTest_Logo_with_Tagline.svg`: LT monogram with canary accent, BriteTest, and tagline
-  "Catch it before it breaks."
-- `BriteTest_Logo_with_Tagline.png`: LT monogram with canary accent, BriteTest, and tagline (PNG export).
+- `canary-live.svg`: photo of a yellow canary with transparent background
+   perched on partially removed branch.
+- `canary.svg`: Canary accent: traced from canary-live.svg with canary yellow fill,
+  added black dot eye, and overlaid triangle for beak.
+- `Monogram.svg`: Monogram-only `bT` with canary accent perched on T in a
+  rounded-square.
+- `Logo_with_BrandName.svg`: monogram and brand name with transparent background.
+- `Logo_with_Tagline.svg`: monogram, brand name, and tagline
+  "Catch it before it breaks." with transparent background.
+- `<doctitle>.svg`: monogram, brand name, and doctitle (for a document in `docs`)
+  with transparent background.
+- `*.png`: generated `.png` files corresponding to each `*.svg` file.
+
+Note: The root `README.md` uses the `Logo_with_Brandname.png` generated from
+`Logo_with_BrandName.svg`.
+
+## Subdirectories
+
+- None.
 
 ## Generation
 
@@ -22,17 +36,18 @@ Use `../../scripts/genpng.sh` to regenerate the PNG exports from the SVG sources
 
 Source-of-truth policy:
 
-- `BriteTest_*.svg` files are the authoritative source for branding artwork.
-- `BriteTest_*.png` files are generated artifacts exported from the SVG files.
-- Do not edit branding PNG files directly; edit the corresponding SVG file and regenerate PNGs.
+- `*.svg` files are the authoritative source for branding artwork.
+- `*.png` files are generated artifacts converted from the SVG files.
+- Do not edit PNG files directly; edit the corresponding SVG file and
+  regenerate PNGs.
 
 ## Palette
 
-- Background: `#FCFCFD` (off-white)
-- Charcoal: `#1F2430` (monogram, text, eye, wing cutout)
-- Near-white: `#F7F8FA` (LT strokes)
-- Canary Yellow: `#FFEB66` (body, crest, head)
-- Beak: `#CFA07F` (natural canary horn)
+- Charcoal: `#1F2430` (monogram rounded-square background)
+- Canary Yellow: `#FFEB66` (canary body, `b` in the monogram)
+- Near-white: `#F7F8FA` (`T` in the monogram)
+- Black: `#000000` (eye)
+- Beak: `#F4A300` (natural canary horn)
 
 ## Tracking Note
 
@@ -63,5 +78,10 @@ color set. Undocumented colors (#FCFCFD, #F7F8FA, #FFF5B5) were added to the pal
 On 2026-06-20, the crest and cheek patch were removed by request. #FFF5B5
 removed from palette as it is no longer in use.
 
-On 2026-06-20, PNG exports were added for all three logo variants.
+On 2026-06-20, PNG exports were added for SVG variants.
 Use `scripts/genpng.sh` to regenerate them from the SVG sources.
+
+On 2026-06-21, SVG and PNG files added for logo with document title.
+
+On 2026-06-21, the beak color was changed from #CFA07F to #F4A300 for improved
+contrast and visual clarity. Palette updated.

@@ -4,14 +4,18 @@ Directory for golden files used for output file comparison and validation.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `../../LICENSE`.
+For license details, see `LICENSE` in the root directory.
 
-See `../../README.md` for an introduction to BriteTest.
+See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
-- Golden files that contain the expected contents of each
-  corresponding output file.
+- Golden files that contain the expected contents of each corresponding
+  output file.
+
+- **Metadata files**: Markdown Document (`.md`) sidecar files associated with
+  golden files and related file groups.
+  
 - **README.md**: This directory guide.
 
 ## Subdirectories
@@ -20,14 +24,15 @@ See `../../README.md` for an introduction to BriteTest.
 
 ## Golden Files and Output Files
 
-BriteTest compares each output file with a corresponding golden file of
-the same name in `tests/golden/` or `tests/golden<n>/`. If no corresponding golden
-file exists, the output is automatically promoted.
+The Runner Framework compares each output file with a corresponding golden file
+of the same name in `tests/golden/`. If no corresponding golden file exists,
+the output may be promoted to become the matching golden file.
 
-Golden file contents of `##MATCH##\n` or `##MISMATCH##\n` allow forcing matches
-or mismatches, respectively.
+Golden file metadata can include markers such as `## MATCH` or `## MISMATCH` to
+force a match or mismatch, respectively. Additional markdown text can follow
+these markers to explain why the outcome is forced for a file or file group.
 
 See also `../output/README.md`.
 
-For full details, including customization options, see the
-BriteTest Runner User Guide.
+For full details, including customization options for comparison and promotion,
+see the Runner User Guide.

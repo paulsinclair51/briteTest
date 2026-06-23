@@ -5,17 +5,18 @@ implementation code.
 
 Copyright (c) 2026 Paul Sinclair   
 SPDX-License-Identifier: MIT   
-For license details, see `../LICENSE`.
+For license details, see `LICENSE` in the root directory.
 
-See `../README.md` for an introduction to BriteTest.
+See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
-- **BriteTest_runner.c**: Defines non-inline functions for the BriteTest Runner API.
-  See `../include/britetest_runner.h` for the declarations and documentation for
-  the BriteTest framework and API.
-- **britetest_test.c**: Defines BriteTest Test API test helper functions.
-  See `../include/britetest_test.h` for declarations.
+- **runnerapi.c**: Defines the Runner API implementation.
+  See `../include/runnerapi.h` for the declarations for the Runner API.
+
+- **testapi.c**: Defines the Test API implementation.
+  See `../include/testapi.h` for declarations for the Test API.
+
 - **README.md**: This directory guide.
 
 ## Subdirectories

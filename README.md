@@ -1,12 +1,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/BriteTest?display_name=tag)](https://github.com/paulsinclair51/BriteTest/releases)
-[![CI](https://github.com/paulsinclair51/BriteTest/actions/workflows/britetest_ci.yml/badge.svg)](https://github.com/paulsinclair51/BriteTest/actions/workflows/britetest_ci.yml)
+[![CI](https://github.com/paulsinclair51/BriteTest/actions/workflows/ci.yml/badge.svg)](https://github.com/paulsinclair51/BriteTest/actions/workflows/ci.yml)
 
-![BriteTest Logo](docs/branding/BriteTest_Logo_with_BriteTest.png)
+![BriteTest Logo](docs/branding/Logo_with_BrandName.png)
 
 BriteTest is a lightweight framework and Application Programming Interface (API)
 for defining, running, and reporting tests in C/C++ projects. It provides a
-simple core macro-driven Runner API plus a function-based Test API,
+simple core macro-driven Runner Framework and API plus a function-based Test API,
 fault‑tolerant execution, and clear reporting. It is ideal for small to medium
 C projects that need reliable testing without heavy tooling and dependencies.
 It can be used for unit and command-line testing.
@@ -48,18 +48,13 @@ BriteTest provides a Runner API and a Test API, each implemented with a single
 .h / .c pair with no external dependencies and requiring only a POSIX.1‑2001
 environment and a C99‑compliant compiler.
 
-For a list of other BriteTest documents and the repository layout, see
-the BriteTest Documentation Guide (`BriteTest_Documentation_Guide.md`).
+For a list of other documents and the repository layout, see
+the Documentation Guide (`Documentation_Guide.md`).
 
-For a glossary of terms, see the BriteTest Glossary Reference
-(`BriteTest_Glossary_Reference.md`).
+For a glossary of terms, see the Glossary Reference
+(`Glossary_Reference.md`).
 
 For a printer-friendly PDF file for this document, see `docs/pdf/BriteTest.pdf`.
-
-Branding asset policy:
-- In `docs/branding/`, `BriteTest_*.svg` files are the source of truth.
-- Corresponding `BriteTest_*.png` files are generated exports from SVG via `scripts/genpng.sh`.
-- Do not directly edit branding PNG files.
 
 <details>
 <summary>Document Version History</summary>
@@ -72,12 +67,12 @@ Branding asset policy:
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
-- The **Runner** column records the BriteTest Runner API version
+- The **Runner** column records the Runner API version
   current at the time this document version was published and is
-  defined by its `BT_RUNNER_VERSION` macro.
-- The **Test** column records the BriteTest Test API version current at
+  defined by its `RA_RUNNER_VERSION` macro.
+- The **Test** column records the Test API version current at
   the time this document version was published and is defined by its
-  `BT_TEST_VERSION` macro.
+  `RA_TEST_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
@@ -100,7 +95,7 @@ changes are published in a release without a change to `M`, and it resets to
 &nbsp;&nbsp;&nbsp;&nbsp;[**1.3. Requirements**](#13-requirements)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**1.4. Installation**](#14-installation)<br>
 
-[**2. BriteTest Runner Framework and API**](#2-britetest-runner-framework-and-api)<br>
+[**2. Runner Framework and API**](#2-britetest-runner-framework-and-api)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**2.1. What the Runner Framework and API Does**](#21-what-the-runner-framework-and-api-does)<br>
 
 [**3. Running Tests**](#3-running-tests)<br>
@@ -123,7 +118,7 @@ changes are published in a release without a change to `M`, and it resets to
 
 [**12. Isolation**](#12-isolation)<br>
 
-[**13. BriteTest Test API**](#13-britetest-test-api)<br>
+[**13. Test API**](#13-test-api)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**13.1 File Functions**](#131-file-functions)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**13.2 Compare Functions**](#132-compare-functions)
 </details>
@@ -158,11 +153,11 @@ A test executable consists of your tests as C/C++ expressions/functions, and the
 orchestrator and test group functions you write using the BriteTest API that
 manages the execution.
 
-1. Copy 'britetest_runner.h' and 'britetest_runner.c' to your current directory:
+1. Copy 'runnerapi.h' and 'runnerapi.c' to your current directory:
 
 ```sh
-cp /path/to/britetest_runner.h .
-cp /path/to/britetest_runner.c .
+cp /path/to/runnerapi.h .
+cp /path/to/runnerapi.c .
 ```
 
 2. Create a file named `test_quick.c` in the same directory.
@@ -173,45 +168,45 @@ cp /path/to/britetest_runner.c .
 <summary>💻 Copy</summary>
 
 ```c
-#include "britetest_runner.h"
+#include "runnerapi.h"
 
 // A simple test group function.
 
-static BT_DECLARE_GROUP(test_quick)
+static RA_DECLARE_GROUP(test_quick)
 {
-  BT_INIT_GROUP(test_quick, 1);
+  RA_INIT_GROUP(test_quick, 1);
 
   int a = 2;
   int b = 2;
 
   // 4 test assertions.
-  BT_TEST(a == b, , 0);        // Pass
-  BT_TEST(a + b == 4, ,  0);    // Pass
-  BT_TEST(a - b == 1, , 0);    // Fail
-  BT_TEST(BT_FAULT(1), , 0);   // Fault
+  RA_TEST(a == b, , 0);        // Pass
+  RA_TEST(a + b == 4, ,  0);    // Pass
+  RA_TEST(a - b == 1, , 0);    // Fail
+  RA_TEST(RA_FAULT(1), , 0);   // Fault
 
-  BT_RETURN;
+  RA_RETURN;
 }
 
 // A simple orchestrator (main) function.
 
-BT_DECLARE_ORCHESTRATOR(main)
+RA_DECLARE_ORCHESTRATOR(main)
 {
-  BT_INIT_ORCHESTRATOR(main, quick, 1);
-  BT_PARSE_ARGS(2, "quick_test_report.txt");
-  BT_OPEN_REPORT("Test Quick Report");
+  RA_INIT_ORCHESTRATOR(main, quick, 1);
+  RA_PARSE_ARGS(2, "quick_test_report.txt");
+  RA_OPEN_REPORT("Test Quick Report");
 
   // Single test category.
-  BT_WRITE_RESULT(BT_GROUP(test_quick), "Quick tests");
+  RA_WRITE_RESULT(RA_GROUP(test_quick), "Quick tests");
 
-  BT_CLOSE_REPORT("Note: This report is a very simple example of using BriteTest.\n"
+  RA_CLOSE_REPORT("Note: This report is a very simple example of using BriteTest.\n"
                   "Note: Multiple test categories can be added using multiple\n"
                   "      test functions.\n"
                   "Note: Orchestrator (`main`) and test functions can be placed in\n"
                   "      individual modules (.c files).\n"
                   "Note: Parameters can be set to run tests in parallel, isolate\n"
                   "      a test to a separate thread or process, etc.\n"
-                  "Note: The expression for BT_TEST can reference functions to\n"
+                  "Note: The expression for RA_TEST can reference functions to\n"
                   "      provide a more complex test. A non-zero result indicates\n"
                   "      pass and a zero result indicates fail. If a fault occurs\n"
                   "      executing the expression, it is detected and counted in\n"
@@ -220,7 +215,7 @@ BT_DECLARE_ORCHESTRATOR(main)
                   "      layout (e.g., `include/` and `src/`, but this example keeps\n"
                   "      everything in your current directory for simplification.\n"
                   "Note: See README.md for BriteTest for additional API features.\n");
-  BT_EXIT;
+  RA_EXIT;
 }
 ```
 
@@ -229,7 +224,7 @@ BT_DECLARE_ORCHESTRATOR(main)
 4. Build the executable `test_quick` in your current directory:
 
 ```sh
-cc -std=c99 -Wall -Wextra -o test_quick test_quick.c britetest_runner.c
+cc -std=c99 -Wall -Wextra -o test_quick test_quick.c runnerapi.c
 ```
 
 5. Run it:
@@ -356,7 +351,7 @@ how to consume it in tooling or CI.
 
 ## 8. Test Expressions
 
-How to write a test expression for `BT_TEST(expr)` and how expressions are
+How to write a test expression for `RA_TEST(expr)` and how expressions are
 evaluated.
 </details>
 
@@ -416,7 +411,7 @@ The Test API also includes execution/runtime, filesystem/path, environment,
 process-result, string/text, extended file operation, JSON data extraction,
 and resource management helpers.
 
-See the BriteTest Test Reference for a complete list of helpers provided by the API.
+See the Test Reference for a complete list of helpers provided by the API.
 
 The following two sections provide examples of file and compare functions.
 
@@ -429,9 +424,9 @@ These helpers cover file and directory-related functions in the Test API.
 
 Examples include:
 
-- Filesystem predicates: `bt_exists`
-- File and directory operations: `bt_copy_file`
-- Temporary and cleanup helpers: `bt_make_temp_dir`
+- Filesystem predicates: `ta_exists`
+- File and directory operations: `ta_copy_file`
+- Temporary and cleanup helpers: `ta_make_temp_dir`
 </details>
 
 <details>
@@ -443,9 +438,9 @@ These helpers cover comparison and matching functions in the Test API.
 
 Examples include:
 
-- Path, file, and directory comparisons: `bt_compare_dirs`
-- Metadata and binary comparisons: `bt_compare_path_metadata`
-- JSON helpers: `bt_compare_json`
-- Text and pattern helpers: `bt_compare_text_normalized`
+- Path, file, and directory comparisons: `ta_compare_dirs`
+- Metadata and binary comparisons: `ta_compare_path_metadata`
+- JSON helpers: `ta_compare_json`
+- Text and pattern helpers: `ta_compare_text_normalized`
 </details>
 </details>

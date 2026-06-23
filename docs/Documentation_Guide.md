@@ -1,4 +1,4 @@
-![BriteTest Documentation Guide](branding/BriteTest_Documentation_Guide.png)
+![Documentation Guide](branding/Documentation_Guide.png)
 
 This document is a guide to the BriteTest documentation and the BriteTest
 repository layout.
@@ -55,10 +55,10 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`,
   format `M.u` (Major, update).
 - The **Runner** column records the BriteTest Runner API version
   current at the time this document version was published and is
-  defined by its `BT_RUNNER_VERSION` macro.
+  defined by its `RA_RUNNER_VERSION` macro.
 - The **Test** column records the BriteTest Test API version current at
   the time this document version was published and is defined by its
-  `BT_TEST_VERSION` macro.
+  `RA_TEST_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
@@ -121,42 +121,42 @@ The following are the BriteTest user and contributor documents.
 
 - **README.md** — Introduction to BriteTest.
 
-- **BriteTest_Documentation_Guide.md**: A guide to BriteTest documents and the
+- **Documentation_Guide.md**: A guide to BriteTest documents and the
   repository layout.
 
-- **BriteTest_Glossary_Reference.md**: An alphabetically ordered list of terms
+- **Glossary_Reference.md**: An alphabetically ordered list of terms
   generally used in BriteTest (emphasizing their specific meaning in
   BriteTest) and terms often used in the testing domain.
 
-- **BriteTest_Runner_Guide.md**: Concepts, usage, and examples for
+- **Runner_Guide.md**: Concepts, usage, and examples for
   the BriteTest Runner framework and API.
 
-- **BriteTest_Runner_Reference.md**: Reference document for the
+- **Runner_Reference.md**: Reference document for the
   BriteTest Runner API.
 
-- **BriteTest_Test_Guide.md**: Concepts, usage, and examples for
+- **Test_Guide.md**: Concepts, usage, and examples for
   the BriteTest Test API.
 
-- **BriteTest_Test_Reference.md**: Reference document for the BriteTest
+- **Test_Reference.md**: Reference document for the BriteTest
   Test API.
 
 **Contributor documentation**:
 
 - **README.md**: Directory description, one for each subdirectory.
 
-- **BriteTest_Contributor_Guide.md**: Versioning, documentation/coding
+- **Contributor_Guide.md**: Versioning, documentation/coding
   guidelines, branching, testing, and CI/release checklists.
 
-- **BriteTest_Runner_Internal_Guide.md**: Implementation concepts,
+- **Runner_Internal_Guide.md**: Implementation concepts,
   architecture, and high-level design for the Runner API.
 
-- **BriteTest_Runner_Internal_Reference.md**: Reference for the
+- **Runner_Internal_Reference.md**: Reference for the
   implementation of the Runner API.
 
-- **BriteTest_Test_Internal_Guide.md**: Implementation concepts,
+- **Test_Internal_Guide.md**: Implementation concepts,
   architecture, and high-level design for the Test API.
 
-- **BriteTest_Test_Internal_Reference.md**: Reference for the
+- **Test_Internal_Reference.md**: Reference for the
   implementation of the Test API.
 </details>
 
@@ -169,7 +169,7 @@ The following shows the layout of the GitHub repository
 `paulsinclair51/BriteTest` (core files and directories):
 
 ```text
-.github/workflows/britetest_ci.yml
+.github/workflows/ci.yml
 README.md
 LICENSE
 .gitignore
@@ -183,16 +183,16 @@ docs/                   # User and contributor documentation.
     pdf/                # Generated BriteTest_*.pdf files.
 examples/               # Usage examples.
 include/                # Public API .h headers.
-    britetest_runner.h
-    britetest_test.h
+    runnerapi.h
+    testapi.h
 reports/                # Generated report files.
 scripts/                # Automation scripts.
     check_directory_readmes.sh
     genpdf
     test_genpdf.sh
 src/                    # API .c sources.
-    britetest_runner.c
-    britetest_test.c
+    runnerapi.c
+    testapi.c
 tests/                  # Testing assets.
     golden/             # Golden/baseline files for comparison.
     include/            # Test .h headers.

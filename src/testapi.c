@@ -1,7 +1,7 @@
 /**
- * @file /paulsinclair51/src/litetest_test.c
+ * @file /paulsinclair51/src/testapi.c
  *
- * @brief LiteTest Test API test helper definitions.
+ * @brief BriteTest Test API test helper definitions.
  *
  * Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
@@ -9,7 +9,7 @@
 
 #define _POSIX_C_SOURCE 200809L
 
-#include "litetest_test.h"
+#include "testapi.h"
 
 #include <ctype.h>
 #include <dirent.h>
@@ -31,98 +31,98 @@
 #include <unistd.h>
 
 /* Keep helper allocations bounded for predictable memory behavior. */
-#define LT_ALLOC_MAX_BYTES ((size_t)(16u * 1024u * 1024u))
+#define RA_ALLOC_MAX_BYTES ((size_t)(16u * 1024u * 1024u))
 
 /* Global allocator hooks. */
-static lt_malloc_fn g_malloc_fn = malloc;
-static lt_realloc_fn g_realloc_fn = realloc;
-static lt_free_fn g_free_fn = free;
+static ra_malloc_fn g_malloc_fn = malloc;
+static ra_realloc_fn g_realloc_fn = realloc;
+static ra_free_fn g_free_fn = free;
 
-void lt_set_allocator_hooks(lt_malloc_fn malloc_function,
-                            lt_realloc_fn realloc_function,
-                            lt_free_fn free_function)
+void ta_set_allocator_hooks(ra_malloc_fn malloc_function,
+                            ra_realloc_fn realloc_function,
+                            ra_free_fn free_function)
 {
   g_malloc_fn = malloc_function ? malloc_function : malloc;
   g_realloc_fn = realloc_function ? realloc_function : realloc;
   g_free_fn = free_function ? free_function : free;
 }
 
-void lt_get_allocator_hooks(lt_malloc_fn *malloc_function,
-                            lt_realloc_fn *realloc_function,
-                            lt_free_fn *free_function)
+void ta_get_allocator_hooks(ra_malloc_fn *malloc_function,
+                            ra_realloc_fn *realloc_function,
+                            ra_free_fn *free_function)
 {
   if (malloc_function) *malloc_function = g_malloc_fn;
   if (realloc_function) *realloc_function = g_realloc_fn;
   if (free_function) *free_function = g_free_fn;
 }
 
-static int lt_add_overflow_size(size_t a, size_t b, size_t *out)
+static int ra_add_overflow_size(size_t a, size_t b, size_t *out)
 {
   if (!out) {
-    return LT_EARG;
+    return RA_EARG;
   }
   if (a > SIZE_MAX - b) {
-    return LT_ESIZE;
+    return RA_ESIZE;
   }
   *out = a + b;
   return 0;
 }
 
-static int lt_mul_overflow_size(size_t a, size_t b, size_t *out)
+static int ra_mul_overflow_size(size_t a, size_t b, size_t *out)
 {
   if (!out) {
-    return LT_EARG;
+    return RA_EARG;
   }
   if (a != 0 && b > SIZE_MAX / a) {
-    return LT_ESIZE;
+    return RA_ESIZE;
   }
   *out = a * b;
   return 0;
 }
 
-static void *lt_malloc_checked(size_t n, int *err)
+static void *ra_malloc_checked(size_t n, int *err)
 {
   if (err) *err = 0;
-  if (n == 0 || n > LT_ALLOC_MAX_BYTES) {
-    if (err) *err = LT_ESIZE;
+  if (n == 0 || n > RA_ALLOC_MAX_BYTES) {
+    if (err) *err = RA_ESIZE;
     return NULL;
   }
   void *p = g_malloc_fn(n);
-  if (!p && err) *err = LT_ENOMEM;
+  if (!p && err) *err = RA_ENOMEM;
   return p;
 }
 
-static void *lt_realloc_checked(void *p, size_t n, int *err)
+static void *ra_realloc_checked(void *p, size_t n, int *err)
 {
   if (err) *err = 0;
-  if (n == 0 || n > LT_ALLOC_MAX_BYTES) {
-    if (err) *err = LT_ESIZE;
+  if (n == 0 || n > RA_ALLOC_MAX_BYTES) {
+    if (err) *err = RA_ESIZE;
     return NULL;
   }
   void *next = g_realloc_fn(p, n);
-  if (!next && err) *err = LT_ENOMEM;
+  if (!next && err) *err = RA_ENOMEM;
   return next;
 }
 
-static char *lt_strdup_checked(const char *s, int *err)
+static char *ra_strdup_checked(const char *s, int *err)
 {
   size_t n;
   char *dup;
 
   if (err) *err = 0;
   if (!s) {
-    if (err) *err = LT_EARG;
+    if (err) *err = RA_EARG;
     return NULL;
   }
 
-  n = strnlen(s, LT_ALLOC_MAX_BYTES + 1);
-  if (n > LT_ALLOC_MAX_BYTES) {
-    if (err) *err = LT_ESIZE;
+  n = strnlen(s, RA_ALLOC_MAX_BYTES + 1);
+  if (n > RA_ALLOC_MAX_BYTES) {
+    if (err) *err = RA_ESIZE;
     return NULL;
   }
 
   int alloc_err = 0;
-  dup = (char *)lt_malloc_checked(n + 1, &alloc_err);
+  dup = (char *)ra_malloc_checked(n + 1, &alloc_err);
   if (!dup) {
     if (err) *err = alloc_err;
     return NULL;
@@ -133,7 +133,7 @@ static char *lt_strdup_checked(const char *s, int *err)
   return dup;
 }
 
-static long long lt_now_ms(void)
+static long long ra_now_ms(void)
 {
   struct timespec ts;
   if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
@@ -142,7 +142,7 @@ static long long lt_now_ms(void)
   return (long long)ts.tv_sec * 1000LL + (long long)ts.tv_nsec / 1000000LL;
 }
 
-static void lt_sleep_ms(int ms)
+static void ra_sleep_ms(int ms)
 {
   struct timespec req;
   req.tv_sec = ms / 1000;
@@ -151,7 +151,7 @@ static void lt_sleep_ms(int ms)
   }
 }
 
-int lt_wait_for_condition(int (*condition)(void *callback_context),
+int ta_wait_for_condition(int (*condition)(void *callback_context),
                           void *callback_context,
                   int timeout_ms,
                   int poll_interval_ms)
@@ -170,7 +170,7 @@ int lt_wait_for_condition(int (*condition)(void *callback_context),
     return condition(callback_context) ? 1 : 0;
   }
 
-  start = lt_now_ms();
+  start = ra_now_ms();
   if (start < 0) {
     return -1;
   }
@@ -180,17 +180,17 @@ int lt_wait_for_condition(int (*condition)(void *callback_context),
       return 1;
     }
 
-    if (lt_now_ms() - start >= timeout_ms) {
+    if (ra_now_ms() - start >= timeout_ms) {
       return 0;
     }
 
-    lt_sleep_ms(poll_interval_ms);
+    ra_sleep_ms(poll_interval_ms);
   }
 }
 
 /* Execution and runtime test helper functions. */
 
-int lt_assert_completes_within(int (*callback)(void *callback_context),
+int ta_assert_completes_within(int (*callback)(void *callback_context),
                                void *callback_context,
                                int timeout_ms)
 {
@@ -213,7 +213,7 @@ int lt_assert_completes_within(int (*callback)(void *callback_context),
   }
 
   if (timeout_ms > 0) {
-    start_ms = lt_now_ms();
+    start_ms = ra_now_ms();
     if (start_ms < 0) {
       kill(pid, SIGKILL);
       waitpid(pid, NULL, 0);
@@ -230,13 +230,13 @@ int lt_assert_completes_within(int (*callback)(void *callback_context),
       return -1;
     }
 
-    if (timeout_ms > 0 && (lt_now_ms() - start_ms) >= timeout_ms) {
+    if (timeout_ms > 0 && (ra_now_ms() - start_ms) >= timeout_ms) {
       kill(pid, SIGKILL);
       waitpid(pid, &status, 0);
       return 1;
     }
 
-    lt_sleep_ms(1);
+    ra_sleep_ms(1);
   }
 
   if (WIFEXITED(status)) {
@@ -248,7 +248,7 @@ int lt_assert_completes_within(int (*callback)(void *callback_context),
   return -1;
 }
 
-int lt_capture_standard_error(int (*callback)(void *callback_context),
+int ta_capture_standard_error(int (*callback)(void *callback_context),
                               void *callback_context,
                               char *output_buffer,
                               size_t output_buffer_size)
@@ -316,7 +316,7 @@ int lt_capture_standard_error(int (*callback)(void *callback_context),
   return fn_rc;
 }
 
-static int lt_set_nonblock(int fd)
+static int ra_set_nonblock(int fd)
 {
   int flags = fcntl(fd, F_GETFL, 0);
   if (flags < 0) {
@@ -328,7 +328,7 @@ static int lt_set_nonblock(int fd)
   return 0;
 }
 
-int lt_execute_command(const char *command_line,
+int ta_execute_command(const char *command_line,
                int timeout_ms,
                char *output_buffer,
                size_t output_buffer_size,
@@ -370,7 +370,7 @@ int lt_execute_command(const char *command_line,
   }
 
   close(pipefd[1]);
-  if (lt_set_nonblock(pipefd[0]) != 0) {
+  if (ra_set_nonblock(pipefd[0]) != 0) {
     close(pipefd[0]);
     kill(pid, SIGKILL);
     waitpid(pid, NULL, 0);
@@ -378,7 +378,7 @@ int lt_execute_command(const char *command_line,
   }
 
   if (timeout_ms > 0) {
-    start_ms = lt_now_ms();
+    start_ms = ra_now_ms();
     if (start_ms < 0) {
       close(pipefd[0]);
       kill(pid, SIGKILL);
@@ -397,7 +397,7 @@ int lt_execute_command(const char *command_line,
     pid_t wait_rc;
 
     if (timeout_ms > 0) {
-      long long elapsed = lt_now_ms() - start_ms;
+      long long elapsed = ra_now_ms() - start_ms;
       long long remain = timeout_ms - elapsed;
       if (remain <= 0) {
         timed_out = 1;
@@ -476,7 +476,7 @@ int lt_execute_command(const char *command_line,
   return 0;
 }
 
-int lt_copy_file(const char *source_path, const char *destination_path)
+int ta_copy_file(const char *source_path, const char *destination_path)
 {
   FILE *in;
   FILE *out;
@@ -517,9 +517,9 @@ int lt_copy_file(const char *source_path, const char *destination_path)
   return 0;
 }
 
-int lt_make_temp_dir(const char *prefix, char *out_path, size_t out_path_size)
+int ta_make_temp_dir(const char *prefix, char *out_path, size_t out_path_size)
 {
-  const char *use_prefix = "litetest-";
+  const char *use_prefix = "britetest-";
   char templ[PATH_MAX];
   int rc;
 
@@ -550,7 +550,7 @@ int lt_make_temp_dir(const char *prefix, char *out_path, size_t out_path_size)
 
 /* Filesystem and path test helper functions. */
 
-int lt_with_working_directory(const char *path,
+int ta_with_working_directory(const char *path,
                               int (*callback)(void *callback_context),
                               void *callback_context)
 {
@@ -582,9 +582,9 @@ int lt_with_working_directory(const char *path,
   return rc;
 }
 
-int lt_make_temp_file(const char *prefix, char *out_path, size_t out_path_size)
+int ta_make_temp_file(const char *prefix, char *out_path, size_t out_path_size)
 {
-  const char *use_prefix = "litetest-";
+  const char *use_prefix = "britetest-";
   char templ[PATH_MAX];
   int fd;
   int rc;
@@ -616,7 +616,7 @@ int lt_make_temp_file(const char *prefix, char *out_path, size_t out_path_size)
   return 0;
 }
 
-int lt_make_dirs(const char *path)
+int ta_make_dirs(const char *path)
 {
   char tmp[PATH_MAX];
   char *p;
@@ -647,7 +647,7 @@ int lt_make_dirs(const char *path)
   return 0;
 }
 
-int lt_path_join(const char *left_path_part,
+int ta_path_join(const char *left_path_part,
                  const char *right_path_part,
                  char *output_path,
                  size_t output_path_size)
@@ -669,17 +669,17 @@ int lt_path_join(const char *left_path_part,
   return 0;
 }
 
-int lt_read_file_with_limit(const char *path, size_t max_bytes, char **content, size_t *length)
+int ta_read_file_with_limit(const char *path, size_t max_bytes, char **content, size_t *length)
 {
   FILE *f;
   char *buf;
   size_t cap = 1024;
-  size_t limit = LT_ALLOC_MAX_BYTES;
+  size_t limit = RA_ALLOC_MAX_BYTES;
   size_t used = 0;
   int alloc_err = 0;
 
   if (!path || !content || !length) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
   *content = NULL;
@@ -687,13 +687,13 @@ int lt_read_file_with_limit(const char *path, size_t max_bytes, char **content, 
 
   f = fopen(path, "rb");
   if (!f) {
-    return LT_EIO;
+    return RA_EIO;
   }
 
   if (max_bytes > 0) {
-    if (max_bytes > LT_ALLOC_MAX_BYTES) {
+    if (max_bytes > RA_ALLOC_MAX_BYTES) {
       fclose(f);
-      return LT_ESIZE;
+      return RA_ESIZE;
     }
     limit = max_bytes;
   }
@@ -705,7 +705,7 @@ int lt_read_file_with_limit(const char *path, size_t max_bytes, char **content, 
     cap = 1;
   }
 
-  buf = (char *)lt_malloc_checked(cap + 1, &alloc_err);
+  buf = (char *)ra_malloc_checked(cap + 1, &alloc_err);
   if (!buf) {
     fclose(f);
     return alloc_err;
@@ -719,12 +719,12 @@ int lt_read_file_with_limit(const char *path, size_t max_bytes, char **content, 
       if (cap >= limit) {
         g_free_fn(buf);
         fclose(f);
-        return LT_ESIZE;
+        return RA_ESIZE;
       }
       if (next_cap > limit || next_cap < cap) {
         next_cap = limit;
       }
-      next = (char *)lt_realloc_checked(buf, next_cap + 1, &alloc_err);
+      next = (char *)ra_realloc_checked(buf, next_cap + 1, &alloc_err);
       if (!next) {
         g_free_fn(buf);
         fclose(f);
@@ -744,54 +744,54 @@ int lt_read_file_with_limit(const char *path, size_t max_bytes, char **content, 
   if (ferror(f)) {
     g_free_fn(buf);
     fclose(f);
-    return LT_EIO;
+    return RA_EIO;
   }
 
   buf[used] = '\0';
   *content = buf;
   *length = used;
   fclose(f);
-  return LT_OK;
+  return RA_OK;
 }
 
-int lt_read_file(const char *path, char **content, size_t *length)
+int ta_read_file(const char *path, char **content, size_t *length)
 {
-  return lt_read_file_with_limit(path, 0, content, length);
+  return ta_read_file_with_limit(path, 0, content, length);
 }
 
-int lt_read_file_into(const char *path, char *buffer, size_t buffer_size, size_t *out_length)
+int ta_read_file_into(const char *path, char *buffer, size_t buffer_size, size_t *out_length)
 {
   FILE *f;
   size_t n;
 
   if (!path || !buffer || buffer_size == 0 || !out_length) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
   *out_length = 0;
   f = fopen(path, "rb");
   if (!f) {
-    return LT_EIO;
+    return RA_EIO;
   }
 
   n = fread(buffer, 1, buffer_size - 1, f);
   if (ferror(f)) {
     fclose(f);
-    return LT_EIO;
+    return RA_EIO;
   }
   buffer[n] = '\0';
   *out_length = n;
 
   if (!feof(f)) {
     fclose(f);
-    return LT_ESIZE;
+    return RA_ESIZE;
   }
 
   fclose(f);
-  return LT_OK;
+  return RA_OK;
 }
 
-static int lt_remove_tree_impl(const char *path)
+static int ra_remove_tree_impl(const char *path)
 {
   struct stat st;
 
@@ -814,7 +814,7 @@ static int lt_remove_tree_impl(const char *path)
         closedir(dir);
         return -1;
       }
-      if (lt_remove_tree_impl(child) != 0) {
+      if (ra_remove_tree_impl(child) != 0) {
         closedir(dir);
         return -1;
       }
@@ -826,15 +826,15 @@ static int lt_remove_tree_impl(const char *path)
   return unlink(path);
 }
 
-int lt_remove_tree(const char *path)
+int ta_remove_tree(const char *path)
 {
   if (!path || !*path) {
     return -1;
   }
-  return lt_remove_tree_impl(path);
+  return ra_remove_tree_impl(path);
 }
 
-int lt_stat_check(const char *path, int must_exist, long min_size)
+int ta_stat_check(const char *path, int must_exist, long min_size)
 {
   struct stat st;
 
@@ -853,7 +853,7 @@ int lt_stat_check(const char *path, int must_exist, long min_size)
   return 0;
 }
 
-int lt_touch(const char *path)
+int ta_touch(const char *path)
 {
   int fd;
 
@@ -874,7 +874,7 @@ int lt_touch(const char *path)
   return 0;
 }
 
-int lt_write_file(const char *path, const void *buffer, size_t length)
+int ta_write_file(const char *path, const void *buffer, size_t length)
 {
   FILE *f;
 
@@ -901,18 +901,18 @@ int lt_write_file(const char *path, const void *buffer, size_t length)
   return 0;
 }
 
-static int lt_cmp_file_result(int rc)
+static int ra_cmp_file_result(int rc)
 {
   if (rc > 0) {
-    return LT_OK;
+    return RA_OK;
   }
   if (rc == 0) {
-    return LT_MISMATCH;
+    return RA_MISMATCH;
   }
-  return LT_EIO;
+  return RA_EIO;
 }
 
-static size_t lt_line_content_len(const char *line, size_t len, int ignore_line_endings)
+static size_t ra_line_content_len(const char *line, size_t len, int ignore_line_endings)
 {
   if (len > 0 && line[len - 1] == '\n') {
     --len;
@@ -923,9 +923,9 @@ static size_t lt_line_content_len(const char *line, size_t len, int ignore_line_
   return len;
 }
 
-static size_t lt_trimmed_line_len(const char *line, size_t len, int ignore_line_endings)
+static size_t ra_trimmed_line_len(const char *line, size_t len, int ignore_line_endings)
 {
-  len = lt_line_content_len(line, len, ignore_line_endings);
+  len = ra_line_content_len(line, len, ignore_line_endings);
   while (len > 0 && isspace((unsigned char)line[len - 1]) && line[len - 1] != '\n' &&
          line[len - 1] != '\r') {
     --len;
@@ -933,11 +933,11 @@ static size_t lt_trimmed_line_len(const char *line, size_t len, int ignore_line_
   return len;
 }
 
-static int lt_line_is_empty_for_compare(const char *line, size_t len, int flags)
+static int ra_line_is_empty_for_compare(const char *line, size_t len, int flags)
 {
   size_t i;
 
-  len = lt_line_content_len(line, len, (flags & LT_FILECMP_IGNORE_LINE_ENDINGS) != 0);
+  len = ra_line_content_len(line, len, (flags & RA_FILECMP_IGNORE_LINE_ENDINGS) != 0);
   for (i = 0; i < len; ++i) {
     if (!isspace((unsigned char)line[i])) {
       return 0;
@@ -946,7 +946,7 @@ static int lt_line_is_empty_for_compare(const char *line, size_t len, int flags)
   return 1;
 }
 
-static size_t lt_span_timestamp_token(const char *s, size_t len)
+static size_t ra_span_timestamp_token(const char *s, size_t len)
 {
   size_t i = 0;
 
@@ -999,18 +999,18 @@ static size_t lt_span_timestamp_token(const char *s, size_t len)
   return 0;
 }
 
-static int lt_append_compare_char(char **dst, size_t *remaining, char c)
+static int ra_append_compare_char(char **dst, size_t *remaining, char c)
 {
   if (!dst || !*dst || !remaining || *remaining == 0) {
-    return LT_ESIZE;
+    return RA_ESIZE;
   }
   **dst = c;
   ++(*dst);
   --(*remaining);
-  return LT_OK;
+  return RA_OK;
 }
 
-static int lt_normalize_compare_line(const char *line,
+static int ra_normalize_compare_line(const char *line,
                                      size_t len,
                                      int flags,
                                      char **out_line)
@@ -1022,17 +1022,17 @@ static int lt_normalize_compare_line(const char *line,
   size_t remaining;
   size_t i;
   int alloc_err = 0;
-  int ignore_line_endings = (flags & LT_FILECMP_IGNORE_LINE_ENDINGS) != 0;
+  int ignore_line_endings = (flags & RA_FILECMP_IGNORE_LINE_ENDINGS) != 0;
 
   if (!line || !out_line) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
-  content_len = (flags & LT_FILECMP_IGNORE_TRAILING_WHITESPACE) != 0
-                  ? lt_trimmed_line_len(line, len, ignore_line_endings)
-                  : lt_line_content_len(line, len, ignore_line_endings);
+  content_len = (flags & RA_FILECMP_IGNORE_TRAILING_WHITESPACE) != 0
+                  ? ra_trimmed_line_len(line, len, ignore_line_endings)
+                  : ra_line_content_len(line, len, ignore_line_endings);
   out_cap = (content_len * 2) + 8;
-  buf = (char *)lt_malloc_checked(out_cap, &alloc_err);
+  buf = (char *)ra_malloc_checked(out_cap, &alloc_err);
   if (!buf) {
     return alloc_err;
   }
@@ -1044,69 +1044,69 @@ static int lt_normalize_compare_line(const char *line,
     size_t span = 0;
     char c = line[i];
 
-    if ((flags & LT_FILECMP_IGNORE_TIMESTAMPS) != 0) {
-      span = lt_span_timestamp_token(line + i, content_len - i);
+    if ((flags & RA_FILECMP_IGNORE_TIMESTAMPS) != 0) {
+      span = ra_span_timestamp_token(line + i, content_len - i);
       if (span > 0) {
-        if (lt_append_compare_char(&dst, &remaining, '<') != LT_OK ||
-            lt_append_compare_char(&dst, &remaining, 'T') != LT_OK ||
-            lt_append_compare_char(&dst, &remaining, 'S') != LT_OK ||
-            lt_append_compare_char(&dst, &remaining, '>') != LT_OK) {
+        if (ra_append_compare_char(&dst, &remaining, '<') != RA_OK ||
+            ra_append_compare_char(&dst, &remaining, 'T') != RA_OK ||
+            ra_append_compare_char(&dst, &remaining, 'S') != RA_OK ||
+            ra_append_compare_char(&dst, &remaining, '>') != RA_OK) {
           g_free_fn(buf);
-          return LT_ESIZE;
+          return RA_ESIZE;
         }
         i += span - 1;
         continue;
       }
     }
 
-    if ((flags & LT_FILECMP_CASE_INSENSITIVE) != 0) {
+    if ((flags & RA_FILECMP_CASE_INSENSITIVE) != 0) {
       c = (char)tolower((unsigned char)c);
     }
-    if (lt_append_compare_char(&dst, &remaining, c) != LT_OK) {
+    if (ra_append_compare_char(&dst, &remaining, c) != RA_OK) {
       g_free_fn(buf);
-      return LT_ESIZE;
+      return RA_ESIZE;
     }
   }
 
   if (!ignore_line_endings && len > content_len) {
     if (len >= 2 && line[len - 2] == '\r' && line[len - 1] == '\n') {
-      if (lt_append_compare_char(&dst, &remaining, '\r') != LT_OK ||
-          lt_append_compare_char(&dst, &remaining, '\n') != LT_OK) {
+      if (ra_append_compare_char(&dst, &remaining, '\r') != RA_OK ||
+          ra_append_compare_char(&dst, &remaining, '\n') != RA_OK) {
         g_free_fn(buf);
-        return LT_ESIZE;
+        return RA_ESIZE;
       }
     } else if (line[len - 1] == '\n') {
-      if (lt_append_compare_char(&dst, &remaining, '\n') != LT_OK) {
+      if (ra_append_compare_char(&dst, &remaining, '\n') != RA_OK) {
         g_free_fn(buf);
-        return LT_ESIZE;
+        return RA_ESIZE;
       }
     }
   }
 
-  if (lt_append_compare_char(&dst, &remaining, '\0') != LT_OK) {
+  if (ra_append_compare_char(&dst, &remaining, '\0') != RA_OK) {
     g_free_fn(buf);
-    return LT_ESIZE;
+    return RA_ESIZE;
   }
 
   *out_line = buf;
-  return LT_OK;
+  return RA_OK;
 }
 
-static int lt_compile_patterns(const char **patterns, size_t pattern_count, regex_t **out_patterns)
+static int ra_compile_patterns(const char **patterns, size_t pattern_count, regex_t **out_patterns)
 {
   regex_t *compiled;
   size_t i;
   int alloc_err = 0;
 
   if (!out_patterns) {
-    return LT_EARG;
+    return RA_EARG;
   }
   *out_patterns = NULL;
   if (!patterns || pattern_count == 0) {
-    return LT_OK;
+    return RA_OK;
   }
 
-  compiled = (regex_t *)lt_malloc_checked(sizeof(*compiled) * pattern_count, &alloc_err);
+  compiled = (regex_t *)ra_malloc_checked(sizeof(*compiled) * pattern_count, &alloc_err);
   if (!compiled) {
     return alloc_err;
   }
@@ -1118,15 +1118,15 @@ static int lt_compile_patterns(const char **patterns, size_t pattern_count, rege
         regfree(&compiled[i]);
       }
       g_free_fn(compiled);
-      return LT_EPARSE;
+      return RA_EPARSE;
     }
   }
 
   *out_patterns = compiled;
-  return LT_OK;
+  return RA_OK;
 }
 
-static void lt_free_patterns(regex_t *patterns, size_t pattern_count)
+static void ra_free_patterns(regex_t *patterns, size_t pattern_count)
 {
   size_t i;
 
@@ -1139,7 +1139,7 @@ static void lt_free_patterns(regex_t *patterns, size_t pattern_count)
   g_free_fn(patterns);
 }
 
-static int lt_line_matches_patterns(const char *line,
+static int ra_line_matches_patterns(const char *line,
                                     size_t len,
                                     regex_t *patterns,
                                     size_t pattern_count)
@@ -1154,8 +1154,8 @@ static int lt_line_matches_patterns(const char *line,
     return 0;
   }
 
-  content_len = lt_line_content_len(line, len, 1);
-  copy = (char *)lt_malloc_checked(content_len + 1, &alloc_err);
+  content_len = ra_line_content_len(line, len, 1);
+  copy = (char *)ra_malloc_checked(content_len + 1, &alloc_err);
   if (!copy) {
     return 0;
   }
@@ -1174,7 +1174,7 @@ static int lt_line_matches_patterns(const char *line,
   return matched;
 }
 
-static int lt_next_compare_line(FILE *f,
+static int ra_next_compare_line(FILE *f,
                                 char **line,
                                 size_t *cap,
                                 ssize_t *len,
@@ -1185,33 +1185,33 @@ static int lt_next_compare_line(FILE *f,
   ssize_t read_len;
 
   if (!f || !line || !cap || !len) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
   for (;;) {
     read_len = getline(line, cap, f);
     if (read_len < 0) {
       if (ferror(f)) {
-        return LT_EIO;
+        return RA_EIO;
       }
       *len = -1;
-      return LT_OK;
+      return RA_OK;
     }
 
-    if ((flags & LT_FILECMP_IGNORE_EMPTY_LINES) != 0 &&
-        lt_line_is_empty_for_compare(*line, (size_t)read_len, flags)) {
+    if ((flags & RA_FILECMP_IGNORE_EMPTY_LINES) != 0 &&
+        ra_line_is_empty_for_compare(*line, (size_t)read_len, flags)) {
       continue;
     }
-    if (lt_line_matches_patterns(*line, (size_t)read_len, patterns, pattern_count)) {
+    if (ra_line_matches_patterns(*line, (size_t)read_len, patterns, pattern_count)) {
       continue;
     }
 
     *len = read_len;
-    return LT_OK;
+    return RA_OK;
   }
 }
 
-static int lt_compare_file_streams(FILE *f1,
+static int ra_compare_file_streams(FILE *f1,
                                    FILE *f2,
                                    int flags,
                                    regex_t *patterns,
@@ -1229,27 +1229,27 @@ static int lt_compare_file_streams(FILE *f1,
     char *norm1 = NULL;
     char *norm2 = NULL;
 
-    rc = lt_next_compare_line(f1, &line1, &cap1, &len1, flags, patterns, pattern_count);
-    if (rc != LT_OK) {
+    rc = ra_next_compare_line(f1, &line1, &cap1, &len1, flags, patterns, pattern_count);
+    if (rc != RA_OK) {
       break;
     }
-    rc = lt_next_compare_line(f2, &line2, &cap2, &len2, flags, patterns, pattern_count);
-    if (rc != LT_OK) {
+    rc = ra_next_compare_line(f2, &line2, &cap2, &len2, flags, patterns, pattern_count);
+    if (rc != RA_OK) {
       break;
     }
 
     if (len1 < 0 || len2 < 0) {
-      rc = (len1 == len2) ? LT_OK : LT_MISMATCH;
+      rc = (len1 == len2) ? RA_OK : RA_MISMATCH;
       break;
     }
 
-    rc = lt_normalize_compare_line(line1, (size_t)len1, flags, &norm1);
-    if (rc != LT_OK) {
+    rc = ra_normalize_compare_line(line1, (size_t)len1, flags, &norm1);
+    if (rc != RA_OK) {
       g_free_fn(norm1);
       break;
     }
-    rc = lt_normalize_compare_line(line2, (size_t)len2, flags, &norm2);
-    if (rc != LT_OK) {
+    rc = ra_normalize_compare_line(line2, (size_t)len2, flags, &norm2);
+    if (rc != RA_OK) {
       g_free_fn(norm1);
       g_free_fn(norm2);
       break;
@@ -1258,7 +1258,7 @@ static int lt_compare_file_streams(FILE *f1,
     if (strcmp(norm1, norm2) != 0) {
       g_free_fn(norm1);
       g_free_fn(norm2);
-      rc = LT_MISMATCH;
+      rc = RA_MISMATCH;
       break;
     }
 
@@ -1271,7 +1271,7 @@ static int lt_compare_file_streams(FILE *f1,
   return rc;
 }
 
-static int lt_field_name_matches(const char *name,
+static int ra_field_name_matches(const char *name,
                                  size_t name_len,
                                  const char **field_names,
                                  size_t field_count)
@@ -1287,7 +1287,7 @@ static int lt_field_name_matches(const char *name,
   return 0;
 }
 
-static char *lt_skip_ws_chars(char *p)
+static char *ra_skip_ws_chars(char *p)
 {
   while (p && *p && isspace((unsigned char)*p) && *p != '\n' && *p != '\r') {
     ++p;
@@ -1295,7 +1295,7 @@ static char *lt_skip_ws_chars(char *p)
   return p;
 }
 
-static char *lt_mask_json_value(char *p)
+static char *ra_mask_json_value(char *p)
 {
   char open;
   char close;
@@ -1305,7 +1305,7 @@ static char *lt_mask_json_value(char *p)
     return p;
   }
 
-  p = lt_skip_ws_chars(p);
+  p = ra_skip_ws_chars(p);
   if (*p == '"') {
     char *q = p + 1;
     while (*q) {
@@ -1362,7 +1362,7 @@ static char *lt_mask_json_value(char *p)
   return p - 1;
 }
 
-static void lt_mask_field_values(char *text, const char **field_names, size_t field_count)
+static void ra_mask_field_values(char *text, const char **field_names, size_t field_count)
 {
   char *p;
   int line_start = 1;
@@ -1388,10 +1388,10 @@ static void lt_mask_field_values(char *text, const char **field_names, size_t fi
         ++line;
       }
       name_end = line;
-      cursor = lt_skip_ws_chars(line);
+      cursor = ra_skip_ws_chars(line);
       if ((*cursor == '=' || *cursor == ':') &&
-          lt_field_name_matches(name_start, (size_t)(name_end - name_start), field_names, field_count)) {
-        cursor = lt_skip_ws_chars(cursor + 1);
+          ra_field_name_matches(name_start, (size_t)(name_end - name_start), field_names, field_count)) {
+        cursor = ra_skip_ws_chars(cursor + 1);
         while (*cursor && *cursor != '\n' && *cursor != '\r') {
           if (!isspace((unsigned char)*cursor)) {
             *cursor = '#';
@@ -1415,9 +1415,9 @@ static void lt_mask_field_values(char *text, const char **field_names, size_t fi
         ++q;
       }
       if (*q == '"') {
-        char *after = lt_skip_ws_chars(q + 1);
-        if (*after == ':' && lt_field_name_matches(key_start, (size_t)(q - key_start), field_names, field_count)) {
-          p = lt_mask_json_value(after + 1);
+        char *after = ra_skip_ws_chars(q + 1);
+        if (*after == ':' && ra_field_name_matches(key_start, (size_t)(q - key_start), field_names, field_count)) {
+          p = ra_mask_json_value(after + 1);
         }
       }
     }
@@ -1427,7 +1427,7 @@ static void lt_mask_field_values(char *text, const char **field_names, size_t fi
   }
 }
 
-int lt_compare_files(FILE *left_file, FILE *right_file)
+int ta_compare_files(FILE *left_file, FILE *right_file)
 {
   int c1;
   int c2;
@@ -1457,7 +1457,7 @@ int lt_compare_files(FILE *left_file, FILE *right_file)
   }
 }
 
-int lt_compare_file_to_path(FILE *file, const char *path)
+int ta_compare_file_to_path(FILE *file, const char *path)
 {
   FILE *other;
   int rc;
@@ -1471,12 +1471,12 @@ int lt_compare_file_to_path(FILE *file, const char *path)
     return -1;
   }
 
-  rc = lt_compare_files(file, other);
+  rc = ta_compare_files(file, other);
   fclose(other);
   return rc;
 }
 
-int lt_compare_paths(const char *left_path, const char *right_path)
+int ta_compare_paths(const char *left_path, const char *right_path)
 {
   FILE *f1;
   FILE *f2;
@@ -1497,20 +1497,20 @@ int lt_compare_paths(const char *left_path, const char *right_path)
     return -1;
   }
 
-  rc = lt_compare_files(f1, f2);
+  rc = ta_compare_files(f1, f2);
   fclose(f1);
   fclose(f2);
   return rc;
 }
 
-int lt_compare_path_to_file(const char *path, FILE *file)
+int ta_compare_path_to_file(const char *path, FILE *file)
 {
-  return lt_compare_file_to_path(file, path);
+  return ta_compare_file_to_path(file, path);
 }
 
-int lt_compare_paths_with_options(const char *left_path,
+int ta_compare_paths_with_options(const char *left_path,
                                   const char *right_path,
-                                  const lt_path_compare_options_t *options)
+                                  const ra_path_compare_options_t *options)
 {
   FILE *f1;
   FILE *f2;
@@ -1518,29 +1518,29 @@ int lt_compare_paths_with_options(const char *left_path,
   int flags = options ? options->flags : 0;
 
   if (!left_path || !right_path) {
-    return LT_EARG;
+    return RA_EARG;
   }
   if (flags == 0) {
-    return lt_cmp_file_result(lt_compare_paths(left_path, right_path));
+    return ra_cmp_file_result(ta_compare_paths(left_path, right_path));
   }
 
   f1 = fopen(left_path, "rb");
   if (!f1) {
-    return LT_EIO;
+    return RA_EIO;
   }
   f2 = fopen(right_path, "rb");
   if (!f2) {
     fclose(f1);
-    return LT_EIO;
+    return RA_EIO;
   }
 
-  rc = lt_compare_file_streams(f1, f2, flags, NULL, 0);
+  rc = ra_compare_file_streams(f1, f2, flags, NULL, 0);
   fclose(f1);
   fclose(f2);
   return rc;
 }
 
-int lt_compare_paths_ignoring_patterns(const char *left_path,
+int ta_compare_paths_ignoring_patterns(const char *left_path,
                                        const char *right_path,
                                const char **ignore_patterns,
                                size_t pattern_count)
@@ -1551,34 +1551,34 @@ int lt_compare_paths_ignoring_patterns(const char *left_path,
   int rc;
 
   if (!left_path || !right_path || (pattern_count > 0 && !ignore_patterns)) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
-  rc = lt_compile_patterns(ignore_patterns, pattern_count, &patterns);
-  if (rc != LT_OK) {
+  rc = ra_compile_patterns(ignore_patterns, pattern_count, &patterns);
+  if (rc != RA_OK) {
     return rc;
   }
 
   f1 = fopen(left_path, "rb");
   if (!f1) {
-    lt_free_patterns(patterns, pattern_count);
-    return LT_EIO;
+    ra_free_patterns(patterns, pattern_count);
+    return RA_EIO;
   }
   f2 = fopen(right_path, "rb");
   if (!f2) {
     fclose(f1);
-    lt_free_patterns(patterns, pattern_count);
-    return LT_EIO;
+    ra_free_patterns(patterns, pattern_count);
+    return RA_EIO;
   }
 
-  rc = lt_compare_file_streams(f1, f2, 0, patterns, pattern_count);
+  rc = ra_compare_file_streams(f1, f2, 0, patterns, pattern_count);
   fclose(f1);
   fclose(f2);
-  lt_free_patterns(patterns, pattern_count);
+  ra_free_patterns(patterns, pattern_count);
   return rc;
 }
 
-int lt_compare_paths_masking_fields(const char *left_path,
+int ta_compare_paths_masking_fields(const char *left_path,
                                     const char *right_path,
                            const char **field_names,
                            size_t field_count)
@@ -1590,31 +1590,31 @@ int lt_compare_paths_masking_fields(const char *left_path,
   int rc;
 
   if (!left_path || !right_path || (field_count > 0 && !field_names)) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
-  rc = lt_read_file_with_limit(left_path, 0, &text1, &len1);
-  if (rc != LT_OK) {
+  rc = ta_read_file_with_limit(left_path, 0, &text1, &len1);
+  if (rc != RA_OK) {
     return rc;
   }
-  rc = lt_read_file_with_limit(right_path, 0, &text2, &len2);
-  if (rc != LT_OK) {
+  rc = ta_read_file_with_limit(right_path, 0, &text2, &len2);
+  if (rc != RA_OK) {
     g_free_fn(text1);
     return rc;
   }
 
   (void)len1;
   (void)len2;
-  lt_mask_field_values(text1, field_names, field_count);
-  lt_mask_field_values(text2, field_names, field_count);
+  ra_mask_field_values(text1, field_names, field_count);
+  ra_mask_field_values(text2, field_names, field_count);
 
-  rc = (strcmp(text1, text2) == 0) ? LT_OK : LT_MISMATCH;
+  rc = (strcmp(text1, text2) == 0) ? RA_OK : RA_MISMATCH;
   g_free_fn(text1);
   g_free_fn(text2);
   return rc;
 }
 
-static int lt_offset_is_masked(size_t offset,
+static int ra_offset_is_masked(size_t offset,
                                const size_t *skip_offsets,
                                const size_t *skip_lengths,
                                size_t range_count)
@@ -1642,7 +1642,7 @@ static int lt_offset_is_masked(size_t offset,
   return 0;
 }
 
-int lt_compare_paths_masking_ranges(const char *left_path,
+int ta_compare_paths_masking_ranges(const char *left_path,
                                     const char *right_path,
                            const size_t *skip_offsets,
                            const size_t *skip_lengths,
@@ -1658,39 +1658,39 @@ int lt_compare_paths_masking_ranges(const char *left_path,
 
   if (!left_path || !right_path ||
       (range_count > 0 && (!skip_offsets || !skip_lengths))) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
-  rc = lt_read_file_with_limit(left_path, 0, &buf1, &len1);
-  if (rc != LT_OK) {
+  rc = ta_read_file_with_limit(left_path, 0, &buf1, &len1);
+  if (rc != RA_OK) {
     return rc;
   }
-  rc = lt_read_file_with_limit(right_path, 0, &buf2, &len2);
-  if (rc != LT_OK) {
+  rc = ta_read_file_with_limit(right_path, 0, &buf2, &len2);
+  if (rc != RA_OK) {
     g_free_fn(buf1);
     return rc;
   }
 
   limit = (len1 > len2) ? len1 : len2;
-  rc = LT_OK;
+  rc = RA_OK;
   for (i = 0; i < limit; ++i) {
     unsigned char b1 = 0;
     unsigned char b2 = 0;
     int in1 = (i < len1);
     int in2 = (i < len2);
 
-    if (lt_offset_is_masked(i, skip_offsets, skip_lengths, range_count)) {
+    if (ra_offset_is_masked(i, skip_offsets, skip_lengths, range_count)) {
       continue;
     }
     if (!in1 || !in2) {
-      rc = LT_MISMATCH;
+      rc = RA_MISMATCH;
       break;
     }
 
     b1 = (unsigned char)buf1[i];
     b2 = (unsigned char)buf2[i];
     if (b1 != b2) {
-      rc = LT_MISMATCH;
+      rc = RA_MISMATCH;
       break;
     }
   }
@@ -1700,7 +1700,7 @@ int lt_compare_paths_masking_ranges(const char *left_path,
   return rc;
 }
 
-static int lt_mode_type(mode_t mode)
+static int ra_mode_type(mode_t mode)
 {
   if (S_ISREG(mode)) return S_IFREG;
   if (S_ISDIR(mode)) return S_IFDIR;
@@ -1714,48 +1714,48 @@ static int lt_mode_type(mode_t mode)
   return 0;
 }
 
-int lt_compare_path_metadata(const char *left_path,
+int ta_compare_path_metadata(const char *left_path,
                              const char *right_path,
-                             const lt_path_metadata_compare_options_t *options)
+                             const ra_path_metadata_compare_options_t *options)
 {
   struct stat st1;
   struct stat st2;
   int flags = options ? options->flags : 0;
 
   if (!left_path || !right_path) {
-    return LT_EARG;
+    return RA_EARG;
   }
   if (flags == 0) {
-    flags = LT_STATCMP_SIZE | LT_STATCMP_PERMS | LT_STATCMP_TYPE;
+    flags = RA_STATCMP_SIZE | RA_STATCMP_PERMS | RA_STATCMP_TYPE;
   }
 
   if (stat(left_path, &st1) != 0 || stat(right_path, &st2) != 0) {
-    return LT_EIO;
+    return RA_EIO;
   }
 
-  if ((flags & LT_STATCMP_SIZE) != 0 && st1.st_size != st2.st_size) {
-    return LT_MISMATCH;
+  if ((flags & RA_STATCMP_SIZE) != 0 && st1.st_size != st2.st_size) {
+    return RA_MISMATCH;
   }
-  if ((flags & LT_STATCMP_PERMS) != 0 &&
+  if ((flags & RA_STATCMP_PERMS) != 0 &&
       (st1.st_mode & 07777) != (st2.st_mode & 07777)) {
-    return LT_MISMATCH;
+    return RA_MISMATCH;
   }
-  if ((flags & LT_STATCMP_MTIME) != 0 && st1.st_mtime != st2.st_mtime) {
-    return LT_MISMATCH;
+  if ((flags & RA_STATCMP_MTIME) != 0 && st1.st_mtime != st2.st_mtime) {
+    return RA_MISMATCH;
   }
-  if ((flags & LT_STATCMP_OWNER) != 0 &&
+  if ((flags & RA_STATCMP_OWNER) != 0 &&
       (st1.st_uid != st2.st_uid || st1.st_gid != st2.st_gid)) {
-    return LT_MISMATCH;
+    return RA_MISMATCH;
   }
-  if ((flags & LT_STATCMP_TYPE) != 0 &&
-      lt_mode_type(st1.st_mode) != lt_mode_type(st2.st_mode)) {
-    return LT_MISMATCH;
+  if ((flags & RA_STATCMP_TYPE) != 0 &&
+      ra_mode_type(st1.st_mode) != ra_mode_type(st2.st_mode)) {
+    return RA_MISMATCH;
   }
 
-  return LT_OK;
+  return RA_OK;
 }
 
-static int lt_cmp_entry_type(mode_t m1, mode_t m2)
+static int ra_cmp_entry_type(mode_t m1, mode_t m2)
 {
   if (S_ISDIR(m1) && S_ISDIR(m2)) return 1;
   if (S_ISREG(m1) && S_ISREG(m2)) return 1;
@@ -1763,7 +1763,7 @@ static int lt_cmp_entry_type(mode_t m1, mode_t m2)
   return 0;
 }
 
-static int lt_dircmp_impl(const char *dir1, const char *dir2, int recursive)
+static int ra_dircmp_impl(const char *dir1, const char *dir2, int recursive)
 {
   DIR *d1;
   DIR *d2;
@@ -1774,7 +1774,7 @@ static int lt_dircmp_impl(const char *dir1, const char *dir2, int recursive)
   if (!d1 || !d2) {
     if (d1) closedir(d1);
     if (d2) closedir(d2);
-    return LT_EIO;
+    return RA_EIO;
   }
 
   while ((ent = readdir(d1)) != NULL) {
@@ -1791,31 +1791,31 @@ static int lt_dircmp_impl(const char *dir1, const char *dir2, int recursive)
         snprintf(p2, sizeof(p2), "%s/%s", dir2, ent->d_name) >= (int)sizeof(p2)) {
       closedir(d1);
       closedir(d2);
-      return LT_ESIZE;
+      return RA_ESIZE;
     }
 
     if (lstat(p1, &s1) != 0 || lstat(p2, &s2) != 0) {
       closedir(d1);
       closedir(d2);
-      return LT_EIO;
+      return RA_EIO;
     }
 
-    if (!lt_cmp_entry_type(s1.st_mode, s2.st_mode)) {
+    if (!ra_cmp_entry_type(s1.st_mode, s2.st_mode)) {
       closedir(d1);
       closedir(d2);
-      return LT_MISMATCH;
+      return RA_MISMATCH;
     }
 
     if (S_ISREG(s1.st_mode)) {
-      int frc = lt_compare_paths(p1, p2);
+      int frc = ta_compare_paths(p1, p2);
       if (frc != 1) {
         closedir(d1);
         closedir(d2);
-        return (frc < 0) ? LT_EIO : LT_MISMATCH;
+        return (frc < 0) ? RA_EIO : RA_MISMATCH;
       }
     } else if (S_ISDIR(s1.st_mode) && recursive) {
-      int dir_rc = lt_dircmp_impl(p1, p2, recursive);
-      if (dir_rc != LT_OK) {
+      int dir_rc = ra_dircmp_impl(p1, p2, recursive);
+      if (dir_rc != RA_OK) {
         closedir(d1);
         closedir(d2);
         return dir_rc;
@@ -1831,29 +1831,29 @@ static int lt_dircmp_impl(const char *dir1, const char *dir2, int recursive)
     if (snprintf(p1, sizeof(p1), "%s/%s", dir1, ent->d_name) >= (int)sizeof(p1)) {
       closedir(d1);
       closedir(d2);
-      return LT_ESIZE;
+      return RA_ESIZE;
     }
     if (access(p1, F_OK) != 0) {
       closedir(d1);
       closedir(d2);
-      return (errno == ENOENT) ? LT_MISMATCH : LT_EIO;
+      return (errno == ENOENT) ? RA_MISMATCH : RA_EIO;
     }
   }
 
   closedir(d1);
   closedir(d2);
-  return LT_OK;
+  return RA_OK;
 }
 
-int lt_compare_dirs(const char *left_path, const char *right_path, int recursive)
+int ta_compare_dirs(const char *left_path, const char *right_path, int recursive)
 {
   if (!left_path || !right_path) {
-    return LT_EARG;
+    return RA_EARG;
   }
-  return lt_dircmp_impl(left_path, right_path, recursive != 0);
+  return ra_dircmp_impl(left_path, right_path, recursive != 0);
 }
 
-int lt_hexdump_diff(const void *a, const void *b, size_t n, size_t context)
+int ta_hexdump_diff(const void *a, const void *b, size_t n, size_t context)
 {
   const unsigned char *ba = (const unsigned char *)a;
   const unsigned char *bb = (const unsigned char *)b;
@@ -1862,29 +1862,29 @@ int lt_hexdump_diff(const void *a, const void *b, size_t n, size_t context)
   (void)context;
 
   if ((!a && n > 0) || (!b && n > 0)) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
   for (i = 0; i < n; ++i) {
     if (ba[i] != bb[i]) {
-      return LT_MISMATCH;
+      return RA_MISMATCH;
     }
   }
-  return LT_OK;
+  return RA_OK;
 }
 
 typedef struct {
   char *data;
   size_t len;
   size_t cap;
-} lt_sb_t;
+} ra_sb_t;
 
 typedef struct {
   char *key;
   char *value;
-} lt_json_kv_t;
+} ra_json_kv_t;
 
-static int lt_sb_reserve(lt_sb_t *sb, size_t add)
+static int ra_sb_reserve(ra_sb_t *sb, size_t add)
 {
   size_t need;
   size_t new_cap;
@@ -1892,75 +1892,75 @@ static int lt_sb_reserve(lt_sb_t *sb, size_t add)
   int err = 0;
 
   if (!sb) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
-  if (lt_add_overflow_size(sb->len, add, &need) != 0 ||
-      lt_add_overflow_size(need, 1, &need) != 0) {
-    return LT_ESIZE;
+  if (ra_add_overflow_size(sb->len, add, &need) != 0 ||
+      ra_add_overflow_size(need, 1, &need) != 0) {
+    return RA_ESIZE;
   }
   if (need <= sb->cap) {
-    return LT_OK;
+    return RA_OK;
   }
 
-  if (need > LT_ALLOC_MAX_BYTES) {
-    return LT_ESIZE;
+  if (need > RA_ALLOC_MAX_BYTES) {
+    return RA_ESIZE;
   }
 
   new_cap = sb->cap ? sb->cap : 128;
   while (new_cap < need) {
     if (new_cap > (SIZE_MAX / 2)) {
-      return LT_ESIZE;
+      return RA_ESIZE;
     }
     new_cap *= 2;
-    if (new_cap > LT_ALLOC_MAX_BYTES) {
-      new_cap = LT_ALLOC_MAX_BYTES;
+    if (new_cap > RA_ALLOC_MAX_BYTES) {
+      new_cap = RA_ALLOC_MAX_BYTES;
       break;
     }
   }
 
-  next = (char *)lt_realloc_checked(sb->data, new_cap, &err);
+  next = (char *)ra_realloc_checked(sb->data, new_cap, &err);
   if (!next) {
     return err;
   }
 
   sb->data = next;
   sb->cap = new_cap;
-  return LT_OK;
+  return RA_OK;
 }
 
-static int lt_sb_append_n(lt_sb_t *sb, const char *s, size_t n)
+static int ra_sb_append_n(ra_sb_t *sb, const char *s, size_t n)
 {
-  if (!sb || (!s && n > 0) || lt_sb_reserve(sb, n) != 0) {
-    return LT_EARG;
+  if (!sb || (!s && n > 0) || ra_sb_reserve(sb, n) != 0) {
+    return RA_EARG;
   }
   if (n > 0) {
     memcpy(sb->data + sb->len, s, n);
     sb->len += n;
   }
   sb->data[sb->len] = '\0';
-  return LT_OK;
+  return RA_OK;
 }
 
-static int lt_sb_append_c(lt_sb_t *sb, char c)
+static int ra_sb_append_c(ra_sb_t *sb, char c)
 {
-  return lt_sb_append_n(sb, &c, 1);
+  return ra_sb_append_n(sb, &c, 1);
 }
 
-static void lt_json_skip_ws(const char **p)
+static void ra_json_skip_ws(const char **p)
 {
   while (p && *p && **p && isspace((unsigned char)**p)) {
     ++(*p);
   }
 }
 
-static int lt_json_append_string(const char **p, lt_sb_t *out)
+static int ra_json_append_string(const char **p, ra_sb_t *out)
 {
   const char *start;
   int escape = 0;
 
   if (!p || !*p || **p != '"' || !out) {
-    return LT_EPARSE;
+    return RA_EPARSE;
   }
 
   start = *p;
@@ -1977,89 +1977,89 @@ static int lt_json_append_string(const char **p, lt_sb_t *out)
       continue;
     }
     if (c == '"') {
-      return lt_sb_append_n(out, start, (size_t)(*p - start)) ? LT_ESIZE : LT_OK;
+      return ra_sb_append_n(out, start, (size_t)(*p - start)) ? RA_ESIZE : RA_OK;
     }
   }
 
-  return LT_EPARSE;
+  return RA_EPARSE;
 }
 
-static int lt_json_append_number(const char **p, lt_sb_t *out)
+static int ra_json_append_number(const char **p, ra_sb_t *out)
 {
   const char *start = *p;
   while (**p && strchr("0123456789+-.eE", **p) != NULL) {
     ++(*p);
   }
   if (*p == start) {
-    return LT_EPARSE;
+    return RA_EPARSE;
   }
-  return lt_sb_append_n(out, start, (size_t)(*p - start)) ? LT_ESIZE : LT_OK;
+  return ra_sb_append_n(out, start, (size_t)(*p - start)) ? RA_ESIZE : RA_OK;
 }
 
-static int lt_json_append_literal(const char **p, lt_sb_t *out)
+static int ra_json_append_literal(const char **p, ra_sb_t *out)
 {
   if (strncmp(*p, "true", 4) == 0) {
     *p += 4;
-    return lt_sb_append_n(out, "true", 4) ? LT_ESIZE : LT_OK;
+    return ra_sb_append_n(out, "true", 4) ? RA_ESIZE : RA_OK;
   }
   if (strncmp(*p, "false", 5) == 0) {
     *p += 5;
-    return lt_sb_append_n(out, "false", 5) ? LT_ESIZE : LT_OK;
+    return ra_sb_append_n(out, "false", 5) ? RA_ESIZE : RA_OK;
   }
   if (strncmp(*p, "null", 4) == 0) {
     *p += 4;
-    return lt_sb_append_n(out, "null", 4) ? LT_ESIZE : LT_OK;
+    return ra_sb_append_n(out, "null", 4) ? RA_ESIZE : RA_OK;
   }
-  return LT_EPARSE;
+  return RA_EPARSE;
 }
 
-static int lt_json_normalize_value(const char **p, lt_sb_t *out, int sort_keys);
+static int ra_json_normalize_value(const char **p, ra_sb_t *out, int sort_keys);
 
-static int lt_json_kv_cmp(const void *a, const void *b)
+static int ra_json_kv_cmp(const void *a, const void *b)
 {
-  const lt_json_kv_t *ka = (const lt_json_kv_t *)a;
-  const lt_json_kv_t *kb = (const lt_json_kv_t *)b;
+  const ra_json_kv_t *ka = (const ra_json_kv_t *)a;
+  const ra_json_kv_t *kb = (const ra_json_kv_t *)b;
   return strcmp(ka->key, kb->key);
 }
 
-static int lt_json_normalize_object(const char **p, lt_sb_t *out, int sort_keys)
+static int ra_json_normalize_object(const char **p, ra_sb_t *out, int sort_keys)
 {
-  lt_json_kv_t *items = NULL;
+  ra_json_kv_t *items = NULL;
   size_t count = 0;
   size_t cap = 0;
-  int rc = LT_EPARSE;
+  int rc = RA_EPARSE;
   size_t i;
 
-  if (**p != '{' || lt_sb_append_c(out, '{') != 0) {
-    return LT_EPARSE;
+  if (**p != '{' || ra_sb_append_c(out, '{') != 0) {
+    return RA_EPARSE;
   }
   ++(*p);
-  lt_json_skip_ws(p);
+  ra_json_skip_ws(p);
 
   if (**p == '}') {
     ++(*p);
-    return lt_sb_append_c(out, '}') ? LT_ESIZE : LT_OK;
+    return ra_sb_append_c(out, '}') ? RA_ESIZE : RA_OK;
   }
 
   while (**p) {
-    lt_sb_t key = {0};
-    lt_sb_t value = {0};
+    ra_sb_t key = {0};
+    ra_sb_t value = {0};
 
-    lt_json_skip_ws(p);
-    if (lt_json_append_string(p, &key) != 0) {
+    ra_json_skip_ws(p);
+    if (ra_json_append_string(p, &key) != 0) {
       g_free_fn(key.data);
       goto cleanup;
     }
 
-    lt_json_skip_ws(p);
+    ra_json_skip_ws(p);
     if (**p != ':') {
       g_free_fn(key.data);
       goto cleanup;
     }
     ++(*p);
 
-    lt_json_skip_ws(p);
-    if (lt_json_normalize_value(p, &value, sort_keys) != 0) {
+    ra_json_skip_ws(p);
+    if (ra_json_normalize_value(p, &value, sort_keys) != 0) {
       g_free_fn(key.data);
       g_free_fn(value.data);
       goto cleanup;
@@ -2068,18 +2068,18 @@ static int lt_json_normalize_object(const char **p, lt_sb_t *out, int sort_keys)
     if (count == cap) {
       size_t next_cap = cap ? cap * 2 : 8;
       size_t bytes;
-      lt_json_kv_t *next;
+      ra_json_kv_t *next;
       int alloc_err = 0;
 
       if (next_cap < cap ||
-          lt_mul_overflow_size(next_cap, sizeof(*items), &bytes) != 0 ||
-          bytes > LT_ALLOC_MAX_BYTES) {
+          ra_mul_overflow_size(next_cap, sizeof(*items), &bytes) != 0 ||
+          bytes > RA_ALLOC_MAX_BYTES) {
         g_free_fn(key.data);
         g_free_fn(value.data);
         goto cleanup;
       }
 
-      next = (lt_json_kv_t *)lt_realloc_checked(items, bytes, &alloc_err);
+      next = (ra_json_kv_t *)ra_realloc_checked(items, bytes, &alloc_err);
       if (!next) {
         g_free_fn(key.data);
         g_free_fn(value.data);
@@ -2093,7 +2093,7 @@ static int lt_json_normalize_object(const char **p, lt_sb_t *out, int sort_keys)
     items[count].value = value.data;
     ++count;
 
-    lt_json_skip_ws(p);
+    ra_json_skip_ws(p);
     if (**p == ',') {
       ++(*p);
       continue;
@@ -2106,24 +2106,24 @@ static int lt_json_normalize_object(const char **p, lt_sb_t *out, int sort_keys)
   }
 
   if (sort_keys && count > 1) {
-    qsort(items, count, sizeof(*items), lt_json_kv_cmp);
+    qsort(items, count, sizeof(*items), ra_json_kv_cmp);
   }
 
   for (i = 0; i < count; ++i) {
-    if (i > 0 && lt_sb_append_c(out, ',') != 0) {
+    if (i > 0 && ra_sb_append_c(out, ',') != 0) {
       goto cleanup;
     }
-    if (lt_sb_append_n(out, items[i].key, strlen(items[i].key)) != 0 ||
-        lt_sb_append_c(out, ':') != 0 ||
-        lt_sb_append_n(out, items[i].value, strlen(items[i].value)) != 0) {
+    if (ra_sb_append_n(out, items[i].key, strlen(items[i].key)) != 0 ||
+        ra_sb_append_c(out, ':') != 0 ||
+        ra_sb_append_n(out, items[i].value, strlen(items[i].value)) != 0) {
       goto cleanup;
     }
   }
-  if (lt_sb_append_c(out, '}') != 0) {
+  if (ra_sb_append_c(out, '}') != 0) {
     goto cleanup;
   }
 
-  rc = LT_OK;
+  rc = RA_OK;
 
 cleanup:
   for (i = 0; i < count; ++i) {
@@ -2134,97 +2134,97 @@ cleanup:
   return rc;
 }
 
-static int lt_json_normalize_array(const char **p, lt_sb_t *out, int sort_keys)
+static int ra_json_normalize_array(const char **p, ra_sb_t *out, int sort_keys)
 {
   int first = 1;
 
-  if (**p != '[' || lt_sb_append_c(out, '[') != 0) {
-    return LT_EPARSE;
+  if (**p != '[' || ra_sb_append_c(out, '[') != 0) {
+    return RA_EPARSE;
   }
   ++(*p);
-  lt_json_skip_ws(p);
+  ra_json_skip_ws(p);
 
   if (**p == ']') {
     ++(*p);
-    return lt_sb_append_c(out, ']') ? LT_ESIZE : LT_OK;
+    return ra_sb_append_c(out, ']') ? RA_ESIZE : RA_OK;
   }
 
   while (**p) {
-    lt_json_skip_ws(p);
-    if (!first && lt_sb_append_c(out, ',') != 0) {
-      return LT_ESIZE;
+    ra_json_skip_ws(p);
+    if (!first && ra_sb_append_c(out, ',') != 0) {
+      return RA_ESIZE;
     }
-    if (lt_json_normalize_value(p, out, sort_keys) != 0) {
-      return LT_EPARSE;
+    if (ra_json_normalize_value(p, out, sort_keys) != 0) {
+      return RA_EPARSE;
     }
     first = 0;
 
-    lt_json_skip_ws(p);
+    ra_json_skip_ws(p);
     if (**p == ',') {
       ++(*p);
       continue;
     }
     if (**p == ']') {
       ++(*p);
-      return lt_sb_append_c(out, ']') ? LT_ESIZE : LT_OK;
+      return ra_sb_append_c(out, ']') ? RA_ESIZE : RA_OK;
     }
-    return LT_EPARSE;
+    return RA_EPARSE;
   }
 
-  return LT_EPARSE;
+  return RA_EPARSE;
 }
 
-static int lt_json_normalize_value(const char **p, lt_sb_t *out, int sort_keys)
+static int ra_json_normalize_value(const char **p, ra_sb_t *out, int sort_keys)
 {
-  lt_json_skip_ws(p);
+  ra_json_skip_ws(p);
   if (!p || !*p || !**p) {
-    return LT_EPARSE;
+    return RA_EPARSE;
   }
 
   if (**p == '{') {
-    return lt_json_normalize_object(p, out, sort_keys);
+    return ra_json_normalize_object(p, out, sort_keys);
   }
   if (**p == '[') {
-    return lt_json_normalize_array(p, out, sort_keys);
+    return ra_json_normalize_array(p, out, sort_keys);
   }
   if (**p == '"') {
-    return lt_json_append_string(p, out);
+    return ra_json_append_string(p, out);
   }
   if (**p == 't' || **p == 'f' || **p == 'n') {
-    return lt_json_append_literal(p, out);
+    return ra_json_append_literal(p, out);
   }
-  return lt_json_append_number(p, out);
+  return ra_json_append_number(p, out);
 }
 
-static char *lt_json_normalize(const char *s, int sort_keys)
+static char *ra_json_normalize(const char *s, int sort_keys)
 {
   const char *p = s;
-  lt_sb_t out = {0};
+  ra_sb_t out = {0};
 
   if (!s) {
     return NULL;
   }
 
-  lt_json_skip_ws(&p);
-  if (lt_json_normalize_value(&p, &out, sort_keys) != 0) {
+  ra_json_skip_ws(&p);
+  if (ra_json_normalize_value(&p, &out, sort_keys) != 0) {
     g_free_fn(out.data);
     return NULL;
   }
-  lt_json_skip_ws(&p);
+  ra_json_skip_ws(&p);
   if (*p != '\0') {
     g_free_fn(out.data);
     return NULL;
   }
-  if (!out.data && lt_sb_append_c(&out, '\0') != 0) {
+  if (!out.data && ra_sb_append_c(&out, '\0') != 0) {
     return NULL;
   }
 
   return out.data;
 }
 
-int lt_compare_json_with_limit(const char *expected_json,
+int ta_compare_json_with_limit(const char *expected_json,
                                const char *actual_json,
-                               const lt_json_compare_options_t *options)
+                               const ra_json_compare_options_t *options)
 {
   char *e;
   char *a;
@@ -2233,37 +2233,37 @@ int lt_compare_json_with_limit(const char *expected_json,
   int ignore_key_order = options ? options->ignore_key_order : 0;
 
   if (!expected_json || !actual_json) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
-  if (max_bytes > 0 && max_bytes < LT_ALLOC_MAX_BYTES) {
+  if (max_bytes > 0 && max_bytes < RA_ALLOC_MAX_BYTES) {
     size_t elen = strnlen(expected_json, max_bytes + 1);
     size_t alen = strnlen(actual_json, max_bytes + 1);
     if (elen > max_bytes || alen > max_bytes) {
-      return LT_ESIZE;
+      return RA_ESIZE;
     }
   }
 
-  e = lt_json_normalize(expected_json, ignore_key_order != 0);
-  a = lt_json_normalize(actual_json, ignore_key_order != 0);
+  e = ra_json_normalize(expected_json, ignore_key_order != 0);
+  a = ra_json_normalize(actual_json, ignore_key_order != 0);
   if (!e || !a) {
     if (e) g_free_fn(e);
     if (a) g_free_fn(a);
-    return LT_EPARSE;
+    return RA_EPARSE;
   }
 
-  rc = strcmp(e, a) == 0 ? LT_OK : LT_MISMATCH;
+  rc = strcmp(e, a) == 0 ? RA_OK : RA_MISMATCH;
   g_free_fn(e);
   g_free_fn(a);
   return rc;
 }
 
-int lt_compare_json(const char *expected_json, const char *actual_json)
+int ta_compare_json(const char *expected_json, const char *actual_json)
 {
-  return lt_compare_json_with_limit(expected_json, actual_json, NULL);
+  return ta_compare_json_with_limit(expected_json, actual_json, NULL);
 }
 
-static int lt_match_impl(const char *text, const char *pattern)
+static int ra_match_impl(const char *text, const char *pattern)
 {
   while (*pattern) {
     if (*pattern == '*') {
@@ -2274,7 +2274,7 @@ static int lt_match_impl(const char *text, const char *pattern)
         return 1;
       }
       while (*text) {
-        if (lt_match_impl(text, pattern)) {
+        if (ra_match_impl(text, pattern)) {
           return 1;
         }
         ++text;
@@ -2302,15 +2302,15 @@ static int lt_match_impl(const char *text, const char *pattern)
   return *text == '\0';
 }
 
-int lt_match(const char *text, const char *pattern)
+int ta_match(const char *text, const char *pattern)
 {
   if (!text || !pattern) {
     return -1;
   }
-  return lt_match_impl(text, pattern) ? 1 : 0;
+  return ra_match_impl(text, pattern) ? 1 : 0;
 }
 
-int lt_compare_memory_detail(const void *left_buffer,
+int ta_compare_memory_detail(const void *left_buffer,
                              const void *right_buffer,
                              size_t length,
                              size_t *first_difference)
@@ -2320,7 +2320,7 @@ int lt_compare_memory_detail(const void *left_buffer,
   size_t i;
 
   if ((!left_buffer && length > 0) || (!right_buffer && length > 0)) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
   for (i = 0; i < length; ++i) {
@@ -2328,19 +2328,19 @@ int lt_compare_memory_detail(const void *left_buffer,
       if (first_difference) {
         *first_difference = i;
       }
-      return LT_MISMATCH;
+      return RA_MISMATCH;
     }
   }
 
   if (first_difference) {
     *first_difference = length;
   }
-  return LT_OK;
+  return RA_OK;
 }
 
-int lt_compare_text_normalized(const char *left_text,
+int ta_compare_text_normalized(const char *left_text,
                                const char *right_text,
-                               const lt_text_compare_options_t *options)
+                               const ra_text_compare_options_t *options)
 {
   size_t ia = 0;
   size_t ib = 0;
@@ -2348,7 +2348,7 @@ int lt_compare_text_normalized(const char *left_text,
   int ignore_line_endings = options ? options->ignore_line_endings : 0;
 
   if (!left_text || !right_text) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
   for (;;) {
@@ -2378,10 +2378,10 @@ int lt_compare_text_normalized(const char *left_text,
     }
 
     if (ca != cb) {
-      return LT_MISMATCH;
+      return RA_MISMATCH;
     }
     if (ca == '\0') {
-      return LT_OK;
+      return RA_OK;
     }
 
     ++ia;
@@ -2391,7 +2391,7 @@ int lt_compare_text_normalized(const char *left_text,
 
 /* Environment test helper functions. */
 
-int lt_with_environment_variable(const char *variable_name,
+int ta_with_environment_variable(const char *variable_name,
                                  const char *temporary_value,
                                  int (*callback)(void *callback_context),
                                  void *callback_context)
@@ -2402,22 +2402,22 @@ int lt_with_environment_variable(const char *variable_name,
   int rc;
 
   if (!variable_name || !*variable_name || !temporary_value || !callback) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
   existing = getenv(variable_name);
   had_existing = (existing != NULL);
   if (had_existing) {
     int err = 0;
-    old_value = lt_strdup_checked(existing, &err);
+    old_value = ra_strdup_checked(existing, &err);
     if (!old_value) {
-      return LT_ENOMEM;
+      return RA_ENOMEM;
     }
   }
 
   if (setenv(variable_name, temporary_value, 1) != 0) {
     g_free_fn(old_value);
-    return LT_EIO;
+    return RA_EIO;
   }
 
   rc = callback(callback_context);
@@ -2425,12 +2425,12 @@ int lt_with_environment_variable(const char *variable_name,
   if (had_existing) {
     if (setenv(variable_name, old_value, 1) != 0) {
       g_free_fn(old_value);
-      return LT_EIO;
+      return RA_EIO;
     }
   } else {
     if (unsetenv(variable_name) != 0) {
       g_free_fn(old_value);
-      return LT_EIO;
+      return RA_EIO;
     }
   }
 
@@ -2440,19 +2440,19 @@ int lt_with_environment_variable(const char *variable_name,
 
 /* Process exit code test helper functions. */
 
-int lt_get_command_exit_code(const char *command_line, int *exit_code)
+int ta_get_command_exit_code(const char *command_line, int *exit_code)
 {
   int code = 0;
   pid_t pid;
   int status;
 
   if (!command_line || !exit_code) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
   pid = fork();
   if (pid < 0) {
-    return LT_EIO;
+    return RA_EIO;
   }
   if (pid == 0) {
     execl("/bin/sh", "sh", "-c", command_line, (char *)NULL);
@@ -2460,7 +2460,7 @@ int lt_get_command_exit_code(const char *command_line, int *exit_code)
   }
 
   if (waitpid(pid, &status, 0) < 0) {
-    return LT_EIO;
+    return RA_EIO;
   }
 
   if (WIFEXITED(status)) {
@@ -2472,29 +2472,29 @@ int lt_get_command_exit_code(const char *command_line, int *exit_code)
   }
 
   *exit_code = code;
-  return LT_OK;
+  return RA_OK;
 }
 
-int lt_assert_command_exit_code(const char *command_line, int expected_code)
+int ta_assert_command_exit_code(const char *command_line, int expected_code)
 {
   int actual_code;
   int rc;
 
   if (!command_line) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
-  rc = lt_get_command_exit_code(command_line, &actual_code);
-  if (rc != LT_OK) {
+  rc = ta_get_command_exit_code(command_line, &actual_code);
+  if (rc != RA_OK) {
     return rc;
   }
 
-  return (actual_code == expected_code) ? LT_OK : LT_MISMATCH;
+  return (actual_code == expected_code) ? RA_OK : RA_MISMATCH;
 }
 
 /* Filesystem predicate test helper functions. */
 
-int lt_exists(const char *path)
+int ta_exists(const char *path)
 {
   if (!path) {
     return -1;
@@ -2502,7 +2502,7 @@ int lt_exists(const char *path)
   return (access(path, F_OK) == 0) ? 1 : 0;
 }
 
-int lt_is_file(const char *path)
+int ta_is_file(const char *path)
 {
   struct stat st;
 
@@ -2515,7 +2515,7 @@ int lt_is_file(const char *path)
   return S_ISREG(st.st_mode) ? 1 : 0;
 }
 
-int lt_is_directory(const char *path)
+int ta_is_directory(const char *path)
 {
   struct stat st;
 
@@ -2528,30 +2528,30 @@ int lt_is_directory(const char *path)
   return S_ISDIR(st.st_mode) ? 1 : 0;
 }
 
-int lt_get_size(const char *path, size_t *size_bytes)
+int ta_get_size(const char *path, size_t *size_bytes)
 {
   struct stat st;
 
   if (!path || !size_bytes) {
-    return LT_EARG;
+    return RA_EARG;
   }
   if (stat(path, &st) != 0) {
-    return LT_EIO;
+    return RA_EIO;
   }
   *size_bytes = (size_t)st.st_size;
-  return LT_OK;
+  return RA_OK;
 }
 
-int lt_file_age(const char *path, time_t *age_seconds)
+int ta_file_age(const char *path, time_t *age_seconds)
 {
   struct stat st;
   time_t now;
 
   if (!path || !age_seconds) {
-    return LT_EARG;
+    return RA_EARG;
   }
   if (stat(path, &st) != 0) {
-    return LT_EIO;
+    return RA_EIO;
   }
 
   now = time(NULL);
@@ -2560,10 +2560,10 @@ int lt_file_age(const char *path, time_t *age_seconds)
   } else {
     *age_seconds = now - st.st_mtime;
   }
-  return LT_OK;
+  return RA_OK;
 }
 
-int lt_path_has_extension(const char *path, const char *extension)
+int ta_path_has_extension(const char *path, const char *extension)
 {
   size_t plen;
   size_t elen;
@@ -2583,7 +2583,7 @@ int lt_path_has_extension(const char *path, const char *extension)
 
 /* String and text test helper functions. */
 
-int lt_string_contains(const char *text, const char *substring, size_t *position)
+int ta_string_contains(const char *text, const char *substring, size_t *position)
 {
   const char *found;
 
@@ -2602,7 +2602,7 @@ int lt_string_contains(const char *text, const char *substring, size_t *position
   return 1;
 }
 
-int lt_string_starts_with(const char *text, const char *prefix)
+int ta_string_starts_with(const char *text, const char *prefix)
 {
   size_t tlen;
   size_t plen;
@@ -2620,7 +2620,7 @@ int lt_string_starts_with(const char *text, const char *prefix)
   return (strncmp(text, prefix, plen) == 0) ? 1 : 0;
 }
 
-int lt_string_ends_with(const char *text, const char *suffix)
+int ta_string_ends_with(const char *text, const char *suffix)
 {
   size_t tlen;
   size_t slen;
@@ -2638,7 +2638,7 @@ int lt_string_ends_with(const char *text, const char *suffix)
   return (strcmp(text + tlen - slen, suffix) == 0) ? 1 : 0;
 }
 
-int lt_match_regex(const char *text, const char *pattern)
+int ta_match_regex(const char *text, const char *pattern)
 {
   regex_t re;
   int rc;
@@ -2663,7 +2663,7 @@ int lt_match_regex(const char *text, const char *pattern)
   }
 }
 
-int lt_compare_file_lines(const char *left_path, const char *right_path)
+int ta_compare_file_lines(const char *left_path, const char *right_path)
 {
   FILE *f1 = NULL;
   FILE *f2 = NULL;
@@ -2672,18 +2672,18 @@ int lt_compare_file_lines(const char *left_path, const char *right_path)
   int match = 1;
 
   if (!left_path || !right_path) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
   f1 = fopen(left_path, "r");
   if (!f1) {
-    return LT_EIO;
+    return RA_EIO;
   }
 
   f2 = fopen(right_path, "r");
   if (!f2) {
     fclose(f1);
-    return LT_EIO;
+    return RA_EIO;
   }
 
   while (fgets(line1, sizeof(line1), f1) != NULL) {
@@ -2699,62 +2699,62 @@ int lt_compare_file_lines(const char *left_path, const char *right_path)
 
   fclose(f1);
   fclose(f2);
-  return match ? LT_OK : LT_MISMATCH;
+  return match ? RA_OK : RA_MISMATCH;
 }
 
 /* Extended file operation test helper functions. */
 
-int lt_append_file(const char *path, const char *content, size_t length)
+int ta_append_file(const char *path, const char *content, size_t length)
 {
   FILE *f;
 
   if (!path || (!content && length > 0)) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
   f = fopen(path, "ab");
   if (!f) {
-    return LT_EIO;
+    return RA_EIO;
   }
 
   if (length > 0 && fwrite(content, 1, length, f) != length) {
     fclose(f);
-    return LT_EIO;
+    return RA_EIO;
   }
 
   fclose(f);
-  return LT_OK;
+  return RA_OK;
 }
 
-int lt_rename_file(const char *old_path, const char *new_path)
+int ta_rename_file(const char *old_path, const char *new_path)
 {
   if (!old_path || !new_path) {
-    return LT_EARG;
+    return RA_EARG;
   }
-  return (rename(old_path, new_path) == 0) ? LT_OK : LT_EIO;
+  return (rename(old_path, new_path) == 0) ? RA_OK : RA_EIO;
 }
 
-int lt_symlink(const char *target, const char *link_path)
+int ta_symlink(const char *target, const char *link_path)
 {
   if (!target || !link_path) {
-    return LT_EARG;
+    return RA_EARG;
   }
-  return (symlink(target, link_path) == 0) ? LT_OK : LT_EIO;
+  return (symlink(target, link_path) == 0) ? RA_OK : RA_EIO;
 }
 
 /* JSON data extraction test helper functions. */
 
-static int lt_json_extract_simple(const char *json_text, const char *path, char **out_value)
+static int ra_json_extract_simple(const char *json_text, const char *path, char **out_value)
 {
   /* Simplified JSON path extractor using string search.
    * Handles basic paths like "key" or "key[0]" or "key.subkey".
    */
   const char *p = json_text;
   const char *path_p = path;
-  lt_sb_t out = {0};
+  ra_sb_t out = {0};
 
   if (!json_text || !path || !out_value) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
   *out_value = NULL;
@@ -2793,7 +2793,7 @@ static int lt_json_extract_simple(const char *json_text, const char *path, char 
         snprintf(search, sizeof(search), "\"%s\"", key_buf);
         const char *found = strstr(p, search);
         if (!found) {
-          return LT_EPARSE;
+          return RA_EPARSE;
         }
 
         p = found + strlen(search);
@@ -2801,7 +2801,7 @@ static int lt_json_extract_simple(const char *json_text, const char *path, char 
           p++;
         }
         if (*p != ':') {
-          return LT_EPARSE;
+          return RA_EPARSE;
         }
         p++;
         while (*p && isspace((unsigned char)*p)) {
@@ -2818,9 +2818,9 @@ static int lt_json_extract_simple(const char *json_text, const char *path, char 
             }
             if (*p) p++;
           }
-          if (lt_sb_append_n(&out, val_start, p - val_start) != 0) {
+          if (ra_sb_append_n(&out, val_start, p - val_start) != 0) {
             g_free_fn(out.data);
-            return LT_ESIZE;
+            return RA_ESIZE;
           }
           if (*p == '"') {
             p++;
@@ -2845,9 +2845,9 @@ static int lt_json_extract_simple(const char *json_text, const char *path, char 
             }
             p++;
           }
-          if (lt_sb_append_n(&out, val_start, p - val_start) != 0) {
+          if (ra_sb_append_n(&out, val_start, p - val_start) != 0) {
             g_free_fn(out.data);
-            return LT_ESIZE;
+            return RA_ESIZE;
           }
         }
       }
@@ -2855,62 +2855,62 @@ static int lt_json_extract_simple(const char *json_text, const char *path, char 
   }
 
   if (out.len == 0) {
-    return LT_EPARSE;
+    return RA_EPARSE;
   }
 
-  if (lt_sb_append_c(&out, '\0') != 0) {
+  if (ra_sb_append_c(&out, '\0') != 0) {
     g_free_fn(out.data);
-    return LT_ESIZE;
+    return RA_ESIZE;
   }
 
   *out_value = out.data;
-  return LT_OK;
+  return RA_OK;
 }
 
-int lt_json_extract(const char *json_text, const char *path, char **out_value)
+int ta_json_extract(const char *json_text, const char *path, char **out_value)
 {
-  return lt_json_extract_simple(json_text, path, out_value);
+  return ra_json_extract_simple(json_text, path, out_value);
 }
 
-int lt_json_has_path(const char *json_text, const char *path)
+int ta_json_has_path(const char *json_text, const char *path)
 {
   char *value = NULL;
   int rc;
 
-  rc = lt_json_extract(json_text, path, &value);
+  rc = ta_json_extract(json_text, path, &value);
   if (value) {
     g_free_fn(value);
   }
 
-  return (rc == LT_OK) ? 1 : 0;
+  return (rc == RA_OK) ? 1 : 0;
 }
 
 /* Resource management test helper functions. */
 
-#define LT_MAX_CLEANUPS 64
+#define RA_MAX_CLEANUPS 64
 typedef struct {
   void (*fn)(void *);
   void *ctx;
-} lt_cleanup_entry_t;
+} ra_cleanup_entry_t;
 
-static lt_cleanup_entry_t g_cleanups[LT_MAX_CLEANUPS];
+static ra_cleanup_entry_t g_cleanups[RA_MAX_CLEANUPS];
 static size_t g_cleanup_count = 0;
 
-int lt_cleanup_register(void (*cleanup_callback)(void *cleanup_context),
+int ta_cleanup_register(void (*cleanup_callback)(void *cleanup_context),
                         void *cleanup_context)
 {
-  if (!cleanup_callback || g_cleanup_count >= LT_MAX_CLEANUPS) {
-    return LT_ENOMEM;
+  if (!cleanup_callback || g_cleanup_count >= RA_MAX_CLEANUPS) {
+    return RA_ENOMEM;
   }
 
   g_cleanups[g_cleanup_count].fn = cleanup_callback;
   g_cleanups[g_cleanup_count].ctx = cleanup_context;
   g_cleanup_count++;
 
-  return LT_OK;
+  return RA_OK;
 }
 
-static void lt_temp_file_cleanup(void *ctx)
+static void ra_temp_file_cleanup(void *ctx)
 {
   char *path = (char *)ctx;
   if (path) {
@@ -2919,7 +2919,7 @@ static void lt_temp_file_cleanup(void *ctx)
   }
 }
 
-int lt_temp_file_auto(const char *suffix, char *outpath, size_t outpathsz)
+int ta_temp_file_auto(const char *suffix, char *outpath, size_t outpathsz)
 {
   char *template_str;
   size_t template_len;
@@ -2927,38 +2927,38 @@ int lt_temp_file_auto(const char *suffix, char *outpath, size_t outpathsz)
   int rc;
 
   if (!suffix || !outpath || outpathsz == 0) {
-    return LT_EARG;
+    return RA_EARG;
   }
 
-  template_len = sizeof("/tmp/litetest_XXXXXX") + strlen(suffix) + 1;
+  template_len = sizeof("/tmp/britetest_XXXXXX") + strlen(suffix) + 1;
   template_str = (char *)g_malloc_fn(template_len);
   if (!template_str) {
-    return LT_ENOMEM;
+    return RA_ENOMEM;
   }
 
-  snprintf(template_str, template_len, "/tmp/litetest_XXXXXX%s", suffix);
+  snprintf(template_str, template_len, "/tmp/britetest_XXXXXX%s", suffix);
 
   fd = mkstemp(template_str);
   if (fd < 0) {
     g_free_fn(template_str);
-    return LT_EIO;
+    return RA_EIO;
   }
   close(fd);
 
   if (strlen(template_str) >= outpathsz) {
     unlink(template_str);
     g_free_fn(template_str);
-    return LT_ESIZE;
+    return RA_ESIZE;
   }
 
   strcpy(outpath, template_str);
 
-  rc = lt_cleanup_register(lt_temp_file_cleanup, template_str);
-  if (rc != LT_OK) {
+  rc = ta_cleanup_register(ra_temp_file_cleanup, template_str);
+  if (rc != RA_OK) {
     unlink(template_str);
     g_free_fn(template_str);
     return rc;
   }
 
-  return LT_OK;
+  return RA_OK;
 }

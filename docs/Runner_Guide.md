@@ -1,8 +1,8 @@
-![BriteTest Runner Guide](branding/BriteTest_Runner_Guide.png)
+![Runner Guide](branding/Runner_Guide.png)
 
 This guide explains how to use the BriteTest Runner framework and Runner API
 covering concepts, workflow, execution model, examples, and practical,usage
-patterns. It complements the BriteTest Runner Reference, which documents
+patterns. It complements the Runner Reference, which documents
 the Runner API in detail.
 
 #### Copyright (c) 2026 Paul Sinclair
@@ -42,9 +42,9 @@ This document is intended for BriteTest contributors who need
 guidance on enhancing and maintaining BriteTest.
 
 For a list of other BriteTest documents and the BriteTest repository layout, see
-the BriteTest Documentation Guide.
+the Documentation Guide.
 
-For a glossary of terms, see the BriteTest Glossary Reference.
+For a glossary of terms, see the Glossary Reference.
 
 <details>
 <summary>Document Version History</summary>
@@ -57,13 +57,13 @@ For a glossary of terms, see the BriteTest Glossary Reference.
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
-- The **Runner** column records the Runner API version
+- The **Runner** column records the BriteTest Runner API version
   current at the time this document version was published and is
-  defined by its `RA_VERSION` macro.
-- The **Test** column records the Test API version current at
+  defined by its `RA_RUNNER_VERSION` macro.
+- The **Test** column records the BriteTest Test API version current at
   the time this document version was published and is defined by its
-  `TA_VERSION` macro.
-- Both the Runner API and Test API use the version format `"M.m.p"` (Major, minor,
+  `RA_TEST_VERSION` macro.
+- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
 
@@ -105,10 +105,10 @@ A typical test executable includes:
 <details>
 <summary>2. Execution Model</summary>
 
-## 2. Execution Modes
+## 2. Execution Model
 
 BriteTest runs test expressions and test group functions under a configurable
-isolation mode:
+isolation model:
 
 - **Same‑thread execution** (default)
 - **Thread‑isolated execution**
@@ -278,7 +278,7 @@ make CC=gcc run
 Use MSYS2 UCRT64 or Clang64:
 
 ```powershell
-./build_test_runner.ps1
+./build_test_britetest.ps1
 .\test_britetest.exe
 ```
 </details>
@@ -317,8 +317,8 @@ Use `--help` or `-h` to display usage information.
 
 See:
 
-- **BriteTest Runner Reference** for detailed API semantics.
-- **BriteTest Contributor Guide** for development and versioning rules.
+- **Runner Reference** for detailed API semantics.
+- **Contributor Guide** for development and versioning rules.
 </details>
 
 <details>
@@ -400,7 +400,7 @@ RA_DECLARE_ORCHESTRATOR(main)
 4. Build the executable `test_quick` in your current directory:
 
 ```sh
-cc -std=c99 -Wall -Wextra -o test_quick test_quick.c britetest_runner.c
+cc -std=c99 -Wall -Wextra -o test_quick test_quick.c runnerapi.c
 ```
 
 5. Run it:
@@ -511,13 +511,13 @@ BriteTest is a lightweight C/C++ testing framework built around a simple executi
 2. You wrap each test group function name with the `RA_GROUP` macro in the orchestrator.
 3. The orchestrator (`main`) function runs the test group functions and reports results.
 
-The Runner API files:
+The BriteTest Runner API files:
 
  - [`include/runnerapi.h`](include/runnerapi.h) — public API (typedefs, enums, constants, macros,
    function declarations, and static inline function definitions).
  - [`src/runnerapi.c`](src/runnerapi.c) — function definitions for the BriteTest framework.
 
-The Test API files:
+The BriteTest Test API files:
 
  - [`include/testapi.h`](include/testapi.h) — test support/helper function declarations.
  - [`src/testapi.c`](src/testapi.c) — test support/helper function definitions.
@@ -527,8 +527,8 @@ A typical test executable includes:
 - An orchestrator (`main`) function that opens the report, invokes test group functions,
   writes category results, and closes the report.
 - Multiple test group functions that execute the tests.
-- The Runner API files (`runnerapi.h`, `runnerapi.c`).
-- The Test API files (`testapi.h`, `testapi.c`).
+- The BriteTest Runner API files (`runnerapi.h`, `runnerapi.c`).
+- The BriteTest Test API files (`testapi.h`, `testapi.c`).
 - The headers and source files for the project being tested.
 
 main()
@@ -552,9 +552,9 @@ When executed, BriteTest produces a report summarizing tests by category, includ
 <details>
 <summary>Core API</summary>
 
-## Core Runner API
+## Core API
 
-The core runner API is set of macros used to define the orchestrator and test group
+The core API is set of macros used to define the orchestrator and test group
 functions. These macros fall into 3 types:
 
 | Type | Purpose | Naming Pattern |
@@ -613,7 +613,7 @@ Note:
 - `RA_GROUP(funcname, [include], isolation)[;]`
 - `RA_TEST(expression, [include], isolation)[;]`
 
-When an `RA_GROUP `or `RA_TEST` macro is passed as the first argument to RA_WRITE_RESULT,
+When an  `RA_GROUP `or `RA_TEST` macro is passed as the first argument to RA_WRITE_RESULT,
 omit the trailing semicolon. Otherwise, a semicolon is required.
 
 `funcname`: name of the group function to execute.
@@ -781,21 +781,21 @@ Typedefs, enums for exit code and return codes, macros for limits, and functions
 
 Examples include:
 
-- `RA_executablename`
-- `RA_resuRA_t`
-- `RA_dirpath`
+- `ra_executablename`
+- `ra_resubt_t`
+- `ra_dirpath`
 - `RA_MAX_PATH_LEN`
-- `RA_currentlevel`
-- `RA_currentresult`
-- `RA_maxparallel`
-- `RA_blockname`
-- `RA_iswritedirpath`
+- `ra_currentlevel`
+- `ra_currentresult`
+- `ra_maxparallel`
+- `ra_blockname`
+- `ra_iswritedirpath`
 
-`RA_resuRA_t` carries pass/fail/fault and injected-fault counters for a test or
+`ra_resubt_t` carries pass/fail/fault and injected-fault counters for a test or
 group. A function-level fault is represented by setting the fault count to
 `SIZE_MAX`.
 
-See the BriteTest Runner Reference for details on each of these.
+See the Runner Reference for details on each of these.
 </details>
 
 <details>
@@ -811,36 +811,36 @@ writing tests.
 
 Examples of Process and runtime helpers include:
 
-- `int RA_execute_command(const char *command_line, int timeout_ms, char *output_buffer, size_t output_buffer_size, int *exit_code)`
-- `int RA_wait_for_condition(int (*condition)(void *callback_context), void *callback_context, int timeout_ms, int poll_interval_ms)`
+- `int ta_execute_command(const char *command_line, int timeout_ms, char *output_buffer, size_t output_buffer_size, int *exit_code)`
+- `int ta_wait_for_condition(int (*condition)(void *callback_context), void *callback_context, int timeout_ms, int poll_interval_ms)`
 
 Examples of File and filesystem helpers include:
 
-- `int RA_copy_file(const char *source_path, const char *destination_path)`
-- `int RA_make_temp_dir(const char *prefix, char *out_path, size_t out_path_size)`
+- `int ta_copy_file(const char *source_path, const char *destination_path)`
+- `int ta_make_temp_dir(const char *prefix, char *out_path, size_t out_path_size)`
   
 Examples of Comparison and matching helpers include:
 
-- `int RA_compare_files(FILE *left_file, FILE *right_file)`
-- `int RA_compare_file_to_path(FILE *file, const char *path)`
-- `int RA_compare_paths(const char *left_path, const char *right_path)`
-- `int RA_compare_path_to_file(const char *path, FILE *file)`
-- `int RA_match(const char *text, const char *pattern)`
+- `int ta_compare_files(FILE *left_file, FILE *right_file)`
+- `int ta_compare_file_to_path(FILE *file, const char *path)`
+- `int ta_compare_paths(const char *left_path, const char *right_path)`
+- `int ta_compare_path_to_file(const char *path, FILE *file)`
+- `int ta_match(const char *text, const char *pattern)`
 
 Example of Environment helpers:
 
-- `int RA_with_environment_variable(const char *variable_name, const char *temporary_value, int (*callback)(void *callback_context), void *callback_context)`
+- `int ta_with_environment_variable(const char *variable_name, const char *temporary_value, int (*callback)(void *callback_context), void *callback_context)`
 </details>
 </details>
 
-See the BriteTest Test Reference for details on each of these.
+See the Test Reference for details on each of these.
   
 <details>
 <summary>Headers (.h) and Sources (.c)</summary>
 
 ## Headers (.h) and Sources (.c)
 
-Source files containing the orchestrator or test group functions must include `britetest_runner.h` and
+Source files containing the orchestrator or test group functions must include `runnerapi.h` and
 any required project headers.
 
 Example: Testing lubtype Project
@@ -851,7 +851,7 @@ source file includes these two headers:
 
 ```c
 #include "lubtype.h"
-#include "britetest_runner.h"
+#include "runnerapi.h"
 ```
 
 Example: Self-Testing BriteTest Project
@@ -860,7 +860,7 @@ The `tests` directory for this repository provides an example self-test for
 the BriteTest API and framework.
 
 ```c
-#include "britetest_runner.h"
+#include "runnerapi.h"
 ```
 </details>
 
@@ -967,16 +967,16 @@ handled as if it occurs before the tests.
 The `tests` directory for this repository provides a self-test implementation of
 the BriteTest API and framework. It includes:
 
-- `test_britetest.c` defines the orchestrator (`main`) with two test
+- `test_runner.c` defines the orchestrator (`main`) with two test
    categories "Orchestrator" and "Guard".
 
-- `test_orchestrator.c` defines the test_orchestrator function for
+- `orchestrator_tests.c` defines the test_orchestrator function for
    testing the "Orchestrator" category.
 
-- `test_guard1.c` defines the `test_guard1` function for testing part of
+- `guard1_tests.c` defines the `test_guard1` function for testing part of
    the "Guard" category.
 
-- `test_guard2.c` defines the `test_guard2` function for testing the other
+- `guard2_tests.c` defines the `test_guard2` function for testing the other
    part of the "Guard" category.
 </details>
 
@@ -1129,7 +1129,7 @@ options and usage details.
 - If `PATH` contains spaces, quote it (for example, `"my reports/report.txt"`).
 - Existing report files may be overwritten; use unique paths if you need history.
 - On Windows, use a POSIX-capable toolchain (for example, MSYS2 UCRT64).
-- Keep macro examples in your project aligned with the version of `britetest_runner.h` in use.
+- Keep macro examples in your project aligned with the version of `runnerapi.h` in use.
 </details>
 
 <details>
@@ -1145,8 +1145,8 @@ options and usage details.
 - Output path with spaces fails: quote `PATH` (for example,
   `"my reports/report.txt"`).
 - Unexpected behavior after macro updates: ensure code and docs match the same
-  BriteTest version (`RA_VERSION` in `britetest_runner.h` and `RA_VERSION_C` in
-  `britetest_runner.c`).
+  BriteTest version (`RA_VERSION` in `runnerapi.h` and `RA_VERSION_C` in
+  `runnerapi.c`).
 </details>
 
 <details>
@@ -1197,8 +1197,8 @@ BriteTest Report (-i)
  *
  * @note In the following, testing the BriteTest itself is used as an example of
  *       using the BriteTest framework and API with test modules test_guards_1.c,
- *       test_guards_2.c, and test_orchestrator.c, and test orchestrator
- *       test_britetest.c in the repository tests directory.
+ *       test_guards_2.c, and orchestrator_tests.c, and test orchestrator
+ *       test_runner.c in the repository tests directory.
  */
  
 /**
@@ -1209,7 +1209,7 @@ BriteTest Report (-i)
  *   - An orchestrator (main) function and optional test functions
  *     organized into one or more modules,
  *
- *   - britetest_runner.h, and britetest_runner.c, unistd.h
+ *   - runnerapi.h, and runnerapi.c, unistd.h
  *
  *   - Modules and include files from the feature/project/API under test.
  *   
@@ -1378,37 +1378,37 @@ Defaults:
  * Miscellaneous functions, macros, typedefs, and variables.
  * Examples include:
  *
- * - RA_executablename
- * - RA_resuRA_t
- * - RA_dirpath
+ * - ra_executablename
+ * - ra_resubt_t
+ * - ra_dirpath
  * - RA_MAX_PATH_LEN
- * - RA_currentlevel
- * - RA_currentresult
- * - RA_maxparallel
- * - RA_isisolated
- * - RA_groupname
- * - RA_iswritedirpath
+ * - ra_currentlevel
+ * - ra_currentresult
+ * - ra_maxparallel
+ * - ra_isisolated
+ * - ra_groupname
+ * - ra_iswritedirpath
  */
 
 /**
  * @section HeaderUsage Header Usage
  * 
- * In the test orchestrator source file (e.g., test_britetest.c),
+ * In the test orchestrator source file (e.g., test_runner.c),
  * include the following:
  *
  * @code
-#include "britetest_runner.h"
+#include "runnerapi.h"
  * @endcode
  *
  * Use the orchestrator macros, variables and functions in the test
  * orchestrator logic plus the RA_TEST macro to execute test functions.
  * 
  * In the test* modules (e.g., test_guards_1.c, test_guards_2.c, and
- * test_orchestrator.c):
+ * orchestrator_tests.c):
  *
  * @code
  #undef RA_ORCHESTRATOR
- #include "britetest_runner.h"
+ #include "runnerapi.h"
  * @endcode
  *
  * Use the RA_TEST, RA_ASSERT_FAIL, and RA_ASSERT_FAULT macros in
@@ -1430,9 +1430,9 @@ Defaults:
 /**
  * @section NameConventions Naming Conventions
  *
- * BriteTest - Project/Repository name.
+ * BriteTest - Repository name (case-jnsensitive.
  *
- * runner_api.h and runner_api.c - filenames.
+ * runnerapi.h and runnerapi.c - filenames.
  * 
  * Public API:
  *
@@ -1441,8 +1441,8 @@ Defaults:
  * 
  * Internal and private to the BriteTest framework:
  *
- * 1. runnerapi_* - functions, typedefs, and variables.
- * 2. RUNNER_* - Internal macros, constants, and enum values.
+ * 1. britetest_* - functions, typedefs, and variables.
+ * 2. BRITETEST_* - Internal macros, constants, and enum values.
  *
  * These conventions are designed to provide a clean public API, strong
  * namespace isolation, and predictable behavior when BriteTest is embedded
@@ -1457,11 +1457,11 @@ Defaults:
  *
  * @example Public typedef Name
  *
- * ra_result_t, ra_state_t
+ * ra_resubt_t, ra_state_t
  *
  * @example Private Variable Names
  *
- * runnerapi_result_internal, runnerapi_total_internal
+ * ra_internal_, ra_internal_
  */
 
 /**
@@ -1477,7 +1477,7 @@ Defaults:
  * argument rather than aborting. This allows counting pass,
  * fail, and fault without aborting due to a fault.
  * 
- * A fault detected by BT_TEST represents a fault 
+ * A fault detected by RA_TEST represents a fault 
  * in the use of the testing framework or in the testing framework
  * itself, and not in the feature being tested. Such a fault is
  * expected to be rare but guarding avoids a fault terminating
