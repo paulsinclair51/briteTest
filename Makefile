@@ -32,13 +32,13 @@ BUILD_DIR := build
 TARGET := test_britetest
 
 SOURCES := \
-	britetest_runner.c \
-	britetest_test.c \
-	test_britetest.c \
-	test_orchestrator.c \
-	test_file_compare_helpers.c \
-	test_guard1.c \
-	test_guard2.c
+	runnerapi.c \
+	testapi.c \
+	test_runner.c \
+	orchestrator_tests.c \
+	file_compare_tests.c \
+	guard1_tests.c \
+	guard2_tests.c
 
 VPATH := src tests/src
 

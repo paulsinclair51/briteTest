@@ -47,13 +47,13 @@ $cppFlags = @('-Iinclude', '-D_POSIX_C_SOURCE=200809L')
 $cFlags = @('-std=c11', '-Wall', '-Wextra', '-Wno-clobbered', '-O2')
 
 $sources = @(
-    'src/britetest_runner.c',
-    'src/britetest_test.c',
-    'tests/src/test_britetest.c',
-    'tests/src/test_orchestrator.c',
-    'tests/src/test_file_compare_helpers.c',
-    'tests/src/test_guard1.c',
-    'tests/src/test_guard2.c'
+    'src/runnerapi.c',
+    'src/testapi.c',
+    'tests/src/test_runner.c',
+    'tests/src/orchestrator_tests.c',
+    'tests/src/file_compare_tests.c',
+    'tests/src/guard1_tests.c',
+    'tests/src/guard2_tests.c'
 )
 
 if (-not (Test-Path $BuildDir)) {

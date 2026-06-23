@@ -1,4 +1,4 @@
-![BriteTest Contributor Guide](branding/BriteTest_Contributor_Guide.png)
+![Contributor Guide](branding/Contributor_Guide.png)
 
 This document defines the contribution process, coding standards, documentation
 rules, and versioning guidelines for BriteTest.
@@ -40,10 +40,10 @@ This document is for BriteTest contributors who need guidance on enhancing
 and maintaining BriteTest.
 
 For a list of other BriteTest documents and the repository layout, see
-the BriteTest Documentation Guide (`BriteTest_Documentation_Guide.md`).
+the Documentation Guide (`Documentation_Guide.md`).
 
-For a glossary of terms, see the BriteTest Glossary Reference
-(`BriteTest_Glossary_Reference.md`).
+For a glossary of terms, see the Glossary Reference
+(`Glossary_Reference.md`).
 
 A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
@@ -60,10 +60,10 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
   format `M.u` (Major, update).
 - The **Runner** column records the BriteTest Runner API version
   current at the time this document version was published and is
-  defined by its `BT_RUNNER_VERSION` macro.
+  defined by its `RA_RUNNER_VERSION` macro.
 - The **Test** column records the BriteTest Test API version current at
   the time this document version was published and is defined by its
-  `BT_TEST_VERSION` macro.
+  `RA_TEST_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
@@ -149,12 +149,12 @@ When to increment:
     with update, minor, and patch reset to 0.
 
 When updating the version for the Runner API:
-- Update `BT_RUNNER_VERSION` in `britetest_runner.h`.
-- Update `BT_RUNNER_VERSION_C` in `britetest_runner.c`.
+- Update `RA_RUNNER_VERSION` in `runnerapi.h`.
+- Update `RA_RUNNER_VERSION_C` in `runnerapi.c`.
 
 When updating the version for the Test API:
-- Update `BT_TEST_VERSION` in `britetest_test.h`.
-- Update `BT_TEST_VERSION_C` in `britetest_test.c`.
+- Update `RA_TEST_VERSION` in `testapi.h`.
+- Update `RA_TEST_VERSION_C` in `testapi.c`.
 
 When updating the version for a document:
 - Add a new entry to the top of the Document Version History table only when
@@ -183,7 +183,7 @@ make run
 ```
 
 - Ensure report formatting changes are reflected in documentation examples.
-- Keep test code aligned with the current version of `britetest_runner.h`.
+- Keep test code aligned with the current version of `runnerapi.h`.
 </details>
 
 <details>
@@ -206,8 +206,8 @@ make run
 
 - C99.
 - POSIX.1‑2001 APIs only.
-- Keep `britetest_runner.h` self‑contained.
-- Keep `britetest_runner.c` implementation‑only.
+- Keep `runnerapi.h` self‑contained.
+- Keep `runnerapi.c` implementation‑only.
 - Avoid intermixing test code with helper logic inside test group functions.
 </details>
 
@@ -282,22 +282,19 @@ Before submitting a PR:
 
 ## 8. Alternative Project Names and Rename Plan
 
-Initial: LiteTest, April 2026.
-Changed: BriteTest, June 21,2026.
+TODO: add OpemTest to table.
 
-These names are suggested alternatives if a naming conflict requires a
-project rename:
+Preferred alternative names for BriteTest:
 
-- LiteTest
 - CanaryRunner
 - CanaryAssert
 - CanaryProof
 - CanaryTestRunner
 
-TODO: add briteTest, BriteTest, OpenTest, CanaryRunnet, CanaryAssert, CanaryProof,
-CanaryTestRunner to table.
+These names are reserved as fallback options if a naming conflict requires a
+project rename.
 
-Candidats alternatives with two-letter abbreviations:
+Additional two-letter abbreviation candidates:
 
 These notes are an informal naming screen only. They are based on how generic,
 descriptive, or commonly used the terms appear in software and testing. They
@@ -305,7 +302,7 @@ are not a trademark search or legal clearance.
 
 | Name | Abbrev. | Informal conflict note | Likelihood |
 |------|---------|------------------------|------------|
-| LiteTest | LT | Clear and close to the project's lightweight positioning, but both `lite` and `test` are common software terms, so overlap with existing package or tool names is plausible. | Medium |
+| BriteTest | LT | Clear and close to the project's lightweight positioning, but both `lite` and `test` are common software terms, so overlap with existing package or tool names is plausible. | Medium |
 | CanaryTest | CT | Strong fit for the canary theme, but `canary` and `canary testing` are already common software terms, which makes the name less distinctive. | Higher |
 | CoreTest | CT | Clear and technical, but both `core` and `test` are common product words and may overlap with existing tools or internal packages. | Medium |
 | ClearTest | CT | Readable and descriptive, but the name is broad and likely to overlap with existing testing or QA branding. | Medium |
@@ -330,25 +327,26 @@ Fast low-risk rename plan:
 - Create a dedicated rename branch.
 - Restrict the change to naming and branding only.
 
-2. Choose a replacement name
+2. Choose one approved replacement name
+- Select one of the four preferred alternatives.
 - Use the chosen name consistently across code, docs, and assets.
 
 3. Update user-facing names first
 - Update the project title in `README.md`.
 - Update top-level headings in BriteTest documentation files.
-- Add a temporary note in `README.md` that the project was renamed from LiteTest.
+- Add a temporary note in `README.md` that the project was renamed from BriteTest.
 
 4. Update branding assets
-- Update SVG branding files to the new namE.
+- Duplicate existing branding files to the new naming scheme.
 - Regenerate PNG files from SVG files.
+- Keep old logo files temporarily for one release to avoid broken references.
 
-5. Update file references
+5. Update generator and file references
+- Update `scripts/genpdf` to use the new document branding file names.
 - Update markdown image references to point to renamed branding files.
 - Regenerate all PDFs and verify output paths.
 
-6. Update name in all files carefully
-- Update Contributor Guide for name change. Ensure entry in alternatives table for
-the old name is not changed to the new name.
+6. Update source identifiers carefully
 - Update only external identifiers that represent the project brand.
 - Avoid changing public API symbols unless explicitly required.
 - If API symbol changes are required, treat them as a major-version change.
@@ -370,9 +368,9 @@ the old name is not changed to the new name.
 
 ## Glossary
 
-For a glossary of general BriteTest terms, see the BriteTest Glossary Reference document.
-For a glossary of terms, see the BriteTest Glossary Reference
-(`BriteTest_Glossary_Reference.md`).
+For a glossary of general BriteTest terms, see the Glossary Reference document.
+For a glossary of terms, see the Glossary Reference
+(`Glossary_Reference.md`).
 
 Contributor‑Specific Terms:
 

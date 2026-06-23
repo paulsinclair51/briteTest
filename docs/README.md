@@ -1,42 +1,42 @@
 # docs/
 
-Directory for BriteTest user and contributor documentation.
+Directory for user and contributor documentation.
 
 Copyright (c) 2026 Paul Sinclair   
 SPDX-License-Identifier: MIT   
-For license details, see `../LICENSE`.
+For license details, see `LICENSE` in the root directory.
 
-See `../README.md` for an introduction to BriteTest.
+See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
-- **BriteTest_Documentation_Guide.md**: Index of BriteTest documents and the BriteTest
+- **Contributor_Guide.md**: Contributor process and standards.
+
+- **Documentation_Guide.md**: Index of documents and the project
   repository layout.
 
-- **BriteTest_Glossary_Reference.md**: Glossary of BriteTest and testing terms.
+- **Glossary_Reference.md**: Glossary of project terms and testing terms.
 
-- **BriteTest_Runner_Guide.md**: Runner API concepts, usage, and examples.
+- **Runner_Guide.md**: Runner API concepts, usage, and examples.
 
-- **BriteTest_Runner_Reference.md**: Runner API reference.
+- **Runner_Internal_Guide.md**: Runner implementation guide.
 
-- **BriteTest_Contributor_Guide.md**: Contributor process and standards.
+- **Runner_Internal_Reference.md**: Runner implementation reference.
 
-- **BriteTest_Runner_Internal_Guide.md**: Runner implementation guide.
+- **Runner_Reference.md**: Runner API reference.
 
-- **BriteTest_Runner_Internal_Reference.md**: Runner implementation reference.
+- **Test_Guide.md**: Test API concepts, usage, and examples.
 
-- **BriteTest_Test_Guide.md**: Test API concepts, usage, and examples.
+- **Test_Internal_Guide.md**: Test implementation guide.
 
-- **BriteTest_Test_Reference.md**: Test API reference.
+- **Test_Internal_Reference.md**: Test implementation reference.
 
-- **BriteTest_Test_Internal_Guide.md**: Test implementation guide.
-
-- **BriteTest_Test_Internal_Reference.md**: Test implementation reference.
+- **Test_Reference.md**: Test API reference.
 
 - **README.md**: This directory guide.
 
 ## Subdirectories
 
-- **docx/**: MS Word .docx formatted files generated from .md files.
+- **docx/**: Microsoft Word `.docx` formatted files generated from `.md` files.
 
-- **pdf/**: PDF formatted files generated from .md files.
+- **pdf/**: PDF formatted `.pdf` files generated from `.md` files.

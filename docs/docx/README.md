@@ -1,24 +1,24 @@
 # docs/docx/
 
-Directory for MS Word .docx documentation generated from .md files in `docs/`.
+Directory for Microsoft Word `.docx` documentation generated from `.md` files in `docs/`.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `../../LICENSE`.
+For license details, see `LICENSE` in the root directory.
 
-See `../../README.md` for an introduction to BriteTest.
+See `README.md` in the root directory for an introduction to the project.
 
-.docx files are generated using `../../scripts/genpdf`) from .md files..
+.docx files are generated using `../../scripts/genpdf` from .md files.
 
 ## Files
 
-- **BriteTest.docx**: file generated from `../../README.md`.
+- **<brandname>.docx**: file generated from `../../README.md` where `<brandname>` is
+  the brand name for the project.
 
-- **BriteTest_*.docx**: files generated from BriteTest .md documentation
-  files in `../`.
+- ***.docs**: other `.docx` files generated from the `../docs/*.md` files.
 
 - **README.md**: This directory guide.
 
 ## Subdirectories
 
-- None.
+- None.`

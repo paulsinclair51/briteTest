@@ -4,16 +4,19 @@ Directory for public header files (including API declarations).
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `../LICENSE`.
+For license details, see `LICENSE` in the root directory.
 
-See `../README.md` for an introduction to BriteTest.
+See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
-- **britetest_runner.h**: Header for the BriteTest Runner API.
-  See `../src/britetest_runner.c` for the corresponding source file.
-- **britetest_test.h**: Header for the BriteTest Test API.
-  See `../src/britetest_test.c` for the corresponding source file.
+- **runnerapi.h**: Header for the Runner API.
+  See `../src/runnerapi.c` for the corresponding implementation.
+
+- **testapi.h**: Header for the Test API.
+  See `../src/testapi.c` for the corresponding implementation.
+
+- **README.md**: This directory guide.
 
 ## Subdirectories
 

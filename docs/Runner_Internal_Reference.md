@@ -1,6 +1,6 @@
-![BriteTest Runner Internal Reference](branding/BriteTest_Runner_Internal_Reference.png)
+![Runner Internal Reference](branding/Runner_Internal_Reference.png)
 
-This document provides a reference to the BriteTest Runner API internals.
+This document provides a reference to the BriteTestRunner API internals.
 It includes types, structs, unions, enums, macros, and functions.
 
 #### Copyright (c) 2026 Paul Sinclair
@@ -36,9 +36,9 @@ SOFTWARE.
 ## Preface
 
 For a list of other BriteTest documents and the BriteTest repository layout, see
-the BriteTest Documentation Guide.
+the Documentation Guide.
 
-For a glossary of terms, see the BriteTest Glossary Reference.
+For a glossary of terms, see the Glossary Reference.
 </details>
 
 <details>
@@ -52,12 +52,12 @@ For a glossary of terms, see the BriteTest Glossary Reference.
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
-- The **Runner** column records the BriteTest Runner API version
+- The **Runner** column records the Runner API version
   current at the time this document version was published and is
-  defined by its `BT_RUNNER_VERSION` macro.
-- The **Test** column records the BriteTest Test API version current at
+  defined by its `RA_RUNNER_VERSION` macro.
+- The **Test** column records the Test API version current at
   the time this document version was published and is defined by its
-  `BT_TEST_VERSION` macro.
+  `RA_TEST_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
@@ -115,7 +115,7 @@ changes are published in a release without a change to `M`, and it resets to
   - [Public and Internal Name Conventions](#public-and-internal-name-conventions)  
   - [Why Internal Symbols Appear in the Header](#why-internal-symbols-appear-in-the-header)
 
-- [**2. Symbols Defined in `britetest_runner.h`**](#2-symbols-defined-in-britetesth)  
+- [**2. Symbols Defined in `runnerapi.h`**](#2-symbols-defined-in-britetesth)  
   - [2.1. Types](#21-types)  
   - [2.2. Structs](#22-structs)  
   - [2.3. Enums and Enum Values](#23-enums-and-enum-values)  
@@ -123,14 +123,14 @@ changes are published in a release without a change to `M`, and it resets to
   - [2.5. Macros](#25-macros)  
   - [2.6. Functions](#26-functions)
 
-- [**3. Symbols Defined in `britetest_runner.c`**](#3-symbols-defined-in-britetestc)  
+- [**3. Symbols Defined in `runnerapi.c`**](#3-symbols-defined-in-britetestc)  
   - [3.1. Types](#31-types)  
   - [3.2. Structs](#32-structs)  
   - [3.3. Enums and Enum Values](#33-enums-and-enum-values)  
   - [3.4. Global Variables](#34-global-variables)  
   - [3.5. Macros](#35-macros)  
-  - [3.6. Functions (declared as a forward reference) in `britetest_runner.h`](#36-functions-declared-as-a-forward-reference-in-britetesth)  
-  - [3.7. Functions (not declared in `britetest_runner.h`)](#37-functions-not-declared-in-britetesth)
+  - [3.6. Functions (declared as a forward reference) in `runnerapi.h`](#36-functions-declared-as-a-forward-reference-in-britetesth)  
+  - [3.7. Functions (not declared in `runnerapi.h`)](#37-functions-not-declared-in-britetesth)
 
 - [**4. Execution Engine**](#4-execution-engine)
 
@@ -188,22 +188,22 @@ and interaction.
 #### Public and Internal Naming Conventions
 
 Any framework names that are public and visible to BriteTest API users are prefixed
-with `bt_...` (typically lowercase) or `BT_...` (typically uppercase).
+with `ra_...` (typically lowercase) or `RA_...` (typically uppercase).
 
 Any framework names that are internal (but technically visible to BriteTest API users)
 follow the pattern `britetest_..._internal_t`, `britetest_..._internal`, or `BRITETEST_..._INTERNAL`.
 These names should not be referenced by API users.
 
-In general, users of the API should not define names prefixed with `bt_`, `BT`, `britetest_`,
+In general, users of the API should not define names prefixed with `ra_`, `BT`, `britetest_`,
 or `BRITETEST`, or reference names prefixed with `britetest_` or `BRITETEST_`.
 </details>
 
 <details>
-<summary>2. Symbols Defined in `britetest_runner.h`</summary>
+<summary>2. Symbols Defined in `runnerapi.h`</summary>
 
-## 2. Symbols Defined in `britetest_runner.h`
+## 2. Symbols Defined in `runnerapi.h`
 
-These are used by `britetest_runner.h` and `britetest_runner.c`, and are public or internal
+These are used by `runnerapi.h` and `runnerapi.c`, and are public or internal
 based on their name per the naming conventions.
 
 <details>
@@ -214,9 +214,9 @@ based on their name per the naming conventions.
 These typedefs declare fundamental internal types used throughout the BriteTest framework.
 
 <details>
-<summary>bt_resubt_t</summary>
+<summary>ra_resubt_t</summary>
 
-#### bt_resubt_t
+#### ra_resubt_t
 
 **Declaration**
 ```c
@@ -226,7 +226,7 @@ typedef struct
   size_t fault;
   size_t injected_fail;
   size_t injected_fault;
-} bt_resubt_t;
+} ra_resubt_t;
 ```
 
 **Description**  
@@ -237,11 +237,11 @@ orchestrator aggregation logic.
 - `fault == SIZE_MAX` is a sentinel meaning a function-level fault was captured.
 - Function-level fault sentinel values are introduced by the signal-guard path.
 - This sentinel is distinct from ordinary fault counts returned by test logic.
-- Related helpers include `bt_currentresult(void)` and result-merging macros.
+- Related helpers include `ra_currentresult(void)` and result-merging macros.
 
 **Example**
 ```c
-bt_resubt_t result = {0, 0, 0, 0, 0};
+ra_resubt_t result = {0, 0, 0, 0, 0};
 ```
 </details>
 </details>
@@ -431,11 +431,11 @@ Describe what is returned and under what conditions.
 </details>
 
 <details>
-<summary>3. Symbols Defined in `britetest_runner.c`</summary>
+<summary>3. Symbols Defined in `runnerapi.c`</summary>
 
-## 3. Symbols Defined in `britetest_runner.c`
+## 3. Symbols Defined in `runnerapi.c`
 
-These symbols are local to `britetest_runner.c` unless specified or defaulting to
+These symbols are local to `runnerapi.c` unless specified or defaulting to
 extern. Symbols that are local do not have to conform to the internal naming
 conventions and more natural names may be used.
 
@@ -480,22 +480,22 @@ conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>3.6. Functions (declared as a forward reference) in `britetest_runner.h`</summary>
+<summary>3.6. Functions (declared as a forward reference) in `runnerapi.h`</summary>
 
-### 3.6. Functions (declared as a forward reference) in `britetest_runner.h`
+### 3.6. Functions (declared as a forward reference) in `runnerapi.h`
 
-These functions are referenced internally by `britetest_runner.h` but defined in `britetest_runner.c`.
+These functions are referenced internally by `runnerapi.h` but defined in `runnerapi.c`.
 These functions are (by default) extern and must conform to the internal name conventions.
 
 (Placeholder)
 </details>
 
 <details>
-<summary>3.7. Functions (not declared in `britetest_runner.h`)</summary>
+<summary>3.7. Functions (not declared in `runnerapi.h`)</summary>
 
-### 3.7. Functions (not declared in `britetest_runner.h`)
+### 3.7. Functions (not declared in `runnerapi.h`)
 
-These functions are local to `britetest_runner.c` and defined as static.
+These functions are local to `runnerapi.c` and defined as static.
 Since these are local, these names do not have to conform to the
 internal name conventions and more natural names may be used.
 
@@ -572,7 +572,7 @@ Repository layout (listing core files):
 BriteTest/
 |- .github/
 |  \- workflows/
-|     \- britetest_ci.yml
+|     \- ci.yml
 |- README.md
 |- LICENSE
 |- Makefile
@@ -581,23 +581,23 @@ BriteTest/
 |- docs/
 |  \- BriteTest_API_User_Guide.md
 |  \- BriteTest_API_Reference.md
-|  \- BriteTest_Contributor_Guide.md
+|  \- Contributor_Guide.md
 |  \- BriteTest_Framework_Guide.md
 |  \- BriteTest_Framework_Reference.md
 |- examples/
 |- include/
-|  \- britetest_runner.h
+|  \- runnerapi.h
 |- reports/
-|  |- britetest_test_report-I.txt
-|  \- britetest_test_report.txt
+|  |- test_report-I.txt
+|  \- test_report.txt
 |- scripts/
 |- src/
-|  \- britetest_runner.c
+|  \- runnerapi.c
 |- tests/
-|  |- test_britetest.c
-|  |- test_orchestrator.c
-|  |- test_guard1.c
-|  \- test_guard2.c
+|  |- test_runner.c
+|  |- orchestrator_tests.c
+|  |- guard1_tests.c
+|  \- guard2_tests.c
 ```
 
 Use this as a reference when adapting BriteTest into your own project structure.
@@ -616,8 +616,8 @@ Use this as a reference when adapting BriteTest into your own project structure.
 ### General Terms
 
 - `API`: Application Programming Interface.
-- `category`: A labeled set of `BT_GROUP` and `BT_TEST` macros whose combined
-  results are written by `BT_WRITE_RESULT` to the report with a specified
+- `category`: A labeled set of `RA_GROUP` and `RA_TEST` macros whose combined
+  results are written by `RA_WRITE_RESULT` to the report with a specified
   category name.
 - `control file`: A previously generated file that can be compared to a newly
   generated file for differences. Differences (other than expected ones like
@@ -629,27 +629,27 @@ Use this as a reference when adapting BriteTest into your own project structure.
   directory path (or no `PATH`) is provided.
 - `executable`: The compiled test program that runs the orchestrator and test
   functions.
-- `fail`: A counted test failure where the `BT_TEST` or `BT_INJECT_TEST`
+- `fail`: A counted test failure where the `RA_TEST` or `RA_INJECT_TEST`
   expression evaluates to zero.
 - `fault`: A counted runtime fault captured by BriteTest guards (e.g., invalid
   memory access).
-- `Concurrent block`: A set of tests bracketed by `BT_BEGIN_CONCURRENT` and
-  `BT_END_CONCURRENT`.
+- `Concurrent block`: A set of tests bracketed by `RA_BEGIN_CONCURRENT` and
+  `RA_END_CONCURRENT`.
 - `group`: See `test group`.
 - `guard`: The protection mechanism used to catch runtime faults and continue
   test execution.
 - `guard level`: The nesting depth of active guards while test groups and tests
   run.
 - `inject mode (-i)`: Optional command‑line flag that enables an
-  `BT_INJECT_TEST` to be executed.
-- `isolation`: Execution mode for `BT_GROUP`, `BT_TEST`, or `BT_INJECT_TEST`.
+  `RA_INJECT_TEST` to be executed.
+- `isolation`: Execution mode for `RA_GROUP`, `RA_TEST`, or `RA_INJECT_TEST`.
   `0` = same thread, `1` = separate thread, `2` = separate process.
 - `maxargs`: Maximum number of command‑line arguments accepted by orchestrator
-  parsing. `BT_PARSE_ARGS` handles the first two arguments; additional arguments
+  parsing. `RA_PARSE_ARGS` handles the first two arguments; additional arguments
   must be parsed by custom code.
-- `maxparallel`: Upper bound on concurrent `BT_GROUP`, `BT_TEST`,
-  `BT_INJECT_TEST`. Set in `BT_INIT_ORCHESTRATOR` and `BT_GROUP`.
-- `notes`: Optional text appended to the report by `BT_CLOSE_REPORT`.
+- `maxparallel`: Upper bound on concurrent `RA_GROUP`, `RA_TEST`,
+  `RA_INJECT_TEST`. Set in `RA_INIT_ORCHESTRATOR` and `RA_GROUP`.
+- `notes`: Optional text appended to the report by `RA_CLOSE_REPORT`.
 - `orchestrator`: The `main` function that initializes BriteTest, runs groups or
   tests, and writes report output.
 - `pass`: A counted successful test where the expression evaluates to non‑zero.
@@ -659,15 +659,15 @@ Use this as a reference when adapting BriteTest into your own project structure.
   separate process.
 - `project`: Project identifier used in orchestrator initialization and default
   report naming.
-- `test group`: A grouping of `BT_TEST` and optionally nested `BT_GROUP` macros.
-- `test group function`: A function declared with `BT_DECLARE_GROUP` that
-  contains `BT_TEST` and `BT_GROUP` macros.
+- `test group`: A grouping of `RA_TEST` and optionally nested `RA_GROUP` macros.
+- `test group function`: A function declared with `RA_DECLARE_GROUP` that
+  contains `RA_TEST` and `RA_GROUP` macros.
 - `thread isolation`: Isolation mode where a test/assert call runs in a
   separate thread.
 - `test case`: Not used in BriteTest. In other contexts it may mean a single
   test or a set of tests; BriteTest uses “test expression” and “test group.”
 - `test`: See `test expression`.
-- `test expression`: An expression passed to an `BT_TEST` macro that can be cast
+- `test expression`: An expression passed to an `RA_TEST` macro that can be cast
   to `int`; zero means fail, non‑zero means pass.
 - `testing artifact`: A file or output generated by the test executable (e.g.,
   test report, stdout, stderr).
@@ -693,7 +693,7 @@ Use this as a reference when adapting BriteTest into your own project structure.
 - **Isolation Semantics**: The rules governing how tests and groups run in
   threads or processes to prevent interference and ensure fault containment.
 - **Concurrency Model**: The framework’s rules for running tests concurrently
-  within `BT_BEGIN_CONCURRENT` / `BT_END_CONCURRENT` blocks.
+  within `RA_BEGIN_CONCURRENT` / `RA_END_CONCURRENT` blocks.
 - **Execution Phases**: The internal stages of orchestrator operation, including
   initialization, argument parsing, group dispatch, test dispatch, and report
   writing.

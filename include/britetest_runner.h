@@ -1,7 +1,7 @@
  /**
- * @file /paulsinclair51/include/britetest_runner.h
+ * @file /paulsinclair51/include/litetest_runner.h
  * 
- * @brief BriteTest Runner is a lightweight framework and Application Programming and
+ * @brief LiteTest Runner is a lightweight framework and Application Programming and
  * Interface (API) framework for defining, running, and reporting tests in C/C++ projects.
  * It is implemented as a single .h and .c pair with no external dependencies requiring
  * only a POSIX.1‑2001 environment and a C99‑compliant compiler.
@@ -17,28 +17,28 @@
  * This header is included by modules defining an orchestrator (main) and 
  * testing functions for testing, e.g., a feature, API, or a project implementation.
  * It provides declarations, definitions (other than non-inline function definitions
- * provided by britetest_runner.c in the repository src directory).
+ * provided by litetest_runner.c in the repository src directory).
  *
- * See README.md in the repository root directory for an introduction to BriteTest.
+ * See README.md in the repository root directory for an introduction to LiteTest.
  *
- * See BriteTest Docucmentation Guide for ,,,
+ * See LiteTest Docucmentation Guide for ,,,
  *
- * @note BriteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility and a
+ * @note LiteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility and a
  *       C99-compliant compiler. Linux, macOS, and the BSD family natively meet these
  *       requirements. Windows requires a POSIX compatibility layer such as Cygwin,
  *       MSYS2, or WSL.
  *
- * @note BriteTest Runner has been exercised in a POSIX environment; however, users must
+ * @note LiteTest Runner has been exercised in a POSIX environment; however, users must
  *       confirm correct behavior in their own environment.
  */
 
 /**
  * @section RunnerVersonMacro Runner Version Macro
  *
- * @name BT_RUNNER_VERSION
+ * @name LT_RUNNER_VERSION
  *
- * @brief Version for britetest_runner.h which must be the same as
- *.       BT_RUNNER_VERSION_C for britetest_runner.c.
+ * @brief Version for litetest_runner.h which must be the same as
+ *.       LT_RUNNER_VERSION_C for litetest_runner.c.
  *
  * The version is a literal string of type char[n], where n is
  * between 5 and 9 (including the terminating null character).
@@ -56,7 +56,7 @@
  * The patch version is incremented for bug fixes or internal improvements.
  */
  
-#define BT_RUNNER_VERSION "1.0.0"
+#define LT_RUNNER_VERSION "1.0.0"
 
 /**
  * @section ChangeHistory Change History
@@ -98,46 +98,46 @@ extern "C" {
 typedef enum
 {
   // Success
-    BT_OK = 0,
+    LT_OK = 0,
     
   // Compare
-    BT_LESS = -1,
-    BT_EQUAL = 0,
-    BT_GREATER = 1,
+    LT_LESS = -1,
+    LT_EQUAL = 0,
+    LT_GREATER = 1,
     
   // Boolean
-    BT_FALSE = 0,
-    BT_TRUE = 1,
+    LT_FALSE = 0,
+    LT_TRUE = 1,
 
   // -100 to -199: Invalid Usage.
-    BT_INVALID = -100,
-    BT_INVALID_ARG = -101,
-    BT_INVALID_ARG_VERSION = -102,
-    BT_INVALID_ARG_TOO_LONG = -103,
+    LT_INVALID = -100,
+    LT_INVALID_ARG = -101,
+    LT_INVALID_ARG_VERSION = -102,
+    LT_INVALID_ARG_TOO_LONG = -103,
 
   // -300 to -399: Failed system call.
-    BT_SYSTEM = -300,
-    BT_SYSTEM_OPEN = -301,
-    BT_SYSTEM_READ = -302,
-    BT_SYSTEM_WRITE = -303,
-    BT_SYSTEM_FORK = -304,
-    BT_SYSTEM_THREAD = -305
-} bt_return_code_t;
+    LT_SYSTEM = -300,
+    LT_SYSTEM_OPEN = -301,
+    LT_SYSTEM_READ = -302,
+    LT_SYSTEM_WRITE = -303,
+    LT_SYSTEM_FORK = -304,
+    LT_SYSTEM_THREAD = -305
+} lt_return_code_t;
 
 /**
  * @section UtilityMacros Utility Macros
  */
 
-#if defined(BT_STATIC_ASSERT))
-#error "britetest_runner.h: An BT_STATIC_ASSERT " \
+#if defined(LT_STATIC_ASSERT))
+#error "litetest_runner.h: An LT_STATIC_ASSERT " \
        "macro is unexpectedly already defined. " \
-       "#undef before including britetest_runner.h."
+       "#undef before including litetest_runner.h."
 #endif // defined macro
 
 /*
  * @defgroup TokenPaste Token Paste
  *
- * @name BT_TOK_PASTE
+ * @name LT_TOK_PASTE
  *
  * @brief Macro for pasting two expanded tokens togethe using the
  *        C/C++ preprocessor operator ##,
@@ -150,8 +150,8 @@ typedef enum
  * 
  * @note Tokens t1 and t2 must each expand to a single token.
  * 
- * @note Macro BRITETEST_TOK_PASTE_INTERNAL is defined to implement expanding
- *       the tokens for BT_TOK_PASTE. It is not intended for direct use.
+ * @note Macro LITETEST_TOK_PASTE_INTERNAL is defined to implement expanding
+ *       the tokens for LT_TOK_PASTE. It is not intended for direct use.
  *.      Instead use the ## operator.
  * 
  * @note A preprocessor error is raised if either of these macros
@@ -161,18 +161,18 @@ typedef enum
 
 // Paste tokens without expanding.
 
-#define BRITETEST_TOK_PASTE_INTERNAL(t1, t2) a##b
+#define LITETEST_TOK_PASTE_INTERNAL(t1, t2) a##b
 
 // Expand tokens before pasting.
 
-#define BT_TOK_PASTE(t1, t2) BRITETEST_TOK_PASTE_INTERNAL(t1, t2)
+#define LT_TOK_PASTE(t1, t2) LITETEST_TOK_PASTE_INTERNAL(t1, t2)
 
 /** @} */
 
 /**
  * @defgroup TokenStringify Token Stringify
  *
- * @name BT_TOK_STR
+ * @name LT_TOK_STR
  *
  * @brief Macro for stringifying an expanded token using the
  *        C/C++ preprocessor operator #,
@@ -184,8 +184,8 @@ typedef enum
  * 
  * @note Token t must expand to a single token.
  * 
- * @note Macro BRITETEST_TOK_STR_INTERNAL is defined to implement expanding
- *       the token for BT_TOK_STR. It is not intended for direct use.
+ * @note Macro LITETEST_TOK_STR_INTERNAL is defined to implement expanding
+ *       the token for LT_TOK_STR. It is not intended for direct use.
  *       Instead use the # operator.
  * 
  * @note A preprocessor error is raised if either of these macros
@@ -194,14 +194,14 @@ typedef enum
  */
 
 // Stringify token without expanding.
-#define BRITETEST_TOK_STR_INTERNAL(t) #s
+#define LITETEST_TOK_STR_INTERNAL(t) #s
 // Expand token before stringifying.
-#define BT_TOK_STR(t) BRITETEST_TOK_STR_INTERNAL(t)
+#define LT_TOK_STR(t) LITETEST_TOK_STR_INTERNAL(t)
 
 /** @} */
 
 /**
- * @name BT_STATIC_ASSERT
+ * @name LT_STATIC_ASSERT
  *
  * @brief Compile-time (static) assertion macro.
  *
@@ -219,17 +219,17 @@ typedef enum
  * 
  * @example Static Assert Example
  * @code
-BT_STATIC_ASSERT(sizeof(int) == 4, int_must_be_4_bytes);
+LT_STATIC_ASSERT(sizeof(int) == 4, int_must_be_4_bytes);
  * @endcode
  * For C99, if assertion is true (and the type is not already defined), expands to:
  * @code
-typedef char BT_STATIC_ASSERT_int_must_be_4_bytes[1];
+typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[1];
  * @endocde
  * And the type is defined (which can be ignored).
  *
  * Or if false, expands to:
  * @code
-typedef char BT_STATIC_ASSERT_int_must_be_4_bytes[-1];
+typedef char LT_STATIC_ASSERT_int_must_be_4_bytes[-1];
  * @endcode
  *  Compiler error raised due to typedef statement with an
  *  invalid array bound -1.
@@ -238,58 +238,58 @@ typedef char BT_STATIC_ASSERT_int_must_be_4_bytes[-1];
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 
 // C11 and later: use the built‑in assertion macro.
-#define BT_STATIC_ASSERT(cond, msg) _Static_assert(cond, #msg)
+#define LT_STATIC_ASSERT(cond, msg) _Static_assert(cond, #msg)
 
 #else
 
 // C99: typedef with invalid negative array size if assertion not satisfied.
 
-#define BT_STATIC_ASSERT(cond, msg) \
-    typedef char BT_TOK_PASTE(BT_STATIC_ASSERT_, msg)[(cond) ? 1 : -1]
+#define LT_STATIC_ASSERT(cond, msg) \
+    typedef char LT_TOK_PASTE(LT_STATIC_ASSERT_, msg)[(cond) ? 1 : -1]
 
 #endif
 
 /**
- * @section BriteTestVersionMacros BriteTest Version Macros
+ * @section LiteTestVersionMacros LiteTest Version Macros
  */
 
 /**
- * @defgroup BriteTestVersionMacros BriteTest Version Macros
+ * @defgroup LiteTestVersionMacros LiteTest Version Macros
  *
- * @name BT_VERSION_MAJOR, BT_VERSION_MINOR, BT_VERSION_PATCH,
- *       BT_VERSION_NUM, BT_VERSION_HEX, 
- *       BT_VERSION_CMP
+ * @name LT_VERSION_MAJOR, LT_VERSION_MINOR, LT_VERSION_PATCH,
+ *       LT_VERSION_NUM, LT_VERSION_HEX, 
+ *       LT_VERSION_CMP
  *
- * @brief Version macros for BriteTest (britetest_runner.h and britetest_runner.c):
+ * @brief Version macros for LiteTest (litetest_runner.h and litetest_runner.c):
  * @{
  */
 
-#if !defined(BT_TEST_VERSION)
+#if !defined(LT_TEST_VERSION)
 
-int britetest_get_runner_major_internal(v);
-#define BT_VERSION_MAJOR britetest_get_runner_major_internal()
+int litetest_get_runner_major_internal(v);
+#define LT_VERSION_MAJOR litetest_get_runner_major_internal()
 
-int britetest_get_runner_minor_internal(v);
-#define BT_VERSION_MINOR britetest_get_runner_minor_internal((v))
+int litetest_get_runner_minor_internal(v);
+#define LT_VERSION_MINOR litetest_get_runner_minor_internal((v))
 
-int britetest_get_version_patch_internal(v);
-#define BT_VERSION_PATCH britetest_get_runner_patch_internal((v))
+int litetest_get_version_patch_internal(v);
+#define LT_VERSION_PATCH litetest_get_runner_patch_internal((v))
 
-// BriteTest version as an integer for comparisons.
+// LiteTest version as an integer for comparisons.
 
-int britetest_get_runner_num_internal(v);
-#define BT_VERSION_NUM britetest_get_runner_num_internal((v))
+int litetest_get_runner_num_internal(v);
+#define LT_VERSION_NUM litetest_get_runner_num_internal((v))
 
-// BriteTest version encoded as 0xMMmmpp (major, minor, patch) for display/debug.
+// LiteTest version encoded as 0xMMmmpp (major, minor, patch) for display/debug.
 
-int britetest_get_runner_hex_internal(v);
-#define BT_VERSION_HEX britetest_get_runner_hex_internal((v))
+int litetest_get_runner_hex_internal(v);
+#define LT_VERSION_HEX litetest_get_runner_hex_internal((v))
 
-// BriteTest version compared to specified version (1 if true, otherwie 0).
+// LiteTest version compared to specified version (1 if true, otherwie 0).
 
-int britetest_runner_cmp_internal
+int litetest_runner_cmp_internal
 ( const char *v1, const char *v2 );
-#define BT_VERSION_CMP(v1, v2) britetest_runner_cmp_internal((v1), (v2))
+#define LT_VERSION_CMP(v1, v2) litetest_runner_cmp_internal((v1), (v2))
 
 #endif
 
@@ -300,22 +300,22 @@ int britetest_runner_cmp_internal
  */
 
 /**
- * @name BT_MAX_PATH_LEN, BT_MAX_FILENAME_LEN, BT_MAX_LEVEL
+ * @name LT_MAX_PATH_LEN, LT_MAX_FILENAME_LEN, LT_MAX_LEVEL
  * 
  * @brief Maximum values for path length, filename length,
  *        and guard levels.
  */
 
-#define BT_MAX_PATH_LEN      ((size_t)4096)
-#define BT_MAX_FILENAME_LEN  ((size_t)255)
-#define BT_MAX_LEVEL         ((size_t)32)
+#define LT_MAX_PATH_LEN      ((size_t)4096)
+#define LT_MAX_FILENAME_LEN  ((size_t)255)
+#define LT_MAX_LEVEL         ((size_t)32)
 
 /**
- * @section resubt_t Result Type
+ * @section result_t Result Type
  */
 
 /**
- * @name bt_resubt_t
+ * @name lt_result_t
  *
  * @brief Type for result counters returned by a test function,
  * 
@@ -329,10 +329,10 @@ typedef struct
   size_t fault;
   size_t injected_fail;
   size_t injected_fault;
-} bt_resubt_t;
+} lt_result_t;
 
 /**
- * @name bt_state_t
+ * @name lt_state_t
  *
  * @brief Type for maintaining the state of the orchestrator (main)
  *        or a test function.
@@ -357,104 +357,104 @@ typedef struct
   size_t total_fault;
   size_t total_injected_fail;
   size_t total_injected_fault;
-  bt_state_t parent;
-  bt_state_t prev;
-  bt_state_t next;
-} bt_state_t;
+  lt_state_t parent;
+  lt_state_t prev;
+  lt_state_t next;
+} lt_state_t;
 
 /**
- * @name BT_PRINT_ERR_HELP(err)
+ * @name LT_PRINT_ERR_HELP(err)
  *
  * @brief Print err and help text to stdout.
- *        err is prefixed with bt_err_prefix().
- *.       help text is formed using bt_usage() and bt_help().
+ *        err is prefixed with lt_err_prefix().
+ *.       help text is formed using lt_usage() and lt_help().
  *
  * @param err Pointer to error string.
  * @param help 0: don't print help text.
  *             non-zero: print help text.
  *
- * @note Use bt_set_err_prefix() to set the prefix.
+ * @note Use lt_set_err_prefix() to set the prefix.
  *
- * @note Use bt_set_usage() and/or bt_set_help() to
+ * @note Use lt_set_usage() and/or lt_set_help() to
  *       define the help text.
  */
 
-void britetest_print_err_help_internal
+void litetest_print_err_help_internal
 ( char *err, char help,
   char *func, char *file, int line,
-  britetest_state_internal_t *const state
+  litetest_state_internal_t *const state
 );
 
-#define BT_PRINT_ERR_HELP(err, help) \
+#define LT_PRINT_ERR_HELP(err, help) \
   do \
   { \
-    britetest_print_err_help_internal \
+    litetest_print_err_help_internal \
       ( \
        (err), (help) \
        __func__, __FILE__, __LINE__, \
-       britetest_state_internal \
+       litetest_state_internal \
       ); \
    } while (0)
 
 // Customization: Get and set.
 
-char *bt_executable_name(void);
-void bt_set_executable_name(char *en);
-char *bt_defaubt_dirpath(void);
-void bt_set_defaubt_dirpath(char *dp);
-char *bt_err_prefix(void);
-void bt_set_err_prefix(char *pe);
-char *bt_args_options(void);
-void bt_set_args_options(char *ao);
-char *bt_usage(void):
-void bt_set_usage(char *u);
-char *bt_help(void);
-void bt_set_help(char *h);
+char *lt_executable_name(void);
+void lt_set_executable_name(char *en);
+char *lt_default_dirpath(void);
+void lt_set_default_dirpath(char *dp);
+char *lt_err_prefix(void);
+void lt_set_err_prefix(char *pe);
+char *lt_args_options(void);
+void lt_set_args_options(char *ao);
+char *lt_usage(void):
+void lt_set_usage(char *u);
+char *lt_help(void);
+void lt_set_help(char *h);
 
 // Customization Helper Functions
 
-size_t bt_currentlevel(void);
-bt_resubt_t bt_currentresult(void);
-bt_total_t bt_currenttotal(void);
-size_t bt_maxparallel(size@_t level);
-size_t bt_currentparallel(void);}
-int bt_isisolated(void);
-int bt_isthreadisolated(void);
-int bt_isprocessisolated(void);
-size_t bt_groupid(void);
-char *bt_groupname(void);
+size_t lt_currentlevel(void);
+lt_result_t lt_currentresult(void);
+lt_total_t lt_currenttotal(void);
+size_t lt_maxparallel(size@_t level);
+size_t lt_currentparallel(void);}
+int lt_isisolated(void);
+int lt_isthreadisolated(void);
+int lt_isprocessisolated(void);
+size_t lt_groupid(void);
+char *lt_groupname(void);
 
-char *bt_project(void);
-size_t bt_maxargs(void);
-char *bt_title(void);
-size_t bt_categoryid(void);
-char *bt_category(void);
-char *bt_funcname(void);
-char *bt_notes(void);
-char *bt_assertexpression(void);
-char bt_inject(void);
-char bt_isolation(void);
-char bt_orchestrator(void);
-char bt_testfunction(void);
-char bt_assert(void);
+char *lt_project(void);
+size_t lt_maxargs(void);
+char *lt_title(void);
+size_t lt_categoryid(void);
+char *lt_category(void);
+char *lt_funcname(void);
+char *lt_notes(void);
+char *lt_assertexpression(void);
+char lt_inject(void);
+char lt_isolation(void);
+char lt_orchestrator(void);
+char lt_testfunction(void);
+char lt_assert(void);
 
-char *bt_dirpath(void);
-char *bt_filepath(void);
-char *bt_filename(void);
+char *lt_dirpath(void);
+char *lt_filepath(void);
+char *lt_filename(void);
 
 // 1 true, 0 false
-int bt_isfilename(char *name);
+int lt_isfilename(char *name);
 
 // 1 true, 0 false, -1 not a directory path
-int bt_isreaddirpath(char *path);
-int bt_iswritedirpath(char *path);
+int lt_isreaddirpath(char *path);
+int lt_iswritedirpath(char *path);
 
 // 1 true, 0 false, -1 not a file path
-int bt_isreadfilepath(char *path);
-int bt_iswritefilepath(char *path);
+int lt_isreadfilepath(char *path);
+int lt_iswritefilepath(char *path);
 
 /**
- * @name bt_current_time
+ * @name lt_current_time
  * @brief Get the current time as a formatted string.
  *
  * @param current_time Buffer to store the formatted time string.
@@ -463,19 +463,19 @@ int bt_iswritefilepath(char *path);
  * @return void. On error, current_time is set to "unknown time".
  */
 
-void bt_current_time(char *current_time, size_t size);
+void lt_current_time(char *current_time, size_t size);
 
 /**
- * @name BT_GROUP
+ * @name LT_GROUP
  *
  * @brief A macro to call a test group function with a fault guard.
  *
- * - BT_GROUP(funcname, [isolation])[;]
+ * - LT_GROUP(funcname, [isolation])[;]
  *
- * The semicolon is omitted if used as an argument to the BT_WRITE_RESULT macro;
+ * The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
  * otherwise it is required.
  *
- * The BT_GROUP macro provides an interface for running a group of tests with
+ * The LT_GROUP macro provides an interface for running a group of tests with
  * built-in fault recovery using the multi-level guard infrastructure:
  *
  * Result counts and totals updated.
@@ -485,8 +485,8 @@ void bt_current_time(char *current_time, size_t size);
  *                  1: separate thread.
  *                  2: separate process.
  * 
- * @note If no signal, bt_resubt_t result from test function is used.
- *       If signal caught, (bt_resubt_t){0, 0, SIZE_MAX, 0, 0} is used.
+ * @note If no signal, lt_result_t result from test function is used.
+ *       If signal caught, (lt_result_t){0, 0, SIZE_MAX, 0, 0} is used.
  * 
  * @note If a fault is captured, a message is printed to stderr
  *       including the function name, file name, and line number
@@ -497,35 +497,35 @@ void bt_current_time(char *current_time, size_t size);
  *       of SIZE_MAX for the fault count allows the macro to distinguish between
  *       a function-level fault and faults counted by the function itself.
  *
- * @note Typically, the orchestrator (main) function uses the BT_GROUP macro
- *       to execute a test group function. The BT_TEST macro may be used in the
+ * @note Typically, the orchestrator (main) function uses the LT_GROUP macro
+ *       to execute a test group function. The LT_TEST macro may be used in the
  *       orchestrator function, but it is more common for test group functions
  *       to use these macros.
  * 
- * @example In the orchestrator module (e,g., test_britetest.c) to
+ * @example In the orchestrator module (e,g., test_litetest.c) to
  *          run the test function in a test module (e.g., test_orchestrator.c):
  *
  * @code
-BT_GROUP(test_guard_2, 0);
+LT_GROUP(test_guard_2, 0);
  * @endcode
  */
 
-#define BT_GROUP(func, isolation, maxparallel) \
-   { t_resubt_t func(bt_state_t *britetest_state_internal); \
-     britetest_group_internal(funcname, #funcname); }
+#define LT_GROUP(func, isolation, maxparallel) \
+   { t_result_t func(lt_state_t *litetest_state_internal); \
+     litetest_group_internal(funcname, #funcname); }
 
 /**
- * @name BT_TEST
+ * @name LT_TEST
  *
  * @brief Evaluates expression with a fault guard and updates the
  *        totals for pass/fail/fault:
  *
- * - BT_TEST(expression, include, [isolation])[;]
+ * - LT_TEST(expression, include, [isolation])[;]
  *
- * The semicolon is omitted if used as an argument to the BT_WRITE_RESULT macro;
+ * The semicolon is omitted if used as an argument to the LT_WRITE_RESULT macro;
  * otherwise it is required.
  *
- * The BT_TEST macrosprovides an interface for running tests with
+ * The LT_TEST macrosprovides an interface for running tests with
  * built-in fault recovery using the multi-level guard infrastructure:
  */
  *
@@ -539,67 +539,67 @@ BT_GROUP(test_guard_2, 0);
  *                  1: separate thread.
  *                  2: separate process.
  *
- * @note The BT_TEST macro uses a guard to capture a fault that may occur during the
+ * @note The LT_TEST macro uses a guard to capture a fault that may occur during the
  *       evaluation of expression. If a fault is causght, it counts as a fault.
  * 
  * @note For fail and fault, a message is appended to the test report.
  *       The message includes expression, filename of the module, and
  *       line number for debugging purposes.
  *
- * BT_TEST with I argument value for include:
+ * LT_TEST with I argument value for include:
  *
  * - Only executes if injection is enabled (see @ref IOption `-I` Option.
  * - Result is counted as an injected pass/fail/fault.
  *
  * Special values that can be used in any expression:
  *
- * - BT_PASS: returns 1.
- * - BT_FAIL: returns 0.
- * - BT_FAULT(type): causes a fault of the specified type:
+ * - LT_PASS: returns 1.
+ * - LT_FAIL: returns 0.
+ * - LT_FAULT(type): causes a fault of the specified type:
  *.                  1 (`SIGSEGV`). 2 (`SIGABRT`), 3 (`SIGBUS`).
  * 
- * For other values of type, BT_FAULT returns 0.
+ * For other values of type, LT_FAULT returns 0.
  *
- * @note Typically, a test group function uses the BT_TEST macro. A test group
- *       function may also use the BT_GROUP macro.
+ * @note Typically, a test group function uses the LT_TEST macro. A test group
+ *       function may also use the LT_GROUP macro.
  * 
  * @example
  * @code
-BT_TEST(func("hello", 'l') == 2, 0);
+LT_TEST(func("hello", 'l') == 2, 0);
  * @endcode
  */
 
-#define BT_TEST(expression, include, isolation) \
+#define LT_TEST(expression, include, isolation) \
   do \
    { int func_assert( void ) { return (int)(assert_expr); }
-     britetest_guarded_assert_expr_internal
+     litetest_guarded_assert_expr_internal
          (&func_assert, #assert_expr, __FILE__, __LINE__)
 
 
-     britetest_guard_internal_t test_guard = { 0 }; \
-     test_guard.handler = britetest_guard_handler_internal; \
-     britetest_install_guard_internal(&test_guard); \
+     litetest_guard_internal_t test_guard = { 0 }; \
+     test_guard.handler = litetest_guard_handler_internal; \
+     litetest_install_guard_internal(&test_guard); \
      if (sigsetjmp(test_guard.env, 1) == 0) \
      { test_guard.active = 1; \
 	if (assert_expr)
        { ++test_result.pass; } \
 	else \
 	{ ++test_result.fail; \
-         britetest_print_resubt_internal \
+         litetest_print_result_internal \
            (1, #assert_expr, __FILE__, __LINE__); \
        } \
        test_guard.active = 0; \
      } \
      else \
      { ++test_result.fault; \
-	britetest_print_resubt_internal \
+	litetest_print_result_internal \
            (-1, #assert_expr, __FILE__, __LINE__); \
      } \
-     britetest_restore_guard_internal(); \
+     litetest_restore_guard_internal(); \
    } while (0)
 
 /**
- * @name BT_DECLARE_ORCHESTRATOR(funcmame)
+ * @name LT_DECLARE_ORCHESTRATOR(funcmame)
  * 
  * @brief Declare the orchestrator (main) function as a forward teference by
  *        following it with a semicolum or follow it  with a functio
@@ -611,50 +611,50 @@ BT_TEST(func("hello", 'l') == 2, 0);
  * @note Compile-time error occurs if the macro is not syntactically
  *       allowed in this context.
  *
- * Typically, the orchestrator (main) function uses the BT_GROUP macro
- * to execute a test group function. The BT_Test macro may be used in the
+ * Typically, the orchestrator (main) function uses the LT_GROUP macro
+ * to execute a test group function. The LT_Test macro may be used in the
  * test orchestrator, but it is more common for test group functions to use
- * the BT_Test macro.
+ * the LT_Test macro.
  *
  * @example Orchestrator function:
  * @code
-BT_DECLARE_ORCHESTRATOR(main)
+LT_DECLARE_ORCHESTRATOR(main)
 { 
-  BT_PARSE_ARGS ("BriteTest_test_report.txt");
+  LT_PARSE_ARGS ("LiteTest_test_report.txt");
 
-  BT_INIT_ORCHESTRATOR(britetest, 1);
+  LT_INIT_ORCHESTRATOR(litetest, 1);
   
-  BT_OPEN_REPORT("BriteTest");
+  LT_OPEN_REPORT("LiteTest");
  
-  BT_WRITE_RESULT(BT_TEST(test_orchestrator), "Orchestrator Tests");
+  LT_WRITE_RESULT(LT_TEST(test_orchestrator), "Orchestrator Tests");
 
-  BT_TEST(test_guard1);
-  BT_WRITE_RESULT(BT_TEST(test_guard2), "Guard Tests 1 and 2");
+  LT_TEST(test_guard1);
+  LT_WRITE_RESULT(LT_TEST(test_guard2), "Guard Tests 1 and 2");
 
-  BT_CLOSE_REPORT;
+  LT_CLOSE_REPORT;
 
-  BT_RETURN_STATUS;
+  LT_RETURN_STATUS;
 }
  * @endcode
  *
  * @example Forward-reference
  * @code
-BT_DECLARE_ORCHESTRATOR(main);
+LT_DECLARE_ORCHESTRATOR(main);
  * @endcode
  *
  * @example Function Definition
  * @code
-BT_DECLARE_TEST_FUNCTION(main)
+LT_DECLARE_TEST_FUNCTION(main)
 { /* orchestrator (main) function body*/ }
  * @endcode
  */
 
-#define BT_DECLARE_ORCHESTRATOR(funcnane) \
+#define LT_DECLARE_ORCHESTRATOR(funcnane) \
     void funcname \ return int?
-    ( britetest_lcl_state_internal_t *const britetest_lcl_state_internal )
+    ( litetest_lcl_state_internal_t *const litetest_lcl_state_internal )
 
 /**
- * @name BT_INIT_ORCHESTRATOR
+ * @name LT_INIT_ORCHESTRATOR
  * 
  * @brief Initialize the orchestrator.
  *
@@ -669,34 +669,34 @@ BT_DECLARE_TEST_FUNCTION(main)
  *
  * @example
  * @code
-BT_INIT_ORCHESTRATOR(main, BriteTest, 1);
+LT_INIT_ORCHESTRATOR(main, LiteTest, 1);
  * @endcode
  */
 
-void britetest_init_orchestrator_internal
+void litetest_init_orchestrator_internal
 ( char *funcname,
   char *func, char *file, int line,
-  britetest_state_internal_t *const state,
-  britetest_lcl_state_internal_t *const lcl_state
+  litetest_state_internal_t *const state,
+  litetest_lcl_state_internal_t *const lcl_state
 );
 
-#define BT_INIT_ORCHESTRATOR(funcname) \
-  typedef int bt_use_BT_INIT_ORCHESTRATOR_once; \
-  britetest_state_internal_t britetest_state_internal; \
-  britetest_lcl_state_internal_t britetest_lcl_state_internal; \
+#define LT_INIT_ORCHESTRATOR(funcname) \
+  typedef int lt_use_LT_INIT_ORCHESTRATOR_once; \
+  litetest_state_internal_t litetest_state_internal; \
+  litetest_lcl_state_internal_t litetest_lcl_state_internal; \
   do \
   { \
-    britetest_init_orchestrator_internal \
+    litetest_init_orchestrator_internal \
     ( #funcname, \
       __func__, __FILE__, __LINE__, \
-      &britetest_state_internal, \
-      &britetest_lcl_state_internal \
+      &litetest_state_internal, \
+      &litetest_lcl_state_internal \
       ); \
   } \
   while (0)
 
 /**
- * @name BT_PARSE_ARGS
+ * @name LT_PARSE_ARGS
  * 
  * @brief Parse optionss and the first two arguments (executabe name and PATH).
  *
@@ -705,32 +705,32 @@ void britetest_init_orchestrator_internal
  *
  * @example
  * @code
-BT_PARSE_ARGS(2, "");
+LT_PARSE_ARGS(2, "");
  * @endcode
  * @{
  */
 
-void britetest_parse_args_internal
+void litetest_parse_args_internal
 ( const int argc, const char *const *const argv,
   const size_t maxargs, char *const defaultfilenamename,
   char *func, char *file, int line,
-  britetest_state_internal_t *const state
+  litetest_state_internal_t *const state
 );
 
-#define BT_PARSE_ARGS(maxargs, defaultreportfilename) \
+#define LT_PARSE_ARGS(maxargs, defaultreportfilename) \
   do \
   { \
-    britetest_parse_args_internal \
+    litetest_parse_args_internal \
     ( argc, argv,
       (maxargs), (defaultreportfilename), \
       __func__, __FILE__, __LINE__, \
-      &britetest_state_internal \
+      &litetest_state_internal \
       ); \
   } \
   while (0)
 
 /**
- * @name BT_OPEN_REPORT
+ * @name LT_OPEN_REPORT
  * 
  * @brief Open report file, open tmp file, and write header lines.
  *
@@ -748,31 +748,31 @@ void britetest_parse_args_internal
  *
  * @example
  * @code
-BT_OPEN_REPORT("BriteTest Test Report %t\n");
+LT_OPEN_REPORT("LiteTest Test Report %t\n");
  * @endcode
  * @{
  */
 
-void britetest_open_report_internal
+void litetest_open_report_internal
 ( const char *const title,
   char *func, char *file, int line,
-  britetest_state_internal_t *const state
+  litetest_state_internal_t *const state
 );
 
-#define BT_OPEN_REPORT(reporttitle) \
-  typedef int bt_use_BT_OPEN_REPORT_once; \
+#define LT_OPEN_REPORT(reporttitle) \
+  typedef int lt_use_LT_OPEN_REPORT_once; \
   do \
   { \
-    britetest_open_report_internal \
+    litetest_open_report_internal \
     ( (title), \
       __func__, __FILE__, __LINE__, \
-      &britetest_state_internal \
+      &litetest_state_internal \
     ); \
   } \
   while (0)
 
 /**
- * @def BT_WRITE_RESULT
+ * @def LT_WRITE_RESULT
  * 
  * @brief Macro to write the results for a test category to the
  *        report and resets the result counts for the next category.
@@ -788,55 +788,55 @@ void britetest_open_report_internal
  *
  * @example Write the results for a category with one test function:
  * @code
-    BT_WRITE_RESULT(BT_TEST(test_orchestrator), "orchestrator");
+    LT_WRITE_RESULT(LT_TEST(test_orchestrator), "orchestrator");
  * @endcode
  *
  * @example Write results for a category with one test function (alternate):
  * @code
- BT_TEST(test_orchestrator);
- BT_WRITE_RESULT(, "orchestrator");
+ LT_TEST(test_orchestrator);
+ LT_WRITE_RESULT(, "orchestrator");
  * @endcode
  *
  * @example Write results for a category with two test functions:
  * @code
-    BT_TEST(test_guard1);
-    BT_WRITE_RESULT(BT_TEST(test_guard2), "guard 1 and 2");
+    LT_TEST(test_guard1);
+    LT_WRITE_RESULT(LT_TEST(test_guard2), "guard 1 and 2");
  * @endcode
  *
  * @example Write results for a category with two test functions (alternate):
  * @code
-BT_TEST(test_guard1);
-BT_TEST(test_guard2);
-BT_WRITE_RESULT(, "guard 1 and 2");
+LT_TEST(test_guard1);
+LT_TEST(test_guard2);
+LT_WRITE_RESULT(, "guard 1 and 2");
  * @endcode
  */
 
-void britetest_write_resubt_internal
+void litetest_write_result_internal
 ( const char *const label,
   char *func, char *file, int line,
-  britetest_lcl_state_internal_t *const lcl_state
+  litetest_lcl_state_internal_t *const lcl_state
 );
 
-#define BT_WRITE_RESULT(t, label) \
+#define LT_WRITE_RESULT(t, label) \
   do \
   { \
-    britetest_write_resubt_internal \
+    litetest_write_result_internal \
     ( (label),
       __func__, __FILE__, __LINE__, \
-      &britetest_state_internal \
+      &litetest_state_internal \
     ); \
   } \
   while (0)
 
-#define BT_WRITE_RESULT(t, label) \
+#define LT_WRITE_RESULT(t, label) \
   do \
   { t; \
     ++category_id; \
     char label_buf[96]; \
     const char *_label = categorylabel_with_inject_tag( \
              (label), result, inject, label_buf, sizeof(label_buf)); \
-    britetest_write_resubt_internal(report, categoryid, categorylabel, result); \
-    total = (bt_resubt_t) \
+    litetest_write_result_internal(report, categoryid, categorylabel, result); \
+    total = (lt_result_t) \
 		    { total.pass + result.pass, \
 		      total.fail + result.fail, \
 		      total.fault + \
@@ -849,7 +849,7 @@ void britetest_write_resubt_internal
   while (0)
 
 /**
- * @name BT_CLOSE_REPORT
+ * @name LT_CLOSE_REPORT
  * 
  * @brief Write the final summary lines, notes, and error messasges
  *        to the report, closes the report, closes/deletes
@@ -868,26 +868,26 @@ void britetest_write_resubt_internal
  *
  * @example
  * @code
- BT_CLOSE_REPORT("guard: fault detection mechanism,\n"
+ LT_CLOSE_REPORT("guard: fault detection mechanism,\n"
                  "orchestrator: main function to run testd.\n");
  * @endcode
  * @{
  */
 
-void britetest_close_report_internal
+void litetest_close_report_internal
 ( const char *const notes,
   char *func, char *file, int line,
-  britetest_state_internal_t *const state
+  litetest_state_internal_t *const state
 );
 
-#define BT_CLOSE_REPORT(notes) \
-  typedef int bt_use_BT_CLOSE_REPORT_once; \
+#define LT_CLOSE_REPORT(notes) \
+  typedef int lt_use_LT_CLOSE_REPORT_once; \
   do \
   { \
-    britetest_ lose_report_internal \
+    litetest_ lose_report_internal \
     ( (notes), \
       __func__, __FILE__, __LINE__, \
-      &britetest_state_internal \
+      &litetest_state_internal \
     ); \
   } \
   while (0)
@@ -895,7 +895,7 @@ void britetest_close_report_internal
 /** @} */
 
 /**
- * @name BT_EXIT_ORCHESTRATOR
+ * @name LT_EXIT_ORCHESTRATOR
  * 
  * @brief Exit the orchestrator with exit code (0 if successful and
  *        no fails or faults).
@@ -909,43 +909,43 @@ void britetest_close_report_internal
  *
  * @example
  * @code
- BT_EXIT_ORCHESTRATOR(main);
+ LT_EXIT_ORCHESTRATOR(main);
  * @endcode
  */
 
-void britetest_exit_orchestrator_internal
+void litetest_exit_orchestrator_internal
 ( const char *const funcname,
   char *func, char *file, int line,
-  britetest_state_internal_t *const state
+  litetest_state_internal_t *const state
 );
 
-#define BT_EXIT_ORCHESTRATOR(notes) \
-  typedef int bt_use_BT_CLOSE_REPORT_once; \
+#define LT_EXIT_ORCHESTRATOR(notes) \
+  typedef int lt_use_LT_CLOSE_REPORT_once; \
   do \
   { \
-    britetest_ lose_report_internal \
+    litetest_ lose_report_internal \
     ( (notes), \
       __func__, __FILE__, __LINE__, \
-      &britetest_state_internal \
+      &litetest_state_internal \
     ); \
   } \
   while (0)
 
-#define BT_EXIT(funcname) \
+#define LT_EXIT(funcname) \
     do \
     { \
       if (!strcmp(__func__, "main")) \
       { \
-        fprintf(stdout, "[ERROR] BT_EXIT is not in the "
+        fprintf(stdout, "[ERROR] LT_EXIT is not in the "
                         "orchestrator (main) function.\n"); \
-        exit(BT_MACRO_MISPLACED); \
+        exit(LT_MACRO_MISPLACED); \
       } \
-      exit(britetest_exit_internal \
-             (__func__, #funcname, britetest_state_internal, (notes)); \
+      exit(litetest_exit_internal \
+             (__func__, #funcname, litetest_state_internal, (notes)); \
     while (0)
 
 /**
- * @name BT_DECLARE_GROUP(funcname)
+ * @name LT_DECLARE_GROUP(funcname)
  * 
  * @brief Declare a test function as a forward teference or
  *.       with a function body to define the test function.
@@ -957,22 +957,22 @@ void britetest_exit_orchestrator_internal
  *
  * @example Forward-reference
  * @code
-    BT_DECLARE_TEST_FUNCTION(test_guard1);
+    LT_DECLARE_TEST_FUNCTION(test_guard1);
  * @endcode
  *
  * @example Function Definition
  * @code
- BT_DECLARE_TEST_FUNCTION(test_guard1)
+ LT_DECLARE_TEST_FUNCTION(test_guard1)
  { /* test_guard1 function body*/ }
  * @endcode
  */
 
-#define BT_DECLARE_GROUP(funcnane) \
+#define LT_DECLARE_GROUP(funcnane) \
     void funcname \
-    ( britetest_lcl_state_internal_t *const britetest_lcl_state_internal )
+    ( litetest_lcl_state_internal_t *const litetest_lcl_state_internal )
 
 /**
- * @name BT_INIT_TEST_FUNCTION
+ * @name LT_INIT_TEST_FUNCTION
  * 
  * @brief Initialize a test function.
  *
@@ -986,25 +986,25 @@ void britetest_exit_orchestrator_internal
  *
  * @example
  * @code
- BT_INIT_TEST_FUNCTION(test_guard1);
+ LT_INIT_TEST_FUNCTION(test_guard1);
  * @endcode
  */
 
-#define BT_INIT_TEST_FUNCTION(funcname) \
+#define LT_INIT_TEST_FUNCTION(funcname) \
     do \
     { \
       if (!strcmp(__func__, "main" || !strcmp(#funcname, "main")) \
-      { fprintf(stdout, "[ERROR] BT_INIT_TEST_FUNCTION is NOT allowed "
+      { fprintf(stdout, "[ERROR] LT_INIT_TEST_FUNCTION is NOT allowed "
                         "in the orchesrator (main) function.\n"); \
-        exit(BT_MACRO_MISPLACED); \
+        exit(LT_MACRO_MISPLACED); \
       } \
-      int rc = britetest_init…test_function_internal \
-                 (__func__, #funcname, britetest_lcl_state_internal) \
+      int rc = litetest_init…test_function_internal \
+                 (__func__, #funcname, litetest_lcl_state_internal) \
       if (rc) exit(rc);
     } while (0)
 
 /**
- * @name BT_RETURN
+ * @name LT_RETURN
  * 
  * @brief Return from test function.
  *
@@ -1018,21 +1018,21 @@ void britetest_exit_orchestrator_internal
  *
  * @example
  * @code
- BT_RETURN(test_guard1);
+ LT_RETURN(test_guard1);
  * @endcode
  */
 
-#define BT_RETURN(funcname) \
+#define LT_RETURN(funcname) \
     do \
     { \
       if (!strcmp(__func__, "main")) \
       { \
-        fprintf(stdout, "[ERROR] BT_RETURN is NOT allowed "
+        fprintf(stdout, "[ERROR] LT_RETURN is NOT allowed "
                         "in the orchestrator (main) function.\n"); \
-        exit(BT_MACRO_MISPLACED); \
+        exit(LT_MACRO_MISPLACED); \
       } \
-      int rc = britetest_return_internal \
-                 (__func__, #funcname, britetest_lcl_state_internal) \
+      int rc = litetest_return_internal \
+                 (__func__, #funcname, litetest_lcl_state_internal) \
       if (rc) exit(rc); \
       return; \
     while (0)
@@ -1041,4 +1041,4 @@ void britetest_exit_orchestrator_internal
 }
 #endif
 
-// End of britetest_runner.h
+// End of litetest_runner.h

@@ -1,4 +1,4 @@
-![BriteTest Runner Internal Guide](branding/BriteTest_Runner_Internal_Guide.png)
+![Runner Internal Guide](branding/Runner_Internal_Guide.png)
 
 This guide documents the internal architecture and design of the BriteTest framework
 and Runner API. It is companion document to the BriteTest Runner Internal
@@ -38,10 +38,10 @@ SOFTWARE.
 This document is for contributors.
 
 For a list of other BriteTest documents and the repository layout, see
-the BriteTest Documentation Guide (`BriteTest_Documentation_Guide.md`).
+the Documentation Guide (`Documentation_Guide.md`).
 
-For a glossary of terms, see the BriteTest Glossary Reference
-(`BriteTest_Glossary_Reference.md`).
+For a glossary of terms, see the Glossary Reference
+(`Glossary_Reference.md`).
 
 A printer-friendly PDF file for this document is available in `docs/pdf/`,
 
@@ -58,10 +58,10 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`,
   format `M.u` (Major, update).
 - The **Runner** column records the BriteTest Runner API version
   current at the time this document version was published and is
-  defined by its `BT_RUNNER_VERSION` macro.
+  defined by its `RA_RUNNER_VERSION` macro.
 - The **Test** column records the BriteTest Test API version current at
   the time this document version was published and is defined by its
-  `BT_TEST_VERSION` macro.
+  `RA_TEST_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
@@ -101,7 +101,7 @@ In this document, a *symbol* refers to any named entity in the BriteTest framewo
 - variables
 - functions
 
-BriteTest exposes some internal symbols in `britetest_runner.h` because the framework’s
+BriteTest exposes some internal symbols in `runnerapi.h` because the framework’s
 macros expand into code that depends on internal types and helper functions.
 These symbols must be visible to user code for the macros to compile correctly,
 but they are not part of the public API and should not be used directly.
@@ -116,12 +116,12 @@ contract remains intact.
 ### 1.1 Public and Internal Naming Conventions
 
 Any framework names that are public and visible to BriteTest API users are prefixed
-with `bt_...` (typically lowercase) or `BT_...` (typically uppercase).
+with `ra_...` (typically lowercase) or `RA_...` (typically uppercase).
 
 Any framework names that are internal (but technically visible to BriteTest API users)
 follow the pattern `britetest_..._internal_t`, `britetest_..._internal`, or `BRITETEST_..._INTERNAL`. These names should not be referenced by API users.
 
-In general, users of the API should not define names prefixed with `bt_`, `BT`,
+In general, users of the API should not define names prefixed with `ra_`, `BT`,
 `britetest_`, or `BRITETEST_`, or reference names prefixed with `britetest_` or `BRITETEST_`.
 </details>
 </details>
@@ -262,7 +262,7 @@ Runner‑Specific Terms:
 - **Isolation Semantics**: The rules governing how tests and groups run in
   threads or processes to prevent interference and ensure fault containment.
 - **Concurrency Model**: The framework’s rules for running tests concurrently
-  within `BT_BEGIN_CONCURRENT` / `BT_END_CONCURRENT` blocks.
+  within `RA_BEGIN_CONCURRENT` / `RA_END_CONCURRENT` blocks.
 - **Execution Phases**: The internal stages of orchestrator operation, including
   initialization, argument parsing, group dispatch, test dispatch, and report
   writing.

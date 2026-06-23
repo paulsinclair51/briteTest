@@ -1,28 +1,28 @@
 /**
- * @file /paulsinclair51/src/britetest_runner.c
+ * @file /paulsinclair51/src/litetest_runner.c
  *
- * @mainpage BriteTest Function Definitions
+ * @mainpage LiteTest Function Definitions
  * 
- * @brief This header provides (non-inline) function definitions for the BriteTest
+ * @brief This header provides (non-inline) function definitions for the LiteTest
  *        API and framework.
  * 
- *        For an overview of the BriteTest API and framework, see
- *        @ref README.md "README.md" in the /paulsinclair51/BriteTest
- *        repository. See the header @ref /paulsinclair51/include/britetest_runner.h
- *        "britetest_runner.h" in the include directory for the complete
+ *        For an overview of the LiteTest API and framework, see
+ *        @ref README.md "README.md" in the /paulsinclair51/litetest
+ *        repository. See the header @ref /paulsinclair51/include/litetest_runner.h
+ *        "litetest_runner.h" in the include directory for the complete
  *        definition and documentation.
  * 
  * @copyright Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
  * For license details, see @ref LICENSE "LICENSE" in the
- * paulsinclair51/BriteTest repository root.
+ * paulsinclair51/LiteTest repository root.
  */
 
 /**
- * @name BT_VERSION_C
+ * @name LT_VERSION_C
  *
- * @brief Version "M.m.p" for britetest_runner.c which must be the same as VERSION
- *.       for britetest_runner.h.
+ * @brief Version "M.m.p" for litetest_runner.c which must be the same as VERSION
+ *.       for litetest_runner.h.
  *
  * M, m, and p are 1 or 2 digits (e.g., O, 00, 1, 01, 24):
  +
@@ -35,9 +35,9 @@
  * major version increment.
  */
  
-#define BT_VERSION_C "1.0.0"
+#define LT_VERSION_C "1.0.0"
 
-BT_STATIC_ASSERT(!BT_VERSION_CMP(BT_VERSION_C), VERSION_C_must_match_VERSION);
+LT_STATIC_ASSERT(!LT_VERSION_CMP(LT_VERSION_C), VERSION_C_must_match_VERSION);
 
 /**
  * @section Usage
@@ -46,37 +46,37 @@ BT_STATIC_ASSERT(!BT_VERSION_CMP(BT_VERSION_C), VERSION_C_must_match_VERSION);
  * and -shared flags with gcc) to create a shared library that can
  * be used by other applications. The resulting shared library should
  * be named according to the conventions of your platform (e.g.,
- * libbritetest.so on Linux, britetest.dll on Windows, or  libbritetest.dylib
+ * liblitetest.so on Linux, litetest.dll on Windows, or  liblitetest.dylib
  * on macOS) and placed in a location where it can be found by the
  * dynamic linker at runtime.
  *
  * Alternatively, compile and link this file into the test executable
- * (for example into executable test_britetest on Linux or test_britetest.exe
+ * (for example into executable test_litetest on Linux or test_litetest.exe
  * for Windows).
  */
 
-#include "britetest_runner.h"
+#include "litetest_runner.h"
 
 // Allow functions to be invoked from C++.
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-#define BT_PASS                 0
-#define BT_FAIL                 1
-#define BT_FAULT                2
-#define BT_FAIL_FAULT           3
-#define BT_MACRO_MISPLACED     -1
-#define BT_INVALID_VERSION   -100
+#define LT_PASS                 0
+#define LT_FAIL                 1
+#define LT_FAULT                2
+#define LT_FAIL_FAULT           3
+#define LT_MACRO_MISPLACED     -1
+#define LT_INVALID_VERSION   -100
 
 // Define defaults.
 
 char executable_name[] = "UnknownExecutable";
-char defaubt_dirpath[] = "./";
-char defaubt_file_name[] = "test_report.txt";
+char default_dirpath[] = "./";
+char default_file_name[] = "test_report.txt";
 
 char prefix_err_msg[] = "[ERROR] ";
-char defaubt_err_msg[] = "Unknown.";
+char default_err_msg[] = "Unknown.";
 
 char args_options_msg[] = "[PATH|-h|--help]\n\n";
   
@@ -101,91 +101,91 @@ char *help_msg = NULL;
 
 // Get and set defaults.
 
-char *bt_executable_name(void)
+char *lt_executable_name(void)
 { return executable_name; }
 
-void bt_set_executable_name(char *en)
+void lt_set_executable_name(char *en)
 { executable_name = en; }
 
-char *bt_defaubt_dirpath(void)
-{ return defaubt_dirpath; }
+char *lt_default_dirpath(void)
+{ return default_dirpath; }
 
-void bt_set_defaubt_dirpath(char *dp)
-{ defaubt_dirpath = dp; }
+void lt_set_default_dirpath(char *dp)
+{ default_dirpath = dp; }
 
-char *bt_prefix_err_msg(void)
+char *lt_prefix_err_msg(void)
 { return prefix_err_msg; }
 
-void bt_set_prefix_err_msg(char *pe)
+void lt_set_prefix_err_msg(char *pe)
 { prefix_err_msg = pe; }
 
-char *bt_args_options_msg(void)
+char *lt_args_options_msg(void)
 { return args_options_msg; }
 
-void bt_set_args_options_msg(char *ao)
+void lt_set_args_options_msg(char *ao)
 { args_options_msg = ao; }
 
-char *bt_usage_msg(void)
+char *lt_usage_msg(void)
 { return usage_msg; }
 
-void bt_set_usage_msgg(char *u)
+void lt_set_usage_msgg(char *u)
 { usage_msg = u; }
 
-char *bt_help_msg(void)
+char *lt_help_msg(void)
 { return help_msg_msg; }
 
-void bt_set_help_msg(char *h)
+void lt_set_help_msg(char *h)
 { help_msg = h; }
 
 // Utility Functions
 
-size_t bt_currentlevel(void)
+size_t lt_currentlevel(void)
 { return currentlevel; }
-bt_resubt_t bt_currentresult(void)
+lt_result_t lt_currentresult(void)
 { return currentresult; }
-bt_total_t bt_currenttotal(void)
+lt_total_t lt_currenttotal(void)
 { return currenttotal; }
-size_t bt_maxparallel(size@_t level)
+size_t lt_maxparallel(size@_t level)
 { return maxparallel(level); }
-size_t bt_currentparallel(void)
+size_t lt_currentparallel(void)
 { return currentparallel; }
-int bt_isisolated(void)
+int lt_isisolated(void)
 { return 1; }
-int bt_isthreadisolated(void)
+int lt_isthreadisolated(void)
 { return 1; }
-int bt_isprocessisolated(void)
+int lt_isprocessisolated(void)
 { return 1; }
-size_t bt_groupid(void)
+size_t lt_groupid(void)
 { return ugroupid; }
-char *bt_groupname(void)
+char *lt_groupname(void)
 { return groupname; }
-int bt_isdirpath(char *path)
+int lt_isdirpath(char *path)
 { return 1; }
-int bt_isfilepath(char *path))
+int lt_isfilepath(char *path))
 { return 1; }
-int bt_isfilename(char *name)
+int lt_isfilename(char *name)
 { return 1; }
-char *bt_dirpath(void)
+char *lt_dirpath(void)
 { return dirpath; }
-char *bt_filepath(void)
+char *lt_filepath(void)
 { return filepath; }
-char *bt_filename(void)
+char *lt_filename(void)
 { return filename; }
-char *bt_testsuite(void)
+char *lt_testsuite(void)
 { return testsuite; }
-char *bt_categoryname(void)
+char *lt_categoryname(void)
 { return categoryname; }
-char *bt_funcname(void)
+char *lt_funcname(void)
 { return funcname; }
-char *bt_testname(void)
+char *lt_testname(void)
 { return testname; }
-char *bt_reporttitle(void)
+char *lt_reporttitle(void)
 { return reporttitle; }
-char *bt_assertexpr(void)
+char *lt_assertexpr(void)
 { return assertexpr; }
 
 /**
- * @name bt_print_err_help
+ * @name lt_print_err_help
  *
  * @brief Print error message and/or help to stdout.
  *
@@ -195,14 +195,14 @@ char *bt_assertexpr(void)
  * @param help 0 don't print help; otherwise, print help,
  */
 
-void bt_print_err_help
+void lt_print_err_help
 (
   const char *const err_msg,
   const char help;
 )
 {
   if (!err_msg)
-  { fprintf(stdout, "%s%s\n", prefix_err_msg, defaubt_err_msg); }
+  { fprintf(stdout, "%s%s\n", prefix_err_msg, default_err_msg); }
   else if (*err_msg)
   { fprintf(stdout, "%s%s\n", prefix_err_msg, err_msg); }
 
@@ -212,7 +212,7 @@ void bt_print_err_help
       if (!err_msg || *err_msg) { fprintf(stdout, "\n"); }
       fprintf(stdout, "Usage: %s %s\n"
                       executable_name, args_options_msg);
-      fprintf(stdout, usage_msg, defaubt_file_name);
+      fprintf(stdout, usage_msg, default_file_name);
      }
      else if (*help_msg)
      { fprintf(stdout, "%s", help_msg); }
@@ -253,8 +253,8 @@ static size_t version_extract
   
   if (*v)
   { 
-    bt_print_err_usage(NULL, "Invalid version.", ""); } \
-    exit(BT_INVALID_VERSION);
+    lt_print_err_usage(NULL, "Invalid version.", ""); } \
+    exit(LT_INVALID_VERSION);
   }
   
   version_num = version_major * 10000 +
@@ -266,42 +266,42 @@ static size_t version_extract
                 (version_patch);
 }
 
-size_t britetest_version_major_internal
+size_t litetest_version_major_internal
 ( void )
 { 
   if (version_major == size_max) { version_extract(); }
   return version_major_;
 }
 
-size_t britetest_version_minor_internal
+size_t litetest_version_minor_internal
 ( void )
 { 
   if (version_minor == size_max) { version_extract(); }
   return version_minor;
 }
 
-size_t britetest_version_patch_internal
+size_t litetest_version_patch_internal
 ( void )
 { 
   if (version_patch == size_max) { version_extract(); }
   return version_patch;
 }
 
-size_t britetest_version_num_internal
+size_t litetest_version_num_internal
 ( void )
 { 
   if (version_num == size_max) { version_extract(); }
   return version_num;
 }
 
-size_t britetest_version_hex_internal
+size_t litetest_version_hex_internal
 ( void )
 { 
   if (version_hex == size_max) { version_extract(); }
   return version_hex;
 }
 
-size_t britetest_version_cmp_internal
+size_t litetest_version_cmp_internal
 ( const char *v )
 { 
   if (version_num == size_max) { version_extract(); }
@@ -343,8 +343,8 @@ size_t britetest_version_cmp_internal
  * @section Guard Infrastructure
  * 
  * The internal guard infrastructure provides a mechanism to catch signals such as SIGSEGV,
- * SIGABRT, and SIGBUS that may occur during the evaluation of BT_TEST
- * and BT_ASSERT* macros.
+ * SIGABRT, and SIGBUS that may occur during the evaluation of LT_TEST
+ * and LT_ASSERT* macros.
  *
  * It uses sigsetjmp and siglongjmp to return control
  * to a known point in the code when a signal is caught, allowing the test framework
@@ -386,7 +386,7 @@ typedef struct
   volatile sig_atomic_t active;
 } guard_t;
 
-extern const britetest_size_guard_internal = sizeof(guard_t);
+extern const litetest_size_guard_internal = sizeof(guard_t);
 
 /**
  * @name saved_guard_t
@@ -400,10 +400,10 @@ typedef struct
   sighandler_t segv_handler;
   sighandler_t abrt_handler;
   sighandler_t bus_handler;
-  bt_state_t state;
+  lt_state_t state;
 } saved_guard_t;
 
-extern const britetest_size_saved_guard_internal = sizeof(saved_guard_t);
+extern const litetest_size_saved_guard_internal = sizeof(saved_guard_t);
 
 /**
  * @name saved_guards, num_saved_guards
@@ -450,9 +450,9 @@ static guard_t *current_guard;
  */
 
 static inline void guard_handler(int sig)
-{ if (britetest_guard_internal && britetest_guard_internal->active)
-  { britetest_guard_internal->active = 0;
-    siglongjmp(britetest_guard_interrnal->env, sig ? sig : 1); 
+{ if (litetest_guard_internal && litetest_guard_internal->active)
+  { litetest_guard_internal->active = 0;
+    siglongjmp(litetest_guard_interrnal->env, sig ? sig : 1); 
   }
 
   // Fault outside of active guard or misuse of guard framework.
@@ -460,7 +460,7 @@ static inline void guard_handler(int sig)
 }
 
 /**
- * @name britetest_install_guard_internal
+ * @name litetest_install_guard_internal
  * 
  * @brief Install a new guard after saving the current guard.
  * 
@@ -472,10 +472,10 @@ static inline void guard_handler(int sig)
  * signal handling.
  */
 
-void britetest_install_guard_internal(britetest_guard_internal_t *new_guard);
+void litetest_install_guard_internal(litetest_guard_internal_t *new_guard);
 
 /**
- * @name britetest_restore_guard_internal
+ * @name litetest_restore_guard_internal
  * 
  * @brief Restore the previous guard.
  *
@@ -492,31 +492,31 @@ void britetest_install_guard_internal(britetest_guard_internal_t *new_guard);
  * @note This function is designed to be called after a guard has
  * been used to ensure that the previous guard is properly restored.
  *
- * @note The guard mechanism allows for nested guards, and the britetest_restore_guard_internal
+ * @note The guard mechanism allows for nested guards, and the litetest_restore_guard_internal
  * function ensures that the correct guard is restored in a last-in-first-out manner.
  */
 
-void britetest_restore_guard_internal(void);
+void litetest_restore_guard_internal(void);
 
- * @name britetest_test_internal
+ * @name litetest_test_internal
  * 
- * @brief Internal function used by the BT_TEST macro: ezexutes func
+ * @brief Internal function used by the LT_TEST macro: ezexutes func
  *        capturing a fault, if one occurs, with a guard.
  *        Saves the result internally and adds the result
  *        to the internal total.
  * 
  * @param func Pointer to a function to execute, which takes a
- *             char inject parameter and returns a bt_resubt_t value.
+ *             char inject parameter and returns a lt_result_t value.
  * @param func_name Name of the function being executed that is used for error messages.
  * 
- * @return bt_resubt_t result from function or
- *         (bt_resubt_t){0, 0, SIZE_MAX, 0, 0} if a fault occurs.
+ * @return lt_result_t result from function or
+ *         (lt_result_t){0, 0, SIZE_MAX, 0, 0} if a fault occurs.
  */
 
-bt_resubt_t britetest_tests_internal
-( bt_resubt_t (*func)(char),
+lt_result_t litetest_tests_internal
+( lt_result_t (*func)(char),
   const char * const func_name,
-  britetest_state_internal_t *britetest_caller_state_internal
+  litetest_state_internal_t *litetest_caller_state_internal
 );
 
 /** @} */
@@ -528,26 +528,26 @@ bt_resubt_t britetest_tests_internal
  */
 
 /**
- * @name bt_level
+ * @name lt_level
  * 
- * @brief Get the level indicating the number of nested BT_TEST and BT_ASSERT* macros.
+ * @brief Get the level indicating the number of nested LT_TEST and LT_ASSERT* macros.
  * 
  *        The level can be used for retrieving the results and total for the function,
  *        debugging, informational purposes,
  *        determining the depth of nested macros, or for checking against
- *        the maximum level (bt_max_level).
+ *        the maximum level (lt_max_level).
  * 
  * @return 0 if not nested.
  *         Otherwise, the current level.
  */
 
- static inline size_t bt_level(void)
- { return britetest_num_saved_guards_internal + 
-          (britetest_current_guard_internal ? 1 : 0); }
+ static inline size_t lt_level(void)
+ { return litetest_num_saved_guards_internal + 
+          (litetest_current_guard_internal ? 1 : 0); }
 
-void britetest_install_guard(internal_guard_t *new_guard)
-{ if (britetest_num_saved_guards >= MAX_GUARD_LEVEL) { abort(); }
-  britetest_saved_guard_t *saved_guard = &saved_guards[britetest_num_saved_guards++];
+void litetest_install_guard(internal_guard_t *new_guard)
+{ if (litetest_num_saved_guards >= MAX_GUARD_LEVEL) { abort(); }
+  litetest_saved_guard_t *saved_guard = &saved_guards[litetest_num_saved_guards++];
   saved_guard->guard = internal_guard;
   saved_guard->segv_handler = signal(SIGSEGV, new_guard->handler);
   saved_guard->abrt_handler = signal(SIGABRT, new_guard->handler);
@@ -556,11 +556,11 @@ void britetest_install_guard(internal_guard_t *new_guard)
       saved_guard->abrt_handler == SIG_ERR ||
       saved_guard->bus_handler == SIG_ERR)
   { abort(); }
-  britetest_guard = new_guard;
+  litetest_guard = new_guard;
 }
 
-void britetest_restore_guard(void)
-{ if (!britetest_num_saved_guards) { abort(); }
+void litetest_restore_guard(void)
+{ if (!litetest_num_saved_guards) { abort(); }
   internal_num_saved_guards--;
   internal_saved_guard_t *saved_guard = &saved_guards[internal_num_saved_guards];
   if (signal(SIGSEGV, saved_guard->segv_handler) == SIG_ERR ||
@@ -570,9 +570,9 @@ void britetest_restore_guard(void)
   internal_guard = saved_guard->guard;
 }
 
-resubt_t test_run_internal
-( resubt_t (*func)(char), const char inject, const char * const func_name )
-{ resubt_t result = {0, 0, 0, 0, 0};
+result_t test_run_internal
+( result_t (*func)(char), const char inject, const char * const func_name )
+{ result_t result = {0, 0, 0, 0, 0};
   internal_guard_t run_guard = { 0 };
   run_guard.handler = guard_handler_internal;
   install_guard_internal(&run_guard);
@@ -582,7 +582,7 @@ resubt_t test_run_internal
     run_guard.active = 0;
   }
   else
-  { result = (resubt_t){0, 0, SIZE_MAX, 0, 0};
+  { result = (result_t){0, 0, SIZE_MAX, 0, 0};
     fprintf(stderr, "Run fault: %s (%s:%d)\n", func_name, __FILE__, __LINE__);
   }
   restore_guard_internal();
@@ -590,7 +590,7 @@ resubt_t test_run_internal
 }
 
 /**
- * @name bt_current_time
+ * @name lt_current_time
  * 
  * @brief Format the current time as a string.
  * 
@@ -600,7 +600,7 @@ resubt_t test_run_internal
  * @notr: On error, current_time is set to "unknown time".
  */
 
-void bt_current_time
+void lt_current_time
  (char *current_time, size_t size )
 {
   time_t now = time(NULL);
@@ -610,7 +610,7 @@ void bt_current_time
   { snprintf(current_time, 20, "unknown time"); }
 }
 
-extern int bt_isblank(const char *s, size_t n)
+extern int lt_isblank(const char *s, size_t n)
 { if (!s) return 0;
   for (; n && *s; --n, ++s) { if (!isspace((unsigned char)*s)) return 0; }
   return *s ? 1 : 0;
@@ -672,7 +672,7 @@ static int extract_dirpath_and_filename
   return 0;
 }
 
-static int bt_iswriteabledir(const char *s)
+static int lt_iswriteabledir(const char *s)
 { char dirpath[MAX_PATH_LEN + 1] = {0};
   char filename[MAX_FILENAME_LEN + 1] = {0};
   size_t dlen;
@@ -708,7 +708,7 @@ static int path_has_trailing_separator(const char *s)
 static int path_is_existing_directory(const char *s)
 { return is_directory(s) > 0; }
 
-extern int bt_iswritabledir
+extern int lt_iswritabledir
 ( const char *const dirpath, const char *const path )
 {
   if (!output_dir_is_writable(path))
@@ -784,9 +784,9 @@ static int run_path_parser_selftests(void)
 }
 
 /**
- * @name britetest_parse_args_internal
+ * @name litetest_parse_args_internal
  * 
- * @brief BT_PARSE_ARGS helper function.
+ * @brief LT_PARSE_ARGS helper function.
  * 
  *        Parses command-line arguments for the test orchestrator, validates
  *        them, and extracts the directory path and filename.
@@ -803,7 +803,7 @@ static int run_path_parser_selftests(void)
  * 
  * @return 0 if arguments are valid.
  *        -1: Help (-h or --help) requested (usage information printed).
- *         1: BT_PARSE_ARGS outside of orchestrator.
+ *         1: LT_PARSE_ARGS outside of orchestrator.
  *         2: Unexpected number of arguments.
  *         3: PATH must not be empty or whitespace only.
  *         4: Directory path is too long.
@@ -819,9 +819,9 @@ static int run_path_parser_selftests(void)
  *       command-line arguments and set up the test report path.
  */
 
-int britetest_parse_args_internal
+int litetest_parse_args_internal
 (
-  britetest_state_internal_t * const state,
+  litetest_state_internal_t * const state,
   const int argc, const char *const *const argv,
   char *const dir_path, char *const filename
 )
@@ -836,7 +836,7 @@ int britetest_parse_args_internal
   }
   if (!state->orchestrator)
   {
-    print_err_usage("BT_PARSE_ARGS not in orchestrator.");
+    print_err_usage("LT_PARSE_ARGS not in orchestrator.");
     return 1;
   }
 
@@ -894,7 +894,7 @@ int britetest_parse_args_internal
       return 5;
     }
     if (result == 2)
-    { bt_print_err_usage("Filename is too long.");
+    { lt_print_err_usage("Filename is too long.");
       return 6;
     }
   }
@@ -904,12 +904,12 @@ int britetest_parse_args_internal
 
 static void merge_result
 (
-  britetest_state_t *state,
-  const resubt_t r
+  litetest_state_t *state,
+  const result_t r
 )
 {
   if (!state) { return; }
-  test_resubt_t t = state->total;
+  test_result_t t = state->total;
   t.pass += r.pass;
   t.fail += r.fail;
   t.fault += (r.fault == SIZE_MAX) ? 1 : r.fault;
@@ -922,7 +922,7 @@ void write_category
 ( FILE * const report,
   const size_t index,
   const char *label,
-  resubt_t result
+  result_t result
 )
 { if (!report) { return; }
   if (!label) { label = "unknown"; }
@@ -959,7 +959,7 @@ void write_category
 
 const char *category_label_with_inject_tag(
   const char *base_label,
-  resubt_t result,
+  result_t result,
   char inject,
   char *label_buf,
   size_t label_buf_len)
@@ -982,15 +982,15 @@ const char *category_label_with_inject_tag(
 }
 
 /**
- * @name britetest_open_report_internal
+ * @name litetest_open_report_internal
  * 
- * @brief BT_OPEN_REPORT helper function.
+ * @brief LT_OPEN_REPORT helper function.
  * 
  * @param state Pointer to the internal state of the orchestrator.
  * @param report_title Pointer to report title string.
  * 
  * @return 0 if report report successfully.
- *         1: BT_OPEN_REPORT is outside of orchestrator.
+ *         1: LT_OPEN_REPORT is outside of orchestrator.
  *         2: Could not open report file for write.
  *         3: Could not open temporary file.
  *        99: Internal error.
@@ -998,9 +998,9 @@ const char *category_label_with_inject_tag(
  * @note For errors, a message is printed to stdout.
  */
 
-int britetest_open_report_internal
+int litetest_open_report_internal
 (
-  britetest_state_internal_t *const state,
+  litetest_state_internal_t *const state,
   const char *const report_title
 )
 {
@@ -1011,7 +1011,7 @@ int britetest_open_report_internal
   }
   if (!state->orchestrator)
   {
-    print_err_usage("BT_OPEN_REPORT not in Orchestrator.");
+    print_err_usage("LT_OPEN_REPORT not in Orchestrator.");
     return 1;
   }
 
@@ -1040,15 +1040,15 @@ int britetest_open_report_internal
   fprintf(report, "--------------------------------------------------------------------\n");
 
   state->run_id = 0;
-  state->total = (resubt_t){0, 0, 0, 0, 0};
+  state->total = (result_t){0, 0, 0, 0, 0};
 
   return 0;
 }
 
 /**
- * @name britetest_close_report_internal
+ * @name litetest_close_report_internal
  * 
- * @brief BT_CLOSE_REPORT helper function.
+ * @brief LT_CLOSE_REPORT helper function.
  * 
  * @param state Pointer to the internal state of the orchestrator.
  * @param notes The notes to be included in the report.
@@ -1056,35 +1056,35 @@ int britetest_open_report_internal
  * @note For errors, a message is printed to stdout and exits.
  */
 
-void britetest_close_report_internal
+void litetest_close_report_internal
 (
-  britetest_state_internal_t *const state,
+  litetest_state_internal_t *const state,
   const char *const notes
 )
 {
   if (!state)
   {
-    bt_print_err_help("NULL state pointer.", 0);
-    exit(BT_NULL_STATE);
+    lt_print_err_help("NULL state pointer.", 0);
+    exit(LT_NULL_STATE);
   }
 
   if (!state->orchestrator)
-  { bt_print_err_help("BT_CLOSE_REPORT not in Orchestrator.", 0);
-    exit(BT_MACRO_MISPLACED);
+  { lt_print_err_help("LT_CLOSE_REPORT not in Orchestrator.", 0);
+    exit(LT_MACRO_MISPLACED);
   }
 
   FILE *report = state->report;
   if (!report)
   {
-    bt_print_err_help("NULL report pointer.", 0);
-    exit(BT_NULL_REPORT);
+    lt_print_err_help("NULL report pointer.", 0);
+    exit(LT_NULL_REPORT);
   }
 
   FILE *temp = state->temp;
   if (!temp)
-  { bt_print_err_help("Missing temporary file.", 0); }
+  { lt_print_err_help("Missing temporary file.", 0); }
 
-  resubt_t total = state->total;
+  result_t total = state->total;
 
   // Write the summary lines to the report.
 
@@ -1158,4 +1158,4 @@ void britetest_close_report_internal
 }
 #endif
 
-// End of britetest_runner.c
+// End of litetest_runner.c
