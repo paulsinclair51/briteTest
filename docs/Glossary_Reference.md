@@ -51,10 +51,9 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 <summary>Document Version History</summary>
 
 ### Document Version History
-
-| Document | Runner | Test | Date | Comment | Author/Editor |
-|----------|------|--------|------|---------|---------------|
-| 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
+| Document  | Runner | Test  | Date       | Comment           | Author/Editor |
+|-----------|--------|-------|------------|-------------------|---------------|
+| 1.0       | 1.0.0  | 1.0.0 | 2026‑06‑11 | Initial version.  | Paul Sinclair |
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
