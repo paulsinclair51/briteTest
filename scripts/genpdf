@@ -1396,26 +1396,41 @@ process_file() {
     have_versions=1
   fi
 
-  log_debug "scan metadata: versions=${have_versions} source=$source_file"
-
   temp_file=$(mktemp)
   source_dir=$(dirname "$source_file")
 
+  # Extract logo PNG from the first line and resolve it relative to source_dir.
+  # The AWK programs need an absolute-or-cwd-relative path for \includegraphics.
+  logo_png=""
+  first_line=$(head -1 "$source_file")
+  _png_regex='\!\[([^]]*)\]\(([^)]+\.[Pp][Nn][Gg])([[:space:]][^)]*)?\)'
+  if [[ "$first_line" =~ $_png_regex ]]; then
+    raw_png="${BASH_REMATCH[2]}"
+    if [[ "$raw_png" == /* ]]; then
+      logo_png="$raw_png"
+    else
+      logo_png="$source_dir/$raw_png"
+    fi
+  fi
+
+  log_debug "scan metadata: logo=${logo_png} versions=${have_versions} source=$source_file"
+
   # Apply markdown preprocessing (convert or remove details/summary tags)
-  # Logo extraction happens here on second pass as we encounter first PNG line
   if [[ $convert_details -eq 1 ]]; then
     generate_awk_convert_details | awk -v document_version="$document_version" \
                                       -v runner_version="$runner_version" \
                                       -v test_version="$test_version" \
                                       -v have_versions="$have_versions" \
-                                      -v logo_png="" \
+                                      -v logo_png="$logo_png" \
+                                      -f /dev/stdin \
                                       "$source_file" > "$temp_file"
   else
     generate_awk_remove_details | awk -v document_version="$document_version" \
                                       -v runner_version="$runner_version" \
                                       -v test_version="$test_version" \
                                       -v have_versions="$have_versions" \
-                                      -v logo_png="" \
+                                      -v logo_png="$logo_png" \
+                                      -f /dev/stdin \
                                       "$source_file" > "$temp_file"
   fi
 
