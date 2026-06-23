@@ -4,12 +4,13 @@
 
 ![BriteTest Logo](docs/branding/Logo_with_BrandName.png)
 
-BriteTest is a lightweight framework for defining, running, and reporting
-tests in C/C++ projects. It provides a simple core macro-based Runner Application
-Programming Interface (API), a function-based Test API,
-fault‑tolerant execution, and clear reporting. It is ideal for small to medium
-C projects that need reliable testing without heavy tooling and dependencies.
-It can be used for unit and command-line testing.
+BriteTest is a lightweight framework for defining, running, and
+reporting tests in C/C++ projects. It provides a compact macro‑based
+Runner API, a function‑driven Test API, fault‑tolerant execution, and
+clear, structured reporting. The framework is designed for small to
+medium C projects that need reliable automated testing without the overhead of large toolchains or external dependencies.
+
+BriteTest supports both unit testing and command‑line driven testing, making it flexible enough for embedded utilities, libraries, and standalone executables.
 
 #### Copyright (c) 2026 Paul Sinclair
 
