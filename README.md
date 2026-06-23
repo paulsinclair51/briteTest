@@ -10,8 +10,25 @@ Runner API, a function‑driven Test API, fault‑tolerant execution, and
 clear, structured reporting. The framework is designed for small to
 medium C projects that need reliable automated testing without the overhead of large toolchains or external dependencies.
 
-BriteTest supports both unit testing and command‑line driven testing, making it flexible enough for embedded utilities, libraries, and standalone executables.
+Option 1 — Concise & Technical
 
+BriteTest is a lightweight C/C++ testing framework providing a macro‑based runner, function‑based tests, fault‑tolerant execution, and clear reporting. It enables reliable unit and command‑line testing without external tooling or heavy dependencies.
+
+---
+
+Option 2 — Clean & Professional
+
+BriteTest is a compact C/C++ framework for defining, running, and reporting tests. It offers a simple macro runner, function‑style tests, robust fault handling, and readable output, ideal for small to medium projects needing dependable testing with minimal overhead.
+
+---
+
+Option 3 — More Emphasis on Purpose
+
+BriteTest is a minimal C/C++ test framework designed for fast, reliable unit and command‑line testing. Its macro‑based runner, function‑driven tests, and fault‑tolerant execution provide clear reporting without the weight of large toolchains or dependencies.
+
+---
+
+BriteTest supports both unit testing and command‑line driven testing, making it flexible enough for embedded utilities, libraries, and standalone executables
 #### Copyright (c) 2026 Paul Sinclair
 
 <details>
