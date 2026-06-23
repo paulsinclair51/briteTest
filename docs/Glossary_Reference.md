@@ -1,6 +1,6 @@
 ![Glossary Reference](branding/Glossary_Reference.png)
 
-This glossary defines generally used terms in the documentation 
+This glossary defines generally used terms in the documentation
 and terms often used in the testing domain. It is a companion document to
 the Documentation Guide.
 
@@ -340,7 +340,6 @@ v variable names. See the Runner API Reference.
 <details>
 <summary>N</summary>
 
-
 ### --N--
 
 - **`notes`†**: A string parameter for the `RA_CLOSE_REPORT`
@@ -465,7 +464,7 @@ _No terms currently defined._
 - **test suite**: A complete set of tests for a project or a subset of
   tests for a project. The documenation uses the term test group if it is a
   subset of the tests for a project. The documentaton does not use the term
-  *test suite* since whether a set of tests is *complete* for a
+  _test suite_ since whether a set of tests is _complete_ for a
   project is not well-defined.
 - **testing artifact†**: See test artifact.
 - **thread guard†**: The guard used for thread isolation. A

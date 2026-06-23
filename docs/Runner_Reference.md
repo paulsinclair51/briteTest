@@ -1,8 +1,8 @@
 ![Runner Reference](branding/Runner_Reference.png)
 
-This document provides a reference to the BriteTest Runner API. It includes
+This document provides a reference to the Runner API. It includes
 types, structs, unions, enums, macros, and functions. Additionally, it
-provides a reference to BriteTest framework concepts.
+provides a reference to Runner Framework concepts.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -57,10 +57,10 @@ For a glossary of terms, see the Glossary Reference
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
-- The **Runner** column records the BriteTest Runner API version
+- The **Runner** column records the Runner API version
   current at the time this document version was published and is
   defined by its `RA_RUNNER_VERSION` macro.
-- The **Test** column records the BriteTest Test API version current at
+- The **Test** column records the Test API version current at
   the time this document version was published and is defined by its
   `RA_TEST_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
@@ -82,9 +82,8 @@ changes are published in a release without a change to `M`, and it resets to
 [**1. Introduction**](#1-introduction)<br>
 
 [**2. Types**](#2-types)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**2.1. ra_resubt_t**](#21-ra_resubt_tt)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**2.2. ra_state_t**](#22-ra_stste_t)<br>
-
+&nbsp;&nbsp;&nbsp;&nbsp;[**2.1. ra_resubt_t**](#21-ra_resubt_t)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**2.2. ra_state_t**](#22-ra_state_t)<br>
 
 [**3. Enums**](#3-enums)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**3.1. ra_exit_code_t**](#31-ra_exit_code_t)<br>
@@ -106,7 +105,7 @@ changes are published in a release without a change to `M`, and it resets to
 &nbsp;&nbsp;&nbsp;&nbsp;[**6.2. RA_INIT_GROUP**](#62-ra_init_groupfuncname-id-maxparallel)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**6.3. RA_RETURN**](#63-ra_return)<br>
 
-[**7. Macros to Execute a Test Group or Test**](#7-macros-to-execute-a-test-group-or-test)<br>
+[**7. Macros to Execute a Test Group or a Test**](#7-macros-to-execute-a-test-group-or-a-test)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**7.1. RA_GROUP**](#71-ra_groupfuncname-id-include-isolation)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**7.2. RA_TEST**](#72-ra_testexpression-id-include-isolation)<br>
 
@@ -123,19 +122,19 @@ changes are published in a release without a change to `M`, and it resets to
 &nbsp;&nbsp;&nbsp;&nbsp;[**9.6. RA_VERSION_HEX**](#96-ra_version_hexv)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**9.7. RA_VERSION_CMP**](#97-ra_version_cmpv1-v2)<br>
 
-[**10. Macros for Customization**](#10-functions-for-customization)<br>
+[**10. Macros for Customization**](#10-macros-for-customization)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**10.1. RA_PRINT_ERR_HELP**](#101-ra_print_err_helpchar-err-char-help)<br>
 
-[**11. Functions for Customization**](#10-functions-for-customization)<br>
+[**11. Functions for Customization**](#11-functions-for-customization)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**11.1. ra_funcname**](#111-int-ra_funcnamechar-funcname-size_t-outlen)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**11.2. ra_print_note**](#112-int-ra_print_noteconst-char-notes)<br>
 
-[**12. Test Command Line**](#11-test-command-line)<br>
+[**12. Test Command Line**](#12-test-command-line)<br>
 
-[**13. Output and Golden Files**](#12-output-and-golden-files)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**12.1. Output Files**](#121-output-files)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**12.2. Golden Files**](#122-golden-files)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**12.3. Output/Golden Rationale**](#123-outputgoldan-rationale)
+[**13. Output and Golden Files**](#13-output-and-golden-files)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**13.1. Output Files**](#131-output-files)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**13.2. Golden Files**](#132-golden-files)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[**13.3. Output/Golden Rationale**](#133-outputgolden-rationale)
 </details>
 
 <details>
@@ -272,7 +271,7 @@ typedef enum
 <details>
 <summary>3.2. `ra_return_code_t`</summary>
 
-### 3.1. `ra_return_code_t`
+### 3.2. `ra_return_code_t`
 
 Return codes are for functions that return an integer (e.g., `int`) and
 are grouped into classes:
