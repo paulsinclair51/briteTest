@@ -51,9 +51,9 @@ For a glossary of terms, see the Glossary Reference
 
 ### Document Version History
 
-| Document | Runner | Test | Date | Comment | Author/Editor |
-|----------|------|--------|------|---------|---------------|
-| 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
+| Document  | Runner | Test  | Date       | Comment           | Author/Editor |
+|-----------|--------|-------|------------|-------------------|---------------|
+| 1.0       | 1.0.0  | 1.0.0 | 2026‑06‑11 | Initial version.  | Paul Sinclair |
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
@@ -79,26 +79,26 @@ changes are published in a release without a change to `M`, and it resets to
 
 ## Table of Contents
 
-[**1. Introduction**](#1-introduction)<br>
+1. [**Introduction**](#1-introduction)<br>
 
-[**2. Types**](#2-types)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**2.1. ra_resubt_t**](#21-ra_resubt_t)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**2.2. ra_state_t**](#22-ra_state_t)<br>
+2. [**Types**](#2-types)<br>
+   2.1. [**ra_result_t**](#21-ra_result_t)<br>
+   2.2.[**ra_state_t**](#22-ra_state_t)<br>
 
-[**3. Enums**](#3-enums)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**3.1. ra_exit_code_t**](#31-ra_exit_code_t)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**3.2. ra_return_code_t**](#32-ra_return_code_t)<br>
+3. [**Enums**](#3-enums)<br>
+   3,1. [**ra_exit_code_t**](#31-ra_exit_code_t)<br>
+   3.2. [**ra_return_code_t**](#32-ra_return_code_t)<br>
 
-[**4. Macros for Limits**](#4-macros-for-limits)<br>
+4. [**Macros for Limits**](#4-macros-for-limits)<br>
 
-[**5. Macros for the Orchestrator Function**](#5-macros-for-the-orchestrator-function)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**5.1. RA_DECLARE_ORCHESTRATOR**](#51-ra_declare_orchestratorfuncname)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**5.2. RA_INIT_ORCHESTRATOR**](#52-ra_init_orchestratorfuncname-id-project-size_t-maxparallel)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**5.3. RA_PARSE_ARGS**](#53-ra_parse_argssize_t-maxargs-char-customflags-char-defaultreportfilename)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**5.4. RA_OPEN_REPORT**](#54-ra_open_reportchar-title)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**5.5. RA_WRITE_RESULT**](#55-ra_write_resultgtm-char-category)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**5.6. RA_CLOSE_REPORT**](#56-ra_close_reportchar-notes)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**5.7. RA_EXIT**](#57-ra_exit)<br>
+5. [**Macros for the Orchestrator Function**](#5-macros-for-the-orchestrator-function)<br>
+   5.1. [**RA_DECLARE_ORCHESTRATOR**](#51-ra_declare_orchestratorfuncname)<br>
+   5.2. [**RA_INIT_ORCHESTRATOR**](#52-ra_init_orchestratorfuncname-id-project-size_t-maxparallel)<br>
+   5.3. [**RA_PARSE_ARGS**](#53-ra_parse_argssize_t-maxargs-char-customflags-char-defaultreportfilename)<br>
+   5.4. [**RA_OPEN_REPORT**](#54-ra_open_reportchar-title)<br>
+   5.5. [**RA_WRITE_RESULT**](#55-ra_write_resultgtm-char-category)<br>
+   5.6. [**RA_CLOSE_REPORT**](#56-ra_close_reportchar-notes)<br>
+   5.7. [**RA_EXIT**](#57-ra_exit)<br>
 
 [**6. Macros for a Test Group Function**](#6-macros-for-a-test-group-function)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**6.1. RA_DECLARE_GROUP**](#61-ra_declare_groupfuncname)<br>
@@ -151,9 +151,9 @@ TODO: add introduction, common rules.
 ## 2. Types
 
 <details>
-<summary>2.1. `ra_resubt_t`</summary>
+<summary>2.1. `ra_result_t`</summary>
 
-### 2.1. `ra_resubt_t`
+### 2.1. `ra_result_t`
 
 Type for result counters.
 
@@ -172,7 +172,7 @@ typedef struct
   size_t fault;
   size_t injected_fail;
   size_t injected_fault;
-} ra_resubt_t;
+} ra_result_t;
 ```
 </details>
 
