@@ -12,7 +12,7 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
-- **<brandname>.pdf**: file generated from `../../README.md` where `<brandname>` is
+- **`<brandname>`.pdf**: file generated from `../../README.md` where `<brandname>` is
   the brand name for the project.
 
 - ***.pdf**: other `.pdf` files generated from the `../docs/*.md` files.
