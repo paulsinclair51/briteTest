@@ -1,6 +1,6 @@
 ![Glossary Reference](branding/Glossary_Reference.png)
 
-This glossary defines generally used terms in the BriteTest documentation 
+This glossary defines generally used terms in the documentation 
 and terms often used in the testing domain. It is a companion document to
 the Documentation Guide.
 
@@ -38,18 +38,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Preface
 
-This document is for BriteTest users and contributors who need
-quick access to the definitions of terms used in BriteTest or to browse
+This document is for users and contributors who need
+quick access to the definitions of terms or to browse
 through the terms.
 
-For a list of other BriteTest documents and the repository layout, see
+For a list of other documents and the repository layout, see
 the Documentation Guide (`Documentation_Guide.md`).
 
-For a glossary of general terms, see the Glossary Reference
-(`Glossary_Reference.md`) and, for specific terms for this document,
-the Glossary appendix.
-
-A printer-friendly PDF file for this document is available in `docs/pdf/`,/`,
+A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 <details>
 <summary>Document Version History</summary>
@@ -62,12 +58,12 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`,/`,
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
-- The **Runner** column records the BriteTest Runner API version
+- The **Runner** column records the Runner API version
   current at the time this document version was published and is
-  defined by its `RA_RUNNER_VERSION` macro.
-- The **Test** column records the BriteTest Test API version current at
+  defined by its `RA_VERSION` macro.
+- The **Test** column records the Test API version current at
   the time this document version was published and is defined by its
-  `RA_TEST_VERSION` macro.
+  `TA_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
@@ -94,15 +90,15 @@ changes are published in a release without a change to `M`, and it resets to
 
 ## 1. Introduction
 
-The glossary defines generally used terms in BriteTest documentation and terms
+The glossary defines generally used terms in the documentation and terms
 often used in the testing domain.
 
-Note: '(BriteTest)' indicates the definition of a term that
-has a specific meaning for BriteTest which may differ from the
-meaning of the term in the testing domain or other contexts.
+Note: '†' indicates the definition of a term that has a specific meaning
+in the documention which may differ from the meaning of the term in the
+testing domain or other contexts.
 
-Note: For specific API macros and functions not included in the glossary, refer
-to the BriteTest Runner or Test API Reference document for information.
+Note: For specific API macros and functions not included in the glossary,
+refer to the Runner or Test API Reference document for information.
 </details>
 
 <details>
@@ -144,7 +140,7 @@ to the BriteTest Runner or Test API Reference document for information.
 
 ### --C--
 
-- **category**: (BriteTest) A named set of `RA_GROUP` and `RA_TEST`
+- **category†**: A named set of `RA_GROUP` and `RA_TEST`
   macros whose combined results are written by `RA_WRITE_RESULT` to
   the report with a specified category name.
 - **CD (Continuous Delivery/Deployment)**: Automated practices that
@@ -164,19 +160,15 @@ to the BriteTest Runner or Test API Reference document for information.
 - **command line**: A line of text entered into a shell that specifies
   an executable and optional arguments or flags (options). Use
   command-line when used as an adjective.
-- **concurrent block**: (BriteTest) A set of tests bracketed by
+- **concurrent block†**: A set of tests bracketed by
   `RA_BEGIN_CONCURRENT` and `RA_END_CONCURRENT` macros.
-- **contributor**: (BriteTest) Any person or agent that may commit to
+- **contributor†**: Any person or agent that may commit to
   BriteTest `main`. The implementation changes and documentation
   updates for a commit to `main` must conform to the BriteTest
   contribution guidelines and must have approval by a designated
   approver or agent.
-- **control file**: A previously generated file that can be compared
-  to a newly generated file for differences. Differences (other than
-  expected ones like timestamps) typically indicate a test failure.
-  Sometimes the control file is out of date and must be replaced by
-  promoting the new file.
-- **customization function**: (BriteTest) A Runner API function that
+- **control file**: See golden file.
+- **customization function†**: A Runner API function that
   can be used to help customize the orchestrator (main) function and
   test group functions.
 </details>
@@ -186,7 +178,7 @@ to the BriteTest Runner or Test API Reference document for information.
 
 ### --D--
 
-- **default report filename**: (BriteTest) The report filename used
+- **default report filename†**: The report filename used
   when only a directory path (or no `PATH`) is provided.
 </details>
 
@@ -206,15 +198,15 @@ to the BriteTest Runner or Test API Reference document for information.
 
 ### --F--
 
-- **fail**: (BriteTest) A counted failure where the test expression for
+- **fail†**: A counted failure where the test expression for
   an `RA_TEST` macro evaluates to zero.
-- **fault**: (BriteTest) A counted test group or test fault (e.g.,
+- **fault†**: A counted test group or test fault (e.g.,
   invalid memory access) captured by a BriteTest guard. See also fault
   type, guard, `RA_FAULT`, and isolation.
-- **fault type**: (BriteTest) The various types of faults (e.g.,
+- **fault type†**: The various types of faults (e.g.,
   `SIGSEGV`, `SIGBUS`, `SIGABRT`) that can occur or be injected. See
   also fault, `RA_FAULT` and `-I`.
-- **framework**: (BriteTest) Guidelines, templates, APIs, tools, and
+- **framework†**: Guidelines, templates, APIs, tools, and
   documentation for a class of projects that simplify development
   within that class. For example, the BriteTest framework simplifies
   test development.
@@ -225,11 +217,16 @@ to the BriteTest Runner or Test API Reference document for information.
 
 ### --G--
 
-- **group**: See test group.
-- **guard**: (BriteTest) The protection mechanism used to catch faults
+- **golden file†**: A previously generated file that can be compared
+  to a newly generated file for differences. Differences (other than
+  expected ones like timestamps) typically indicate a test failure.
+  Sometimes the golden file is out of date and must be replaced by
+  promoting the new file. See also output file.
+- **group†**: See test group.
+- **guard†**: The protection mechanism used to catch faults
   and continue test execution. See also fault, fault type, isolation,
   isolation mode, thread isolation, and process isolation.
-- **guard level**: (BriteTest) The nesting depth of active guards for
+- **guard level†**: The nesting depth of active guards for
   test groups and test expressions.
 </details>
 
@@ -246,12 +243,12 @@ _No terms currently defined._
 
 ### --I--
 
-- **`-I`**: (BriteTest) An optional command‑line flag that enables an
+- **`-I`†**: An optional command‑line flag that enables an
   `RA_TEST` macro with an argument value of `I` to be executed.
   Typically used to inject a fail or fault into a run of a test
   executable. Default is to skip the `RA_TEST` macro if it has an
   argument value of `I`. See also fault, `RA_FAIL`, and `RA_FAULT`.
-- **`-I<n>`**: (BriteTest) An optional command‑line flag that enables
+- **`-I<n>`†**: An optional command‑line flag that enables
   an `RA_TEST` macro with an argument value of `<m>` between 1 and 9
   to execute if `<m>` is between 1 and `<n>`. `<n>` must be between 1
   and 9. Default for `<n>` is 9 if this flag is not specified and, for
@@ -261,7 +258,7 @@ _No terms currently defined._
 - **isolation**: A mechanism that prevents failures and faults in one
   component from affecting other components of an executable or
   system.
-- **isolation mode**: (BriteTest) An execution mode for `RA_GROUP` and
+- **isolation mode†**: An execution mode for `RA_GROUP` and
   `RA_TEST` macros: `0` = same thread, `1` = separate thread, `2` =
   separate process.
 </details>
@@ -290,34 +287,38 @@ _No terms currently defined._
 
 ### --L--
 
-- **BriteTest framework**: (BriteTest) Guidelines, templates, APIs,
-  tools, and documentation for building and running BriteTest test
+- **Runner Framework†**: Guidelines, templates, APIs,
+  tools, and documentation for building and running test
   executables.
-- **BriteTest Runner API**: (BriteTest) An API that helps simplify
-  implementing a test runner.
-- **BriteTest Test API**: (BriteTest) An API that helps simplify
-  implementing tests.
-- **`britetest_*`**: (BriteTest) A prefix for internal names. Do not
+- **Runner API†**: An API that helps simplify implementing a test runner.
+- **Test API†**: An API that helps simplify implementing tests.
+- **`ra_internal_*`†**: A prefix for Runner API internal names. Do not
   define, declare or use names with this prefix.
-- **`BRITETEST_*`**: (BriteTest) A prefix for internal names. Do not
+- **`RA_INTERNAL_*`†**: A prefix for Runner API internal names. Do not
   define, declare or use names with this prefix.
-- **`ra_*`**: (BriteTest) Prefix for BriteTest Runner and Test API
-  functions, typedefs, structs, and variable names. See BriteTest
-  Runner API Reference and BriteTest Test API Reference.
-- **`RA_*`**: (BriteTest) Prefix for BriteTest Runner and Test API
-  macros and enum values. See BriteTest Runner API Reference and
-  BriteTest Test API Reference.
-- **`RA_GROUP`**: (BriteTest) A Runner API macro that executes a test
+- **`ra_*`†**: Prefix for Runner API functions, typedefs, structs, and
+v variable names. See the Runner API Reference.
+- **`RA_*`†**: Prefix for Runner API macros and enum values. See the
+  Runner API Reference.
+- **`ta_internal_*`†**: A prefix for Test API internal names. Do not
+  define, declare or use names with this prefix.
+- **`TA_INTERNAL_*`†**: A prefix for Test API internal names. Do not
+  define, declare or use names with this prefix.
+- **`ta_*`†**: Prefix for Test API functions, typedefs, structs, and
+  variable names. See the Test API Reference.
+- **`TA_*`†**: Prefix for Test API macros and enum values. See the Test
+  API Reference.
+- **`RA_GROUP`†**: A Runner API macro that executes a test
   group function with a given isolation mode, maxparallel, and other
-  parameters. See BriteTest Runner API Reference.
-- **`RA_TEST`**: (BriteTest) A Runner API macro that executes a test
+  parameters. See Runner API Reference.
+- **`RA_TEST`†**: A Runner API macro that executes a test
   expression with a given isolation mode and other parameters. See
-  BriteTest Runner API Reference.
-- **`RA_FAIL`**: (BriteTest) A macro that returns 0. Typically used in
+  the Runner API Reference.
+- **`RA_FAIL`†**: A macro that returns 0. Typically used in
   the `RA_TEST` macro to conditionally inject a fail. See also `-I`.
-- **`RA_FAULT`**: (BriteTest) A macro that injects (signals) a fault.
+- **`RA_FAULT`†**: A macro that injects (signals) a fault.
   Typically used in the `RA_TEST` macro to conditionally inject a
-  fault. See also fault, `-I`, and BriteTest Runner API Reference.
+  fault. See also fault, `-I`, and the Runner API Reference.
 </details>
 
 <details>
@@ -325,11 +326,11 @@ _No terms currently defined._
 
 ### --M--
 
-- **`maxargs`**: (BriteTest) The maximum number of command‑line
+- **`maxargs`†**: The maximum number of command‑line
   arguments allowed by the `RA_PARSE_ARGS` macro. This macro parses
   only the first two arguments; additional arguments require custom
   code.
-- **`maxparallel`**: (BriteTest) The upper bound on concurrent
+- **`maxparallel`†**: The upper bound on concurrent
   `RA_GROUP` and `RA_TEST` macros. That is, when the number of macros
   executing equals `maxparallel`, the next macro to execute is delayed
   until one of the executing macros finishes. `maxparallel` is a
@@ -342,7 +343,7 @@ _No terms currently defined._
 
 ### --N--
 
-- **`notes`**: (BriteTest) A string parameter for the `RA_CLOSE_REPORT`
+- **`notes`†**: A string parameter for the `RA_CLOSE_REPORT`
   macro. This macro appends the string (which must include `\n` at the
   end of each line in the string) if the string is not NULL or empty.
   Alternatively or in addition, notes can be appended from a file
@@ -354,14 +355,15 @@ _No terms currently defined._
 
 ### --O--
 
-- **orchestrator**: (BriteTest) See orchestrator (`main`) function.
-- **orchestrator function**: (BriteTest) See orchestrator (`main`)
+- **orchestrator†**: See orchestrator (`main`) function.
+- **orchestrator function†**: See orchestrator (`main`)
   function.
-- **orchestrator (`main`) function**: (BriteTest) The `main` function
-  of a BriteTest executable (i.e., the test runner) that uses
+- **orchestrator (`main`) function†**: The `main` function
+  of a runner executable (i.e., the test runner) that uses
   `RA_GROUP` macros to execute sets of tests (i.e., a test group) or
   `RA_TEST` macros to execute a specific test (i.e., a test
   expression).
+- **output file†**: TODO. See also golden file.
 </details>
 
 <details>
@@ -369,19 +371,19 @@ _No terms currently defined._
 
 ### --P--
 
-- **pass**: (BriteTest) A counted success where the test expression for
+- **pass†**: A counted success where the test expression for
   an `RA_TEST` macro evaluates to non-zero.
-- **PATH**: (BriteTest) Optional command‑line argument indicating the
+- **PATH†**: Optional command‑line argument indicating the
   output destination; may be a report file path or directory path.
   Argument must be quoted if it contains spaces.
-- **process guard**: (BriteTest) The guard used for process isolation.
+- **process guard†**: The guard used for process isolation.
   Unlike thread guards, a process guard can capture all signals but
   increases test execution time. For proven tests, use thread guards;
   otherwise, use process guards.
-- **process isolation**: (BriteTest) An isolation mode where a test
+- **process isolation†**: An isolation mode where a test
   group or test expression runs in a separate process. See also
   isolation mode.
-- **project**: (BriteTest) A single-token project identifier used in
+- **project†**: A single-token project identifier used in
   orchestrator initialization and default report naming.
 </details>
 
@@ -399,9 +401,9 @@ _No terms currently defined._
 ### --R--
 
 - **report**: See test report.
-- **report header**: (BriteTest) Lines of text written at the beginning
+- **report header†**: Lines of text written at the beginning
   of a test report that include the report title, a timestamp, etc.
-- **runner**: (BriteTest) See test runner.
+- **runner†**: See test runner.
 - **runner**: (GitHub) A machine or environment that executes the jobs
   defined in a GitHub Actions workflow. A runner provides the
   operating system, tools, and runtime needed to perform workflow
@@ -416,10 +418,11 @@ _No terms currently defined._
 ### --S--
 
 - **semantic versioning**: A versioning scheme for artifacts. For
-  example, in BriteTest, `M.m.p` (for `.h` and `.c` files) or `M.u`
-  (document `.md` files) where M, m, p, and u are one or two digits
-  and M indicates the major release, m indicates the minor release, p
-  indicates the patch version, and u the document update version.
+  example, for the Runner API or Test API, `M.m.p` (for `.h` and
+  `.c` files) or `M.u` (document files) where M, m, p, and
+  u are one or two digits and M indicates the major release, m
+  indicates the minor release, p indicates the patch version, and
+  u the document update version.
 - **shell**: A command-line interface that allows a user or script to
   submit command lines. Examples include `pwsh`, `powershell.exe`,
   `bash`, `sh`, `zsh`, and `cmd.exe`.
@@ -433,39 +436,39 @@ _No terms currently defined._
 
 ### --T--
 
-- **test**: See test expression.
-- **test artifact**: (BriteTest) A specific kind of artifact, i.e.,
-  file or output generated by a BriteTest executable (for example, a
+- **test†**: See test expression.
+- **test artifact†**: A specific kind of artifact, i.e.,
+  file or output generated by a runner executable (for example, a
   test report, `stdout`, and `stderr`).
-- **test case**: This term is not used in BriteTest. In other contexts,
-  it may mean a single test or a set of tests; BriteTest uses test
+- **test case**: This term is not used in the documentation. In other contexts,
+  it may mean a single test or a set of tests; the documentation uses test
   expression for an individual test and test group for a set of test
   expressions.
-- **test expression**: (BriteTest) An expression that is an argument of
+- **test expression†**: An expression that is an argument of
   an `RA_TEST` macro that can be cast to `int`; zero means fail,
   non‑zero means pass. A test expression and its underlying functions
-  are user-written. The BriteTest Test API is provided to help simplify
+  are user-written. The Test API is provided to help simplify
   writing a test expression and its underlying functions.
-- **test group**: (BriteTest) A grouping of `RA_TEST` macros and
+- **test group†**: A grouping of `RA_TEST` macros and
   optionally `RA_GROUP` macros.
-- **test group function**: (BriteTest) A function declared with a
+- **test group function†**: A function declared with a
   `RA_DECLARE_GROUP` macro and followed by a function body in `{ }`.
-- **test function**: (BriteTest) A user‑written function used in
+- **test function†**: A user‑written function used in
   implementing a test expression.
-- **test helper function**: (BriteTest) A Test API function that helps
+- **test helper function†**: A Test API function that helps
   simplify implementing a test expression.
-- **test report**: (BriteTest) A file written by a BriteTest executable
+- **test report†**: A file written by a test runner
   that records the results of a test run, including pass/fail counts,
   faults, and optional notes. See also report header, title, and
   notes.
-- **test runner**: (BriteTest) An executable that runs a set of tests.
+- **test runner†**: An executable that runs a set of tests.
 - **test suite**: A complete set of tests for a project or a subset of
-  tests for a project. BriteTest uses the term test group if it is a
-  subset of the tests for a project. BriteTest does not use the term
+  tests for a project. The documenation uses the term test group if it is a
+  subset of the tests for a project. The documentaton does not use the term
   *test suite* since whether a set of tests is *complete* for a
   project is not well-defined.
-- **testing artifact**: (BriteTest) See test artifact.
-- **thread guard**: (BriteTest) The guard used for thread isolation. A
+- **testing artifact†**: See test artifact.
+- **thread guard†**: The guard used for thread isolation. A
   thread guard can only reliably capture synchronous signals
   (`SIGSEGV`, `SIGBUS`, `SIGFPE`, and `SIGILL`). Other signals
   (`SIGABRT`, `SIGKILL`, `SIGSTOP`, `SIGTERM`, `SIGINT`, `SIGHUP`,
@@ -474,10 +477,10 @@ _No terms currently defined._
   capture all signals but increases the time to run the tests. For
   already proven tests, use thread guards; otherwise, use process
   guards.
-- **thread isolation**: (BriteTest) An isolation mode where a test
+- **thread isolation†**: An isolation mode where a test
   group or test expression executes in a separate thread. See also
   isolation mode.
-- **title**: (BriteTest) An optional report header text provided when
+- **title†**: An optional report header text provided when
   opening the report with an `RA_OPEN_REPORT` macro.
 </details>
 
