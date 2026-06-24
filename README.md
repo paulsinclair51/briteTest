@@ -89,24 +89,24 @@ changes are published in a release without a change to `M`, and it resets to
 
 ## Table of Contents
 
-[**1. Introduction**](#1-introduction)<br>
-      1.1. [Key Features](#11-key-features)<br>
-      1.2. [Quick Start](#12-quick-start)<br>
-      1.3. [Requirements](#13-requirements)<br>
-      1.4. [Installation](#14-installation)<br>
+1. [**1. Introduction**](#1-introduction)<br>
+   1.1. [Key Features](#11-key-features)<br>
+   1.2. [Quick Start](#12-quick-start)<br>
+   1.3. [Requirements](#13-requirements)<br>
+   1.4. [Installation](#14-installation)<br>
 
-[**2. Runner Framework and API**](#2-test-runner-framework-and-api)<br>
-      2.1.[What the Runner Framework and API Does](#21-what-the-runner-framework-and-api-does)<br>
+2. [**Runner Framework and API**](#2-test-runner-framework-and-api)<br>
+   2.1.[What the Runner Framework and API Does](#21-what-the-runner-framework-and-api-does)<br>
 
-[**3. Running Tests**](#3-running-tests)
+3. [**Running Tests**](#3-running-tests)
 
-[**4. Report Generation**](#4-report-generation)
+4. [**Report Generation**](#4-report-generation)
 
-[**5. Customization**](#5-customization)<br>
+5, [**Customization**](#5-customization)<br>
 
-[**6. Test Report**](#6-test-report)<br>
+6. [**Test Report**](#6-test-report)
 
-[**7. Advanced Features and Topics**](#7-advanced-features-and-topics)<br>
+[**7. Advanced Features and Topics**](#7-advanced-features-and-topics)<
 
 [**8. Test Expressions**](#8-test-expressions)<br>
 
