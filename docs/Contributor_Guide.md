@@ -99,7 +99,7 @@ changes are published in a release without a change to `M`, and it resets to
    8.2. [Alternative Brand Names](#82-alternative-brand-names)<br>
    8.3. [Brand Rename Plan](#83-rename-plan)<br>
 
-    [**Glossary**](#glossary)
+9. [**Glossary**](#9-glossary)
 </details>
 
 <details>
@@ -625,7 +625,7 @@ Fast low-risk rename plan:
 <details>
 <summary>Glossary</summary>
 
-## Glossary
+## 9. Glossary
 
 For a glossary of general BriteTest terms, see the Glossary Reference document.
 For a glossary of terms, see the Glossary Reference
