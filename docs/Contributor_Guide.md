@@ -530,7 +530,7 @@ BriteTest is a compact C/C++ framework for defining, running, and reporting test
 </details>
 
 <details>
-<summary>8.2. Alternative Brand Names/summary>
+<summary>8.2. Alternative Brand Names</summary>
 
 ### 8.2. Alternative Brand Names
 
