@@ -6,4 +6,5 @@
 # Format: old_phrase = new_phrase
 #
 
-LiteTest = BriteTest
+LiteTest = briteTest
+BriteTest = briteTest
