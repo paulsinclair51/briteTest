@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-Update .svg files in docs/branding with brand abbreviation replacements.
+Update .svg files in docs/branding with brand abbreviation replacements,
+then regenerate the corresponding PNG files.
 
 This script reads phrase replacements from a configuration file, generates
 abbreviations from the phrases, and applies them to .svg files in the
-docs/branding directory.
+docs/branding directory. After updating SVG files, it regenerates the
+corresponding PNG files using the genpng.sh script.
 
 Configuration file format:
     old_phrase = new_phrase
@@ -31,6 +33,7 @@ Default config file: docs/branding/brand.txt
 
 import os
 import sys
+import subprocess
 import argparse
 from pathlib import Path
 
@@ -158,10 +161,49 @@ def process_file(file_path, replacements, dry_run=False):
     return replacements_made, changes
 
 
+def regenerate_pngs(dry_run=False):
+    """
+    Regenerate PNG files from updated SVG files using genpng.sh.
+    
+    Args:
+        dry_run: If True, don't actually run the regeneration
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    script_dir = Path(__file__).parent
+    genpng_script = script_dir / 'genpng.sh'
+    
+    if not genpng_script.exists():
+        print(f"Warning: {genpng_script} not found. PNG files will not be regenerated.", file=sys.stderr)
+        return False
+    
+    if dry_run:
+        print(f"[DRY RUN] Would execute: {genpng_script}")
+        return True
+    
+    print("\nRegenerating PNG files from SVG sources...")
+    try:
+        result = subprocess.run(
+            [str(genpng_script)],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        print(result.stdout)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error regenerating PNG files: {e.stderr}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"Error executing genpng.sh: {e}", file=sys.stderr)
+        return False
+
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description='Update .svg files in docs/branding with brand abbreviation replacements',
+        description='Update .svg files in docs/branding with brand abbreviation replacements and regenerate PNGs',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 Configuration file format:
@@ -173,6 +215,7 @@ Example:
   # docs/branding/brand.txt
   LiteTest = BriteTest
   # This will replace "LT" with "BT" in all .svg files in docs/branding
+  # and then regenerate the corresponding .png files
         '''
     )
     
@@ -239,8 +282,13 @@ Example:
     else:
         print("SUMMARY:")
     print(f"  Files processed: {len(svg_files)}")
-    print(f"  Files modified: {files_modified}")
+    print(f"  SVG files modified: {files_modified}")
     print(f"  Total replacements: {total_replacements}")
+    
+    # Regenerate PNGs if SVG files were modified
+    if files_modified > 0 or (args.dry_run and total_replacements > 0):
+        if not regenerate_pngs(args.dry_run):
+            print("\nWarning: PNG regeneration failed, but SVG files were updated.", file=sys.stderr)
     
     if args.dry_run:
         print("\nRun without --dry-run to apply these changes")
