@@ -85,7 +85,7 @@ changes are published in a release without a change to `M`, and it resets to
 </details>
 
 <details>
-<summary>Table of Contents</summary>
+<summary>Table of Contents</summary>1.4.
 
 ## Table of Contents
 
@@ -93,7 +93,7 @@ changes are published in a release without a change to `M`, and it resets to
       1,1, [Key Features](#11-key-features)<br>
       1.2. [Quick Start](#12-quick-start)<br>
       1.3. [Requirements](#13-requirements)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[1.4. Installation](#14-installation)<br>
+      1.4. [Installation](#14-installation)<br>
 
 [**2. Runner Framework and API**](#2-britetest-runner-framework-and-api)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**2.1. What the Runner Framework and API Does**](#21-what-the-runner-framework-and-api-does)<br>
