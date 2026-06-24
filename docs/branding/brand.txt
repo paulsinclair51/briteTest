@@ -1,0 +1,9 @@
+# Brand Name Configuration
+#
+# This file defines the current brand name mapping for use with the
+# phrase replacement script (scripts/replacephrases).
+#
+# Format: old_phrase = new_phrase
+#
+
+LiteTest = BriteTest
