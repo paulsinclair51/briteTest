@@ -623,7 +623,7 @@ Fast low-risk rename plan:
 </details>
 
 <details>
-<summary>Glossary</summary>
+<summary>9. Glossary</summary>
 
 ## 9. Glossary
 
