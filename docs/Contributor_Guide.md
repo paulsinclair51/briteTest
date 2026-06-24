@@ -388,7 +388,7 @@ Fast low-risk rename plan:
 </details>
 
 <details>
-<summary>Glossary</summary>
+<summary>  Glossary</summary>
 
 ## Glossary
 
