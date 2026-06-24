@@ -3,13 +3,17 @@
 This file defines the current brand name and tagline for use by
 scripts/updatelogos and provides a history of changes.
 
+Copyright (c) 2026 Paul Sinclair  
+SPDX-License-Identifier: MIT  
+For license details, see `LICENSE` in the root directory.
 
+See `README.md` in the root directory for an introduction to the project.
 
 ## 1. Introduction
 
 - Replacement line: "- Replace: old_phrase = new_phrase" (leading spaces allowed).
 
-- Completion line "\### Completed: datetime" (no leading spaces).
+- Completion line "### Completed: datetime" (no leading spaces).
 
 ## 2. Change History
 
