@@ -85,9 +85,9 @@ changes are published in a release without a change to `M`, and it resets to
    2.1. [**ra_result_t**](#21-ra_result_t)<br>
    2.2.[**ra_state_t**](#22-ra_state_t)
 
-3. [**Enums**](#3-enums)
+3. [**Enums**](#3-enums)<br>
    3,1. [**ra_exit_code_t**](#31-ra_exit_code_t)<br>
-   3.2. [**ra_return_code_t**](#32-ra_return_code_t)<br>
+   3.2. [**ra_return_code_t**](#32-ra_return_code_t)
 
 4. [**Macros for Limits**](#4-macros-for-limits)<br>
 
