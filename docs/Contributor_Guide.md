@@ -96,7 +96,7 @@ changes are published in a release without a change to `M`, and it resets to
 
 8. [**Branding**](#8-branding)<br>
     8.1. [Alternative Brand Descriptions](#81-alternative-brand-descriptons)<br> 
-    8.2. [Alternative Brand Names](#82-alternative-brand-names)
+    8.2. [Alternative Brand Names](#82-alternative-brand-names)<br>
     8.3. [Brand Rename Plan](#83-rename-plan)
 
     [**Glossary**](#glossary)
