@@ -45,6 +45,9 @@ jobs:
       - name: Checkout # BriteTest repository code.
         uses: actions/checkout@v4
 
+      - name: Apply brand name replacements
+        run: scripts/replacephrases docs/branding/brand.txt
+
       - name: Validate directory README format
         run: bash ./scripts/check_directory_readmes.sh
 
