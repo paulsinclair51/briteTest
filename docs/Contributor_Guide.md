@@ -285,6 +285,7 @@ Before submitting a PR:
 
 ## 8. Branding
 
+This chspter discusses the choices for a brand description and name.
 <details>
 <summary>8.1. Alternative Brand Descriptions</summary>
 
@@ -298,19 +299,16 @@ todo
 
 ### 8.2. Alternative Brand Names
 
-TODO: add BriteTest and OpenTest to table.
-
-Preferred alternative brand names:
 TODO: add these to table.
-- CanaryRunner
-- CanaryAssert
-- CanaryProof
-- CanaryTestRunner
+- BriteTest (bT)
+- CanaryRunner (CR)
+- CanaryAssert (CA)
+- CanaryProof (CP)
+- CanaryTestRunner (CYR)
+- OpenTest (OT)
 
-These names are reserved as fallback options if a naming conflict requires a
-project rename.
-
-Additional two-letter abbreviation candidates:
+These names are fallback options if a naming conflict requires a
+brand/project rename.
 
 These notes are an informal naming screen only. They are based on how generic,
 descriptive, or commonly used the terms appear in software and testing. They
@@ -331,11 +329,15 @@ are not a trademark search or legal clearance.
 | APITest | AT | Directly describes API testing, but the term is highly generic and already widely used across tools, articles, and packages. | Higher |
 | FastTest | FT | Strong performance-oriented signal, but `fast` and `test` are both generic terms and likely to overlap with existing tooling names. | Medium-High |
 
-Working preference among the two-letter candidates:
+ Preference among the candidates:
 
 - `CompactTest (CT)` for a lower-conflict descriptive option.
 - `TraceTest (TT)` for a more distinctive technical option.
 - `CanaryTest (CT)` only if the canary theme is more important than name
+- CanaryRunner
+- CanaryAssert
+- CanaryProof
+- CanaryTestRunner (CTR)
 </details>
 
  <details>
