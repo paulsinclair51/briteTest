@@ -69,7 +69,7 @@ For a printer-friendly PDF file for this document, see `docs/pdf/BriteTest.pdf`.
   format `M.u` (Major, update).
 - The **Runner** column records the Runner API version
   current at the time this document version was published and is
-  defined by its `RA_RUNNER_VERSION` macro.
+  defined by its `RA_VERSION` macro.
 - The **Test** column records the Test API version current at
   the time this document version was published and is defined by its
   `RA_TEST_VERSION` macro.
@@ -106,17 +106,17 @@ changes are published in a release without a change to `M`, and it resets to
 
 6. [**Test Report**](#6-test-report)
 
-[**7. Advanced Features and Topics**](#7-advanced-features-and-topics)<
+7. [**7. Advanced Features and Topics**](#7-advanced-features-and-topics)
 
-[**8. Test Expressions**](#8-test-expressions)<br>
+8. [**8. Test Expressions**](#8-test-expressions)
 
-[**9. Setup and Teardown**](#9-setup-and-teardown)<br>
+9. [**Setup and Teardown**](#9-setup-and-teardown)
 
-[**10. Test Groups**](#10-test-groups)<br>
+10. [**Test Groups**](#10-test-groups)
 
-[**11. Concurrent Tests**](#11-concurrent-tests)<br>
+11. [**1Concurrent Tests**](#11-concurrent-tests)
 
-[**12. Isolation**](#12-isolation)<br>
+12. [**Isolation**](#12-isolation)<br>
 
 [**13. Test API**](#13-test-api)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**13.1 File Functions**](#131-file-functions)<br>
