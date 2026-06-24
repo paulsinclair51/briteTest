@@ -8,27 +8,9 @@ BriteTest is a lightweight framework for defining, running, and
 reporting tests in C/C++ projects. It provides a compact macro‑based
 Runner API, a function‑driven Test API, fault‑tolerant execution, and
 clear, structured reporting. The framework is designed for small to
-medium C projects that need reliable automated testing without the overhead of large toolchains or external dependencies.
+medium C projects that need reliable automated testing without the overhead
+of large toolchains or external dependencies.
 
-Option 1 — Concise & Technical
-
-BriteTest is a lightweight C/C++ testing framework providing a macro‑based runner, function‑based tests, fault‑tolerant execution, and clear reporting. It enables reliable unit and command‑line testing without external tooling or heavy dependencies.
-
----
-
-Option 2 — Clean & Professional
-
-BriteTest is a compact C/C++ framework for defining, running, and reporting tests. It offers a simple macro runner, function‑style tests, robust fault handling, and readable output, ideal for small to medium projects needing dependable testing with minimal overhead.
-
----
-
-Option 3 — More Emphasis on Purpose
-
-BriteTest is a minimal C/C++ test framework designed for fast, reliable unit and command‑line testing. Its macro‑based runner, function‑driven tests, and fault‑tolerant execution provide clear reporting without the weight of large toolchains or dependencies.
-
----
-
-BriteTest supports both unit testing and command‑line driven testing, making it flexible enough for embedded utilities, libraries, and standalone executables
 #### Copyright (c) 2026 Paul Sinclair
 
 <details>
@@ -108,10 +90,10 @@ changes are published in a release without a change to `M`, and it resets to
 ## Table of Contents
 
 [**1. Introduction**](#1-introduction)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**1.1. Key Features**](#11-key-features)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**1.2. Quick Start**](#12-quick-start)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**1.3. Requirements**](#13-requirements)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**1.4. Installation**](#14-installation)<br>
+      1,1, [Key Features](#11-key-features)<br>
+      1.2. [Quick Start](#12-quick-start)<br>
+      1.3. [Requirements](#13-requirements)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[1.4. Installation](#14-installation)<br>
 
 [**2. Runner Framework and API**](#2-britetest-runner-framework-and-api)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[**2.1. What the Runner Framework and API Does**](#21-what-the-runner-framework-and-api-does)<br>
