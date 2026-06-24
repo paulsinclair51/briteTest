@@ -10,18 +10,28 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
-- `canary-live.svg`: photo of a yellow canary with transparent background
+- **`canary-live.svg`**: photo of a yellow canary with transparent background
    perched on partially removed branch.
-- `canary.svg`: Canary accent: traced from canary-live.svg with canary yellow fill,
+
+- **`canary.svg`**: Canary accent: traced from canary-live.svg with canary yellow fill,
   added black dot eye, and overlaid triangle for beak.
-- `Monogram.svg`: Monogram-only `bT` with canary accent perched on T in a
+
+- **`Monogram.svg`**: Monogram-only `bT` with canary accent perched on T in a
   rounded-square.
-- `Logo_with_BrandName.svg`: monogram and brand name with transparent background.
-- `Logo_with_Tagline.svg`: monogram, brand name, and tagline
+
+- **`Logo_with_BrandName.svg`**: monogram and brand name with transparent background.
+
+- **`Logo_with_Tagline.svg`**: monogram, brand name, and tagline
   "Catch it before it breaks." with transparent background.
-- `<doctitle>.svg`: monogram, brand name, and doctitle (for a document in `docs`)
+
+- **`<doctitle>.svg`**: monogram, brand name, and doctitle (for a document in `docs`)
   with transparent background.
+
+. **`brand.txt`**: pending (if any) brand changes and change history.
+
 - `*.png`: generated `.png` files corresponding to each `*.svg` file.
+
+- **README.md**: This directory guide.
 
 Note: The root `README.md` uses the `Logo_with_Brandname.png` generated from
 `Logo_with_BrandName.svg`.
