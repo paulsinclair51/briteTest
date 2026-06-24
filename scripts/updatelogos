@@ -67,7 +67,7 @@ def parse_config(config_file):
         
     Raises:
         FileNotFoundError: If config file doesn't exist
-        ValueError: If config file has invalid format
+        ValueError: If config file has invalid format or circular references
     """
     phrase_replacements = []
     abbr_replacements = []
@@ -106,6 +106,39 @@ def parse_config(config_file):
         raise FileNotFoundError(f"Config file not found: {config_file}")
     
     return phrase_replacements, abbr_replacements
+
+
+def validate_replacements(phrase_replacements, abbr_replacements):
+    """
+    Validate that no old phrase/abbreviation matches any new phrase/abbreviation
+    to prevent infinite loops during replacements.
+    
+    Args:
+        phrase_replacements: List of (old_phrase, new_phrase) tuples
+        abbr_replacements: List of (old_abbr, new_abbr) tuples
+        
+    Raises:
+        ValueError: If circular references are detected
+    """
+    # Collect all new phrases and abbreviations
+    all_new_phrases = set(new_phrase for _, new_phrase in phrase_replacements)
+    all_new_abbrs = set(new_abbr for _, new_abbr in abbr_replacements)
+    
+    # Check phrase replacements
+    for old_phrase, new_phrase in phrase_replacements:
+        if old_phrase in all_new_phrases:
+            raise ValueError(
+                f"Circular reference detected: old_phrase '{old_phrase}' matches a new_phrase. "
+                f"This would cause an infinite loop during replacement."
+            )
+    
+    # Check abbreviation replacements
+    for old_abbr, new_abbr in abbr_replacements:
+        if old_abbr in all_new_abbrs:
+            raise ValueError(
+                f"Circular reference detected: old_abbr '{old_abbr}' matches a new_abbr. "
+                f"This would cause an infinite loop during replacement."
+            )
 
 
 def find_svg_files_in_branding(branding_dir='docs/branding'):
@@ -252,6 +285,13 @@ Example:
     if not phrase_replacements and not abbr_replacements:
         print(f"No replacements found in {args.config_file}")
         return 0
+    
+    # Validate replacements for circular references
+    try:
+        validate_replacements(phrase_replacements, abbr_replacements)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
     
     # Combine all replacements (phrases first, then abbreviations)
     all_replacements = phrase_replacements + abbr_replacements
