@@ -79,7 +79,7 @@ changes are published in a release without a change to `M`, and it resets to
 
 ## Table of Contents
 
-1. [**Introduction**](#1-introduction)<br>
+1. [**Introduction**](#1-introduction)
 
 2. [**Types**](#2-types)<br>
    2.1. [**ra_result_t**](#21-ra_result_t)<br>
