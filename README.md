@@ -95,12 +95,12 @@ changes are published in a release without a change to `M`, and it resets to
       1.3. [Requirements](#13-requirements)<br>
       1.4. [Installation](#14-installation)<br>
 
-[**2. Runner Framework and API**](#2-britetest-runner-framework-and-api)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**2.1. What the Runner Framework and API Does**](#21-what-the-runner-framework-and-api-does)<br>
+[**2. Runner Framework and API**](#2-test-runner-framework-and-api)<br>
+      2.1.[What the Runner Framework and API Does](#21-what-the-runner-framework-and-api-does)<br>
 
-[**3. Running Tests**](#3-running-tests)<br>
+[**3. Running Tests**](#3-running-tests)
 
-[**4. Report Generation**](#4-report-generation)<br>
+[**4. Report Generation**](#4-report-generation)
 
 [**5. Customization**](#5-customization)<br>
 
@@ -129,28 +129,18 @@ changes are published in a release without a change to `M`, and it resets to
 
 ## 1. Introduction
 
-<details>
-<summary>1.1. Key Features</summary>
-
-### 1.1. Key Featurrs
-
-Key strengths
+Key strengths:
 
 • Lightweight design — minimal files, minimal API surface, easy to embed.
 • Macro‑based Runner API — simple orchestration with predictable control flow.
 • Function‑based Test API — tests are just C functions, easy to organize and debug.
-• Fault‑tolerant execution — protects the test suite from crashes and undefined behavior.
+• Fault‑tolerant execution — protects the test suite from crashes and undefined
+  behavior.
+• Parallel and concurrent test execution,
 • Clear reporting — readable summaries of passes, failures, and faults.
-
-
-- Pure C implementation
-- Minimal footprint (single header + source)
-- Fault detection using POSIX signals
-- Optional process‑isolated execution
-- Parallel and concurrent test execution
-- Clear pass/fail/fault reporting
-- Simple API based on macros and test group functions
-
+• Pure C implementation.
+• Minimal footprint (single header + source cor the ).
+• Optional process‑isolated execution.
 </details>
 
 <details>
@@ -159,7 +149,7 @@ Key strengths
 ### 1.2. Quick Start
 
 A test executable consists of your tests as C/C++ expressions/functions, and the
-orchestrator and test group functions you write using the BriteTest API that
+orchestrator and test group functions you write using the Runner API that
 manages the execution.
 
 1. Copy 'runnerapi.h' and 'runnerapi.c' to your current directory:
@@ -208,7 +198,7 @@ RA_DECLARE_ORCHESTRATOR(main)
   // Single test category.
   RA_WRITE_RESULT(RA_GROUP(test_quick), "Quick tests");
 
-  RA_CLOSE_REPORT("Note: This report is a very simple example of using BriteTest.\n"
+  RA_CLOSE_REPORT("Note: This report is a very simple examplexx.\n"
                   "Note: Multiple test categories can be added using multiple\n"
                   "      test functions.\n"
                   "Note: Orchestrator (`main`) and test functions can be placed in\n"
@@ -223,7 +213,7 @@ RA_DECLARE_ORCHESTRATOR(main)
                   "Note: Larger projects can place files in a more conventional\n"
                   "      layout (e.g., `include/` and `src/`, but this example keeps\n"
                   "      everything in your current directory for simplification.\n"
-                  "Note: See README.md for BriteTest for additional API features.\n");
+                  "Note: See root README.md for for additional API features.\n");
   RA_EXIT;
 }
 ```
@@ -253,7 +243,7 @@ less quick_test_report.txt   # Press 'q' to quit
 Example of the report:
 
 ```text
-BriteTest Report
+Test Report
                              Pass   Fail     Fault
 --------------------------------------------------
 1. Orchestrator                 4
@@ -278,17 +268,17 @@ Supported compilers, C standard level, and any platform notes.
 
 ### 1.4. Installation
 
-How to add BriteTest to your project, including copying the header, adding the
+How to add the Runner API to your project, including copying the header, adding the
 source file, or integrating via your build system.
 </details>
 </details>
 
 <details>
-<summary>2. BriteTest Runner Framework and API</summary>
+<summary>2. Runner Framework and API</summary>
 
-## 2. BriteTest Runner Framework and API
+## 2. Runner Framework and API
 
-The Runner framework (implemented using the Runner API) executes all test
+The Runner Framework (implemented using the Runner API) executes all test
 expressions (that implement the tests), aggregates results, and produces
 the report. This is the framework used by your test executable.
 
@@ -386,7 +376,7 @@ structure.
 
 ## 11. Concurrent Tests
 
-How to mark tests as concurrent and how BriteTest handles parallel execution
+How to mark tests as concurrent and how Runner Framework handles parallel execution
 safely.
 </details>
 
@@ -395,7 +385,7 @@ safely.
 
 ## 12. Isolation
 
-Isolation controls how much separation BriteTest uses when running tests.
+Isolation controls how much separation is used when running tests.
 
 - **Same-thread execution** is the default and has the lowest overhead.
 - **Thread-isolated execution** keeps tests separated without switching to a
@@ -408,9 +398,9 @@ under test.
 </details>
 
 <details>
-<summary>13. BriteTest Test API</summary>
+<summary>13. Test API</summary>
 
-## 13. BriteTest Test API
+## 13. Test API
 
 The Test API provides macros and functions for writing tests. Developers use
 this API to express expected behavior, group related tests, and define optional
