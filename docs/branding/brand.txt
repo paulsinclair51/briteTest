@@ -22,9 +22,9 @@ Rename brand to briteTest:
 
 ### Completed: 2026-06-20 18:00:00
 Rename brand:
-- Replace: LiteTest = logo
+- Replace: LiteTest = BriteTest
 
 ### Completed: 2026-06-01 12:20:34
 Initial definitions:
-- LiteTest
-- Catch
+- Brandname: LiteTest
+- Tagline: Catch it before it breaks.
