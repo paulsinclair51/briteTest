@@ -90,7 +90,7 @@ changes are published in a release without a change to `M`, and it resets to
 ## Table of Contents
 
 [**1. Introduction**](#1-introduction)<br>
-      1,1, [Key Features](#11-key-features)<br>
+      1.1. [Key Features](#11-key-features)<br>
       1.2. [Quick Start](#12-quick-start)<br>
       1.3. [Requirements](#13-requirements)<br>
       1.4. [Installation](#14-installation)<br>
