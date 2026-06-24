@@ -94,7 +94,10 @@ changes are published in a release without a change to `M`, and it resets to
 
 7. [**Pull Requests**](#7-pull-requests)
 
-8. [**Alternative Project Names and Rename Plan**](#8-alternative-project-names-and-rename-plan)
+8. [**Branding**](#8-branding)
+   8.1. [**Alternative Brand Descriptions**](#81-alternative-brand--descriptons)
+   8.2. [**Alternative Brand Names**](#82-alternative-brand-names)
+   8.3. [**Brand Rename Plan**](#83-rename-plan)
 
     [**Glossary**](#glossary)
 </details>
@@ -278,14 +281,27 @@ Before submitting a PR:
 </details>
 
 <details>
-<summary>8. Alternative Project Names and Rename Plan</summary>
+<summary>8. Branding</summary>
 
-## 8. Alternative Project Names and Rename Plan
+## 8. Branding
 
-TODO: add OpemTest to table.
+<details>
+<summary>8.1. Alternative Brand Descriptions</summary>
 
-Preferred alternative names for BriteTest:
+### 8.1. Alternative Brand Descriptions
 
+todo
+</details>
+
+<details>
+<summary>8.2. Alternative Brand Names/summary>
+
+### 8.2. Alternative Brand Names
+
+TODO: add BriteTest and OpenTest to table.
+
+Preferred alternative brand names:
+TODO: add these to table.
 - CanaryRunner
 - CanaryAssert
 - CanaryProof
@@ -302,7 +318,7 @@ are not a trademark search or legal clearance.
 
 | Name | Abbrev. | Informal conflict note | Likelihood |
 |------|---------|------------------------|------------|
-| BriteTest | LT | Clear and close to the project's lightweight positioning, but both `lite` and `test` are common software terms, so overlap with existing package or tool names is plausible. | Medium |
+| LiteTest | LT | Clear and close to the project's lightweight positioning, but both `lite` and `test` are common software terms, so overlap with existing package or tool names is plausible. | Medium |
 | CanaryTest | CT | Strong fit for the canary theme, but `canary` and `canary testing` are already common software terms, which makes the name less distinctive. | Higher |
 | CoreTest | CT | Clear and technical, but both `core` and `test` are common product words and may overlap with existing tools or internal packages. | Medium |
 | ClearTest | CT | Readable and descriptive, but the name is broad and likely to overlap with existing testing or QA branding. | Medium |
@@ -319,7 +335,13 @@ Working preference among the two-letter candidates:
 
 - `CompactTest (CT)` for a lower-conflict descriptive option.
 - `TraceTest (TT)` for a more distinctive technical option.
-- `CanaryTest (CT)` only if the canary theme is more important than name distinctiveness.
+- `CanaryTest (CT)` only if the canary theme is more important than name
+</details>
+
+ <details>
+<summary>8.3. Brand Rename Plan</summary>
+
+### 8.3. Brand Rename Plan
 
 Fast low-risk rename plan:
 
@@ -360,7 +382,7 @@ Fast low-risk rename plan:
 - Commit the rename in one focused commit.
 - Keep a rollback commit point before removing old compatibility references.
 - In the next release, remove temporary compatibility references after verification.
-
+</details>
 </details>
 
 <details>
