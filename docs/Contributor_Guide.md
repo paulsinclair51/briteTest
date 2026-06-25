@@ -67,7 +67,7 @@ For a glossary of terms, see the Glossary Reference.
 
 The document's update version tracks released updates to this document and does
 not correspond to a minor or patch version. `u` increments when document
-changes are published in a release without a change to `M`, and it resets to
+changes are released without a change to `M`, and it resets to
 `0` when `M` is incremented.
 </details>
 </details>
