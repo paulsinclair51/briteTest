@@ -88,7 +88,7 @@ changes are published in a release without a change to `M`, and it resets to
 
 4. [**Documentation Guidelines**](#4-documentation-guidelines)
 
-5. [**Code Style**](#5-code-style)
+5. [**Code Guidelines**](#5-code-guidelines)
 
 6. [**Writing Style Consistency**](#6-writing-style-consistency)
 
@@ -126,12 +126,15 @@ Versioning is used for:
 When to increment for a release:
 
 - Update:
+
   - Document updated.
 
 - Patch:
+
   - Bug fixes or implementation improvements.
 
 - Minor:
+
   - Minor additions to the APIs (e.g., new function or macro).
   - Minor additions to the Runner Framework.
   - No breaking changes (syntax or behavior) to the APIs.
@@ -139,6 +142,7 @@ When to increment for a release:
   - Minor refactorying of implementation.
 
 - Major
+
   - Major additions to the APIs.
   - Major additions to the Runner Framework.
   - Significant refactoring of the implementation.
@@ -151,19 +155,23 @@ When to increment for a release:
     with update, minor, and patch reset to 0.
 
 When updating the version for the Runner API:
+
 - Update `RA_VERSION` in `runnerapi.h`.
 - Update `RA_VERSION_C` in `runnerapi.c`.
 
 When updating the version for the Test API:
+
 - Update `TA_VERSION` in `testapi.h`.
 - Update `TA_VERSION_C` in `testapi.c`.
 
 When updating the version for a document:
+
 - Add a new entry to the top of the Document Version History table.
 - Increment `u` if the major version is not incremented.
 - Reset `u` to `0` when the major version is incremented.
 
 API compatibility guidelines:
+
 - Do not change API signatures.
 - Do not change API behavior.
 - Do not change exit and return code meanings.
@@ -171,120 +179,31 @@ API compatibility guidelines:
 - Provide migration guidance for major changes including how
   to opt-in for new features and behavior.
 
-Significant justification is required in a case where these guidelines cannot be
+Significant justification is required when these guidelines cannot be
 followed.
 </details>
 
 <details>
-<summary>4. Documentation Guidelines</summary>
+<summary>3. Branding</summary>
 
-## 4. Documentation Guidelines
+## 3. Branding
 
-- `README.md` must remain short and onboarding‑focused.
-- A User Guide contains conceptual explanations and examples.
-- A API Reference contains public API definitions only.
-- An internal guide or reference must not leak into public docs.
-- Update documentation when enhancing macros, behavior, or report format.
-- For branding assets in `docs/branding/`: `BriteTest_*.svg` files are the source of truth and `BriteTest_*.png` files are generated from SVG using `scripts/genpng.sh`; do not directly edit brand[...]
-</details>
+This chapter discusses alternative choices for the brand description and name
+plus how to change the brand name.
 
 <details>
-<summary>5. Code Style</summary>
+<summary> 3.1. Alternative  Brand Descriptions</summary>
 
-## 5. Code Style
-
-- C99.
-- POSIX.1‑2001 APIs only.
-- Keep `runnerapi.h` self‑contained.
-- Keep `runnerapi.c` implementation‑only.
-- Avoid intermixing test code with helper logic inside test group functions.
-</details>
-
-<details>
-<summary>6. Writing Style Consistency</summary>
-
-## 6. Writing Style Consistency
-
-(See the full style rules in the Documentation Style Guide above.)
-
-This section exists here to ensure contributors do not overlook the requirement
-for parallel structure and consistent writing patterns across all BriteTest
-documentation in all types of files (e,g., ,md, .h, .c, .yml, ,sh, Makefile, etc.).
-
-<details>
-<summary>6. Documentation Style Guide</summary>
-
-### 6.1 Documentation Style Guide
-
-1. Tone
-- Technical, precise, and neutral.
-- No marketing language.
-- Prefer clarity over cleverness.
-
-2. Formatting
-- Use backticks for code identifiers.
-- Use fenced code blocks for file trees, examples, and commands.
-- Keep line lengths reasonable for GitHub rendering.
-
-3. Writing Guidelines
-- Define terms once, and then use them consistently.
-- Avoid synonyms for technical concepts (e.g., always "update version," never "revision").
-- Keep paragraphs short.
-- Use lists for enumerations.
-
-4. `Click to view`
-- Use `Click to view` sections and subsections to keep the document readable while
-  still accommodating large amounts of technical detail:
-  - Collapsing sections allows readers to scan the structure and expand only what
-    they need.
-  - This keeps the document manageable, avoids overwhelming readers with unrelated
-    detail, and makes the document easier to navigate.
-
-5. Writing Style Consistency
-To keep documentation clear and easy to read, maintain **parallel
-structure** within lists and related sentences. In practice:
-
-- Start list items with the same part of speech (typically a verb).
-- Keep grammatical patterns consistent across bullets.
-- Avoid mixing styles such as "Keep paragraphs short" with "Using lists for enumerations."
-- Rewrite items as needed so the list reads smoothly and uniformly.
-
-This guideline applies to all documentation (.md files).
-</details>
-</details>
-
-<details>
-<summary>7. Pull Requests</summary>
-
-## 7. Pull Requests
-
-Before submitting a PR:
-
-- Ensure tests pass.
-- Update version numbers if needed.
-- Update documentation as needed.
-- Keep changes focused and well‑scoped.
-</details>
-
-<details>
-<summary>8. Branding</summary>
-
-## 8. Branding
-
-This chapter discusses the choices for a brand description and name.
-<details>
-<summary>8.1. Alternative Brand Descriptions</summary>
-
-### 8.1. Alternative Brand Descriptions
+### 3.1. Alternative Brand Descriptions
 
 BriteTest is a lightweight framework for defining, running, and reporting
-tests in C/C++ projects. It provides a simple core macro-based Runner
+tests in C/C++ projects. It provides a simple core macro-based Runner,
 Application Programming Interface (API), a function-based Test API,
 fault‑tolerant execution, and clear reporting. It is ideal for small to
 medium C projects that need reliable testing without heavy tooling and
 dependencies. It can be used for unit and command-line testing.
 
-Tghtened, clarified, and made more parallel to the tone you've been using
+Tightened, clarified, and made more parallel to the tone you've been using
 for LiteTest. Below is a refined version that reads cleaner, is more precise,
 and positions the framework more strongly.
 
@@ -320,20 +239,21 @@ without heavy dependencies.
 </details>
 
 <details>
-<summary>8.2. Alternative Brand Names</summary>
+<summary>3.2. Alternative Brand Names</summary>
 
-### 8.2. Alternative Brand Names
+### 3.2. Alternative Brand Names
 
-TODO: add these to table.
+TODO - add these to table:
+
 - briteTest (bT)
-- CanaryRunner (CR)
-- CanaryAssert (CA)
-- CanaryProof (CP)
-- CanaryTestRunner (CYR)
-- OpenTest (OT)
+- litetest (lT)
+- openTest (oT)
+- canaryRunner (cR)
+- CanaryTestRunner (CTR)
+- canaryTestRunner (cTR)
+- canaryTestrunner (cTr)
 
-These names are fallback options if a naming conflict requires a
-brand/project rename.
+These names are fallback options if a naming conflict requires a brand/project rename.
 
 These notes are an informal naming screen only. They are based on how generic,
 descriptive, or commonly used the terms appear in software and testing. They
@@ -343,31 +263,21 @@ are not a trademark search or legal clearance.
 |------|---------|------------------------|------------|
 | LiteTest | LT | Clear and close to the project's lightweight positioning, but both `lite` and `test` are common software terms, so overlap with existing package or tool names is plausible. | Medium |
 | briteTest | bT | Strong fit for the project brand with canary monogram, distinctive camelCase format, and clear semantic meaning. Low conflict likelihood. | Low |
-| CanaryTest | CT | Strong fit for the canary theme, but `canary` and `canary testing` are already common software terms, which makes the name less distinctive. | Higher |
-| CoreTest | CT | Clear and technical, but both `core` and `test` are common product words and may overlap with existing tools or internal packages. | Medium |
-| ClearTest | CT | Readable and descriptive, but the name is broad and likely to overlap with existing testing or QA branding. | Medium |
-| TinyTest | TT | Good match for a lightweight framework, but it is fairly descriptive and similar in shape to other small-test framework names. | Medium |
-| TraceTest | TT | More distinctive than generic `test` compounds, though `trace` is still a common engineering term. | Medium-Low |
-| SwiftTest | ST | Memorable, but `Swift` has strong existing association with Apple's Swift ecosystem, which could create confusion. | Higher |
-| QuickTest | QT | Familiar and easy to say, but `QuickTest` has long-standing use in software testing and QA tooling. | Higher |
-| CompactTest | CT | Fits the lightweight positioning and is somewhat more distinctive than `CoreTest` or `ClearTest`, though still descriptive. | Medium-Low |
-| PublicTest | PT | Descriptive and understandable, but `public` is a common language and API term, which makes the name fairly broad. | Medium |
-| APITest | AT | Directly describes API testing, but the term is highly generic and already widely used across tools, articles, and packages. | Higher |
-| FastTest | FT | Strong performance-oriented signal, but `fast` and `test` are both generic terms and likely to overlap with existing tooling names. | Medium-High |
+| canaryTest | cT | Strong fit for the canary theme, but `canary` and `canary testing` are already common software terms, which makes the name less distinctive. | Higher |
+| clearTest | cT | Readable and descriptive, but the name is broad and likely to overlap with existing testing or QA branding. | Medium |
+| tinyTest | tT | Good match for a lightweight framework, but it is fairly descriptive and similar in shape to other small-test framework names. | Medium |
+| swiftTest | sT | Memorable, but `Swift` has strong existing association with Apple's Swift ecosystem, which could create confusion. | Higher |
+| quickTest | qT | Familiar and easy to say, but `QuickTest` has long-standing use in software testing and QA tooling. | Higher |
+| compactTest | cT | Fits the lightweight positioning and is somewhat more distinctive than `CoreTest` or `ClearTest`, though still descriptive. | Medium-Low |
+| fastTest | fT | Strong performance-oriented signal, but `fast` and `test` are both generic terms and likely to overlap with existing tooling names. | Medium-High |
 
-Preference among the candidates:
-
-- `briteTest (bT)` for strong brand alignment and low naming conflict.
-- `CompactTest (CT)` for a lower-conflict descriptive option.
-- `TraceTest (TT)` for a more distinctive technical option.
-- `CanaryTest (CT)` only if the canary theme is more important than name.
 375
 </details>
 
 <details>
-<summary>8.3. Brand Name and Tagline Replacement Workflow</summary>
+<summary>3.3. Brand Name and Tagline Replacement Workflow</summary>
 
-### 8.3. Brand Name and Tagline Replacement Workflow
+### 2.3. Brand Name and Tagline Replacement Workflow
 
 This workflow describes how to replace the brand name, tagline, and other phrases
 throughout the repository (documentation, monograms, and logos) using automated
@@ -377,7 +287,8 @@ scripts.
 
 The replacement workflow depends on a configuration file and two scripts:
 
-- **Configuration**: `docs/branding/brand.md`
+- **Configuration**: `docs/branding/brand.md`:
+
   - Defines old-to-new phrase replacements.
   - For a brand name change, its brand abbreviation is auto-generated from the
     first letter of each word concatenated into the brand name.
@@ -386,6 +297,7 @@ The replacement workflow depends on a configuration file and two scripts:
     "LT" to "bT" (brand abbreviation)
 
 - **Scripts**:
+
   - `scripts/updatelogos`: Updates SVG files in `docs/branding/` with phrase and
      abbreviation replacements, then regenerates PNG files
   - `scripts/replacephrases`: Updates markdown files (`*.md`) in `docs/` with
@@ -406,11 +318,13 @@ The replacement workflow depends on a configuration file and two scripts:
  - \*\*Replace\*\*: old_phrase = new_phrase
 ...
 
-3, The file supports multiple replacements (one per line).
+3, The file supports multiple replacements (one per line):
+
    - Each replacement is validated to prevent circular references (an old phrase
      cannot match any new phrase).
 
 4. Update SVG files and regenerate PNG files:
+
    - Run the `updatelogos` script:
 
 ```bash
@@ -418,6 +332,7 @@ scripts/updatelogos
 ```
 
 5, The script performs the following:
+
    - Parses `docs/branding/brand.md` for new phrase replacements (occurring
      before the first "\*\*Completed\*\*: \<datetime\>." line in the file.
    - Validates the configuration to prevent infinite loops (circular references).
@@ -428,9 +343,11 @@ scripts/updatelogos
    - Review the output and documentation for accuracy, then commit the changes.
 
 6. Update project identifier and repository name (optional:
+
    - Update references in CI/CD workflows, and external links.
 
 7. Validate and test
+
   - Run `make run` to ensure tests pass.
   - Run `make pdf` or the PDF generation script to verify branding updates in
     generated documents.
@@ -438,12 +355,114 @@ scripts/updatelogos
   - Verify that all SVG taglines have been updated correctly.
 
 8. Commit and ship
+
    - Commit SVG/PNG changes with a clear commit message.
    - Commit markdown changes with a clear commit message.
    - Optionally, add a note to `README.md` in root directory documenting the brand 
      transition.
    - Consider a separate release or major version bump if the replace is significant.
 </details>
+</details>
+
+<%details>
+<summary>4. Documentation Guidelines</summary>
+
+## 4. Documentation Guidelines
+
+1. General
+
+   - Root `README.md` must remain short and onboarding‑focused.
+   - A User Guide contains conceptual explanations and examples.
+   - A API Reference contains public API definitions only.
+   - An internal guide or reference must not leak into public docs.
+   - Update documentation when enhancing macros, behavior, or report format.
+   - For branding assets in `docs/branding/`: `*.svg` files are the source of
+     truth and `*.png` files are generated from SVG using `scripts/genpng.sh`.
+</details>
+
+2. Tone
+
+   - Technical, precise, and neutral.
+   - Minimal marketing language.
+   - Prefer clarity over cleverness.
+
+3. Formatting
+
+   - Use backticks for code identifiers.
+   - Use fenced code blocks for file trees, examples, and commands.
+   - Keep line lengths reasonable for GitHub rendering.
+
+4. Writing Guidelines
+
+   - Define terms once, and then use them consistently.
+   - Avoid synonyms for technical concepts (e.g., always "update version,"
+     never "revision").
+   - Keep paragraphs short.
+   - Use lists for enumerations.
+
+5. Collapsible sections
+
+   - Use collapsible chapters, sections and subsections to keep the document
+     readable while still accommodating large amounts of technical detail.
+   - Collapsing sections allows readers to scan the structure and expand only what
+     they need.
+   - This keeps the document manageable, avoids overwhelming readers with unrelated
+     detail, and makes the document easier to navigate.
+
+6. Writing Style Consistency
+
+To keep documentation clear and easy to read, maintain **parallel
+structure** within lists and related sentences. In practice:
+
+- Start list items with the same part of speech (typically a verb).
+- Keep grammatical patterns consistent across bullets.
+- Avoid mixing styles such as "Keep paragraphs short" with "Using lists for
+  enumerations.".
+- Rewrite items as needed so the list reads smoothly and uniformly.
+
+This guideline applies to all documentation (.md files).
+</details>
+
+<details>
+<summary>5. Code Guidelines</summary>
+
+## 5. Code Guidelines
+
+- C99.
+- POSIX.1‑2001 APIs only.
+- Keep `runnerapi.h` and `testapi.h` each self‑contained.
+- Keep `runnerapi.c` and `testapi.c` implementation‑only.
+</details>
+
+<details>
+<summary>6. Writing Style Consistency</summary>
+
+## 6. Writing Style Consistency
+
+This section exists here to ensure contributors do not overlook the requirement
+for parallel structure and consistent writing patterns across all BriteTest
+documentation in all types of files (e,g., ,md, .h, .c, .yml, ,sh, Makefile, etc.).
+
+<details>
+<summary>6.1. Documentation Style Guide</summary>
+
+### 6.1 Documentation Style Guide
+
+
+</details>
+</details>
+
+<details>
+<summary>7. Pull Requests</summary>
+
+## 7. Pull Requests
+
+Before submitting a PR:
+
+- Ensure tests pass.
+- Update version numbers if needed.
+- Update documentation as needed.
+- Keep changes focused and well‑scoped.
 </details>
 
 <details>
