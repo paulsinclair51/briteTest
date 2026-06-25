@@ -386,7 +386,8 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 ### 8.3. Brand Name and Tagline Replacement Workflow
 
 This workflow describes how to replace the brand name, tagline, and other phrases
-throughout the repository (docs, branding, and logos) using automated scripts.
+throughout the repository (documentation, monograms, and logos) using automated
+scripts.
 
 #### Prerequisites
 
@@ -397,7 +398,7 @@ The replacement workflow depends on a configuration file and two scripts:
   - For a brand name change, its abbreviations is auto-generated from the
     first letter of each word.
   - Example: `- **Replace**: LiteTest = briteTest` generates replacements for both 
-   "LiteTest" to "briteTest" (phrase) and "LT" to "bT" (abbreviation)
+   "LiteTest" to "briteTest" (brand name) and "LT" to "bT" (brand abbreviation)
 
 - **Scripts**:
   - `scripts/updatelogos`: Updates SVG files in `docs/branding/` with phrase and
