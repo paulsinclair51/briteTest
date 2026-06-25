@@ -65,7 +65,7 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 The document's update version tracks released updates to this document and does
 not correspond to a minor or patch version. `u` increments when document
-changes are released in a release without a change to `M`, and it resets to
+changes are released without a change to `M`, and it resets to
 `0` when `M` is incremented.
 </details>
 </details>
