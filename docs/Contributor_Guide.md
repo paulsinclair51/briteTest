@@ -90,17 +90,15 @@ changes are published in a release without a change to `M`, and it resets to
 
 5. [**Code Guidelines**](#5-code-guidelines)
 
-6. [**Writing Style Consistency**](#6-writing-style-consistency)
+6. [**Testing Requirements**](#6-testing-requirements)
 
-7. [**Testing Requirements**](#7-testing-requirements)
+7. [**Pull Requests**](#7-pull-requests)
 
-8. [**Pull Requests**](#8-pull-requests)
-
-9. [**Glossary**](#9-glossary)
+8. [**Glossary**](#8-glossary)
 </details>
 
 <details>
-10<summary>1. Introduction</summary>
+<summary>1. Introduction</summary>
 
 ## 1. Introduction
 
