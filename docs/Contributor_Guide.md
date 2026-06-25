@@ -398,7 +398,8 @@ The replacement workflow depends on a configuration file and two scripts:
   - For a brand name change, its brand abbreviation is auto-generated from the
     first letter of each word concatenated into the brand name.
   - Example: `- **Replace**: LiteTest = briteTest` generates replacements for both 
-   "LiteTest" to "briteTest" (brand name) and "LT" to "bT" (brand abbreviation)
+    "LiteTest" to "briteTest" (brand name) and, for monograms and logos,
+    "LT" to "bT" (brand abbreviation)
 
 - **Scripts**:
   - `scripts/updatelogos`: Updates SVG files in `docs/branding/` with phrase and
