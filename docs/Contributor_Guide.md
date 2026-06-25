@@ -56,10 +56,10 @@ For a glossary of terms, see the Glossary Reference.
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
 - The **Runner** column records the Runner API version
-  current at the time this document version was published and is
+  current at the time this document version was released and is
   defined by its `RA_VERSION` macro.
 - The **Test** column records the Test API version current at
-  the time this document version was published and is defined by its
+  the time this document version was released and is defined by its
   `TA_TEST_VERSION` macro.
 - Both Runner and Test use the version format `"M.m.p"` (Major, minor,
   patch).
