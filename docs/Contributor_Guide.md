@@ -377,11 +377,11 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 373| - `CompactTest (CT)` for a lower-conflict descriptive option.
 373| - `TraceTest (TT)` for a more distinctive technical option.
 374| - `CanaryTest (CT)` only if the canary theme is more important than name.
-375| 
-376| </details>
-377| 
-378| <details>
-379| <summary>8.3. Brand Name and Tagline Replacement Workflow</summary>
+375
+</details>
+
+<details>
+<summary>8.3. Brand Name and Tagline Replacement Workflow</summary>
 
 ### 8.3. Brand Name and Tagline Replacement Workflow
 
@@ -427,12 +427,11 @@ The replacement workflow depends on two configuration files and two scripts:
 scripts/updatelogos
 ```
    - The script performs the following:
-   - Parses `docs/branding/brand.txt` for phrase and abbreviation replacements.
-   - Applies **both phrase and abbreviation replacements** to all SVG files in `docs/branding/`, including tagline SVGs.
-   - Regenerates all PNG files from the updated SVGs using `scripts/genpng.sh`.
-   - Validates the configuration to prevent infinite loops (circular references).
-   - Generates a detailed report of replacements and file modifications.
-
+     - Parses `docs/branding/brand.txt` for phrase and abbreviation replacements.
+     - Applies **both phrase and abbreviation replacements** to all SVG files in `docs/branding/`, including tagline SVGs.
+     - Regenerates all PNG files from the updated SVGs using `scripts/genpng.sh`.
+     - Validates the configuration to prevent infinite loops (circular references).
+     - Generates a detailed report of replacements and file modifications.
    - Review the output and documentation for accuracy, then commit the changes.
 
 4. Update project identifier and repository name (optional:
