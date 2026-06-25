@@ -56,12 +56,12 @@ For a glossary of terms, see the Glossary Reference.
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
 - The **Runner** column records the Runner API version
-  current at the time this document version was released and is
+  current when this document was released and is
   defined by its `RA_VERSION` macro.
-- The **Test** column records the Test API version current at
-  the time this document version was released and is defined by its
+- The **Test** column records the Test API version current
+  when this document was released and is defined by its
   `TA_TEST_VERSION` macro.
-- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
+- Both the Runner and Test API use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
 
@@ -107,7 +107,7 @@ BriteTest. It covers versioning, testing, documentation, code style, and pull
 request requirements.
 
 Contributors should read this document before submitting changes to ensure
-consistency across the codebase and documentation.
+consistency across the code and documentation.
 </details>
 
 <details>
