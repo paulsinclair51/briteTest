@@ -395,8 +395,8 @@ The replacement workflow depends on a configuration file and two scripts:
 
 - **Configuration**: `docs/branding/brand.md`
   - Defines old-to-new phrase replacements.
-  - For a brand name change, its abbreviations is auto-generated from the
-    first letter of each word.
+  - For a brand name change, its brand abbreviation is auto-generated from the
+    first letter of each word concatenated into the brand name.
   - Example: `- **Replace**: LiteTest = briteTest` generates replacements for both 
    "LiteTest" to "briteTest" (brand name) and "LT" to "bT" (brand abbreviation)
 
@@ -431,9 +431,9 @@ scripts/updatelogos
 ```
    - The script performs the following:
      - Parses `docs/branding/brand.md` for new phrase replacements (occurring
-       before the first "**Completed**: <>." line in the file.
+       before the first "**Completed**: <datetime>." line in the file.
      - Validates the configuration to prevent infinite loops (circular references).
-     - Applies both brand namd and abbreviation replacements*m to all SVG files in
+     - Applies both brand namd and abbreviation replacements to all SVG files in
       `docs/branding/`.
      - Regenerates all PNG files from the updated SVGs using `scripts/genpng.sh`.
      - Generates a detailed report of replacements and file modifications.
