@@ -27,10 +27,12 @@ Special lines in this file:
 ### Rename Brand to briteTest
 Change to use more unique brand name with abbreviation bT to align with bT and
 canary accent in the monogram.
+
 - Replace: BriteTest = briteTest
 
 ### Rename Brand to BriteTest
 Change to use more unique brand name.
+
 **Completed**: 2026-06-20 18:00:00.
 - Replace: LiteTest = BriteTest
 
