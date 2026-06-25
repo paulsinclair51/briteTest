@@ -44,22 +44,22 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 <details>
 <summary>Document Version History</summary>
-
+ 
 ### Document Version History
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
+| 1.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
 - The **Runner** column records the Runner API version
-  current at the time this document version was published and is
+  current when this document was released and is
   defined by its `RA_VERSION` macro.
-- The **Test** column records the Test API version current at
-  the time this document version was published and is defined by its
-  `TA_VERSION` macro.
-- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
+- The **Test** column records the Test API version current
+  when this document was released and is defined by its
+  `TA_TEST_VERSION` macro.
+- Both the Runner and Test API use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
 
