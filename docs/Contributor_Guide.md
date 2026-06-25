@@ -1,41 +1,41 @@
-1| ![Contributor Guide](branding/Contributor_Guide.png)
-2| 
-3| This document defines the contribution process, coding standards, documentation
-4| rules, and versioning guidelines for BriteTest.
-5| 
-6| #### Copyright (c) 2026 Paul Sinclair
-7| 
-8| <details>
-9| <summary>License</summary>
-10| 
-11| #### **License**
-12| 
-13| SPDX-License-Identifier: MIT
-14| 
-15| Permission is hereby granted, free of charge, to any person obtaining a copy
-16| of this software and associated documentation files (the "Software"), to deal
-17| in the Software without restriction, including without limitation the rights
-18| to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-19| copies of the Software, and to permit persons to whom the Software is
-20| furnished to do so, subject to the following conditions:
-21| 
-22| The above copyright notice and this permission notice shall be included in all
-23| copies or substantial portions of the Software.
-24| 
-25| THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-26| IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-27| FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-28| AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-29| LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-30| OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-31| SOFTWARE.
-32| </details>
-33| 
-34| <details>
-35| <summary>Preface</summary>
-36| 
-37| ## Preface
-38| 
+![Contributor Guide](branding/Contributor_Guide.png)
+
+This document defines the contribution process, coding standards, documentation
+rules, and versioning guidelines for BriteTest.
+
+#### Copyright (c) 2026 Paul Sinclair
+
+<details>
+<summary>License</summary>
+
+#### **License**
+
+SPDX-License-Identifier: MIT
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</details>
+
+<details>
+<summary>Preface</summary>
+
+## Preface
+
 39| This document is for contributors who need guidance on enhancing
 40| and maintaining BriteTest.
 41| 
