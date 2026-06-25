@@ -136,7 +136,7 @@ When to increment for a release:
   - Minor additions to the APIs (e.g., new function or macro).
   - Minor additions to the Runner Framework.
   - No breaking changes (syntax or behavior) to the APIs.
-  - No breakind changes to the Runner Framework.
+  - No breaking changes to the Runner Framework.
   - Minor refactorying of implementation.
 
 - Major
