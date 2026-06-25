@@ -49,9 +49,9 @@ For a glossary of terms, see the Glossary Reference.
  
 ### Document Version History
 
-|Document Runner Test Date Comment Author/Editor |
+| Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-|1.0 |1.0.0 1.0.0 2026‑06‑11  Initial version. Paul Sinclair |
+| 1.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
