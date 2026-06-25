@@ -36,17 +36,17 @@ SOFTWARE.
 
 ## Preface
 
-39| This document is for contributors who need guidance on enhancing
-40| and maintaining BriteTest.
-41| 
-42| For a list of other documents and the repository layout, see
-43| the Documentation Guide (`Documentation_Guide.md`).
-44| 
-45| For a glossary of terms, see the Glossary Reference
-46| (`Glossary_Reference.md`).
-47| 
-48| A printer-friendly PDF file for this document is available in `docs/pdf/`.
-49| 
+This document is for contributors who need guidance on enhancing
+and maintaining BriteTest.
+
+For a list of other documents and the repository layout, see
+the Documentation Guide (`Documentation_Guide.md`).
+
+For a glossary of terms, see the Glossary Reference
+(`Glossary_Reference.md`).
+
+A printer-friendly PDF file for this document is available in `docs/pdf/`.
+
 50| <details>
 51| <summary>Document Version History</summary>
 52| 
