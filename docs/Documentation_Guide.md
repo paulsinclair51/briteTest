@@ -58,14 +58,14 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
   defined by its `RA_VERSION` macro.
 - The **Test** column records the Test API version current
   when this document was released and is defined by its
-  `TA_TEST_VERSION` macro.
+  `TA_VERSION` macro.
 - Both the Runner and Test API use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
 
 The document's update version tracks released updates to this document and does
 not correspond to a minor or patch version. `u` increments when document
-changes are published in a release without a change to `M`, and it resets to
+changes are released in a release without a change to `M`, and it resets to
 `0` when `M` is incremented.
 </details>
 </details>
