@@ -382,159 +382,94 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 377| 
 378| <details>
 379| <summary>8.3. Brand Name and Tagline Replacement Workflow</summary>
-380| 
-380| ### 8.3. Brand Name and Tagline Replacement Workflow
-381| 
-382| This workflow describes how to systematically replace brand names throughout the repository (docs, branding, and logos) using automated scripts.
-383| 
-383| #### Prerequisites
-384| 
-385| The replacement workflow depends on two configuration files and two scripts:
-386| 
-387| - **Configuration**: `docs/branding/brand.txt`
-388|   - Defines old-to-new phrase replacements (one per line)
-389|   - Format: `old_phrase = new_phrase`
-390|   - Abbreviations are auto-generated from the first letter of each word
-391|   - Example: `LiteTest = briteTest` generates replacements for both "LiteTest" → "briteTest" (phrase) and "LT" → "bT" (abbreviation)
-392| 
-393| - **Scripts**:
-394|   - `scripts/updatelogos`: Updates SVG files in `docs/branding/` with phrase and abbreviation replacements, then regenerates PNG files
-395|   - `scripts/replacephrases`: Updates markdown files (`*.md`) in `docs/` with phrase replacements only
-396| 
-397| #### Workflow Steps
-398| 
-398| **1. Choose a replacement name**
-399| 
-399| - Select one of the approved alternatives from section 8.2.
-400| - The recommended current choice is `briteTest (bT)`, which aligns with the canary monogram and provides low naming conflict.
-400| 
-401| **2. Update the brand configuration file**
-402| 
-402| - Edit `docs/branding/brand.txt` to define the replacement:
-403| 
-404| ```
-405| # Brand Name Configuration
-406| # Format: old_phrase = new_phrase
-406| #
-407| LiteTest = briteTest
-408| BriteTest = briteTest
-409| ```
-410| 
-411| - The configuration supports multiple replacements (one per line).
-412| - Lines starting with `#` are comments; empty lines are ignored.
-412| - Each replacement is validated to prevent circular references (an old phrase cannot match any new phrase).
-413| 
-414| **3. Update SVG files and regenerate PNG files**
-415| 
-415| - Run the `updatelogos` script:
-416| 
-416| ```bash
-417| scripts/updatelogos
-417| ```
-418| 
-419| - Or with a custom config file:
-420| 
-420| ```bash
-421| scripts/updatelogos docs/branding/brand.txt
-421| ```
-422| 
-423| - The script performs the following:
-424|   - Parses `docs/branding/brand.txt` for phrase and abbreviation replacements.
-424|   - Applies **both phrase and abbreviation replacements** to all SVG files in `docs/branding/`, including tagline SVGs.
-425|   - Regenerates all PNG files from the updated SVGs using `scripts/genpng.sh`.
-425|   - Validates the configuration to prevent infinite loops (circular references).
-426|   - Generates a detailed report of replacements and file modifications.
-427| 
-428| - Review the output for accuracy, then commit the SVG and PNG changes.
-429| 
-430| **4. Update markdown documentation**
-431| 
-430| - Run the `replacephrases` script:
-431| 
-432| ```bash
-433| scripts/replacephrases
-432| ```
-433| 
-434| - Or with a custom config file:
-435| 
-435| ```bash
-436| scripts/replacephrases docs/branding/brand.txt
-436| ```
-437| 
-438| - The script performs the following:
-438|   - Parses `docs/branding/brand.txt` for phrase replacements only.
-439|   - Applies phrase replacements to all markdown files (`*.md`) in `docs/`.
-439|   - Generates a detailed report of replacements and file modifications.
-440| 
-441| - Review the output for accuracy, then commit the markdown changes.
-442| 
-443| **5. Update project identifier (optional)**
-444| 
-444| - If the brand name change includes changing the project directory name or GitHub repository name, coordinate with project maintainers.
-445| - Update references in CI/CD workflows, documentation, and external links.
-445| 
-446| **6. Validate and test**
-447| 
-446| - Run `make run` to ensure tests pass.
-447| - Run `make pdf` or the PDF generation script to verify branding updates in generated documents.
-447| - Perform a repository-wide text search for stale old-brand references.
-448| - Verify that all SVG taglines have been updated correctly.
-448| 
-449| **7. Commit and ship**
-450| 
-450| - Commit SVG/PNG changes with a clear commit message.
-451| - Commit markdown changes with a clear commit message.
-451| - Optionally, add a note to `README.md` documenting the brand transition.
-452| - Consider a separate release or major version bump if the rename is significant.
-452| 
-453| #### Example Workflow
-454| 
-454| Here is a complete example of renaming from `LiteTest` to `briteTest`:
-455| 
-456| ```bash
-457| # 1. Edit docs/branding/brand.txt
-457| #    Add: LiteTest = briteTest
-458| 
-459| # 2. Update SVG files and regenerate PNGs
-460| scripts/updatelogos
-461| 
-461| # 3. Update markdown files
-462| scripts/replacephrases
-463| 
-464| # 4. Review and validate
-465| make run
-465| make pdf
-466| 
-467| # 5. Commit
-468| git add -A
-469| git commit -m "Rename LiteTest to briteTest: update branding, SVGs, PNGs, and docs"
-469| 
-470| # 6. Optional: push and create PR for review
-471| git push origin rename-britetest
-472| ```
-473| 
-474| </details>
-475| </details>
-476| 
-477| <details>
-478| <summary>9. Glossary</summary>
-479| 
-479| ## 9. Glossary
-480| 
-481| For a glossary of general BriteTest terms, see the Glossary Reference document.
-482| For a glossary of terms, see the Glossary Reference
-483| (`Glossary_Reference.md`).
-484| 
-485| Contributor‑Specific Terms:
-486| 
-487| - **Approver**: A contributor with commit access who reviews pull requests, enforces versioning rules, and ensures documentation consistency.
-488| - **Breaking Change**: A change that alters public API behavior, removes or renames macros, changes return semantics, or requires a major version bump.
-489| - **Contributor**: A person submitting code, documentation, fixes, or improvements to BriteTest.
-490| - **Deprecation**: A public API element marked for removal in a future major version, requiring documentation updates and migration guidance.
-491| - **Documentation Update**: Any change to released BriteTest documentation requires incrementing the update version or, if an API major version is incremented, incrementing the major version and [...]
-492| - **Internal API Change**: A change to an API's internals that does not affect public API users but may require updates to an Internal Guide or Internal Reference.
-493| - **Major Increment**: A structural or conceptual overhaul of BriteTest that causes a breaking change.
-494| - **Public API Change**: Any modification to the BriteTest Runner or Test API that requires a version bumpv.
-495| - **Pull Request Scope**: A guideline requiring PRs to be focused, minimal, logically grouped, and not mixing unrelated changes.
-496| - **Test Coverage Requirement**: The expectation that all changes to BriteTest include new tests (if adding behavior), updated tests (if modifying behavior), and no regressions.
-497| </details>
+
+### 8.3. Brand Name and Tagline Replacement Workflow
+
+This workflow describes how to replace the brand name, tagline and other phrases
+throughout the repository (docs, branding, and logos) using automated scripts.
+
+#### Prerequisites
+
+The replacement workflow depends on two configuration files and two scripts:
+
+- **Configuration**: `docs/branding/brand.md`
+  - Defines old-to-new phrase replacements.
+  - Format: `**Replace**: old_phrase = new_phrase`
+  - For a brand name change,it abbreviations is auto-generated from the
+    first letter of each word.
+  - Example: `LiteTest = briteTest` generates replacements for both 
+   "LiteTest" → "briteTest" (phrase) and "LT" → "bT" (abbreviation)
+
+- **Scripts**:
+  - `scripts/updatelogos`: Updates SVG files in `docs/branding/` with phrase and abbreviation replacements, then regenerates PNG files
+  - `scripts/replacephrases`: Updates markdown files (`*.md`) in `docs/` with phrase replacements only
+
+#### Workflow Steps
+
+1. Choose a replacement brand name and/or tagline plus any other phrases to
+   be Initial definitions.
+
+2. Update the brand configuration file `docs/branding/brand.md` to define
+   the replacement (see this file for examples of previous changes):
+```
+### <change title>
+<Reason for the change.>
+
+ - **Replace**: old_phrase = new_phrase
+...
+
+   - The file supports multiple replacements (one per line).
+   - Each replacement is validated to prevent circular references (an old phrase cannot match any new phrase).
+
+3. Update SVG files and regenerate PNG files:
+   - Run the `updatelogos` script:
+```bash
+scripts/updatelogos
+```
+   - The script performs the following:
+   - Parses `docs/branding/brand.txt` for phrase and abbreviation replacements.
+   - Applies **both phrase and abbreviation replacements** to all SVG files in `docs/branding/`, including tagline SVGs.
+   - Regenerates all PNG files from the updated SVGs using `scripts/genpng.sh`.
+   - Validates the configuration to prevent infinite loops (circular references).
+   - Generates a detailed report of replacements and file modifications.
+
+   - Review the output and documentation for accuracy, then commit the changes.
+
+4. Update project identifier and repository name (optional:
+   - Update references in CI/CD workflows, and external links.
+
+5. Validate and test
+  - Run `make run` to ensure tests pass.
+  - Run `make pdf` or the PDF generation script to verify branding updates in generated documents.
+  - Perform a repository-wide text search for stale old-brand references.
+  - Verify that all SVG taglines have been updated correctly.
+
+6. Commit and ship
+   - Commit SVG/PNG changes with a clear commit message.
+   - Commit markdown changes with a clear commit message.
+   - Optionally, add a note to `README.md` in root directory documenting the brand transition.
+   - Consider a separate release or major version bump if the rename is significant.
+</details>
+</details>
+
+<details>
+<summary>9. Glossary</summary>
+
+## 9. Glossary
+
+For a glossary of general BriteTest terms, see the Glossary Reference document.
+For a glossary of terms, see the Glossary Reference (`Glossary_Reference.md`).
+
+Contributor‑Specific Terms:
+
+- **Approver**: A contributor with commit access who reviews pull requests, enforces versioning rules, and ensures documentation consistency.
+- **Breaking Change**: A change that alters public API behavior, removes or renames macros, changes return semantics, or requires a major version bump.
+- **Contributor**: A person submitting code, documentation, fixes, or improvements to BriteTest.
+- **Deprecation**: A public API element marked for removal in a future major version, requiring documentation updates and migration guidance.
+- **Documentation Update**: Any change to released BriteTest documentation requires incrementing the update version or, if an API major version is incremented, incrementing the major version and [...]
+- **Internal API Change**: A change to an API's internals that does not affect public API users but may require updates to an Internal Guide or Internal Reference.
+- **Major Increment**: A structural or conceptual overhaul of BriteTest that causes a breaking change.
+- **Public API Change**: Any modification to the BriteTest Runner or Test API that requires a version bumpv.
+- **Pull Request Scope**: A guideline requiring PRs to be focused, minimal, logically grouped, and not mixing unrelated changes.
+- **Test Coverage Requirement**: The expectation that all changes to BriteTest include new tests (if adding behavior), updated tests (if modifying behavior), and no regressions.
+</details>
