@@ -413,6 +413,7 @@ The replacement workflow depends on a configuration file and two scripts:
 
 2. Update the brand configuration file `docs/branding/brand.md` to define
    the replacements (see this file for examples of previous changes):
+
 ```
 ### <change title>
 <Reason for the change.>
@@ -426,9 +427,11 @@ The replacement workflow depends on a configuration file and two scripts:
 
 3. Update SVG files and regenerate PNG files:
    - Run the `updatelogos` script:
+
 ```bash
 scripts/updatelogos
 ```
+
    - The script performs the following:
      - Parses `docs/branding/brand.md` for new phrase replacements (occurring
        before the first "**Completed**: <datetime>." line in the file.
