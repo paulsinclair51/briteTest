@@ -79,22 +79,22 @@ changes are published in a release without a change to `M`, and it resets to
 
 1. [**Introduction**](#1-introduction)
 
-2. [**Versioning Rules**](#2-versioning-rules)
+2. [**Versioning Guidelines**](#2-versioning-guidelines)
 
-3. [**Testing Requirements**](#3-testing-requirements)
+3. [**Branding**](#3-branding)<br>
+   3.1. [Alternative Brand Descriptions](#31-alternative-brand-descriptons)<br>
+   3.2. [Alternative Brand Names](#32-alternative-brand-names)<br>
+   3.3. [Brand Replacement Workflow](#33-brand-replacement-workflow)<br>
 
-4. [**Documentation Rules**](#4-documentation-rules)
+4. [**Documentation Guidelines**](#4-documentation-guidelines)
 
 5. [**Code Style**](#5-code-style)
 
 6. [**Writing Style Consistency**](#6-writing-style-consistency)
 
-7. [**Pull Requests**](#7-pull-requests)
+7. [**Testing Requirements**](#7-testing-requirements)
 
-8. [**Branding**](#8-branding)<br>
-   8.1. [Alternative Brand Descriptions](#81-alternative-brand-descriptons)<br>
-   8.2. [Alternative Brand Names](#82-alternative-brand-names)<br>
-   8.3. [Brand Replacement Workflow](#83-brand-replacement-workflow)<br>
+8. [**Pull Requests**](#8-pull-requests)
 
 9. [**Glossary**](#9-glossary)
 </details>
@@ -113,9 +113,9 @@ consistency across the codebase and documentation.
 </details>
 
 <details>
-<summary>2. Versioning Rules</summary>
+<summary>2. Versioning Guidelines</summary>
 
-## 2. Versioning Rules
+## 2. Versioning Giudelines
 
 Versioning is used for:
 
@@ -176,24 +176,9 @@ followed.
 </details>
 
 <details>
-<summary>3. Testing Requirements</summary>
+<summary>4. Documentation Guidelines</summary>
 
-## 3. Testing Requirements
-
-- Build and run tests from the repository root:
-
-```sh
-make run
-```
-
-- Ensure report formatting changes are reflected in documentation examples.
-- Keep test code aligned with the current version of `runnerapi.h`.
-</details>
-
-<details>
-<summary>4. Documentation Rules</summary>
-
-## 4. Documentation Rules
+## 4. Documentation Guidelines
 
 - `README.md` must remain short and onboarding‑focused.
 - A User Guide contains conceptual explanations and examples.
@@ -256,7 +241,7 @@ documentation in all types of files (e,g., ,md, .h, .c, .yml, ,sh, Makefile, etc
     detail, and makes the document easier to navigate.
 
 5. Writing Style Consistency
-To keep BriteTest documentation clear and easy to read, maintain **parallel
+To keep documentation clear and easy to read, maintain **parallel
 structure** within lists and related sentences. In practice:
 
 - Start list items with the same part of speech (typically a verb).
@@ -264,7 +249,7 @@ structure** within lists and related sentences. In practice:
 - Avoid mixing styles such as "Keep paragraphs short" with "Using lists for enumerations."
 - Rewrite items as needed so the list reads smoothly and uniformly.
 
-This guideline applies to all BriteTest documentation (.md files).
+This guideline applies to all documentation (.md files).
 </details>
 </details>
 
@@ -459,6 +444,22 @@ scripts/updatelogos
      transition.
    - Consider a separate release or major version bump if the replace is significant.
 </details>
+</details>
+
+<details>
+<summary>8. Testing Requirements</summary>
+
+## 8. Testing Requirements
+
+- Build and run tests from the repository root:
+
+```sh
+make run
+```
+
+- Ensure report formatting changes are reflected in documentation examples.
+- Keep test code aligned with the current version of `runnerapi.h`.
+</
 </details>
 
 <details>
