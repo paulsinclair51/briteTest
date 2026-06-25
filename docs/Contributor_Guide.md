@@ -390,19 +390,20 @@ throughout the repository (docs, branding, and logos) using automated scripts.
 
 #### Prerequisites
 
-The replacement workflow depends on two configuration files and two scripts:
+The replacement workflow depends on a configuration file and two scripts:
 
 - **Configuration**: `docs/branding/brand.md`
   - Defines old-to-new phrase replacements.
-  - Format: `**Replace**: old_phrase = new_phrase`
-  - For a brand name change,it abbreviations is auto-generated from the
+  - For a brand name change, its abbreviations is auto-generated from the
     first letter of each word.
-  - Example: `LiteTest = briteTest` generates replacements for both 
-   "LiteTest" → "briteTest" (phrase) and "LT" → "bT" (abbreviation)
+  - Example: `- **Replace**: LiteTest = briteTest` generates replacements for both 
+   "LiteTest" to "briteTest" (phrase) and "LT" to "bT" (abbreviation)
 
 - **Scripts**:
-  - `scripts/updatelogos`: Updates SVG files in `docs/branding/` with phrase and abbreviation replacements, then regenerates PNG files
-  - `scripts/replacephrases`: Updates markdown files (`*.md`) in `docs/` with phrase replacements only
+  - `scripts/updatelogos`: Updates SVG files in `docs/branding/` with phrase and
+     abbreviation replacements, then regenerates PNG files
+  - `scripts/replacephrases`: Updates markdown files (`*.md`) in `docs/` with
+    phrase replacements only
 
 #### Workflow Steps
 
