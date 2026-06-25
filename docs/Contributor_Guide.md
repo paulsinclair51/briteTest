@@ -381,9 +381,9 @@
 376| </details>
 377| 
 378| <details>
-379| <summary>8.3. Brand Replacement Workflow</summary>
+379| <summary>8.3. Brand Name and Tagline Replacement Workflow</summary>
 380| 
-380| ### 8.3. Brand Replacement Workflow
+380| ### 8.3. Brand Name and Tagline Replacement Workflow
 381| 
 382| This workflow describes how to systematically replace brand names throughout the repository (docs, branding, and logos) using automated scripts.
 383| 
