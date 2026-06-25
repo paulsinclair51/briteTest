@@ -84,7 +84,7 @@ changes are published in a release without a change to `M`, and it resets to
 3. [**Branding**](#3-branding)<br>
    3.1. [Alternative Brand Descriptions](#31-alternative-brand-descriptons)<br>
    3.2. [Alternative Brand Names](#32-alternative-brand-names)<br>
-   3.3. [Brand Replacement Workflow](#33-brand-replacement-workflow)<br>
+   3.3. [Brand Name and Tagline Replacement](#33-brand-and-tagline-replacement)<br>
 
 4. [**Documentation Guidelines**](#4-documentation-guidelines)
 
@@ -273,9 +273,9 @@ are not a trademark search or legal clearance.
 </details>
 
 <details>
-<summary>3.3. Brand Name and Tagline Replacement Workflow</summary>
+<summary>3.3. Brand Name and Tagline Replacement</summary>
 
-### 2.3. Brand Name and Tagline Replacement Workflow
+### 2.3. Brand Name and Tagline Replacement
 
 This workflow describes how to replace the brand name, tagline, and other phrases
 throughout the repository (documentation, monograms, and logos) using automated
@@ -376,7 +376,6 @@ scripts/updatelogos
    - Update documentation when enhancing macros, behavior, or report format.
    - For branding assets in `docs/branding/`: `*.svg` files are the source of
      truth and `*.png` files are generated from SVG using `scripts/genpng.sh`.
-</details>
 
 2. Tone
 
@@ -398,7 +397,7 @@ scripts/updatelogos
    - Keep paragraphs short.
    - Use lists for enumerations.
 
-5. Collapsible sections
+5. Collapsible Sections
 
    - Use collapsible chapters, sections and subsections to keep the document
      readable while still accommodating large amounts of technical detail.
