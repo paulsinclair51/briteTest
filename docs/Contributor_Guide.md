@@ -362,7 +362,7 @@ scripts/updatelogos
 </details>
 </details>
 
-<%details>
+<details>
 <summary>4. Documentation Guidelines</summary>
 
 ## 4. Documentation Guidelines
