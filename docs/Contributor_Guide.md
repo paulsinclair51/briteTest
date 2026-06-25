@@ -113,7 +113,7 @@ consistency across the codebase and documentation.
 <details>
 <summary>2. Versioning Guidelines</summary>
 
-## 2. Versioning Giudelines
+## 2. Versioning Guidelines
 
 Versioning is used for:
 
