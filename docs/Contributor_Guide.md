@@ -418,6 +418,7 @@ The replacement workflow depends on a configuration file and two scripts:
 
  - **Replace**: old_phrase = new_phrase
 ...
+
    - The file supports multiple replacements (one per line).
    - Each replacement is validated to prevent circular references (an old phrase
      cannot match any new phrase).
@@ -428,12 +429,12 @@ The replacement workflow depends on a configuration file and two scripts:
 scripts/updatelogos
 ```
    - The script performs the following:
-     - Parses `docs/branding/brand.md` for new phrase replacements (ocuuring in the
+     - Parses `docs/branding/brand.md` for new phrase replacements (occurring
        before the first "**Completed**: <>." line in the file.
-     - Applies both phrase and abbreviation replacements*m to all SVG files in
-      `docs/branding/`, including tagline SVGs.
-     - Regenerates all PNG files from the updated SVGs using `scripts/genpng.sh`.
      - Validates the configuration to prevent infinite loops (circular references).
+     - Applies both brand namd and abbreviation replacements*m to all SVG files in
+      `docs/branding/`.
+     - Regenerates all PNG files from the updated SVGs using `scripts/genpng.sh`.
      - Generates a detailed report of replacements and file modifications.
    - Review the output and documentation for accuracy, then commit the changes.
 
@@ -442,7 +443,8 @@ scripts/updatelogos
 
 5. Validate and test
   - Run `make run` to ensure tests pass.
-  - Run `make pdf` or the PDF generation script to verify branding updates in generated documents.
+  - Run `make pdf` or the PDF generation script to verify branding updates in
+    generated documents.
   - Perform a repository-wide text search for stale old-brand references.
   - Verify that all SVG taglines have been updated correctly.
 
