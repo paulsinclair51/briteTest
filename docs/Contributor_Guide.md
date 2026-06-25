@@ -407,20 +407,20 @@ The replacement workflow depends on a configuration file and two scripts:
 
 #### Workflow Steps
 
-1. Choose a replacement brand name and/or tagline plus any other phrases to
-   be Initial definitions.
+1. Choose a replacement brand name and/or tagline plus any other phrases that
+   need changing.
 
 2. Update the brand configuration file `docs/branding/brand.md` to define
-   the replacement (see this file for examples of previous changes):
+   the replacements (see this file for examples of previous changes):
 ```
 ### <change title>
 <Reason for the change.>
 
  - **Replace**: old_phrase = new_phrase
 ...
-
    - The file supports multiple replacements (one per line).
-   - Each replacement is validated to prevent circular references (an old phrase cannot match any new phrase).
+   - Each replacement is validated to prevent circular references (an old phrase
+     cannot match any new phrase).
 
 3. Update SVG files and regenerate PNG files:
    - Run the `updatelogos` script:
@@ -428,8 +428,10 @@ The replacement workflow depends on a configuration file and two scripts:
 scripts/updatelogos
 ```
    - The script performs the following:
-     - Parses `docs/branding/brand.txt` for phrase and abbreviation replacements.
-     - Applies **both phrase and abbreviation replacements** to all SVG files in `docs/branding/`, including tagline SVGs.
+     - Parses `docs/branding/brand.md` for new phrase replacements (ocuuring in the
+       before the first "**Completed**: <>." line in the file.
+     - Applies both phrase and abbreviation replacements*m to all SVG files in
+      `docs/branding/`, including tagline SVGs.
      - Regenerates all PNG files from the updated SVGs using `scripts/genpng.sh`.
      - Validates the configuration to prevent infinite loops (circular references).
      - Generates a detailed report of replacements and file modifications.
@@ -447,8 +449,9 @@ scripts/updatelogos
 6. Commit and ship
    - Commit SVG/PNG changes with a clear commit message.
    - Commit markdown changes with a clear commit message.
-   - Optionally, add a note to `README.md` in root directory documenting the brand transition.
-   - Consider a separate release or major version bump if the rename is significant.
+   - Optionally, add a note to `README.md` in root directory documenting the brand 
+     transition.
+   - Consider a separate release or major version bump if the replace is significant.
 </details>
 </details>
 
