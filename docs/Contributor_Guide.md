@@ -385,7 +385,7 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 ### 8.3. Brand Name and Tagline Replacement Workflow
 
-This workflow describes how to replace the brand name, tagline and other phrases
+This workflow describes how to replace the brand name, tagline, and other phrases
 throughout the repository (docs, branding, and logos) using automated scripts.
 
 #### Prerequisites
