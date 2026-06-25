@@ -435,7 +435,7 @@ scripts/updatelogos
 
    - The script performs the following:
      - Parses `docs/branding/brand.md` for new phrase replacements (occurring
-       before the first "**Completed**: <datetime>." line in the file.
+       before the first "\*\*Completed\*\*: <datetime>." line in the file.
      - Validates the configuration to prevent infinite loops (circular references).
      - Applies both brand namd and abbreviation replacements to all SVG files in
       `docs/branding/`.
