@@ -1,7 +1,7 @@
 ![Contributor Guide](branding/Contributor_Guide.png)
 
 This document defines the contribution process, coding standards, documentation
-rules, and versioning guidelines for BriteTest.
+rules, and versioning guidelines.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -40,21 +40,18 @@ This document is for contributors who need guidance on enhancing
 and maintaining BriteTest.
 
 For a list of other documents and the repository layout, see
-the Documentation Guide (`Documentation_Guide.md`).
+the Documentation Guide.
 
-For a glossary of terms, see the Glossary Reference
-(`Glossary_Reference.md`).
+For a glossary of terms, see the Glossary Reference.
 
-A printer-friendly PDF file for this document is available in `docs/pdf/`.
-
-| <details>
-| <summary>Document Version History</summary>
-| 
+<details>
+<summary>Document Version History</summary>
+ 
 ### Document Version History
 
-Document Runner Test Date Comment Author/Editor |
+|Document Runner Test Date Comment Author/Editor |
 |----------|------|--------|------|---------|---------------|
-1.0 |1.0.0 1.0.0 2026‑06‑11  Initial version. Paul Sinclair |
+|1.0 |1.0.0 1.0.0 2026‑06‑11  Initial version. Paul Sinclair |
 
 - The **Document** column records the document's version with the
   format `M.u` (Major, update).
@@ -120,11 +117,13 @@ consistency across the codebase and documentation.
 
 ## 2. Versioning Rules
 
-BriteTest uses semantic versioning:
-- For .h and .c files: `M.m.p` (major, minor, patch).
-- For .md files: `M.u` (major, update).
+Versioning is used for:
 
-When to increment:
+- API .h and .c files: `M.m.p` (major, minor, patch).
+
+- Documentation .md files: `M.u` (major, update).
+
+When to increment for a release:
 
 - Update:
   - Document updated.
@@ -133,45 +132,47 @@ When to increment:
   - Bug fixes or implementation improvements.
 
 - Minor:
-  - Minor additions to the APIs (e.g., new function or macro)
-  - Minor additions to the BriteTest framework.
-  - No breaking changes (syntax or behavior) to existing public APIs.
-  - No breakind changes to the BriteTest framework
+  - Minor additions to the APIs (e.g., new function or macro).
+  - Minor additions to the Runner Framework.
+  - No breaking changes (syntax or behavior) to the APIs.
+  - No breakind changes to the Runner Framework.
   - Minor refactorying of implementation.
 
 - Major
-  - Major additions to the BriteTest APIs.
-  - Major additions to the BriteTest framework.
-  - Significant refactoring of implementation.
+  - Major additions to the APIs.
+  - Major additions to the Runner Framework.
+  - Significant refactoring of the implementation.
   - The following require incrementing the Major version but should be
     avoided by having opt-in or other mechanism to maintain compatibility:
-    - Breaking changes (syntax or behavior) to existing public APIs.
-    - Breaking changes to the BriteTest framework.
+    - Breaking changes (syntax or behavior) to the APIs.
+    - Breaking changes to the Runner Framework.
   - If incremented, it must be updated for all files (.h, .c, and .md) to the
     same major value, even if the file was not otherwise modified or updated
     with update, minor, and patch reset to 0.
 
 When updating the version for the Runner API:
-- Update `RA_RUNNER_VERSION` in `runnerapi.h`.
-- Update `RA_RUNNER_VERSION_C` in `runnerapi.c`.
+- Update `RA_VERSION` in `runnerapi.h`.
+- Update `RA_VERSION_C` in `runnerapi.c`.
 
 When updating the version for the Test API:
-- Update `RA_TEST_VERSION` in `testapi.h`.
-- Update `RA_TEST_VERSION_C` in `testapi.c`.
+- Update `TA_VERSION` in `testapi.h`.
+- Update `TA_VERSION_C` in `testapi.c`.
 
 When updating the version for a document:
-- Add a new entry to the top of the Document Version History table only when
-  the document changes are being published in a release.
+- Add a new entry to the top of the Document Version History table.
 - Increment `u` if the major version is not incremented.
-- Reset the update value to `0` when the major version is incremented.
+- Reset `u` to `0` when the major version is incremented.
 
-API compatibility rules:
-- Public APIs are additive by default.
-- Do not change existing signatures.
-- Do not change return code meanings.
+API compatibility guidelines:
+- Do not change API signatures.
+- Do not change API behavior.
+- Do not change exit and return code meanings.
 - Deprecate before removing.
 - Provide migration guidance for major changes including how
   to opt-in for new features and behavior.
+
+Significant justification is required in a case where these guidelines cannot be
+followed.
 </details>
 
 <details>
@@ -203,136 +204,134 @@ make run
 </details>
 
 <details>
-2| <summary>5. Code Style</summary>
-2| 
-2| ## 5. Code Style
-2| 
-2| - C99.
-| - POSIX.1‑2001 APIs only.
-| - Keep `runnerapi.h` self‑contained.
-2| - Keep `runnerapi.c` implementation‑only.
-2| - Avoid intermixing test code with helper logic inside test group functions.
-2| </details>
-2| 
-2| <details>
-2| <summary>6. Writing Style Consistency</summary>
-2| 
-2| ## 6. Writing Style Consistency
-| 
-| (See the full style rules in the Documentation Style Guide above.)
-| 
-| This section exists here to ensure contributors do not overlook the requirement
-| for parallel structure and consistent writing patterns across all BriteTest
-| documentation in all types of files (e,g., ,md, .h, .c, .yml, ,sh, Makefile, etc.).
-| 
-| <details>
-| <summary>6. Documentation Style Guide</summary>
-| 
-| ### 6.1 Documentation Style Guide
-| 
-| 1. Tone
-| - Technical, precise, and neutral.
-| - No marketing language.
-| - Prefer clarity over cleverness.
-| 
-| 2. Formatting
-| - Use backticks for code identifiers.
-| - Use fenced code blocks for file trees, examples, and commands.
-| - Keep line lengths reasonable for GitHub rendering.
-| 
-| 3. Writing Guidelines
-| - Define terms once, and then use them consistently.
-| - Avoid synonyms for technical concepts (e.g., always "update version," never "revision").
-| - Keep paragraphs short.
-| - Use lists for enumerations.
-| 
-| 4. `Click to view`
-| - Use `Click to view` sections and subsections to keep the document readable while
-|   still accommodating large amounts of technical detail:
-|   - Collapsing sections allows readers to scan the structure and expand only what
-|     they need.
-|   - This keeps the document manageable, avoids overwhelming readers with unrelated
-|     detail, and makes the document easier to navigate.
-| 
-| 5. Writing Style Consistency
-| To keep BriteTest documentation clear and easy to read, maintain **parallel
-| structure** within lists and related sentences. In practice:
-| 
-| - Start list items with the same part of speech (typically a verb).
-| - Keep grammatical patterns consistent across bullets.
-| - Avoid mixing styles such as "Keep paragraphs short" with "Using lists for enumerations."
-| - Rewrite items as needed so the list reads smoothly and uniformly.
-| 
-| This guideline applies to all BriteTest documentation (.md files).
-| </details>
-| </details>
-| 
-| <details>
-| <summary>7. Pull Requests</summary>
-| 
-| ## 7. Pull Requests
-| 
-| Before submitting a PR:
-| 
-| - Ensure tests pass.
-| - Update version numbers if needed.
-| - Update documentation as needed.
-| - Keep changes focused and well‑scoped.
-| </details>
-| 
-| <details>
-| <summary>8. Branding</summary>
-| 
-| ## 8. Branding
-| 
-| This chapter discusses the choices for a brand description and name.
-| <details>
-| <summary>8.1. Alternative Brand Descriptions</summary>
-| 
-| ### 8.1. Alternative Brand Descriptions
-| 
-| BriteTest is a lightweight framework for defining, running, and reporting
-| tests in C/C++ projects. It provides a simple core macro-based Runner
-| Application Programming Interface (API), a function-based Test API,
-| fault‑tolerant execution, and clear reporting. It is ideal for small to
-| medium C projects that need reliable testing without heavy tooling and
-| dependencies. It can be used for unit and command-line testing.
-| 
-| Tghtened, clarified, and made more parallel to the tone you've been using
-| for LiteTest. Below is a refined version that reads cleaner, is more precise,
-| and positions the framework more strongly.
-| 
-| 
-| BriteTest is a lightweight framework for defining, running, and reporting tests
-| in C/C++ projects. It provides a compact macro‑based Runner API, a function‑driven
-| Test API, fault‑tolerant execution, and clear, structured reporting. The framework
-| is designed for small to medium C projects that need reliable automated testing
-| without the overhead of large toolchains or external dependencies.
-| 
-| BriteTest supports both unit testing and command‑line driven testing, making it
-| flexible enough for embedded utilities, libraries, and standalone executables.
-| 
-| under 350 characters, each with a slightly different tone. All stay formal and
-| suitable for a title‑page abstract.
-| 
-| ---
-| 
-| Option 1 — Concise & Technical
-| 
-| BriteTest is a lightweight C/C++ testing framework providing a macro‑based runner, function‑based tests, fault‑tolerant execution, and clear reporting. It enables reliable unit and command​‑line testing for small to medium C projects without heavy tooling dependencies.
-| 
-| ---
-| 
-| Option 2 — Clean & Professional
-| 
-| BriteTest is a compact C/C++ framework for defining, running, and reporting tests. It offers a simple macro runner, function‑style tests, robust fault handling, and readable output, ideal for small to medium C projects that need light‑weight, reliable testing.
-| 
-| ---
+<summary>5. Code Style</summary>
+
+## 5. Code Style
+
+- C99.
+- POSIX.1‑2001 APIs only.
+- Keep `runnerapi.h` self‑contained.
+- Keep `runnerapi.c` implementation‑only.
+- Avoid intermixing test code with helper logic inside test group functions.
+</details>
+
+<details>
+<summary>6. Writing Style Consistency</summary>
+
+## 6. Writing Style Consistency
+
+(See the full style rules in the Documentation Style Guide above.)
+
+This section exists here to ensure contributors do not overlook the requirement
+for parallel structure and consistent writing patterns across all BriteTest
+documentation in all types of files (e,g., ,md, .h, .c, .yml, ,sh, Makefile, etc.).
+
+<details>
+<summary>6. Documentation Style Guide</summary>
+
+### 6.1 Documentation Style Guide
+
+1. Tone
+- Technical, precise, and neutral.
+- No marketing language.
+- Prefer clarity over cleverness.
+
+2. Formatting
+- Use backticks for code identifiers.
+- Use fenced code blocks for file trees, examples, and commands.
+- Keep line lengths reasonable for GitHub rendering.
+
+3. Writing Guidelines
+- Define terms once, and then use them consistently.
+- Avoid synonyms for technical concepts (e.g., always "update version," never "revision").
+- Keep paragraphs short.
+- Use lists for enumerations.
+
+4. `Click to view`
+- Use `Click to view` sections and subsections to keep the document readable while
+  still accommodating large amounts of technical detail:
+  - Collapsing sections allows readers to scan the structure and expand only what
+    they need.
+  - This keeps the document manageable, avoids overwhelming readers with unrelated
+    detail, and makes the document easier to navigate.
+
+5. Writing Style Consistency
+To keep BriteTest documentation clear and easy to read, maintain **parallel
+structure** within lists and related sentences. In practice:
+
+- Start list items with the same part of speech (typically a verb).
+- Keep grammatical patterns consistent across bullets.
+- Avoid mixing styles such as "Keep paragraphs short" with "Using lists for enumerations."
+- Rewrite items as needed so the list reads smoothly and uniformly.
+
+This guideline applies to all BriteTest documentation (.md files).
+</details>
+</details>
+
+<details>
+<summary>7. Pull Requests</summary>
+
+## 7. Pull Requests
+
+Before submitting a PR:
+
+- Ensure tests pass.
+- Update version numbers if needed.
+- Update documentation as needed.
+- Keep changes focused and well‑scoped.
+</details>
+
+<details>
+<summary>8. Branding</summary>
+
+## 8. Branding
+
+This chapter discusses the choices for a brand description and name.
+<details>
+<summary>8.1. Alternative Brand Descriptions</summary>
+
+### 8.1. Alternative Brand Descriptions
+
+BriteTest is a lightweight framework for defining, running, and reporting
+tests in C/C++ projects. It provides a simple core macro-based Runner
+Application Programming Interface (API), a function-based Test API,
+fault‑tolerant execution, and clear reporting. It is ideal for small to
+medium C projects that need reliable testing without heavy tooling and
+dependencies. It can be used for unit and command-line testing.
+
+Tghtened, clarified, and made more parallel to the tone you've been using
+for LiteTest. Below is a refined version that reads cleaner, is more precise,
+and positions the framework more strongly.
+
+BriteTest is a lightweight framework for defining, running, and reporting tests
+in C/C++ projects. It provides a compact macro‑based Runner API, a function‑driven
+Test API, fault‑tolerant execution, and clear, structured reporting. The framework
+is designed for small to medium C projects that need reliable automated testing
+without the overhead of large toolchains or external dependencies.
+
+BriteTest supports both unit testing and command‑line driven testing, making it
+flexible enough for embedded utilities, libraries, and standalone executables.
+
+Option 1 — Concise & Technical
+
+BriteTest is a lightweight C/C++ testing framework providing a macro‑based runner,
+function‑based tests, fault‑tolerant execution, and clear reporting. It enables
+reliable unit and command​‑line testing for small to medium C projects without heavy
+tooling dependencies.
+
+Option 2 — Clean & Professional
+
+BriteTest is a compact C/C++ framework for defining, running, and reporting tests.
+It offers a simple macro runner, function‑style tests, robust fault handling, and
+readable output, ideal for small to medium C projects that need light‑weight,
+reliable testing.
 
 Option 3 — More Emphasis on Purpose
 
-BriteTest is a minimal C/C++ test framework designed for fast, reliable unit and command‑line testing. Its macro‑based runner, function‑driven tests, and fault‑tolerant execution provide strong fundamentals for small to medium C projects without heavy dependencies.
-
+BriteTest is a minimal C/C++ test framework designed for fast, reliable unit and
+command‑line testing. Its macro‑based runner, function‑driven tests, and 
+fault‑tolerant execution provide strong fundamentals for small to medium C projects
+without heavy dependencies.
 </details>
 
 <details>
@@ -341,42 +340,42 @@ BriteTest is a minimal C/C++ test framework designed for fast, reliable unit and
 ### 8.2. Alternative Brand Names
 
 TODO: add these to table.
-| - briteTest (bT)
-| - CanaryRunner (CR)
-| - CanaryAssert (CA)
-| - CanaryProof (CP)
-| - CanaryTestRunner (CYR)
-| - OpenTest (OT)
-| 
-| These names are fallback options if a naming conflict requires a
-| brand/project rename.
-| 
-| These notes are an informal naming screen only. They are based on how generic,
-| descriptive, or commonly used the terms appear in software and testing. They
-| are not a trademark search or legal clearance.
-| 
-| | Name | Abbrev. | Informal conflict note | Likelihood |
-| |------|---------|------------------------|------------|
-| | LiteTest | LT | Clear and close to the project's lightweight positioning, but both `lite` and `test` are common software terms, so overlap with existing package or tool names is plausible. | Medium |
-| | briteTest | bT | Strong fit for the project brand with canary monogram, distinctive camelCase format, and clear semantic meaning. Low conflict likelihood. | Low |
-| | CanaryTest | CT | Strong fit for the canary theme, but `canary` and `canary testing` are already common software terms, which makes the name less distinctive. | Higher |
-| | CoreTest | CT | Clear and technical, but both `core` and `test` are common product words and may overlap with existing tools or internal packages. | Medium |
-| | ClearTest | CT | Readable and descriptive, but the name is broad and likely to overlap with existing testing or QA branding. | Medium |
-| | TinyTest | TT | Good match for a lightweight framework, but it is fairly descriptive and similar in shape to other small-test framework names. | Medium |
-| | TraceTest | TT | More distinctive than generic `test` compounds, though `trace` is still a common engineering term. | Medium-Low |
-| | SwiftTest | ST | Memorable, but `Swift` has strong existing association with Apple's Swift ecosystem, which could create confusion. | Higher |
-| | QuickTest | QT | Familiar and easy to say, but `QuickTest` has long-standing use in software testing and QA tooling. | Higher |
-| | CompactTest | CT | Fits the lightweight positioning and is somewhat more distinctive than `CoreTest` or `ClearTest`, though still descriptive. | Medium-Low |
-| | PublicTest | PT | Descriptive and understandable, but `public` is a common language and API term, which makes the name fairly broad. | Medium |
-| | APITest | AT | Directly describes API testing, but the term is highly generic and already widely used across tools, articles, and packages. | Higher |
-| | FastTest | FT | Strong performance-oriented signal, but `fast` and `test` are both generic terms and likely to overlap with existing tooling names. | Medium-High |
-| 
-| Preference among the candidates:
-| 
-| - `briteTest (bT)` for strong brand alignment and low naming conflict.
-| - `CompactTest (CT)` for a lower-conflict descriptive option.
-| - `TraceTest (TT)` for a more distinctive technical option.
-| - `CanaryTest (CT)` only if the canary theme is more important than name.
+- briteTest (bT)
+- CanaryRunner (CR)
+- CanaryAssert (CA)
+- CanaryProof (CP)
+- CanaryTestRunner (CYR)
+- OpenTest (OT)
+
+These names are fallback options if a naming conflict requires a
+brand/project rename.
+
+These notes are an informal naming screen only. They are based on how generic,
+descriptive, or commonly used the terms appear in software and testing. They
+are not a trademark search or legal clearance.
+
+| Name | Abbrev. | Informal conflict note | Likelihood |
+|------|---------|------------------------|------------|
+| LiteTest | LT | Clear and close to the project's lightweight positioning, but both `lite` and `test` are common software terms, so overlap with existing package or tool names is plausible. | Medium |
+| briteTest | bT | Strong fit for the project brand with canary monogram, distinctive camelCase format, and clear semantic meaning. Low conflict likelihood. | Low |
+| CanaryTest | CT | Strong fit for the canary theme, but `canary` and `canary testing` are already common software terms, which makes the name less distinctive. | Higher |
+| CoreTest | CT | Clear and technical, but both `core` and `test` are common product words and may overlap with existing tools or internal packages. | Medium |
+| ClearTest | CT | Readable and descriptive, but the name is broad and likely to overlap with existing testing or QA branding. | Medium |
+| TinyTest | TT | Good match for a lightweight framework, but it is fairly descriptive and similar in shape to other small-test framework names. | Medium |
+| TraceTest | TT | More distinctive than generic `test` compounds, though `trace` is still a common engineering term. | Medium-Low |
+| SwiftTest | ST | Memorable, but `Swift` has strong existing association with Apple's Swift ecosystem, which could create confusion. | Higher |
+| QuickTest | QT | Familiar and easy to say, but `QuickTest` has long-standing use in software testing and QA tooling. | Higher |
+| CompactTest | CT | Fits the lightweight positioning and is somewhat more distinctive than `CoreTest` or `ClearTest`, though still descriptive. | Medium-Low |
+| PublicTest | PT | Descriptive and understandable, but `public` is a common language and API term, which makes the name fairly broad. | Medium |
+| APITest | AT | Directly describes API testing, but the term is highly generic and already widely used across tools, articles, and packages. | Higher |
+| FastTest | FT | Strong performance-oriented signal, but `fast` and `test` are both generic terms and likely to overlap with existing tooling names. | Medium-High |
+
+Preference among the candidates:
+
+- `briteTest (bT)` for strong brand alignment and low naming conflict.
+- `CompactTest (CT)` for a lower-conflict descriptive option.
+- `TraceTest (TT)` for a more distinctive technical option.
+- `CanaryTest (CT)` only if the canary theme is more important than name.
 375
 </details>
 
@@ -415,11 +414,11 @@ The replacement workflow depends on a configuration file and two scripts:
 2. Update the brand configuration file `docs/branding/brand.md` to define
    the replacements (see this file for examples of previous changes):
 
-```
+```text
 ### <change title>
-<Reason for the change.>
+\<Reason for the change.\>
 
- - **Replace**: old_phrase = new_phrase
+ - \*\*Replace\*\*: old_phrase = new_phrase
 ...
 
 3, The file supports multiple replacements (one per line).
@@ -467,19 +466,29 @@ scripts/updatelogos
 
 ## 9. Glossary
 
-For a glossary of general BriteTest terms, see the Glossary Reference document.
-For a glossary of terms, see the Glossary Reference (`Glossary_Reference.md`).
+For a glossary of terms generally used in the documentation, see the Glossary Reference.
 
 Contributor‑Specific Terms:
 
-- **Approver**: A contributor with commit access who reviews pull requests, enforces versioning rules, and ensures documentation consistency.
-- **Breaking Change**: A change that alters public API behavior, removes or renames macros, changes return semantics, or requires a major version bump.
-- **Contributor**: A person submitting code, documentation, fixes, or improvements to BriteTest.
-- **Deprecation**: A public API element marked for removal in a future major version, requiring documentation updates and migration guidance.
-- **Documentation Update**: Any change to released BriteTest documentation requires incrementing the update version or, if an API major version is incremented, incrementing the major version and [...]
-- **Internal API Change**: A change to an API's internals that does not affect public API users but may require updates to an Internal Guide or Internal Reference.
-- **Major Increment**: A structural or conceptual overhaul of BriteTest that causes a breaking change.
-- **Public API Change**: Any modification to the BriteTest Runner or Test API that requires a version bumpv.
-- **Pull Request Scope**: A guideline requiring PRs to be focused, minimal, logically grouped, and not mixing unrelated changes.
-- **Test Coverage Requirement**: The expectation that all changes to BriteTest include new tests (if adding behavior), updated tests (if modifying behavior), and no regressions.
+- **Approver**: A contributor with commit access who reviews pull requests, enforceS
+  versioning rules, and ensures documentation consistency.
+- **Breaking Change**: A change that alters public API behavior, removes or renames
+  macros, changes return semantics, or requires a major version bump.
+- **Contributor**: A person submitting code, documentation, fixes, or improvements.
+- **Deprecation**: A public API element marked for removal in a future major version, 
+  requiring documentation updates and migration guidance.
+- **Documentation Update**: Any change to released BriteTest documentation requires
+  incrementing the update version or, if an API major version is incremented,
+  incrementing the major version and [...]
+- **Internal API Change**: A change to an API's internals that does not affect public
+  API users but may require updates to an Internal Guide or Internal Reference.
+- **Major Increment**: A structural or conceptual overhaul of BriteTest that causes a
+  breaking change.
+- **Public API Change**: Any modification to the Runner Framewok/API or THRTest API
+  that requires a version bump.
+- **Pull Request Scope**: A guideline requiring PRs to be focused, minimal, logically
+  grouped, and not mixing unrelated changes.
+- **Test Coverage Requirement**: The expectation that all changes to BriteTest include
+  new tests (if adding behavior), updated tests (if modifying behavior), and no
+  regressions.
 </details>
