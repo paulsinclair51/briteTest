@@ -422,20 +422,20 @@ The replacement workflow depends on a configuration file and two scripts:
  - **Replace**: old_phrase = new_phrase
 ...
 
-   - The file supports multiple replacements (one per line).
+3, The file supports multiple replacements (one per line).
    - Each replacement is validated to prevent circular references (an old phrase
      cannot match any new phrase).
 
-3. Update SVG files and regenerate PNG files:
+4. Update SVG files and regenerate PNG files:
    - Run the `updatelogos` script:
 
 ```bash
 scripts/updatelogos
 ```
 
-4, The script performs the following:
+5, The script performs the following:
    - Parses `docs/branding/brand.md` for new phrase replacements (occurring
-     before the first "\*\*Completed\*\*: <datetime>." line in the file.
+     before the first "\*\*Completed\*\*: \<datetime\>." line in the file.
    - Validates the configuration to prevent infinite loops (circular references).
    - Applies both brand namd and abbreviation replacements to all SVG files in
      `docs/branding/`.
@@ -443,17 +443,17 @@ scripts/updatelogos
    - Generates a detailed report of replacements and file modifications.
    - Review the output and documentation for accuracy, then commit the changes.
 
-5. Update project identifier and repository name (optional:
+6. Update project identifier and repository name (optional:
    - Update references in CI/CD workflows, and external links.
 
-6. Validate and test
+7. Validate and test
   - Run `make run` to ensure tests pass.
   - Run `make pdf` or the PDF generation script to verify branding updates in
     generated documents.
   - Perform a repository-wide text search for stale old-brand references.
   - Verify that all SVG taglines have been updated correctly.
 
-7. Commit and ship
+8. Commit and ship
    - Commit SVG/PNG changes with a clear commit message.
    - Commit markdown changes with a clear commit message.
    - Optionally, add a note to `README.md` in root directory documenting the brand 
