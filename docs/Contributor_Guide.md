@@ -367,6 +367,10 @@ scripts/updatelogos
 
 ## 4. Documentation Guidelines
 
+This section exists here to ensure contributors do not overlook the requirement
+for parallel structure and consistent writing patterns across all documentation
+in all types of files (e,g., `.md`, `.h`, `.c`, `.yml`, `.dh`, `Makefile`, etc.).
+
 1. General
 
    - Root `README.md` must remain short and onboarding‑focused.
@@ -388,6 +392,8 @@ scripts/updatelogos
    - Use backticks for code identifiers.
    - Use fenced code blocks for file trees, examples, and commands.
    - Keep line lengths reasonable for GitHub rendering.
+   - Use boldface for a term or phrase when defining it
+   - Ccnform to formatting styles existing in the documentation.
 
 4. Writing Guidelines
 
@@ -397,7 +403,7 @@ scripts/updatelogos
    - Keep paragraphs short.
    - Use lists for enumerations.
 
-5. Collapsible Sections
+5. Collapsible Sections in `.md` Files
 
    - Use collapsible chapters, sections and subsections to keep the document
      readable while still accommodating large amounts of technical detail.
@@ -406,10 +412,10 @@ scripts/updatelogos
    - This keeps the document manageable, avoids overwhelming readers with unrelated
      detail, and makes the document easier to navigate.
 
-6. Writing Style Consistency
+6. Style Consistency
 
 To keep documentation clear and easy to read, maintain **parallel
-structure** within lists and related sentences. In practice:
+structure** within lists and related sentences:
 
 - Start list items with the same part of speech (typically a verb).
 - Keep grammatical patterns consistent across bullets.
@@ -417,7 +423,7 @@ structure** within lists and related sentences. In practice:
   enumerations.".
 - Rewrite items as needed so the list reads smoothly and uniformly.
 
-This guideline applies to all documentation (.md files).
+This guideline applies to all documentation (`.md` files).
 </details>
 
 <details>
@@ -429,24 +435,6 @@ This guideline applies to all documentation (.md files).
 - POSIX.1‑2001 APIs only.
 - Keep `runnerapi.h` and `testapi.h` each self‑contained.
 - Keep `runnerapi.c` and `testapi.c` implementation‑only.
-</details>
-
-<details>
-<summary>6. Writing Style Consistency</summary>
-
-## 6. Writing Style Consistency
-
-This section exists here to ensure contributors do not overlook the requirement
-for parallel structure and consistent writing patterns across all BriteTest
-documentation in all types of files (e,g., ,md, .h, .c, .yml, ,sh, Makefile, etc.).
-
-<details>
-<summary>6.1. Documentation Style Guide</summary>
-
-### 6.1 Documentation Style Guide
-
-
-</details>
 </details>
 
 <details>
