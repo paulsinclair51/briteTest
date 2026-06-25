@@ -60,7 +60,7 @@ For a glossary of terms, see the Glossary Reference.
   defined by its `RA_VERSION` macro.
 - The **Test** column records the Test API version current
   when this document was released and is defined by its
-  `TA_TEST_VERSION` macro.
+  `TA_VERSION` macro.
 - Both the Runner and Test API use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
