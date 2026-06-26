@@ -617,19 +617,19 @@ make run
 
 ## 7. Pull Request (PR)
 
-- **Purpose**: Propose code changes for review.
+- **Purpose**: Propose a set of changed files for review.
 - **Status**: Subject to review and revision.
 - **Timing**: During development.
-- **Scope**: Single, focused set of changes.
 - **Audience**: Contributors and Approver (via review).
 
 Before submitting a PR:
 
-- Ensure changes for PR are focused and well‑scoped.
+- Ensure changes for PR are focused (not mixing unrelated changes), logically grouped,
+  and well‑scoped.
 - Update documentation as needed.
 - Ensure changes follow Documentation Guidelines and Code Guidelines,
-- Update version numbers of changed versioned files if same as current release
-  per Vereioning Guidelines.
+- Update version numbers of modified versioned files as needed per Vereioning
+  Guidelines.
 - Ensure tests pass.
 </details>
 
@@ -638,19 +638,18 @@ Before submitting a PR:
 
 ## 8. Release
 
-- **Purpose**: Publish a version for users.
+- **Purpose**: Publish a version for users for a set of PRs.
 - **Status**: Immutable and public.
 - **Timing**: After the PRs (pull requests) for the release are merged and approved.
-- *Scope**: Bundles multiple merged PRs.
 - **Audience**: End users.
 
 Before releasing:
 
 - Prepare a release note.
-- Verify if qualifies as a major, minor, or patch release or documentation-only update
-  release and verify modified versioned files have the correct versions per the
-  Version Guidelines.
-Guidelines
+- Verify if release qualifies as a major, minor, patch, or
+  documentation-only,
+- Verify modified versioned files have the correct versions per the Version
+  Guidelines.
 </details>
 
 <details>
@@ -658,7 +657,8 @@ Guidelines
 
 ## 9. Glossary
 
-For a glossary of terms generally used in the documentation, see the Glossary Reference.
+For a glossary of terms generally used in the documentation, see the Glossary
+Reference.
 
 Contributor‑Specific Terms:
 
@@ -667,20 +667,21 @@ Contributor‑Specific Terms:
 - **Breaking Change**: A change that alters public API behavior, removes or renames
   macros, changes return semantics, or requires a major version bump.
 - **Contributor**: A person submitting code, documentation, fixes, or improvements.
-- **Deprecation**: A public API element marked for removal in a future major version, 
+- **Deprecated**: A public API element marked for removal in a future major version, 
   requiring documentation updates and migration guidance.
-- **Documentation Update**: Any change to released BriteTest documentation requires
+- **Documentation Update**: Any modification to versioned documentation requires
   incrementing the update version or, if an API major version is incremented,
-  incrementing the major version and [...]
+  incrementing the major version per the Versioning Guidelines.
 - **Internal API Change**: A change to an API's internals that does not affect public
   API users but may require updates to an Internal Guide or Internal Reference.
-- **Major Increment**: A structural or conceptual overhaul of BriteTest that causes a
+- **Major Increment**: A structural or conceptual overhaul that causes a
   breaking change.
-- **Public API Change**: Any modification to the Runner Framewok/API or THRTest API
+- **Public API Change**: Any modification to the Runner Framework/API or rhe Test API
   that requires a version bump.
-- **Pull Request Scope**: A guideline requiring PRs to be focused, minimal, logically
-  grouped, and not mixing unrelated changes.
-- **Test Coverage Requirement**: The expectation that all changes to BriteTest include
+- **Pull Request**: 
+- **Release**: 
+- **Test Coverage Requirement**: The expectation that all code changes include
   new tests (if adding behavior), updated tests (if modifying behavior), and no
   regressions.
+- **Versioned Files**: Files that include a version and version history.
 </details>
