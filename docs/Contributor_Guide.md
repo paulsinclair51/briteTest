@@ -92,7 +92,7 @@ changes are released without a change to `M`, and it resets to
 
 6. [**Testing Requirements**](#6-testing-requirements)
 
-7. [**Pull Request**](#7-pull-request)
+7. [**Pull Request (PR)**](#7-pull-request-pr)
 
 8. [**Pull Release**](#8-release)
 
@@ -613,9 +613,9 @@ make run
 </details>
 
 <details>
-<summary>7. Pull Request</summary>
+<summary>7. Pull Request (PR)</summary>
 
-## 7. Pull Request
+## 7. Pull Request (PR)
 
 - **Purpose**: Propose code changes for review
 - **Status**: Subject to review and revision
@@ -633,7 +633,7 @@ Before submitting a PR:
 </details>
 
 <details>
-<summary>8. Release/summary>
+<summary>8. Release</summary>
 
 ## 8. Release
 
