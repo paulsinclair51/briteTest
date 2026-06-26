@@ -61,6 +61,13 @@ Branch Naming Convention:
     mkbranch docs/update-readme main
       Creates: docs/update-readme
 
+Type Hierarchy:
+  Branches can only be created from compatible base branch types:
+    major  → from main or major/*
+    minor  → from main or major/*
+    patch  → from main, major/*, minor/*, or patch/*
+    docs   → from main or docs/*
+
 Options:
   -h, --help         Output this help to stdout and exit.
   -l                 Create local branch only (default).
@@ -82,6 +89,7 @@ Modes:
     - Verify the base branch exists
     - Check that the new branch doesn't already exist
     - Validate branch naming format (if type is specified, must be valid)
+    - Validate type hierarchy compatibility
     - Report validity without creating or pushing
     - Exit with status code indicating validity
 
@@ -92,6 +100,7 @@ Exit codes:
   3   Branch already exists
   4   Base branch doesn't exist
   5   Validation failed
+  6   Type hierarchy violation
 EOF
 }
 
@@ -119,9 +128,9 @@ HEADER
 
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
 
-  # Append operation to log
+  # Append operation to log in markdown format
   cat >> "$LOG_FILE" <<EOF
-- **$timestamp** | Status: \`$status\` | Branch: \`$branchname\` | Base: \`$basebranchname\` | $message
+- **$timestamp**: $message
 EOF
 }
 
@@ -134,7 +143,7 @@ error_exit() {
   echo -e "${RED}Error:${NC} $message" >&2
 
   if [[ -n "$branchname" ]]; then
-    log_operation "FAILED" "$branchname" "$basebranchname" "$message"
+    log_operation "FAILED" "$branchname" "$basebranchname" "Branch \`$branchname\` creation from \`$basebranchname\` failed - $message"
   fi
 
   exit "$code"
@@ -159,6 +168,43 @@ is_valid_type() {
   done
   
   return 1
+}
+
+get_branch_type() {
+  local branchname="$1"
+  
+  if [[ "$branchname" =~ / ]]; then
+    echo "${branchname%%/*}"
+  else
+    echo ""
+  fi
+}
+
+is_type_hierarchy_valid() {
+  local new_type="$1"
+  local base_type="$2"
+  
+  case "$new_type" in
+    major)
+      # major can only be created from main or major
+      [[ "$base_type" == "" || "$base_type" == "major" ]]
+      ;;
+    minor)
+      # minor can only be created from main or major
+      [[ "$base_type" == "" || "$base_type" == "major" ]]
+      ;;
+    patch)
+      # patch can be created from main, major, minor, or patch
+      [[ "$base_type" == "" || "$base_type" == "major" || "$base_type" == "minor" || "$base_type" == "patch" ]]
+      ;;
+    docs)
+      # docs can only be created from main or docs
+      [[ "$base_type" == "" || "$base_type" == "docs" ]]
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 normalize_branch_name() {
@@ -243,6 +289,15 @@ if [[ "$NORMALIZED_NAME" != "$BRANCHNAME" ]]; then
   BRANCHNAME="$NORMALIZED_NAME"
 fi
 
+# Extract types for hierarchy validation
+NEW_TYPE=$(get_branch_type "$BRANCHNAME")
+BASE_TYPE=$(get_branch_type "$BASEBRANCHNAME")
+
+# Validate type hierarchy
+if ! is_type_hierarchy_valid "$NEW_TYPE" "$BASE_TYPE"; then
+  error_exit 6 "Type hierarchy violation: $NEW_TYPE branches cannot be created from $BASE_TYPE branches" "$BRANCHNAME" "$BASEBRANCHNAME"
+fi
+
 # Change to repo root
 cd "$REPO_ROOT"
 
@@ -321,9 +376,9 @@ if [[ "$MODE" == "remote" ]]; then
     error_exit 2 "Failed to push branch to remote" "$BRANCHNAME" "$BASEBRANCHNAME"
   fi
   success "Branch '$BRANCHNAME' pushed to remote"
-  log_operation "SUCCESS" "$BRANCHNAME" "$BASEBRANCHNAME" "Branch created and pushed to remote (mode: remote)"
+  log_operation "SUCCESS" "$BRANCHNAME" "$BASEBRANCHNAME" "Branch \`$BRANCHNAME\` created from \`$BASEBRANCHNAME\` and pushed to remote."
 else
-  log_operation "SUCCESS" "$BRANCHNAME" "$BASEBRANCHNAME" "Local branch created (mode: local)"
+  log_operation "SUCCESS" "$BRANCHNAME" "$BASEBRANCHNAME" "Branch \`$BRANCHNAME\` created from \`$BASEBRANCHNAME\`."
 fi
 
 exit 0
