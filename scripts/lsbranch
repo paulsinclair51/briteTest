@@ -45,8 +45,8 @@ Options:
   -b, --branch PAT   Filter branches by glob pattern on branch name (supports *, ?, [abc], etc.)
                      If pattern contains no wildcards, it's auto-wrapped as *PAT*
                      Examples: -b bug (same as -b "*bug*"), -b "fix*", -b "*issue"
-  -e, --except       Invert branch name filter (show branches NOT matching pattern)
-                     Use with -b: lsbranch -b bug -e (show branches without "bug")
+  -x, --exclude PAT  Exclude branches matching glob pattern (inverse of -b)
+                     Examples: -x bug (exclude branches with "bug"), -x "hotfix*"
   -c, --count        Show only branch count (useful for scripts)
   -d, --detailed     Show detailed info: commit hash, author, date
   -n, --limit NUM    Limit results to first NUM branches
@@ -69,8 +69,8 @@ Examples:
   lsbranch -b "fix*"           # branches starting with "fix"
 
   # Exclude branches by pattern
-  lsbranch -b bug -e           # branches NOT containing "bug"
-  lsbranch -b "hotfix*" -e     # branches NOT starting with "hotfix"
+  lsbranch -x bug              # branches NOT containing "bug"
+  lsbranch -x "hotfix*"        # branches NOT starting with "hotfix"
 
   # Show summary
   lsbranch -s                  # summary of all branches
@@ -81,10 +81,12 @@ Examples:
   lsbranch -c                  # total count
   lsbranch patch -c            # count of patch branches
   lsbranch -c -b login         # count matching "*login*"
+  lsbranch -x test -c          # count excluding "*test*"
 
   # Detailed information
   lsbranch -d                  # show commit hash, author, date
   lsbranch patch -d            # detailed patch branches
+  lsbranch -d -x hotfix        # detailed branches excluding "*hotfix*"
 
   # Limit results
   lsbranch -n 5                # show first 5 branches
@@ -103,7 +105,7 @@ Examples:
   # Combine options
   lsbranch -s -r -b memory     # remote summary matching "*memory*"
   lsbranch -d -n 5 patch       # first 5 detailed patch branches
-  lsbranch --format json -b api -e  # JSON of branches NOT matching "*api*"
+  lsbranch --format json -x api  # JSON of branches NOT matching "*api*"
 
 Exit codes:
   0   Success
@@ -438,15 +440,20 @@ while [[ $# -gt 0 ]]; do
       DETAILED_MODE=true
       shift
       ;;
-    -e | --except)
-      FILTER_EXCEPT=true
-      shift
-      ;;
     -b | --branch)
       if [[ $# -lt 2 ]]; then
         error_exit 1 "Option -b requires a pattern argument"
       fi
       FILTER_NAME=$(normalize_filter "$2")
+      FILTER_EXCEPT=false
+      shift 2
+      ;;
+    -x | --exclude)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -x requires a pattern argument"
+      fi
+      FILTER_NAME=$(normalize_filter "$2")
+      FILTER_EXCEPT=true
       shift 2
       ;;
     -n | --limit)
