@@ -21,6 +21,7 @@ NC='\033[0m' # No Color
 # Default options
 MODE="local"  # local, remote, or validate
 VALIDATE_ONLY=false
+COMMENT=""
 
 # Valid branch type prefixes
 VALID_TYPES=("major" "minor" "patch" "docs")
@@ -28,16 +29,23 @@ VALID_TYPES=("major" "minor" "patch" "docs")
 usage() {
   cat <<'EOF'
 Usage:
-  mkbranch [OPTIONS] <branchname> <basebranchname>
+  mkbranch [OPTIONS] <branchname> <basebranchname> [COMMENT]
   mkbranch -h | --help
 
-Create a new branch from a base branch with optional remote push.
+Create a new branch from a base branch with optional remote push and comment.
 
 Arguments:
   <branchname>       Name of the new branch to create
                      Format: [<type>/]<description>
                      If no type prefix is specified, 'patch/' is used by default.
   <basebranchname>   Name of the base branch to create from
+
+Comment Options (mutually exclusive):
+  -m, --message MSG  Attach a commit message/comment to the operation
+                     Usage: mkbranch patch/fix-bug major -m "Fix critical memory leak"
+  -- COMMENT TEXT    Unix-style comment (everything after -- is the comment)
+                     Usage: mkbranch patch/fix-bug major -- Fix critical memory leak
+                     Note: No quotes needed, captures all remaining arguments
 
 Branch Naming Convention:
   Branches should follow the format: <type>/<description>
@@ -79,6 +87,8 @@ Options:
   -l                 Create local branch only (default).
   -r                 Create local branch and push to remote.
   -v                 Validate only: check if valid without creating branch.
+  -m, --message MSG  Add comment message (GitHub style, requires quotes if spaces)
+  -- TEXT            Add comment (Unix style, everything after -- is the comment)
 
 Modes:
   Local (-l):
@@ -99,6 +109,23 @@ Modes:
     - Report validity without creating or pushing
     - Exit with status code indicating validity
 
+Examples:
+  # Basic usage
+  mkbranch patch/fix-bug major/main
+  mkbranch -r minor/feature major/main
+
+  # With GitHub-style comment
+  mkbranch patch/fix-bug major -m "Fix critical memory leak"
+  mkbranch -r minor/feature major/main -m "Add new dashboard feature"
+
+  # With Unix-style comment
+  mkbranch patch/fix-bug major -- Fix critical memory leak
+  mkbranch -r minor/feature major/main -- Add new dashboard feature
+
+  # Validation mode
+  mkbranch -v major/redesign main
+  mkbranch -v -r patch/hotfix main
+
 Exit codes:
   0   Success (or validation passed)
   1   Argument error
@@ -115,6 +142,7 @@ log_operation() {
   local branchname="$2"
   local basebranchname="$3"
   local message="$4"
+  local comment="${5:-}"
   local timestamp
 
   # Create logs directory if it doesn't exist
@@ -130,11 +158,18 @@ HEADER
 
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
 
-  # Append operation to log in simplified markdown format (no bullet points)
-  cat >> "$LOG_FILE" <<EOF
+  # Append operation to log in simplified markdown format
+  if [[ -n "$comment" ]]; then
+    cat >> "$LOG_FILE" <<EOF
+
+**$timestamp**: $message | Comment: $comment
+EOF
+  else
+    cat >> "$LOG_FILE" <<EOF
 
 **$timestamp**: $message
 EOF
+  fi
 }
 
 error_exit() {
@@ -142,11 +177,12 @@ error_exit() {
   local message="$2"
   local branchname="${3:-}"
   local basebranchname="${4:-}"
+  local comment="${5:-}"
 
   echo -e "${RED}Error:${NC} $message" >&2
 
   if [[ -n "$branchname" ]]; then
-    log_operation "FAILED" "$branchname" "$basebranchname" "Branch \`$branchname\` creation from \`$basebranchname\` failed - $message"
+    log_operation "FAILED" "$branchname" "$basebranchname" "Branch \`$branchname\` creation from \`$basebranchname\` failed - $message" "$comment"
   fi
 
   exit "$code"
@@ -253,7 +289,8 @@ normalize_branch_name() {
   return 0
 }
 
-# Parse options
+# Parse options and arguments
+POSITIONAL_ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help)
@@ -273,19 +310,42 @@ while [[ $# -gt 0 ]]; do
       VALIDATE_ONLY=true
       shift
       ;;
+    -m | --message)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -m requires a message argument" "" "" ""
+      fi
+      if [[ -n "$COMMENT" ]]; then
+        error_exit 1 "Cannot use both -m and -- for comment" "" "" ""
+      fi
+      COMMENT="$2"
+      shift 2
+      ;;
+    --)
+      # Unix-style comment: everything after -- is the comment
+      shift
+      if [[ -n "$COMMENT" ]]; then
+        error_exit 1 "Cannot use both -m and -- for comment" "" "" ""
+      fi
+      COMMENT="$*"
+      break
+      ;;
     -*)
-      error_exit 1 "Unknown option: $1" "" ""
+      error_exit 1 "Unknown option: $1" "" "" ""
       ;;
     *)
       # Positional argument
-      break
+      POSITIONAL_ARGS+=("$1")
+      shift
       ;;
   esac
 done
 
+# Restore positional arguments
+set -- "${POSITIONAL_ARGS[@]}"
+
 # Check that we have exactly 2 positional arguments
 if [[ $# -ne 2 ]]; then
-  error_exit 1 "Expected 2 arguments (branchname and basebranchname), got $#" "" ""
+  error_exit 1 "Expected 2 arguments (branchname and basebranchname), got $#" "" "" ""
 fi
 
 BRANCHNAME="$1"
@@ -293,17 +353,17 @@ BASEBRANCHNAME="$2"
 
 # Validate branch name format (basic validation)
 if [[ -z "$BRANCHNAME" ]]; then
-  error_exit 1 "Branch name cannot be empty" "$BRANCHNAME" "$BASEBRANCHNAME"
+  error_exit 1 "Branch name cannot be empty" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
 fi
 
 if [[ -z "$BASEBRANCHNAME" ]]; then
-  error_exit 1 "Base branch name cannot be empty" "$BRANCHNAME" "$BASEBRANCHNAME"
+  error_exit 1 "Base branch name cannot be empty" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
 fi
 
 # Normalize branch name (add default type if needed, validate if type specified)
 NORMALIZED_NAME=$(normalize_branch_name "$BRANCHNAME")
 if [[ $? -ne 0 ]]; then
-  error_exit 1 "Invalid branch name '$BRANCHNAME'. Must contain only lowercase letters, numbers, hyphens, and slashes. Type must be one of: ${VALID_TYPES[*]}" "$BRANCHNAME" "$BASEBRANCHNAME"
+  error_exit 1 "Invalid branch name '$BRANCHNAME'. Must contain only lowercase letters, numbers, hyphens, and slashes. Type must be one of: ${VALID_TYPES[*]}" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
 fi
 
 # If type was added, indicate it
@@ -318,7 +378,7 @@ BASE_TYPE=$(get_branch_type "$BASEBRANCHNAME")
 
 # Validate type hierarchy
 if ! is_type_hierarchy_valid "$NEW_TYPE" "$BASE_TYPE"; then
-  error_exit 6 "Type hierarchy violation: $NEW_TYPE branches cannot be created from $BASE_TYPE branches" "$BRANCHNAME" "$BASEBRANCHNAME"
+  error_exit 6 "Type hierarchy violation: $NEW_TYPE branches cannot be created from $BASE_TYPE branches" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
 fi
 
 # Change to repo root
@@ -340,7 +400,7 @@ esac
 # Fetch latest refs from remote
 info "Fetching latest refs from remote..."
 if ! git fetch origin >/dev/null 2>&1; then
-  error_exit 2 "Failed to fetch from remote" "$BRANCHNAME" "$BASEBRANCHNAME"
+  error_exit 2 "Failed to fetch from remote" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
 fi
 
 # Check if base branch exists (check both local and remote)
@@ -350,7 +410,7 @@ if ! git rev-parse --verify "$BASEBRANCHNAME" >/dev/null 2>&1; then
       echo -e "${RED}✗${NC} Base branch '$BASEBRANCHNAME' does not exist"
       exit 5
     else
-      error_exit 4 "Base branch '$BASEBRANCHNAME' does not exist" "$BRANCHNAME" "$BASEBRANCHNAME"
+      error_exit 4 "Base branch '$BASEBRANCHNAME' does not exist" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
     fi
   fi
   BASEBRANCHNAME="origin/$BASEBRANCHNAME"
@@ -362,7 +422,7 @@ if git rev-parse --verify "$BRANCHNAME" >/dev/null 2>&1; then
     echo -e "${RED}✗${NC} Branch '$BRANCHNAME' already exists locally"
     exit 5
   else
-    error_exit 3 "Branch '$BRANCHNAME' already exists locally" "$BRANCHNAME" "$BASEBRANCHNAME"
+    error_exit 3 "Branch '$BRANCHNAME' already exists locally" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
   fi
 fi
 
@@ -371,7 +431,7 @@ if git rev-parse --verify "origin/$BRANCHNAME" >/dev/null 2>&1; then
     echo -e "${RED}✗${NC} Branch '$BRANCHNAME' already exists on remote"
     exit 5
   else
-    error_exit 3 "Branch '$BRANCHNAME' already exists on remote" "$BRANCHNAME" "$BASEBRANCHNAME"
+    error_exit 3 "Branch '$BRANCHNAME' already exists on remote" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
   fi
 fi
 
@@ -384,7 +444,7 @@ fi
 # Create the branch
 info "Creating local branch from '$BASEBRANCHNAME'..."
 if ! git checkout -b "$BRANCHNAME" "$BASEBRANCHNAME" >/dev/null 2>&1; then
-  error_exit 2 "Failed to create branch '$BRANCHNAME'" "$BRANCHNAME" "$BASEBRANCHNAME"
+  error_exit 2 "Failed to create branch '$BRANCHNAME'" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
 fi
 
 success "Local branch '$BRANCHNAME' created"
@@ -396,12 +456,12 @@ if [[ "$MODE" == "remote" ]]; then
     # Clean up local branch on failure
     git checkout - >/dev/null 2>&1 || true
     git branch -D "$BRANCHNAME" >/dev/null 2>&1 || true
-    error_exit 2 "Failed to push branch to remote" "$BRANCHNAME" "$BASEBRANCHNAME"
+    error_exit 2 "Failed to push branch to remote" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
   fi
   success "Branch '$BRANCHNAME' pushed to remote"
-  log_operation "SUCCESS" "$BRANCHNAME" "$BASEBRANCHNAME" "Branch \`$BRANCHNAME\` created from \`$BASEBRANCHNAME\` and pushed to remote."
+  log_operation "SUCCESS" "$BRANCHNAME" "$BASEBRANCHNAME" "Branch \`$BRANCHNAME\` created from \`$BASEBRANCHNAME\` and pushed to remote." "$COMMENT"
 else
-  log_operation "SUCCESS" "$BRANCHNAME" "$BASEBRANCHNAME" "Branch \`$BRANCHNAME\` created from \`$BASEBRANCHNAME\`."
+  log_operation "SUCCESS" "$BRANCHNAME" "$BASEBRANCHNAME" "Branch \`$BRANCHNAME\` created from \`$BASEBRANCHNAME\`." "$COMMENT"
 fi
 
 exit 0
