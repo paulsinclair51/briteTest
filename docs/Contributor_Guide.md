@@ -626,13 +626,13 @@ part of the official codebase.
 
 #### Step 1: Prepare Your Changes
 
-Before submitting a PR, ensure:
+Before submitting a PR:
 
 - Ensure changes for PR are focused (not mixing unrelated changes), logically grouped,
   and well‑scoped.
 - Update documentation as needed in parallel with code changes.
-- Ensure changes follow Documentation Guidelines and Code Guidelines,
-- Update version numbers of modified versioned files as needed per Vereioning
+- Ensure changes follow the Documentation Guidelines and Code Guidelines,
+- Update version numbers of modified versioned files as needed per the Vereioning
   Guidelines.
 - Include test coverage for new behavior and modifications.
 - Ensure tests pass (run `make run` from the repository root).
@@ -658,7 +658,7 @@ Before submitting a PR, ensure:
 #### Step 4: Merge into Main
 
 - Once approved, the PR is merged into the `main` branch.
-- Changes are now part of the official codebase.
+- Changes are now part of the official codebase but not yet released.
 - The branch can be deleted after merging.
 </details>
 
@@ -673,7 +673,9 @@ that users can download and depend on.
 
 ### Release Workflow
 
-#### Step 1: Before Releasing
+#### Step 1: Prepare the Release
+
+Before releasing:
 
 - Prepare a preliminary release note for user that summarizes the changes.
 - Verify if release qualifies as a major, minor, patch, or documentation-only,
