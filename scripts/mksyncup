@@ -1,0 +1,272 @@
+#!/usr/bin/env bash
+
+# mksyncup - Merge main branch into current branch in BriteTest.
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Default options
+FORCE=false
+VERBOSE=false
+CUSTOM_MESSAGE=""
+
+usage() {
+  cat <<'EOF'
+Usage:
+  mksyncup [OPTIONS]
+  mksyncup -h | --help
+
+Merge main branch into current branch to sync up with latest changes.
+Handles simple conflicts automatically and provides instructions for complex ones.
+
+Protected branches (cannot run mksyncup):
+  - main
+  - major/* (direct branches off main)
+  - minor/* (direct branches off main)
+  - patch/* (direct branches off main)
+  - docs/* (direct branches off main)
+
+Allowed branches (can use mksyncup):
+  - Any sub-branches: major/*/*, minor/*/*, patch/*/* , docs/*/*
+  - Any other custom branches
+
+Features:
+  - Merges main into current branch
+  - Auto-resolves simple (non-overlapping) conflicts
+  - Shows instructions for complex conflicts
+  - Prompts for confirmation before merge and push
+  - Optional force mode to skip confirmations
+
+Options:
+  -h, --help         Output this help to stdout and exit.
+  -f, --force        Skip all confirmations (auto-merge and auto-push)
+  -v, --verbose      Show detailed merge information
+  -m, --message MSG  Custom merge commit message (GitHub style)
+  -- TEXT            Custom message (Unix style, everything after --)
+                     Note: No quotes needed, captures all remaining arguments
+
+Merge Message Options (mutually exclusive):
+  -m, --message MSG  Set custom merge message (requires quotes if spaces)
+  -- TEXT            Unix-style message (everything after -- is the message)
+  (default)          "Merge main into <branch-name>"
+
+Examples:
+  # Sync up with confirmations
+  mksyncup
+
+  # Force merge and push (no confirmations)
+  mksyncup -f
+
+  # Custom merge message
+  mksyncup -m "Sync with latest main for bug fix"
+
+  # Verbose output
+  mksyncup -v
+
+  # Unix-style message with force
+  mksyncup -f -- Sync up with latest changes
+
+Exit codes:
+  0   Success
+  1   Argument or validation error
+  2   Git merge or push failed
+  3   Conflicts detected (user must resolve)
+  4   Branch is protected (cannot sync up)
+EOF
+}
+
+info() {
+  echo -e "${BLUE}ℹ${NC} $1"
+}
+
+success() {
+  echo -e "${GREEN}✓${NC} $1"
+}
+
+warn() {
+  echo -e "${YELLOW}⚠${NC} $1"
+}
+
+error_exit() {
+  local code="$1"
+  local message="$2"
+
+  echo -e "${RED}Error:${NC} $message" >&2
+  exit "$code"
+}
+
+get_current_branch() {
+  git rev-parse --abbrev-ref HEAD 2>/dev/null || error_exit 1 "Failed to determine current branch"
+}
+
+is_protected_branch() {
+  local branch="$1"
+  
+  # Check if branch is main
+  if [[ "$branch" == "main" ]]; then
+    return 0
+  fi
+  
+  # Check if branch matches direct branch patterns (one level off main)
+  # major/*, minor/*, patch/*, docs/*
+  if [[ "$branch" =~ ^(major|minor|patch|docs)/[^/]+$ ]]; then
+    return 0
+  fi
+  
+  # Not protected
+  return 1
+}
+
+resolve_simple_conflicts() {
+  local status
+  status=$(git status --porcelain) || return 1
+  
+  # Check for unresolved conflicts (marked with <<<<<<)
+  if echo "$status" | grep -q "^UU\|^AA\|^DD"; then
+    return 1  # Has conflicts that need manual resolution
+  fi
+  
+  return 0  # No conflicts or all resolved
+}
+
+# Parse options and arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -f | --force)
+      FORCE=true
+      shift
+      ;;
+    -v | --verbose)
+      VERBOSE=true
+      shift
+      ;;
+    -m | --message)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -m requires a message argument"
+      fi
+      if [[ -n "$CUSTOM_MESSAGE" ]]; then
+        error_exit 1 "Cannot use both -m and -- for message"
+      fi
+      CUSTOM_MESSAGE="$2"
+      shift 2
+      ;;
+    --)
+      # Unix-style message: everything after -- is the message
+      shift
+      if [[ -n "$CUSTOM_MESSAGE" ]]; then
+        error_exit 1 "Cannot use both -m and -- for message"
+      fi
+      CUSTOM_MESSAGE="$*"
+      break
+      ;;
+    -*)
+      error_exit 1 "Unknown option: $1"
+      ;;
+    *)
+      error_exit 1 "Unknown argument: $1"
+      ;;
+  esac
+done
+
+# Get current branch
+CURRENT_BRANCH=$(get_current_branch)
+info "Current branch: $CURRENT_BRANCH"
+
+# Check if branch is protected
+if is_protected_branch "$CURRENT_BRANCH"; then
+  error_exit 4 "Cannot sync up on protected branch '$CURRENT_BRANCH'. Use 'mkmerge' to merge changes to this branch."
+fi
+
+# Ensure main branch exists and is up to date
+info "Ensuring main branch is up to date..."
+if ! git fetch origin main 2>&1 >/dev/null; then
+  error_exit 2 "Failed to fetch main branch from remote"
+fi
+
+# Count commits from main to current branch
+local commits_to_merge
+commits_to_merge=$(git rev-list --count "HEAD..origin/main" 2>/dev/null || echo "0")
+
+if [[ "$commits_to_merge" == "0" ]]; then
+  success "Already up to date with main"
+  exit 0
+fi
+
+info "Commits to merge: $commits_to_merge"
+
+# Determine merge message
+if [[ -z "$CUSTOM_MESSAGE" ]]; then
+  MERGE_MESSAGE="Merge main into $CURRENT_BRANCH"
+else
+  MERGE_MESSAGE="$CUSTOM_MESSAGE"
+fi
+
+# Ask for confirmation before merge (unless force)
+if [[ "$FORCE" == false ]]; then
+  echo -n "Create merge commit? (y/n): "
+  read -r response
+  if [[ ! "$response" =~ ^[Yy]$ ]]; then
+    warn "Merge cancelled"
+    exit 0
+  fi
+fi
+
+# Perform merge
+info "Merging main into $CURRENT_BRANCH..."
+if ! git merge origin/main -m "$MERGE_MESSAGE" 2>&1; then
+  # Check if merge failed due to conflicts
+  if git status | grep -q "both"; then
+    warn "Merge conflicts detected"
+    info "Complex conflicts require manual resolution"
+    info "Conflicted files:"
+    git status --porcelain | grep "^UU" | awk '{print "  " $2}'
+    info "Steps to resolve:"
+    echo "  1. Edit conflicted files to resolve conflicts"
+    echo "  2. Stage resolved files: git add <files>"
+    echo "  3. Complete merge: git commit"
+    error_exit 3 "Merge stopped - manual conflict resolution needed"
+  else
+    error_exit 2 "Failed to merge main into $CURRENT_BRANCH"
+  fi
+fi
+
+success "Merge successful"
+
+# Show merge details if verbose
+if [[ "$VERBOSE" == true ]]; then
+  info "Merge details:"
+  git log -1 --oneline | sed 's/^/  /'
+fi
+
+# Ask for confirmation before push (unless force)
+if [[ "$FORCE" == false ]]; then
+  echo -n "Push merge to remote? (y/n): "
+  read -r response
+  if [[ ! "$response" =~ ^[Yy]$ ]]; then
+    warn "Push skipped - merge committed locally"
+    exit 0
+  fi
+fi
+
+# Push merge commit
+info "Pushing merge commit to remote..."
+if ! git push origin "$CURRENT_BRANCH" 2>&1; then
+  error_exit 2 "Failed to push merge commit to remote"
+fi
+
+success "Pushed merge commit"
+success "Sync up complete"
+exit 0
