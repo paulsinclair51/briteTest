@@ -92,9 +92,13 @@ changes are released without a change to `M`, and it resets to
 
 6. [**Testing Requirements**](#6-testing-requirements)
 
-7. [**Pull Requests**](#7-pull-requests)
+7. [**Pull Request**](#7-pull-request)
 
-8. [**Glossary**](#8-glossary)
+8. [**Pull Release**](#8-release)
+
+9. [**Glossary**](#9-glossary)
+</details>
+
 </details>
 
 <details>
@@ -592,22 +596,9 @@ This guideline applies to all documentation (`.md` files).
 </details>
 
 <details>
-<summary>7. Pull Requests</summary>
+<summary>6. Testing Requirements</summary>
 
-## 7. Pull Requests
-
-Before submitting a PR:
-
-- Ensure tests pass.
-- Update version numbers if needed.
-- Update documentation as needed.
-- Keep changes focused and well‑scoped.
-</details>
-
-<details>
-<summary>8. Testing Requirements</summary>
-
-## 8. Testing Requirements
+## 6. Testing Requirements
 
 - Build and run tests from the repository root:
 
@@ -616,8 +607,42 @@ make run
 ```
 
 - Ensure report formatting changes are reflected in documentation examples.
-- Keep test code aligned with the current version of `runnerapi.h`.
+- Keep test code aligned with the current version of `runnerapi.h` and  
+  `testapi.h`.
 </
+</details>
+
+<details>
+<summary>7. Pull Request</summary>
+
+## 7. Pull Request
+
+- **Purpose**: Propose code changes for review
+- **Status**: Subject to review and revision
+- **Timing**: During development
+- **Version Change**: May or may not change version
+- **Scope**: Single, focused set of changes
+- **Audience**: Contributors and Approver (via review)
+
+Before submitting a PR:
+
+- Ensure tests pass.
+- Update version numbers of changed versioned files if same as current release.
+- Update documentation as needed.
+- Keep changes focused and well‑scoped.
+</details>
+
+<details>
+<summary>8. Release/summary>
+
+## 8. Release
+
+- **Purpose**: Publish a version for users.
+- **Status**: Immutable and public,
+- **Timing**: After the PRs (pull requests) for the release are merged and approved,
+- **Version Change**: Verify versioning of files (see Versioning Guidelines)
+- *Scope**: Bundles multiple merged PRs,
+- **Audience**: End users,
 </details>
 
 <details>
