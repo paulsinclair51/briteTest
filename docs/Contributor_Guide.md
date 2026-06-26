@@ -646,14 +646,18 @@ Before submitting a PR:
 
 #### Step 3: Code Review and Approval
 
-- An **Approver** (contributor with commit access) and, optionally, other
-  contributors reviews the PR.
-- They verify:
+- An **approver** (contributor with commit access) and, optionally, other
+  contributors review the PR to verify:
   - Tests pass and there are no regressions,
   - Versioning rules are enforced,
   - Documentation consistency is maintained,
   - Changes align with code and contribution guidelines,
-- The Approver of reviewing contributors may request changes or approve the PR.
+  - The Approver or a reviewing contributor may equest changes.
+- The approver does one of the following:
+  - Approves the PR for the next release - continue with Step 4.
+  - Rejects the PR.
+  - Defers the PR for a subsequent release. The contributor may resubmit the PR
+    after the next release is committed or when advised by the approver.
 
 #### Step 4: Merge into Main
 
