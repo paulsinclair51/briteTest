@@ -59,7 +59,7 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 - The **Test** column records the Test API version current
   when this document was released and is defined by its
   `TA_VERSION` macro.
-- Both the Runner and Test API use the version format `"M.m.p"` (Major, minor,
+- Both the Runner API and Test API use the version format `"M.m.p"` (Major, minor,
   patch).
 - `M` is the same for the Document, Runner, and Test versions.
 
