@@ -1,0 +1,263 @@
+#!/usr/bin/env bash
+
+# mkcommit - Commit and optionally push changes to the BriteTest repository.
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Default options
+COMMIT_MESSAGE=""
+PUSH=false
+FORCE=false
+FILES=()
+
+usage() {
+  cat <<'EOF'
+Usage:
+  mkcommit [OPTIONS] [files...]
+  mkcommit -h | --help
+
+Commit changes to the current branch in BriteTest.
+Stages all changes by default and commits them with a message.
+Optionally pushes to remote.
+
+Protected branches (require mkmerge for changes):
+  - main
+  - major/* (direct branches off main)
+  - minor/* (direct branches off main)
+  - patch/* (direct branches off main)
+  - docs/* (direct branches off main)
+
+Allowed branches (can use mkcommit):
+  - Any sub-branches: major/*/*, minor/*/*, patch/*/* , docs/*/*
+  - Any other custom branches
+
+Arguments:
+  [files...]         Optional list of files to stage and commit
+                     If not specified, stages all changes (git add .)
+                     Examples: mkcommit file1.js file2.js
+                               mkcommit src/index.js
+
+Commit Message Options (mutually exclusive):
+  -m, --message MSG  Commit message (GitHub style, requires quotes if spaces)
+                     Usage: mkcommit -m "Fix authentication bug"
+  -- TEXT            Unix-style message (everything after -- is the message)
+                     Usage: mkcommit -- Fix authentication bug
+                     Note: No quotes needed, captures all remaining arguments
+
+Push Options:
+  -p, --push         Push changes to remote after commit
+                     Shows confirmation prompt before pushing
+  -f, --force        Force push (skip confirmation, use with caution)
+                     Only applies with -p/--push
+
+Options:
+  -h, --help         Output this help to stdout and exit.
+
+Examples:
+  # Commit all changes locally only
+  mkcommit -m "Fix authentication bug in login module"
+
+  # Commit specific files locally
+  mkcommit src/auth.js src/login.js -m "Update authentication logic"
+
+  # Commit all changes and push (with confirmation)
+  mkcommit -m "Add new feature" -p
+
+  # Commit and force push (skip confirmation)
+  mkcommit -m "Rebase and force push" -p -f
+
+  # Unix-style message
+  mkcommit -- Fix critical memory leak
+
+  # Commit specific files with Unix-style message
+  mkcommit file1.js file2.js -- Update parser logic
+
+Exit codes:
+  0   Success
+  1   Argument or validation error
+  2   Git staging or commit failed
+  3   Git push failed
+  4   Conflict handling failed
+EOF
+}
+
+info() {
+  echo -e "${BLUE}ℹ${NC} $1"
+}
+
+success() {
+  echo -e "${GREEN}✓${NC} $1"
+}
+
+warn() {
+  echo -e "${YELLOW}⚠${NC} $1"
+}
+
+error_exit() {
+  local code="$1"
+  local message="$2"
+
+  echo -e "${RED}Error:${NC} $message" >&2
+  exit "$code"
+}
+
+get_current_branch() {
+  git rev-parse --abbrev-ref HEAD 2>/dev/null || error_exit 1 "Failed to determine current branch"
+}
+
+is_protected_branch() {
+  local branch="$1"
+  
+  # Check if branch is main
+  if [[ "$branch" == "main" ]]; then
+    return 0
+  fi
+  
+  # Check if branch matches direct branch patterns (one level off main)
+  # major/*, minor/*, patch/*, docs/*
+  if [[ "$branch" =~ ^(major|minor|patch|docs)/[^/]+$ ]]; then
+    return 0
+  fi
+  
+  # Not protected
+  return 1
+}
+
+# Parse options and arguments
+POSITIONAL_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -m | --message)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -m requires a message argument"
+      fi
+      if [[ -n "$COMMIT_MESSAGE" ]]; then
+        error_exit 1 "Cannot use both -m and -- for message"
+      fi
+      COMMIT_MESSAGE="$2"
+      shift 2
+      ;;
+    -p | --push)
+      PUSH=true
+      shift
+      ;;
+    -f | --force)
+      FORCE=true
+      shift
+      ;;
+    --)
+      # Unix-style message: everything after -- is the message
+      shift
+      if [[ -n "$COMMIT_MESSAGE" ]]; then
+        error_exit 1 "Cannot use both -m and -- for message"
+      fi
+      COMMIT_MESSAGE="$*"
+      break
+      ;;
+    -*)
+      error_exit 1 "Unknown option: $1"
+      ;;
+    *)
+      # Positional argument (file)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+# Restore positional arguments
+set -- "${POSITIONAL_ARGS[@]}"
+
+# Collect files
+FILES=("$@")
+
+# Validate commit message
+if [[ -z "$COMMIT_MESSAGE" ]]; then
+  error_exit 1 "Commit message is required (-m or -- followed by message)"
+fi
+
+# Get current branch
+CURRENT_BRANCH=$(get_current_branch)
+info "Current branch: $CURRENT_BRANCH"
+
+# Check if branch is protected
+if is_protected_branch "$CURRENT_BRANCH"; then
+  error_exit 1 "Cannot commit directly to protected branch '$CURRENT_BRANCH'. Use 'mkmerge' to merge changes to this branch."
+fi
+
+# Stage changes
+info "Staging changes..."
+if [[ ${#FILES[@]} -eq 0 ]]; then
+  # Stage all changes
+  if ! git add . 2>&1; then
+    error_exit 2 "Failed to stage changes"
+  fi
+  info "Staged all changes"
+else
+  # Stage specific files
+  if ! git add "${FILES[@]}" 2>&1; then
+    error_exit 2 "Failed to stage files: ${FILES[*]}"
+  fi
+  info "Staged files: ${FILES[*]}"
+fi
+
+# Check if there are staged changes
+if ! git diff --cached --quiet; then
+  # Create commit
+  info "Creating commit..."
+  if ! git commit -m "$COMMIT_MESSAGE" 2>&1; then
+    error_exit 2 "Failed to create commit"
+  fi
+  success "Commit created: $COMMIT_MESSAGE"
+else
+  warn "No changes staged to commit"
+  exit 0
+fi
+
+# Push if requested
+if [[ "$PUSH" == true ]]; then
+  info "Ready to push to remote"
+  
+  # Show what will be pushed
+  info "Pushing branch '$CURRENT_BRANCH' to remote..."
+  
+  if [[ "$FORCE" == false ]]; then
+    # Ask for confirmation
+    echo -n "Push to remote? (y/n): "
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+      warn "Push cancelled"
+      exit 0
+    fi
+  fi
+  
+  # Push changes
+  if [[ "$FORCE" == true ]]; then
+    if ! git push --force origin "$CURRENT_BRANCH" 2>&1; then
+      error_exit 3 "Failed to force push to remote"
+    fi
+    success "Force pushed to remote"
+  else
+    if ! git push origin "$CURRENT_BRANCH" 2>&1; then
+      error_exit 3 "Failed to push to remote"
+    fi
+    success "Pushed to remote"
+  fi
+fi
+
+success "Commit complete"
+exit 0
