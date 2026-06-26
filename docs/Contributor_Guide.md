@@ -618,7 +618,7 @@ make run
 
 ## 7. Making Modifications in a Branch
 
-- Define modificationd that are focused (not mixing unrelated changes), 
+- Define modifications that are focused (not mixing unrelated changes), 
   logically grouped, and well‑scoped.
 - Define an appropriate name for your changes to use as the branch nmme.
 - Obtain preliminary approval and target release for the modifications and
