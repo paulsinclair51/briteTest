@@ -22,6 +22,9 @@ NC='\033[0m' # No Color
 MODE="local"  # local, remote, or validate
 VALIDATE_ONLY=false
 
+# Valid branch type prefixes
+VALID_TYPES=("major" "minor" "patch" "docs")
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -31,8 +34,23 @@ Usage:
 Create a new branch from a base branch with optional remote push.
 
 Arguments:
-  <branchname>       Name of the new branch to create
+  <branchname>       Name of the new branch to create (format: <type>/<description>)
   <basebranchname>   Name of the base branch to create from
+
+Branch Naming Convention:
+  Branches should follow the format: <type>/<description>
+  
+  Types (default is 'patch'):
+    major  - Major features or changes (e.g., major/new-ui-system, major/core-refactor)
+    minor  - Minor features or changes (e.g., minor/add-logging, minor/optimize-parser)
+    patch  - Bug fixes (e.g., patch/fix-login-bug, patch/memory-leak)
+    docs   - Documentation updates only (e.g., docs/api-guide, docs/setup-instructions)
+
+  Examples:
+    mkbranch major/redesign-authentication main
+    mkbranch minor/improve-performance main
+    mkbranch patch/fix-memory-leak develop
+    mkbranch docs/update-readme main
 
 Options:
   -h, --help         Output this help to stdout and exit.
@@ -82,7 +100,7 @@ log_operation() {
     cat > "$LOG_FILE" <<'HEADER'
 # Branch History Log
 
-Log of branch creation operations.
+Log of branch creation and deletion operations.
 
 ## Operations
 
@@ -118,6 +136,32 @@ info() {
 
 success() {
   echo -e "${GREEN}✓${NC} $1"
+}
+
+warn() {
+  echo -e "${YELLOW}⚠${NC} $1"
+}
+
+validate_branch_name() {
+  local branchname="$1"
+  
+  # Check if branch contains a slash (type/description format)
+  if [[ ! "$branchname" =~ / ]]; then
+    return 1
+  fi
+  
+  # Extract the type (part before the slash)
+  local type="${branchname%%/*}"
+  
+  # Check if type is valid
+  local valid
+  for valid in "${VALID_TYPES[@]}"; do
+    if [[ "$type" == "$valid" ]]; then
+      return 0
+    fi
+  done
+  
+  return 1
 }
 
 # Parse options
@@ -165,6 +209,18 @@ fi
 
 if [[ -z "$BASEBRANCHNAME" ]]; then
   error_exit 1 "Base branch name cannot be empty" "$BRANCHNAME" "$BASEBRANCHNAME"
+fi
+
+# Validate branch naming convention
+if ! validate_branch_name "$BRANCHNAME"; then
+  warn "Branch name '$BRANCHNAME' does not follow naming convention (type/description)"
+  echo "  Valid types: ${VALID_TYPES[*]}"
+  echo "  Example: patch/fix-bug, minor/add-feature, major/refactor, docs/api-guide"
+  read -p "Continue anyway? (y/N) " response
+  case "$response" in
+    [yY]) ;;
+    *) exit 1 ;;
+  esac
 fi
 
 # Change to repo root
