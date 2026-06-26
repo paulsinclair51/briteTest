@@ -21,6 +21,7 @@ NC='\033[0m' # No Color
 # Default options
 MODE="local"  # local, remote, or both
 FORCE=false
+COMMENT=""
 
 # Protected branches that cannot be deleted
 PROTECTED_BRANCHES=("main" "master" "develop" "development")
@@ -31,7 +32,7 @@ VALID_TYPES=("major" "minor" "patch" "docs")
 usage() {
   cat <<'EOF'
 Usage:
-  rmbranch [OPTIONS] <branchname>
+  rmbranch [OPTIONS] <branchname> [COMMENT]
   rmbranch -h | --help
 
 Remove a branch locally and/or from remote.
@@ -40,6 +41,13 @@ Arguments:
   <branchname>       Name of the branch to remove
                      Format: [<type>/]<description>
                      Examples: patch/fix-bug, minor/add-feature, major/refactor, docs/api-guide
+
+Comment Options (mutually exclusive):
+  -m, --message MSG  Attach a commit message/comment to the operation
+                     Usage: rmbranch patch/old-fix -m "Reverted in favor of better approach"
+  -- COMMENT TEXT    Unix-style comment (everything after -- is the comment)
+                     Usage: rmbranch patch/old-fix -- Reverted in favor of better approach
+                     Note: No quotes needed, captures all remaining arguments
 
 Branch Naming Convention:
   Branches typically follow the format: <type>/<description>
@@ -67,6 +75,8 @@ Options:
   -r                 Remove branch from remote only.
   -a                 Remove from both local and remote.
   -f                 Force removal (no confirmation prompt).
+  -m, --message MSG  Add comment message (GitHub style, requires quotes if spaces)
+  -- TEXT            Add comment (Unix style, everything after -- is the comment)
 
 Modes:
   Local (-l, default):
@@ -81,6 +91,24 @@ Modes:
     - Delete the local branch
     - Delete the branch from remote
     - Log the operation to logs/branch_history.md
+
+Examples:
+  # Basic usage
+  rmbranch patch/old-fix
+  rmbranch -r major/experiment
+  rmbranch -a -f minor/temp-feature
+
+  # With GitHub-style comment
+  rmbranch patch/old-fix -m "Reverted in favor of better approach"
+  rmbranch -r major/experiment -m "Experiment failed, consolidating into main"
+
+  # With Unix-style comment
+  rmbranch patch/old-fix -- Reverted in favor of better approach
+  rmbranch -r major/experiment -- Experiment failed, consolidating into main
+
+  # Force removal with comment
+  rmbranch -f patch/temp -m "Temporary testing branch"
+  rmbranch -a -f major/old -- Cleanup old feature branch
 
 Exit codes:
   0   Success
@@ -97,6 +125,7 @@ log_operation() {
   local status="$1"
   local branchname="$2"
   local message="$3"
+  local comment="${4:-}"
   local timestamp
 
   # Create logs directory if it doesn't exist
@@ -112,22 +141,30 @@ HEADER
 
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
 
-  # Append operation to log in simplified markdown format (no bullet points)
-  cat >> "$LOG_FILE" <<EOF
+  # Append operation to log in simplified markdown format
+  if [[ -n "$comment" ]]; then
+    cat >> "$LOG_FILE" <<EOF
+
+**$timestamp**: $message | Comment: $comment
+EOF
+  else
+    cat >> "$LOG_FILE" <<EOF
 
 **$timestamp**: $message
 EOF
+  fi
 }
 
 error_exit() {
   local code="$1"
   local message="$2"
   local branchname="${3:-}"
+  local comment="${4:-}"
 
   echo -e "${RED}Error:${NC} $message" >&2
 
   if [[ -n "$branchname" ]]; then
-    log_operation "FAILED" "$branchname" "Branch \`$branchname\` deletion failed - $message"
+    log_operation "FAILED" "$branchname" "Branch \`$branchname\` deletion failed - $message" "$comment"
   fi
 
   exit "$code"
@@ -193,7 +230,8 @@ confirm_deletion() {
   esac
 }
 
-# Parse options
+# Parse options and arguments
+POSITIONAL_ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help)
@@ -216,15 +254,38 @@ while [[ $# -gt 0 ]]; do
       FORCE=true
       shift
       ;;
+    -m | --message)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -m requires a message argument" "" ""
+      fi
+      if [[ -n "$COMMENT" ]]; then
+        error_exit 1 "Cannot use both -m and -- for comment" "" ""
+      fi
+      COMMENT="$2"
+      shift 2
+      ;;
+    --)
+      # Unix-style comment: everything after -- is the comment
+      shift
+      if [[ -n "$COMMENT" ]]; then
+        error_exit 1 "Cannot use both -m and -- for comment" "" ""
+      fi
+      COMMENT="$*"
+      break
+      ;;
     -*)
-      error_exit 1 "Unknown option: $1" ""
+      error_exit 1 "Unknown option: $1" "" ""
       ;;
     *)
       # Positional argument
-      break
+      POSITIONAL_ARGS+=("$1")
+      shift
       ;;
   esac
 done
+
+# Restore positional arguments
+set -- "${POSITIONAL_ARGS[@]}"
 
 # Check that we have exactly 1 positional argument
 if [[ $# -ne 1 ]]; then
@@ -248,13 +309,13 @@ if [[ "$BRANCHNAME" =~ / ]]; then
   
   # Validate the specified type
   if ! is_valid_type "$SPECIFIED_TYPE"; then
-    error_exit 1 "Invalid branch type '$SPECIFIED_TYPE'. Valid types: ${VALID_TYPES[*]}" "$BRANCHNAME"
+    error_exit 1 "Invalid branch type '$SPECIFIED_TYPE'. Valid types: ${VALID_TYPES[*]}" "$BRANCHNAME" "$COMMENT"
   fi
 fi
 
 # Check if branch is protected
 if is_protected_branch "$BRANCHNAME"; then
-  error_exit 4 "Branch '$BRANCHNAME' is protected and cannot be deleted" "$BRANCHNAME"
+  error_exit 4 "Branch '$BRANCHNAME' is protected and cannot be deleted" "$BRANCHNAME" "$COMMENT"
 fi
 
 # Change to repo root
@@ -280,7 +341,7 @@ esac
 if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
   info "Fetching latest refs from remote..."
   if ! git fetch origin >/dev/null 2>&1; then
-    error_exit 2 "Failed to fetch from remote" "$BRANCHNAME"
+    error_exit 2 "Failed to fetch from remote" "$BRANCHNAME" "$COMMENT"
   fi
 fi
 
@@ -298,11 +359,11 @@ fi
 
 # Verify branch exists in the requested mode
 if [[ "$MODE" == "local" && "$LOCAL_EXISTS" == false ]]; then
-  error_exit 3 "Local branch '$BRANCHNAME' does not exist" "$BRANCHNAME"
+  error_exit 3 "Local branch '$BRANCHNAME' does not exist" "$BRANCHNAME" "$COMMENT"
 elif [[ "$MODE" == "remote" && "$REMOTE_EXISTS" == false ]]; then
-  error_exit 3 "Remote branch '$BRANCHNAME' does not exist" "$BRANCHNAME"
+  error_exit 3 "Remote branch '$BRANCHNAME' does not exist" "$BRANCHNAME" "$COMMENT"
 elif [[ "$MODE" == "both" && "$LOCAL_EXISTS" == false && "$REMOTE_EXISTS" == false ]]; then
-  error_exit 3 "Branch '$BRANCHNAME' does not exist locally or remotely" "$BRANCHNAME"
+  error_exit 3 "Branch '$BRANCHNAME' does not exist locally or remotely" "$BRANCHNAME" "$COMMENT"
 fi
 
 # If type was specified, validate that the branch actually has that type
@@ -330,7 +391,7 @@ if [[ "$MODE" == "local" || "$MODE" == "both" ]]; then
       if ! git checkout main >/dev/null 2>&1; then
         # Try master if main doesn't exist
         if ! git checkout master >/dev/null 2>&1; then
-          error_exit 2 "Failed to switch away from branch '$BRANCHNAME'" "$BRANCHNAME"
+          error_exit 2 "Failed to switch away from branch '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
         fi
       fi
     fi
@@ -339,7 +400,7 @@ if [[ "$MODE" == "local" || "$MODE" == "both" ]]; then
       # Try force delete with -D
       warn "Local branch has unmerged commits, forcing deletion..."
       if ! git branch -D "$BRANCHNAME" >/dev/null 2>&1; then
-        error_exit 2 "Failed to delete local branch '$BRANCHNAME'" "$BRANCHNAME"
+        error_exit 2 "Failed to delete local branch '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
       fi
     fi
     
@@ -352,7 +413,7 @@ if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
   if [[ "$REMOTE_EXISTS" == true ]]; then
     info "Deleting remote branch..."
     if ! git push origin --delete "$BRANCHNAME" >/dev/null 2>&1; then
-      error_exit 2 "Failed to delete remote branch '$BRANCHNAME'" "$BRANCHNAME"
+      error_exit 2 "Failed to delete remote branch '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
     fi
     
     success "Remote branch '$BRANCHNAME' deleted"
@@ -360,7 +421,7 @@ if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
 fi
 
 # Log successful operation
-log_operation "SUCCESS" "$BRANCHNAME" "Branch \`$BRANCHNAME\` deleted."
+log_operation "SUCCESS" "$BRANCHNAME" "Branch \`$BRANCHNAME\` deleted." "$COMMENT"
 
 success "Branch '$BRANCHNAME' successfully removed"
 
