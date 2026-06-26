@@ -107,18 +107,15 @@ log_operation() {
     cat > "$LOG_FILE" <<'HEADER'
 # Branch History Log
 
-Log of branch creation and deletion operations.
-
-## Operations
-
 HEADER
   fi
 
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
 
-  # Append operation to log in markdown format
+  # Append operation to log in simplified markdown format (no bullet points)
   cat >> "$LOG_FILE" <<EOF
-- **$timestamp**: $message
+
+**$timestamp**: $message
 EOF
 }
 
