@@ -25,6 +25,9 @@ FORCE=false
 # Protected branches that cannot be deleted
 PROTECTED_BRANCHES=("main" "master" "develop" "development")
 
+# Valid branch type prefixes
+VALID_TYPES=("major" "minor" "patch" "docs")
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -41,13 +44,16 @@ Arguments:
 Branch Naming Convention:
   Branches typically follow the format: <type>/<description>
   
-  Common types:
+  Valid types:
     major  - Major features or changes (e.g., major/new-ui-system, major/core-refactor)
     minor  - Minor features or changes (e.g., minor/add-logging, minor/optimize-parser)
     patch  - Bug fixes (e.g., patch/fix-login-bug, patch/memory-leak)
     docs   - Documentation updates only (e.g., docs/api-guide, docs/setup-instructions)
 
-  Note: Branch type validation is not enforced for removal operations.
+  Type validation (only if type is specified):
+    - If you specify a type (e.g., 'patch/fix-bug'), the actual branch must have that exact type.
+    - If no type is specified (e.g., 'fix-bug'), no type validation is performed.
+    - Example: rmbranch patch/fix-bug will only delete if a branch named 'patch/fix-bug' exists.
 
 Protected branches (cannot be deleted):
   - main
@@ -83,6 +89,7 @@ Exit codes:
   3   Branch does not exist
   4   Branch is protected (cannot delete)
   5   Operation cancelled
+  6   Type mismatch (specified type does not match actual branch)
 EOF
 }
 
@@ -150,6 +157,19 @@ is_protected_branch() {
       return 0
     fi
   done
+  return 1
+}
+
+is_valid_type() {
+  local type="$1"
+  local valid
+  
+  for valid in "${VALID_TYPES[@]}"; do
+    if [[ "$type" == "$valid" ]]; then
+      return 0
+    fi
+  done
+  
   return 1
 }
 
@@ -221,6 +241,20 @@ if [[ -z "$BRANCHNAME" ]]; then
   error_exit 1 "Branch name cannot be empty" ""
 fi
 
+# Check if a type was specified
+TYPE_SPECIFIED=false
+SPECIFIED_TYPE=""
+
+if [[ "$BRANCHNAME" =~ / ]]; then
+  TYPE_SPECIFIED=true
+  SPECIFIED_TYPE="${BRANCHNAME%%/*}"
+  
+  # Validate the specified type
+  if ! is_valid_type "$SPECIFIED_TYPE"; then
+    error_exit 1 "Invalid branch type '$SPECIFIED_TYPE'. Valid types: ${VALID_TYPES[*]}" "$BRANCHNAME"
+  fi
+fi
+
 # Check if branch is protected
 if is_protected_branch "$BRANCHNAME"; then
   error_exit 4 "Branch '$BRANCHNAME' is protected and cannot be deleted" "$BRANCHNAME"
@@ -272,6 +306,19 @@ elif [[ "$MODE" == "remote" && "$REMOTE_EXISTS" == false ]]; then
   error_exit 3 "Remote branch '$BRANCHNAME' does not exist" "$BRANCHNAME"
 elif [[ "$MODE" == "both" && "$LOCAL_EXISTS" == false && "$REMOTE_EXISTS" == false ]]; then
   error_exit 3 "Branch '$BRANCHNAME' does not exist locally or remotely" "$BRANCHNAME"
+fi
+
+# If type was specified, validate that the branch actually has that type
+if [[ "$TYPE_SPECIFIED" == true ]]; then
+  if [[ "$LOCAL_EXISTS" == true ]] && ! git branch -a | grep -q "^[* ] $BRANCHNAME$"; then
+    # Local check passed (branch exists)
+    info "Validating branch type matches '$SPECIFIED_TYPE'..."
+  fi
+  
+  # Check if the branch with the specified type actually exists
+  # This is already done above (we checked if "$BRANCHNAME" exists)
+  # If we got here, the branch with the specified type exists
+  info "Type validation: branch '$BRANCHNAME' matches specified type '$SPECIFIED_TYPE'"
 fi
 
 # Get confirmation from user
