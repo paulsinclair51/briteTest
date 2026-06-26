@@ -34,13 +34,15 @@ Usage:
 Create a new branch from a base branch with optional remote push.
 
 Arguments:
-  <branchname>       Name of the new branch to create (format: <type>/<description>)
+  <branchname>       Name of the new branch to create
+                     Format: [<type>/]<description>
+                     If no type prefix is specified, 'patch/' is used by default.
   <basebranchname>   Name of the base branch to create from
 
 Branch Naming Convention:
   Branches should follow the format: <type>/<description>
   
-  Types (default is 'patch'):
+  Types (default is 'patch' if no type specified):
     major  - Major features or changes (e.g., major/new-ui-system, major/core-refactor)
     minor  - Minor features or changes (e.g., minor/add-logging, minor/optimize-parser)
     patch  - Bug fixes (e.g., patch/fix-login-bug, patch/memory-leak)
@@ -48,9 +50,16 @@ Branch Naming Convention:
 
   Examples:
     mkbranch major/redesign-authentication main
+      Creates: major/redesign-authentication
+    
+    mkbranch fix-login-bug main
+      Creates: patch/fix-login-bug (default type)
+    
     mkbranch minor/improve-performance main
-    mkbranch patch/fix-memory-leak develop
+      Creates: minor/improve-performance
+    
     mkbranch docs/update-readme main
+      Creates: docs/update-readme
 
 Options:
   -h, --help         Output this help to stdout and exit.
@@ -62,7 +71,7 @@ Modes:
   Local (-l):
     - Verify the base branch exists
     - Check that the new branch doesn't already exist
-    - Create the new branch from the base branch
+    - Create the new branch from the base branch (adding default type if needed)
     - Log the operation to logs/branch_history.md
 
   Remote (-r):
@@ -72,6 +81,7 @@ Modes:
   Validate (-v):
     - Verify the base branch exists
     - Check that the new branch doesn't already exist
+    - Validate branch naming format (if type is specified, must be valid)
     - Report validity without creating or pushing
     - Exit with status code indicating validity
 
@@ -138,23 +148,10 @@ success() {
   echo -e "${GREEN}✓${NC} $1"
 }
 
-warn() {
-  echo -e "${YELLOW}⚠${NC} $1"
-}
-
-validate_branch_name() {
-  local branchname="$1"
-  
-  # Check if branch contains a slash (type/description format)
-  if [[ ! "$branchname" =~ / ]]; then
-    return 1
-  fi
-  
-  # Extract the type (part before the slash)
-  local type="${branchname%%/*}"
-  
-  # Check if type is valid
+is_valid_type() {
+  local type="$1"
   local valid
+  
   for valid in "${VALID_TYPES[@]}"; do
     if [[ "$type" == "$valid" ]]; then
       return 0
@@ -162,6 +159,29 @@ validate_branch_name() {
   done
   
   return 1
+}
+
+normalize_branch_name() {
+  local branchname="$1"
+  
+  # Check if branch contains a slash (type/description format)
+  if [[ "$branchname" =~ / ]]; then
+    # Extract the type (part before the slash)
+    local type="${branchname%%/*}"
+    
+    # Validate the type
+    if ! is_valid_type "$type"; then
+      return 1
+    fi
+    
+    # Return as-is (already has valid type)
+    echo "$branchname"
+  else
+    # No type specified, default to patch
+    echo "patch/$branchname"
+  fi
+  
+  return 0
 }
 
 # Parse options
@@ -211,16 +231,16 @@ if [[ -z "$BASEBRANCHNAME" ]]; then
   error_exit 1 "Base branch name cannot be empty" "$BRANCHNAME" "$BASEBRANCHNAME"
 fi
 
-# Validate branch naming convention
-if ! validate_branch_name "$BRANCHNAME"; then
-  warn "Branch name '$BRANCHNAME' does not follow naming convention (type/description)"
-  echo "  Valid types: ${VALID_TYPES[*]}"
-  echo "  Example: patch/fix-bug, minor/add-feature, major/refactor, docs/api-guide"
-  read -p "Continue anyway? (y/N) " response
-  case "$response" in
-    [yY]) ;;
-    *) exit 1 ;;
-  esac
+# Normalize branch name (add default type if needed, validate if type specified)
+NORMALIZED_NAME=$(normalize_branch_name "$BRANCHNAME")
+if [[ $? -ne 0 ]]; then
+  error_exit 1 "Invalid branch type in '$BRANCHNAME'. Valid types: ${VALID_TYPES[*]}" "$BRANCHNAME" "$BASEBRANCHNAME"
+fi
+
+# If type was added, indicate it
+if [[ "$NORMALIZED_NAME" != "$BRANCHNAME" ]]; then
+  info "Branch name normalized: '$BRANCHNAME' → '$NORMALIZED_NAME' (default type: patch)"
+  BRANCHNAME="$NORMALIZED_NAME"
 fi
 
 # Change to repo root
