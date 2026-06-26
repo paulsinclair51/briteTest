@@ -23,6 +23,7 @@ VALID_TYPES=("major" "minor" "patch" "docs")
 
 # Default behavior
 FILTER_TYPE=""
+FILTER_NAME=""
 SHOW_REMOTE=false
 SUMMARY_MODE=false
 
@@ -43,6 +44,9 @@ Options:
   -r, --remote       Show remote branches instead of local branches.
   -a, --all          Show both local and remote branches (with labels).
   -s, --summary      Show summary view: counts instead of full branch lists.
+  -f, --filter PAT   Filter branches by glob pattern (supports *, ?, [abc], etc.)
+                     If pattern contains no wildcards, it's auto-wrapped as *PAT*
+                     Examples: -f bug (same as -f "*bug*"), -f "fix*", -f "*issue"
 
 Examples:
   # List all local branches grouped by type
@@ -69,8 +73,29 @@ Examples:
   # Show summary of remote branches
   lsbranch -s -r
 
-  # Show patch branches with summary
-  lsbranch -s patch
+  # Filter branches by name pattern (auto-wrapped)
+  lsbranch -f bug              # matches branches containing "bug"
+  lsbranch -f login            # matches branches containing "login"
+
+  # Explicit glob patterns
+  lsbranch -f "fix*"           # branches starting with "fix"
+  lsbranch -f "*issue"         # branches ending with "issue"
+  lsbranch -f "api-*"          # branches starting with "api-"
+
+  # Combine type filter and name filter
+  lsbranch patch -f bug        # patch branches matching "*bug*"
+  lsbranch -s patch -f fix     # summary of patch branches matching "*fix*"
+
+  # Combine all options
+  lsbranch -s -r -f memory     # remote branch count summary matching "*memory*"
+  lsbranch -s -a patch -f api  # local and remote patch branches matching "*api*"
+
+Filter Pattern Examples:
+  -f bug         → matches: patch/fix-bug, major/bug-report, docs/bug-guide
+  -f "fix*"      → matches: patch/fix-bug, patch/fix-memory (not patch/hotfix)
+  -f "*issue"    → matches: patch/login-issue, minor/api-issue (not patch/issue-fix)
+  -f "api-*"     → matches: patch/api-error, docs/api-guide
+  -f "*[0-9]"    → matches: patch/fix-bug1, patch/issue-2
 
 Output Format (Full):
   When listing all types, branches are grouped by type:
@@ -119,6 +144,31 @@ error_exit() {
   exit "$code"
 }
 
+# Auto-wrap filter pattern: if no wildcards, wrap as *pattern*
+normalize_filter() {
+  local pattern="$1"
+  
+  # Check if pattern contains any glob characters: * ? [ ]
+  if [[ "$pattern" =~ [\*\?\[] ]]; then
+    # Already has wildcards, return as-is
+    echo "$pattern"
+  else
+    # No wildcards, auto-wrap as *pattern*
+    echo "*${pattern}*"
+  fi
+}
+
+matches_filter() {
+  local branch="$1"
+  local pattern="$2"
+  
+  # Use bash glob matching
+  if [[ "$branch" == $pattern ]]; then
+    return 0
+  fi
+  return 1
+}
+
 list_by_type_local() {
   local type="$1"
   local branches
@@ -149,10 +199,32 @@ list_by_type_remote() {
   return 0
 }
 
+filter_branches() {
+  local branches="$1"
+  local pattern="$2"
+  local filtered=""
+  
+  while IFS= read -r branch; do
+    if matches_filter "$branch" "$pattern"; then
+      filtered+="$branch"$'\n'
+    fi
+  done <<< "$branches"
+  
+  # Remove trailing newline
+  echo "${filtered%$'\n'}"
+}
+
 count_by_type_local() {
   local type="$1"
   if branches=$(list_by_type_local "$type" 2>/dev/null); then
-    echo "$branches" | wc -l
+    if [[ -n "$FILTER_NAME" ]]; then
+      branches=$(filter_branches "$branches" "$FILTER_NAME")
+    fi
+    if [[ -z "$branches" ]]; then
+      echo "0"
+    else
+      echo "$branches" | wc -l
+    fi
   else
     echo "0"
   fi
@@ -161,7 +233,14 @@ count_by_type_local() {
 count_by_type_remote() {
   local type="$1"
   if branches=$(list_by_type_remote "$type" 2>/dev/null); then
-    echo "$branches" | wc -l
+    if [[ -n "$FILTER_NAME" ]]; then
+      branches=$(filter_branches "$branches" "$FILTER_NAME")
+    fi
+    if [[ -z "$branches" ]]; then
+      echo "0"
+    else
+      echo "$branches" | wc -l
+    fi
   else
     echo "0"
   fi
@@ -173,6 +252,14 @@ list_all_types_local() {
   
   for type in "${VALID_TYPES[@]}"; do
     if branches=$(list_by_type_local "$type" 2>/dev/null); then
+      if [[ -n "$FILTER_NAME" ]]; then
+        branches=$(filter_branches "$branches" "$FILTER_NAME")
+      fi
+      
+      if [[ -z "$branches" ]]; then
+        continue
+      fi
+      
       count=$(echo "$branches" | wc -l)
       has_any=true
       
@@ -216,6 +303,14 @@ list_all_types_remote() {
   
   for type in "${VALID_TYPES[@]}"; do
     if branches=$(list_by_type_remote "$type" 2>/dev/null); then
+      if [[ -n "$FILTER_NAME" ]]; then
+        branches=$(filter_branches "$branches" "$FILTER_NAME")
+      fi
+      
+      if [[ -z "$branches" ]]; then
+        continue
+      fi
+      
       count=$(echo "$branches" | wc -l)
       has_any=true
       
@@ -263,6 +358,14 @@ list_all_types_both() {
   
   for type in "${VALID_TYPES[@]}"; do
     if branches=$(list_by_type_local "$type" 2>/dev/null); then
+      if [[ -n "$FILTER_NAME" ]]; then
+        branches=$(filter_branches "$branches" "$FILTER_NAME")
+      fi
+      
+      if [[ -z "$branches" ]]; then
+        continue
+      fi
+      
       count=$(echo "$branches" | wc -l)
       has_any=true
       
@@ -299,6 +402,14 @@ list_all_types_both() {
   
   for type in "${VALID_TYPES[@]}"; do
     if branches=$(list_by_type_remote "$type" 2>/dev/null); then
+      if [[ -n "$FILTER_NAME" ]]; then
+        branches=$(filter_branches "$branches" "$FILTER_NAME")
+      fi
+      
+      if [[ -z "$branches" ]]; then
+        continue
+      fi
+      
       count=$(echo "$branches" | wc -l)
       
       # Print type header with count
@@ -545,6 +656,13 @@ while [[ $# -gt 0 ]]; do
       SUMMARY_MODE=true
       shift
       ;;
+    -f | --filter)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -f requires a pattern argument"
+      fi
+      FILTER_NAME=$(normalize_filter "$2")
+      shift 2
+      ;;
     -*)
       error_exit 1 "Unknown option: $1"
       ;;
@@ -578,42 +696,63 @@ if [[ "$SUMMARY_MODE" == true ]]; then
       local_count=$(count_by_type_local "$FILTER_TYPE")
       remote_count=$(count_by_type_remote "$FILTER_TYPE")
       
-      echo -e "${CYAN}Local ${FILTER_TYPE} branches: ${YELLOW}${local_count}${NC}"
+      filter_display="${FILTER_NAME:-all}"
+      echo -e "${CYAN}Local ${FILTER_TYPE} branches${FILTER_NAME:+ matching \"${FILTER_NAME}\"}: ${YELLOW}${local_count}${NC}"
       if [[ $local_count -gt 0 ]]; then
         if branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then
-          echo "$branches" | while read -r branch; do
-            echo "  * $branch"
-          done
+          if [[ -n "$FILTER_NAME" ]]; then
+            branches=$(filter_branches "$branches" "$FILTER_NAME")
+          fi
+          if [[ -n "$branches" ]]; then
+            echo "$branches" | while read -r branch; do
+              echo "  * $branch"
+            done
+          fi
         fi
       fi
       
       echo ""
-      echo -e "${CYAN}Remote ${FILTER_TYPE} branches: ${YELLOW}${remote_count}${NC}"
+      echo -e "${CYAN}Remote ${FILTER_TYPE} branches${FILTER_NAME:+ matching \"${FILTER_NAME}\"}: ${YELLOW}${remote_count}${NC}"
       if [[ $remote_count -gt 0 ]]; then
         if branches=$(list_by_type_remote "$FILTER_TYPE" 2>/dev/null); then
-          echo "$branches" | while read -r branch; do
-            echo "  * $branch"
-          done
+          if [[ -n "$FILTER_NAME" ]]; then
+            branches=$(filter_branches "$branches" "$FILTER_NAME")
+          fi
+          if [[ -n "$branches" ]]; then
+            echo "$branches" | while read -r branch; do
+              echo "  * $branch"
+            done
+          fi
         fi
       fi
     elif [[ "$SHOW_REMOTE" == true ]]; then
       count=$(count_by_type_remote "$FILTER_TYPE")
-      echo -e "${CYAN}Remote ${FILTER_TYPE} branches: ${YELLOW}${count}${NC}"
+      echo -e "${CYAN}Remote ${FILTER_TYPE} branches${FILTER_NAME:+ matching \"${FILTER_NAME}\"}: ${YELLOW}${count}${NC}"
       if [[ $count -gt 0 ]]; then
         if branches=$(list_by_type_remote "$FILTER_TYPE" 2>/dev/null); then
-          echo "$branches" | while read -r branch; do
-            echo "  * $branch"
-          done
+          if [[ -n "$FILTER_NAME" ]]; then
+            branches=$(filter_branches "$branches" "$FILTER_NAME")
+          fi
+          if [[ -n "$branches" ]]; then
+            echo "$branches" | while read -r branch; do
+              echo "  * $branch"
+            done
+          fi
         fi
       fi
     else
       count=$(count_by_type_local "$FILTER_TYPE")
-      echo -e "${CYAN}Local ${FILTER_TYPE} branches: ${YELLOW}${count}${NC}"
+      echo -e "${CYAN}Local ${FILTER_TYPE} branches${FILTER_NAME:+ matching \"${FILTER_NAME}\"}: ${YELLOW}${count}${NC}"
       if [[ $count -gt 0 ]]; then
         if branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then
-          echo "$branches" | while read -r branch; do
-            echo "  * $branch"
-          done
+          if [[ -n "$FILTER_NAME" ]]; then
+            branches=$(filter_branches "$branches" "$FILTER_NAME")
+          fi
+          if [[ -n "$branches" ]]; then
+            echo "$branches" | while read -r branch; do
+              echo "  * $branch"
+            done
+          fi
         fi
       fi
     fi
@@ -641,12 +780,19 @@ else
       # Show both local and remote for specific type
       echo -e "${CYAN}=== LOCAL ${FILTER_TYPE} BRANCHES ===${NC}"
       if branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then
-        count=$(echo "$branches" | wc -l)
-        echo -e "Count: ${YELLOW}${count}${NC}"
-        echo ""
-        echo "$branches" | while read -r branch; do
-          echo "  * $branch"
-        done
+        if [[ -n "$FILTER_NAME" ]]; then
+          branches=$(filter_branches "$branches" "$FILTER_NAME")
+        fi
+        if [[ -n "$branches" ]]; then
+          count=$(echo "$branches" | wc -l)
+          echo -e "Count: ${YELLOW}${count}${NC}"
+          echo ""
+          echo "$branches" | while read -r branch; do
+            echo "  * $branch"
+          done
+        else
+          echo "  (none)"
+        fi
       else
         echo "  (none)"
       fi
@@ -654,36 +800,57 @@ else
       echo ""
       echo -e "${CYAN}=== REMOTE ${FILTER_TYPE} BRANCHES ===${NC}"
       if branches=$(list_by_type_remote "$FILTER_TYPE" 2>/dev/null); then
-        count=$(echo "$branches" | wc -l)
-        echo -e "Count: ${YELLOW}${count}${NC}"
-        echo ""
-        echo "$branches" | while read -r branch; do
-          echo "  * $branch"
-        done
+        if [[ -n "$FILTER_NAME" ]]; then
+          branches=$(filter_branches "$branches" "$FILTER_NAME")
+        fi
+        if [[ -n "$branches" ]]; then
+          count=$(echo "$branches" | wc -l)
+          echo -e "Count: ${YELLOW}${count}${NC}"
+          echo ""
+          echo "$branches" | while read -r branch; do
+            echo "  * $branch"
+          done
+        else
+          echo "  (none)"
+        fi
       else
         echo "  (none)"
       fi
     elif [[ "$SHOW_REMOTE" == true ]]; then
       # Show only remote branches for specific type
       if branches=$(list_by_type_remote "$FILTER_TYPE" 2>/dev/null); then
-        count=$(echo "$branches" | wc -l)
-        echo -e "${CYAN}Remote ${FILTER_TYPE} branches (${count}):${NC}"
-        echo ""
-        echo "$branches" | while read -r branch; do
-          echo "  * $branch"
-        done
+        if [[ -n "$FILTER_NAME" ]]; then
+          branches=$(filter_branches "$branches" "$FILTER_NAME")
+        fi
+        if [[ -n "$branches" ]]; then
+          count=$(echo "$branches" | wc -l)
+          echo -e "${CYAN}Remote ${FILTER_TYPE} branches${FILTER_NAME:+ matching \"${FILTER_NAME}\"}${NC} (${count}):"
+          echo ""
+          echo "$branches" | while read -r branch; do
+            echo "  * $branch"
+          done
+        else
+          error_exit 3 "No remote $FILTER_TYPE branches${FILTER_NAME:+ matching \"${FILTER_NAME}\"} found"
+        fi
       else
         error_exit 3 "No remote $FILTER_TYPE branches found"
       fi
     else
       # Show only local branches for specific type
       if branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then
-        count=$(echo "$branches" | wc -l)
-        echo -e "${CYAN}Local ${FILTER_TYPE} branches (${count}):${NC}"
-        echo ""
-        echo "$branches" | while read -r branch; do
-          echo "  * $branch"
-        done
+        if [[ -n "$FILTER_NAME" ]]; then
+          branches=$(filter_branches "$branches" "$FILTER_NAME")
+        fi
+        if [[ -n "$branches" ]]; then
+          count=$(echo "$branches" | wc -l)
+          echo -e "${CYAN}Local ${FILTER_TYPE} branches${FILTER_NAME:+ matching \"${FILTER_NAME}\"}${NC} (${count}):"
+          echo ""
+          echo "$branches" | while read -r branch; do
+            echo "  * $branch"
+          done
+        else
+          error_exit 3 "No local $FILTER_TYPE branches${FILTER_NAME:+ matching \"${FILTER_NAME}\"} found"
+        fi
       else
         error_exit 3 "No local $FILTER_TYPE branches found"
       fi
