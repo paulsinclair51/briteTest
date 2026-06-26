@@ -100,18 +100,44 @@ The following branches cannot be deleted:
 - `develop`
 - `development`
 
+## Type Hierarchy
+
+Branches have a type hierarchy that determines what base branch types they can be created from:
+
+| Branch Type | Can be created from | Cannot be created from |
+|-------------|-------------------|----------------------|
+| `major/*` | `main` or `major/*` | `minor/*`, `patch/*`, `docs/*` |
+| `minor/*` | `main` or `major/*` | `minor/*`, `patch/*`, `docs/*` |
+| `patch/*` | `main`, `major/*`, `minor/*`, or `patch/*` | `docs/*` |
+| `docs/*` | `main` or `docs/*` | `major/*`, `minor/*`, `patch/*` |
+
+### Hierarchy Examples
+
+**Valid:**
+- `patch/fix-bug` created from `patch/develop` ✓
+- `patch/fix-bug` created from `minor/develop` ✓
+- `minor/add-feature` created from `major/base` ✓
+- `major/redesign` created from `main` ✓
+
+**Invalid:**
+- `patch/fix-bug` created from `docs/base` ✗ (patch cannot come from docs)
+- `minor/feature` created from `patch/base` ✗ (minor cannot come from patch)
+- `docs/guide` created from `patch/main` ✗ (docs cannot come from patch)
+
 ## Logging
 
 All operations are logged to `logs/branch_history.md` with:
 - Timestamp (YYYY-MM-DD HH:MM:SS)
 - Operation status (SUCCESS/FAILED)
-- Branch name
-- Base branch (for creation operations)
+- Branch name (formatted as code)
 - Detailed message
 
-Example log entry:
+Example log entries:
 ```
-- **2026-06-26 14:30:15** | Status: `SUCCESS` | Branch: `patch/fix-bug` | Base: `main` | Local branch created (mode: local)
+- **2026-06-26 14:45:30**: Branch `patch/fix-bug` deleted.
+- **2026-06-26 14:40:10**: Branch `patch/existing-branch` creation from `patch/develop` failed - branch already exists.
+- **2026-06-26 14:35:22**: Branch `docs/api-guide` created from `docs/base-work` and pushed to remote.
+- **2026-06-26 14:30:15**: Branch `patch/fix-bug` created from `main`.
 ```
 
 ## Quick Start
@@ -160,6 +186,7 @@ scripts/rmbranch -h
 - `3` - Branch already exists
 - `4` - Base branch doesn't exist
 - `5` - Validation failed
+- `6` - Type hierarchy violation
 
 ### rmbranch
 - `0` - Success
