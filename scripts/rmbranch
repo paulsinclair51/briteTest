@@ -35,6 +35,25 @@ Remove a branch locally and/or from remote.
 
 Arguments:
   <branchname>       Name of the branch to remove
+                     Format: [<type>/]<description>
+                     Examples: patch/fix-bug, minor/add-feature, major/refactor, docs/api-guide
+
+Branch Naming Convention:
+  Branches typically follow the format: <type>/<description>
+  
+  Common types:
+    major  - Major features or changes (e.g., major/new-ui-system, major/core-refactor)
+    minor  - Minor features or changes (e.g., minor/add-logging, minor/optimize-parser)
+    patch  - Bug fixes (e.g., patch/fix-login-bug, patch/memory-leak)
+    docs   - Documentation updates only (e.g., docs/api-guide, docs/setup-instructions)
+
+  Note: Branch type validation is not enforced for removal operations.
+
+Protected branches (cannot be deleted):
+  - main
+  - master
+  - develop
+  - development
 
 Options:
   -h, --help         Output this help to stdout and exit.
@@ -42,12 +61,6 @@ Options:
   -r                 Remove branch from remote only.
   -a                 Remove from both local and remote.
   -f                 Force removal (no confirmation prompt).
-
-Protected branches (cannot be deleted):
-  - main
-  - master
-  - develop
-  - development
 
 Modes:
   Local (-l, default):
