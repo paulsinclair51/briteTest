@@ -48,6 +48,12 @@ Branch Naming Convention:
     patch  - Bug fixes (e.g., patch/fix-login-bug, patch/memory-leak)
     docs   - Documentation updates only (e.g., docs/api-guide, docs/setup-instructions)
 
+  Naming Rules:
+    - Lowercase letters, numbers, hyphens, and forward slashes only
+    - No uppercase letters or special characters (except / and -)
+    - Type prefix must be one of: major, minor, patch, docs
+    - Description must not be empty
+
   Examples:
     mkbranch major/redesign-authentication main
       Creates: major/redesign-authentication
@@ -167,6 +173,15 @@ is_valid_type() {
   return 1
 }
 
+is_valid_name_chars() {
+  local name="$1"
+  # Allow lowercase letters, numbers, hyphens, and forward slashes
+  if [[ "$name" =~ ^[a-z0-9/-]+$ ]]; then
+    return 0
+  fi
+  return 1
+}
+
 get_branch_type() {
   local branchname="$1"
   
@@ -207,10 +222,21 @@ is_type_hierarchy_valid() {
 normalize_branch_name() {
   local branchname="$1"
   
+  # Validate character set
+  if ! is_valid_name_chars "$branchname"; then
+    return 1
+  fi
+  
   # Check if branch contains a slash (type/description format)
   if [[ "$branchname" =~ / ]]; then
     # Extract the type (part before the slash)
     local type="${branchname%%/*}"
+    local description="${branchname#*/}"
+    
+    # Validate description is not empty
+    if [[ -z "$description" ]]; then
+      return 1
+    fi
     
     # Validate the type
     if ! is_valid_type "$type"; then
@@ -277,7 +303,7 @@ fi
 # Normalize branch name (add default type if needed, validate if type specified)
 NORMALIZED_NAME=$(normalize_branch_name "$BRANCHNAME")
 if [[ $? -ne 0 ]]; then
-  error_exit 1 "Invalid branch type in '$BRANCHNAME'. Valid types: ${VALID_TYPES[*]}" "$BRANCHNAME" "$BASEBRANCHNAME"
+  error_exit 1 "Invalid branch name '$BRANCHNAME'. Must contain only lowercase letters, numbers, hyphens, and slashes. Type must be one of: ${VALID_TYPES[*]}" "$BRANCHNAME" "$BASEBRANCHNAME"
 fi
 
 # If type was added, indicate it
