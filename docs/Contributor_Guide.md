@@ -617,19 +617,20 @@ make run
 
 ## 7. Pull Request (PR)
 
-- **Purpose**: Propose code changes for review
-- **Status**: Subject to review and revision
-- **Timing**: During development
-- **Version Change**: May or may not change version
-- **Scope**: Single, focused set of changes
-- **Audience**: Contributors and Approver (via review)
+- **Purpose**: Propose code changes for review.
+- **Status**: Subject to review and revision.
+- **Timing**: During development.
+- **Scope**: Single, focused set of changes.
+- **Audience**: Contributors and Approver (via review).
 
 Before submitting a PR:
 
-- Ensure tests pass.
-- Update version numbers of changed versioned files if same as current release.
+- Ensure changes for PR are focused and well‑scoped.
 - Update documentation as needed.
-- Keep changes focused and well‑scoped.
+- Ensure changes follow Documentation Guidelines and Code Guidelines,
+- Update version numbers of changed versioned files if same as current release
+  per Vereioning Guidelines.
+- Ensure tests pass.
 </details>
 
 <details>
@@ -638,11 +639,18 @@ Before submitting a PR:
 ## 8. Release
 
 - **Purpose**: Publish a version for users.
-- **Status**: Immutable and public,
-- **Timing**: After the PRs (pull requests) for the release are merged and approved,
-- **Version Change**: Verify versioning of files (see Versioning Guidelines)
-- *Scope**: Bundles multiple merged PRs,
-- **Audience**: End users,
+- **Status**: Immutable and public.
+- **Timing**: After the PRs (pull requests) for the release are merged and approved.
+- *Scope**: Bundles multiple merged PRs.
+- **Audience**: End users.
+
+Before releasing:
+
+- Prepare a release note.
+- Verify if qualifies as a major, minor, or patch release or documentation-only update
+  release and verify modified versioned files have the correct versions per the
+  Version Guidelines.
+Guidelines
 </details>
 
 <details>
