@@ -50,9 +50,9 @@ Options:
   -c, --count        Show only branch count (useful for scripts)
   -d, --detailed     Show detailed info: commit hash, author, date
   -n, --limit NUM    Limit results to first NUM branches
+  -f, --format FMT   Output format: table (default), json, csv
   --sort FIELD       Sort by: name (alphabetical), type (grouped), date (newest first)
                      Default: type
-  --format FORMAT    Output format: table (default), json, csv
 
 Examples:
   # List all local branches grouped by type
@@ -98,14 +98,14 @@ Examples:
   lsbranch --sort type         # by type (default)
 
   # Output formats
-  lsbranch --format json       # JSON output
-  lsbranch --format csv        # CSV format
-  lsbranch patch --format csv  # CSV of patch branches
+  lsbranch -f json             # JSON output
+  lsbranch -f csv              # CSV format
+  lsbranch patch -f csv        # CSV of patch branches
 
   # Combine options
   lsbranch -s -r -b memory     # remote summary matching "*memory*"
   lsbranch -d -n 5 patch       # first 5 detailed patch branches
-  lsbranch --format json -x api  # JSON of branches NOT matching "*api*"
+  lsbranch -f json -x api      # JSON of branches NOT matching "*api*"
 
 Exit codes:
   0   Success
@@ -470,9 +470,9 @@ while [[ $# -gt 0 ]]; do
       SORT_BY="$2"
       shift 2
       ;;
-    --format)
+    -f | --format)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option --format requires a format argument (table, json, csv)"
+        error_exit 1 "Option -f requires a format argument (table, json, csv)"
       fi
       OUTPUT_FORMAT="$2"
       shift 2
@@ -520,7 +520,7 @@ if [[ "$COUNT_ONLY" == true && "$DETAILED_MODE" == true ]]; then
 fi
 
 if [[ "$OUTPUT_FORMAT" != "table" && "$SUMMARY_MODE" == true ]]; then
-  error_exit 1 "Cannot use --format with -s"
+  error_exit 1 "Cannot use -f with -s"
 fi
 
 cd "$REPO_ROOT"
