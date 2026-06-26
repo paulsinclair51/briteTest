@@ -92,11 +92,13 @@ changes are released without a change to `M`, and it resets to
 
 6. [**Testing Requirements**](#6-testing-requirements)
 
-7. [**Pull Request (PR)**](#7-pull-request-pr)
+7, [**Making Modifications in a Branch**](M#7-making-modifications-in-a-branch)
 
-8. [**Pull Release**](#8-release)
+8. [**Pull Request (PR)**](#8-pull-request-pr)
 
-9. [**Glossary**](#9-glossary)
+9. [**Pull Release**](#9-release)
+
+10. [**Glossary**](#10-glossary)
 </details>
 
 </details>
@@ -609,13 +611,32 @@ make run
 - Ensure report formatting changes are reflected in documentation examples.
 - Keep test code aligned with the current version of `runnerapi.h` and  
   `testapi.h`.
-</
 </details>
 
 <details>
-<summary>7. Pull Request (PR)</summary>
+<summary>7. Making Modifications in a Branch
 
-## 7. Pull Request (PR)
+## 7. Making Modifications in a Branch
+
+- Define modificationd that are focused (not mixing unrelated changes), 
+  logically grouped, and well‑scoped.
+- Obtain preliminary approval and target release for the modifications.
+- Create a branch.
+- Make the modifications to code,if any.
+- Update documentation as needed in parallel with any code changes.
+- Ensure the modifications in the branch are still focused (not mixing
+  unrelated changes), logically grouped, and well‑scoped.
+- Ensure changes follow the Documentation Guidelines and Code Guidelines,
+- Dnsure version numbers are updated for modified versioned files as needed
+  per the Versioning Guidelines.
+- Include test coverage for new behavior and modifications.
+- Ensure tests pass: run `make run` from the repository root.
+</details>
+
+<details>
+<summary>8. Pull Request (PR)</summary>
+
+## 8. Pull Request (PR)
 
 A **Pull Request (PR)** is a formal proposal to merge your code changes into 
 the `main` branch of the repository. It's the mechanism that enables code
@@ -632,10 +653,10 @@ Before submitting a PR:
   and well‑scoped.
 - Update documentation as needed in parallel with code changes.
 - Ensure changes follow the Documentation Guidelines and Code Guidelines,
-- Update version numbers of modified versioned files as needed per the Vereioning
+- Update version numbers of modified versioned files as needed per the Versioning
   Guidelines.
 - Include test coverage for new behavior and modifications.
-- Ensure tests pass (run `make run` from the repository root).
+- Ensure tests pass: run `make run` from the repository root.
 
 #### Step 2: Create the Pull Request
 
@@ -667,9 +688,9 @@ Before submitting a PR:
 </details>
 
 <details>
-<summary>8. Release</summary>
+<summary>9. Release</summary>
 
-## 8. Release
+## 9. Release
 
 A **Release** is the act of publishing a specific version for public use. 
 It packages approved and merged changes into a versioned, immutable snapshot
@@ -718,9 +739,9 @@ Before releasing:
 </details>
 
 <details>
-<summary>9. Glossary</summary>
+<summary>10. Glossary</summary>
 
-## 9. Glossary
+## 10. Glossary
 
 For a glossary of terms generally used in the documentation, see the Glossary
 Reference.
