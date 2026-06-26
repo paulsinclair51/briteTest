@@ -158,11 +158,12 @@ HEADER
 
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
 
-  # Append operation to log in simplified markdown format
+  # Append operation to log
   if [[ -n "$comment" ]]; then
     cat >> "$LOG_FILE" <<EOF
 
-**$timestamp**: $message | Comment: $comment
+**$timestamp**: $message
+  $comment
 EOF
   else
     cat >> "$LOG_FILE" <<EOF
