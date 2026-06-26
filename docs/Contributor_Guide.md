@@ -618,16 +618,18 @@ make run
 
 ## 7. Making Modifications in a Branch
 
-- Define modificationd that are focused (not mixing unrelated changes), 
+- Define modificationd that are focused (not mixinv unrelated changes), 
   logically grouped, and well‑scoped.
-- Obtain preliminary approval and target release for the modifications.
-- Create a branch.
-- Make the modifications to code,if any.
-- Update documentation as needed in parallel with any code changes.
+- Decine an appropriate name for your changes to use as the branch nmme.
+- Obtain preliminary approval and target release for the modificationsand and
+  branch name.
+- Create a branch using your branch name.
+- Make the modifications to code, if any, in your branch.
+- Update documentation in the branch as needed in parallel with any code changes.
 - Ensure the modifications in the branch are still focused (not mixing
   unrelated changes), logically grouped, and well‑scoped.
-- Ensure changes follow the Documentation Guidelines and Code Guidelines,
-- Dnsure version numbers are updated for modified versioned files as needed
+- Ensure changes follow the Documentation Guidelines and the Code Guidelines,
+- Ensure version numbers are updated for modified versioned files as needed
   per the Versioning Guidelines.
 - Include test coverage for new behavior and modifications.
 - Ensure tests pass: run `make run` from the repository root.
