@@ -24,6 +24,7 @@ VALID_TYPES=("major" "minor" "patch" "docs")
 # Default behavior
 FILTER_TYPE=""
 SHOW_REMOTE=false
+SUMMARY_MODE=false
 
 usage() {
   cat <<'EOF'
@@ -41,6 +42,7 @@ Options:
   -h, --help         Output this help to stdout and exit.
   -r, --remote       Show remote branches instead of local branches.
   -a, --all          Show both local and remote branches (with labels).
+  -s, --summary      Show summary view: counts instead of full branch lists.
 
 Examples:
   # List all local branches grouped by type
@@ -61,7 +63,16 @@ Examples:
   # List major branches on remote
   lsbranch -r major
 
-Output Format:
+  # Show summary of all branches
+  lsbranch -s
+
+  # Show summary of remote branches
+  lsbranch -s -r
+
+  # Show patch branches with summary
+  lsbranch -s patch
+
+Output Format (Full):
   When listing all types, branches are grouped by type:
     major:  <count>
       * major/feature1
@@ -82,6 +93,16 @@ Output Format:
     * patch/bugfix2
     * patch/bugfix3
 
+Output Format (Summary):
+  Shows counts without listing individual branches:
+    Branch Summary:
+      major:  2 branches
+      minor:  1 branch
+      patch:  5 branches
+      docs:   1 branch
+      ────────────────
+      Total:  9 branches
+
 Exit codes:
   0   Success
   1   Invalid arguments or options
@@ -96,10 +117,6 @@ error_exit() {
 
   echo -e "${BLUE}✗${NC} Error: $message" >&2
   exit "$code"
-}
-
-info() {
-  echo -e "${CYAN}ℹ${NC} $1"
 }
 
 list_by_type_local() {
@@ -130,6 +147,24 @@ list_by_type_remote() {
   
   echo "$branches"
   return 0
+}
+
+count_by_type_local() {
+  local type="$1"
+  if branches=$(list_by_type_local "$type" 2>/dev/null); then
+    echo "$branches" | wc -l
+  else
+    echo "0"
+  fi
+}
+
+count_by_type_remote() {
+  local type="$1"
+  if branches=$(list_by_type_remote "$type" 2>/dev/null); then
+    echo "$branches" | wc -l
+  else
+    echo "0"
+  fi
 }
 
 list_all_types_local() {
@@ -301,6 +336,183 @@ list_all_types_both() {
   return 0
 }
 
+summary_all_types_local() {
+  local major=$(count_by_type_local "major")
+  local minor=$(count_by_type_local "minor")
+  local patch=$(count_by_type_local "patch")
+  local docs=$(count_by_type_local "docs")
+  local total=$((major + minor + patch + docs))
+  
+  if [[ $total -eq 0 ]]; then
+    return 1
+  fi
+  
+  echo -e "${CYAN}Branch Summary:${NC}"
+  
+  case "$major" in
+    0) ;;
+    1) echo -e "  ${PURPLE}major:${NC}  ${major} branch" ;;
+    *) echo -e "  ${PURPLE}major:${NC}  ${major} branches" ;;
+  esac
+  
+  case "$minor" in
+    0) ;;
+    1) echo -e "  ${YELLOW}minor:${NC}  ${minor} branch" ;;
+    *) echo -e "  ${YELLOW}minor:${NC}  ${minor} branches" ;;
+  esac
+  
+  case "$patch" in
+    0) ;;
+    1) echo -e "  ${GREEN}patch:${NC}  ${patch} branch" ;;
+    *) echo -e "  ${GREEN}patch:${NC}  ${patch} branches" ;;
+  esac
+  
+  case "$docs" in
+    0) ;;
+    1) echo -e "  ${BLUE}docs:${NC}   ${docs} branch" ;;
+    *) echo -e "  ${BLUE}docs:${NC}   ${docs} branches" ;;
+  esac
+  
+  echo -e "  ${CYAN}────────────────${NC}"
+  case "$total" in
+    1) echo -e "  ${CYAN}Total:${NC}  ${total} branch" ;;
+    *) echo -e "  ${CYAN}Total:${NC}  ${total} branches" ;;
+  esac
+  
+  return 0
+}
+
+summary_all_types_remote() {
+  local major=$(count_by_type_remote "major")
+  local minor=$(count_by_type_remote "minor")
+  local patch=$(count_by_type_remote "patch")
+  local docs=$(count_by_type_remote "docs")
+  local total=$((major + minor + patch + docs))
+  
+  if [[ $total -eq 0 ]]; then
+    return 1
+  fi
+  
+  echo -e "${CYAN}Remote Branch Summary:${NC}"
+  
+  case "$major" in
+    0) ;;
+    1) echo -e "  ${PURPLE}major:${NC}  ${major} branch" ;;
+    *) echo -e "  ${PURPLE}major:${NC}  ${major} branches" ;;
+  esac
+  
+  case "$minor" in
+    0) ;;
+    1) echo -e "  ${YELLOW}minor:${NC}  ${minor} branch" ;;
+    *) echo -e "  ${YELLOW}minor:${NC}  ${minor} branches" ;;
+  esac
+  
+  case "$patch" in
+    0) ;;
+    1) echo -e "  ${GREEN}patch:${NC}  ${patch} branch" ;;
+    *) echo -e "  ${GREEN}patch:${NC}  ${patch} branches" ;;
+  esac
+  
+  case "$docs" in
+    0) ;;
+    1) echo -e "  ${BLUE}docs:${NC}   ${docs} branch" ;;
+    *) echo -e "  ${BLUE}docs:${NC}   ${docs} branches" ;;
+  esac
+  
+  echo -e "  ${CYAN}────────────────${NC}"
+  case "$total" in
+    1) echo -e "  ${CYAN}Total:${NC}  ${total} branch" ;;
+    *) echo -e "  ${CYAN}Total:${NC}  ${total} branches" ;;
+  esac
+  
+  return 0
+}
+
+summary_all_types_both() {
+  local major_local=$(count_by_type_local "major")
+  local minor_local=$(count_by_type_local "minor")
+  local patch_local=$(count_by_type_local "patch")
+  local docs_local=$(count_by_type_local "docs")
+  local total_local=$((major_local + minor_local + patch_local + docs_local))
+  
+  local major_remote=$(count_by_type_remote "major")
+  local minor_remote=$(count_by_type_remote "minor")
+  local patch_remote=$(count_by_type_remote "patch")
+  local docs_remote=$(count_by_type_remote "docs")
+  local total_remote=$((major_remote + minor_remote + patch_remote + docs_remote))
+  
+  if [[ $total_local -eq 0 && $total_remote -eq 0 ]]; then
+    return 1
+  fi
+  
+  echo -e "${CYAN}Local Branch Summary:${NC}"
+  
+  case "$major_local" in
+    0) ;;
+    1) echo -e "  ${PURPLE}major:${NC}  ${major_local} branch" ;;
+    *) echo -e "  ${PURPLE}major:${NC}  ${major_local} branches" ;;
+  esac
+  
+  case "$minor_local" in
+    0) ;;
+    1) echo -e "  ${YELLOW}minor:${NC}  ${minor_local} branch" ;;
+    *) echo -e "  ${YELLOW}minor:${NC}  ${minor_local} branches" ;;
+  esac
+  
+  case "$patch_local" in
+    0) ;;
+    1) echo -e "  ${GREEN}patch:${NC}  ${patch_local} branch" ;;
+    *) echo -e "  ${GREEN}patch:${NC}  ${patch_local} branches" ;;
+  esac
+  
+  case "$docs_local" in
+    0) ;;
+    1) echo -e "  ${BLUE}docs:${NC}   ${docs_local} branch" ;;
+    *) echo -e "  ${BLUE}docs:${NC}   ${docs_local} branches" ;;
+  esac
+  
+  echo -e "  ${CYAN}────────────────${NC}"
+  case "$total_local" in
+    1) echo -e "  ${CYAN}Total:${NC}  ${total_local} branch" ;;
+    *) echo -e "  ${CYAN}Total:${NC}  ${total_local} branches" ;;
+  esac
+  
+  echo ""
+  echo -e "${CYAN}Remote Branch Summary:${NC}"
+  
+  case "$major_remote" in
+    0) ;;
+    1) echo -e "  ${PURPLE}major:${NC}  ${major_remote} branch" ;;
+    *) echo -e "  ${PURPLE}major:${NC}  ${major_remote} branches" ;;
+  esac
+  
+  case "$minor_remote" in
+    0) ;;
+    1) echo -e "  ${YELLOW}minor:${NC}  ${minor_remote} branch" ;;
+    *) echo -e "  ${YELLOW}minor:${NC}  ${minor_remote} branches" ;;
+  esac
+  
+  case "$patch_remote" in
+    0) ;;
+    1) echo -e "  ${GREEN}patch:${NC}  ${patch_remote} branch" ;;
+    *) echo -e "  ${GREEN}patch:${NC}  ${patch_remote} branches" ;;
+  esac
+  
+  case "$docs_remote" in
+    0) ;;
+    1) echo -e "  ${BLUE}docs:${NC}   ${docs_remote} branch" ;;
+    *) echo -e "  ${BLUE}docs:${NC}   ${docs_remote} branches" ;;
+  esac
+  
+  echo -e "  ${CYAN}────────────────${NC}"
+  case "$total_remote" in
+    1) echo -e "  ${CYAN}Total:${NC}  ${total_remote} branch" ;;
+    *) echo -e "  ${CYAN}Total:${NC}  ${total_remote} branches" ;;
+  esac
+  
+  return 0
+}
+
 is_valid_type() {
   local type="$1"
   local valid
@@ -329,6 +541,10 @@ while [[ $# -gt 0 ]]; do
       SHOW_REMOTE="both"
       shift
       ;;
+    -s | --summary)
+      SUMMARY_MODE=true
+      shift
+      ;;
     -*)
       error_exit 1 "Unknown option: $1"
       ;;
@@ -354,72 +570,138 @@ cd "$REPO_ROOT"
 git fetch origin >/dev/null 2>&1 || true
 
 # List branches based on options
-if [[ -n "$FILTER_TYPE" ]]; then
-  # Filter by specific type
-  if [[ "$SHOW_REMOTE" == "both" ]]; then
-    # Show both local and remote for specific type
-    echo -e "${CYAN}=== LOCAL ${FILTER_TYPE} BRANCHES ===${NC}"
-    if branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then
-      count=$(echo "$branches" | wc -l)
-      echo -e "Count: ${YELLOW}${count}${NC}"
+if [[ "$SUMMARY_MODE" == true ]]; then
+  # Summary mode
+  if [[ -n "$FILTER_TYPE" ]]; then
+    # Summary for specific type with listing
+    if [[ "$SHOW_REMOTE" == "both" ]]; then
+      local_count=$(count_by_type_local "$FILTER_TYPE")
+      remote_count=$(count_by_type_remote "$FILTER_TYPE")
+      
+      echo -e "${CYAN}Local ${FILTER_TYPE} branches: ${YELLOW}${local_count}${NC}"
+      if [[ $local_count -gt 0 ]]; then
+        if branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then
+          echo "$branches" | while read -r branch; do
+            echo "  * $branch"
+          done
+        fi
+      fi
+      
       echo ""
-      echo "$branches" | while read -r branch; do
-        echo "  * $branch"
-      done
+      echo -e "${CYAN}Remote ${FILTER_TYPE} branches: ${YELLOW}${remote_count}${NC}"
+      if [[ $remote_count -gt 0 ]]; then
+        if branches=$(list_by_type_remote "$FILTER_TYPE" 2>/dev/null); then
+          echo "$branches" | while read -r branch; do
+            echo "  * $branch"
+          done
+        fi
+      fi
+    elif [[ "$SHOW_REMOTE" == true ]]; then
+      count=$(count_by_type_remote "$FILTER_TYPE")
+      echo -e "${CYAN}Remote ${FILTER_TYPE} branches: ${YELLOW}${count}${NC}"
+      if [[ $count -gt 0 ]]; then
+        if branches=$(list_by_type_remote "$FILTER_TYPE" 2>/dev/null); then
+          echo "$branches" | while read -r branch; do
+            echo "  * $branch"
+          done
+        fi
+      fi
     else
-      echo "  (none)"
-    fi
-    
-    echo ""
-    echo -e "${CYAN}=== REMOTE ${FILTER_TYPE} BRANCHES ===${NC}"
-    if branches=$(list_by_type_remote "$FILTER_TYPE" 2>/dev/null); then
-      count=$(echo "$branches" | wc -l)
-      echo -e "Count: ${YELLOW}${count}${NC}"
-      echo ""
-      echo "$branches" | while read -r branch; do
-        echo "  * $branch"
-      done
-    else
-      echo "  (none)"
-    fi
-  elif [[ "$SHOW_REMOTE" == true ]]; then
-    # Show only remote branches for specific type
-    if branches=$(list_by_type_remote "$FILTER_TYPE" 2>/dev/null); then
-      count=$(echo "$branches" | wc -l)
-      echo -e "${CYAN}Remote ${FILTER_TYPE} branches (${count}):${NC}"
-      echo ""
-      echo "$branches" | while read -r branch; do
-        echo "  * $branch"
-      done
-    else
-      error_exit 3 "No remote $FILTER_TYPE branches found"
+      count=$(count_by_type_local "$FILTER_TYPE")
+      echo -e "${CYAN}Local ${FILTER_TYPE} branches: ${YELLOW}${count}${NC}"
+      if [[ $count -gt 0 ]]; then
+        if branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then
+          echo "$branches" | while read -r branch; do
+            echo "  * $branch"
+          done
+        fi
+      fi
     fi
   else
-    # Show only local branches for specific type
-    if branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then
-      count=$(echo "$branches" | wc -l)
-      echo -e "${CYAN}Local ${FILTER_TYPE} branches (${count}):${NC}"
-      echo ""
-      echo "$branches" | while read -r branch; do
-        echo "  * $branch"
-      done
+    # Summary for all types (no filtering)
+    if [[ "$SHOW_REMOTE" == "both" ]]; then
+      if ! summary_all_types_both; then
+        error_exit 3 "No branches found"
+      fi
+    elif [[ "$SHOW_REMOTE" == true ]]; then
+      if ! summary_all_types_remote; then
+        error_exit 3 "No remote branches found"
+      fi
     else
-      error_exit 3 "No local $FILTER_TYPE branches found"
+      if ! summary_all_types_local; then
+        error_exit 3 "No local branches found"
+      fi
     fi
   fi
 else
-  # List all types
-  if [[ "$SHOW_REMOTE" == "both" ]]; then
-    if ! list_all_types_both; then
-      error_exit 3 "No branches found"
-    fi
-  elif [[ "$SHOW_REMOTE" == true ]]; then
-    if ! list_all_types_remote; then
-      error_exit 3 "No remote branches found"
+  # Full listing mode
+  if [[ -n "$FILTER_TYPE" ]]; then
+    # Filter by specific type
+    if [[ "$SHOW_REMOTE" == "both" ]]; then
+      # Show both local and remote for specific type
+      echo -e "${CYAN}=== LOCAL ${FILTER_TYPE} BRANCHES ===${NC}"
+      if branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then
+        count=$(echo "$branches" | wc -l)
+        echo -e "Count: ${YELLOW}${count}${NC}"
+        echo ""
+        echo "$branches" | while read -r branch; do
+          echo "  * $branch"
+        done
+      else
+        echo "  (none)"
+      fi
+      
+      echo ""
+      echo -e "${CYAN}=== REMOTE ${FILTER_TYPE} BRANCHES ===${NC}"
+      if branches=$(list_by_type_remote "$FILTER_TYPE" 2>/dev/null); then
+        count=$(echo "$branches" | wc -l)
+        echo -e "Count: ${YELLOW}${count}${NC}"
+        echo ""
+        echo "$branches" | while read -r branch; do
+          echo "  * $branch"
+        done
+      else
+        echo "  (none)"
+      fi
+    elif [[ "$SHOW_REMOTE" == true ]]; then
+      # Show only remote branches for specific type
+      if branches=$(list_by_type_remote "$FILTER_TYPE" 2>/dev/null); then
+        count=$(echo "$branches" | wc -l)
+        echo -e "${CYAN}Remote ${FILTER_TYPE} branches (${count}):${NC}"
+        echo ""
+        echo "$branches" | while read -r branch; do
+          echo "  * $branch"
+        done
+      else
+        error_exit 3 "No remote $FILTER_TYPE branches found"
+      fi
+    else
+      # Show only local branches for specific type
+      if branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then
+        count=$(echo "$branches" | wc -l)
+        echo -e "${CYAN}Local ${FILTER_TYPE} branches (${count}):${NC}"
+        echo ""
+        echo "$branches" | while read -r branch; do
+          echo "  * $branch"
+        done
+      else
+        error_exit 3 "No local $FILTER_TYPE branches found"
+      fi
     fi
   else
-    if ! list_all_types_local; then
-      error_exit 3 "No local branches found"
+    # List all types
+    if [[ "$SHOW_REMOTE" == "both" ]]; then
+      if ! list_all_types_both; then
+        error_exit 3 "No branches found"
+      fi
+    elif [[ "$SHOW_REMOTE" == true ]]; then
+      if ! list_all_types_remote; then
+        error_exit 3 "No remote branches found"
+      fi
+    else
+      if ! list_all_types_local; then
+        error_exit 3 "No local branches found"
+      fi
     fi
   fi
 fi
