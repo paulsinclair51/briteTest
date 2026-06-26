@@ -614,7 +614,7 @@ make run
 </details>
 
 <details>
-<summary>7. Making Modifications in a Branch
+<summary>7. Making Modifications in a Branch</summary>
 
 ## 7. Making Modifications in a Branch
 
