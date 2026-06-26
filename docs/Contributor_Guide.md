@@ -617,20 +617,49 @@ make run
 
 ## 7. Pull Request (PR)
 
-- **Purpose**: Propose a set of changed files for review.
-- **Status**: Subject to review and revision.
-- **Timing**: During development.
-- **Audience**: Contributors and Approver (via review).
+A **Pull Request (PR)** is a formal proposal to merge your code changes into 
+the `main` branch of the repository. It's the mechanism that enables code
+review, quality assurance, and collaborative development before changes become
+part of the official codebase.
 
-Before submitting a PR:
+### Pull Request Workflow
+
+#### Step 1: Prepare Your Changes
+
+Before submitting a PR, ensure:
 
 - Ensure changes for PR are focused (not mixing unrelated changes), logically grouped,
   and well‑scoped.
-- Update documentation as needed.
+- Update documentation as needed in parallel with code changes.
 - Ensure changes follow Documentation Guidelines and Code Guidelines,
 - Update version numbers of modified versioned files as needed per Vereioning
   Guidelines.
-- Ensure tests pass.
+- Include test coverage for new behavior and modifications.
+- Ensure tests pass (run `make run` from the repository root).
+
+#### Step 2: Create the Pull Request
+
+- Push your branch to the repository
+- Open a PR on GitHub with a clear title and description
+- Reference any related issues or discussions
+- Ensure the PR scope is minimal and logically grouped
+
+#### Step 3: Code Review and Approval
+
+- An **Approver** (contributor with commit access) and, optionally, other
+  contributors reviews the PR.
+- They verify:
+  - Tests pass and there are no regressions,
+  - Versioning rules are enforced,
+  - Documentation consistency is maintained,
+  - Changes align with code and contribution guidelines,
+- The Approver of reviewing contributors may request changes or approve the PR.
+
+#### Step 4: Merge into Main
+
+- Once approved, the PR is merged into the `main` branch.
+- Changes are now part of the official codebase.
+- The branch can be deleted after merging.
 </details>
 
 <details>
@@ -638,18 +667,48 @@ Before submitting a PR:
 
 ## 8. Release
 
-- **Purpose**: Publish a version for users for a set of PRs.
-- **Status**: Immutable and public.
-- **Timing**: After the PRs (pull requests) for the release are merged and approved.
-- **Audience**: End users.
+A **Release** is the act of publishing a specific version for public use. 
+It packages approved and merged changes into a versioned, immutable snapshot
+that users can download and depend on.
 
-Before releasing:
+### Release Workflow
 
-- Prepare a release note.
-- Verify if release qualifies as a major, minor, patch, or
-  documentation-only,
-- Verify modified versioned files have the correct versions per the Version
-  Guidelines.
+#### Step 1: Before Releasing
+
+- Prepare a preliminary release note for user that summarizes the changes.
+- Verify if release qualifies as a major, minor, patch, or documentation-only,
+- Verify modified versioned files have the correct versions consistently across
+  all files per the Version Guidelines.
+- Ensure API compatibility guidelines are followed.
+- Document all breaking changes with migration guidance.
+- Test thoroughly.
+- Finalize a clear and concise release note. 
+
+#### Step 2: Validate Changes
+
+- Run `make run` to ensure all tests pass
+- Run `make pdf` to verify branding updates in generated documents
+- Perform repository-wide text search for stale old-version references
+- Ensure all changes align with API compatibility guidelines:
+  - Do not change API signatures.
+  - Do not change API behavior.
+  - Do not change exit and return code meanings.
+  - Deprecate before removing.
+  - Provide migration guidance for major changes.
+
+#### Step 3: Create Release Commit
+
+- Create a commit with clear message documenting the release.
+- Include version updates for all files.
+- Include updated documentation and version history tables.
+- Optionally, update `README.md` with release notes.
+
+#### Step 4: Tag and Publish
+
+- Tag the commit with the new version (e.g., `v1.2.3`).
+- Push the tag to the repository.
+- Create a GitHub release with the release note.
+- Make the release publicly available for download.
 </details>
 
 <details>
