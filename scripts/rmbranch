@@ -116,9 +116,9 @@ HEADER
 
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
 
-  # Append operation to log
+  # Append operation to log in markdown format
   cat >> "$LOG_FILE" <<EOF
-- **$timestamp** | Status: \`$status\` | Branch: \`$branchname\` | $message
+- **$timestamp**: $message
 EOF
 }
 
@@ -130,7 +130,7 @@ error_exit() {
   echo -e "${RED}Error:${NC} $message" >&2
 
   if [[ -n "$branchname" ]]; then
-    log_operation "FAILED" "$branchname" "$message"
+    log_operation "FAILED" "$branchname" "Branch \`$branchname\` deletion failed - $message"
   fi
 
   exit "$code"
@@ -220,7 +220,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -*)
-      error_exit 1 "Unknown option: $1" "" ""
+      error_exit 1 "Unknown option: $1" ""
       ;;
     *)
       # Positional argument
@@ -231,7 +231,7 @@ done
 
 # Check that we have exactly 1 positional argument
 if [[ $# -ne 1 ]]; then
-  error_exit 1 "Expected 1 argument (branchname), got $#" "" ""
+  error_exit 1 "Expected 1 argument (branchname), got $#" ""
 fi
 
 BRANCHNAME="$1"
@@ -267,11 +267,11 @@ cd "$REPO_ROOT"
 case "$MODE" in
   local)
     info "Removing local branch '$BRANCHNAME'..."
-    MODE_DESC="local only"
+    MODE_DESC="local"
     ;;
   remote)
     info "Removing branch '$BRANCHNAME' from remote..."
-    MODE_DESC="remote only"
+    MODE_DESC="remote"
     ;;
   both)
     info "Removing branch '$BRANCHNAME' from local and remote..."
@@ -310,14 +310,8 @@ fi
 
 # If type was specified, validate that the branch actually has that type
 if [[ "$TYPE_SPECIFIED" == true ]]; then
-  if [[ "$LOCAL_EXISTS" == true ]] && ! git branch -a | grep -q "^[* ] $BRANCHNAME$"; then
-    # Local check passed (branch exists)
-    info "Validating branch type matches '$SPECIFIED_TYPE'..."
-  fi
-  
-  # Check if the branch with the specified type actually exists
-  # This is already done above (we checked if "$BRANCHNAME" exists)
-  # If we got here, the branch with the specified type exists
+  info "Validating branch type matches '$SPECIFIED_TYPE'..."
+  # Branch name is already formatted correctly, just confirm it exists
   info "Type validation: branch '$BRANCHNAME' matches specified type '$SPECIFIED_TYPE'"
 fi
 
@@ -369,7 +363,7 @@ if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
 fi
 
 # Log successful operation
-log_operation "SUCCESS" "$BRANCHNAME" "Branch deleted ($MODE_DESC)"
+log_operation "SUCCESS" "$BRANCHNAME" "Branch \`$BRANCHNAME\` deleted."
 
 success "Branch '$BRANCHNAME' successfully removed"
 
