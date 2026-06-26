@@ -44,9 +44,9 @@ Options:
   -r, --remote       Show remote branches instead of local branches.
   -a, --all          Show both local and remote branches (with labels).
   -s, --summary      Show summary view: counts instead of full branch lists.
-  -f, --filter PAT   Filter branches by glob pattern (supports *, ?, [abc], etc.)
+  -b, --branch PAT   Filter branches by glob pattern on branch name (supports *, ?, [abc], etc.)
                      If pattern contains no wildcards, it's auto-wrapped as *PAT*
-                     Examples: -f bug (same as -f "*bug*"), -f "fix*", -f "*issue"
+                     Examples: -b bug (same as -b "*bug*"), -b "fix*", -b "*issue"
 
 Examples:
   # List all local branches grouped by type
@@ -74,28 +74,28 @@ Examples:
   lsbranch -s -r
 
   # Filter branches by name pattern (auto-wrapped)
-  lsbranch -f bug              # matches branches containing "bug"
-  lsbranch -f login            # matches branches containing "login"
+  lsbranch -b bug              # matches branches containing "bug"
+  lsbranch -b login            # matches branches containing "login"
 
   # Explicit glob patterns
-  lsbranch -f "fix*"           # branches starting with "fix"
-  lsbranch -f "*issue"         # branches ending with "issue"
-  lsbranch -f "api-*"          # branches starting with "api-"
+  lsbranch -b "fix*"           # branches starting with "fix"
+  lsbranch -b "*issue"         # branches ending with "issue"
+  lsbranch -b "api-*"          # branches starting with "api-"
 
-  # Combine type filter and name filter
-  lsbranch patch -f bug        # patch branches matching "*bug*"
-  lsbranch -s patch -f fix     # summary of patch branches matching "*fix*"
+  # Combine type filter and branch name filter
+  lsbranch patch -b bug        # patch branches matching "*bug*"
+  lsbranch -s patch -b fix     # summary of patch branches matching "*fix*"
 
   # Combine all options
-  lsbranch -s -r -f memory     # remote branch count summary matching "*memory*"
-  lsbranch -s -a patch -f api  # local and remote patch branches matching "*api*"
+  lsbranch -s -r -b memory     # remote branch count summary matching "*memory*"
+  lsbranch -s -a patch -b api  # local and remote patch branches matching "*api*"
 
 Filter Pattern Examples:
-  -f bug         → matches: patch/fix-bug, major/bug-report, docs/bug-guide
-  -f "fix*"      → matches: patch/fix-bug, patch/fix-memory (not patch/hotfix)
-  -f "*issue"    → matches: patch/login-issue, minor/api-issue (not patch/issue-fix)
-  -f "api-*"     → matches: patch/api-error, docs/api-guide
-  -f "*[0-9]"    → matches: patch/fix-bug1, patch/issue-2
+  -b bug         → matches: patch/fix-bug, major/bug-report, docs/bug-guide
+  -b "fix*"      → matches: patch/fix-bug, patch/fix-memory (not patch/hotfix)
+  -b "*issue"    → matches: patch/login-issue, minor/api-issue (not patch/issue-fix)
+  -b "api-*"     → matches: patch/api-error, docs/api-guide
+  -b "*[0-9]"    → matches: patch/fix-bug1, patch/issue-2
 
 Output Format (Full):
   When listing all types, branches are grouped by type:
@@ -656,9 +656,9 @@ while [[ $# -gt 0 ]]; do
       SUMMARY_MODE=true
       shift
       ;;
-    -f | --filter)
+    -b | --branch)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -f requires a pattern argument"
+        error_exit 1 "Option -b requires a pattern argument"
       fi
       FILTER_NAME=$(normalize_filter "$2")
       shift 2
