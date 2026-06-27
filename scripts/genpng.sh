@@ -2,6 +2,10 @@
 set -euo pipefail
 
 # Generate BriteTest branding PNGs from the corresponding SVG sources.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 branding_dir="$repo_root/docs/branding"
