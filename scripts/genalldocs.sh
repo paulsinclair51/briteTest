@@ -3,6 +3,10 @@ set -euo pipefail
 
 # Generate all BriteTest documentation PDFs by invoking scripts/genpdf for
 # each source document individually.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 genpdf_script="$repo_root/scripts/genpdf"
