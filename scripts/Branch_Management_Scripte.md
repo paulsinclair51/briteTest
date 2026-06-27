@@ -14,34 +14,51 @@ Creates a new branch from a base branch with optional remote push.
 
 **Usage:**
 ```bash
-scripts/mkbranch [OPTIONS] <branchname> <basebranchname>
+scripts/mkbranch [OPTIONS] [<newtype>/]<newbranchname> [<basetype>/]<basebranchname>
 ```
 
 **Examples:**
 ```bash
 # Create patch branch (default type)
-scripts/mkbranch fix-login-bug main
+scripts/mkbranch fix-login-bug v1.0.1
 
 # Create with explicit type
-scripts/mkbranch major/redesign-ui main
+scripts/mkbranch major/redesign-ui major/v2.0.0
 
 # Create and push to remote
-scripts/mkbranch -r minor/add-logging develop
+scripts/mkbranch -r minor/add-logging minor/v1.1.0
 
 # Validate without creating
-scripts/mkbranch -v patch/fix-memory-leak main
+scripts/mkbranch -v patch/fix-memory-leak v1.2.4
 ```
 
 **Options:**
 - `-l` - Create local branch only (default)
 - `-r` - Create local branch and push to remote
 - `-v` - Validate only (check if valid without creating)
-- `-h` - Show help
+- `-h`,`--help` - Show help
+
+**Type:**
+- `main`: the type of the `main` branch.
+- `major`: a branch with major changes.
+- `minor`: a branch with minor changes.
+- `patch`: a branch with patches.
+- `docs`: a branch with only documentation changes.
 
 **Type Prefix Behavior:**
-- If no type prefix is specified, `patch/` is added automatically
-- Example: `fix-bug` becomes `patch/fix-bug`
-- Type validation is enforced in validate mode
+- If <newtype> is not specified, the default is`patch/`.
+  - Example: `fix-bug` becomes `patch/fix-bug
+- If <baaetype> is specified, it must be the same as the type of the base branch.
+- If the base branch is `main`:
+  - The user must be an approver (see config/contributors.md).
+  - <newbranch> must be major/vM.0.0, minor/M.m.0, [patch/]vM.m.p, or
+    docs/vM.m where M, m, p must be greater than 0.
+  - Such new branches and `main` are referred to as protected branches.
+- If the base branch is not `main`:
+  - If the new type is major, the base type must be major.
+  - If the new type is minor, the base type must be minor.
+  - If the new type is patch, the base type must be patch.
+  - If the new type is major, the base type must be major.
 
 ### rmbranch - Remove a branch
 Removes a branch locally and/or from remote with confirmation.
@@ -99,11 +116,10 @@ When creating a branch without a type prefix, `patch` is used as the default:
 
 ### Protected Branches
 
-The following branches cannot be deleted:
+The following branches are controlled:
 - `main`
-- `master`
-- `develop`
-- `development`
+- Branches with `main` as their base branch.
+  - major/vM.0.0, minor/vM.m.0,patch/vM.m.p, docs/vM
 
 ### Branch Name Validation
 
