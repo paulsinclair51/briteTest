@@ -57,7 +57,7 @@ For a glossary of terms, see the Glossary Reference
 For a printer-friendly PDF file for this document, see `docs/pdf/BriteTest.pdf`.
 
 <details>
-<summary>.  Document Version History</summary>
+<summary>   Document Version History</summary>
 
 ### Document Version History
 
