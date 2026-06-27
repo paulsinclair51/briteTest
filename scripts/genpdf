@@ -2,10 +2,11 @@
 
 # genpdf - Convert Markdown files to PDF optionally removing 
 #          or converting <details> and <summary> tags.
+#
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
-
+#
 # Dependencies: pandoc (with a PDF engine), or
 #               python3 plus wkhtmltopdf or weasyprint.
 
