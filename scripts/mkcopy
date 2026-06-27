@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # mkcopy - Cherry-pick commits from one branch to another.
+#
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
