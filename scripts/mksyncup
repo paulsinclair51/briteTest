@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# mksyncup - Merge base branch into current branch in BriteTest.
+# mksyncup - Merge base branch into current branch.
+#
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
