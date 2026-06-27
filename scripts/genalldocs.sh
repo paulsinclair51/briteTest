@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate all BriteTest documentation PDFs by invoking scripts/genpdf for
+# Generate all documentation PDFs by invoking scripts/genpdf for
 # each source document individually.
 #
 # Copyright (c) 2026 Paul Sinclair
