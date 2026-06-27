@@ -1,0 +1,316 @@
+#!/usr/bin/env bash
+
+# ckbranch - Check branch and repository status.
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Default options
+OUTPUT_FILE="reports/branch_status.md"
+BRANCH_PATTERN=""
+VERBOSE=false
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ckbranch [OPTIONS]
+  ckbranch [PATTERN] [OPTIONS]
+  ckbranch -h | --help
+
+Check branch and repository status, generate detailed report.
+
+By default, checks the current branch. Use PATTERN to check matching branches.
+Patterns support glob-like matching (e.g., "feature/*", "*auth*").
+
+Report includes:
+  - Branch name
+  - Repository status (clean/dirty)
+  - Staged/unstaged changes
+  - Unpushed commits
+  - Pull request status
+
+Features:
+  - Generates detailed markdown report
+  - Supports branch pattern matching
+  - Checks current branch by default
+  - Customizable output file
+  - Verbose mode for debugging
+
+Options:
+  -h, --help           Output this help to stdout and exit.
+  -o, --output FILE    Output file (default: reports/branch_status.md)
+  -v, --verbose        Show detailed information to stdout
+
+Examples:
+  # Check current branch
+  ckbranch
+
+  # Check all feature branches
+  ckbranch "feature/*"
+
+  # Check branches matching pattern
+  ckbranch "*auth*"
+
+  # Custom output file
+  ckbranch -o status.md
+
+  # Verbose output
+  ckbranch -v
+
+Exit codes:
+  0   Success
+  1   Argument or validation error
+  2   Git operation failed
+  3   Output directory does not exist
+EOF
+}
+
+info() {
+  echo -e "${BLUE}ℹ${NC} $1"
+}
+
+success() {
+  echo -e "${GREEN}✓${NC} $1"
+}
+
+warn() {
+  echo -e "${YELLOW}⚠${NC} $1"
+}
+
+error_exit() {
+  local code="$1"
+  local message="$2"
+
+  echo -e "${RED}Error:${NC} $message" >&2
+  exit "$code"
+}
+
+get_current_branch() {
+  git rev-parse --abbrev-ref HEAD 2>/dev/null || error_exit 2 "Failed to determine current branch"
+}
+
+get_branches_matching_pattern() {
+  local pattern="$1"
+  
+  # Convert glob pattern to regex
+  local regex="${pattern//\*/.*}"
+  
+  # Get all branches and filter by pattern
+  git branch -r | sed 's|origin/||' | grep -v HEAD | grep "^$regex$" | sort || echo ""
+}
+
+check_repo_status() {
+  local branch="$1"
+  
+  if git diff-index --quiet HEAD -- 2>/dev/null; then
+    echo "clean"
+  else
+    echo "dirty"
+  fi
+}
+
+get_staged_changes() {
+  local branch="$1"
+  
+  git diff --cached --name-only 2>/dev/null | wc -l
+}
+
+get_unstaged_changes() {
+  local branch="$1"
+  
+  git diff --name-only 2>/dev/null | wc -l
+}
+
+get_unpushed_commits() {
+  local branch="$1"
+  
+  git log "origin/$branch..HEAD" --oneline 2>/dev/null | wc -l
+}
+
+get_pr_status() {
+  local branch="$1"
+  
+  # Try to get PR status using gh CLI
+  local pr_number
+  pr_number=$(gh pr list --head "$branch" --state all --json number --jq '.[0].number' 2>/dev/null || echo "")
+  
+  if [[ -z "$pr_number" ]]; then
+    echo "No PR"
+    return
+  fi
+  
+  # Get PR state
+  local pr_state
+  pr_state=$(gh pr view "$pr_number" --json state --jq '.state' 2>/dev/null || echo "UNKNOWN")
+  
+  # Get PR draft status
+  local is_draft
+  is_draft=$(gh pr view "$pr_number" --json isDraft --jq '.isDraft' 2>/dev/null || echo "false")
+  
+  if [[ "$is_draft" == "true" ]]; then
+    echo "Draft #$pr_number ($pr_state)"
+  else
+    echo "#$pr_number ($pr_state)"
+  fi
+}
+
+generate_report_header() {
+  cat > "$OUTPUT_FILE" << EOF
+# Branch Status Report
+
+Copyright (c) 2026 Paul Sinclair  
+SPDX-License-Identifier: MIT  
+For license details, see \`LICENSE\` in the repository root.
+
+See \`README.md\` in the root directory for an introduction to the project.
+
+## Report Details
+
+Generated: $(date)
+
+EOF
+}
+
+check_branch_status() {
+  local branch="$1"
+  local report_file="$2"
+  
+  info "Checking branch: $branch"
+  
+  # Switch to branch
+  if ! git checkout "$branch" 2>/dev/null; then
+    warn "Failed to checkout branch $branch"
+    return 1
+  fi
+  
+  # Fetch latest
+  git fetch origin 2>/dev/null || true
+  
+  # Gather status information
+  local repo_status
+  repo_status=$(check_repo_status "$branch")
+  
+  local staged_count
+  staged_count=$(get_staged_changes "$branch")
+  
+  local unstaged_count
+  unstaged_count=$(get_unstaged_changes "$branch")
+  
+  local unpushed_count
+  unpushed_count=$(get_unpushed_commits "$branch")
+  
+  local pr_status
+  pr_status=$(get_pr_status "$branch")
+  
+  # Append to report
+  cat >> "$report_file" << EOF
+### Branch: \`$branch\`
+
+- **Status**: $repo_status
+- **Staged Changes**: $staged_count
+- **Unstaged Changes**: $unstaged_count
+- **Unpushed Commits**: $unpushed_count
+- **PR Status**: $pr_status
+
+EOF
+
+  if [[ "$VERBOSE" == true ]]; then
+    echo "  Status: $repo_status"
+    echo "  Staged: $staged_count"
+    echo "  Unstaged: $unstaged_count"
+    echo "  Unpushed: $unpushed_count"
+    echo "  PR: $pr_status"
+  fi
+}
+
+# Parse options and arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -o | --output)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -o requires a file argument"
+      fi
+      OUTPUT_FILE="$2"
+      shift 2
+      ;;
+    -v | --verbose)
+      VERBOSE=true
+      shift
+      ;;
+    -*)
+      error_exit 1 "Unknown option: $1"
+      ;;
+    *)
+      BRANCH_PATTERN="$1"
+      shift
+      ;;
+  esac
+done
+
+info "Checking branch status..."
+
+# Ensure output directory exists
+OUTPUT_DIR=$(dirname "$OUTPUT_FILE")
+if [[ ! -d "$OUTPUT_DIR" ]]; then
+  mkdir -p "$OUTPUT_DIR" || error_exit 3 "Failed to create output directory: $OUTPUT_DIR"
+fi
+
+# Get current branch to restore later
+ORIGINAL_BRANCH=$(get_current_branch)
+
+# Determine branches to check
+if [[ -z "$BRANCH_PATTERN" ]]; then
+  # Check current branch only
+  BRANCHES_TO_CHECK="$ORIGINAL_BRANCH"
+  info "Checking current branch: $ORIGINAL_BRANCH"
+else
+  # Check branches matching pattern
+  BRANCHES_TO_CHECK=$(get_branches_matching_pattern "$BRANCH_PATTERN")
+  
+  if [[ -z "$BRANCHES_TO_CHECK" ]]; then
+    warn "No branches found matching pattern: $BRANCH_PATTERN"
+  else
+    info "Found branches matching pattern '$BRANCH_PATTERN':"
+    echo "$BRANCHES_TO_CHECK" | sed 's/^/  /'
+  fi
+fi
+
+# Generate report header
+generate_report_header
+
+# Check each branch
+if [[ -n "$BRANCHES_TO_CHECK" ]]; then
+  while IFS= read -r branch; do
+    if [[ -n "$branch" ]]; then
+      check_branch_status "$branch" "$OUTPUT_FILE"
+    fi
+  done <<< "$BRANCHES_TO_CHECK"
+fi
+
+# Return to original branch
+if ! git checkout "$ORIGINAL_BRANCH" 2>/dev/null; then
+  warn "Failed to return to original branch: $ORIGINAL_BRANCH"
+fi
+
+success "Report generated: $OUTPUT_FILE"
+if [[ "$VERBOSE" == true ]]; then
+  echo ""
+  info "Report contents:"
+  cat "$OUTPUT_FILE" | sed 's/^/  /'
+fi
+
+success "Done"
+exit 0
