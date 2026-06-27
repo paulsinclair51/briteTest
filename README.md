@@ -144,7 +144,7 @@ Key strengths:
 </details>
 
 <details>
-<summary>1.2. Quick Start</summary>
+<summary>. 1.2. Quick Start</summary>
 
 ### 1.2. Quick Start
 
