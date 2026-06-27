@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# mkclone - Clone the BriteTest repository.
+# mkclone - Clone the repository.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
