@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# mksync - Fetch and pull latest changes from remote in BriteTest.
+# mksync - Fetch and pull latest changes from remote.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
