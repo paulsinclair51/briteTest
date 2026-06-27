@@ -80,7 +80,7 @@ Type Hierarchy:
     major  → from main or major/*
     minor  → from main or major/*
     patch  → from main, major/*, minor/*, or patch/*
-    docs   → from main or docs/*
+    docs   → from main, major/*, minor/*, patch/*, or docs/*
 
 Options:
   -h, --help         Output this help to stdout and exit.
@@ -247,8 +247,8 @@ is_type_hierarchy_valid() {
       [[ "$base_type" == "" || "$base_type" == "major" || "$base_type" == "minor" || "$base_type" == "patch" ]]
       ;;
     docs)
-      # docs can only be created from main or docs
-      [[ "$base_type" == "" || "$base_type" == "docs" ]]
+      # docs can be created from main, major, minor, patch, or docs
+      [[ "$base_type" == "" || "$base_type" == "major" || "$base_type" == "minor" || "$base_type" == "patch" || "$base_type" == "docs" ]]
       ;;
     *)
       return 1
@@ -364,7 +364,7 @@ fi
 # Normalize branch name (add default type if needed, validate if type specified)
 NORMALIZED_NAME=$(normalize_branch_name "$BRANCHNAME")
 if [[ $? -ne 0 ]]; then
-  error_exit 1 "Invalid branch name '$BRANCHNAME'. Must contain only lowercase letters, numbers, hyphens, and slashes. Type must be one of: ${VALID_TYPES[*]}" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
+  error_exit 1 "Invalid branch name '$BRANCHNAME'. Must contain only lowercase letters, numbers, hyphens, and slashes. Type must be one of: ${VALID_TYPES[*]}" "$BRANCHNAME" "$BASEBRANCHNAME" "" "[...]
 fi
 
 # If type was added, indicate it
