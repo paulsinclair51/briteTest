@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# mkcommit - Commit and optionally push changes to the BriteTest repository.
+# mkcommit - Commit and optionally push changes to the repository.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
