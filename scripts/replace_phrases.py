@@ -2,6 +2,10 @@
 """
 Replace phrases in .md files based on a configuration file.
 
+Copyright (c) 2026 Paul Sinclair
+SPDX-License-Identifier: MIT
+For license details, see LICENSE in the repository root.
+
 Configuration file format:
     old_phrase = new_phrase
 
