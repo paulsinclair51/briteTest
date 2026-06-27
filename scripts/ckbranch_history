@@ -1,0 +1,261 @@
+#!/usr/bin/env bash
+
+# ckbranch_history - Query and display branch history log entries.
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Default options
+HISTORY_FILE="branch_history.md"
+OUTPUT_FILE=""
+VERBOSE=false
+FILTER_TYPE=""
+FILTER_BRANCH=""
+FILTER_USER=""
+LIMIT=0
+REVERSE=false
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ckbranch_history [OPTIONS]
+  ckbranch_history -h | --help
+
+Query and display branch history log entries from branch_history.md.
+
+Features:
+  - List all history entries (or filtered)
+  - Filter by operation type (merge, release, created, deleted, etc.)
+  - Filter by branch name
+  - Filter by user
+  - Show formatted output or raw markdown
+  - Export to file
+  - Sort ascending/descending
+  - Limit number of entries
+
+History File Format:
+  branch_history.md contains:
+    - [timestamp] [user/type] Operation: details
+    - [timestamp] [UNDO] operation: details
+
+Options:
+  -h, --help           Output this help to stdout and exit.
+  -t, --type TYPE      Filter by operation type (merged, deleted, created, released, undo, etc.)
+  -b, --branch BRANCH  Filter by branch name (substring match)
+  -u, --user USER      Filter by user (substring match)
+  -l, --limit N        Limit results to N entries (0 = no limit, default: 0)
+  -r, --reverse        Sort descending (oldest first, default: newest first)
+  -o, --output FILE    Write results to file instead of stdout
+  -v, --verbose        Show detailed formatting with full timestamps
+  -f, --file FILE      Use custom history file (default: branch_history.md)
+
+Examples:
+  # Show all history entries
+  ckbranch_history
+
+  # Show last 10 entries
+  ckbranch_history -l 10
+
+  # Show all merges
+  ckbranch_history -t merged
+
+  # Show all releases
+  ckbranch_history -t released
+
+  # Show entries for a specific branch
+  ckbranch_history -b "feature/auth"
+
+  # Show entries from a specific user
+  ckbranch_history -u "alice"
+
+  # Show all undos
+  ckbranch_history -t undo
+
+  # Export to file
+  ckbranch_history -o history_report.txt
+
+  # Combine filters: merges by alice on auth branches
+  ckbranch_history -t merged -u alice -b auth -l 20
+
+Exit codes:
+  0   Success
+  1   Argument or validation error
+  2   History file not found
+  3   No entries found matching criteria
+EOF
+}
+
+info() {
+  echo -e "${BLUE}ℹ${NC} $1"
+}
+
+success() {
+  echo -e "${GREEN}✓${NC} $1"
+}
+
+warn() {
+  echo -e "${YELLOW}⚠${NC} $1"
+}
+
+error_exit() {
+  local code="$1"
+  local message="$2"
+
+  echo -e "${RED}Error:${NC} $message" >&2
+  exit "$code"
+}
+
+# Parse options and arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -t | --type)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -t requires a type argument"
+      fi
+      FILTER_TYPE="$2"
+      shift 2
+      ;;
+    -b | --branch)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -b requires a branch argument"
+      fi
+      FILTER_BRANCH="$2"
+      shift 2
+      ;;
+    -u | --user)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -u requires a user argument"
+      fi
+      FILTER_USER="$2"
+      shift 2
+      ;;
+    -l | --limit)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -l requires a number argument"
+      fi
+      LIMIT="$2"
+      shift 2
+      ;;
+    -r | --reverse)
+      REVERSE=true
+      shift
+      ;;
+    -o | --output)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -o requires a file argument"
+      fi
+      OUTPUT_FILE="$2"
+      shift 2
+      ;;
+    -v | --verbose)
+      VERBOSE=true
+      shift
+      ;;
+    -f | --file)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -f requires a file argument"
+      fi
+      HISTORY_FILE="$2"
+      shift 2
+      ;;
+    -*)
+      error_exit 1 "Unknown option: $1"
+      ;;
+    *)
+      error_exit 1 "Unknown argument: $1"
+      ;;
+  esac
+done
+
+# Check history file exists
+if [[ ! -f "$HISTORY_FILE" ]]; then
+  error_exit 2 "History file not found: $HISTORY_FILE"
+fi
+
+info "Reading history from $HISTORY_FILE"
+
+# Extract entries (skip header lines)
+# Format: - [timestamp] [user] Operation: details
+entries=$(grep -E '^\s*-\s+\[' "$HISTORY_FILE" | tail -n +1)
+
+if [[ -z "$entries" ]]; then
+  warn "No history entries found"
+  exit 3
+fi
+
+# Apply filters
+filtered_entries="$entries"
+
+# Filter by type
+if [[ -n "$FILTER_TYPE" ]]; then
+  info "Filtering by type: $FILTER_TYPE"
+  filtered_entries=$(echo "$filtered_entries" | grep -i "$FILTER_TYPE")
+fi
+
+# Filter by branch
+if [[ -n "$FILTER_BRANCH" ]]; then
+  info "Filtering by branch: $FILTER_BRANCH"
+  filtered_entries=$(echo "$filtered_entries" | grep -i "$FILTER_BRANCH")
+fi
+
+# Filter by user
+if [[ -n "$FILTER_USER" ]]; then
+  info "Filtering by user: $FILTER_USER"
+  filtered_entries=$(echo "$filtered_entries" | grep -i "$FILTER_USER")
+fi
+
+# Check if any entries remain after filtering
+if [[ -z "$filtered_entries" ]]; then
+  warn "No entries found matching criteria"
+  exit 3
+fi
+
+# Reverse order if requested
+if [[ "$REVERSE" == true ]]; then
+  filtered_entries=$(echo "$filtered_entries" | tac)
+fi
+
+# Apply limit
+if [[ "$LIMIT" -gt 0 ]]; then
+  filtered_entries=$(echo "$filtered_entries" | head -n "$LIMIT")
+fi
+
+# Count entries
+entry_count=$(echo "$filtered_entries" | wc -l)
+success "Found $entry_count matching entries"
+
+# Format output
+output_text=""
+if [[ "$VERBOSE" == true ]]; then
+  # Verbose: show full details
+  output_text=$(echo "$filtered_entries" | sed 's/^\s*-\s*//')
+else
+  # Compact: clean up formatting
+  output_text=$(echo "$filtered_entries" | sed 's/^\s*-\s*/  /')
+fi
+
+# Output to file or stdout
+if [[ -n "$OUTPUT_FILE" ]]; then
+  echo "$output_text" > "$OUTPUT_FILE"
+  success "Results written to $OUTPUT_FILE"
+else
+  echo ""
+  echo "$output_text"
+  echo ""
+fi
+
+success "Done"
+exit 0
