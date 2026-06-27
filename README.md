@@ -129,7 +129,7 @@ changes are published in a release without a change to `M`, and it resets to
 
 ## 1. Introduction
 
-details>
+<details>
 <summary>1.1. Key Strengths</summary>
 
 ### 1.1. Key Strengths
