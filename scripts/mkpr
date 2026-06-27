@@ -1,0 +1,378 @@
+#!/usr/bin/env bash
+
+# mkpr - Create or update pull request on GitHub in BriteTest.
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Default options
+DRAFT=false
+VERBOSE=false
+CUSTOM_TITLE=""
+CUSTOM_DESCRIPTION=""
+LABELS=""
+ASSIGNEES=""
+REVIEWERS=""
+OPEN_BROWSER=false
+PROMPT_BROWSER=true
+
+usage() {
+  cat <<'EOF'
+Usage:
+  mkpr [OPTIONS]
+  mkpr -h | --help
+
+Create a new pull request or update an existing one for the current branch.
+
+The target branch is determined automatically based on the branch's Git history
+(the branch that current branch was created from).
+
+Features:
+  - Auto-generates title from branch name
+  - Determines target branch from Git history
+  - Creates ready-to-review PRs by default
+  - Supports draft PRs with -d flag
+  - Updates existing PRs (title, description, labels, reviewers)
+  - Marks draft PRs as ready when updated (unless -d flag used)
+  - Optionally opens PR in browser
+
+Options:
+  -h, --help           Output this help to stdout and exit.
+  -t, --title TITLE    PR title (auto-generated from branch name if not specified)
+  -d, --description D  PR description
+  --draft              Create as draft PR (Work In Progress)
+  -l, --labels LABELS  Comma-separated labels (e.g., "bug,urgent")
+  -a, --assignees USR  Comma-separated GitHub usernames
+  -r, --reviewers USR  Comma-separated GitHub usernames for review
+  -b, --browser        Open PR in browser after creation/update
+  -v, --verbose        Show detailed information
+  -- TEXT              Unix-style description (everything after -- is description)
+                       Note: No quotes needed, captures all remaining arguments
+
+Examples:
+  # Create PR with auto-generated title
+  mkpr
+
+  # Create draft PR
+  mkpr --draft -t "WIP: New feature"
+
+  # Create PR with custom title and reviewers
+  mkpr -t "Fix authentication bug" -r reviewer1,reviewer2
+
+  # Create PR with labels and open in browser
+  mkpr -l "bug,urgent" -b
+
+  # Create PR and add description
+  mkpr -d "This PR fixes issue #123 by refactoring the auth module"
+
+  # Unix-style description
+  mkpr -- This PR fixes the critical bug
+
+Workflow:
+  1. Create PR: mkpr --draft -t "WIP: Feature"
+  2. Code review requests changes
+  3. Make changes and commit: git add . && git commit -m "Address feedback"
+  4. Update PR and mark ready: mkpr -r new-reviewer
+
+Exit codes:
+  0   Success
+  1   Argument or validation error
+  2   Git operation failed
+  3   Cannot create PR from main branch
+  4   GitHub API error
+EOF
+}
+
+info() {
+  echo -e "${BLUE}ℹ${NC} $1"
+}
+
+success() {
+  echo -e "${GREEN}✓${NC} $1"
+}
+
+warn() {
+  echo -e "${YELLOW}⚠${NC} $1"
+}
+
+error_exit() {
+  local code="$1"
+  local message="$2"
+
+  echo -e "${RED}Error:${NC} $message" >&2
+  exit "$code"
+}
+
+get_current_branch() {
+  git rev-parse --abbrev-ref HEAD 2>/dev/null || error_exit 1 "Failed to determine current branch"
+}
+
+get_target_branch() {
+  local current_branch="$1"
+  
+  # Cannot create PR from main
+  if [[ "$current_branch" == "main" ]]; then
+    error_exit 3 "Cannot create PR from main branch"
+  fi
+  
+  # Find the merge-base with main (the point where this branch diverged)
+  # Then find what branch that commit is on
+  local merge_base
+  merge_base=$(git merge-base --fork-point origin/main "$current_branch" 2>/dev/null || echo "")
+  
+  if [[ -z "$merge_base" ]]; then
+    error_exit 2 "Failed to determine target branch"
+  fi
+  
+  # Find which branch contains this merge-base commit
+  # Try to find the branch name by looking at remote branches
+  local target_branch
+  target_branch=$(git branch -r --contains "$merge_base" | grep -v HEAD | grep -v "origin/$current_branch" | head -1 | sed 's|origin/||' | xargs)
+  
+  if [[ -z "$target_branch" ]]; then
+    # If we can't find it, assume main
+    target_branch="main"
+  fi
+  
+  echo "$target_branch"
+}
+
+generate_title_from_branch() {
+  local branch="$1"
+  
+  # Extract the part after the last slash
+  local title="${branch##*/}"
+  
+  # Replace hyphens and underscores with spaces
+  title="${title//-/ }"
+  title="${title//_/ }"
+  
+  # Capitalize first letter of each word
+  title=$(echo "$title" | sed 's/\b\(.\)/\u\1/g')
+  
+  echo "$title"
+}
+
+get_existing_pr_number() {
+  local branch="$1"
+  
+  # Use gh CLI to find existing PR
+  gh pr list --head "$branch" --state all --json number --jq '.[0].number' 2>/dev/null || echo ""
+}
+
+get_pr_draft_status() {
+  local pr_number="$1"
+  
+  # Check if PR is draft
+  gh pr view "$pr_number" --json isDraft --jq '.isDraft' 2>/dev/null || echo "false"
+}
+
+# Parse options and arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -t | --title)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -t requires a title argument"
+      fi
+      CUSTOM_TITLE="$2"
+      shift 2
+      ;;
+    -d | --description)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -d requires a description argument"
+      fi
+      if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
+        error_exit 1 "Cannot use both -d and -- for description"
+      fi
+      CUSTOM_DESCRIPTION="$2"
+      shift 2
+      ;;
+    --draft)
+      DRAFT=true
+      shift
+      ;;
+    -l | --labels)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -l requires labels argument"
+      fi
+      LABELS="$2"
+      shift 2
+      ;;
+    -a | --assignees)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -a requires assignees argument"
+      fi
+      ASSIGNEES="$2"
+      shift 2
+      ;;
+    -r | --reviewers)
+      if [[ $# -lt 2 ]]; then
+        error_exit 1 "Option -r requires reviewers argument"
+      fi
+      REVIEWERS="$2"
+      shift 2
+      ;;
+    -b | --browser)
+      OPEN_BROWSER=true
+      PROMPT_BROWSER=false
+      shift
+      ;;
+    -v | --verbose)
+      VERBOSE=true
+      shift
+      ;;
+    --)
+      # Unix-style description: everything after -- is the description
+      shift
+      if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
+        error_exit 1 "Cannot use both -d and -- for description"
+      fi
+      CUSTOM_DESCRIPTION="$*"
+      break
+      ;;
+    -*)
+      error_exit 1 "Unknown option: $1"
+      ;;
+    *)
+      error_exit 1 "Unknown argument: $1"
+      ;;
+  esac
+done
+
+# Get current branch
+CURRENT_BRANCH=$(get_current_branch)
+info "Current branch: $CURRENT_BRANCH"
+
+# Determine target branch
+info "Determining target branch..."
+TARGET_BRANCH=$(get_target_branch "$CURRENT_BRANCH")
+info "Target branch: $TARGET_BRANCH"
+
+# Determine title
+if [[ -z "$CUSTOM_TITLE" ]]; then
+  TITLE=$(generate_title_from_branch "$CURRENT_BRANCH")
+  info "Generated title: $TITLE"
+else
+  TITLE="$CUSTOM_TITLE"
+  info "Title: $TITLE"
+fi
+
+# Check for existing PR
+EXISTING_PR=$(get_existing_pr_number "$CURRENT_BRANCH")
+
+if [[ -n "$EXISTING_PR" ]]; then
+  # Update existing PR
+  info "Updating existing PR #$EXISTING_PR..."
+  
+  # Update title
+  gh pr edit "$EXISTING_PR" --title "$TITLE" 2>&1 || error_exit 4 "Failed to update PR title"
+  
+  # Update description if provided
+  if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
+    gh pr edit "$EXISTING_PR" --body "$CUSTOM_DESCRIPTION" 2>&1 || error_exit 4 "Failed to update PR description"
+  fi
+  
+  # Update labels if provided
+  if [[ -n "$LABELS" ]]; then
+    gh pr edit "$EXISTING_PR" --add-label "$LABELS" 2>&1 || error_exit 4 "Failed to add labels"
+  fi
+  
+  # Update assignees if provided
+  if [[ -n "$ASSIGNEES" ]]; then
+    gh pr edit "$EXISTING_PR" --add-assignee "$ASSIGNEES" 2>&1 || error_exit 4 "Failed to add assignees"
+  fi
+  
+  # Update reviewers if provided
+  if [[ -n "$REVIEWERS" ]]; then
+    gh pr edit "$EXISTING_PR" --add-reviewer "$REVIEWERS" 2>&1 || error_exit 4 "Failed to add reviewers"
+  fi
+  
+  # Check if PR is draft and mark ready if not using --draft flag
+  CURRENT_DRAFT_STATUS=$(get_pr_draft_status "$EXISTING_PR")
+  if [[ "$CURRENT_DRAFT_STATUS" == "true" ]] && [[ "$DRAFT" == false ]]; then
+    info "Marking PR as ready for review..."
+    gh pr ready "$EXISTING_PR" 2>&1 || error_exit 4 "Failed to mark PR as ready"
+  fi
+  
+  success "PR #$EXISTING_PR updated"
+  
+else
+  # Create new PR
+  info "Creating new PR..."
+  
+  # Build gh pr create command
+  local create_cmd="gh pr create --base $TARGET_BRANCH --head $CURRENT_BRANCH --title '$TITLE'"
+  
+  if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
+    create_cmd="$create_cmd --body '$CUSTOM_DESCRIPTION'"
+  fi
+  
+  if [[ "$DRAFT" == true ]]; then
+    create_cmd="$create_cmd --draft"
+  fi
+  
+  if [[ -n "$LABELS" ]]; then
+    create_cmd="$create_cmd --label '$LABELS'"
+  fi
+  
+  if [[ -n "$ASSIGNEES" ]]; then
+    create_cmd="$create_cmd --assignee '$ASSIGNEES'"
+  fi
+  
+  if [[ -n "$REVIEWERS" ]]; then
+    create_cmd="$create_cmd --reviewer '$REVIEWERS'"
+  fi
+  
+  # Execute command and capture PR number
+  local pr_url
+  pr_url=$(eval "$create_cmd" 2>&1) || error_exit 4 "Failed to create PR"
+  
+  # Extract PR number from URL
+  EXISTING_PR=$(echo "$pr_url" | grep -oP '#\K[0-9]+' | head -1)
+  
+  if [[ -z "$EXISTING_PR" ]]; then
+    error_exit 4 "Failed to extract PR number from response"
+  fi
+  
+  if [[ "$DRAFT" == true ]]; then
+    success "Draft PR #$EXISTING_PR created"
+  else
+    success "PR #$EXISTING_PR created (ready for review)"
+  fi
+fi
+
+# Show PR details if verbose
+if [[ "$VERBOSE" == true ]]; then
+  info "PR details:"
+  gh pr view "$EXISTING_PR" --json number,title,state,isDraft,url --jq '{number:.number, title:.title, state:.state, draft:.isDraft, url:.url}' | sed 's/^/  /'
+fi
+
+# Prompt to open in browser if not already decided
+if [[ "$PROMPT_BROWSER" == true ]]; then
+  echo -n "Open PR in browser? (y/n): "
+  read -r response
+  if [[ "$response" =~ ^[Yy]$ ]]; then
+    OPEN_BROWSER=true
+  fi
+fi
+
+# Open in browser if requested
+if [[ "$OPEN_BROWSER" == true ]]; then
+  gh pr view "$EXISTING_PR" --web 2>&1 || warn "Failed to open PR in browser"
+fi
+
+success "Done"
+exit 0
