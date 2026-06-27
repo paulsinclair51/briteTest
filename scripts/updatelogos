@@ -3,6 +3,10 @@
 Update .svg files in docs/branding with brand abbreviation replacements,
 then regenerate the corresponding PNG files, and update markdown documentation.
 
+Copyright (c) 2026 Paul Sinclair
+SPDX-License-Identifier: MIT
+For license details, see LICENSE in the repository root.
+
 This script reads phrase replacements from a configuration file, generates
 abbreviations from the phrases, and applies them to .svg files in the
 docs/branding directory. After updating SVG files, it regenerates the
