@@ -1,0 +1,362 @@
+#!/usr/bin/env bash
+
+# mkrelease - Create and publish a release.
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Default options
+VERBOSE=false
+VERSION=""
+
+usage() {
+  cat <<'EOF'
+Usage:
+  mkrelease VERSION [OPTIONS]
+  mkrelease -h | --help
+
+Create and publish a release with annotated git tag and GitHub release.
+
+Before releasing:
+  - Verifies current branch is main or protected branch (base is main)
+  - Checks working directory is clean
+  - Verifies all status checks and CI/CD pass
+  - Creates annotated git tag
+  - Pushes tag to remote
+  - Creates GitHub release
+  - Logs release to branch_history.md
+
+Features:
+  - Semantic versioning support (v1.2.3)
+  - Annotated git tags
+  - GitHub release creation
+  - Release logging to branch_history.md
+  - Pre-release validation
+
+Options:
+  -h, --help           Output this help to stdout and exit.
+  -v, --verbose        Show detailed information
+
+Examples:
+  # Create release v1.0.0
+  mkrelease v1.0.0
+
+  # Create release v2.1.3 with verbose output
+  mkrelease v2.1.3 -v
+
+Exit codes:
+  0   Success
+  1   Argument or validation error
+  2   Git operation failed
+  3   Working directory not clean
+  4   Not on main or protected branch
+  5   Status checks not passing
+  6   GitHub API error
+  7   Tag already exists
+EOF
+}
+
+info() {
+  echo -e "${BLUE}ℹ${NC} $1"
+}
+
+success() {
+  echo -e "${GREEN}✓${NC} $1"
+}
+
+warn() {
+  echo -e "${YELLOW}⚠${NC} $1"
+}
+
+error_exit() {
+  local code="$1"
+  local message="$2"
+
+  echo -e "${RED}Error:${NC} $message" >&2
+  exit "$code"
+}
+
+get_current_branch() {
+  git rev-parse --abbrev-ref HEAD 2>/dev/null || error_exit 2 "Failed to determine current branch"
+}
+
+get_current_user() {
+  git config user.name 2>/dev/null || error_exit 2 "Failed to determine current user"
+}
+
+check_working_directory_clean() {
+  if ! git diff-index --quiet HEAD --; then
+    error_exit 3 "Working directory has uncommitted changes. Commit or stash them first."
+  fi
+}
+
+is_main_branch() {
+  local branch="$1"
+  [[ "$branch" == "main" ]]
+}
+
+get_base_branch() {
+  local branch="$1"
+  
+  # Find the merge-base with main
+  local merge_base
+  merge_base=$(git merge-base --fork-point origin/main "$branch" 2>/dev/null || echo "")
+  
+  if [[ -z "$merge_base" ]]; then
+    return 1
+  fi
+  
+  # Check if main contains this merge-base
+  if git merge-base --is-ancestor "$merge_base" origin/main 2>/dev/null; then
+    echo "main"
+    return 0
+  fi
+  
+  return 1
+}
+
+is_protected_branch() {
+  local branch="$1"
+  
+  # Main is protected
+  if is_main_branch "$branch"; then
+    return 0
+  fi
+  
+  # Check if base branch is main
+  local base_branch
+  base_branch=$(get_base_branch "$branch")
+  if [[ "$base_branch" == "main" ]]; then
+    return 0
+  fi
+  
+  return 1
+}
+
+check_status_checks() {
+  local branch="$1"
+  
+  info "Checking status checks and CI/CD..."
+  
+  # Get the PR for this branch (if any)
+  local pr_number
+  pr_number=$(gh pr list --head "$branch" --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
+  
+  if [[ -z "$pr_number" ]]; then
+    info "No open PR found, skipping status check"
+    return 0
+  fi
+  
+  # Get the status check state
+  local status_state
+  status_state=$(gh pr view "$pr_number" --json statusCheckRollup --jq '.statusCheckRollup[].state' 2>/dev/null | sort | uniq | head -1)
+  
+  if [[ -z "$status_state" ]]; then
+    info "No status checks found"
+    return 0
+  fi
+  
+  case "$status_state" in
+    SUCCESS)
+      success "All status checks passed"
+      return 0
+      ;;
+    PENDING)
+      error_exit 5 "Status checks still pending"
+      ;;
+    FAILURE)
+      error_exit 5 "Status checks failed"
+      ;;
+    *)
+      error_exit 5 "Unknown status check state: $status_state"
+      ;;
+  esac
+}
+
+validate_version() {
+  local version="$1"
+  
+  # Check version format (v1.2.3 or 1.2.3)
+  if ! [[ "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    error_exit 1 "Invalid version format: $version (expected: v1.2.3 or 1.2.3)"
+  fi
+}
+
+tag_exists() {
+  local tag="$1"
+  git show-ref --verify --quiet "refs/tags/$tag" 2>/dev/null || return 1
+}
+
+create_annotated_tag() {
+  local tag="$1"
+  local user="$2"
+  
+  info "Creating annotated tag: $tag"
+  
+  # Check tag doesn't already exist
+  if tag_exists "$tag"; then
+    error_exit 7 "Tag already exists: $tag"
+  fi
+  
+  # Create annotated tag
+  if ! git tag -a "$tag" -m "Release $tag by $user" 2>&1; then
+    error_exit 2 "Failed to create tag"
+  fi
+  
+  success "Tag created: $tag"
+}
+
+push_tag() {
+  local tag="$1"
+  
+  info "Pushing tag to remote..."
+  
+  if ! git push origin "$tag" 2>&1; then
+    error_exit 2 "Failed to push tag"
+  fi
+  
+  success "Tag pushed: $tag"
+}
+
+create_github_release() {
+  local tag="$1"
+  
+  info "Creating GitHub release: $tag"
+  
+  if ! gh release create "$tag" --title "$tag" --notes "" 2>&1; then
+    error_exit 6 "Failed to create GitHub release"
+  fi
+  
+  success "GitHub release created: $tag"
+}
+
+log_release_to_history() {
+  local version="$1"
+  local user="$2"
+  
+  local history_file="branch_history.md"
+  local timestamp
+  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  
+  # Create history file if it doesn't exist
+  if [[ ! -f "$history_file" ]]; then
+    cat > "$history_file" << 'EOF'
+# Branch History
+
+Copyright (c) 2026 Paul Sinclair  
+SPDX-License-Identifier: MIT  
+For license details, see `LICENSE` in the repository root.
+
+See `README.md` in the root directory for an introduction to the project.
+
+## Merge Log
+
+EOF
+  fi
+  
+  # Append release entry
+  cat >> "$history_file" << EOF
+- [$timestamp] [$user] Released $version
+EOF
+
+  info "Logged release to $history_file"
+}
+
+# Parse options and arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=true
+      shift
+      ;;
+    -*)
+      error_exit 1 "Unknown option: $1"
+      ;;
+    *)
+      if [[ -z "$VERSION" ]]; then
+        VERSION="$1"
+        shift
+      else
+        error_exit 1 "Unexpected argument: $1"
+      fi
+      ;;
+  esac
+done
+
+# Validate version provided
+if [[ -z "$VERSION" ]]; then
+  error_exit 1 "VERSION argument required"
+fi
+
+# Validate version format
+validate_version "$VERSION"
+
+# Ensure version has v prefix
+if [[ ! "$VERSION" =~ ^v ]]; then
+  VERSION="v$VERSION"
+fi
+
+info "Release version: $VERSION"
+
+# Get current branch
+CURRENT_BRANCH=$(get_current_branch)
+info "Current branch: $CURRENT_BRANCH"
+
+# Get current user
+CURRENT_USER=$(get_current_user)
+info "Current user: $CURRENT_USER"
+
+# Check if on main or protected branch
+if ! is_protected_branch "$CURRENT_BRANCH"; then
+  error_exit 4 "Can only release from main or a protected branch (base is main). Current branch: $CURRENT_BRANCH"
+fi
+success "On valid release branch"
+
+# Check working directory is clean
+info "Checking working directory..."
+check_working_directory_clean
+success "Working directory is clean"
+
+# Fetch latest from remote
+info "Fetching latest from remote..."
+git fetch origin 2>/dev/null || warn "Failed to fetch from origin"
+
+# Check status checks pass
+check_status_checks "$CURRENT_BRANCH"
+
+# Create annotated tag
+create_annotated_tag "$VERSION" "$CURRENT_USER"
+
+# Push tag to remote
+push_tag "$VERSION"
+
+# Create GitHub release
+create_github_release "$VERSION"
+
+# Log release to history
+log_release_to_history "$VERSION" "$CURRENT_USER"
+
+# Show verbose output if requested
+if [[ "$VERBOSE" == true ]]; then
+  info "Release details:"
+  echo "  Version: $VERSION"
+  echo "  Branch: $CURRENT_BRANCH"
+  echo "  User: $CURRENT_USER"
+fi
+
+success "Release $VERSION created and published"
+success "Done"
+exit 0
