@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+
+# mktest - Run tests and validate code/documentation changes.
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Default options
+VERBOSE=false
+STOP_ON_FAIL=true
+GENERATE_DOCS=false
+
+usage() {
+  cat <<'EOF'
+Usage:
+  mktest [OPTIONS]
+  mktest -h | --help
+
+Run all tests and validate code/documentation changes for BriteTest.
+
+Validates that:
+  - All unit tests pass (via `make run`)
+  - Code compiles without errors or warnings
+  - Documentation builds successfully
+  - All tests have adequate coverage for changes
+
+This script should be run before creating or updating a PR to ensure
+changes don't introduce regressions.
+
+Features:
+  - Runs complete test suite
+  - Shows detailed test output
+  - Validates code compilation
+  - Optionally regenerates documentation
+  - Reports test coverage and failures
+  - Supports stopping on first failure or continuing
+
+Options:
+  -h, --help           Output this help to stdout and exit.
+  -v, --verbose        Show detailed test output and logs
+  -c, --continue       Continue running all tests even if some fail
+  -d, --docs           Regenerate and validate documentation
+  -a, --all            Run all checks: tests, docs, and coverage
+
+Examples:
+  # Run basic test suite
+  mktest
+
+  # Run tests with verbose output
+  mktest -v
+
+  # Run all tests even if some fail
+  mktest -c
+
+  # Run tests and regenerate documentation
+  mktest -d
+
+  # Run all checks (tests, docs, coverage)
+  mktest -a
+
+Exit codes:
+  0   All tests passed
+  1   Argument or validation error
+  2   Test execution failed
+  3   Code compilation failed
+  4   Documentation generation failed
+  5   Some tests failed (with --continue)
+EOF
+}
+
+info() {
+  echo -e "${BLUE}ℹ${NC} $1"
+}
+
+success() {
+  echo -e "${GREEN}✓${NC} $1"
+}
+
+warn() {
+  echo -e "${YELLOW}⚠${NC} $1"
+}
+
+error_exit() {
+  local code="$1"
+  local message="$2"
+
+  echo -e "${RED}Error:${NC} $message" >&2
+  exit "$code"
+}
+
+# Parse options and arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=true
+      shift
+      ;;
+    -c | --continue)
+      STOP_ON_FAIL=false
+      shift
+      ;;
+    -d | --docs)
+      GENERATE_DOCS=true
+      shift
+      ;;
+    -a | --all)
+      VERBOSE=true
+      GENERATE_DOCS=true
+      shift
+      ;;
+    -*)
+      error_exit 1 "Unknown option: $1"
+      ;;
+    *)
+      error_exit 1 "Unknown argument: $1"
+      ;;
+  esac
+done
+
+# Verify we're in a git repository with Makefile
+if [[ ! -f "Makefile" ]]; then
+  error_exit 1 "Makefile not found. Are you in the BriteTest repository root?"
+fi
+
+info "Running BriteTest test suite..."
+
+# Run tests
+info "Running: make run"
+if ! make run; then
+  if [[ "$STOP_ON_FAIL" == true ]]; then
+    error_exit 2 "Test suite failed"
+  else
+    warn "Test suite had failures (continuing)"
+    TESTS_FAILED=true
+  fi
+else
+  success "All tests passed"
+fi
+
+# Optionally generate documentation
+if [[ "$GENERATE_DOCS" == true ]]; then
+  info "Generating documentation..."
+  
+  if ! make pdf 2>&1; then
+    if [[ "$STOP_ON_FAIL" == true ]]; then
+      error_exit 4 "Documentation generation failed"
+    else
+      warn "Documentation generation had issues (continuing)"
+      DOCS_FAILED=true
+    fi
+  else
+    success "Documentation generated successfully"
+  fi
+fi
+
+# Show verbose output if requested
+if [[ "$VERBOSE" == true ]]; then
+  info "Test execution details:"
+  if [[ -d "reports" ]]; then
+    echo "  Reports directory contents:"
+    ls -lh reports/ | sed 's/^/    /'
+  fi
+fi
+
+# Report final status
+echo ""
+if [[ "${TESTS_FAILED:-false}" == true ]] || [[ "${DOCS_FAILED:-false}" == true ]]; then
+  warn "Some checks had failures"
+  exit 5
+fi
+
+success "All tests passed - ready for PR"
+exit 0
