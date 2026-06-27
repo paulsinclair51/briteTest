@@ -3,9 +3,9 @@
 This directory contains utility scripts for managing Git branches with
 consistent naming conventions and detailed logging.
 
-Copyright (c) 2026 Paul Sinclair. 
-SPDX-License-Identifier: MIT. 
-For license details, see LICENSE in the repository root.  
+Copyright (c) 2026 Paul Sinclair.  
+SPDX-License-Identifier: MIT.  
+For license details, see LICENSE in the repository root.   
 
 ## Scripts
 
