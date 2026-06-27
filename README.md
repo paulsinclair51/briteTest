@@ -132,16 +132,18 @@ changes are published in a release without a change to `M`, and it resets to
 details>
 <summary>1.1. Key Strengths</summary>
 
-• Lightweight design — minimal files, minimal API surface, easy to embed.
-• Macro‑based Runner API — simple orchestration with predictable control flow.
-• Function‑based Test API — tests are just C functions, easy to organize and debug.
-• Fault‑tolerant execution — protects the test suite from crashes and undefined
+### 1.1. Key Strengths
+
+- Lightweight design — minimal files, minimal API surface, easy to embed.
+- Macro‑based Runner API — simple orchestration with predictable control flow.
+- Function‑based Test API — tests are just C functions, easy to organize and debug.
+- Fault‑tolerant execution — protects the test suite from crashes and undefined
   behavior.
-• Parallel and concurrent test execution,
-• Clear reporting — readable summaries of passes, failures, and faults.
-• Pure C implementation.
-• Minimal footprint (single header + source cor the ).
-• Optional process‑isolated execution.
+- Parallel and concurrent test execution,
+- Clear reporting — readable summaries of passes, failures, and faults.
+- Pure C implementation.
+- Minimal footprint (single header + source cor the ).
+- Optional process‑isolated execution.
 </details>
 
 <details>
