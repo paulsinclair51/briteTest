@@ -3,6 +3,10 @@ set -euo pipefail
 
 # Validate that repository subdirectories have README.md files and that each
 # README follows the normalized directory-guide format.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
