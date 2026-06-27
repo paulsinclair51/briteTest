@@ -5,6 +5,10 @@ set -euo pipefail
 # - docs/*.md (excluding docs/README.md)
 # - include/*.h
 # - src/*.c
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
