@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate BriteTest branding PNGs from the corresponding SVG sources.
+# Generate branding PNGs from the corresponding SVG sources.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -16,10 +16,10 @@ Usage:
   genpng.sh
   genpng.sh -h | --help
 
-Generates all BriteTest branding PNGs from docs/branding/BriteTest_*.svg.
+Generates all branding PNGs from docs/branding/*.svg.
 
 Outputs:
-  docs/branding/BriteTest_*.png  (from docs/branding/BriteTest_*.svg)
+  docs/branding/BriteTest_*.png  (from docs/branding/*.svg)
 EOF
 }
 
@@ -39,10 +39,10 @@ if ! command -v rsvg-convert >/dev/null 2>&1; then
   exit 1
 fi
 
-mapfile -t svg_files < <(find "$branding_dir" -maxdepth 1 -type f -name 'BriteTest_*.svg' | sort)
+mapfile -t svg_files < <(find "$branding_dir" -maxdepth 1 -type f -name '*.svg' | sort)
 
 if [[ ${#svg_files[@]} -eq 0 ]]; then
-  echo "Error: no docs/branding/BriteTest_*.svg files found." >&2
+  echo "Error: no docs/branding/*.svg files found." >&2
   exit 1
 fi
 
