@@ -30,7 +30,7 @@ See `README.md` in the root directory for an introduction to the project.
 
 ### Branch Management:
 
-- **chexk_mjor_release_consistency**:
+- **check_mjor_release_consistency**:
 
 - **ckbranch**:
 
