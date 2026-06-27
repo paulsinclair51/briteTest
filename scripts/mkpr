@@ -21,7 +21,6 @@ CUSTOM_TITLE=""
 CUSTOM_DESCRIPTION=""
 LABELS=""
 ASSIGNEES=""
-REVIEWERS=""
 OPEN_BROWSER=false
 PROMPT_BROWSER=true
 
@@ -36,13 +35,16 @@ Create a new pull request or update an existing one for the current branch.
 The target branch is determined automatically based on the branch's Git history
 (the branch that current branch was created from).
 
+Reviewers are automatically extracted from config/contributors.md (all R/ and A/ entries).
+
 Features:
   - Auto-generates title from branch name
   - Determines target branch from Git history
+  - Reads reviewers from config/contributors.md
   - Creates ready-to-review PRs by default
-  - Supports draft PRs with -d flag
+  - Supports draft PRs with --draft flag
   - Updates existing PRs (title, description, labels, reviewers)
-  - Marks draft PRs as ready when updated (unless -d flag used)
+  - Marks draft PRs as ready when updated (unless --draft flag used)
   - Optionally opens PR in browser
 
 Options:
@@ -52,7 +54,6 @@ Options:
   --draft              Create as draft PR (Work In Progress)
   -l, --labels LABELS  Comma-separated labels (e.g., "bug,urgent")
   -a, --assignees USR  Comma-separated GitHub usernames
-  -r, --reviewers USR  Comma-separated GitHub usernames for review
   -b, --browser        Open PR in browser after creation/update
   -v, --verbose        Show detailed information
   -- TEXT              Unix-style description (everything after -- is description)
@@ -64,9 +65,6 @@ Examples:
 
   # Create draft PR
   mkpr --draft -t "WIP: New feature"
-
-  # Create PR with custom title and reviewers
-  mkpr -t "Fix authentication bug" -r reviewer1,reviewer2
 
   # Create PR with labels and open in browser
   mkpr -l "bug,urgent" -b
@@ -81,7 +79,7 @@ Workflow:
   1. Create PR: mkpr --draft -t "WIP: Feature"
   2. Code review requests changes
   3. Make changes and commit: git add . && git commit -m "Address feedback"
-  4. Update PR and mark ready: mkpr -r new-reviewer
+  4. Update PR and mark ready: mkpr
 
 Exit codes:
   0   Success
@@ -89,6 +87,7 @@ Exit codes:
   2   Git operation failed
   3   Cannot create PR from main branch
   4   GitHub API error
+  5   Configuration error (missing contributors.md or no approvers)
 EOF
 }
 
@@ -176,6 +175,25 @@ get_pr_draft_status() {
   gh pr view "$pr_number" --json isDraft --jq '.isDraft' 2>/dev/null || echo "false"
 }
 
+extract_reviewers_from_config() {
+  local config_file="config/contributors.md"
+  
+  if [[ ! -f "$config_file" ]]; then
+    error_exit 5 "Configuration file not found: $config_file"
+  fi
+  
+  # Extract all R/ and A/ entries, format: [R/]name or [A/]name
+  # Pattern: - [R/]name, email or - [A/]name, email
+  local reviewers
+  reviewers=$(grep -E '^\s*-\s+[RA]/' "$config_file" | sed -E 's/^\s*-\s+[RA]\/([^,]+).*/\1/' | tr '\n' ',' | sed 's/,$//')
+  
+  if [[ -z "$reviewers" ]]; then
+    error_exit 5 "No reviewers or approvers found in $config_file (need at least one A/ entry)"
+  fi
+  
+  echo "$reviewers"
+}
+
 # Parse options and arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -218,13 +236,6 @@ while [[ $# -gt 0 ]]; do
       ASSIGNEES="$2"
       shift 2
       ;;
-    -r | --reviewers)
-      if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -r requires reviewers argument"
-      fi
-      REVIEWERS="$2"
-      shift 2
-      ;;
     -b | --browser)
       OPEN_BROWSER=true
       PROMPT_BROWSER=false
@@ -261,6 +272,11 @@ info "Determining target branch..."
 TARGET_BRANCH=$(get_target_branch "$CURRENT_BRANCH")
 info "Target branch: $TARGET_BRANCH"
 
+# Extract reviewers from config
+info "Reading reviewers from config/contributors.md..."
+REVIEWERS=$(extract_reviewers_from_config)
+info "Reviewers: $REVIEWERS"
+
 # Determine title
 if [[ -z "$CUSTOM_TITLE" ]]; then
   TITLE=$(generate_title_from_branch "$CURRENT_BRANCH")
@@ -295,10 +311,8 @@ if [[ -n "$EXISTING_PR" ]]; then
     gh pr edit "$EXISTING_PR" --add-assignee "$ASSIGNEES" 2>&1 || error_exit 4 "Failed to add assignees"
   fi
   
-  # Update reviewers if provided
-  if [[ -n "$REVIEWERS" ]]; then
-    gh pr edit "$EXISTING_PR" --add-reviewer "$REVIEWERS" 2>&1 || error_exit 4 "Failed to add reviewers"
-  fi
+  # Update reviewers from config
+  gh pr edit "$EXISTING_PR" --add-reviewer "$REVIEWERS" 2>&1 || error_exit 4 "Failed to add reviewers"
   
   # Check if PR is draft and mark ready if not using --draft flag
   CURRENT_DRAFT_STATUS=$(get_pr_draft_status "$EXISTING_PR")
@@ -332,9 +346,8 @@ else
     create_cmd="$create_cmd --assignee '$ASSIGNEES'"
   fi
   
-  if [[ -n "$REVIEWERS" ]]; then
-    create_cmd="$create_cmd --reviewer '$REVIEWERS'"
-  fi
+  # Always add reviewers from config
+  create_cmd="$create_cmd --reviewer '$REVIEWERS'"
   
   # Execute command and capture PR number
   local pr_url
