@@ -57,7 +57,7 @@ For a glossary of terms, see the Glossary Reference
 For a printer-friendly PDF file for this document, see `docs/pdf/BriteTest.pdf`.
 
 <details>
-<summary>Document Version History</summary>
+<summary>.  Document Version History</summary>
 
 ### Document Version History
 
@@ -90,7 +90,7 @@ changes are published in a release without a change to `M`, and it resets to
 ## Table of Contents
 
 1. [**1. Introduction**](#1-introduction)<br>
-   1.1. [Key Features](#11-key-features)<br>
+   1.1. [Key Strengths](#11-key-strength)<br>
    1.2. [Quick Start](#12-quick-start)<br>
    1.3. [Requirements](#13-requirements)<br>
    1.4. [Installation](#14-installation)<br>
@@ -129,7 +129,8 @@ changes are published in a release without a change to `M`, and it resets to
 
 ## 1. Introduction
 
-Key strengths:
+details>
+<summary>   1.1. Key Strengths</summary>
 
 • Lightweight design — minimal files, minimal API surface, easy to embed.
 • Macro‑based Runner API — simple orchestration with predictable control flow.
@@ -144,7 +145,7 @@ Key strengths:
 </details>
 
 <details>
-<summary>. 1.2. Quick Start</summary>
+<summary>   1.2. Quick Start</summary>
 
 ### 1.2. Quick Start
 
@@ -256,7 +257,7 @@ Test Report
 </details>
 
 <details>
-<summary>1.3. Requirements</summary>
+<summary>   1.3. Requirements</summary>
 
 ### 1.3. Requirements
 
@@ -264,7 +265,7 @@ Supported compilers, C standard level, and any platform notes.
 </details>
 
 <details>
-<summary>1.4. Installation</summary>
+<summary>   1.4. Installation</summary>
 
 ### 1.4. Installation
 
