@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# mksyncup - Merge main branch into current branch in BriteTest.
+# mksyncup - Merge base branch into current branch in BriteTest.
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
@@ -25,8 +25,11 @@ Usage:
   mksyncup [OPTIONS]
   mksyncup -h | --help
 
-Merge main branch into current branch to sync up with latest changes.
-Handles simple conflicts automatically and provides instructions for complex ones.
+Merge the base branch of the current branch into current branch to sync up with latest changes.
+
+Automatically determines the base branch based on Git history (the branch that the current
+branch was created from). Handles simple conflicts automatically and provides instructions
+for complex ones.
 
 Protected branches (cannot run mksyncup):
   - main
@@ -36,11 +39,12 @@ Protected branches (cannot run mksyncup):
   - docs/* (direct branches off main)
 
 Allowed branches (can use mksyncup):
-  - Any sub-branches: major/*/*, minor/*/*, patch/*/* , docs/*/*
+  - Any sub-branches: major/*/*, minor/*/*, patch/*/*, docs/*/*
   - Any other custom branches
 
 Features:
-  - Merges main into current branch
+  - Automatically determines base branch
+  - Merges base branch into current branch
   - Auto-resolves simple (non-overlapping) conflicts
   - Shows instructions for complex conflicts
   - Prompts for confirmation before merge and push
@@ -57,7 +61,7 @@ Options:
 Merge Message Options (mutually exclusive):
   -m, --message MSG  Set custom merge message (requires quotes if spaces)
   -- TEXT            Unix-style message (everything after -- is the message)
-  (default)          "Merge main into <branch-name>"
+  (default)          "Merge <base-branch> into <current-branch>"
 
 Examples:
   # Sync up with confirmations
@@ -67,7 +71,7 @@ Examples:
   mksyncup -f
 
   # Custom merge message
-  mksyncup -m "Sync with latest main for bug fix"
+  mksyncup -m "Sync with latest base branch for bug fix"
 
   # Verbose output
   mksyncup -v
@@ -81,6 +85,7 @@ Exit codes:
   2   Git merge or push failed
   3   Conflicts detected (user must resolve)
   4   Branch is protected (cannot sync up)
+  5   Failed to determine base branch
 EOF
 }
 
@@ -106,6 +111,30 @@ error_exit() {
 
 get_current_branch() {
   git rev-parse --abbrev-ref HEAD 2>/dev/null || error_exit 1 "Failed to determine current branch"
+}
+
+get_base_branch() {
+  local current_branch="$1"
+  
+  # Find the merge-base with main (the point where this branch diverged)
+  local merge_base
+  merge_base=$(git merge-base --fork-point origin/main "$current_branch" 2>/dev/null || echo "")
+  
+  if [[ -z "$merge_base" ]]; then
+    error_exit 5 "Failed to determine base branch"
+  fi
+  
+  # Find which branch contains this merge-base commit
+  # Try to find the branch name by looking at remote branches
+  local target_branch
+  target_branch=$(git branch -r --contains "$merge_base" | grep -v HEAD | grep -v "origin/$current_branch" | head -1 | sed 's|origin/||' | xargs)
+  
+  if [[ -z "$target_branch" ]]; then
+    # If we can't find it, assume main
+    target_branch="main"
+  fi
+  
+  echo "$target_branch"
 }
 
 is_protected_branch() {
@@ -190,18 +219,23 @@ if is_protected_branch "$CURRENT_BRANCH"; then
   error_exit 4 "Cannot sync up on protected branch '$CURRENT_BRANCH'. Use 'mkmerge' to merge changes to this branch."
 fi
 
-# Ensure main branch exists and is up to date
-info "Ensuring main branch is up to date..."
-if ! git fetch origin main 2>&1 >/dev/null; then
-  error_exit 2 "Failed to fetch main branch from remote"
+# Determine base branch
+info "Determining base branch..."
+BASE_BRANCH=$(get_base_branch "$CURRENT_BRANCH")
+info "Base branch: $BASE_BRANCH"
+
+# Ensure base branch exists and is up to date
+info "Fetching latest from remote..."
+if ! git fetch origin "$BASE_BRANCH" 2>&1 >/dev/null; then
+  error_exit 2 "Failed to fetch base branch '$BASE_BRANCH' from remote"
 fi
 
-# Count commits from main to current branch
+# Count commits from base branch to current branch
 local commits_to_merge
-commits_to_merge=$(git rev-list --count "HEAD..origin/main" 2>/dev/null || echo "0")
+commits_to_merge=$(git rev-list --count "HEAD..origin/$BASE_BRANCH" 2>/dev/null || echo "0")
 
 if [[ "$commits_to_merge" == "0" ]]; then
-  success "Already up to date with main"
+  success "Already up to date with $BASE_BRANCH"
   exit 0
 fi
 
@@ -209,7 +243,7 @@ info "Commits to merge: $commits_to_merge"
 
 # Determine merge message
 if [[ -z "$CUSTOM_MESSAGE" ]]; then
-  MERGE_MESSAGE="Merge main into $CURRENT_BRANCH"
+  MERGE_MESSAGE="Merge $BASE_BRANCH into $CURRENT_BRANCH"
 else
   MERGE_MESSAGE="$CUSTOM_MESSAGE"
 fi
@@ -225,8 +259,8 @@ if [[ "$FORCE" == false ]]; then
 fi
 
 # Perform merge
-info "Merging main into $CURRENT_BRANCH..."
-if ! git merge origin/main -m "$MERGE_MESSAGE" 2>&1; then
+info "Merging $BASE_BRANCH into $CURRENT_BRANCH..."
+if ! git merge "origin/$BASE_BRANCH" -m "$MERGE_MESSAGE" 2>&1; then
   # Check if merge failed due to conflicts
   if git status | grep -q "both"; then
     warn "Merge conflicts detected"
@@ -239,7 +273,7 @@ if ! git merge origin/main -m "$MERGE_MESSAGE" 2>&1; then
     echo "  3. Complete merge: git commit"
     error_exit 3 "Merge stopped - manual conflict resolution needed"
   else
-    error_exit 2 "Failed to merge main into $CURRENT_BRANCH"
+    error_exit 2 "Failed to merge $BASE_BRANCH into $CURRENT_BRANCH"
   fi
 fi
 
