@@ -522,6 +522,7 @@ format_csv() {
 format_table() {
   local branches="$1"
   local show_detail="$2"
+  local is_remote="$3"
   local current
   current=$(get_current_branch)
 
@@ -533,7 +534,7 @@ format_table() {
     while IFS= read -r branch; do
       [[ -z "$branch" ]] && continue
       local info
-      info=$(get_branch_info "$branch" false)
+      info=$(get_branch_info "$branch" "$is_remote")
       local hash
       hash=$(echo "$info" | cut -d'|' -f1)
       local author
@@ -1036,13 +1037,13 @@ fi
 # Output based on format
 case "$OUTPUT_FORMAT" in
   json)
-    format_json "$all_branches" false
+    format_json "$all_branches" "$SORT_IS_REMOTE"
     ;;
   csv)
-    format_csv "$all_branches" false
+    format_csv "$all_branches" "$SORT_IS_REMOTE"
     ;;
   table)
-    format_table "$all_branches" "$DETAILED_MODE"
+    format_table "$all_branches" "$DETAILED_MODE" "$SORT_IS_REMOTE"
     ;;
 esac
 
