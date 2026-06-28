@@ -9,14 +9,14 @@ name: Branch Name Validation
 #----------------------------------------------------------------------------------
 # Validate pull request branch names against repository branch rules.
 #
-# Branches targeting main must use a version format:
+# Branches targeting main must use a version format for their branch name:
 #   vM.n.p
 # where:
 #   M is 1-2 digits starting with 1-9.
 #   n/p are either 0 or 1-2 digits starting with 1-9.
 #
-# Branches targeting non-main branches must not contain periods and must not be
-# named main.
+# Branches targeting non-main branches must neither be named main nor contain
+# periods in their names.
 #
 # This workflow mirrors the branch-naming policy used by scripts/mkbranch.
 # 
