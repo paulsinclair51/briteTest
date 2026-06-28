@@ -114,6 +114,10 @@ refer to the Runner or Test API Reference document for information.
   structs, enums, macros, and functions that provide a well-defined
   service. For example, the BriteTest Runner API and the BriteTest Test
   API.
+- **approver†**: A person listed in config/contributors.md as an approver.
+  Note that an approver is also a contributor and a reviewer.
+  An approver may review and approve changes to BriteTest. An approver
+  must follow the guidelines in docs/Contributor_Guide.md.
 - **artifact**: A file or bundle of files produced by a GitHub Actions
   workflow and stored for later download (e.g., build outputs, logs,
   reports). See also test artifact.
@@ -161,11 +165,11 @@ refer to the Runner or Test API Reference document for information.
   command-line when used as an adjective.
 - **concurrent block†**: A set of tests bracketed by
   `RA_BEGIN_CONCURRENT` and `RA_END_CONCURRENT` macros.
-- **contributor†**: Any person or agent that may commit to
-  BriteTest `main`. The implementation changes and documentation
-  updates for a commit to `main` must conform to the BriteTest
-  contribution guidelines and must have approval by a designated
-  approver or agent.
+- **contributor†**: A person listed in config/contributors.md.
+  Note that a reviewer or approver, is also a contrubutor.
+  A contributor may provide changes to BriteTest that are subject
+  to review and approval before includding in a release. A contributor
+  must follow the guidelines in docs/Contributor_Guide.md.
 - **control file**: See golden file.
 - **customization function†**: A Runner API function that
   can be used to help customize the orchestrator (main) function and
@@ -286,38 +290,7 @@ _No terms currently defined._
 
 ### --L--
 
-- **Runner Framework†**: Guidelines, templates, APIs,
-  tools, and documentation for building and running test
-  executables.
-- **Runner API†**: An API that helps simplify implementing a test runner.
-- **Test API†**: An API that helps simplify implementing tests.
-- **`ra_internal_*`†**: A prefix for Runner API internal names. Do not
-  define, declare or use names with this prefix.
-- **`RA_INTERNAL_*`†**: A prefix for Runner API internal names. Do not
-  define, declare or use names with this prefix.
-- **`ra_*`†**: Prefix for Runner API functions, typedefs, structs, and
-v variable names. See the Runner API Reference.
-- **`RA_*`†**: Prefix for Runner API macros and enum values. See the
-  Runner API Reference.
-- **`ta_internal_*`†**: A prefix for Test API internal names. Do not
-  define, declare or use names with this prefix.
-- **`TA_INTERNAL_*`†**: A prefix for Test API internal names. Do not
-  define, declare or use names with this prefix.
-- **`ta_*`†**: Prefix for Test API functions, typedefs, structs, and
-  variable names. See the Test API Reference.
-- **`TA_*`†**: Prefix for Test API macros and enum values. See the Test
-  API Reference.
-- **`RA_GROUP`†**: A Runner API macro that executes a test
-  group function with a given isolation mode, maxparallel, and other
-  parameters. See Runner API Reference.
-- **`RA_TEST`†**: A Runner API macro that executes a test
-  expression with a given isolation mode and other parameters. See
-  the Runner API Reference.
-- **`RA_FAIL`†**: A macro that returns 0. Typically used in
-  the `RA_TEST` macro to conditionally inject a fail. See also `-I`.
-- **`RA_FAULT`†**: A macro that injects (signals) a fault.
-  Typically used in the `RA_TEST` macro to conditionally inject a
-  fault. See also fault, `-I`, and the Runner API Reference.
+_No terms currently defined._
 </details>
 
 <details>
@@ -398,9 +371,32 @@ _No terms currently defined._
 
 ### --R--
 
+- **`RA_GROUP`†**: A Runner API macro that executes a test
+  group function with a given isolation mode, maxparallel, and other
+  parameters. See Runner API Reference.
+- **`ra_internal_*`†**: A prefix for Runner API internal names. Do not
+  define, declare or use names with this prefix.
+- **`RA_INTERNAL_*`†**: A prefix for Runner API internal names. Do not
+  define, declare or use names with this prefix.
+- **`ra_*`†**: Prefix for Runner API functions, typedefs, structs, and
+v variable names. See the Runner API Reference.
+- **`RA_*`†**: Prefix for Runner API macros and enum values. See the
+  Runner API Reference.
+- **`RA_TEST`†**: A Runner API macro that executes a test
+  expression with a given isolation mode and other parameters. See
+  the Runner API Reference.
+- **`RA_FAIL`†**: A macro that returns 0. Typically used in
+  the `RA_TEST` macro to conditionally inject a fail. See also `-I`.
+- **`RA_FAULT`†**: A macro that injects (signals) a fault.
+  Typically used in the `RA_TEST` macro to conditionally inject a
+  fault. See also fault, `-I`, and the Runner API Reference.
 - **report**: See test report.
 - **report header†**: Lines of text written at the beginning
   of a test report that include the report title, a timestamp, etc.
+- **reviewer†**: A person listed in config/contributors.md as a reviewer.
+  Note that an reviewer is also a contributor and an approver is also a
+  contributor and a reviewer. A reviewer may review changes to BriteTest.
+  A reviewer must follow the guidelines in docs/Contributor_Guide.md.
 - **runner†**: See test runner.
 - **runner**: (GitHub) A machine or environment that executes the jobs
   defined in a GitHub Actions workflow. A runner provides the
@@ -408,6 +404,9 @@ _No terms currently defined._
   steps such as building, testing, or packaging a project. GitHub
   provides hosted runners, and users may also configure self‑hosted
   runners.
+- **Runner API†**: An API that helps simplify implementing a test runner.
+- **Runner Framework†**: Guidelines, templates, APIs, tools, and
+- documentation for building and running test executables.
 </details>
 
 <details>
@@ -434,7 +433,16 @@ _No terms currently defined._
 
 ### --T--
 
+- **`ta_internal_*`†**: A prefix for Test API internal names. Do not
+  define, declare or use names with this prefix.
+- **`TA_INTERNAL_*`†**: A prefix for Test API internal names. Do not
+  define, declare or use names with this prefix.
+- **`ta_*`†**: Prefix for Test API functions, typedefs, structs, and
+  variable names. See the Test API Reference.
+- **`TA_*`†**: Prefix for Test API macros and enum values. See the Test
+  API Reference.
 - **test†**: See test expression.
+- **Test API†**: An API that helps simplify implementing tests.
 - **test artifact†**: A specific kind of artifact, i.e.,
   file or output generated by a runner executable (for example, a
   test report, `stdout`, and `stderr`).
@@ -447,14 +455,15 @@ _No terms currently defined._
   non‑zero means pass. A test expression and its underlying functions
   are user-written. The Test API is provided to help simplify
   writing a test expression and its underlying functions.
+- **test function†**: A user‑written function used in
+  implementing a test expression.
 - **test group†**: A grouping of `RA_TEST` macros and
   optionally `RA_GROUP` macros.
 - **test group function†**: A function declared with a
   `RA_DECLARE_GROUP` macro and followed by a function body in `{ }`.
-- **test function†**: A user‑written function used in
-  implementing a test expression.
 - **test helper function†**: A Test API function that helps
   simplify implementing a test expression.
+- **testing artifact†**: See test artifact.
 - **test report†**: A file written by a test runner
   that records the results of a test run, including pass/fail counts,
   faults, and optional notes. See also report header, title, and
@@ -465,7 +474,6 @@ _No terms currently defined._
   subset of the tests for a project. The documentaton does not use the term
   _test suite_ since whether a set of tests is _complete_ for a
   project is not well-defined.
-- **testing artifact†**: See test artifact.
 - **thread guard†**: The guard used for thread isolation. A
   thread guard can only reliably capture synchronous signals
   (`SIGSEGV`, `SIGBUS`, `SIGFPE`, and `SIGILL`). Other signals
