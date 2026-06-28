@@ -9,7 +9,7 @@ name: Branch Name Validation
 #----------------------------------------------------------------------------------
 # Validate pull request branch names against repository branch rules.
 #
-# The branch name for branch based on main must have the format:
+# The branch name for a branch based on main must have the format:
 #   vM.n.p
 # where:
 #   M is 1-2 digits starting with 1-9.
