@@ -29,9 +29,10 @@ Arguments:
   <basebranch>       Name of the base branch from which to create the new branch.
 
   If the base branch is main, the user must be an approver (see 
-  docs/Contributor_Guide.md), the new branch must be remote, the new branch name
-  must match the form v<M>.<m>.<p> where M is 1-2 digits starting with 1-9.,
-  and m/p are either 0 or 1-2 digits starting with 1-9, and:
+  docs/Contributor_Guide.md), the new branch must be created remotely, the new
+  branch name must match the form v<M>.<m>.<p> where:
+    - M is 1-2 digits starting with 1-9.
+    - m/p are either 0 or 1-2 digits starting with 1-9.
     - For v<M>.0.0, <M> must be such there is a v<M-1>.0.0 branch or release.
     - For v<M>.<m>.0. <m> must be such that there is a v<M>.0.0 branch/release
       and <m> is 1 or there is a v<M>.<m-1>.0 branch/release.
