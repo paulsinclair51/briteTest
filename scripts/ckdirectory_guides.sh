@@ -3,9 +3,9 @@ set -euo pipefail
 
 # ckdirectory_guides.sh
 #
-# Validate that each repository subdirectory has README.md directory guide and that it
-# conforms to the guidelines. The README.me for the root is the project README.md file
-# and the root does not have README.md directory guide. For the repository layout,
+# Validate that each repository subdirectory has a README.md directory guide and that it
+# conforms to the guidelines. The README.md for the root is the project README.md file
+# (the root does not have README.md directory guide). For the repository layout,
 # see the docs/Documentation_Guide.md.
 #
 # Copyright (c) 2026 Paul Sinclair
@@ -16,9 +16,9 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 # Directories that are intentionally exempt from requiring a README.md directory guide.:
-#   .github is excluded because GitHub does not expose it as a normal browsable
-#   directory in the repository UI, but .github/workflows is still validated since
-#   it is browsable.
+#   Note: .github is excluded because GitHub does not expose it as a normal browsable
+#         directory in the repository UI, but .github/workflows is still validated since
+#         it is browsable.
 exempt_dirs=(
   "."
   "./.git"
