@@ -24,50 +24,24 @@ FORCE=false
 COMMENT=""
 
 # Protected branches that cannot be deleted
-PROTECTED_BRANCHES=("main" "master" "develop" "development")
-
-# Valid branch type prefixes
-VALID_TYPES=("major" "minor" "patch" "docs")
+PROTECTED_BRANCHES=("main")
 
 usage() {
   cat <<'EOF'
 Usage:
-  rmbranch [OPTIONS] <branchname> [COMMENT]
+  rmbranch [OPTIONS] <branchname> [-- MSG]
   rmbranch -h | --help
 
 Remove a branch locally and/or from remote.
 
 Arguments:
-  <branchname>       Name of the branch to remove
-                     Format: [<type>/]<description>
-                     Examples: patch/fix-bug, minor/add-feature, major/refactor, docs/api-guide
+  <branchname>       Name of the branch to remove.
+                     Examples: fix-bug, add-feature, refactor.
 
-Comment Options (mutually exclusive):
-  -m, --message MSG  Attach a commit message/comment to the operation
-                     Usage: rmbranch patch/old-fix -m "Reverted in favor of better approach"
-  -- COMMENT TEXT    Unix-style comment (everything after -- is the comment)
-                     Usage: rmbranch patch/old-fix -- Reverted in favor of better approach
-                     Note: No quotes needed, captures all remaining arguments
-
-Branch Naming Convention:
-  Branches typically follow the format: <type>/<description>
-  
-  Valid types:
-    major  - Major features or changes (e.g., major/new-ui-system, major/core-refactor)
-    minor  - Minor features or changes (e.g., minor/add-logging, minor/optimize-parser)
-    patch  - Bug fixes (e.g., patch/fix-login-bug, patch/memory-leak)
-    docs   - Documentation updates only (e.g., docs/api-guide, docs/setup-instructions)
-
-  Type validation (only if type is specified):
-    - If you specify a type (e.g., 'patch/fix-bug'), the actual branch must have that exact type.
-    - If no type is specified (e.g., 'fix-bug'), no type validation is performed.
-    - Example: rmbranch patch/fix-bug will only delete if a branch named 'patch/fix-bug' exists.
-
-Protected branches (cannot be deleted):
-  - main
-  - master
-  - develop
-  - development
+Protected branches):
+  - main cannot be deleted.
+  - Branches where name includes one or more periods can only be deleted
+    by an approver (see docs/Contributor_Guide_md)
 
 Options:
   -h, --help         Output this help to stdout and exit.
@@ -75,40 +49,44 @@ Options:
   -r                 Remove branch from remote only.
   -a                 Remove from both local and remote.
   -f                 Force removal (no confirmation prompt).
-  -m, --message MSG  Add comment message (GitHub style, requires quotes if spaces)
-  -- TEXT            Add comment (Unix style, everything after -- is the comment)
+  -m "MSG"           Attach a commit message/comment to the operation.
+                     Usage: rmbranch patch/old-fix -m "Reverted in favor of better approach.".
+  --message "MSG"    Attach a commit message/comment to the operation.
+                     Usage: rmbranch old-fix --message "Reverted in favor of better approach."
+  -- MSG             Attach a commit message/comment (everything after -- is the comment)
+                     Usage: rmbranch old-fix -- Reverted in favor of better approach.
+                     Note: No quotes needed, captures all remaining text.
 
 Modes:
   Local (-l, default):
-    - Delete the local branch
-    - Log the operation to logs/branch_history.md
+    - Delete the local branch.
+    - Log the operation to 'logs/local_branch_history.md'.
 
   Remote (-r):
-    - Delete the branch from remote only
-    - Log the operation to logs/branch_history.md
+    - Delete the branch from remote only.
+    - Log the operation to 'logs/branch_history.md'.
 
   Both (-a):
-    - Delete the local branch
-    - Delete the branch from remote
-    - Log the operation to logs/branch_history.md
+    - Delete the local branch.
+    - Delete the branch from remote.
+    - Log the operation to 'logs/branch_history.md' and 'logs/local_branch_history.md'
 
-Examples:
-  # Basic usage
-  rmbranch patch/old-fix
-  rmbranch -r major/experiment
-  rmbranch -a -f minor/temp-feature
+Examples: Basic usage.
+  rmbranch old-fix
+  rmbranch -r experiment
+  rmbranch -a -f temp-feature
 
-  # With GitHub-style comment
-  rmbranch patch/old-fix -m "Reverted in favor of better approach"
-  rmbranch -r major/experiment -m "Experiment failed, consolidating into main"
+Examples: With GitHub-style comment.
+  rmbranch old-fix -m "Reverted in favor of better approach."
+  rmbranch -r experiment -m "Experiment failed."
 
-  # With Unix-style comment
-  rmbranch patch/old-fix -- Reverted in favor of better approach
-  rmbranch -r major/experiment -- Experiment failed, consolidating into main
+Exanples: With Unix-style comment.
+  rmbranch old-fix -- Reverted in favor of better approach.
+  rmbranch -r experiment -- Experiment failed.
 
-  # Force removal with comment
-  rmbranch -f patch/temp -m "Temporary testing branch"
-  rmbranch -a -f major/old -- Cleanup old feature branch
+Examples: Force removal with comment.
+  rmbranch -f temp -m "Temporary testing branch."
+  rmbranch -a -f old -- Cleanup old feature branch.
 
 Exit codes:
   0   Success
