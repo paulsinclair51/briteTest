@@ -29,8 +29,14 @@ if [ "$CURRENT_BRANCH" = "HEAD" ]; then
     exit 1
 fi
 
-if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
-    echo "Error: Cannot rebase the main/master branch. Please checkout a feature branch."
+if [ "$CURRENT_BRANCH" = "main" ]; then
+    echo "Error: Cannot rebase the main branch. Please checkout a feature branch."
+    exit 1
+fi
+
+# Check if current branch contains a period (e.g., v2.1.3)
+if [[ "$CURRENT_BRANCH" == *"."* ]]; then
+    echo "Error: Cannot rebase release branches (branches with version numbers like v2.1.3)."
     exit 1
 fi
 
