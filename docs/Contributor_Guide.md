@@ -1,7 +1,7 @@
 ![Contributor Guide](branding/Contributor_Guide.png)
 
 This document defines the contribution process, coding standards, documentation
-rules, and versioning guidelines.
+rules, and versioning guidelines for contributors, reviewers, and approvers.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -36,8 +36,8 @@ SOFTWARE.
 
 ## Preface
 
-This document is for contributors who need guidance on enhancing
-and maintaining BriteTest.
+This document is for contributors, reviewers, and approvers who need guidance
+on enhancing and maintaining BriteTest.
 
 For a list of other documents and the repository layout, see
 the Documentation Guide.
@@ -109,11 +109,13 @@ changes are released without a change to `M`, and it resets to
 ## 1. Introduction
 
 This Contributor Guide defines the expectations and rules for contributing to
-BriteTest. It covers versioning, testing, documentation, code style, and pull
-request requirements.
+BriteTest. It covers versioning, testing, documentation, code style, pull
+request, and release requirements.
 
-Contributors should read this document before submitting changes to ensure
-consistency across the code and documentation.
+The config/contibutors.md file defines the contributors and which contributors
+are also reviewers or approvers. Contributors should read this document before
+submitting changes, reviewing, or approving to ensure consistency across the
+code and documentation.
 </details>
 
 <details>
