@@ -1,7 +1,44 @@
-TODO
-mkrebase branch
+#!/bin/bash
 
-Change tbe base branch of the current branch to be another branch.
+# mkrebase - Rebase current branch onto a different base branch
+#
+# Usage: mkrebase <new-base-branch>
+#
+# Example: Change feature-a based on v2.1.0 to be based on v2.2.0
+#   mkrebase v2.2.0
+#
+# This script rebases the current branch onto the specified base branch,
+# effectively retargeting the feature to a later release or branch.
 
-For example, change feature-a based on v2.1.0 to be based on v2.2.0 (retarget the
-feature to a later minor release).
+set -e
+
+if [ $# -ne 1 ]; then
+    echo "Usage: mkrebase <new-base-branch>"
+    echo ""
+    echo "Example: mkrebase v2.2.0"
+    echo ""
+    echo "Rebases the current branch onto the specified base branch."
+    exit 1
+fi
+
+NEW_BASE=$1
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+if [ "$CURRENT_BRANCH" = "HEAD" ]; then
+    echo "Error: You are in a detached HEAD state. Please checkout a branch first."
+    exit 1
+fi
+
+if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
+    echo "Error: Cannot rebase the main/master branch. Please checkout a feature branch."
+    exit 1
+fi
+
+echo "Rebasing '$CURRENT_BRANCH' onto '$NEW_BASE'..."
+git rebase "$NEW_BASE"
+
+echo ""
+echo "Successfully rebased '$CURRENT_BRANCH' onto '$NEW_BASE'"
+echo ""
+echo "To force push to remote (use with caution):"
+echo "  git push origin $CURRENT_BRANCH --force-with-lease"
