@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Validate that major release versions are consistent across:
+# Validate that major and minor versions are consistent across:
 # - docs/*.md (excluding docs/README.md)
 # - include/*.h
 # - src/*.c
