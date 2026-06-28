@@ -10,7 +10,9 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
-- **ci.yml**: GitHub CI workflow for the project.
+- **branch-name-validation.yml**: GitHub branch name validation workflow.
+
+- **ci.yml**: GitHub CI workflow.
 
 - **README.md**: This directory guide.
 
