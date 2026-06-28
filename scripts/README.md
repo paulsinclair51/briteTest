@@ -14,10 +14,10 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
-### Document Management:
+### Document and Brand Management:
 
-- **check_directory_readmes.sh**: Verifies that a subdirectory has the expected README.md
-  directory guide and conforms to the guidelines.
+- **ckdirectory_guides.sh**: Verifies that a subdirectory has the expected README.md
+  directory guide and it conforms to the guidelines.
 
 - **genalldocs.sh**: Regenerates all project documentation outputs in one command.
   
@@ -40,8 +40,8 @@ See `README.md` in the root directory for an introduction to the project.
 
 - **branch**: Provides shared branch utility logic used by branch-management scripts.
 
-- **check_major_release_consistency.sh**: Verifies major-version/release consistency checks for
-  release readiness.
+- **ckversions.sh**: Verifies consistent versions acroos `docs/*.md` (excluding the `docs/README.md`
+  directory guide),`include/*.h`, and `src/*.c` files.
 
 - **ckbranch**: Validates branch naming, type rules, and branch-state consistency.
 
