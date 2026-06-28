@@ -29,9 +29,9 @@ Arguments:
   <basebranch>       Name of the base branch from which to create the new branch.
 
   If the base branch is main, the user must be an approver (see 
-  docs/Contributor_Guide.md) and the new branch is remote and must have one of
-  the following forms where <M>, <m>, and <p> must be one or 2 digits (first
-  digit must not be 0):
+  docs/Contributor_Guide.md), the new branch is remote, the new brach name
+  must match the form v<M>.<m>.<p> where M is 1 digit (1-9) or 2 digits (10-99),
+  and m/p are 1 digit (0-9) or 2 digits (10-99), and conform to the following rules:
     - v<M>.0.0 (<M> must be such there is a v<M-1>.0.0 branch or release).
     - v<M>.<m>.0 (<m> must be such that there is a v<M>.0.0 branch/release
       and <m> is 1 or there is a v<M>.<m-1>.0 branch/release).
@@ -40,7 +40,8 @@ Arguments:
 
   If the base branch is not main, the user must be a contributor (see 
   docs/Contributor_Guide.md) the new branch may be local or remote and
-  must be a valid GitHub branch name except the name may not include a period.
+  must be a valid GitHub branch name except the name must neither be main nor
+  contain periods.
 
   Example: Create a feature branch targeted to a major release.
     mkbranch redesign-authentication v2.0.0
