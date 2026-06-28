@@ -12,8 +12,8 @@ name: Branch Name Validation
 # Branches targeting main must use a version format:
 #   vM.n.p
 # where:
-#   M is 1 digit (1-9) or 2 digits (10-99).
-#   n/p are 1 digit (0-9) or 2 digits (10-99).
+#   M is 1-2 digits starting with 1-9.
+#   n/p are either 0 or 1-2 digits starting with 1-9.
 #
 # Branches targeting non-main branches must not contain periods and must not be
 # named main.
