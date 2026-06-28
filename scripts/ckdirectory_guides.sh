@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ckdirectory_guides.sh
+#
 # Validate that repository subdirectories have README.md files and that each
-# README follows the normalized directory-guide format.
+# README.md follows the directory-guide format.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,9 +13,10 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-# Directories that are intentionally exempt from requiring a README.md.
-# .github is excluded because GitHub does not expose it as a normal browsable
-# directory in the repository UI, but .github/workflows is still validated.
+# Directories that are intentionally exempt from requiring a README.md:
+#   .github is excluded because GitHub does not expose it as a normal browsable
+#   directory in the repository UI, but .github/workflows is still validated since
+#   it is browsable.
 exempt_dirs=(
   "."
   "./.git"
