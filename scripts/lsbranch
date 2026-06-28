@@ -25,6 +25,9 @@ DETAILED_MODE=false
 SORT_BY="type"
 OUTPUT_FORMAT="table"
 LIMIT_RESULTS=0
+INVALID_ONLY=false
+STRICT_MODE=false
+INVALID_FOUND=false
 
 usage() {
   cat <<'EOF'
@@ -54,6 +57,8 @@ Options:
   -f, --format FMT   Output format: table (default), json, csv
   --sort FIELD       Sort by: name (alphabetical), type (grouped), date (newest first)
                      Default: type
+  --invalid-only     Show only branches that violate naming rules
+  --strict           Exit with code 4 when any invalid branch names are found
 
 Examples:
   # List all local branches grouped by branch group
@@ -103,6 +108,11 @@ Examples:
   lsbranch -f csv              # CSV format
   lsbranch version -f csv      # CSV of version branches
 
+  # Validation
+  lsbranch --invalid-only      # show only invalid branch names
+  lsbranch --strict            # fail with exit code 4 if invalid names found
+  lsbranch --invalid-only --strict
+
   # Combine options
   lsbranch -s -r -b memory     # remote summary matching "*memory*"
   lsbranch -d -n 5 version     # first 5 detailed version branches
@@ -113,6 +123,7 @@ Exit codes:
   1   Invalid arguments or options
   2   Invalid type specified
   3   No matching branches found
+  4   Invalid branch names found (strict mode)
 EOF
 }
 
@@ -127,7 +138,7 @@ error_exit() {
 # Auto-wrap filter pattern: if no wildcards, wrap as *pattern*
 normalize_filter() {
   local pattern="$1"
-  
+
   # Check if pattern contains any glob characters: * ? [ ]
   if [[ "$pattern" =~ [\*\?\[] ]]; then
     # Already has wildcards, return as-is
@@ -141,7 +152,7 @@ normalize_filter() {
 matches_filter() {
   local branch="$1"
   local pattern="$2"
-  
+
   # Use bash glob matching
   if [[ "$branch" == $pattern ]]; then
     return 0
@@ -153,11 +164,11 @@ apply_filter() {
   local branch="$1"
   local pattern="$2"
   local except="$3"
-  
+
   if [[ -z "$pattern" ]]; then
     return 0  # No filter, include
   fi
-  
+
   if matches_filter "$branch" "$pattern"; then
     if [[ "$except" == true ]]; then
       return 1  # Matches but we want except, exclude
@@ -176,7 +187,7 @@ apply_filter() {
 get_branch_date() {
   local branch="$1"
   local is_remote="$2"
-  
+
   if [[ "$is_remote" == true ]]; then
     git log -1 --format=%ai "origin/$branch" 2>/dev/null || echo "unknown"
   else
@@ -187,20 +198,44 @@ get_branch_date() {
 get_branch_info() {
   local branch="$1"
   local is_remote="$2"
-  
+
   local ref="$branch"
   [[ "$is_remote" == true ]] && ref="origin/$branch"
-  
-  local hash=$(git rev-parse --short "$ref" 2>/dev/null || echo "unknown")
-  local author=$(git log -1 --format=%an "$ref" 2>/dev/null || echo "unknown")
-  local date=$(git log -1 --format=%ar "$ref" 2>/dev/null || echo "unknown")
-  
+
+  local hash
+  hash=$(git rev-parse --short "$ref" 2>/dev/null || echo "unknown")
+  local author
+  author=$(git log -1 --format=%an "$ref" 2>/dev/null || echo "unknown")
+  local date
+  date=$(git log -1 --format=%ar "$ref" 2>/dev/null || echo "unknown")
+
   echo "$hash|$author|$date"
 }
 
 is_version_branch() {
   local branch="$1"
   [[ "$branch" =~ ^v([1-9][0-9]?)\.([0-9]|[1-9][0-9]?)\.([0-9]|[1-9][0-9]?)$ ]]
+}
+
+is_nonversion_branch() {
+  local branch="$1"
+  [[ "$branch" != *.* ]]
+}
+
+get_branch_status() {
+  local branch="$1"
+
+  # main is excluded from naming-rule validation
+  if [[ "$branch" == "main" ]]; then
+    echo "skip"
+    return 0
+  fi
+
+  if is_version_branch "$branch" || is_nonversion_branch "$branch"; then
+    echo "valid"
+  else
+    echo "invalid"
+  fi
 }
 
 branch_matches_type() {
@@ -235,11 +270,11 @@ list_by_type_local() {
     fi
   done < <(git branch --format='%(refname:short)')
   branches="${branches%$'\n'}"
-  
+
   if [[ -z "$branches" ]]; then
     return 1
   fi
-  
+
   echo "$branches"
   return 0
 }
@@ -256,13 +291,21 @@ list_by_type_remote() {
     fi
   done < <(git branch -r --format='%(refname:short)')
   branches="${branches%$'\n'}"
-  
+
   if [[ -z "$branches" ]]; then
     return 1
   fi
-  
+
   echo "$branches"
   return 0
+}
+
+list_all_local() {
+  git branch --format='%(refname:short)'
+}
+
+list_all_remote() {
+  git branch -r --format='%(refname:short)' | sed 's#^origin/##'
 }
 
 filter_branches() {
@@ -270,20 +313,35 @@ filter_branches() {
   local pattern="$2"
   local except="$3"
   local filtered=""
-  
+
   while IFS= read -r branch; do
+    [[ -z "$branch" ]] && continue
     if apply_filter "$branch" "$pattern" "$except"; then
       filtered+="$branch"$'\n'
     fi
   done <<< "$branches"
-  
+
+  echo "${filtered%$'\n'}"
+}
+
+filter_invalid_only() {
+  local branches="$1"
+  local filtered=""
+
+  while IFS= read -r branch; do
+    [[ -z "$branch" ]] && continue
+    if [[ "$(get_branch_status "$branch")" == "invalid" ]]; then
+      filtered+="$branch"$'\n'
+    fi
+  done <<< "$branches"
+
   echo "${filtered%$'\n'}"
 }
 
 sort_branches() {
   local branches="$1"
   local sort_by="$2"
-  
+
   case "$sort_by" in
     name)
       echo "$branches" | sort
@@ -291,6 +349,8 @@ sort_branches() {
     date)
       # Sort by date (newest first)
       while IFS= read -r branch; do
+        [[ -z "$branch" ]] && continue
+        local date
         date=$(get_branch_date "$branch" false)
         echo "$date|$branch"
       done <<< "$branches" | sort -rV | cut -d'|' -f2
@@ -299,11 +359,19 @@ sort_branches() {
       # Group by type, then alphabetical within each type
       for type in "${VALID_TYPES[@]}"; do
         while IFS= read -r branch; do
+          [[ -z "$branch" ]] && continue
           if branch_matches_type "$type" "$branch"; then
             echo "$branch"
           fi
         done <<< "$branches" | sort
       done
+      # Append invalid branches at end for visibility
+      while IFS= read -r branch; do
+        [[ -z "$branch" ]] && continue
+        if [[ "$(get_branch_status "$branch")" == "invalid" ]]; then
+          echo "$branch"
+        fi
+      done <<< "$branches" | sort
       ;;
     *)
       echo "$branches"
@@ -314,7 +382,7 @@ sort_branches() {
 limit_branches() {
   local branches="$1"
   local limit="$2"
-  
+
   if [[ $limit -le 0 ]]; then
     echo "$branches"
   else
@@ -326,37 +394,63 @@ get_current_branch() {
   git rev-parse --abbrev-ref HEAD 2>/dev/null || echo ""
 }
 
+compute_invalid_found() {
+  local branches="$1"
+  local found=false
+
+  while IFS= read -r branch; do
+    [[ -z "$branch" ]] && continue
+    if [[ "$(get_branch_status "$branch")" == "invalid" ]]; then
+      found=true
+      break
+    fi
+  done <<< "$branches"
+
+  if [[ "$found" == true ]]; then
+    INVALID_FOUND=true
+  fi
+}
+
 format_json() {
   local branches="$1"
   local is_remote="$2"
-  
+
   echo "{"
   echo '  "branches": ['
-  
+
   local first=true
   while IFS= read -r branch; do
+    [[ -z "$branch" ]] && continue
     if [[ "$first" == false ]]; then
       echo ","
     fi
     first=false
-    
+
+    local status
+    status=$(get_branch_status "$branch")
+
     echo -n "    {"
     echo -n "\"name\": \"$branch\""
-    
+    echo -n ", \"status\": \"$status\""
+
     if [[ "$DETAILED_MODE" == true ]]; then
-      local info=$(get_branch_info "$branch" "$is_remote")
-      local hash=$(echo "$info" | cut -d'|' -f1)
-      local author=$(echo "$info" | cut -d'|' -f2)
-      local date=$(echo "$info" | cut -d'|' -f3)
-      
+      local info
+      info=$(get_branch_info "$branch" "$is_remote")
+      local hash
+      hash=$(echo "$info" | cut -d'|' -f1)
+      local author
+      author=$(echo "$info" | cut -d'|' -f2)
+      local date
+      date=$(echo "$info" | cut -d'|' -f3)
+
       echo -n ", \"hash\": \"$hash\""
       echo -n ", \"author\": \"$author\""
       echo -n ", \"date\": \"$date\""
     fi
-    
+
     echo -n "}"
   done <<< "$branches"
-  
+
   echo ""
   echo "  ]"
   echo "}"
@@ -365,49 +459,72 @@ format_json() {
 format_csv() {
   local branches="$1"
   local is_remote="$2"
-  
+
   if [[ "$DETAILED_MODE" == true ]]; then
-    echo "branch,hash,author,date"
+    echo "branch,status,hash,author,date"
     while IFS= read -r branch; do
-      local info=$(get_branch_info "$branch" "$is_remote")
-      local hash=$(echo "$info" | cut -d'|' -f1)
-      local author=$(echo "$info" | cut -d'|' -f2)
-      local date=$(echo "$info" | cut -d'|' -f3)
-      echo "$branch,$hash,$author,$date"
+      [[ -z "$branch" ]] && continue
+      local status
+      status=$(get_branch_status "$branch")
+      local info
+      info=$(get_branch_info "$branch" "$is_remote")
+      local hash
+      hash=$(echo "$info" | cut -d'|' -f1)
+      local author
+      author=$(echo "$info" | cut -d'|' -f2)
+      local date
+      date=$(echo "$info" | cut -d'|' -f3)
+      echo "$branch,$status,$hash,$author,$date"
     done <<< "$branches"
   else
-    echo "branch"
-    echo "$branches"
+    echo "branch,status"
+    while IFS= read -r branch; do
+      [[ -z "$branch" ]] && continue
+      local status
+      status=$(get_branch_status "$branch")
+      echo "$branch,$status"
+    done <<< "$branches"
   fi
 }
 
 format_table() {
   local branches="$1"
   local show_detail="$2"
-  local current=$(get_current_branch)
-  
+  local current
+  current=$(get_current_branch)
+
   if [[ "$show_detail" == true ]]; then
     # Detailed table format
-    printf "%-35s %-8s %-20s %s\n" "Branch" "Hash" "Author" "Date"
-    printf "%-35s %-8s %-20s %s\n" "-----------------------------------" "--------" "--------------------" "-------------------"
-    
+    printf "%-35s %-10s %-8s %-20s %s\n" "Branch" "Status" "Hash" "Author" "Date"
+    printf "%-35s %-10s %-8s %-20s %s\n" "-----------------------------------" "----------" "--------" "--------------------" "-------------------"
+
     while IFS= read -r branch; do
-      local info=$(get_branch_info "$branch" false)
-      local hash=$(echo "$info" | cut -d'|' -f1)
-      local author=$(echo "$info" | cut -d'|' -f2)
-      local date=$(echo "$info" | cut -d'|' -f3)
-      
+      [[ -z "$branch" ]] && continue
+      local info
+      info=$(get_branch_info "$branch" false)
+      local hash
+      hash=$(echo "$info" | cut -d'|' -f1)
+      local author
+      author=$(echo "$info" | cut -d'|' -f2)
+      local date
+      date=$(echo "$info" | cut -d'|' -f3)
+      local status
+      status=$(get_branch_status "$branch")
+
       local indicator=" "
       [[ "$branch" == "$current" ]] && indicator=">"
-      
-      printf "%s %-34s %-8s %-20s %s\n" "$indicator" "$branch" "$hash" "$author" "$date"
+
+      printf "%s %-34s %-10s %-8s %-20s %s\n" "$indicator" "$branch" "$status" "$hash" "$author" "$date"
     done <<< "$branches"
   else
     # Simple list format
     while IFS= read -r branch; do
+      [[ -z "$branch" ]] && continue
       local indicator=" "
       [[ "$branch" == "$current" ]] && indicator=">"
-      echo "$indicator * $branch"
+      local status
+      status=$(get_branch_status "$branch")
+      echo "$indicator * $branch [$status]"
     done <<< "$branches"
   fi
 }
@@ -417,6 +534,9 @@ count_by_type_local() {
   if branches=$(list_by_type_local "$type" 2>/dev/null); then
     if [[ -n "$FILTER_NAME" ]]; then
       branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+    fi
+    if [[ "$INVALID_ONLY" == true ]]; then
+      branches=$(filter_invalid_only "$branches")
     fi
     if [[ -z "$branches" ]]; then
       echo "0"
@@ -434,6 +554,9 @@ count_by_type_remote() {
     if [[ -n "$FILTER_NAME" ]]; then
       branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
     fi
+    if [[ "$INVALID_ONLY" == true ]]; then
+      branches=$(filter_invalid_only "$branches")
+    fi
     if [[ -z "$branches" ]]; then
       echo "0"
     else
@@ -447,14 +570,32 @@ count_by_type_remote() {
 is_valid_type() {
   local type="$1"
   local valid
-  
+
   for valid in "${VALID_TYPES[@]}"; do
     if [[ "$type" == "$valid" ]]; then
       return 0
     fi
   done
-  
+
   return 1
+}
+
+count_statuses() {
+  local branches="$1"
+  local valid=0
+  local invalid=0
+  local skipped=0
+
+  while IFS= read -r branch; do
+    [[ -z "$branch" ]] && continue
+    case "$(get_branch_status "$branch")" in
+      valid) ((valid++)) ;;
+      invalid) ((invalid++)) ;;
+      skip) ((skipped++)) ;;
+    esac
+  done <<< "$branches"
+
+  echo "$valid|$invalid|$skipped"
 }
 
 # Parse options
@@ -521,6 +662,14 @@ while [[ $# -gt 0 ]]; do
       OUTPUT_FORMAT="$2"
       shift 2
       ;;
+    --invalid-only)
+      INVALID_ONLY=true
+      shift
+      ;;
+    --strict)
+      STRICT_MODE=true
+      shift
+      ;;
     -*)
       error_exit 1 "Unknown option: $1"
       ;;
@@ -585,27 +734,49 @@ if [[ "$COUNT_ONLY" == true ]]; then
       count_by_type_local "$FILTER_TYPE"
     fi
   else
-    # Count all branches
+    # Count all branches using full branch listing so invalid branches are included
     if [[ "$SHOW_REMOTE" == "both" ]]; then
-      local_total=0
-      remote_total=0
-      for type in "${VALID_TYPES[@]}"; do
-        local_total=$((local_total + $(count_by_type_local "$type")))
-        remote_total=$((remote_total + $(count_by_type_remote "$type")))
-      done
-      echo "$((local_total + remote_total))"
+      local_branches=$(list_all_local)
+      remote_branches=$(list_all_remote)
+      if [[ -n "$FILTER_NAME" ]]; then
+        local_branches=$(filter_branches "$local_branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+        remote_branches=$(filter_branches "$remote_branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+      fi
+      if [[ "$INVALID_ONLY" == true ]]; then
+        local_branches=$(filter_invalid_only "$local_branches")
+        remote_branches=$(filter_invalid_only "$remote_branches")
+      fi
+      local_count=0
+      remote_count=0
+      [[ -n "$local_branches" ]] && local_count=$(echo "$local_branches" | sed '/^$/d' | wc -l)
+      [[ -n "$remote_branches" ]] && remote_count=$(echo "$remote_branches" | sed '/^$/d' | wc -l)
+      echo "$((local_count + remote_count))"
     elif [[ "$SHOW_REMOTE" == true ]]; then
-      total=0
-      for type in "${VALID_TYPES[@]}"; do
-        total=$((total + $(count_by_type_remote "$type")))
-      done
-      echo "$total"
+      branches=$(list_all_remote)
+      if [[ -n "$FILTER_NAME" ]]; then
+        branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+      fi
+      if [[ "$INVALID_ONLY" == true ]]; then
+        branches=$(filter_invalid_only "$branches")
+      fi
+      if [[ -z "$branches" ]]; then
+        echo "0"
+      else
+        echo "$branches" | sed '/^$/d' | wc -l
+      fi
     else
-      total=0
-      for type in "${VALID_TYPES[@]}"; do
-        total=$((total + $(count_by_type_local "$type")))
-      done
-      echo "$total"
+      branches=$(list_all_local)
+      if [[ -n "$FILTER_NAME" ]]; then
+        branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+      fi
+      if [[ "$INVALID_ONLY" == true ]]; then
+        branches=$(filter_invalid_only "$branches")
+      fi
+      if [[ -z "$branches" ]]; then
+        echo "0"
+      else
+        echo "$branches" | sed '/^$/d' | wc -l
+      fi
     fi
   fi
   exit 0
@@ -615,49 +786,146 @@ fi
 if [[ "$SUMMARY_MODE" == true ]]; then
   if [[ -n "$FILTER_TYPE" ]]; then
     if [[ "$SHOW_REMOTE" == "both" ]]; then
-      local_count=$(count_by_type_local "$FILTER_TYPE")
-      remote_count=$(count_by_type_remote "$FILTER_TYPE")
-      echo "Local $FILTER_TYPE branches: $local_count"
-      echo "Remote $FILTER_TYPE branches: $remote_count"
-      echo "Total: $((local_count + remote_count))"
+      local_branches=""
+      remote_branches=""
+      if local_branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then :; fi
+      if remote_branches=$(list_by_type_remote "$FILTER_TYPE" 2>/dev/null); then :; fi
+
+      if [[ -n "$FILTER_NAME" ]]; then
+        [[ -n "$local_branches" ]] && local_branches=$(filter_branches "$local_branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+        [[ -n "$remote_branches" ]] && remote_branches=$(filter_branches "$remote_branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+      fi
+      if [[ "$INVALID_ONLY" == true ]]; then
+        [[ -n "$local_branches" ]] && local_branches=$(filter_invalid_only "$local_branches")
+        [[ -n "$remote_branches" ]] && remote_branches=$(filter_invalid_only "$remote_branches")
+      fi
+
+      local_stats=$(count_statuses "$local_branches")
+      remote_stats=$(count_statuses "$remote_branches")
+      l_valid=$(echo "$local_stats" | cut -d'|' -f1)
+      l_invalid=$(echo "$local_stats" | cut -d'|' -f2)
+      r_valid=$(echo "$remote_stats" | cut -d'|' -f1)
+      r_invalid=$(echo "$remote_stats" | cut -d'|' -f2)
+
+      echo "Local $FILTER_TYPE branches: $((l_valid + l_invalid)) (valid: $l_valid, invalid: $l_invalid)"
+      echo "Remote $FILTER_TYPE branches: $((r_valid + r_invalid)) (valid: $r_valid, invalid: $r_invalid)"
+      echo "Total: $((l_valid + l_invalid + r_valid + r_invalid))"
     elif [[ "$SHOW_REMOTE" == true ]]; then
-      count=$(count_by_type_remote "$FILTER_TYPE")
-      echo "Remote $FILTER_TYPE branches: $count"
+      branches=""
+      if branches=$(list_by_type_remote "$FILTER_TYPE" 2>/dev/null); then :; fi
+      if [[ -n "$FILTER_NAME" ]]; then
+        branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+      fi
+      if [[ "$INVALID_ONLY" == true ]]; then
+        branches=$(filter_invalid_only "$branches")
+      fi
+      stats=$(count_statuses "$branches")
+      valid=$(echo "$stats" | cut -d'|' -f1)
+      invalid=$(echo "$stats" | cut -d'|' -f2)
+      echo "Remote $FILTER_TYPE branches: $((valid + invalid)) (valid: $valid, invalid: $invalid)"
     else
-      count=$(count_by_type_local "$FILTER_TYPE")
-      echo "Local $FILTER_TYPE branches: $count"
+      branches=""
+      if branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then :; fi
+      if [[ -n "$FILTER_NAME" ]]; then
+        branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+      fi
+      if [[ "$INVALID_ONLY" == true ]]; then
+        branches=$(filter_invalid_only "$branches")
+      fi
+      stats=$(count_statuses "$branches")
+      valid=$(echo "$stats" | cut -d'|' -f1)
+      invalid=$(echo "$stats" | cut -d'|' -f2)
+      echo "Local $FILTER_TYPE branches: $((valid + invalid)) (valid: $valid, invalid: $invalid)"
     fi
   else
-    local_totals=()
-    remote_totals=()
-    
-    for type in "${VALID_TYPES[@]}"; do
-      local_totals+=("$(count_by_type_local "$type")")
-      remote_totals+=("$(count_by_type_remote "$type")")
-    done
-    
+    # Summary of all branches (includes invalid branches)
     if [[ "$SHOW_REMOTE" == "both" ]]; then
+      local_branches=$(list_all_local)
+      remote_branches=$(list_all_remote)
+      if [[ -n "$FILTER_NAME" ]]; then
+        local_branches=$(filter_branches "$local_branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+        remote_branches=$(filter_branches "$remote_branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+      fi
+      if [[ "$INVALID_ONLY" == true ]]; then
+        local_branches=$(filter_invalid_only "$local_branches")
+        remote_branches=$(filter_invalid_only "$remote_branches")
+      fi
+
+      local_stats=$(count_statuses "$local_branches")
+      remote_stats=$(count_statuses "$remote_branches")
+      l_valid=$(echo "$local_stats" | cut -d'|' -f1)
+      l_invalid=$(echo "$local_stats" | cut -d'|' -f2)
+      l_skip=$(echo "$local_stats" | cut -d'|' -f3)
+      r_valid=$(echo "$remote_stats" | cut -d'|' -f1)
+      r_invalid=$(echo "$remote_stats" | cut -d'|' -f2)
+      r_skip=$(echo "$remote_stats" | cut -d'|' -f3)
+
       echo "Local Branch Summary:"
-      for i in "${!VALID_TYPES[@]}"; do
-        echo "  ${VALID_TYPES[$i]}: ${local_totals[$i]}"
-      done
+      echo "  valid: $l_valid"
+      echo "  invalid: $l_invalid"
+      echo "  skipped: $l_skip"
       echo ""
       echo "Remote Branch Summary:"
-      for i in "${!VALID_TYPES[@]}"; do
-        echo "  ${VALID_TYPES[$i]}: ${remote_totals[$i]}"
-      done
+      echo "  valid: $r_valid"
+      echo "  invalid: $r_invalid"
+      echo "  skipped: $r_skip"
     elif [[ "$SHOW_REMOTE" == true ]]; then
+      branches=$(list_all_remote)
+      if [[ -n "$FILTER_NAME" ]]; then
+        branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+      fi
+      if [[ "$INVALID_ONLY" == true ]]; then
+        branches=$(filter_invalid_only "$branches")
+      fi
+      stats=$(count_statuses "$branches")
+      valid=$(echo "$stats" | cut -d'|' -f1)
+      invalid=$(echo "$stats" | cut -d'|' -f2)
+      skip=$(echo "$stats" | cut -d'|' -f3)
+
       echo "Remote Branch Summary:"
-      for i in "${!VALID_TYPES[@]}"; do
-        echo "  ${VALID_TYPES[$i]}: ${remote_totals[$i]}"
-      done
+      echo "  valid: $valid"
+      echo "  invalid: $invalid"
+      echo "  skipped: $skip"
     else
+      branches=$(list_all_local)
+      if [[ -n "$FILTER_NAME" ]]; then
+        branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+      fi
+      if [[ "$INVALID_ONLY" == true ]]; then
+        branches=$(filter_invalid_only "$branches")
+      fi
+      stats=$(count_statuses "$branches")
+      valid=$(echo "$stats" | cut -d'|' -f1)
+      invalid=$(echo "$stats" | cut -d'|' -f2)
+      skip=$(echo "$stats" | cut -d'|' -f3)
+
       echo "Local Branch Summary:"
-      for i in "${!VALID_TYPES[@]}"; do
-        echo "  ${VALID_TYPES[$i]}: ${local_totals[$i]}"
-      done
+      echo "  valid: $valid"
+      echo "  invalid: $invalid"
+      echo "  skipped: $skip"
     fi
   fi
+
+  # Strict mode check on summary output scope
+  if [[ "$STRICT_MODE" == true ]]; then
+    scope_branches=""
+    if [[ "$SHOW_REMOTE" == "both" ]]; then
+      scope_branches="$(list_all_local)"
+      remote="$(list_all_remote)"
+      [[ -n "$scope_branches" && -n "$remote" ]] && scope_branches+=$'\n'
+      scope_branches+="$remote"
+    elif [[ "$SHOW_REMOTE" == true ]]; then
+      scope_branches="$(list_all_remote)"
+    else
+      scope_branches="$(list_all_local)"
+    fi
+    [[ -n "$FILTER_NAME" ]] && scope_branches=$(filter_branches "$scope_branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+    compute_invalid_found "$scope_branches"
+    if [[ "$INVALID_FOUND" == true ]]; then
+      exit 4
+    fi
+  fi
+
   exit 0
 fi
 
@@ -676,7 +944,7 @@ if [[ -n "$FILTER_TYPE" ]]; then
       if [[ -n "$FILTER_NAME" ]]; then
         branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
       fi
-      if [[ -n "$all_branches" ]]; then
+      if [[ -n "$all_branches" && -n "$branches" ]]; then
         all_branches+=$'\n'
       fi
       all_branches+="$branches"
@@ -697,55 +965,37 @@ if [[ -n "$FILTER_TYPE" ]]; then
     fi
   fi
 else
-  # All branches
-  for type in "${VALID_TYPES[@]}"; do
-    if [[ "$SHOW_REMOTE" == "both" ]]; then
-      if branches=$(list_by_type_local "$type" 2>/dev/null); then
-        if [[ -n "$FILTER_NAME" ]]; then
-          branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
-        fi
-        if [[ -n "$all_branches" ]]; then
-          all_branches+=$'\n'
-        fi
-        all_branches+="$branches"
-      fi
-      if branches=$(list_by_type_remote "$type" 2>/dev/null); then
-        if [[ -n "$FILTER_NAME" ]]; then
-          branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
-        fi
-        if [[ -n "$all_branches" ]]; then
-          all_branches+=$'\n'
-        fi
-        all_branches+="$branches"
-      fi
-    elif [[ "$SHOW_REMOTE" == true ]]; then
-      if branches=$(list_by_type_remote "$type" 2>/dev/null); then
-        if [[ -n "$FILTER_NAME" ]]; then
-          branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
-        fi
-        if [[ -n "$all_branches" ]]; then
-          all_branches+=$'\n'
-        fi
-        all_branches+="$branches"
-      fi
-    else
-      if branches=$(list_by_type_local "$type" 2>/dev/null); then
-        if [[ -n "$FILTER_NAME" ]]; then
-          branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
-        fi
-        if [[ -n "$all_branches" ]]; then
-          all_branches+=$'\n'
-        fi
-        all_branches+="$branches"
-      fi
+  # All branches (includes invalid names)
+  if [[ "$SHOW_REMOTE" == "both" ]]; then
+    local_branches=$(list_all_local)
+    remote_branches=$(list_all_remote)
+    all_branches="$local_branches"
+    if [[ -n "$all_branches" && -n "$remote_branches" ]]; then
+      all_branches+=$'\n'
     fi
-  done
+    all_branches+="$remote_branches"
+  elif [[ "$SHOW_REMOTE" == true ]]; then
+    all_branches=$(list_all_remote)
+  else
+    all_branches=$(list_all_local)
+  fi
+
+  if [[ -n "$FILTER_NAME" ]]; then
+    all_branches=$(filter_branches "$all_branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+  fi
+fi
+
+if [[ "$INVALID_ONLY" == true ]]; then
+  all_branches=$(filter_invalid_only "$all_branches")
 fi
 
 # Check if any branches found
-if [[ -z "$all_branches" ]]; then
+if [[ -z "$(echo "$all_branches" | sed '/^$/d')" ]]; then
   error_exit 3 "No branches found"
 fi
+
+# Determine if invalid branches exist in current output scope
+compute_invalid_found "$all_branches"
 
 # Apply sorting
 all_branches=$(sort_branches "$all_branches" "$SORT_BY")
@@ -767,5 +1017,9 @@ case "$OUTPUT_FORMAT" in
     format_table "$all_branches" "$DETAILED_MODE"
     ;;
 esac
+
+if [[ "$STRICT_MODE" == true && "$INVALID_FOUND" == true ]]; then
+  exit 4
+fi
 
 exit 0
