@@ -1,23 +1,24 @@
 #!/bin/bash
 
-# mkrebase - Rebase current branch onto a different base branch
+# mkrebase - Rebase a branch onto a different base branch.
 #
-# Usage: mkrebase <new-base-branch>
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
 #
-# Example: Change feature-a based on v2.1.0 to be based on v2.2.0
-#   mkrebase v2.2.0
-#
-# This script rebases the current branch onto the specified base branch,
-# effectively retargeting the feature to a later release or branch.
+# This script rebases a branch onto the specified new base branch,
+# effectively retargeting the feature to a another branch.
 
 set -e
 
 if [ $# -ne 1 ]; then
-    echo "Usage: mkrebase <new-base-branch>"
+    echo "Usage: mkrebase <branch> <newbasebranch>"
     echo ""
-    echo "Example: mkrebase v2.2.0"
+    echo "Example: Retarget a feature branch based on v2.1.0 to be"
+    echo ".        targeted to the v2.2.0 branch."
+    echo "  mkrebase feature-a v2.2.0"
     echo ""
-    echo "Rebases the current branch onto the specified base branch."
+    echo "Rebases the feature-a branch onto the v2.2.0 branch."
     exit 1
 fi
 
