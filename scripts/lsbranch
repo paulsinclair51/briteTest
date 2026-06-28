@@ -341,6 +341,7 @@ filter_invalid_only() {
 sort_branches() {
   local branches="$1"
   local sort_by="$2"
+  local is_remote="$3"
 
   case "$sort_by" in
     name)
@@ -351,7 +352,7 @@ sort_branches() {
       while IFS= read -r branch; do
         [[ -z "$branch" ]] && continue
         local date
-        date=$(get_branch_date "$branch" false)
+        date=$(get_branch_date "$branch" "$is_remote")
         echo "$date|$branch"
       done <<< "$branches" | sort -rV | cut -d'|' -f2
       ;;
@@ -951,9 +952,11 @@ fi
 
 # Collect branches
 all_branches=""
+SORT_IS_REMOTE=false
 
 if [[ -n "$FILTER_TYPE" ]]; then
   if [[ "$SHOW_REMOTE" == "both" ]]; then
+    SORT_IS_REMOTE=false
     if branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then
       if [[ -n "$FILTER_NAME" ]]; then
         branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
@@ -970,6 +973,7 @@ if [[ -n "$FILTER_TYPE" ]]; then
       all_branches+="$branches"
     fi
   elif [[ "$SHOW_REMOTE" == true ]]; then
+    SORT_IS_REMOTE=true
     if branches=$(list_by_type_remote "$FILTER_TYPE" 2>/dev/null); then
       if [[ -n "$FILTER_NAME" ]]; then
         branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
@@ -977,6 +981,7 @@ if [[ -n "$FILTER_TYPE" ]]; then
       all_branches="$branches"
     fi
   else
+    SORT_IS_REMOTE=false
     if branches=$(list_by_type_local "$FILTER_TYPE" 2>/dev/null); then
       if [[ -n "$FILTER_NAME" ]]; then
         branches=$(filter_branches "$branches" "$FILTER_NAME" "$FILTER_EXCEPT")
@@ -987,6 +992,7 @@ if [[ -n "$FILTER_TYPE" ]]; then
 else
   # All branches (includes invalid names)
   if [[ "$SHOW_REMOTE" == "both" ]]; then
+    SORT_IS_REMOTE=false
     local_branches=$(list_all_local)
     remote_branches=$(list_all_remote)
     all_branches="$local_branches"
@@ -995,8 +1001,10 @@ else
     fi
     all_branches+="$remote_branches"
   elif [[ "$SHOW_REMOTE" == true ]]; then
+    SORT_IS_REMOTE=true
     all_branches=$(list_all_remote)
   else
+    SORT_IS_REMOTE=false
     all_branches=$(list_all_local)
   fi
 
@@ -1018,7 +1026,7 @@ fi
 compute_invalid_found "$all_branches"
 
 # Apply sorting
-all_branches=$(sort_branches "$all_branches" "$SORT_BY")
+all_branches=$(sort_branches "$all_branches" "$SORT_BY" "$SORT_IS_REMOTE")
 
 # Apply limit
 if [[ $LIMIT_RESULTS -gt 0 ]]; then
