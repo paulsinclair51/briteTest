@@ -8,13 +8,6 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
 # Default options
 SYNC_ALL=false
 VERBOSE=false
@@ -74,22 +67,22 @@ EOF
 }
 
 info() {
-  echo -e "${BLUE}ℹ${NC} $1"
+  echo "$1"
 }
 
 success() {
-  echo -e "${GREEN}✓${NC} $1"
+  echo "$1"
 }
 
 warn() {
-  echo -e "${YELLOW}⚠${NC} $1"
+  echo "$1"
 }
 
 error_exit() {
   local code="$1"
   local message="$2"
 
-  echo -e "${RED}Error:${NC} $message" >&2
+  echo "Error: $message" >&2
   exit "$code"
 }
 
@@ -204,7 +197,7 @@ if [[ "$SYNC_ALL" == false ]]; then
   
   # Show commit count if verbose
   if [[ "$VERBOSE" == true ]]; then
-    local new_commits=$(git rev-list --count "HEAD@{1}..HEAD" 2>/dev/null || echo "?")
+    new_commits=$(git rev-list --count "HEAD@{1}..HEAD" 2>/dev/null || echo "?")
     if [[ "$new_commits" != "?" ]]; then
       info "$new_commits new commits pulled"
     fi
@@ -213,8 +206,8 @@ else
   # Sync all branches
   info "Pulling latest changes for all branches..."
   
-  local branches=$(git branch -r | grep -v HEAD | sed 's/origin\///')
-  local updated_count=0
+  branches=$(git branch -r | grep -v HEAD | sed 's/origin\///')
+  updated_count=0
   
   for branch in $branches; do
     if git pull origin "$branch" 2>&1 >/dev/null; then
@@ -226,7 +219,7 @@ else
 fi
 
 # Check for unpushed commits in current branch
-local unpushed=$(count_unpushed_commits "$CURRENT_BRANCH")
+unpushed=$(count_unpushed_commits "$CURRENT_BRANCH")
 if [[ "$unpushed" -gt 0 ]]; then
   warn "Local commits not pushed: $unpushed commit(s)"
   if [[ "$VERBOSE" == true ]]; then
@@ -235,7 +228,7 @@ if [[ "$unpushed" -gt 0 ]]; then
 fi
 
 # Check if behind main
-local behind_main=$(count_commits_behind_main "$CURRENT_BRANCH")
+behind_main=$(count_commits_behind_main "$CURRENT_BRANCH")
 if [[ "$behind_main" -gt 0 ]] && [[ "$CURRENT_BRANCH" != "main" ]]; then
   warn "Your branch is $behind_main commit(s) behind main"
   info "Run: mksyncup"
