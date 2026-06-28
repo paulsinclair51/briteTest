@@ -1,4 +1,7 @@
 TODO
 mkrebase branch
 
-Make branch the base branch for the current branch.
+Change tbe base branch of the current branch to be another branch.
+
+For example, change feature-a based on v2.1.0 to be based on v2.2.0 (retarget the
+feature to a later minor release).
