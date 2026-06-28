@@ -63,9 +63,9 @@ See `README.md` in the root directory for an introduction to the project.
 
 - **mkpullrequest**: Creates or updates a GitHub pull request for the current branch.
 
-- **mkrebase**: Cnange tbe base branch of a branch to be another branch. For example,
-  change feature-a based on v2.1.0 to be based on v2.2.0 (retarget the feature to a
-  later minor release).
+- **mkrebase**: Change tbe base branch of the current branch to be another branch.
+  For example, change feature-a based on v2.1.0 to be based on v2.2.0 (retarget the
+  feature to a later minor release).
 
 - **mkrelease**: Performs release workflow steps including version/tag/release handling.
 
