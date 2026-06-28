@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# mkpr - Create or update pull request on GitHub.
+# mkpullrequest - Create or update pull request on GitHub.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
