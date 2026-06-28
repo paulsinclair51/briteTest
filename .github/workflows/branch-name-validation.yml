@@ -1,5 +1,20 @@
 name: Branch Name Validation
 
+# Define the GitHub workflow for branch name validation.
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see ../LICENSE.
+
+#----------------------------------------------------------------------------------
+# TODO: comments about what this does.
+# 
+# YAML is a plain‑text, human‑readable format where indentation defines structure.
+# Files (with the extension .yml) contain YAML text and are used by GitHub Actions.
+#----------------------------------------------------------------------------------
+
+# Set workflow to run on pull request events.
+
 on:
   pull_request:
     branches:
