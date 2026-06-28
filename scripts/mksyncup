@@ -8,13 +8,6 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
 # Default options
 FORCE=false
 VERBOSE=false
@@ -34,14 +27,10 @@ for complex ones.
 
 Protected branches (cannot run mksyncup):
   - main
-  - major/* (direct branches off main)
-  - minor/* (direct branches off main)
-  - patch/* (direct branches off main)
-  - docs/* (direct branches off main)
+  - v<M>.<m>.<p> release branches created from main
 
 Allowed branches (can use mksyncup):
-  - Any sub-branches: major/*/*, minor/*/*, patch/*/*, docs/*/*
-  - Any other custom branches
+  - Branches created from non-main base branches (no period in branch name)
 
 Features:
   - Automatically determines base branch
@@ -91,22 +80,22 @@ EOF
 }
 
 info() {
-  echo -e "${BLUE}ℹ${NC} $1"
+  echo "$1"
 }
 
 success() {
-  echo -e "${GREEN}✓${NC} $1"
+  echo "$1"
 }
 
 warn() {
-  echo -e "${YELLOW}⚠${NC} $1"
+  echo "$1"
 }
 
 error_exit() {
   local code="$1"
   local message="$2"
 
-  echo -e "${RED}Error:${NC} $message" >&2
+  echo "Error: $message" >&2
   exit "$code"
 }
 
@@ -146,9 +135,8 @@ is_protected_branch() {
     return 0
   fi
   
-  # Check if branch matches direct branch patterns (one level off main)
-  # major/*, minor/*, patch/*, docs/*
-  if [[ "$branch" =~ ^(major|minor|patch|docs)/[^/]+$ ]]; then
+  # Branches created from main follow release version format v<M>.<m>.<p>
+  if [[ "$branch" =~ ^v([1-9][0-9]?)\.([0-9]|[1-9][0-9]?)\.([0-9]|[1-9][0-9]?)$ ]]; then
     return 0
   fi
   
@@ -232,7 +220,7 @@ if ! git fetch origin "$BASE_BRANCH" 2>&1 >/dev/null; then
 fi
 
 # Count commits from base branch to current branch
-local commits_to_merge
+commits_to_merge=""
 commits_to_merge=$(git rev-list --count "HEAD..origin/$BASE_BRANCH" 2>/dev/null || echo "0")
 
 if [[ "$commits_to_merge" == "0" ]]; then
