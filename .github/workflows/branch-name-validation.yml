@@ -1,0 +1,47 @@
+name: Branch Name Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+      - '**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-branch-name:
+    name: Validate branch name
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch name rules
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+
+          # Rule 1: PRs targeting main must use a version branch name.
+          # Allowed form: vM.n.p where each part is 1 or 2 digits and does not start with 0.
+          version_regex='^v[1-9][0-9]?\.[1-9][0-9]?\.[1-9][0-9]?$'
+
+          # Rule 2: PRs not targeting main must not contain periods.
+          no_period_regex='^[^.]+$'
+
+          if [[ "$BASE_REF" == "main" ]]; then
+            if [[ ! "$HEAD_REF" =~ $version_regex ]]; then
+              echo "ERROR: Branches targeting main must match: vM.n.p"
+              echo "Examples: v1.2.3, v12.3.4"
+              echo "Rejected: $HEAD_REF"
+              exit 1
+            fi
+          else
+            if [[ ! "$HEAD_REF" =~ $no_period_regex ]]; then
+              echo "ERROR: Branches not targeting main must not contain periods."
+              echo "Rejected: $HEAD_REF"
+              exit 1
+            fi
+          fi
+
+          echo "Branch name OK: $HEAD_REF (target: $BASE_REF)"
