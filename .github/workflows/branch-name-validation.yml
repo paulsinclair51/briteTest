@@ -15,7 +15,7 @@ name: Branch Name Validation
 #   M is 1-2 digits starting with 1-9.
 #   n/p are either 0 or 1-2 digits starting with 1-9.
 #
-# Branches targeting non-main branches must neither be named main nor contain
+# Branches targeting other than main must neither be named main nor contain
 # periods in their names.
 #
 # This workflow mirrors the branch-naming policy used by scripts/mkbranch.
