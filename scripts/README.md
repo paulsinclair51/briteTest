@@ -1,72 +1,85 @@
 # scripts/
 
-Directory for generated scripts:
+Directory for scripts.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
 For license details, see `LICENSE` in the root directory.
 
+For usage information for a script, execute the script using `-h' option. For example,
+```sh
+ckbranch -h
+```
+
 See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
-### Dococument Management:
+### Document Management:
 
-- **genalldocs.sh**:
+- **check_directory_readmes.sh**: Verifies that directories have expected README files and basic
+- consistency
 
-- **gendocx**:
-
-- **genpdf**:
-
-- **genpng.sh**:
-
-- **replace_phrases_py**:
+- **genalldocs.sh**: Regenerates all project documentation outputs in one command.
   
-- **replacephrases**:
+- **gendocx**: Generates DOCX documentation artifacts from project markdown sources.
 
-- **test_genpdf.sh**:
+- **genpdf**: Builds PDF documentation from markdown sources with formatting and asset handling.
+- 
+- **genpng.sh**: Regenerates branding PNG images from SVG sources in `docs/branding`.
 
-- **updatelogos**:
+- **replace_phrases.py**: Replaces configured phrases across markdown files using a replacement mapping.
+
+- **replacephrases**: Convenience wrapper script to run `replace_phrases.py` with repository defaults.
+
+- **test_genpdf.sh**: Runs validation tests for the `genpdf` documentation-generation workflow.
+
+- **updatelogos**: Updates branding text/abbreviations in SVG logos, regenerates PNGs, and refreshes
+  docs text.
 
 ### Branch Management:
 
-- **check_mjor_release_consistency**:
+- **branch**: Provides shared branch utility logic used by branch-management scripts.
+  
+- **check_major_release_consistency.sh**: Verifies major-version/release consistency checks for
+  release readiness.
 
-- **ckbranch**:
+- **ckbranch**: Validates branch naming, type rules, and branch-state consistency.
+  
+- **ckbranch_history**: Validates and audits branch history logging for correctness and completeness.
 
-- **ckbranch**
+- **lsbranch**: Lists and summarizes branches with workflow-relevant metadata.
 
-- **ckbranch_history**:
+- **mkbranch**: Creates a new branch from a base branch with naming/type validation.
 
-- **isbranch**:
+- **mkclone**: Creates a working clone/setup for repository workflows.
+  
+- **mkcommit**: Creates standardized commits with consistent messaging conventions.
 
-- **mkclone**
+- **mkcopy**: Cherry-picks/copies commits from a source branch to the current branch.
+  
+- **mkfeedback**: Helps process pull-request review feedback and coordinate follow-up updates.
 
-- **mkcommit**
+- **mkmerge**: Performs guided merge operations with workflow checks and safeguards.
 
-- **mkcopy**
+- **mkpr**: Creates or updates GitHub pull requests for the current branch.
 
-- **mkfeedback**
+- **mkrelease**: Performs release workflow steps including version/tag/release handling.
 
-- **mkmerge**
+- **mksync**: Synchronizes branch state with configured upstream/downstream refs.
 
-- **mkpull**
-- - **mkrelease**
+- **mksyncup**: Syncs current branch changes upstream with optional automation steps.
 
-- **mksync**
+- **mktest**: Runs tests and validation checks (including optional docs regeneration).
 
-- **mksyncup**
+- **mkundo**: Safely undoes the most recent merge, release, or commit operation.
 
-- **mktest**
-
-- **rmbranch**
-
-- **mktest**
+- **rmbranch**: Removes local and/or remote branches with validation and safeguards.
 
 ### Miscellaneous:
 
 - **README.md**: This directory guide.
 
 ## Subdirectories
-d
+
 - None.
