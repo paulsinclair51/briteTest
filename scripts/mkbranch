@@ -25,116 +25,107 @@ VALIDATE_ONLY=false
 COMMENT=""
 
 # Valid branch type prefixes
-VALID_TYPES=("major" "minor" "patch" "docs")
+VALID_TYPES=("major" "minor" "patch")
 
 usage() {
   cat <<'EOF'
 Usage:
-  mkbranch [OPTIONS] <branchname> <basebranchname> [COMMENT]
+  mkbranch [OPTIONS] <newbranch> <basebranch> [COMMENT]
   mkbranch -h | --help
 
 Create a new branch from a base branch with optional remote push and comment.
 
 Arguments:
-  <branchname>       Name of the new branch to create
-                     Format: [<type>/]<description>
-                     If no type prefix is specified, 'patch/' is used by default.
-  <basebranchname>   Name of the base branch to create from
+  <newbranch>        Name of the new branch to create.
+  <basebranch>       Name of the base branch from which to create the new branch.
 
-Comment Options (mutually exclusive):
-  -m, --message MSG  Attach a commit message/comment to the operation
-                     Usage: mkbranch patch/fix-bug major -m "Fix critical memory leak"
-  -- COMMENT TEXT    Unix-style comment (everything after -- is the comment)
-                     Usage: mkbranch patch/fix-bug major -- Fix critical memory leak
-                     Note: No quotes needed, captures all remaining arguments
+  If the base branch is main, the user must be an approver (see 
+  docs/Contributor_Guide.md) and the new branch is remote and must have one of
+  the following forms where <M>, <m>, and <p> must be one or 2 digits (first
+  digit must not be 0):
+    - v<M>.0.0 (<M> must be such there is a v<M-1>.0.0 branch or release).
+    - v<M>.<m>.0 (<m> must be such that there is a v<M>.0.0 branch/release
+      and <m> is 1 or there is a v<M>.<m-1>.0 branch/release).
+    - vM.m.p (<p> must be such that there is a v<M>.<m>.0 branch/release
+      and <p> is 1 or there is v<M>.<m>.<p-1> branch/release).
 
-Branch Naming Convention:
-  Branches should follow the format: <type>/<description>
-  
-  Types (default is 'patch' if no type specified):
-    major  - Major features or changes (e.g., major/new-ui-system, major/core-refactor)
-    minor  - Minor features or changes (e.g., minor/add-logging, minor/optimize-parser)
-    patch  - Bug fixes (e.g., patch/fix-login-bug, patch/memory-leak)
-    docs   - Documentation updates only (e.g., docs/api-guide, docs/setup-instructions)
+  If the base branch is not main, the user must be a contributor (see 
+  docs/Contributor_Guide.md) the new branch may be local or remote and
+  must be a valid GitHub branch name except the name may not include a period.
 
-  Naming Rules:
-    - Lowercase letters, numbers, hyphens, and forward slashes only
-    - No uppercase letters or special characters (except / and -)
-    - Type prefix must be one of: major, minor, patch, docs
-    - Description must not be empty
+  Example: Create a feature branch targeted to a major release.
+    mkbranch redesign-authentication v2.0.0
+       
+  Example: Create a performance improvement branch targeted to a minor release.
+    mkbranch improve-performance v1.1.0
 
-  Examples:
-    mkbranch major/redesign-authentication main
-      Creates: major/redesign-authentication
-    
-    mkbranch fix-login-bug main
-      Creates: patch/fix-login-bug (default type)
-    
-    mkbranch minor/improve-performance main
-      Creates: minor/improve-performance
-    
-    mkbranch docs/update-readme main
-      Creates: docs/update-readme
-
-Type Hierarchy:
-  Branches can only be created from compatible base branch types:
-    major  → from main or major/*
-    minor  → from main or major/*
-    patch  → from main, major/*, minor/*, or patch/*
-    docs   → from main, major/*, minor/*, patch/*, or docs/*
+  Example: Create a branch for a patch targeted to patch release.
+    mkbranch fix-login-bug v1.0.2
 
 Options:
-  -h, --help         Output this help to stdout and exit.
-  -l                 Create local branch only (default).
-  -r                 Create local branch and push to remote.
-  -v                 Validate only: check if valid without creating branch.
-  -m, --message MSG  Add comment message (GitHub style, requires quotes if spaces)
-  -- TEXT            Add comment (Unix style, everything after -- is the comment)
+  -h, --help        Output this help to stdout and exit.
+  -l                Create local branch only (default if base branch is not main).
+  -r                Create local branch and push to remote (default if base branch is main).
+  -v                Validate only without creating branch.
+  -m "MSG"          Attach a commit message/comment to the operation
+                    Usage: mkbranch feature-a v2.0.0 -m "Implement new feature a."
+  --message "MSG"   Attach a commit message/comment to the operation
+                    Usage: mkbranch patch/fix-bug major --message "Fix critical memory leak."
+  -- MSG            Attach commit message/comment (everything after -- is the comment)
+                    Usage: mkbranch patch/fix-bug major -- Fix critical memory leak
+                    Note: No quotes needed, captures all remaining arguments.
+
+   Note: -m "MSG", --message "MSG", -- MSG are mutually exclusive.
 
 Modes:
   Local (-l):
-    - Verify the base branch exists
-    - Check that the new branch doesn't already exist
-    - Create the new branch from the base branch (adding default type if needed)
-    - Log the operation to logs/branch_history.md
+     - -r is not specified.
+    - Verify the base branch exists locally or remotely.
+    - Check that the new branch doesn't already exist locally.
+    - Create the new branch from the base branch.
+    - Log the operation to 'logs/local_branch_history.md'.
 
   Remote (-r):
-    - All of the above, plus:
-    - Push the new branch to the remote repository
+    - -l is not specified.
+    - Verify that the base branch exists remotely.
+    - Check that the new branch doesn't already exist locally or remotely.
+    - Create the new branch from the base branch.
+    - Push the new branch to the remote repository.
+    - Log the operation to 'logs/branch_history.md'.
 
   Validate (-v):
-    - Verify the base branch exists
-    - Check that the new branch doesn't already exist
-    - Validate branch naming format (if type is specified, must be valid)
-    - Validate type hierarchy compatibility
-    - Report validity without creating or pushing
-    - Exit with status code indicating validity
+    - Verify the base branch exists.
+    - Check that the new branch doesn't already exist.
+    - Validate branch name.
+    - Report validity without creating or pushing.
+    - Exit with status code indicating validity.
 
-Examples:
-  # Basic usage
-  mkbranch patch/fix-bug major/main
-  mkbranch -r minor/feature major/main
+Examples: Basic usage.
+  mkbranch fix-bug v2.1.1
+  mkbranch -r feature-a v2.0.0
 
-  # With GitHub-style comment
-  mkbranch patch/fix-bug major -m "Fix critical memory leak"
-  mkbranch -r minor/feature major/main -m "Add new dashboard feature"
+Examples: With GitHub-style comment.
+  mkbranch fix-bug v1.1.5 -m "Fix critical memory leak."
+  mkbranch -r feature-b v2.3.0 -m "Add minor new dashboard feature."
 
-  # With Unix-style comment
-  mkbranch patch/fix-bug major -- Fix critical memory leak
-  mkbranch -r minor/feature major/main -- Add new dashboard feature
+Examples:  With Unix-style comment.
+  mkbranch fix-bug v1.1.5 -- Fix critical memory leak.
+  mkbranch -r feature-b v2.3.0 -- Add minor new dashboard feature.
 
-  # Validation mode
-  mkbranch -v major/redesign main
-  mkbranch -v -r patch/hotfix main
+Examples: Validation mode for invalid mkbranch.
+  mkbranch -v redesign main
+  mkbranch -v -r hotfix v2.0.0
 
 Exit codes:
-  0   Success (or validation passed)
-  1   Argument error
-  2   Git operation failed
-  3   Branch already exists
-  4   Base branch doesn't exist
-  5   Validation failed
-  6   Type hierarchy violation
+  0   Success (or validation passed).
+  1   Arguments/options invalid.
+  2   Invalid branch name.
+  3   Invalid option.
+  4   Conflicting options.
+  5   Git operation failed.
+  6   Branch already exists.
+  7   Base branch doesn't exist.
+  9   Validation failed.
 EOF
 }
 
