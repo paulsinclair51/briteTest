@@ -19,7 +19,7 @@ COMMENT=""
 usage() {
   cat <<'EOF'
 Usage:
-  mkbranch [OPTIONS] <newbranch> <basebranch> [COMMENT]
+  mkbranch [OPTIONS] <newbranch> <basebranch> [-- MSG]
   mkbranch -h | --help
 
 Create a new branch from a base branch with optional remote push and comment.
