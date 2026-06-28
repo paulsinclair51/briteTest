@@ -55,19 +55,19 @@ See `README.md` in the root directory for an introduction to the project.
 
 - **mkcommit**: Creates standardized commits with consistent messaging conventions.
 
-- **mkcopy**: Cherry-picks/copies commits from a source branch to the current branch.
+- **mkcopy**: Cherry-picks/copies commits from the current branch to a target branch.
 
 - **mkfeedback**: Helps process pull-request review feedback and coordinate follow-up updates.
 
 - **mkmerge**: Performs guided merge operations with workflow checks and safeguards.
 
-- **mkpr**: Creates or updates GitHub pull requests for the current branch.
+- **mkpullrequest**: Creates or updates a GitHub pull request for the current branch.
 
 - **mkrelease**: Performs release workflow steps including version/tag/release handling.
 
 - **mksync**: Synchronizes branch state with configured upstream/downstream refs.
 
-- **mksyncup**: Syncs current branch changes upstream with optional automation steps.
+- **mksyncup**: Synchronizes current branch changes upstream with optional automation steps.
 
 - **mktest**: Runs tests and validation checks (including optional docs regeneration).
 
