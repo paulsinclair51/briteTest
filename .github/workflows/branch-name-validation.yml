@@ -7,7 +7,18 @@ name: Branch Name Validation
 # For license details, see ../LICENSE.
 
 #----------------------------------------------------------------------------------
-# TODO: comments about what this does.
+# Validate pull request branch names against repository branch rules.
+#
+# Branches targeting main must use a version format:
+#   vM.n.p
+# where:
+#   M is 1 digit (1-9) or 2 digits (10-99).
+#   n/p are 1 digit (0-9) or 2 digits (10-99).
+#
+# Branches targeting non-main branches must not contain periods and must not be
+# named main.
+#
+# This workflow mirrors the branch-naming policy used by scripts/mkbranch.
 # 
 # YAML is a plain‑text, human‑readable format where indentation defines structure.
 # Files (with the extension .yml) contain YAML text and are used by GitHub Actions.
@@ -37,19 +48,25 @@ jobs:
         run: |
           set -euo pipefail
 
-          version_regex='^v[1-9][0-9]?\.[1-9][0-9]?\.[1-9][0-9]?$'
+          version_regex='^v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$'
           no_period_regex='^[^.]+$'
 
           if [[ "$BASE_REF" == "main" ]]; then
             if [[ ! "$HEAD_REF" =~ $version_regex ]]; then
               echo "ERROR: Branches targeting main must match: vM.n.p"
-              echo "Examples: v1.2.3, v12.3.4"
+              echo "Examples: v1.2.3, v12.3.4, v2.0.0"
               echo "Rejected: $HEAD_REF"
               exit 1
             fi
           else
-            if [[ "$HEAD_REF" == "main" || ! "$HEAD_REF" =~ $no_period_regex ]]; then
-              echo "ERROR: Branches not targeting main must not contain periods and cannot be named main."
+            if [[ "$HEAD_REF" == "main" ]]; then
+              echo "ERROR: Branches not targeting main cannot be named main."
+              echo "Rejected: $HEAD_REF"
+              exit 1
+            fi
+
+            if [[ ! "$HEAD_REF" =~ $no_period_regex ]]; then
+              echo "ERROR: Branches not targeting main must not contain periods."
               echo "Rejected: $HEAD_REF"
               exit 1
             fi
