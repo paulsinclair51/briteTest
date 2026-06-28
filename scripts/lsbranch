@@ -356,22 +356,25 @@ sort_branches() {
       done <<< "$branches" | sort -rV | cut -d'|' -f2
       ;;
     type)
-      # Group by type, then alphabetical within each type
-      for type in "${VALID_TYPES[@]}"; do
+      # Group by type, then alphabetical within each type, de-duplicated
+      {
+        for type in "${VALID_TYPES[@]}"; do
+          while IFS= read -r branch; do
+            [[ -z "$branch" ]] && continue
+            if branch_matches_type "$type" "$branch"; then
+              echo "$branch"
+            fi
+          done <<< "$branches" | sort
+        done
+
+        # Append invalid branches at end for visibility
         while IFS= read -r branch; do
           [[ -z "$branch" ]] && continue
-          if branch_matches_type "$type" "$branch"; then
+          if [[ "$(get_branch_status "$branch")" == "invalid" ]]; then
             echo "$branch"
           fi
         done <<< "$branches" | sort
-      done
-      # Append invalid branches at end for visibility
-      while IFS= read -r branch; do
-        [[ -z "$branch" ]] && continue
-        if [[ "$(get_branch_status "$branch")" == "invalid" ]]; then
-          echo "$branch"
-        fi
-      done <<< "$branches" | sort
+      } | awk '!seen[$0]++'
       ;;
     *)
       echo "$branches"
@@ -409,6 +412,34 @@ compute_invalid_found() {
   if [[ "$found" == true ]]; then
     INVALID_FOUND=true
   fi
+}
+
+build_strict_scope_branches() {
+  local scope_branches=""
+  local local_branches=""
+  local remote_branches=""
+
+  if [[ "$SHOW_REMOTE" == "both" ]]; then
+    local_branches="$(list_all_local)"
+    remote_branches="$(list_all_remote)"
+    scope_branches="$local_branches"
+    if [[ -n "$scope_branches" && -n "$remote_branches" ]]; then
+      scope_branches+=$'\n'
+    fi
+    scope_branches+="$remote_branches"
+  elif [[ "$SHOW_REMOTE" == true ]]; then
+    scope_branches="$(list_all_remote)"
+  else
+    scope_branches="$(list_all_local)"
+  fi
+
+  if [[ -n "$FILTER_NAME" ]]; then
+    scope_branches="$(filter_branches "$scope_branches" "$FILTER_NAME" "$FILTER_EXCEPT")"
+  fi
+
+  # Important: do NOT apply FILTER_TYPE here.
+  # Strict mode validates all branches in scope, not just displayed type-filtered branches.
+  echo "$scope_branches"
 }
 
 format_json() {
@@ -906,20 +937,9 @@ if [[ "$SUMMARY_MODE" == true ]]; then
     fi
   fi
 
-  # Strict mode check on summary output scope
+  # Strict mode check on full strict scope
   if [[ "$STRICT_MODE" == true ]]; then
-    scope_branches=""
-    if [[ "$SHOW_REMOTE" == "both" ]]; then
-      scope_branches="$(list_all_local)"
-      remote="$(list_all_remote)"
-      [[ -n "$scope_branches" && -n "$remote" ]] && scope_branches+=$'\n'
-      scope_branches+="$remote"
-    elif [[ "$SHOW_REMOTE" == true ]]; then
-      scope_branches="$(list_all_remote)"
-    else
-      scope_branches="$(list_all_local)"
-    fi
-    [[ -n "$FILTER_NAME" ]] && scope_branches=$(filter_branches "$scope_branches" "$FILTER_NAME" "$FILTER_EXCEPT")
+    scope_branches="$(build_strict_scope_branches)"
     compute_invalid_found "$scope_branches"
     if [[ "$INVALID_FOUND" == true ]]; then
       exit 4
@@ -1018,8 +1038,12 @@ case "$OUTPUT_FORMAT" in
     ;;
 esac
 
-if [[ "$STRICT_MODE" == true && "$INVALID_FOUND" == true ]]; then
-  exit 4
+if [[ "$STRICT_MODE" == true ]]; then
+  scope_branches="$(build_strict_scope_branches)"
+  compute_invalid_found "$scope_branches"
+  if [[ "$INVALID_FOUND" == true ]]; then
+    exit 4
+  fi
 fi
 
 exit 0
