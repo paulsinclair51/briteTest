@@ -5,8 +5,8 @@ set -euo pipefail
 #
 # Validate that each repository subdirectory has a README.md directory guide and that it
 # conforms to the guidelines. The README.md for the root is the project README.md file
-# (the root does not have README.md directory guide). For the repository layout,
-# see the docs/Documentation_Guide.md.
+# (the root does not have README.md directory guide). For the repository layout, See the
+# docs/Documentation_Guide.md.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
