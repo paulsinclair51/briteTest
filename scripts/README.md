@@ -1,6 +1,6 @@
 # scripts/
 
-Directory for scripts.
+Directory containing scripts.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
