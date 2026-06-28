@@ -22,12 +22,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Rule 1: PRs targeting main must use a version branch name.
-          # Allowed form: vM.n.p where each part is 1 or 2 digits and does not start with 0.
           version_regex='^v[1-9][0-9]?\.[1-9][0-9]?\.[1-9][0-9]?$'
-
-          # Rule 2: PRs not targeting main must not contain periods and branch name cannot be main.
-          no_period_and_not_main_regex='^(?!main$)[^.]+$'
+          no_period_regex='^[^.]+$'
 
           if [[ "$BASE_REF" == "main" ]]; then
             if [[ ! "$HEAD_REF" =~ $version_regex ]]; then
@@ -37,7 +33,7 @@ jobs:
               exit 1
             fi
           else
-            if [[ ! "$HEAD_REF" =~ $no_period_and_not_main_regex ]]; then
+            if [[ "$HEAD_REF" == "main" || ! "$HEAD_REF" =~ $no_period_regex ]]; then
               echo "ERROR: Branches not targeting main must not contain periods and cannot be named main."
               echo "Rejected: $HEAD_REF"
               exit 1
