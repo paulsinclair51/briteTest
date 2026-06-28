@@ -10,7 +10,6 @@ For usage information for a script, execute the script using `-h' option. For ex
 ```sh
 ckbranch -h
 ```
-
 See `README.md` in the root directory for an introduction to the project.
 
 ## Files
