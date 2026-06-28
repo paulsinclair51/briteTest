@@ -14,11 +14,7 @@ LOG_FILE="$REPO_ROOT/logs/branch_history.md"
 
 # Default options
 MODE="local"  # local, remote, or validate
-VALIDATE_ONLY=false
 COMMENT=""
-
-# Valid branch type prefixes
-VALID_TYPES=("major" "minor" "patch")
 
 usage() {
   cat <<'EOF'
@@ -39,7 +35,7 @@ Arguments:
     - v<M>.0.0 (<M> must be such there is a v<M-1>.0.0 branch or release).
     - v<M>.<m>.0 (<m> must be such that there is a v<M>.0.0 branch/release
       and <m> is 1 or there is a v<M>.<m-1>.0 branch/release).
-    - vM.m.p (<p> must be such that there is a v<M>.<m>.0 branch/release
+    - v<M>.<m>.<p> (<p> must be such that there is a v<M>.<m>.0 branch/release
       and <p> is 1 or there is v<M>.<m>.<p-1> branch/release).
 
   If the base branch is not main, the user must be a contributor (see 
@@ -63,20 +59,20 @@ Options:
   -m "MSG"          Attach a commit message/comment to the operation
                     Usage: mkbranch feature-a v2.0.0 -m "Implement new feature a."
   --message "MSG"   Attach a commit message/comment to the operation
-                    Usage: mkbranch patch/fix-bug major --message "Fix critical memory leak."
+                    Usage: mkbranch fix-bug v1.0.2 --message "Fix critical memory leak."
   -- MSG            Attach commit message/comment (everything after -- is the comment)
-                    Usage: mkbranch patch/fix-bug major -- Fix critical memory leak
+                    Usage: mkbranch fix-bug v1.0.2 -- Fix critical memory leak
                     Note: No quotes needed, captures all remaining arguments.
 
    Note: -m "MSG", --message "MSG", -- MSG are mutually exclusive.
 
 Modes:
   Local (-l):
-     - -r is not specified.
+    - -r is not specified.
     - Verify the base branch exists locally or remotely.
     - Check that the new branch doesn't already exist locally.
     - Create the new branch from the base branch.
-    - Log the operation to 'logs/local_branch_history.md'.
+    - Log the operation to 'logs/branch_history.md'.
 
   Remote (-r):
     - -l is not specified.
@@ -174,97 +170,25 @@ error_exit() {
   exit "$code"
 }
 
-is_valid_type() {
-  local type="$1"
-  local valid
+is_valid_version() {
+  local version="$1"
   
-  for valid in "${VALID_TYPES[@]}"; do
-    if [[ "$type" == "$valid" ]]; then
-      return 0
-    fi
-  done
-  
-  return 1
-}
-
-is_valid_name_chars() {
-  local name="$1"
-  # Allow lowercase letters, numbers, hyphens, and forward slashes
-  if [[ "$name" =~ ^[a-z0-9/-]+$ ]]; then
+  # Must match v<M>.<m>.<p> where M, m, p are 1-2 digits (first digit not 0)
+  if [[ "$version" =~ ^v([1-9][0-9]?)\.([0-9]|[1-9][0-9]?)\.([0-9]|[1-9][0-9]?)$ ]]; then
     return 0
   fi
   return 1
 }
 
-get_branch_type() {
-  local branchname="$1"
+is_valid_branch_name() {
+  local name="$1"
   
-  if [[ "$branchname" =~ / ]]; then
-    echo "${branchname%%/*}"
-  else
-    echo ""
+  # Allow lowercase letters, numbers, hyphens, forward slashes
+  # No uppercase, no periods
+  if [[ "$name" =~ ^[a-z0-9/_-]+$ ]] && [[ ! "$name" =~ \. ]]; then
+    return 0
   fi
-}
-
-is_type_hierarchy_valid() {
-  local new_type="$1"
-  local base_type="$2"
-  
-  case "$new_type" in
-    major)
-      # major can only be created from main or major
-      [[ "$base_type" == "" || "$base_type" == "major" ]]
-      ;;
-    minor)
-      # minor can only be created from main or major
-      [[ "$base_type" == "" || "$base_type" == "major" ]]
-      ;;
-    patch)
-      # patch can be created from main, major, minor, or patch
-      [[ "$base_type" == "" || "$base_type" == "major" || "$base_type" == "minor" || "$base_type" == "patch" ]]
-      ;;
-    docs)
-      # docs can be created from main, major, minor, patch, or docs
-      [[ "$base_type" == "" || "$base_type" == "major" || "$base_type" == "minor" || "$base_type" == "patch" || "$base_type" == "docs" ]]
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
-
-normalize_branch_name() {
-  local branchname="$1"
-  
-  # Validate character set
-  if ! is_valid_name_chars "$branchname"; then
-    return 1
-  fi
-  
-  # Check if branch contains a slash (type/description format)
-  if [[ "$branchname" =~ / ]]; then
-    # Extract the type (part before the slash)
-    local type="${branchname%%/*}"
-    local description="${branchname#*/}"
-    
-    # Validate description is not empty
-    if [[ -z "$description" ]]; then
-      return 1
-    fi
-    
-    # Validate the type
-    if ! is_valid_type "$type"; then
-      return 1
-    fi
-    
-    # Return as-is (already has valid type)
-    echo "$branchname"
-  else
-    # No type specified, default to patch
-    echo "patch/$branchname"
-  fi
-  
-  return 0
+  return 1
 }
 
 # Parse options and arguments
@@ -285,7 +209,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     -v)
       MODE="validate"
-      VALIDATE_ONLY=true
       shift
       ;;
     -m | --message)
@@ -293,7 +216,7 @@ while [[ $# -gt 0 ]]; do
         error_exit 1 "Option -m requires a message argument" "" "" ""
       fi
       if [[ -n "$COMMENT" ]]; then
-        error_exit 1 "Cannot use both -m and -- for comment" "" "" ""
+        error_exit 4 "Cannot use both -m and -- for comment" "" "" ""
       fi
       COMMENT="$2"
       shift 2
@@ -302,13 +225,13 @@ while [[ $# -gt 0 ]]; do
       # Unix-style comment: everything after -- is the comment
       shift
       if [[ -n "$COMMENT" ]]; then
-        error_exit 1 "Cannot use both -m and -- for comment" "" "" ""
+        error_exit 4 "Cannot use both -m and -- for comment" "" "" ""
       fi
       COMMENT="$*"
       break
       ;;
     -*)
-      error_exit 1 "Unknown option: $1" "" "" ""
+      error_exit 3 "Unknown option: $1" "" "" ""
       ;;
     *)
       # Positional argument
@@ -323,7 +246,7 @@ set -- "${POSITIONAL_ARGS[@]}"
 
 # Check that we have exactly 2 positional arguments
 if [[ $# -ne 2 ]]; then
-  error_exit 1 "Expected 2 arguments (branchname and basebranchname), got $#" "" "" ""
+  error_exit 1 "Expected 2 arguments (newbranch and basebranch), got $#" "" "" ""
 fi
 
 BRANCHNAME="$1"
@@ -338,25 +261,17 @@ if [[ -z "$BASEBRANCHNAME" ]]; then
   error_exit 1 "Base branch name cannot be empty" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
 fi
 
-# Normalize branch name (add default type if needed, validate if type specified)
-NORMALIZED_NAME=$(normalize_branch_name "$BRANCHNAME")
-if [[ $? -ne 0 ]]; then
-  error_exit 1 "Invalid branch name '$BRANCHNAME'. Must contain only lowercase letters, numbers, hyphens, and slashes. Type must be one of: ${VALID_TYPES[*]}" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
-fi
-
-# If type was added, indicate it
-if [[ "$NORMALIZED_NAME" != "$BRANCHNAME" ]]; then
-  echo "Branch name normalized: '$BRANCHNAME' -> '$NORMALIZED_NAME' (default type: patch)"
-  BRANCHNAME="$NORMALIZED_NAME"
-fi
-
-# Extract types for hierarchy validation
-NEW_TYPE=$(get_branch_type "$BRANCHNAME")
-BASE_TYPE=$(get_branch_type "$BASEBRANCHNAME")
-
-# Validate type hierarchy
-if ! is_type_hierarchy_valid "$NEW_TYPE" "$BASE_TYPE"; then
-  error_exit 6 "Type hierarchy violation: $NEW_TYPE branches cannot be created from $BASE_TYPE branches" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
+# Validate branch name based on base branch
+if [[ "$BASEBRANCHNAME" == "main" ]]; then
+  # Base is main: new branch must be a version number
+  if ! is_valid_version "$BRANCHNAME"; then
+    error_exit 2 "Invalid branch name '$BRANCHNAME'. When base is 'main', branch must be a version in format v<M>.<m>.<p> where M, m, p are 1-2 digits (first digit not 0)" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
+  fi
+else
+  # Base is not main: new branch must be a valid GitHub name (no periods)
+  if ! is_valid_branch_name "$BRANCHNAME"; then
+    error_exit 2 "Invalid branch name '$BRANCHNAME'. Must contain only lowercase letters, numbers, hyphens, and slashes. Periods are not allowed." "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
+  fi
 fi
 
 # Change to repo root
@@ -378,7 +293,7 @@ esac
 # Fetch latest refs from remote
 echo "Fetching latest refs from remote..."
 if ! git fetch origin >/dev/null 2>&1; then
-  error_exit 2 "Failed to fetch from remote" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
+  error_exit 5 "Failed to fetch from remote" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
 fi
 
 # Check if base branch exists (check both local and remote)
