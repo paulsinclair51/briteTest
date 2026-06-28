@@ -12,13 +12,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 LOG_FILE="$REPO_ROOT/logs/branch_history.md"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
 # Default options
 MODE="local"  # local, remote, or validate
 VALIDATE_ONLY=false
@@ -172,21 +165,13 @@ error_exit() {
   local basebranchname="${4:-}"
   local comment="${5:-}"
 
-  echo -e "${RED}Error:${NC} $message" >&2
+  echo "Error: $message" >&2
 
   if [[ -n "$branchname" ]]; then
     log_operation "FAILED" "$branchname" "$basebranchname" "Branch \`$branchname\` creation from \`$basebranchname\` failed - $message" "$comment"
   fi
 
   exit "$code"
-}
-
-info() {
-  echo -e "${BLUE}ℹ${NC} $1"
-}
-
-success() {
-  echo -e "${GREEN}✓${NC} $1"
 }
 
 is_valid_type() {
@@ -356,12 +341,12 @@ fi
 # Normalize branch name (add default type if needed, validate if type specified)
 NORMALIZED_NAME=$(normalize_branch_name "$BRANCHNAME")
 if [[ $? -ne 0 ]]; then
-  error_exit 1 "Invalid branch name '$BRANCHNAME'. Must contain only lowercase letters, numbers, hyphens, and slashes. Type must be one of: ${VALID_TYPES[*]}" "$BRANCHNAME" "$BASEBRANCHNAME" "" "[...]
+  error_exit 1 "Invalid branch name '$BRANCHNAME'. Must contain only lowercase letters, numbers, hyphens, and slashes. Type must be one of: ${VALID_TYPES[*]}" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
 fi
 
 # If type was added, indicate it
 if [[ "$NORMALIZED_NAME" != "$BRANCHNAME" ]]; then
-  info "Branch name normalized: '$BRANCHNAME' → '$NORMALIZED_NAME' (default type: patch)"
+  echo "Branch name normalized: '$BRANCHNAME' -> '$NORMALIZED_NAME' (default type: patch)"
   BRANCHNAME="$NORMALIZED_NAME"
 fi
 
@@ -380,18 +365,18 @@ cd "$REPO_ROOT"
 # Determine operation description
 case "$MODE" in
   local)
-    info "Creating local branch '$BRANCHNAME' from base '$BASEBRANCHNAME'..."
+    echo "Creating local branch '$BRANCHNAME' from base '$BASEBRANCHNAME'..."
     ;;
   remote)
-    info "Creating branch '$BRANCHNAME' from base '$BASEBRANCHNAME' and pushing to remote..."
+    echo "Creating branch '$BRANCHNAME' from base '$BASEBRANCHNAME' and pushing to remote..."
     ;;
   validate)
-    info "Validating branch '$BRANCHNAME' from base '$BASEBRANCHNAME'..."
+    echo "Validating branch '$BRANCHNAME' from base '$BASEBRANCHNAME'..."
     ;;
 esac
 
 # Fetch latest refs from remote
-info "Fetching latest refs from remote..."
+echo "Fetching latest refs from remote..."
 if ! git fetch origin >/dev/null 2>&1; then
   error_exit 2 "Failed to fetch from remote" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
 fi
@@ -400,10 +385,10 @@ fi
 if ! git rev-parse --verify "$BASEBRANCHNAME" >/dev/null 2>&1; then
   if ! git rev-parse --verify "origin/$BASEBRANCHNAME" >/dev/null 2>&1; then
     if [[ "$MODE" == "validate" ]]; then
-      echo -e "${RED}✗${NC} Base branch '$BASEBRANCHNAME' does not exist"
-      exit 5
+      echo "Base branch '$BASEBRANCHNAME' does not exist"
+      exit 9
     else
-      error_exit 4 "Base branch '$BASEBRANCHNAME' does not exist" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
+      error_exit 7 "Base branch '$BASEBRANCHNAME' does not exist" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
     fi
   fi
   BASEBRANCHNAME="origin/$BASEBRANCHNAME"
@@ -412,46 +397,46 @@ fi
 # Check if new branch already exists (local or remote)
 if git rev-parse --verify "$BRANCHNAME" >/dev/null 2>&1; then
   if [[ "$MODE" == "validate" ]]; then
-    echo -e "${RED}✗${NC} Branch '$BRANCHNAME' already exists locally"
-    exit 5
+    echo "Branch '$BRANCHNAME' already exists locally"
+    exit 9
   else
-    error_exit 3 "Branch '$BRANCHNAME' already exists locally" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
+    error_exit 6 "Branch '$BRANCHNAME' already exists locally" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
   fi
 fi
 
 if git rev-parse --verify "origin/$BRANCHNAME" >/dev/null 2>&1; then
   if [[ "$MODE" == "validate" ]]; then
-    echo -e "${RED}✗${NC} Branch '$BRANCHNAME' already exists on remote"
-    exit 5
+    echo "Branch '$BRANCHNAME' already exists on remote"
+    exit 9
   else
-    error_exit 3 "Branch '$BRANCHNAME' already exists on remote" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
+    error_exit 6 "Branch '$BRANCHNAME' already exists on remote" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
   fi
 fi
 
 # If validate mode, we're done (all checks passed)
 if [[ "$MODE" == "validate" ]]; then
-  success "Branch '$BRANCHNAME' can be created from '$BASEBRANCHNAME'"
+  echo "Branch '$BRANCHNAME' can be created from '$BASEBRANCHNAME'"
   exit 0
 fi
 
 # Create the branch
-info "Creating local branch from '$BASEBRANCHNAME'..."
+echo "Creating local branch from '$BASEBRANCHNAME'..."
 if ! git checkout -b "$BRANCHNAME" "$BASEBRANCHNAME" >/dev/null 2>&1; then
-  error_exit 2 "Failed to create branch '$BRANCHNAME'" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
+  error_exit 5 "Failed to create branch '$BRANCHNAME'" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
 fi
 
-success "Local branch '$BRANCHNAME' created"
+echo "Local branch '$BRANCHNAME' created"
 
 # Push to remote if in remote mode
 if [[ "$MODE" == "remote" ]]; then
-  info "Pushing branch to remote..."
+  echo "Pushing branch to remote..."
   if ! git push -u origin "$BRANCHNAME" >/dev/null 2>&1; then
     # Clean up local branch on failure
     git checkout - >/dev/null 2>&1 || true
     git branch -D "$BRANCHNAME" >/dev/null 2>&1 || true
-    error_exit 2 "Failed to push branch to remote" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
+    error_exit 5 "Failed to push branch to remote" "$BRANCHNAME" "$BASEBRANCHNAME" "" "$COMMENT"
   fi
-  success "Branch '$BRANCHNAME' pushed to remote"
+  echo "Branch '$BRANCHNAME' pushed to remote"
   log_operation "SUCCESS" "$BRANCHNAME" "$BASEBRANCHNAME" "Branch \`$BRANCHNAME\` created from \`$BASEBRANCHNAME\` and pushed to remote." "$COMMENT"
 else
   log_operation "SUCCESS" "$BRANCHNAME" "$BASEBRANCHNAME" "Branch \`$BRANCHNAME\` created from \`$BASEBRANCHNAME\`." "$COMMENT"
