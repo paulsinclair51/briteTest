@@ -1,6 +1,6 @@
 # docs/pdf/
 
-Directory for PDF documentation `pdf` files generated from `.md` files.
+Directory containing PDF documentation `pdf` files generated from `.md` files.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
