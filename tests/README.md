@@ -1,6 +1,6 @@
 # tests/
 
-Directory for test assets.
+Directory containing test assets.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
