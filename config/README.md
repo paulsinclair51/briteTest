@@ -1,6 +1,6 @@
 # config/
 
-Directory for repository configuration files.
+Directory containing repository configuration files.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
