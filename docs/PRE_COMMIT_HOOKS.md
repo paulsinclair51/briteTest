@@ -43,7 +43,7 @@ CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 for protected in "${PROTECTED_BRANCHES[@]}"; do
   if [[ "$CURRENT_BRANCH" == "$protected" ]]; then
     echo "Error: You are trying to commit to the protected branch '$CURRENT_BRANCH'"
-    echo "Please create a feature branch using: scripts/branch new <branchname> $CURRENT_BRANCH"
+   echo "Please create a feature branch using: scripts/mkbranch -r <branchname> $CURRENT_BRANCH"
     exit 1
   fi
 done
@@ -101,7 +101,7 @@ When you try to commit on a protected branch:
 ```bash
 $ git commit -m "some change"
 Error: You are trying to commit to the protected branch 'main'
-Please create a feature branch using: scripts/branch new <branchname> main
+Please create a feature branch using: scripts/mkbranch -r <branchname> main
 ```
 
 The commit is rejected, and you must:
@@ -114,7 +114,7 @@ The commit is rejected, and you must:
 
 1. **Create a feature branch:**
    ```bash
-   scripts/branch new my-feature main
+   scripts/mkbranch -r my-feature main
    ```
 
 2. **Make your changes:**
@@ -132,7 +132,7 @@ The commit is rejected, and you must:
 
 5. **After approval, merge and clean up:**
    ```bash
-   scripts/branch remove patch/my-feature
+   scripts/rmbranch -a patch/my-feature
    ```
 
 ## Troubleshooting
