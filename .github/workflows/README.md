@@ -1,6 +1,6 @@
 # .github/workflows/
 
-Directory for GitHub workflows.
+Directory containing GitHub workflows.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
