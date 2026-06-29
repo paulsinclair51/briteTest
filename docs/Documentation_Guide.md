@@ -187,7 +187,7 @@ include/                # Public API `.h` headers.
     testapi.h
 reports/                # Generated report files.
 scripts/                # Automation scripts.
-    check_directory_readmes.sh
+    scripts/bin/ckdirectory_guides
     genpdf
     test_genpdf.sh
 src/                    # API `.c` sources.

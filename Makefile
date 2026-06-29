@@ -81,10 +81,10 @@ test-lsbranch:
 	bash ./scripts/tests/test_lsbranch.sh
 
 gendocs:
-	bash ./scripts/genalldocs.sh
+	bash ./scripts/bin/genalldocs
 
 genpng:
-	bash ./scripts/genpng.sh
+	bash ./scripts/bin/genpng
 
 clean:
 	rm -f $(OBJECTS) $(TARGET)

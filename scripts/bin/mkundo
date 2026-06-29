@@ -8,12 +8,13 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 
 # Default options
 UNDO_TYPE=""
@@ -79,32 +80,8 @@ Exit codes:
 EOF
 }
 
-info() {
-  echo -e "${BLUE}ℹ${NC} $1"
-}
-
-success() {
-  echo -e "${GREEN}✓${NC} $1"
-}
-
-warn() {
-  echo -e "${YELLOW}⚠${NC} $1"
-}
-
-error_exit() {
-  local code="$1"
-  local message="$2"
-
-  echo -e "${RED}Error:${NC} $message" >&2
-  exit "$code"
-}
-
-get_current_branch() {
-  git rev-parse --abbrev-ref HEAD 2>/dev/null || error_exit 2 "Failed to determine current branch"
-}
-
 get_current_user() {
-  git config user.name 2>/dev/null || error_exit 2 "Failed to determine current user"
+  git config user.name 2>/dev/null || bt_error_exit 2 "Failed to determine current user"
 }
 
 log_undo_to_history() {
@@ -136,7 +113,7 @@ EOF
 - [$timestamp] [UNDO] $operation: $details
 EOF
 
-  info "Logged undo to $history_file"
+  bt_info "Logged undo to $history_file"
 }
 
 confirm_undo() {
@@ -147,7 +124,7 @@ confirm_undo() {
     return 0
   fi
 
-  echo -e "${YELLOW}⚠${NC} This will undo the following operation:"
+  echo "WARN: This will undo the following operation:"
   echo "  Type: $operation"
   echo "  Details: $details"
   echo -n "Continue? (y/N): "
@@ -162,41 +139,41 @@ confirm_undo() {
 
 undo_merge() {
   local current_branch
-  current_branch=$(get_current_branch)
+  current_branch=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
 
-  info "Checking for merge commits..."
+  bt_info "Checking for merge commits..."
 
   # Get last merge commit
   local last_merge
   last_merge=$(git log --oneline --grep="^Merge" -1 2>/dev/null | head -1)
 
   if [[ -z "$last_merge" ]]; then
-    error_exit 5 "No merge commit found to undo"
+    bt_error_exit 5 "No merge commit found to undo"
   fi
 
-  info "Found merge commit: $last_merge"
+  bt_info "Found merge commit: $last_merge"
 
   # Extract commit hash and message
   local commit_hash="${last_merge%% *}"
   local commit_msg="${last_merge#* }"
 
   if ! confirm_undo "merge" "$commit_msg"; then
-    error_exit 3 "Undo cancelled"
+    bt_error_exit 3 "Undo cancelled"
   fi
 
   # Revert the merge commit
-  info "Reverting merge commit..."
+  bt_info "Reverting merge commit..."
   if ! git revert -m 1 "$commit_hash" --no-edit 2>&1; then
-    error_exit 2 "Failed to revert merge commit"
+    bt_error_exit 2 "Failed to revert merge commit"
   fi
 
-  success "Merge reverted"
+  bt_success "Merge reverted"
 
   # Log undo
   log_undo_to_history "merge" "Reverted $commit_hash ($commit_msg)"
 
   if [[ "$VERBOSE" == true ]]; then
-    info "Revert details:"
+    bt_info "Revert details:"
     git log -1 --oneline | sed 's/^/  /'
   fi
 }
@@ -205,83 +182,83 @@ undo_release() {
   local current_user
   current_user=$(get_current_user)
 
-  info "Checking for recent release tags..."
+  bt_info "Checking for recent release tags..."
 
   # Get last annotated tag
   local last_tag
   last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
   if [[ -z "$last_tag" ]]; then
-    error_exit 5 "No release tag found to undo"
+    bt_error_exit 5 "No release tag found to undo"
   fi
 
-  info "Found release tag: $last_tag"
+  bt_info "Found release tag: $last_tag"
 
   if ! confirm_undo "release" "Tag: $last_tag"; then
-    error_exit 3 "Undo cancelled"
+    bt_error_exit 3 "Undo cancelled"
   fi
 
   # Delete local tag
-  info "Deleting local tag..."
+  bt_info "Deleting local tag..."
   if ! git tag -d "$last_tag" 2>&1; then
-    error_exit 2 "Failed to delete local tag"
+    bt_error_exit 2 "Failed to delete local tag"
   fi
 
   # Delete remote tag
-  info "Deleting remote tag..."
+  bt_info "Deleting remote tag..."
   if ! git push origin --delete "$last_tag" 2>&1; then
-    warn "Failed to delete remote tag (may need manual cleanup)"
+    bt_warn "Failed to delete remote tag (may need manual cleanup)"
   fi
 
-  success "Tag deleted locally and remotely"
+  bt_success "Tag deleted locally and remotely"
 
   # Delete GitHub release if it exists
-  info "Deleting GitHub release..."
+  bt_info "Deleting GitHub release..."
   if gh release delete "$last_tag" --confirm 2>&1; then
-    success "GitHub release deleted"
+    bt_success "GitHub release deleted"
   else
-    warn "Failed to delete GitHub release (may need manual cleanup)"
+    bt_warn "Failed to delete GitHub release (may need manual cleanup)"
   fi
 
   # Log undo
   log_undo_to_history "release" "Deleted release $last_tag"
 
-  success "Release undo complete"
+  bt_success "Release undo complete"
 }
 
 undo_commit() {
   local current_branch
-  current_branch=$(get_current_branch)
+  current_branch=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
 
-  info "Checking for recent commits..."
+  bt_info "Checking for recent commits..."
 
   # Get last commit
   local last_commit
   last_commit=$(git log --oneline -1 2>/dev/null | head -1)
 
   if [[ -z "$last_commit" ]]; then
-    error_exit 5 "No commit to undo"
+    bt_error_exit 5 "No commit to undo"
   fi
 
-  info "Found commit: $last_commit"
+  bt_info "Found commit: $last_commit"
 
   if ! confirm_undo "commit" "$last_commit"; then
-    error_exit 3 "Undo cancelled"
+    bt_error_exit 3 "Undo cancelled"
   fi
 
   # Soft reset to previous commit (preserves changes in staging)
-  info "Soft resetting to previous commit..."
+  bt_info "Soft resetting to previous commit..."
   if ! git reset --soft HEAD~1 2>&1; then
-    error_exit 2 "Failed to reset commit"
+    bt_error_exit 2 "Failed to reset commit"
   fi
 
-  success "Commit undone (changes preserved in staging area)"
+  bt_success "Commit undone (changes preserved in staging area)"
 
   # Log undo
   log_undo_to_history "commit" "Soft reset from $last_commit"
 
   if [[ "$VERBOSE" == true ]]; then
-    info "Status after undo:"
+    bt_info "Status after undo:"
     git status --short | sed 's/^/  /'
   fi
 }
@@ -303,10 +280,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -m requires a message argument"
+        bt_error_exit 1 "Option -m requires a message argument"
       fi
       if [[ -n "$COMMENT" ]]; then
-        error_exit 1 "Cannot use both -m and -- for message"
+        bt_error_exit 1 "Cannot use both -m and -- for message"
       fi
       COMMENT="$2"
       shift 2
@@ -315,20 +292,20 @@ while [[ $# -gt 0 ]]; do
       # Unix-style message: everything after -- is the message
       shift
       if [[ -n "$COMMENT" ]]; then
-        error_exit 1 "Cannot use both -m and -- for message"
+        bt_error_exit 1 "Cannot use both -m and -- for message"
       fi
       COMMENT="$*"
       break
       ;;
     -*)
-      error_exit 1 "Unknown option: $1"
+      bt_error_exit 1 "Unknown option: $1"
       ;;
     *)
       if [[ -z "$UNDO_TYPE" ]]; then
         UNDO_TYPE="$1"
         shift
       else
-        error_exit 1 "Unexpected argument: $1"
+        bt_error_exit 1 "Unexpected argument: $1"
       fi
       ;;
   esac
@@ -336,7 +313,7 @@ done
 
 # Validate undo type provided
 if [[ -z "$UNDO_TYPE" ]]; then
-  error_exit 1 "UNDO_TYPE argument required (merge, release, or commit)"
+  bt_error_exit 1 "UNDO_TYPE argument required (merge, release, or commit)"
 fi
 
 # Dispatch to appropriate undo function
@@ -351,9 +328,9 @@ case "$UNDO_TYPE" in
     undo_commit
     ;;
   *)
-    error_exit 1 "Unknown undo type: $UNDO_TYPE (valid: merge, release, commit)"
+    bt_error_exit 1 "Unknown undo type: $UNDO_TYPE (valid: merge, release, commit)"
     ;;
 esac
 
-success "Done"
+bt_success "Done"
 exit 0

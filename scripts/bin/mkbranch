@@ -9,9 +9,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 LOG_FILE="$REPO_ROOT/logs/branch_history.md"
 CONFIG_FILE="$REPO_ROOT/config/contributors.md"
+
+# Shared helpers
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 # Default options
 MODE="local"  # local, remote, or validate
@@ -127,34 +131,10 @@ log_operation() {
   local basebranchname="$3"
   local message="$4"
   local comment="${5:-}"
-  local timestamp
 
-  # Create logs directory if it doesn't exist
-  mkdir -p "$(dirname "$LOG_FILE")"
-
-  # Initialize log file with header if it doesn't exist
-  if [[ ! -f "$LOG_FILE" ]]; then
-    cat > "$LOG_FILE" <<'HEADER'
-# Branch History Log
-
-HEADER
-  fi
-
-  timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
-
-  # Append operation to log
-  if [[ -n "$comment" ]]; then
-    cat >> "$LOG_FILE" <<EOF
-
-**$timestamp**: $message
-  $comment
-EOF
-  else
-    cat >> "$LOG_FILE" <<EOF
-
-**$timestamp**: $message
-EOF
-  fi
+  # status/basebranchname are retained for compatibility with existing callers.
+  : "$status" "$basebranchname"
+  bt_append_history_log "$LOG_FILE" "$message" "$comment"
 }
 
 error_exit() {

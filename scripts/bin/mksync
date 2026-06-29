@@ -8,6 +8,14 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+
 # Default options
 SYNC_ALL=false
 VERBOSE=false
@@ -66,30 +74,6 @@ Exit codes:
 EOF
 }
 
-info() {
-  echo "$1"
-}
-
-success() {
-  echo "$1"
-}
-
-warn() {
-  echo "$1"
-}
-
-error_exit() {
-  local code="$1"
-  local message="$2"
-
-  echo "Error: $message" >&2
-  exit "$code"
-}
-
-get_current_branch() {
-  git rev-parse --abbrev-ref HEAD 2>/dev/null || error_exit 1 "Failed to determine current branch"
-}
-
 check_diverged() {
   local branch="$1"
   
@@ -142,10 +126,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -m requires a message argument"
+        bt_error_exit 1 "Option -m requires a message argument"
       fi
       if [[ -n "$COMMENT" ]]; then
-        error_exit 1 "Cannot use both -m and -- for comment"
+        bt_error_exit 1 "Cannot use both -m and -- for comment"
       fi
       COMMENT="$2"
       shift 2
@@ -154,57 +138,57 @@ while [[ $# -gt 0 ]]; do
       # Unix-style comment: everything after -- is the comment
       shift
       if [[ -n "$COMMENT" ]]; then
-        error_exit 1 "Cannot use both -m and -- for comment"
+        bt_error_exit 1 "Cannot use both -m and -- for comment"
       fi
       COMMENT="$*"
       break
       ;;
     -*)
-      error_exit 1 "Unknown option: $1"
+      bt_error_exit 1 "Unknown option: $1"
       ;;
     *)
-      error_exit 1 "Unknown argument: $1"
+      bt_error_exit 1 "Unknown argument: $1"
       ;;
   esac
 done
 
 # Get current branch
-CURRENT_BRANCH=$(get_current_branch)
-info "Current branch: $CURRENT_BRANCH"
+CURRENT_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+bt_info "Current branch: $CURRENT_BRANCH"
 
 # Fetch from remote
-info "Fetching from remote..."
+bt_info "Fetching from remote..."
 if ! git fetch origin 2>&1; then
-  error_exit 2 "Failed to fetch from remote"
+  bt_error_exit 2 "Failed to fetch from remote"
 fi
-success "Fetched successfully"
+bt_success "Fetched successfully"
 
 # Sync current branch
 if [[ "$SYNC_ALL" == false ]]; then
-  info "Pulling latest changes into $CURRENT_BRANCH..."
+  bt_info "Pulling latest changes into $CURRENT_BRANCH..."
   
   # Check for divergence before pulling
   if check_diverged "$CURRENT_BRANCH"; then
-    error_exit 3 "Branch '$CURRENT_BRANCH' has diverged from remote. Manual resolution needed. Use 'git rebase' or 'mkmerge' to resolve."
+    bt_error_exit 3 "Branch '$CURRENT_BRANCH' has diverged from remote. Manual resolution needed. Use 'git rebase' or 'mkmerge' to resolve."
   fi
   
   # Pull changes
   if ! git pull origin "$CURRENT_BRANCH" 2>&1; then
-    error_exit 2 "Failed to pull changes for $CURRENT_BRANCH"
+    bt_error_exit 2 "Failed to pull changes for $CURRENT_BRANCH"
   fi
   
-  success "Updated $CURRENT_BRANCH"
+  bt_success "Updated $CURRENT_BRANCH"
   
   # Show commit count if verbose
   if [[ "$VERBOSE" == true ]]; then
     new_commits=$(git rev-list --count "HEAD@{1}..HEAD" 2>/dev/null || echo "?")
     if [[ "$new_commits" != "?" ]]; then
-      info "$new_commits new commits pulled"
+      bt_info "$new_commits new commits pulled"
     fi
   fi
 else
   # Sync all branches
-  info "Pulling latest changes for all branches..."
+  bt_info "Pulling latest changes for all branches..."
   
   branches=$(git branch -r | grep -v HEAD | sed 's/origin\///')
   updated_count=0
@@ -215,13 +199,13 @@ else
     fi
   done
   
-  success "Updated $updated_count branches"
+  bt_success "Updated $updated_count branches"
 fi
 
 # Check for unpushed commits in current branch
 unpushed=$(count_unpushed_commits "$CURRENT_BRANCH")
 if [[ "$unpushed" -gt 0 ]]; then
-  warn "Local commits not pushed: $unpushed commit(s)"
+  bt_warn "Local commits not pushed: $unpushed commit(s)"
   if [[ "$VERBOSE" == true ]]; then
     git log --oneline "origin/$CURRENT_BRANCH..$CURRENT_BRANCH" 2>/dev/null | sed 's/^/  /'
   fi
@@ -230,9 +214,9 @@ fi
 # Check if behind main
 behind_main=$(count_commits_behind_main "$CURRENT_BRANCH")
 if [[ "$behind_main" -gt 0 ]] && [[ "$CURRENT_BRANCH" != "main" ]]; then
-  warn "Your branch is $behind_main commit(s) behind main"
-  info "Run: mksyncup"
+  bt_warn "Your branch is $behind_main commit(s) behind main"
+  bt_info "Run: mksyncup"
 fi
 
-success "Sync complete"
+bt_success "Sync complete"
 exit 0

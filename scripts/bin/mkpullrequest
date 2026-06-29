@@ -8,6 +8,16 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/github_helpers.sh
+source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+
 # Default options
 DRAFT=false
 VERBOSE=false
@@ -85,57 +95,19 @@ Exit codes:
 EOF
 }
 
-info() {
-  echo "$1"
-}
-
-success() {
-  echo "$1"
-}
-
-warn() {
-  echo "$1"
-}
-
-error_exit() {
-  local code="$1"
-  local message="$2"
-
-  echo "Error: $message" >&2
-  exit "$code"
-}
-
-get_current_branch() {
-  git rev-parse --abbrev-ref HEAD 2>/dev/null || error_exit 1 "Failed to determine current branch"
-}
-
 get_target_branch() {
   local current_branch="$1"
   
   # Cannot create PR from main
   if [[ "$current_branch" == "main" ]]; then
-    error_exit 3 "Cannot create PR from main branch"
+    bt_error_exit 3 "Cannot create PR from main branch"
   fi
   
-  # Find the merge-base with main (the point where this branch diverged)
-  # Then find what branch that commit is on
-  local merge_base
-  merge_base=$(git merge-base --fork-point origin/main "$current_branch" 2>/dev/null || echo "")
-  
-  if [[ -z "$merge_base" ]]; then
-    error_exit 2 "Failed to determine target branch"
-  fi
-  
-  # Find which branch contains this merge-base commit
-  # Try to find the branch name by looking at remote branches
   local target_branch
-  target_branch=$(git branch -r --contains "$merge_base" | grep -v HEAD | grep -v "origin/$current_branch" | head -1 | sed 's|origin/||' | xargs)
-  
-  if [[ -z "$target_branch" ]]; then
-    # If we can't find it, assume main
-    target_branch="main"
-  fi
-  
+  target_branch=$(bt_resolve_target_branch_from_fork_point "$current_branch" "main") || {
+    bt_error_exit 2 "Failed to determine target branch"
+  }
+
   echo "$target_branch"
 }
 
@@ -157,9 +129,8 @@ generate_title_from_branch() {
 
 get_existing_pr_number() {
   local branch="$1"
-  
-  # Use gh CLI to find existing PR
-  gh pr list --head "$branch" --state all --json number --jq '.[0].number' 2>/dev/null || echo ""
+
+  bt_gh_find_pr_number_for_branch "$branch" "all"
 }
 
 get_pr_draft_status() {
@@ -173,7 +144,7 @@ extract_reviewers_from_config() {
   local config_file="config/contributors.md"
   
   if [[ ! -f "$config_file" ]]; then
-    error_exit 5 "Configuration file not found: $config_file"
+    bt_error_exit 5 "Configuration file not found: $config_file"
   fi
   
   # Extract all R/ and A/ entries, format: [R/]name or [A/]name
@@ -182,7 +153,7 @@ extract_reviewers_from_config() {
   reviewers=$(grep -E '^\s*-\s+[RA]/' "$config_file" | sed -E 's/^\s*-\s+[RA]\/([^,]+).*/\1/' | tr '\n' ',' | sed 's/,$//')
   
   if [[ -z "$reviewers" ]]; then
-    error_exit 5 "No reviewers or approvers found in $config_file (need at least one A/ entry)"
+    bt_error_exit 5 "No reviewers or approvers found in $config_file (need at least one A/ entry)"
   fi
   
   echo "$reviewers"
@@ -197,17 +168,17 @@ while [[ $# -gt 0 ]]; do
       ;;
     -t | --title)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -t requires a title argument"
+        bt_error_exit 1 "Option -t requires a title argument"
       fi
       CUSTOM_TITLE="$2"
       shift 2
       ;;
     -d | --description)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -d requires a description argument"
+        bt_error_exit 1 "Option -d requires a description argument"
       fi
       if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
-        error_exit 1 "Cannot use both -d and -- for description"
+        bt_error_exit 1 "Cannot use both -d and -- for description"
       fi
       CUSTOM_DESCRIPTION="$2"
       shift 2
@@ -218,14 +189,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     -l | --labels)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -l requires labels argument"
+        bt_error_exit 1 "Option -l requires labels argument"
       fi
       LABELS="$2"
       shift 2
       ;;
     -a | --assignees)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -a requires assignees argument"
+        bt_error_exit 1 "Option -a requires assignees argument"
       fi
       ASSIGNEES="$2"
       shift 2
@@ -243,41 +214,41 @@ while [[ $# -gt 0 ]]; do
       # Unix-style description: everything after -- is the description
       shift
       if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
-        error_exit 1 "Cannot use both -d and -- for description"
+        bt_error_exit 1 "Cannot use both -d and -- for description"
       fi
       CUSTOM_DESCRIPTION="$*"
       break
       ;;
     -*)
-      error_exit 1 "Unknown option: $1"
+      bt_error_exit 1 "Unknown option: $1"
       ;;
     *)
-      error_exit 1 "Unknown argument: $1"
+      bt_error_exit 1 "Unknown argument: $1"
       ;;
   esac
 done
 
 # Get current branch
-CURRENT_BRANCH=$(get_current_branch)
-info "Current branch: $CURRENT_BRANCH"
+CURRENT_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+bt_info "Current branch: $CURRENT_BRANCH"
 
 # Determine target branch
-info "Determining target branch..."
+bt_info "Determining target branch..."
 TARGET_BRANCH=$(get_target_branch "$CURRENT_BRANCH")
-info "Target branch: $TARGET_BRANCH"
+bt_info "Target branch: $TARGET_BRANCH"
 
 # Extract reviewers from config
-info "Reading reviewers from config/contributors.md..."
+bt_info "Reading reviewers from config/contributors.md..."
 REVIEWERS=$(extract_reviewers_from_config)
-info "Reviewers: $REVIEWERS"
+bt_info "Reviewers: $REVIEWERS"
 
 # Determine title
 if [[ -z "$CUSTOM_TITLE" ]]; then
   TITLE=$(generate_title_from_branch "$CURRENT_BRANCH")
-  info "Generated title: $TITLE"
+  bt_info "Generated title: $TITLE"
 else
   TITLE="$CUSTOM_TITLE"
-  info "Title: $TITLE"
+  bt_info "Title: $TITLE"
 fi
 
 # Check for existing PR
@@ -285,41 +256,41 @@ EXISTING_PR=$(get_existing_pr_number "$CURRENT_BRANCH")
 
 if [[ -n "$EXISTING_PR" ]]; then
   # Update existing PR
-  info "Updating existing PR #$EXISTING_PR..."
+  bt_info "Updating existing PR #$EXISTING_PR..."
   
   # Update title
-  gh pr edit "$EXISTING_PR" --title "$TITLE" 2>&1 || error_exit 4 "Failed to update PR title"
+  gh pr edit "$EXISTING_PR" --title "$TITLE" 2>&1 || bt_error_exit 4 "Failed to update PR title"
   
   # Update description if provided
   if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
-    gh pr edit "$EXISTING_PR" --body "$CUSTOM_DESCRIPTION" 2>&1 || error_exit 4 "Failed to update PR description"
+    gh pr edit "$EXISTING_PR" --body "$CUSTOM_DESCRIPTION" 2>&1 || bt_error_exit 4 "Failed to update PR description"
   fi
   
   # Update labels if provided
   if [[ -n "$LABELS" ]]; then
-    gh pr edit "$EXISTING_PR" --add-label "$LABELS" 2>&1 || error_exit 4 "Failed to add labels"
+    gh pr edit "$EXISTING_PR" --add-label "$LABELS" 2>&1 || bt_error_exit 4 "Failed to add labels"
   fi
   
   # Update assignees if provided
   if [[ -n "$ASSIGNEES" ]]; then
-    gh pr edit "$EXISTING_PR" --add-assignee "$ASSIGNEES" 2>&1 || error_exit 4 "Failed to add assignees"
+    gh pr edit "$EXISTING_PR" --add-assignee "$ASSIGNEES" 2>&1 || bt_error_exit 4 "Failed to add assignees"
   fi
   
   # Update reviewers from config
-  gh pr edit "$EXISTING_PR" --add-reviewer "$REVIEWERS" 2>&1 || error_exit 4 "Failed to add reviewers"
+  gh pr edit "$EXISTING_PR" --add-reviewer "$REVIEWERS" 2>&1 || bt_error_exit 4 "Failed to add reviewers"
   
   # Check if PR is draft and mark ready if not using --draft flag
   CURRENT_DRAFT_STATUS=$(get_pr_draft_status "$EXISTING_PR")
   if [[ "$CURRENT_DRAFT_STATUS" == "true" ]] && [[ "$DRAFT" == false ]]; then
-    info "Marking PR as ready for review..."
-    gh pr ready "$EXISTING_PR" 2>&1 || error_exit 4 "Failed to mark PR as ready"
+    bt_info "Marking PR as ready for review..."
+    gh pr ready "$EXISTING_PR" 2>&1 || bt_error_exit 4 "Failed to mark PR as ready"
   fi
   
-  success "PR #$EXISTING_PR updated"
+  bt_success "PR #$EXISTING_PR updated"
   
 else
   # Create new PR
-  info "Creating new PR..."
+  bt_info "Creating new PR..."
   
   # Build gh pr create command
   create_cmd="gh pr create --base $TARGET_BRANCH --head $CURRENT_BRANCH --title '$TITLE'"
@@ -345,25 +316,25 @@ else
   
   # Execute command and capture PR number
   pr_url=""
-  pr_url=$(eval "$create_cmd" 2>&1) || error_exit 4 "Failed to create PR"
+  pr_url=$(eval "$create_cmd" 2>&1) || bt_error_exit 4 "Failed to create PR"
   
   # Extract PR number from URL
   EXISTING_PR=$(echo "$pr_url" | grep -oP '#\K[0-9]+' | head -1)
   
   if [[ -z "$EXISTING_PR" ]]; then
-    error_exit 4 "Failed to extract PR number from response"
+    bt_error_exit 4 "Failed to extract PR number from response"
   fi
   
   if [[ "$DRAFT" == true ]]; then
-    success "Draft PR #$EXISTING_PR created"
+    bt_success "Draft PR #$EXISTING_PR created"
   else
-    success "PR #$EXISTING_PR created (ready for review)"
+    bt_success "PR #$EXISTING_PR created (ready for review)"
   fi
 fi
 
 # Show PR details if verbose
 if [[ "$VERBOSE" == true ]]; then
-  info "PR details:"
+  bt_info "PR details:"
   gh pr view "$EXISTING_PR" --json number,title,state,isDraft,url --jq '{number:.number, title:.title, state:.state, draft:.isDraft, url:.url}' | sed 's/^/  /'
 fi
 
@@ -378,8 +349,8 @@ fi
 
 # Open in browser if requested
 if [[ "$OPEN_BROWSER" == true ]]; then
-  gh pr view "$EXISTING_PR" --web 2>&1 || warn "Failed to open PR in browser"
+  gh pr view "$EXISTING_PR" --web 2>&1 || bt_warn "Failed to open PR in browser"
 fi
 
-success "Done"
+bt_success "Done"
 exit 0

@@ -1,7 +1,7 @@
 # Brand Name and Tagline
 
 This file defines the current brand name and tagline (logos) for use by
-scripts/updatelogos and provides a history of changes.
+scripts/bin/updatelogos and provides a history of changes.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
@@ -16,10 +16,10 @@ Special lines in this file:
 - **Replacement line**: "- Replace: old_phrase = new_phrase" (case-sensitive).
   Insert a replacement line for each name/phrase change before the latest
   completion line with additional commentary (see format below) for the change,
-  then run scripts/updatelogos to update the logos in the documentation.
+  then run scripts/bin/updatelogos to update the logos in the documentation.
 
 - **Completion line**: "**Completed**: datetime.".
-  scripts/updatelogos inserts a completion line before the first replacement
+  scripts/bin/updatelogos inserts a completion line before the first replacement
   line.
 
 ## 2. Change History

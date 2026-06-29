@@ -8,6 +8,16 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/github_helpers.sh
+source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+
 # Default options
 CUSTOM_MESSAGE=""
 VERBOSE=false
@@ -63,53 +73,18 @@ Exit codes:
 EOF
 }
 
-info() {
-  echo "$1"
-}
-
-success() {
-  echo "$1"
-}
-
-warn() {
-  echo "$1"
-}
-
-error_exit() {
-  local code="$1"
-  local message="$2"
-
-  echo "Error: $message" >&2
-  exit "$code"
-}
-
-get_current_branch() {
-  git rev-parse --abbrev-ref HEAD 2>/dev/null || error_exit 2 "Failed to determine current branch"
-}
-
 get_current_user() {
-  git config user.name 2>/dev/null || error_exit 2 "Failed to determine current user"
+  git config user.name 2>/dev/null || bt_error_exit 2 "Failed to determine current user"
 }
 
 get_target_branch() {
   local current_branch="$1"
-  
-  # Find the merge-base with main (the point where this branch diverged)
-  local merge_base
-  merge_base=$(git merge-base --fork-point origin/main "$current_branch" 2>/dev/null || echo "")
-  
-  if [[ -z "$merge_base" ]]; then
-    error_exit 2 "Failed to determine target branch"
-  fi
-  
-  # Find which branch contains this merge-base commit
+
   local target_branch
-  target_branch=$(git branch -r --contains "$merge_base" | grep -v HEAD | grep -v "origin/$current_branch" | head -1 | sed 's|origin/||' | xargs)
-  
-  if [[ -z "$target_branch" ]]; then
-    target_branch="main"
-  fi
-  
+  target_branch=$(bt_resolve_target_branch_from_fork_point "$current_branch" "main") || {
+    bt_error_exit 2 "Failed to determine target branch"
+  }
+
   echo "$target_branch"
 }
 
@@ -128,7 +103,7 @@ is_approver() {
   local user_name="$1"
   
   if [[ ! -f "$config_file" ]]; then
-    error_exit 5 "Configuration file not found: $config_file"
+    bt_error_exit 5 "Configuration file not found: $config_file"
   fi
   
   # Check if user is in A/ (Approver) entries
@@ -140,9 +115,8 @@ is_approver() {
 
 get_existing_pr_number() {
   local branch="$1"
-  
-  # Use gh CLI to find existing PR
-  gh pr list --head "$branch" --state open --json number --jq '.[0].number' 2>/dev/null || echo ""
+
+  bt_gh_find_pr_number_for_branch "$branch" "open"
 }
 
 get_pr_title() {
@@ -162,7 +136,7 @@ get_pr_status_check() {
 check_status_checks() {
   local pr_number="$1"
   
-  info "Checking status checks and CI/CD..."
+  bt_info "Checking status checks and CI/CD..."
   
   # Get the status check state
   local status_state
@@ -170,23 +144,23 @@ check_status_checks() {
   
   if [[ -z "$status_state" ]]; then
     # No checks found
-    info "No status checks found"
+    bt_info "No status checks found"
     return 0
   fi
   
   case "$status_state" in
     SUCCESS)
-      success "All status checks passed"
+      bt_success "All status checks passed"
       return 0
       ;;
     PENDING)
-      error_exit 6 "Status checks still pending"
+      bt_error_exit 6 "Status checks still pending"
       ;;
     FAILURE)
-      error_exit 6 "Status checks failed"
+      bt_error_exit 6 "Status checks failed"
       ;;
     *)
-      error_exit 6 "Unknown status check state: $status_state"
+      bt_error_exit 6 "Unknown status check state: $status_state"
       ;;
   esac
 }
@@ -224,7 +198,7 @@ EOF
 - [$timestamp] [$approver] Merged [$branch] to [$target_branch]: $message
 EOF
   
-  info "Logged merge to $history_file"
+  bt_info "Logged merge to $history_file"
 }
 
 # Parse options and arguments
@@ -236,7 +210,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -m requires a message argument"
+        bt_error_exit 1 "Option -m requires a message argument"
       fi
       CUSTOM_MESSAGE="$2"
       shift 2
@@ -246,46 +220,46 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -*)
-      error_exit 1 "Unknown option: $1"
+      bt_error_exit 1 "Unknown option: $1"
       ;;
     *)
-      error_exit 1 "Unknown argument: $1"
+      bt_error_exit 1 "Unknown argument: $1"
       ;;
   esac
 done
 
 # Get current branch
-CURRENT_BRANCH=$(get_current_branch)
-info "Current branch: $CURRENT_BRANCH"
+CURRENT_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+bt_info "Current branch: $CURRENT_BRANCH"
 
 # Get current user
 CURRENT_USER=$(get_current_user)
-info "Current user: $CURRENT_USER"
+bt_info "Current user: $CURRENT_USER"
 
 # Determine target branch
-info "Determining target branch..."
+bt_info "Determining target branch..."
 TARGET_BRANCH=$(get_target_branch "$CURRENT_BRANCH")
-info "Target branch: $TARGET_BRANCH"
+bt_info "Target branch: $TARGET_BRANCH"
 
 # Check if target branch is protected (base is main)
 if is_protected_branch "$TARGET_BRANCH"; then
-  info "Target branch is protected (base is main)"
+  bt_info "Target branch is protected (base is main)"
   
   # Verify current user is an approver
   if ! is_approver "$CURRENT_USER"; then
-    error_exit 3 "User '$CURRENT_USER' is not an approver. Only approvers can merge to protected branches."
+    bt_error_exit 3 "User '$CURRENT_USER' is not an approver. Only approvers can merge to protected branches."
   fi
-  success "User '$CURRENT_USER' is an approver"
+  bt_success "User '$CURRENT_USER' is an approver"
 else
-  info "Target branch is not protected"
+  bt_info "Target branch is not protected"
 fi
 
 # Find associated PR
 PR_NUMBER=$(get_existing_pr_number "$CURRENT_BRANCH")
 if [[ -z "$PR_NUMBER" ]]; then
-  error_exit 7 "No open PR found for branch '$CURRENT_BRANCH'"
+  bt_error_exit 7 "No open PR found for branch '$CURRENT_BRANCH'"
 fi
-info "Found PR #$PR_NUMBER"
+bt_info "Found PR #$PR_NUMBER"
 
 # Check status checks pass
 check_status_checks "$PR_NUMBER"
@@ -293,33 +267,33 @@ check_status_checks "$PR_NUMBER"
 # Determine commit message
 if [[ -n "$CUSTOM_MESSAGE" ]]; then
   COMMIT_MESSAGE="$CUSTOM_MESSAGE"
-  info "Using custom message: $COMMIT_MESSAGE"
+  bt_info "Using custom message: $COMMIT_MESSAGE"
 else
   COMMIT_MESSAGE=$(get_pr_title "$PR_NUMBER")
   if [[ -z "$COMMIT_MESSAGE" ]]; then
-    error_exit 4 "Failed to get PR title"
+    bt_error_exit 4 "Failed to get PR title"
   fi
-  info "Using PR title as message: $COMMIT_MESSAGE"
+  bt_info "Using PR title as message: $COMMIT_MESSAGE"
 fi
 
 # Perform squash merge
-info "Performing squash merge..."
-git fetch origin 2>/dev/null || warn "Failed to fetch from origin"
+bt_info "Performing squash merge..."
+git fetch origin 2>/dev/null || bt_warn "Failed to fetch from origin"
 
 merge_cmd="git merge --squash --no-commit origin/$TARGET_BRANCH"
 if ! eval "$merge_cmd" 2>&1; then
-  error_exit 2 "Failed to squash merge"
+  bt_error_exit 2 "Failed to squash merge"
 fi
 
 # Create commit with message
 if ! git commit -m "$COMMIT_MESSAGE" 2>&1; then
-  error_exit 2 "Failed to create commit"
+  bt_error_exit 2 "Failed to create commit"
 fi
 
 # Push to remote
-info "Pushing merged branch..."
+bt_info "Pushing merged branch..."
 if ! git push -f origin "$CURRENT_BRANCH" 2>&1; then
-  error_exit 2 "Failed to push branch"
+  bt_error_exit 2 "Failed to push branch"
 fi
 
 # Log merge to history
@@ -327,7 +301,7 @@ log_merge_to_history "$CURRENT_BRANCH" "$TARGET_BRANCH" "$CURRENT_USER" "$COMMIT
 
 # Show verbose output if requested
 if [[ "$VERBOSE" == true ]]; then
-  info "Merge details:"
+  bt_info "Merge details:"
   echo "  Branch: $CURRENT_BRANCH"
   echo "  Target: $TARGET_BRANCH"
   echo "  Approver: $CURRENT_USER"
@@ -335,6 +309,6 @@ if [[ "$VERBOSE" == true ]]; then
   echo "  Message: $COMMIT_MESSAGE"
 fi
 
-success "Branch '$CURRENT_BRANCH' merged to '$TARGET_BRANCH'"
-success "Done"
+bt_success "Branch '$CURRENT_BRANCH' merged to '$TARGET_BRANCH'"
+bt_success "Done"
 exit 0

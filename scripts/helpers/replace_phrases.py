@@ -18,7 +18,7 @@ Lines starting with '#' are treated as comments.
 Empty lines are ignored.
 
 Usage:
-    python3 scripts/replace_phrases.py [config_file] [--dry-run]
+    python3 scripts/helpers/replace_phrases.py [config_file] [--dry-run]
 
 Default config file: config/phrase_replacements.txt
 """
@@ -117,7 +117,7 @@ def process_file(file_path, replacements, dry_run=False):
             count = content.count(old_phrase)
             content = content.replace(old_phrase, new_phrase)
             replacements_made += count
-            changes.append(f"  - Replaced '{old_phrase}' → '{new_phrase}' ({count} occurrence{'s' if count != 1 else ''})")
+            changes.append(f"  - Replaced '{old_phrase}' -> '{new_phrase}' ({count} occurrence{'s' if count != 1 else ''})")
     
     if content != original_content:
         if not dry_run:

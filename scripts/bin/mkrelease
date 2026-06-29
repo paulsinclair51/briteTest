@@ -8,6 +8,16 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/github_helpers.sh
+source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+
 # Default options
 VERBOSE=false
 VERSION=""
@@ -59,37 +69,13 @@ Exit codes:
 EOF
 }
 
-info() {
-  echo "$1"
-}
-
-success() {
-  echo "$1"
-}
-
-warn() {
-  echo "$1"
-}
-
-error_exit() {
-  local code="$1"
-  local message="$2"
-
-  echo "Error: $message" >&2
-  exit "$code"
-}
-
-get_current_branch() {
-  git rev-parse --abbrev-ref HEAD 2>/dev/null || error_exit 2 "Failed to determine current branch"
-}
-
 get_current_user() {
-  git config user.name 2>/dev/null || error_exit 2 "Failed to determine current user"
+  git config user.name 2>/dev/null || bt_error_exit 2 "Failed to determine current user"
 }
 
 check_working_directory_clean() {
   if ! git diff-index --quiet HEAD --; then
-    error_exit 3 "Working directory has uncommitted changes. Commit or stash them first."
+    bt_error_exit 3 "Working directory has uncommitted changes. Commit or stash them first."
   fi
 }
 
@@ -100,21 +86,20 @@ is_main_branch() {
 
 get_base_branch() {
   local branch="$1"
-  
-  # Find the merge-base with main
+
+  # Determine whether this branch ultimately forks from origin/main.
   local merge_base
-  merge_base=$(git merge-base --fork-point origin/main "$branch" 2>/dev/null || echo "")
-  
+  merge_base=$(git merge-base --fork-point origin/main "$branch" 2>/dev/null || true)
+
   if [[ -z "$merge_base" ]]; then
     return 1
   fi
-  
-  # Check if main contains this merge-base
+
   if git merge-base --is-ancestor "$merge_base" origin/main 2>/dev/null; then
     echo "main"
     return 0
   fi
-  
+
   return 1
 }
 
@@ -128,7 +113,7 @@ is_protected_branch() {
   
   # Check if base branch is main
   local base_branch
-  base_branch=$(get_base_branch "$branch")
+  base_branch=$(get_base_branch "$branch" || true)
   if [[ "$base_branch" == "main" ]]; then
     return 0
   fi
@@ -139,14 +124,14 @@ is_protected_branch() {
 check_status_checks() {
   local branch="$1"
   
-  info "Checking status checks and CI/CD..."
+  bt_info "Checking status checks and CI/CD..."
   
   # Get the PR for this branch (if any)
   local pr_number
-  pr_number=$(gh pr list --head "$branch" --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
+  pr_number=$(bt_gh_find_pr_number_for_branch "$branch" "open")
   
   if [[ -z "$pr_number" ]]; then
-    info "No open PR found, skipping status check"
+    bt_info "No open PR found, skipping status check"
     return 0
   fi
   
@@ -155,23 +140,23 @@ check_status_checks() {
   status_state=$(gh pr view "$pr_number" --json statusCheckRollup --jq '.statusCheckRollup[].state' 2>/dev/null | sort | uniq | head -1)
   
   if [[ -z "$status_state" ]]; then
-    info "No status checks found"
+    bt_info "No status checks found"
     return 0
   fi
   
   case "$status_state" in
     SUCCESS)
-      success "All status checks passed"
+      bt_success "All status checks passed"
       return 0
       ;;
     PENDING)
-      error_exit 5 "Status checks still pending"
+      bt_error_exit 5 "Status checks still pending"
       ;;
     FAILURE)
-      error_exit 5 "Status checks failed"
+      bt_error_exit 5 "Status checks failed"
       ;;
     *)
-      error_exit 5 "Unknown status check state: $status_state"
+      bt_error_exit 5 "Unknown status check state: $status_state"
       ;;
   esac
 }
@@ -181,7 +166,7 @@ validate_version() {
   
   # Check version format (v1.2.3 or 1.2.3)
   if ! [[ "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    error_exit 1 "Invalid version format: $version (expected: v1.2.3 or 1.2.3)"
+    bt_error_exit 1 "Invalid version format: $version (expected: v1.2.3 or 1.2.3)"
   fi
 }
 
@@ -194,43 +179,43 @@ create_annotated_tag() {
   local tag="$1"
   local user="$2"
   
-  info "Creating annotated tag: $tag"
+  bt_info "Creating annotated tag: $tag"
   
   # Check tag doesn't already exist
   if tag_exists "$tag"; then
-    error_exit 7 "Tag already exists: $tag"
+    bt_error_exit 7 "Tag already exists: $tag"
   fi
   
   # Create annotated tag
   if ! git tag -a "$tag" -m "Release $tag by $user" 2>&1; then
-    error_exit 2 "Failed to create tag"
+    bt_error_exit 2 "Failed to create tag"
   fi
   
-  success "Tag created: $tag"
+  bt_success "Tag created: $tag"
 }
 
 push_tag() {
   local tag="$1"
   
-  info "Pushing tag to remote..."
+  bt_info "Pushing tag to remote..."
   
   if ! git push origin "$tag" 2>&1; then
-    error_exit 2 "Failed to push tag"
+    bt_error_exit 2 "Failed to push tag"
   fi
   
-  success "Tag pushed: $tag"
+  bt_success "Tag pushed: $tag"
 }
 
 create_github_release() {
   local tag="$1"
   
-  info "Creating GitHub release: $tag"
+  bt_info "Creating GitHub release: $tag"
   
   if ! gh release create "$tag" --title "$tag" --notes "" 2>&1; then
-    error_exit 6 "Failed to create GitHub release"
+    bt_error_exit 6 "Failed to create GitHub release"
   fi
   
-  success "GitHub release created: $tag"
+  bt_success "GitHub release created: $tag"
 }
 
 log_release_to_history() {
@@ -264,7 +249,7 @@ EOF
 - [$timestamp] [$user] Released $version
 EOF
 
-  info "Logged release to $history_file"
+  bt_info "Logged release to $history_file"
 }
 
 # Parse options and arguments
@@ -279,14 +264,14 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -*)
-      error_exit 1 "Unknown option: $1"
+      bt_error_exit 1 "Unknown option: $1"
       ;;
     *)
       if [[ -z "$VERSION" ]]; then
         VERSION="$1"
         shift
       else
-        error_exit 1 "Unexpected argument: $1"
+        bt_error_exit 1 "Unexpected argument: $1"
       fi
       ;;
   esac
@@ -294,7 +279,7 @@ done
 
 # Validate version provided
 if [[ -z "$VERSION" ]]; then
-  error_exit 1 "VERSION argument required"
+  bt_error_exit 1 "VERSION argument required"
 fi
 
 # Validate version format
@@ -305,30 +290,30 @@ if [[ ! "$VERSION" =~ ^v ]]; then
   VERSION="v$VERSION"
 fi
 
-info "Release version: $VERSION"
+bt_info "Release version: $VERSION"
 
 # Get current branch
-CURRENT_BRANCH=$(get_current_branch)
-info "Current branch: $CURRENT_BRANCH"
+CURRENT_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+bt_info "Current branch: $CURRENT_BRANCH"
 
 # Get current user
 CURRENT_USER=$(get_current_user)
-info "Current user: $CURRENT_USER"
+bt_info "Current user: $CURRENT_USER"
 
 # Check if on main or protected branch
 if ! is_protected_branch "$CURRENT_BRANCH"; then
-  error_exit 4 "Can only release from main or a protected branch (base is main). Current branch: $CURRENT_BRANCH"
+  bt_error_exit 4 "Can only release from main or a protected branch (base is main). Current branch: $CURRENT_BRANCH"
 fi
-success "On valid release branch"
+bt_success "On valid release branch"
 
 # Check working directory is clean
-info "Checking working directory..."
+bt_info "Checking working directory..."
 check_working_directory_clean
-success "Working directory is clean"
+bt_success "Working directory is clean"
 
 # Fetch latest from remote
-info "Fetching latest from remote..."
-git fetch origin 2>/dev/null || warn "Failed to fetch from origin"
+bt_info "Fetching latest from remote..."
+git fetch origin 2>/dev/null || bt_warn "Failed to fetch from origin"
 
 # Check status checks pass
 check_status_checks "$CURRENT_BRANCH"
@@ -347,12 +332,12 @@ log_release_to_history "$VERSION" "$CURRENT_USER"
 
 # Show verbose output if requested
 if [[ "$VERBOSE" == true ]]; then
-  info "Release details:"
+  bt_info "Release details:"
   echo "  Version: $VERSION"
   echo "  Branch: $CURRENT_BRANCH"
   echo "  User: $CURRENT_USER"
 fi
 
-success "Release $VERSION created and published"
-success "Done"
+bt_success "Release $VERSION created and published"
+bt_success "Done"
 exit 0

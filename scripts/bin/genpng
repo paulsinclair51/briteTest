@@ -7,14 +7,14 @@ set -euo pipefail
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 branding_dir="$repo_root/docs/branding"
 
 usage() {
   cat <<'EOF'
 Usage:
-  genpng.sh
-  genpng.sh -h | --help
+  genpng
+  genpng -h | --help
 
 Generates all branding PNGs from docs/branding/*.svg.
 
