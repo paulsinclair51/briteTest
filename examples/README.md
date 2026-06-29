@@ -1,6 +1,6 @@
 # examples/
 
-Directory for usage examples.
+Directory containing usage examples.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
