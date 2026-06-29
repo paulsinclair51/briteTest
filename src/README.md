@@ -1,7 +1,6 @@
 # src/
 
-Directory for `.c` files, internal headers (if not meant for public use), and
-implementation code.
+Directory containing `.c` files and internal `.h` headers.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
