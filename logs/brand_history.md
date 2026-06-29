@@ -1,4 +1,4 @@
-# brand_bistory.md
+# brand_history.md
 
 This file defines the current brand name and tagline (logos) for use by
 scripts/bin/updatelogos and provides a history of changes.
