@@ -10,8 +10,11 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
+- **contributors.md**: Specifies the current contributors and whether they
+  are also a reviewer or approver. Sdd this file for details.
+
 - **markdownlint.json**: Markdown lint configuration for this repository.
-  Used by `make lint-md` in the project `Makefile`.
+  Used by `make lint-md` in the project `Makefile`. See below for details.
 
 - **README.md**: This directory guide.
 
@@ -21,14 +24,25 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## `markdownlint.json` Settings
 
-The configuration customizes markdownlint behavior with the following settings:
+Modifying or adding settings in this file should be avoided.
 
-- **MD013 (line length)**: Sets maximum line length to 120 characters (default is 80). Exempts code blocks and tables from the line-length rule. This is needed because the project includes extensive C code examples and documentation that would be unreadably fragmented at 80 characters, and code formatting should follow language conventions rather than markdown line-length limits.
+This configuration file customizes markdownlint behavior with the following
+settings:
 
-- **MD029 (ordered list prefix)**: Disabled (default is enabled). Allows ordered lists to use flexible numbering instead of requiring all lists to start with `1.`. This provides flexibility in documentation structure where automatic numbering isn't desired.
+- **MD013 (line length)**: Sets maximum line length to 120 characters (default
+  is 80). Exempts code blocks and tables from the line-length rule. This is needed
+  because the project includes extensive C code examples and documentation that 
+  would be unreadably fragmented at 80 characters, and code formatting should follow
+  language conventions rather than markdown line-length limits.
 
-- **MD033 (no HTML)**: Disabled (default is enabled). Allows embedded HTML in markdown files. This is needed for the project documentation, which uses HTML tags `<details>...</details>` and `<summary>...</summary>` for collapsible sections, `<br>` for line breaks, and
-`&nbsp;` for no-breaking space to improve readability and navigation of lengthy guides. Use of
-HTML beyond these should be avoided.
+- **MD029 (ordered list prefix)**: Disabled (default is enabled). Allows ordered
+  lists to use flexible numbering instead of requiring all lists to start with `1.`. 
+  This provides flexibility in documentation structure where automatic numbering
+  isn't desired.
 
-Modifying or adding settings should be avoided.
+- **MD033 (no HTML)**: Disabled (default is enabled). Allows embedded HTML in 
+  markdown files. This is needed for documentation that uses HTML tags
+  `<details>...</details>` and `<summary>...</summary>` for collapsible sections,
+  `<br>` for line breaks, and `&nbsp;` for no-breaking space to improve readability
+  and navigation of lengthy guides. Use of HTML in documentation beyond these
+  should be avoided.
