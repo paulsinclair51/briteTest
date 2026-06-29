@@ -13,8 +13,8 @@ See `README.md` in the root directory for an introduction to the project.
 - **`canary-live.svg`**: photo of a yellow canary with transparent background
    perched on partially removed branch.
 
-- **`canary.svg`**: Canary accent: traced from canary-live.svg with canary yellow fill,
-  added black dot eye, and overlaid triangle for beak.
+- **`canary.svg`**: Canary accent: traced from canary-live.svg with canary
+  yellow fill, added black dot eye, and overlaid triangle for beak.
 
 - **`Monogram.svg`**: Monogram-only `bT` with canary accent perched on T in a
   rounded-square.
@@ -26,8 +26,6 @@ See `README.md` in the root directory for an introduction to the project.
 
 - **`<doctitle>.svg`**: monogram, brand name, and doctitle (for a document in `docs`)
   with transparent background.
-
-. **`brand.txt`**: pending (if any) brand changes and change history.
 
 - `*.png`: generated `.png` files corresponding to each `*.svg` file.
 
