@@ -1,6 +1,6 @@
 # tests/input/
 
-Directory for static source input files used by tests.
+Directory containing static source input files used by tests.
 
 - Source input data is consumed by test code to produce
   results or exercise file-processing behavior.
