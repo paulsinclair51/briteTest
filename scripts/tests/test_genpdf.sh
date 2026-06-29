@@ -88,7 +88,7 @@ for dep in grep mktemp; do
   command -v "$dep" >/dev/null 2>&1 || fail "missing required command: $dep"
 done
 
-repo_root=$(cd "$(dirname "$0")/.." && pwd)
+repo_root=$(cd "$(dirname "$0")/../.." && pwd)
 script="$repo_root/scripts/genpdf"
 
 if [[ ! -x "$script" ]]; then

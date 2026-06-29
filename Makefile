@@ -75,7 +75,10 @@ lint-md:
 		xargs -0 npx -y markdownlint-cli --config config/markdownlint.json
 
 test-genpdf:
-	bash ./scripts/test_genpdf.sh
+	bash ./scripts/tests/test_genpdf.sh
+
+test-lsbranch:
+	bash ./scripts/tests/test_lsbranch.sh
 
 gendocs:
 	bash ./scripts/genalldocs.sh
@@ -86,4 +89,4 @@ genpng:
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run lint-md test-genpdf gendocs genpng clean
+.PHONY: all run lint-md test-genpdf test-lsbranch gendocs genpng clean
