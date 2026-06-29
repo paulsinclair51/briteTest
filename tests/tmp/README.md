@@ -1,6 +1,6 @@
 # tests/tmp/
 
-This directory is for transient files created during test execution.
+Directory containing temporary files created during test execution.
 Files are removed:
 
 - At run start.
