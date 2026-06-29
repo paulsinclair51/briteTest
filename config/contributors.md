@@ -1,4 +1,4 @@
-# Contributors, Reviewers, and Approvers
+# Contributors
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
