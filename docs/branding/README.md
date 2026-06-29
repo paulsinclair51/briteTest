@@ -1,6 +1,6 @@
 # branding/
 
-This folder contains SVG and PNG logo assets for the brand name and monogram.
+Directory containing assets for the brand name and monogram.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
