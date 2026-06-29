@@ -1,6 +1,6 @@
 # reports/
 
-Directory for generated report files.
+Directory containing generated report files.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
