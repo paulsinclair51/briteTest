@@ -9,6 +9,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
@@ -42,7 +43,7 @@ Features:
   - For merges: creates revert commit
   - For releases: deletes local and remote tags, GitHub release
   - For commits: soft reset (changes preserved in staging)
-  - Updates branch_history.md with undo record
+  - Updates logs/remote_branch_history.md with undo record
 
 Options:
   -h, --help           Output this help to stdout and exit.
@@ -88,7 +89,7 @@ log_undo_to_history() {
   local operation="$1"
   local details="$2"
 
-  local history_file="branch_history.md"
+  local history_file="$REPO_ROOT/logs/remote_branch_history.md"
   local timestamp
   timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 

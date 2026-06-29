@@ -10,7 +10,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-LOG_FILE="$REPO_ROOT/logs/branch_history.md"
+LOG_FILE="$REPO_ROOT/logs/remote_branch_history.md"
 
 # Shared helpers
 # shellcheck source=helpers/history_log.sh
@@ -58,7 +58,7 @@ Modes:
     - Verify the current branch can be rebased (not main, not a version branch).
     - Verify the new base branch exists locally or remotely.
     - Perform git rebase onto the new base branch.
-    - Log the operation to 'logs/branch_history.md'.
+    - Log the operation to 'logs/remote_branch_history.md'.
     - Show instructions for force pushing if needed.
 
   Validate (-v):

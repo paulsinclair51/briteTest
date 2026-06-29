@@ -9,7 +9,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-REMOTE_LOG_FILE="$REPO_ROOT/logs/branch_history.md"
+REMOTE_LOG_FILE="$REPO_ROOT/logs/remote_branch_history.md"
 LOCAL_LOG_FILE="$REPO_ROOT/logs/local_branch_history.md"
 
 # Shared helpers
@@ -64,12 +64,12 @@ Modes:
 
   Remote (-r):
     - Delete the branch from remote only.
-    - Log the operation to 'logs/branch_history.md'.
+    - Log the operation to 'logs/remote_branch_history.md'.
 
   Both (-a):
     - Delete the local branch.
     - Delete the branch from remote.
-    - Log the operation to 'logs/branch_history.md' and 'logs/local_branch_history.md'
+    - Log the operation to 'logs/remote_branch_history.md' and 'logs/local_branch_history.md'
 
 Examples: Basic usage.
   rmbranch old-fix

@@ -9,13 +9,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/../helpers/common.sh"
 
 # Default options
-HISTORY_FILE="branch_history.md"
+HISTORY_FILE="$REPO_ROOT/logs/remote_branch_history.md"
 OUTPUT_FILE=""
 VERBOSE=false
 FILTER_TYPE=""
@@ -30,7 +31,7 @@ Usage:
   ckbranch_history [OPTIONS]
   ckbranch_history -h | --help
 
-Query and display branch history log entries from branch_history.md.
+Query and display branch history log entries from logs/remote_branch_history.md.
 
 Features:
   - List all history entries (or filtered)
@@ -43,7 +44,7 @@ Features:
   - Limit number of entries
 
 History File Format:
-  branch_history.md contains:
+  remote_branch_history.md contains:
     - [timestamp] [user/type] Operation: details
     - [timestamp] [UNDO] operation: details
 
@@ -56,7 +57,7 @@ Options:
   -r, --reverse        Sort descending (oldest first, default: newest first)
   -o, --output FILE    Write results to file instead of stdout
   -v, --verbose        Show detailed formatting with full timestamps
-  -f, --file FILE      Use custom history file (default: branch_history.md)
+  -f, --file FILE      Use custom history file (default: logs/remote_branch_history.md)
 
 Examples:
   # Show all history entries

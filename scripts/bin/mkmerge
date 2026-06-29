@@ -37,13 +37,13 @@ Before merging:
   - Verifies current user is an approver (if merging to protected branch)
   - Checks that all status checks and CI/CD pass
   - Uses PR title or custom message as squash commit message
-  - Logs merge to logs/branch_history.md
+  - Logs merge to logs/remote_branch_history.md
 
 Features:
   - Squash commits into single commit
   - Automatic approval verification for protected branches
   - Status check validation
-  - Merge logging to logs/branch_history.md
+  - Merge logging to logs/remote_branch_history.md
   - No branch cleanup (branches remain after merge)
 
 Options:
@@ -171,7 +171,7 @@ log_merge_to_history() {
   local approver="$3"
   local message="$4"
   
-  local history_file="logs/branch_history.md"
+  local history_file="logs/remote_branch_history.md"
   local timestamp
   timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
