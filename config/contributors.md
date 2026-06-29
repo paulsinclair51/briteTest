@@ -8,19 +8,26 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Overview
 
-This file lists the contributors to the BriteTest project, organized by their roles and responsibilities.
+This file lists the allowed contributors to the BriteTest project.
 
-## Contributor Kinds
+An approver may modify this list to add/remove a contributor or change a
+contributor's role. If there are no approvers, a reviewer may modify the list.
+If these are neither approvers nor reviewers, a contributor may modify the list.
+Otherwise, any user may modify the list.
+
+## Contributor Role and Responsibilities
 
 Contributors are categorized by their role and permissions:
 
-- **C/name** (Contributor): Can contribute code and documentation.
-- **R/name** (Reviewer): Can review a pull request (PR) and contribute. Reviewers help
-  maintain code quality through peer review.
-- **A/name** (Approver): Can approve a pull request (PR] for merging, review a pull
-  request, and contribute. Approvers have final authority on code changes.
+- **C/name** (Contributor-only): Can contribute code and documentatio changes.
 
-## Contributors List
+- **R/name** (Reviewer): Can contribute, review a pull request (PR) and contribute,
+  Reviewers help maintain code and documentation quality through peer review.
 
-**Contributors**:
+- **A/name** (Approver): Can contribute, review a pull request PR), approve a 
+  pull request for merging. Approvers have final authority on code documentation 
+  and changes.
+
+## Contributors
+
 - A/Paul Sinclair, paulsinclair@verizon.net
