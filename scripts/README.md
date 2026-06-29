@@ -20,4 +20,3 @@ See `README.md` in the root directory for an introduction to the project.
   subdirectory.
 
 - **tests/**: Script tests.
-  Includes `test_lsbranch.sh` and `test_genpdf.sh`.
