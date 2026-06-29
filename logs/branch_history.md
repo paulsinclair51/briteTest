@@ -1,4 +1,4 @@
-# Branch History
+# branch_history.md
 
 **2026-06-26 14:45:30**: Branch `fix-bug` removed.
 
