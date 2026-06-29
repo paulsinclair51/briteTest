@@ -1,13 +1,14 @@
 # scripts/tests/
 
-Directory containing script smoke tests.
+Directory containing script tests.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
 For license details, see `LICENSE` in the root directory.
 
-This directory stores lightweight smoke tests for user-facing commands in
-`scripts/bin/`. These tests are intended to quickly verify key CLI behavior, exit codes, and high-signal output contracts.
+This directory stores tests for user-facing commands in `scripts/bin/`.
+These tests are intended to quickly verify key CLI behavior, exit codes,
+and high-signal output contracts.
 
 ## Files
 
