@@ -1,6 +1,6 @@
 # tests/src/
 
-Directory for test source files (`*.c`) used to build a test executable.
+Directory containing test source files (`*.c`) used to build a test executable.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
