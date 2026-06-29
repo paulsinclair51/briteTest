@@ -1,6 +1,6 @@
 # tests/golden/
 
-Directory for golden files used for output file comparison and validation.
+Directory containing golden files used for output file comparison and validation.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
