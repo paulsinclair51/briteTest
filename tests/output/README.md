@@ -1,6 +1,6 @@
 # tests/output/
 
-Directory for copies of generated test outputs.
+Directory containing copies of generated test outputs.
 
 - Output files in this directory are compared against corresponding
   golden files and metadata files in `../golden/`.
