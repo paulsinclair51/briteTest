@@ -1,4 +1,4 @@
-# branding/
+# docs/branding/
 
 Directory containing assets for the brand name and monogram.
 
