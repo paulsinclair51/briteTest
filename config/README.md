@@ -11,7 +11,7 @@ See `README.md` in the root directory for an introduction to the project.
 ## Files
 
 - **contributors.md**: Specifies the current contributors and whether they
-  are also a reviewer or approver. Sdd this file for details.
+  are also a reviewer or approver. See this file for details.
 
 - **markdownlint.json**: Markdown lint configuration for this repository.
   Used by `make lint-md` in the project `Makefile`. See below for details.
