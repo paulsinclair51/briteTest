@@ -1,6 +1,6 @@
 # docs/
 
-Directory for user and contributor documentation.
+Directory containing user and contributor documentation.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
