@@ -15,8 +15,10 @@ This file lists the contributors to the BriteTest project, organized by their ro
 Contributors are categorized by their role and permissions:
 
 - **C/name** (Contributor): Can contribute code and documentation.
-- **R/name** (Reviewer): Can review pull requests and contribute code. Reviewers help maintain code quality through peer review.
-- **A/name** (Approver): Can approve pull requests for merging, review pull requests, and contribute code. Approvers have final authority on code changes.
+- **R/name** (Reviewer): Can review a pull request (PR) and contribute. Reviewers help
+  maintain code quality through peer review.
+- **A/name** (Approver): Can approve a pull request (PR] for merging, review a pull
+  request, and contribute. Approvers have final authority on code changes.
 
 ## Contributors List
 
