@@ -56,5 +56,5 @@ dkms.conf
 
 # Branch management logs (ignore directory by default)
 logs/
-# But track the branch history file
-!logs/branch_history.md
+# But track the remote branch history file
+!logs/remote_branch_history.md

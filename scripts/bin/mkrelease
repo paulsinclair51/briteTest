@@ -37,13 +37,13 @@ Before releasing:
   - Creates annotated git tag
   - Pushes tag to remote
   - Creates GitHub release
-  - Logs release to logs/branch_history.md
+  - Logs release to logs/remote_branch_history.md
 
 Features:
   - Semantic versioning support (v1.2.3)
   - Annotated git tags
   - GitHub release creation
-  - Release logging to logs/branch_history.md
+  - Release logging to logs/remote_branch_history.md
   - Pre-release validation
 
 Options:
@@ -222,7 +222,7 @@ log_release_to_history() {
   local version="$1"
   local user="$2"
   
-  local history_file="logs/branch_history.md"
+  local history_file="logs/remote_branch_history.md"
   local timestamp
   timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 

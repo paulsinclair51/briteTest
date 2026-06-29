@@ -12,7 +12,7 @@ See `README.md` in the root directory for an introduction to the project.
 
 - **brand_history.md**: log of the current and previous brands and taglines.
 
-- **local_branch_history.md**: log of locsl branch operations.
+- **local_branch_history.md**: log of local branch operations.
 
 - **remote_branch_history.md**: log of remote branch operations.
 

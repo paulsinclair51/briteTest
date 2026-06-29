@@ -10,7 +10,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-LOG_FILE="$REPO_ROOT/logs/branch_history.md"
+LOG_FILE="$REPO_ROOT/logs/remote_branch_history.md"
 CONFIG_FILE="$REPO_ROOT/config/contributors.md"
 
 # Shared helpers
@@ -79,7 +79,7 @@ Modes:
     - Verify the base branch exists locally or remotely.
     - Check that the new branch doesn't already exist locally.
     - Create the new branch from the base branch.
-    - Log the operation to 'logs/branch_history.md'.
+    - Log the operation to 'logs/remote_branch_history.md'.
 
   Remote (-r):
     - -l is not specified.
@@ -87,7 +87,7 @@ Modes:
     - Check that the new branch doesn't already exist locally or remotely.
     - Create the new branch from the base branch.
     - Push the new branch to the remote repository.
-    - Log the operation to 'logs/branch_history.md'.
+    - Log the operation to 'logs/remote_branch_history.md'.
 
   Validate (-v):
     - Verify the base branch exists.
