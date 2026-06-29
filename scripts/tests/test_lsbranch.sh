@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-# test_lsbranch.sh - basic smoke tests for scripts/lsbranch
+# test_lsbranch.sh - basic smoke tests for scripts/bin/lsbranch
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LSBRANCH="$SCRIPT_DIR/../lsbranch"
+LSBRANCH="$SCRIPT_DIR/../bin/lsbranch"
 
 pass() {
   echo "PASS: $1"

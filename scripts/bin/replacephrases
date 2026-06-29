@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Wrapper script to invoke the phrase replacement script
 #
@@ -7,16 +7,16 @@
 # For license details, see LICENSE in the repository root.
 #
 # Usage:
-#   scripts/replacephrases [configfile] [--dry-run]
+#   scripts/bin/replacephrases [configfile] [--dry-run]
 #
 # Examples:
-#   scripts/replacephrases                           # Uses default config
-#   scripts/replacephrases config/phrase_replacements.txt
-#   scripts/replacephrases config/custom.txt --dry-run
+#   scripts/bin/replacephrases                           # Uses default config
+#   scripts/bin/replacephrases config/phrase_replacements.txt
+#   scripts/bin/replacephrases config/custom.txt --dry-run
 #
 
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Invoke the Python script with all arguments
-python3 "$SCRIPT_DIR/replace_phrases.py" "$@"
+python3 "$SCRIPT_DIR/../helpers/replace_phrases.py" "$@"

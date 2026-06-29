@@ -8,6 +8,14 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+
 # Default options
 FORCE=false
 VERBOSE=false
@@ -79,51 +87,14 @@ Exit codes:
 EOF
 }
 
-info() {
-  echo "$1"
-}
-
-success() {
-  echo "$1"
-}
-
-warn() {
-  echo "$1"
-}
-
-error_exit() {
-  local code="$1"
-  local message="$2"
-
-  echo "Error: $message" >&2
-  exit "$code"
-}
-
-get_current_branch() {
-  git rev-parse --abbrev-ref HEAD 2>/dev/null || error_exit 1 "Failed to determine current branch"
-}
-
 get_base_branch() {
   local current_branch="$1"
-  
-  # Find the merge-base with main (the point where this branch diverged)
-  local merge_base
-  merge_base=$(git merge-base --fork-point origin/main "$current_branch" 2>/dev/null || echo "")
-  
-  if [[ -z "$merge_base" ]]; then
-    error_exit 5 "Failed to determine base branch"
-  fi
-  
-  # Find which branch contains this merge-base commit
-  # Try to find the branch name by looking at remote branches
+
   local target_branch
-  target_branch=$(git branch -r --contains "$merge_base" | grep -v HEAD | grep -v "origin/$current_branch" | head -1 | sed 's|origin/||' | xargs)
-  
-  if [[ -z "$target_branch" ]]; then
-    # If we can't find it, assume main
-    target_branch="main"
-  fi
-  
+  target_branch=$(bt_resolve_target_branch_from_fork_point "$current_branch" "main") || {
+    bt_error_exit 5 "Failed to determine base branch"
+  }
+
   echo "$target_branch"
 }
 
@@ -173,10 +144,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -m requires a message argument"
+        bt_error_exit 1 "Option -m requires a message argument"
       fi
       if [[ -n "$CUSTOM_MESSAGE" ]]; then
-        error_exit 1 "Cannot use both -m and -- for message"
+        bt_error_exit 1 "Cannot use both -m and -- for message"
       fi
       CUSTOM_MESSAGE="$2"
       shift 2
@@ -185,38 +156,38 @@ while [[ $# -gt 0 ]]; do
       # Unix-style message: everything after -- is the message
       shift
       if [[ -n "$CUSTOM_MESSAGE" ]]; then
-        error_exit 1 "Cannot use both -m and -- for message"
+        bt_error_exit 1 "Cannot use both -m and -- for message"
       fi
       CUSTOM_MESSAGE="$*"
       break
       ;;
     -*)
-      error_exit 1 "Unknown option: $1"
+      bt_error_exit 1 "Unknown option: $1"
       ;;
     *)
-      error_exit 1 "Unknown argument: $1"
+      bt_error_exit 1 "Unknown argument: $1"
       ;;
   esac
 done
 
 # Get current branch
-CURRENT_BRANCH=$(get_current_branch)
-info "Current branch: $CURRENT_BRANCH"
+CURRENT_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+bt_info "Current branch: $CURRENT_BRANCH"
 
 # Check if branch is protected
 if is_protected_branch "$CURRENT_BRANCH"; then
-  error_exit 4 "Cannot sync up on protected branch '$CURRENT_BRANCH'. Use 'mkmerge' to merge changes to this branch."
+  bt_error_exit 4 "Cannot sync up on protected branch '$CURRENT_BRANCH'. Use 'mkmerge' to merge changes to this branch."
 fi
 
 # Determine base branch
-info "Determining base branch..."
+bt_info "Determining base branch..."
 BASE_BRANCH=$(get_base_branch "$CURRENT_BRANCH")
-info "Base branch: $BASE_BRANCH"
+bt_info "Base branch: $BASE_BRANCH"
 
 # Ensure base branch exists and is up to date
-info "Fetching latest from remote..."
+bt_info "Fetching latest from remote..."
 if ! git fetch origin "$BASE_BRANCH" 2>&1 >/dev/null; then
-  error_exit 2 "Failed to fetch base branch '$BASE_BRANCH' from remote"
+  bt_error_exit 2 "Failed to fetch base branch '$BASE_BRANCH' from remote"
 fi
 
 # Count commits from base branch to current branch
@@ -224,11 +195,11 @@ commits_to_merge=""
 commits_to_merge=$(git rev-list --count "HEAD..origin/$BASE_BRANCH" 2>/dev/null || echo "0")
 
 if [[ "$commits_to_merge" == "0" ]]; then
-  success "Already up to date with $BASE_BRANCH"
+  bt_success "Already up to date with $BASE_BRANCH"
   exit 0
 fi
 
-info "Commits to merge: $commits_to_merge"
+bt_info "Commits to merge: $commits_to_merge"
 
 # Determine merge message
 if [[ -z "$CUSTOM_MESSAGE" ]]; then
@@ -242,35 +213,35 @@ if [[ "$FORCE" == false ]]; then
   echo -n "Create merge commit? (y/n): "
   read -r response
   if [[ ! "$response" =~ ^[Yy]$ ]]; then
-    warn "Merge cancelled"
+    bt_warn "Merge cancelled"
     exit 0
   fi
 fi
 
 # Perform merge
-info "Merging $BASE_BRANCH into $CURRENT_BRANCH..."
+bt_info "Merging $BASE_BRANCH into $CURRENT_BRANCH..."
 if ! git merge "origin/$BASE_BRANCH" -m "$MERGE_MESSAGE" 2>&1; then
   # Check if merge failed due to conflicts
   if git status | grep -q "both"; then
-    warn "Merge conflicts detected"
-    info "Complex conflicts require manual resolution"
-    info "Conflicted files:"
+    bt_warn "Merge conflicts detected"
+    bt_info "Complex conflicts require manual resolution"
+    bt_info "Conflicted files:"
     git status --porcelain | grep "^UU" | awk '{print "  " $2}'
-    info "Steps to resolve:"
+    bt_info "Steps to resolve:"
     echo "  1. Edit conflicted files to resolve conflicts"
     echo "  2. Stage resolved files: git add <files>"
     echo "  3. Complete merge: git commit"
-    error_exit 3 "Merge stopped - manual conflict resolution needed"
+    bt_error_exit 3 "Merge stopped - manual conflict resolution needed"
   else
-    error_exit 2 "Failed to merge $BASE_BRANCH into $CURRENT_BRANCH"
+    bt_error_exit 2 "Failed to merge $BASE_BRANCH into $CURRENT_BRANCH"
   fi
 fi
 
-success "Merge successful"
+bt_success "Merge successful"
 
 # Show merge details if verbose
 if [[ "$VERBOSE" == true ]]; then
-  info "Merge details:"
+  bt_info "Merge details:"
   git log -1 --oneline | sed 's/^/  /'
 fi
 
@@ -279,17 +250,17 @@ if [[ "$FORCE" == false ]]; then
   echo -n "Push merge to remote? (y/n): "
   read -r response
   if [[ ! "$response" =~ ^[Yy]$ ]]; then
-    warn "Push skipped - merge committed locally"
+    bt_warn "Push skipped - merge committed locally"
     exit 0
   fi
 fi
 
 # Push merge commit
-info "Pushing merge commit to remote..."
+bt_info "Pushing merge commit to remote..."
 if ! git push origin "$CURRENT_BRANCH" 2>&1; then
-  error_exit 2 "Failed to push merge commit to remote"
+  bt_error_exit 2 "Failed to push merge commit to remote"
 fi
 
-success "Pushed merge commit"
-success "Sync up complete"
+bt_success "Pushed merge commit"
+bt_success "Sync up complete"
 exit 0

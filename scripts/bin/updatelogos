@@ -10,7 +10,7 @@ For license details, see LICENSE in the repository root.
 This script reads phrase replacements from a configuration file, generates
 abbreviations from the phrases, and applies them to .svg files in the
 docs/branding directory. After updating SVG files, it regenerates the
-corresponding PNG files using the genpng.sh script. It then calls the
+corresponding PNG files using the genpng script. It then calls the
 replacephrases script to update all markdown files in docs/.
 
 Configuration file format:
@@ -40,7 +40,7 @@ Lines starting with # are comments (unless # Completed: <date time>:).
 Empty lines are ignored.
 
 Usage:
-    python3 scripts/updatelogos [config_file] [--dry-run]
+    python3 scripts/bin/updatelogos [config_file] [--dry-run]
 
 Default config file: docs/branding/brand.txt
 """
@@ -208,7 +208,7 @@ def process_file(file_path, replacements, dry_run=False):
             count = content.count(old_text)
             content = content.replace(old_text, new_text)
             replacements_made += count
-            changes.append(f"  - Replaced '{old_text}' → '{new_text}' ({count} occurrence{'s' if count != 1 else ''})")
+            changes.append(f"  - Replaced '{old_text}' -> '{new_text}' ({count} occurrence{'s' if count != 1 else ''})")
     
     if content != original_content:
         if not dry_run:
@@ -223,7 +223,7 @@ def process_file(file_path, replacements, dry_run=False):
 
 def regenerate_pngs(dry_run=False):
     """
-    Regenerate PNG files from updated SVG files using genpng.sh.
+    Regenerate PNG files from updated SVG files using genpng.
     
     Args:
         dry_run: If True, don't actually run the regeneration
@@ -232,7 +232,7 @@ def regenerate_pngs(dry_run=False):
         True if successful, False otherwise
     """
     script_dir = Path(__file__).parent
-    genpng_script = script_dir / 'genpng.sh'
+    genpng_script = script_dir / 'genpng'
     
     if not genpng_script.exists():
         print(f"Warning: {genpng_script} not found. PNG files will not be regenerated.", file=sys.stderr)
@@ -256,7 +256,7 @@ def regenerate_pngs(dry_run=False):
         print(f"Error regenerating PNG files: {e.stderr}", file=sys.stderr)
         return False
     except Exception as e:
-        print(f"Error executing genpng.sh: {e}", file=sys.stderr)
+        print(f"Error executing genpng: {e}", file=sys.stderr)
         return False
 
 
@@ -357,9 +357,9 @@ Example:
   # Completed: 2026-06-24 15:30:45:
   
   # This will:
-  # 1. Update SVGs with "LiteTest" → "briteTest" and "LT" → "bT"
+    # 1. Update SVGs with "LiteTest" -> "briteTest" and "LT" -> "bT"
   # 2. Regenerate PNG files
-  # 3. Update markdown files with "LiteTest" → "briteTest"
+    # 3. Update markdown files with "LiteTest" -> "briteTest"
   # 4. Insert new # Completed: <date time>: marker at the beginning
         '''
     )
@@ -415,12 +415,12 @@ Example:
     if phrase_replacements:
         print("Phrase replacements:")
         for old_phrase, new_phrase in phrase_replacements:
-            print(f"  '{old_phrase}' → '{new_phrase}'")
+            print(f"  '{old_phrase}' -> '{new_phrase}'")
     
     if abbr_replacements:
         print("\nAbbreviation replacements:")
         for old_abbr, new_abbr in abbr_replacements:
-            print(f"  {old_abbr} → {new_abbr}")
+            print(f"  {old_abbr} -> {new_abbr}")
     print()
     
     if args.dry_run:

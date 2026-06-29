@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ckdirectory_guides.sh
+# ckdirectory_guides
 #
 # Validate that each repository subdirectory has a README.md directory guide and that it
 # conforms to the guidelines. The README.md for the root is the project README.md file
@@ -12,7 +12,7 @@ set -euo pipefail
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 
 # Directories that are intentionally exempt from requiring a README.md directory guide.:

@@ -46,13 +46,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Apply brand name replacements
-        run: scripts/replacephrases docs/branding/brand.txt
+        run: scripts/bin/replacephrases docs/branding/brand.txt
 
       - name: Validate directory README format
-        run: bash ./scripts/check_directory_readmes.sh
+        run: ./scripts/bin/ckdirectory_guides
 
       - name: Validate major release consistency
-        run: bash ./scripts/check_major_release_consistency.sh
+        run: ./scripts/bin/ckversions
 
       - name: Install PDF generation dependency
         run: |
@@ -61,7 +61,7 @@ jobs:
 
       - name: Generate docs PDFs (excluding docs/README.md)
         run: |
-          bash ./scripts/genpdf -i "*.md" -x "README.md" docs docs/pdf
+          bash ./scripts/bin/genpdf -i "*.md" -x "README.md" docs docs/pdf
 
       - name: Upload docs PDF artifacts
         uses: actions/upload-artifact@v4

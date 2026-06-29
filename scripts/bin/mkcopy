@@ -8,12 +8,13 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 
 # Default options
 CUSTOM_MESSAGE=""
@@ -81,33 +82,9 @@ Exit codes:
 EOF
 }
 
-info() {
-  echo -e "${BLUE}ℹ${NC} $1"
-}
-
-success() {
-  echo -e "${GREEN}✓${NC} $1"
-}
-
-warn() {
-  echo -e "${YELLOW}⚠${NC} $1"
-}
-
-error_exit() {
-  local code="$1"
-  local message="$2"
-
-  echo -e "${RED}Error:${NC} $message" >&2
-  exit "$code"
-}
-
-get_current_branch() {
-  git rev-parse --abbrev-ref HEAD 2>/dev/null || error_exit 2 "Failed to determine current branch"
-}
-
 check_working_directory_clean() {
   if ! git diff-index --quiet HEAD --; then
-    error_exit 3 "Working directory has uncommitted changes. Commit or stash them first."
+    bt_error_exit 3 "Working directory has uncommitted changes. Commit or stash them first."
   fi
 }
 
@@ -128,7 +105,7 @@ cherry_pick_commits() {
   local commits="$1"
   
   if [[ -z "$commits" ]]; then
-    warn "No new commits to cherry-pick from source branch"
+    bt_warn "No new commits to cherry-pick from source branch"
     return 0
   fi
   
@@ -139,14 +116,14 @@ cherry_pick_commits() {
     reversed+=("${commit_array[$i]}")
   done
   
-  info "Cherry-picking ${#reversed[@]} commit(s)..."
+  bt_info "Cherry-picking ${#reversed[@]} commit(s)..."
   
   for commit in "${reversed[@]}"; do
-    info "Cherry-picking $commit..."
+    bt_info "Cherry-picking $commit..."
     
     if ! git cherry-pick "$commit" 2>&1; then
-      warn "Conflict detected during cherry-pick of $commit"
-      echo -e "${YELLOW}Please resolve conflicts manually, then run:${NC}"
+      bt_warn "Conflict detected during cherry-pick of $commit"
+      echo "WARN: Please resolve conflicts manually, then run:"
       echo "  mkcopy --continue"
       exit 5
     fi
@@ -166,7 +143,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -m requires a message argument"
+        bt_error_exit 1 "Option -m requires a message argument"
       fi
       CUSTOM_MESSAGE="$2"
       shift 2
@@ -176,14 +153,14 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -*)
-      error_exit 1 "Unknown option: $1"
+      bt_error_exit 1 "Unknown option: $1"
       ;;
     *)
       if [[ "$CONTINUE_MODE" == false ]]; then
         SOURCE_BRANCH="$1"
         shift
       else
-        error_exit 1 "Unexpected argument with --continue: $1"
+        bt_error_exit 1 "Unexpected argument with --continue: $1"
       fi
       ;;
   esac
@@ -191,13 +168,13 @@ done
 
 # Handle continue mode
 if [[ "$CONTINUE_MODE" == true ]]; then
-  info "Continuing cherry-pick..."
+  bt_info "Continuing cherry-pick..."
   
   if git cherry-pick --continue 2>&1; then
-    success "Cherry-pick continued successfully"
+    bt_success "Cherry-pick continued successfully"
     exit 0
   else
-    warn "Conflict still present after continue"
+    bt_warn "Conflict still present after continue"
     echo -e "${YELLOW}Please resolve remaining conflicts, then run:${NC}"
     echo "  mkcopy --continue"
     exit 5
@@ -206,38 +183,38 @@ fi
 
 # Validate source branch provided
 if [[ -z "$SOURCE_BRANCH" ]]; then
-  error_exit 1 "SOURCE_BRANCH argument required"
+  bt_error_exit 1 "SOURCE_BRANCH argument required"
 fi
 
 # Get current branch
-CURRENT_BRANCH=$(get_current_branch)
-info "Current branch: $CURRENT_BRANCH"
+CURRENT_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+bt_info "Current branch: $CURRENT_BRANCH"
 
 # Check working directory is clean
-info "Checking working directory..."
+bt_info "Checking working directory..."
 check_working_directory_clean
-success "Working directory is clean"
+bt_success "Working directory is clean"
 
 # Fetch latest from remote
-info "Fetching latest from remote..."
-git fetch origin 2>/dev/null || warn "Failed to fetch from origin"
+bt_info "Fetching latest from remote..."
+git fetch origin 2>/dev/null || bt_warn "Failed to fetch from origin"
 
 # Verify source branch exists
 if ! branch_exists "$SOURCE_BRANCH"; then
-  error_exit 4 "Source branch not found: $SOURCE_BRANCH"
+  bt_error_exit 4 "Source branch not found: $SOURCE_BRANCH"
 fi
-info "Source branch found: $SOURCE_BRANCH"
+bt_info "Source branch found: $SOURCE_BRANCH"
 
 # Get commits to cherry-pick
-info "Getting commits from $SOURCE_BRANCH..."
+bt_info "Getting commits from $SOURCE_BRANCH..."
 COMMITS=$(get_commits_from_branch "$SOURCE_BRANCH" "$CURRENT_BRANCH")
 
 if [[ -z "$COMMITS" ]]; then
-  success "No new commits to cherry-pick from $SOURCE_BRANCH"
+  bt_success "No new commits to cherry-pick from $SOURCE_BRANCH"
   exit 0
 fi
 
-info "Found commits to cherry-pick:"
+bt_info "Found commits to cherry-pick:"
 echo "$COMMITS" | while read -r commit; do
   echo "  $commit"
 done
@@ -245,13 +222,13 @@ done
 # Cherry-pick commits
 cherry_pick_commits "$COMMITS"
 
-success "Cherry-pick completed successfully"
+bt_success "Cherry-pick completed successfully"
 if [[ "$VERBOSE" == true ]]; then
-  info "Details:"
+  bt_info "Details:"
   echo "  Source branch: $SOURCE_BRANCH"
   echo "  Target branch: $CURRENT_BRANCH"
   echo "  Commits picked: $(echo "$COMMITS" | wc -l)"
 fi
 
-success "Done"
+bt_success "Done"
 exit 0

@@ -8,11 +8,11 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
 
 # Repository configuration
 REPO_URL="https://github.com/paulsinclair51/BriteTest"
@@ -34,9 +34,9 @@ Arguments:
   [directory]        Optional target directory name
                      If not specified, uses '$REPO_NAME'
                      Examples: mkclone
-                                 → Creates ./$REPO_NAME/
+                                 -> Creates ./$REPO_NAME/
                                mkclone my-repo
-                                 → Creates ./my-repo/
+                                 -> Creates ./my-repo/
 
 Comment Options (mutually exclusive):
   -m, --message MSG  Attach a comment to the operation
@@ -53,11 +53,11 @@ Options:
 Examples:
   # Basic clone with default directory name
   mkclone
-    → Creates ./$REPO_NAME/
+    -> Creates ./$REPO_NAME/
 
   # Clone into custom directory
   mkclone my-repo
-    → Creates ./my-repo/
+    -> Creates ./my-repo/
 
   # With GitHub-style comment
   mkclone -m "Setup for new feature development"
@@ -73,22 +73,6 @@ Exit codes:
 EOF
 }
 
-info() {
-  echo -e "${BLUE}ℹ${NC} $1"
-}
-
-success() {
-  echo -e "${GREEN}✓${NC} $1"
-}
-
-error_exit() {
-  local code="$1"
-  local message="$2"
-
-  echo -e "${RED}Error:${NC} $message" >&2
-  exit "$code"
-}
-
 # Parse options and arguments
 POSITIONAL_ARGS=()
 while [[ $# -gt 0 ]]; do
@@ -99,10 +83,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -m requires a message argument"
+        bt_error_exit 1 "Option -m requires a message argument"
       fi
       if [[ -n "$COMMENT" ]]; then
-        error_exit 1 "Cannot use both -m and -- for comment"
+        bt_error_exit 1 "Cannot use both -m and -- for comment"
       fi
       COMMENT="$2"
       shift 2
@@ -111,13 +95,13 @@ while [[ $# -gt 0 ]]; do
       # Unix-style comment: everything after -- is the comment
       shift
       if [[ -n "$COMMENT" ]]; then
-        error_exit 1 "Cannot use both -m and -- for comment"
+        bt_error_exit 1 "Cannot use both -m and -- for comment"
       fi
       COMMENT="$*"
       break
       ;;
     -*)
-      error_exit 1 "Unknown option: $1"
+      bt_error_exit 1 "Unknown option: $1"
       ;;
     *)
       # Positional argument
@@ -132,7 +116,7 @@ set -- "${POSITIONAL_ARGS[@]}"
 
 # Check that we have at most 1 positional argument
 if [[ $# -gt 1 ]]; then
-  error_exit 1 "Expected at most 1 argument (directory), got $#"
+  bt_error_exit 1 "Expected at most 1 argument (directory), got $#"
 fi
 
 # Determine target directory
@@ -144,26 +128,26 @@ fi
 
 # Validate target directory name
 if [[ -z "$TARGET_DIR" ]]; then
-  error_exit 1 "Target directory name cannot be empty"
+  bt_error_exit 1 "Target directory name cannot be empty"
 fi
 
 # Check if target directory already exists
 if [[ -e "$TARGET_DIR" ]]; then
-  error_exit 3 "Target directory '$TARGET_DIR' already exists"
+  bt_error_exit 3 "Target directory '$TARGET_DIR' already exists"
 fi
 
 # Clone the repository
-info "Cloning repository..."
+bt_info "Cloning repository..."
 if ! git clone "$REPO_URL" "$TARGET_DIR" 2>&1; then
-  error_exit 2 "Failed to clone repository from $REPO_URL"
+  bt_error_exit 2 "Failed to clone repository from $REPO_URL"
 fi
 
-success "Repository cloned successfully"
+bt_success "Repository cloned successfully"
 
 # Display repository information
-info "Repository: $REPO_URL"
-info "Cloned to: ./$TARGET_DIR"
-info "Next steps:"
+bt_info "Repository: $REPO_URL"
+bt_info "Cloned to: ./$TARGET_DIR"
+bt_info "Next steps:"
 echo "  cd $TARGET_DIR"
 echo "  mkbranch patch/your-branch main"
 

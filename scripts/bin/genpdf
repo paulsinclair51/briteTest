@@ -88,7 +88,7 @@ EOF
 # CONFIGURATION AND CONSTANTS
 # ============================================================================
 
-# Pandoc conversion engines (priority order: LaTeX native → HTML fallback)
+# Pandoc conversion engines (priority order: LaTeX native -> HTML fallback)
 declare -a PANDOC_ENGINES=(pdflatex lualatex xelatex tectonic wkhtmltopdf weasyprint prince)
 
 # Logo dimensions (pixels)
@@ -317,7 +317,7 @@ _genpdf_find_logo() {
 }
 
 # Return path to logo PNG, auto-converting from SVG if needed.
-# Tries multiple SVG→PNG conversion tools (rsvg-convert, inkscape, convert, cairosvg).
+# Tries multiple SVG->PNG conversion tools (rsvg-convert, inkscape, convert, cairosvg).
 _genpdf_logo_png() {
   local png svg
   png=$(_genpdf_find_logo ".png") && echo "$png" && return 0
@@ -1452,7 +1452,7 @@ process_file() {
 # ============================================================================
 
 # Determine output PDF path for a given source markdown file in directory mode.
-# Respects -k (keep_structure) flag and special docs→pdf conversion mode.
+# Respects -k (keep_structure) flag and special docs->pdf conversion mode.
 target_file_for_source() {
   local source_file=$1
   local rel_path

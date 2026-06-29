@@ -17,7 +17,7 @@ name: Branch Name Validation
 #
 # Otherwise, the branch name must not be main or contain periods.
 #
-# This workflow mirrors the branch-naming policy used by scripts/mkbranch.
+# This workflow mirrors the branch-naming policy used by scripts/bin/mkbranch.
 # 
 # YAML is a plain‑text, human‑readable format where indentation defines structure.
 # Files (with the extension .yml) contain YAML text and are used by GitHub Actions.

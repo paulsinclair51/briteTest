@@ -8,12 +8,11 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
 
 # Default options
 HISTORY_FILE="branch_history.md"
@@ -95,26 +94,6 @@ Exit codes:
 EOF
 }
 
-info() {
-  echo -e "${BLUE}ℹ${NC} $1"
-}
-
-success() {
-  echo -e "${GREEN}✓${NC} $1"
-}
-
-warn() {
-  echo -e "${YELLOW}⚠${NC} $1"
-}
-
-error_exit() {
-  local code="$1"
-  local message="$2"
-
-  echo -e "${RED}Error:${NC} $message" >&2
-  exit "$code"
-}
-
 # Parse options and arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -124,28 +103,28 @@ while [[ $# -gt 0 ]]; do
       ;;
     -t | --type)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -t requires a type argument"
+        bt_error_exit 1 "Option -t requires a type argument"
       fi
       FILTER_TYPE="$2"
       shift 2
       ;;
     -b | --branch)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -b requires a branch argument"
+        bt_error_exit 1 "Option -b requires a branch argument"
       fi
       FILTER_BRANCH="$2"
       shift 2
       ;;
     -u | --user)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -u requires a user argument"
+        bt_error_exit 1 "Option -u requires a user argument"
       fi
       FILTER_USER="$2"
       shift 2
       ;;
     -l | --limit)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -l requires a number argument"
+        bt_error_exit 1 "Option -l requires a number argument"
       fi
       LIMIT="$2"
       shift 2
@@ -156,7 +135,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -o | --output)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -o requires a file argument"
+        bt_error_exit 1 "Option -o requires a file argument"
       fi
       OUTPUT_FILE="$2"
       shift 2
@@ -167,33 +146,33 @@ while [[ $# -gt 0 ]]; do
       ;;
     -f | --file)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -f requires a file argument"
+        bt_error_exit 1 "Option -f requires a file argument"
       fi
       HISTORY_FILE="$2"
       shift 2
       ;;
     -*)
-      error_exit 1 "Unknown option: $1"
+      bt_error_exit 1 "Unknown option: $1"
       ;;
     *)
-      error_exit 1 "Unknown argument: $1"
+      bt_error_exit 1 "Unknown argument: $1"
       ;;
   esac
 done
 
 # Check history file exists
 if [[ ! -f "$HISTORY_FILE" ]]; then
-  error_exit 2 "History file not found: $HISTORY_FILE"
+  bt_error_exit 2 "History file not found: $HISTORY_FILE"
 fi
 
-info "Reading history from $HISTORY_FILE"
+bt_info "Reading history from $HISTORY_FILE"
 
 # Extract entries (skip header lines)
 # Format: - [timestamp] [user] Operation: details
 entries=$(grep -E '^\s*-\s+\[' "$HISTORY_FILE" | tail -n +1)
 
 if [[ -z "$entries" ]]; then
-  warn "No history entries found"
+  bt_warn "No history entries found"
   exit 3
 fi
 
@@ -202,25 +181,25 @@ filtered_entries="$entries"
 
 # Filter by type
 if [[ -n "$FILTER_TYPE" ]]; then
-  info "Filtering by type: $FILTER_TYPE"
+  bt_info "Filtering by type: $FILTER_TYPE"
   filtered_entries=$(echo "$filtered_entries" | grep -i "$FILTER_TYPE")
 fi
 
 # Filter by branch
 if [[ -n "$FILTER_BRANCH" ]]; then
-  info "Filtering by branch: $FILTER_BRANCH"
+  bt_info "Filtering by branch: $FILTER_BRANCH"
   filtered_entries=$(echo "$filtered_entries" | grep -i "$FILTER_BRANCH")
 fi
 
 # Filter by user
 if [[ -n "$FILTER_USER" ]]; then
-  info "Filtering by user: $FILTER_USER"
+  bt_info "Filtering by user: $FILTER_USER"
   filtered_entries=$(echo "$filtered_entries" | grep -i "$FILTER_USER")
 fi
 
 # Check if any entries remain after filtering
 if [[ -z "$filtered_entries" ]]; then
-  warn "No entries found matching criteria"
+  bt_warn "No entries found matching criteria"
   exit 3
 fi
 
@@ -236,7 +215,7 @@ fi
 
 # Count entries
 entry_count=$(echo "$filtered_entries" | wc -l)
-success "Found $entry_count matching entries"
+bt_success "Found $entry_count matching entries"
 
 # Format output
 output_text=""
@@ -251,12 +230,12 @@ fi
 # Output to file or stdout
 if [[ -n "$OUTPUT_FILE" ]]; then
   echo "$output_text" > "$OUTPUT_FILE"
-  success "Results written to $OUTPUT_FILE"
+  bt_success "Results written to $OUTPUT_FILE"
 else
   echo ""
   echo "$output_text"
   echo ""
 fi
 
-success "Done"
+bt_success "Done"
 exit 0

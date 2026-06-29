@@ -8,7 +8,7 @@ For license details, see `LICENSE` in the root directory.
 
 See `README.md` in the root directory for an introduction to the project.
 
-.pdf files are generated using `../../scripts/genpdf` from `.md` files.
+.pdf files are generated using `../../scripts/bin/genpdf` from `.md` files.
 
 ## Files
 

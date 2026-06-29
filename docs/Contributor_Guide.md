@@ -458,9 +458,9 @@ The replacement workflow depends on a configuration file and two scripts:
 
 - **Scripts**:
 
-  - `scripts/updatelogos`: Updates SVG files in `docs/branding/` with phrase and
+  - `scripts/bin/updatelogos`: Updates SVG files in `docs/branding/` with phrase and
      abbreviation replacements, then regenerates PNG files
-  - `scripts/replacephrases`: Updates markdown files (`*.md`) in `docs/` with
+  - `scripts/bin/replacephrases`: Updates markdown files (`*.md`) in `docs/` with
     phrase replacements only
 
 #### Workflow Steps
@@ -488,7 +488,7 @@ The replacement workflow depends on a configuration file and two scripts:
    - Run the `updatelogos` script:
 
 ```bash
-scripts/updatelogos
+scripts/bin/updatelogos
 ```
 
 5, The script performs the following:
@@ -498,7 +498,7 @@ scripts/updatelogos
    - Validates the configuration to prevent infinite loops (circular references).
    - Applies both brand namd and abbreviation replacements to all SVG files in
      `docs/branding/`.
-   - Regenerates all PNG files from the updated SVGs using `scripts/genpng.sh`.
+   - Regenerates all PNG files from the updated SVGs using `scripts/bin/genpng`.
    - Generates a detailed report of replacements and file modifications.
    - Review the output and documentation for accuracy, then commit the changes.
 
@@ -541,7 +541,7 @@ in all types of files (e,g., `.md`, `.h`, `.c`, `.yml`, `.dh`, `Makefile`, etc.)
    - An internal guide or reference must not leak into public docs.
    - Update documentation when enhancing macros, behavior, or report format.
    - For branding assets in `docs/branding/`: `*.svg` files are the source of
-     truth and `*.png` files are generated from SVG using `scripts/genpng.sh`.
+     truth and `*.png` files are generated from SVG using `scripts/bin/genpng`.
 
 2. Tone
 

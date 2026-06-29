@@ -10,7 +10,7 @@ set -euo pipefail
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 
 extract_semver() {

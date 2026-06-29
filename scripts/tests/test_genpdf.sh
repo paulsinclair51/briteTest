@@ -17,7 +17,7 @@ Usage:
   test_genpdf.sh -v
   test_genpdf.sh -h | --help
 
-Runs a test suite for scripts/genpdf using temporary files and
+Runs a test suite for scripts/bin/genpdf using temporary files and
 a stub pandoc binary.
 
 Options:
@@ -89,7 +89,7 @@ for dep in grep mktemp; do
 done
 
 repo_root=$(cd "$(dirname "$0")/../.." && pwd)
-script="$repo_root/scripts/genpdf"
+script="$repo_root/scripts/bin/genpdf"
 
 if [[ ! -x "$script" ]]; then
   fail "missing executable script: $script"
