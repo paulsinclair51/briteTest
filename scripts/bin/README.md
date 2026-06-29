@@ -10,12 +10,6 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
-For a script's usage information, execute the script using the `-h` option. For example,
-```sh
-scripts/bin/ckbranch -h
-```
-See `README.md` in the root directory for an introduction to the project.
-
 ### Document and Brand Management
 
 - **ckdirectory_guides**: Validate required directory guides across the repository.
@@ -50,3 +44,43 @@ See `README.md` in the root directory for an introduction to the project.
 ## Subdirectories
 
 - None.
+
+## Adding Scripts to PATH
+
+To make scripts available by name and persist for Bash, run from
+anywhere inside this repository:
+
+```sh
+repo_root="$(git rev-parse --show-toplevel)"
+repo_bin="$repo_root/scripts/bin"
+line="export PATH=\"$repo_bin:\$PATH\""
+grep -qxF "$line" ~/.bashrc || echo "$line" >> ~/.bashrc
+source ~/.bashrc
+```
+
+If you run this outside a Git repository, set the repository root
+explicitly:
+
+```sh
+repo_root="/absolute/path/to/BriteTest"
+repo_bin="$repo_root/scripts/bin"
+line="export PATH=\"$repo_bin:\$PATH\""
+grep -qxF "$line" ~/.bashrc || echo "$line" >> ~/.bashrc
+source ~/.bashrc
+```
+
+## Script Usage
+
+For a script's usage information, execute the script using the `-h` option. For example,
+
+```sh
+ckbranch -h
+```
+
+## Troubleshooting
+
+If a script is not executable in your environment, run:
+
+```sh
+chmod +x scripts/bin/<script_name>
+```
