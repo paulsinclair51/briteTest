@@ -36,8 +36,6 @@ See `README.md` in the root directory for an introduction to the project.
 
 ### Branch Management:
 
-- **branch**: Provides shared branch utility logic used by branch-management scripts.
-
 - **ckversions.sh**: Verifies consistent versions across `docs/*.md` (excluding the `docs/README.md`
   directory guide),`include/*.h`, and `src/*.c` files.
 
