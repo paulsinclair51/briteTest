@@ -1,6 +1,6 @@
 # tests/include/
 
-Directory for test-only header files (`*.h`).
+Directory containing test-only header files (`*.h`).
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
