@@ -31,8 +31,6 @@ See `README.md` in the root directory for an introduction to the project.
 
 - **replacephrases**: Convenience wrapper script to run `replace_phrases.py` with repository defaults.
 
-- **test_genpdf.sh**: Runs validation tests for the `genpdf` workflow.
-
 - **updatelogos**: Updates branding text/abbreviations in SVG logos, regenerates PNGs, and refreshes
   docs text.
 
@@ -85,4 +83,5 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Subdirectories
 
-- None.
+- **tests/**: Script tests and testing documentation.
+  Includes `test_lsbranch.sh` and `test_genpdf.sh`.

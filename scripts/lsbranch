@@ -28,6 +28,9 @@ LIMIT_RESULTS=0
 INVALID_ONLY=false
 STRICT_MODE=false
 INVALID_FOUND=false
+SHOW_REMOTE_INFO=false
+REMOTE_NAME="origin"
+INVALID_NAME_LABEL="invalid name"
 
 usage() {
   cat <<'EOF'
@@ -43,22 +46,26 @@ Arguments:
 
 Options:
   -h, --help         Output this help to stdout and exit.
-  -r, --remote       Show remote branches instead of local branches.
-  -a, --all          Show both local and remote branches (with source labels).
-  -s, --summary      Show summary view: counts instead of full branch lists.
-  -b, --branch PAT   Filter branches by glob pattern on branch name (supports *, ?, [abc], etc.)
+  -r                 Show remote branches instead of local branches.
+  -a                 Show both local and remote branches (with source labels).
+  -s                 Show summary view: counts instead of full branch lists.
+  -b PAT             Filter branches by glob pattern on branch name
+                     Supports *, ?, [abc], etc.
                      If pattern contains no wildcards, it's auto-wrapped as *PAT*
                      Examples: -b bug (same as -b "*bug*"), -b "fix*", -b "*issue"
-  -x, --exclude PAT  Exclude branches matching glob pattern (inverse of -b)
+  -x PAT             Exclude branches matching glob pattern (inverse of -b)
                      Examples: -x bug (exclude branches with "bug"), -x "hotfix*"
-  -c, --count        Show only branch count (useful for scripts)
-  -d, --detailed     Show detailed info: commit hash, author, date
-  -n, --limit NUM    Limit results to first NUM branches
-  -f, --format FMT   Output format: table (default), json, csv
-  --sort FIELD       Sort by: name (alphabetical), type (grouped), date (newest first)
+  -c                 Show only branch count (useful for scripts)
+  -d                 Show detailed info: commit hash, author, date
+  -n NUM             Limit results to first NUM branches
+  -f FMT             Output format: table (default), json, csv
+  -ri                Include a line with remote metadata
+                     Shows remote name and default branch
+  -S FIELD           Sort by: name, type, or date
+                     name = alphabetical, type = grouped, date = newest first
                      Default: type
-  --invalid-only     Show only branches that violate naming rules
-  --strict           Exit with code 4 when any invalid branch names are found
+  -I                 Show only branches that violate naming rules
+  -T                 Exit with code 4 when any invalid branch names are found
 
 Examples:
   # List all local branches grouped by branch group
@@ -72,7 +79,7 @@ Examples:
 
   # List all local+remote branches with source labels
   lsbranch -a
-  lsbranch -a -d --sort date
+  lsbranch -a -d -S date
 
   # Filter branches by name pattern
   lsbranch -b bug              # branches containing "bug"
@@ -85,27 +92,27 @@ Examples:
   # Show summary
   lsbranch -s                  # summary of all branches
   lsbranch -s version          # summary of version branches
-  lsbranch -s -b fix           # summary matching "*fix*"
+  lsbranch -s -b fix           # summary for branches matching "*fix*"
 
   # Count only
   lsbranch -c                  # total count
   lsbranch version -c          # count of version branches
-  lsbranch -c -b login         # count matching "*login*"
+  lsbranch -c -b login         # count for branches matching "*login*"
   lsbranch -x test -c          # count excluding "*test*"
 
   # Detailed information
   lsbranch -d                  # show commit hash, author, date
   lsbranch version -d          # detailed version branches
-  lsbranch -d -x hotfix        # detailed branches excluding "*hotfix*"
+  lsbranch -d -x hotfix        # detailed list excluding "*hotfix*"
 
   # Limit results
   lsbranch -n 5                # show first 5 branches
   lsbranch -n 10 -b api        # first 10 branches matching "*api*"
 
   # Different sorting
-  lsbranch --sort name         # alphabetical by branch name
-  lsbranch --sort date         # by date (newest first)
-  lsbranch --sort type         # by type (default)
+  lsbranch -S name             # alphabetical by branch name
+  lsbranch -S date             # by date (newest first)
+  lsbranch -S type             # by type (default)
 
   # Output formats
   lsbranch -f json             # JSON output
@@ -113,14 +120,14 @@ Examples:
   lsbranch version -f csv      # CSV of version branches
 
   # Validation
-  lsbranch --invalid-only      # show only invalid branch names
-  lsbranch --strict            # fail with exit code 4 if invalid names found
-  lsbranch --invalid-only --strict
+  lsbranch -I                  # show only invalid branch names
+  lsbranch -T                  # exit 4 if invalid branch names are found
+  lsbranch -I -T
 
   # Combine options
-  lsbranch -s -r -b memory     # remote summary matching "*memory*"
+  lsbranch -s -r -b memory     # remote summary for "*memory*" matches
   lsbranch -d -n 5 version     # first 5 detailed version branches
-  lsbranch -f json -x api      # JSON of branches NOT matching "*api*"
+  lsbranch -f json -x api      # JSON for branches not matching "*api*"
 
 Exit codes:
   0   Success
@@ -131,11 +138,26 @@ Exit codes:
 EOF
 }
 
+# Script flow summary:
+# 1) Parse and validate CLI options.
+# 2) Build branch records from local/remote refs with optional filters.
+# 3) Render output in table/json/csv formats and enforce strict-mode exit rules.
+
 error_exit() {
   local code="$1"
   local message="$2"
+  local usage_hint=' For usage, enter lsbranch -h.'
+  local punctuated_message="$message"
 
-  echo "Error: $message" >&2
+  if [[ ! "$punctuated_message" =~ [.!?]$ ]]; then
+    punctuated_message+="."
+  fi
+
+  if [[ "$code" -eq 1 || "$code" -eq 2 ]]; then
+    echo "Error: $punctuated_message$usage_hint" >&2
+  else
+    echo "Error: $punctuated_message" >&2
+  fi
   exit "$code"
 }
 
@@ -173,20 +195,16 @@ apply_filter() {
 get_branch_date() {
   local branch="$1"
   local is_remote="$2"
-
-  if [[ "$is_remote" == true ]]; then
-    git log -1 --format=%ai "origin/$branch" 2>/dev/null || echo "unknown"
-  else
-    git log -1 --format=%ai "$branch" 2>/dev/null || echo "unknown"
-  fi
+  local ref
+  ref=$(branch_ref "$branch" "$is_remote")
+  git log -1 --format=%ai "$ref" 2>/dev/null || echo "unknown"
 }
 
 get_branch_info() {
   local branch="$1"
   local is_remote="$2"
-
-  local ref="$branch"
-  [[ "$is_remote" == true ]] && ref="origin/$branch"
+  local ref
+  ref=$(branch_ref "$branch" "$is_remote")
 
   local hash
   hash=$(git rev-parse --short "$ref" 2>/dev/null || echo "unknown")
@@ -196,6 +214,17 @@ get_branch_info() {
   date=$(git log -1 --format=%ar "$ref" 2>/dev/null || echo "unknown")
 
   echo "$hash|$author|$date"
+}
+
+branch_ref() {
+  local branch="$1"
+  local is_remote="$2"
+
+  if [[ "$is_remote" == true ]]; then
+    echo "${REMOTE_NAME}/$branch"
+  else
+    echo "$branch"
+  fi
 }
 
 is_version_branch() {
@@ -220,6 +249,16 @@ get_branch_status() {
     echo "valid"
   else
     echo "invalid"
+  fi
+}
+
+status_label_for_branch() {
+  local branch="$1"
+
+  if [[ "$(get_branch_status "$branch")" == "invalid" ]]; then
+    echo "$INVALID_NAME_LABEL"
+  else
+    echo ""
   fi
 }
 
@@ -264,11 +303,10 @@ list_by_type_remote() {
   local branches=""
 
   while IFS= read -r branch; do
-    branch="${branch#origin/}"
     if branch_matches_type "$type" "$branch"; then
       branches+="$branch"$'\n'
     fi
-  done < <(git branch -r --format='%(refname:short)')
+  done < <(list_all_remote)
   branches="${branches%$'\n'}"
 
   [[ -z "$branches" ]] && return 1
@@ -280,7 +318,27 @@ list_all_local() {
 }
 
 list_all_remote() {
-  git branch -r --format='%(refname:short)' | sed 's#^origin/##'
+  git branch -r --format='%(refname:short)' \
+    | sed -n "s#^${REMOTE_NAME}/##p" \
+    | grep -v '^HEAD$' || true
+}
+
+get_remote_default_branch() {
+  local remote="$1"
+  local ref
+
+  ref=$(git symbolic-ref --short "refs/remotes/${remote}/HEAD" 2>/dev/null || true)
+  if [[ -n "$ref" ]]; then
+    echo "${ref#${remote}/}"
+  else
+    echo "unknown"
+  fi
+}
+
+print_remote_info_line() {
+  local default_branch
+  default_branch=$(get_remote_default_branch "$REMOTE_NAME")
+  echo "Remote: ${REMOTE_NAME} (default: ${default_branch})"
 }
 
 filter_branches() {
@@ -305,7 +363,7 @@ filter_invalid_only() {
 
   while IFS= read -r branch; do
     [[ -z "$branch" ]] && continue
-    if [[ "$(get_branch_status "$branch")" == "invalid" ]]; then
+    if [[ -n "$(status_label_for_branch "$branch")" ]]; then
       filtered+="$branch"$'\n'
     fi
   done <<< "$branches"
@@ -350,6 +408,14 @@ sort_records() {
         while IFS= read -r rec; do
           [[ -z "$rec" ]] && continue
           local br="${rec#*|}"
+          if [[ "$(get_branch_status "$br")" == "skip" ]]; then
+            echo "$rec"
+          fi
+        done <<< "$records" | sort -t'|' -k2,2 -k1,1
+
+        while IFS= read -r rec; do
+          [[ -z "$rec" ]] && continue
+          local br="${rec#*|}"
           if [[ "$(get_branch_status "$br")" == "invalid" ]]; then
             echo "$rec"
           fi
@@ -389,7 +455,11 @@ compute_invalid_found_from_records() {
     fi
   done <<< "$records"
 
-  [[ "$found" == true ]] && INVALID_FOUND=true
+  if [[ "$found" == true ]]; then
+    INVALID_FOUND=true
+  fi
+
+  return 0
 }
 
 build_records() {
@@ -460,13 +530,15 @@ format_json_records() {
     [[ "$first" == false ]] && echo ","
     first=false
 
-    local status
-    status=$(get_branch_status "$br")
+    local display_status
+    display_status=$(status_label_for_branch "$br")
 
     echo -n "    {"
     echo -n "\"name\": \"$br\""
     echo -n ", \"source\": \"$src\""
-    echo -n ", \"status\": \"$status\""
+    if [[ -n "$display_status" ]]; then
+      echo -n ", \"status\": \"$display_status\""
+    fi
 
     if [[ "$DETAILED_MODE" == true ]]; then
       local info
@@ -499,15 +571,15 @@ format_csv_records() {
       local br="${rec#*|}"
       local is_remote=false
       [[ "$src" == "remote" ]] && is_remote=true
-      local status
-      status=$(get_branch_status "$br")
+      local display_status
+      display_status=$(status_label_for_branch "$br")
       local info
       info=$(get_branch_info "$br" "$is_remote")
       local hash author date
       hash=$(echo "$info" | cut -d'|' -f1)
       author=$(echo "$info" | cut -d'|' -f2)
       date=$(echo "$info" | cut -d'|' -f3)
-      echo "$src,$br,$status,$hash,$author,$date"
+      echo "$src,$br,$display_status,$hash,$author,$date"
     done <<< "$records"
   else
     echo "source,branch,status"
@@ -515,9 +587,9 @@ format_csv_records() {
       [[ -z "$rec" ]] && continue
       local src="${rec%%|*}"
       local br="${rec#*|}"
-      local status
-      status=$(get_branch_status "$br")
-      echo "$src,$br,$status"
+      local display_status
+      display_status=$(status_label_for_branch "$br")
+      echo "$src,$br,$display_status"
     done <<< "$records"
   fi
 }
@@ -544,28 +616,30 @@ format_table_records() {
       hash=$(echo "$info" | cut -d'|' -f1)
       author=$(echo "$info" | cut -d'|' -f2)
       date=$(echo "$info" | cut -d'|' -f3)
-      local status
-      status=$(get_branch_status "$br")
+      local display_status
+      display_status=$(status_label_for_branch "$br")
 
-      local indicator=" "
+      local branch_display="$br"
       if [[ "$src" == "local" && "$br" == "$current" ]]; then
-        indicator=">"
+        branch_display+=" [current]"
       fi
 
-      printf "%s %-7s %-34s %-10s %-8s %-20s %s\n" "$indicator" "$src" "$br" "$status" "$hash" "$author" "$date"
+      printf "%-8s %-35s %-10s %-8s %-20s %s\n" "$src" "$branch_display" "$display_status" "$hash" "$author" "$date"
     done <<< "$records"
   else
     while IFS= read -r rec; do
       [[ -z "$rec" ]] && continue
       local src="${rec%%|*}"
       local br="${rec#*|}"
-      local status
-      status=$(get_branch_status "$br")
-      local indicator=" "
+      local branch_display="$br"
       if [[ "$src" == "local" && "$br" == "$current" ]]; then
-        indicator=">"
+        branch_display+=" [current]"
       fi
-      echo "$indicator * [$src] $br [$status]"
+      if [[ -n "$(status_label_for_branch "$br")" ]]; then
+        echo "[$src] $branch_display [$INVALID_NAME_LABEL]"
+      else
+        echo "[$src] $branch_display"
+      fi
     done <<< "$records"
   fi
 }
@@ -605,6 +679,10 @@ count_statuses_records() {
   echo "$valid|$invalid|$skipped"
 }
 
+should_refresh_remote() {
+  [[ "$SHOW_REMOTE" == true || "$SHOW_REMOTE" == "both" || "$SHOW_REMOTE_INFO" == true ]]
+}
+
 # Parse options
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -612,58 +690,62 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    -r|--remote)
+    -r)
       SHOW_REMOTE=true
       shift
       ;;
-    -a|--all)
+    -a)
       SHOW_REMOTE="both"
       shift
       ;;
-    -s|--summary)
+    -s)
       SUMMARY_MODE=true
       shift
       ;;
-    -c|--count)
+    -c)
       COUNT_ONLY=true
       shift
       ;;
-    -d|--detailed)
+    -d)
       DETAILED_MODE=true
       shift
       ;;
-    -b|--branch)
+    -b)
       [[ $# -lt 2 ]] && error_exit 1 "Option -b requires a pattern argument"
       FILTER_NAME=$(normalize_filter "$2")
       FILTER_EXCEPT=false
       shift 2
       ;;
-    -x|--exclude)
+    -x)
       [[ $# -lt 2 ]] && error_exit 1 "Option -x requires a pattern argument"
       FILTER_NAME=$(normalize_filter "$2")
       FILTER_EXCEPT=true
       shift 2
       ;;
-    -n|--limit)
+    -n)
       [[ $# -lt 2 ]] && error_exit 1 "Option -n requires a number argument"
       LIMIT_RESULTS="$2"
       shift 2
       ;;
-    --sort)
-      [[ $# -lt 2 ]] && error_exit 1 "Option --sort requires a field argument (name, type, date)"
+    -S)
+      [[ $# -lt 2 ]] && error_exit 1 "Option -S requires a field argument (name, type, date)"
       SORT_BY="$2"
       shift 2
       ;;
-    -f|--format)
+    -f)
       [[ $# -lt 2 ]] && error_exit 1 "Option -f requires a format argument (table, json, csv)"
       OUTPUT_FORMAT="$2"
       shift 2
       ;;
-    --invalid-only)
+    -ri)
+      SHOW_REMOTE_INFO=true
+      shift
+      ;;
+    -I)
       INVALID_ONLY=true
       shift
       ;;
-    --strict)
+    -T)
       STRICT_MODE=true
       shift
       ;;
@@ -710,8 +792,18 @@ if [[ "$OUTPUT_FORMAT" != "table" && "$SUMMARY_MODE" == true ]]; then
   error_exit 1 "Cannot use -f with -s"
 fi
 
+if [[ "$SHOW_REMOTE_INFO" == true && "$OUTPUT_FORMAT" != "table" ]]; then
+  error_exit 1 "-ri is supported only with table output"
+fi
+
+if [[ "$SHOW_REMOTE_INFO" == true && "$COUNT_ONLY" == true ]]; then
+  error_exit 1 "Cannot use -ri with -c"
+fi
+
 cd "$REPO_ROOT"
-git fetch origin >/dev/null 2>&1 || true
+if should_refresh_remote; then
+  git fetch "$REMOTE_NAME" >/dev/null 2>&1 || true
+fi
 
 # Build candidate records based on scope/type/filter
 local_branches=""
@@ -761,6 +853,10 @@ fi
 
 # Summary mode
 if [[ "$SUMMARY_MODE" == true ]]; then
+  if [[ "$SHOW_REMOTE_INFO" == true ]]; then
+    print_remote_info_line
+  fi
+
   if [[ "$SHOW_REMOTE" == "both" ]]; then
     l_stats="$(count_statuses_records "$local_records")"
     r_stats="$(count_statuses_records "$remote_records")"
@@ -825,6 +921,9 @@ fi
 
 # Non-summary: ensure we have rows
 if [[ -z "$(echo "$records" | sed '/^$/d')" ]]; then
+  if [[ "$INVALID_ONLY" == true ]]; then
+    exit 0
+  fi
   error_exit 3 "No branches found"
 fi
 
@@ -838,6 +937,10 @@ if [[ $LIMIT_RESULTS -gt 0 ]]; then
 fi
 
 # Output
+if [[ "$SHOW_REMOTE_INFO" == true ]]; then
+  print_remote_info_line
+fi
+
 case "$OUTPUT_FORMAT" in
   json)
     format_json_records "$records"
