@@ -1,6 +1,6 @@
 # docs/pdf/
 
-Directory containing PDF documentation `pdf` files generated from `.md` files.
+Directory containing PDF documentation `pdf` files.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
@@ -8,12 +8,12 @@ For license details, see `LICENSE` in the root directory.
 
 See `README.md` in the root directory for an introduction to the project.
 
-.pdf files are generated using `../../scripts/bin/genpdf` from `.md` files.
+`pdf` files can be generated from `.md` files using `../../scripts/bin/genpdf`.
 
 ## Files
 
-- **`<brandname>`.pdf**: file generated from `../../README.md` where `<brandname>` is
-  the brand name for the project.
+- **`<brandname>`.pdf**: file generated from `../../README.md` where `<brandname>`
+  is the brand name for the project.
 
 - ***.pdf**: other `.pdf` files generated from the `../docs/*.md` files.
 
