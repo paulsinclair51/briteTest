@@ -10,8 +10,10 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 genpdf_script="$repo_root/scripts/bin/genpdf"
-docs_dir="$repo_root/docs"
-out_dir="$repo_root/docs/pdf"
+gendocx_script="$repo_root/scripts/bin/gendocx"
+docs_dir="$repo_root/docs/md"
+pdf_out_dir="$repo_root/docs/pdf"
+docx_out_dir="$repo_root/docs/docx"
 
 usage() {
   cat <<'EOF'
@@ -20,11 +22,12 @@ Usage:
   genalldocs -h | --help
 
 Generates all BriteTest documentation PDFs by calling scripts/bin/genpdf once per
-source document.
+source document in docs/md, then generates DOCX files from those PDFs.
 
 Outputs:
-  docs/pdf/BriteTest.pdf                         (from README.md)
+  docs/pdf/briteTest.pdf                         (from docs/md/briteTest.md)
   docs/pdf/*.pdf                                 (from docs/md/*.md excluding README.md)
+  docs/docx/*.docx                               (from docs/pdf/*.pdf)
 EOF
 }
 
@@ -44,11 +47,14 @@ if [[ ! -x "$genpdf_script" ]]; then
   exit 1
 fi
 
-mkdir -p "$out_dir"
+if [[ ! -x "$gendocx_script" ]]; then
+  echo "Error: missing executable gendocx script: $gendocx_script" >&2
+  exit 1
+fi
 
-"$genpdf_script" "$repo_root/README.md" "$out_dir/BriteTest.pdf"
+mkdir -p "$pdf_out_dir" "$docx_out_dir"
 
-mapfile -t docs_files < <(find "$docs_dir/md" -maxdepth 1 -type f -name '*.md' ! -name 'README.md' | sort)
+mapfile -t docs_files < <(find "$docs_dir" -maxdepth 1 -type f -name '*.md' ! -name 'README.md' | sort)
 
 if [[ ${#docs_files[@]} -eq 0 ]]; then
   echo "Error: no docs/md/*.md files found (excluding README.md)." >&2
@@ -57,8 +63,11 @@ fi
 
 for src in "${docs_files[@]}"; do
   base="$(basename "${src%.md}")"
-  dst="$out_dir/${base}.pdf"
+  dst="$pdf_out_dir/${base}.pdf"
   "$genpdf_script" "$src" "$dst"
 done
 
-echo "Generated all documentation PDFs in $out_dir"
+"$gendocx_script" "$pdf_out_dir" "$docx_out_dir"
+
+echo "Generated all documentation PDFs in $pdf_out_dir"
+echo "Generated all documentation DOCX files in $docx_out_dir"
