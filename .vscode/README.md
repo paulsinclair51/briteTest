@@ -20,6 +20,18 @@ See `README.md` in the root directory for an introduction to the project.
 
 - None.
 
+## `settings.json` Settings
+
+Modifying or adding settings in this file should be avoided.
+
+This configuration file customizes VS Code behavior with the following
+settings:
+
+- **markdownlint.configFile**: Sets the configuration file path for the
+  markdownlint extension to `config/markdownlint.json`. This ensures that
+  markdown linting follows the project's standardized rules. See `config/README.md`
+  for details on the markdownlint configuration.
+
 ## Notes
 
 Additional configuration files may be added here as needed:
