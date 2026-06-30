@@ -58,3 +58,6 @@ dkms.conf
 logs/
 # But track the remote branch history file
 !logs/remote_branch_history.md
+
+# Python virtual environments
+.venv/
