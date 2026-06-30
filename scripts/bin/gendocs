@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Generate all documentation PDFs by invoking scripts/bin/genpdf for
+# each source document individually.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+genpdf_script="$repo_root/scripts/bin/genpdf"
+gendocx_script="$repo_root/scripts/bin/gendocx"
+docs_dir="$repo_root/docs/md"
+pdf_out_dir="$repo_root/docs/pdf"
+docx_out_dir="$repo_root/docs/docx"
+meta_file="$docs_dir/.md_metadata"
+tmp_pdf=''
+tmp_docx=''
+force=0
+target_input=''
+
+cleanup() {
+  [[ -n "$tmp_pdf" ]] && rm -f "$tmp_pdf"
+  [[ -n "$tmp_docx" ]] && rm -f "$tmp_docx"
+}
+
+sha256_file() {
+  local file=$1
+  sha256sum "$file" | awk '{print $1}'
+}
+
+build_fingerprint() {
+  local src=$1
+  sha256_file "$src"
+}
+
+install_if_different() {
+  local candidate=$1
+  local target=$2
+
+  mkdir -p "$(dirname "$target")"
+
+  if [[ -f "$target" ]] && cmp -s "$candidate" "$target"; then
+    rm -f "$candidate"
+    echo "Unchanged: $target"
+    return 0
+  fi
+
+  mv -f "$candidate" "$target"
+  echo "Updated:   $target"
+}
+
+usage() {
+  cat <<'EOF'
+Usage:
+  gendocs [-f] [<document>[.md]]
+  gendocs -h | --help
+
+Generates all BriteTest documentation PDFs by calling scripts/bin/genpdf once per
+source document in docs/md, then generates DOCX files from those PDFs.
+Existing PDF and DOCX files are only replaced when the generated content differs.
+Each source document is rebuilt only when its source markdown hash changes.
+
+Options:
+  -f           Regenerate selected documents regardless of saved source hashes.
+
+Arguments:
+  <document>   Optional single source file to process. Accepts either:
+               - absolute/relative path to an existing .md file
+               - file name under docs/md (with or without .md)
+
+Outputs:
+  docs/pdf/briteTest.pdf                         (from docs/md/briteTest.md)
+  docs/pdf/*.pdf                                 (from docs/md/*.md excluding README.md)
+  docs/docx/*.docx                               (from docs/pdf/*.pdf)
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    -f)
+      force=1
+      ;;
+    -* )
+      echo "Error: unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+    *)
+      if [[ -n "$target_input" ]]; then
+        echo "Error: at most one document argument is supported." >&2
+        usage >&2
+        exit 1
+      fi
+      target_input="$1"
+      ;;
+  esac
+  shift
+done
+
+if [[ ! -x "$genpdf_script" ]]; then
+  echo "Error: missing executable genpdf script: $genpdf_script" >&2
+  exit 1
+fi
+
+if [[ ! -x "$gendocx_script" ]]; then
+  echo "Error: missing executable gendocx script: $gendocx_script" >&2
+  exit 1
+fi
+
+mkdir -p "$pdf_out_dir" "$docx_out_dir"
+
+declare -A previous_fingerprints=()
+declare -A current_fingerprints=()
+
+if [[ -f "$meta_file" ]]; then
+  while IFS=$'\t' read -r rel hash; do
+    [[ -z "$rel" || -z "$hash" ]] && continue
+    previous_fingerprints["$rel"]="$hash"
+  done < "$meta_file"
+fi
+
+for rel in "${!previous_fingerprints[@]}"; do
+  current_fingerprints["$rel"]="${previous_fingerprints["$rel"]}"
+done
+
+tmp_pdf="$(mktemp --suffix=.pdf)"
+tmp_docx="$(mktemp --suffix=.docx)"
+trap cleanup EXIT
+
+if [[ -n "$target_input" ]]; then
+  target_src=''
+  if [[ -f "$target_input" ]]; then
+    target_src="$target_input"
+  elif [[ -f "$docs_dir/$target_input" ]]; then
+    target_src="$docs_dir/$target_input"
+  elif [[ "$target_input" != *.md && -f "$docs_dir/$target_input.md" ]]; then
+    target_src="$docs_dir/$target_input.md"
+  fi
+
+  if [[ -z "$target_src" ]]; then
+    echo "Error: document not found: $target_input" >&2
+    exit 1
+  fi
+
+  if [[ "$(basename "$target_src")" == "README.md" ]]; then
+    echo "Error: docs/md/README.md is excluded from generation." >&2
+    exit 1
+  fi
+
+  mapfile -t docs_files < <(printf '%s\n' "$target_src")
+else
+  mapfile -t docs_files < <(find "$docs_dir" -maxdepth 1 -type f -name '*.md' ! -name 'README.md' | sort)
+fi
+
+if [[ ${#docs_files[@]} -eq 0 ]]; then
+  echo "Error: no docs/md/*.md files found (excluding README.md)." >&2
+  exit 1
+fi
+
+for src in "${docs_files[@]}"; do
+  base="$(basename "${src%.md}")"
+  rel="${src#"$docs_dir"/}"
+  target_pdf="$pdf_out_dir/${base}.pdf"
+  target_docx="$docx_out_dir/${base}.docx"
+  current_fingerprint="$(build_fingerprint "$src")"
+  current_fingerprints["$rel"]="$current_fingerprint"
+
+  if [[ $force -eq 0 && -f "$target_pdf" && -f "$target_docx" ]]; then
+    previous_fingerprint="${previous_fingerprints["$rel"]:-}"
+    if [[ "$current_fingerprint" == "$previous_fingerprint" ]]; then
+      echo "Unchanged source: $src"
+      continue
+    fi
+  fi
+
+  rm -f "$tmp_pdf" "$tmp_docx"
+
+  "$genpdf_script" "$src" "$tmp_pdf"
+  "$gendocx_script" "$tmp_pdf" "$tmp_docx"
+
+  install_if_different "$tmp_pdf" "$target_pdf"
+  install_if_different "$tmp_docx" "$target_docx"
+done
+
+tmp_meta_file="$(mktemp)"
+for rel in "${!current_fingerprints[@]}"; do
+  printf '%s\t%s\n' "$rel" "${current_fingerprints["$rel"]}"
+done | sort > "$tmp_meta_file"
+mv -f "$tmp_meta_file" "$meta_file"
+
+echo "Generated all documentation PDFs in $pdf_out_dir"
+echo "Generated all documentation DOCX files in $docx_out_dir"
