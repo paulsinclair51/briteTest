@@ -11,8 +11,7 @@ See `README.md` in the root directory for an introduction to the project.
 ## Files
 
 - **settings.json**: Workspace-level settings that override user-level VS Code
-  settings. These configurations are applied when working in this project to
-  ensure consistency across team members.
+  settings.
 
 - **README.md**: This directory guide.
 
@@ -20,7 +19,7 @@ See `README.md` in the root directory for an introduction to the project.
 
 - None.
 
-## `settings.json` Settings
+## `settings.json`
 
 Modifying or adding settings in this file should be avoided.
 
@@ -29,8 +28,8 @@ settings:
 
 - **markdownlint.configFile**: Sets the configuration file path for the
   markdownlint extension to `config/markdownlint.json`. This ensures that
-  markdown linting follows the project's standardized rules. See `config/README.md`
-  for details on the markdownlint configuration.
+  markdown linting follows the project's standardized rules. See
+ `config/README.md` for details on the markdownlint configuration.
 
 ## Notes
 
