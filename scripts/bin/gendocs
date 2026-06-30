@@ -54,26 +54,39 @@ install_if_different() {
 usage() {
   cat <<'EOF'
 Usage:
-  gendocs [-f] [<document>[.md]]
+  gendocs [-f] [-p|-d] [<document>[.md] [<_output1_dir> [<output2_dir>]]]
   gendocs -h | --help
 
-Generates all BriteTest documentation PDFs by calling scripts/bin/genpdf once per
-source document in docs/md, then generates DOCX files from those PDFs.
-Existing PDF and DOCX files are only replaced when the generated content differs.
-Each source document is rebuilt only when its source markdown hash changes.
+Generates BriteTest PDF and DOCX documentation from Markdown sources in docs/md.
+By default, only a document whose source Markdown changed is regenerated.
 
 Options:
-  -f           Regenerate selected documents regardless of saved source hashes.
+  -f           Force regeneration for the selected document(s).
+  -p           Output PDFs only (no DOCX generation).
+  -d           Output DOCX only (generate temporary PDF for conversion).
+  -h, --help   Show this help and exit.
 
 Arguments:
   <document>   Optional single source file to process. Accepts either:
                - absolute/relative path to an existing .md file
                - file name under docs/md (with or without .md)
+  <output_dir> Optional output directory for the generated files. Defaults to:
+               - PDF: docs/pdf
+               - DOCX: docs/docx
 
 Outputs:
   docs/pdf/briteTest.pdf                         (from docs/md/briteTest.md)
   docs/pdf/*.pdf                                 (from docs/md/*.md excluding README.md)
   docs/docx/*.docx                               (from docs/pdf/*.pdf)
+
+Notes:
+  - docs/md/README.md is excluded from generation.
+  - Change detection uses a fingerprint of each source .md file and stores
+    metadata in docs/md/.md_metadata.
+
+Exit Codes:
+  0  Success.
+  1  Usage error or generation/conversion failure.
 EOF
 }
 
@@ -119,7 +132,7 @@ declare -A previous_fingerprints=()
 declare -A current_fingerprints=()
 
 if [[ -f "$meta_file" ]]; then
-  while IFS=$'\t' read -r rel hash; do
+  while read -r rel hash; do
     [[ -z "$rel" || -z "$hash" ]] && continue
     previous_fingerprints["$rel"]="$hash"
   done < "$meta_file"
@@ -190,7 +203,7 @@ done
 
 tmp_meta_file="$(mktemp)"
 for rel in "${!current_fingerprints[@]}"; do
-  printf '%s\t%s\n' "$rel" "${current_fingerprints["$rel"]}"
+  printf '%s %s\n' "$rel" "${current_fingerprints["$rel"]}"
 done | sort > "$tmp_meta_file"
 mv -f "$tmp_meta_file" "$meta_file"
 
