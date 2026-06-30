@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate all documentation PDFs by invoking scripts/bin/genpdf for
+# Generate PDFs by invoking scripts/bin/genpdf for
 # each source document individually.
 #
 # Copyright (c) 2026 Paul Sinclair
@@ -54,7 +54,9 @@ install_if_different() {
 usage() {
   cat <<'EOF'
 Usage:
-  gendocs [-f] [-p|-d] [<document>[.md] [<_output1_dir> [<output2_dir>]]]
+  gendocs [-f] [<document>[.md] [<pdf_dir> <docx_dir>]
+  gendocs [-f] -p [<document>[.md] [<pdf_dir>]
+  gendocs [-f] -d [<document>[.md|.pdf] [<docx_dir>]
   gendocs -h | --help
 
 Generates BriteTest PDF and DOCX documentation from Markdown sources in docs/md.
@@ -62,17 +64,27 @@ By default, only a document whose source Markdown changed is regenerated.
 
 Options:
   -f           Force regeneration for the selected document(s).
-  -p           Output PDFs only (no DOCX generation).
-  -d           Output DOCX only (generate temporary PDF for conversion).
+  -p           Generate PDFs only (no DOCX generation).
+  -d           Generate DOCX only (generate temporary PDF for conversion).
   -h, --help   Show this help and exit.
 
 Arguments:
-  <document>   Optional single source file to process. Accepts either:
-               - absolute/relative path to an existing .md file
-               - file name under docs/md (with or without .md)
-  <output_dir> Optional output directory for the generated files. Defaults to:
-               - PDF: docs/pdf
-               - DOCX: docs/docx
+  <document>[.md|.pdf]: Optional source file(s):
+    - Default extension is .md
+    - <absolute-relative path>/filename.md|.pdf] for an existing file.
+    - <Absolute-relative path>/*[.md|.pdf] files.
+    - filename[.md] under docs/md/ if it exists; otherwise, under ./
+      (current directory).
+    - filename.pdf under docs/pdf/ if it exists; otherwise, under ./
+      (current directory).
+    - *[.md|.pdf] under docs/md if 
+    - *[.md|.pdf] under docs/md if 
+    - filename[.md|.pdf] or *[.md|.pdf] orunder docs/md if 
+  <pdf_dir>: Optional ou under docs/md if 
+  <pdf_dir>: Optional output directory for the generated files. Defaults to:
+    - docs/pdf/
+  <docx_dir> Optional output directory for generated .docx files. Defaults to:
+    - docs/docx/ if source file is a in docs
 
 Outputs:
   docs/pdf/briteTest.pdf                         (from docs/md/briteTest.md)
