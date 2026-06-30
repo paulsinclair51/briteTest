@@ -69,8 +69,8 @@ Environment:
 Converts PDF files to DOCX.
 
 Examples:
-  gendocx docs/pdf/BriteTest.pdf
-  gendocx docs/pdf/BriteTest.pdf docs/docx/BriteTest
+  gendocx docs/pdf/briteTest.pdf
+  gendocx docs/pdf/briteTest.pdf docs/docx/briteTest
   gendocx docs/pdf docs/docx
 EOF
 }

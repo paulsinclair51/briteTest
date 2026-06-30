@@ -54,7 +54,7 @@ the Documentation Guide (`Documentation_Guide.md`).
 For a glossary of terms, see the Glossary Reference
 (`Glossary_Reference.md`).
 
-For a printer-friendly PDF file for this document, see `docs/pdf/BriteTest.pdf`.
+For a printer-friendly PDF file for this document, see `docs/pdf/briteTest.pdf`.
 
 <details>
 <summary>Document Version History</summary>
