@@ -33,7 +33,7 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>Preface</summary>
+<summary><strong>Preface</strong></summary>
 
 ## Preface
 
@@ -45,10 +45,9 @@ For a list of other BriteTest documents and the BriteTest repository layout, see
 the Documentation Guide.
 
 For a glossary of terms, see the Glossary Reference.
-</details>
 
 <details>
-<summary>Document Version History</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
 
 ### Document Version History
 
@@ -73,34 +72,40 @@ not correspond to a minor or patch version. `u` increments when document
 changes are published in a release without a change to `M`, and it resets to
 `0` when `M` is incremented.
 </details>
-
-<details>
-<summary>TABLE OF CONTENTS</summary>
-
-- [1. Return Conventions](#1-return-conventions)
-  - [1.1 Return Styles](#11-return-styles)
-  - [1.2 Assertion Guidance](#12-assertion-guidance)
-- [2. Comparison Option Structs](#2-comparison-option-structs)
-  - [2.1 ra_path_compare_options_t](#21-ra_path_compare_optionst)
-  - [2.2 ra_path_metadata_compare_options_t](#22-ra_path_metadata_compare_optionst)
-  - [2.3 ra_json_compare_options_t](#23-ra_json_compare_optionst)
-  - [2.4 ra_text_compare_options_t](#24-ra_text_compare_optionst)
-  - [3. Common Usage Patterns](#3-common-usage-patterns)
-  - [3.1 Compare Two Paths While Ignoring Timestamps](#31-compare-two-paths-while-ignoring-timestamps)
-  - [3.2 Compare Path Metadata Including Modification Time](#32-compare-path-metadata-including-modification-time)
-  - [3.3 Compare JSON While Ignoring Object Key Order](#33-compare-json-while-ignoring-object-key-order)
-  - [3.4 Compare Text While Ignoring Whitespace and Line Endings](#34-compare-text-while-ignoring-whitespace-and-line-endings)
-  - [4. Convenience Forms](#4-convenience-forms)
 </details>
 
 <details>
-<summary>1. Return Conventions</summary>
+<summary><strong>Table of Contents</strong></summary>
+
+## Table of Contents
+
+1. [**Return Conventions**](#1-return-conventions)<br>
+   1.1. [Return Styles](#11-return-styles)<br>
+   1.2 [Assertion Guidance](#12-assertion-guidance)
+
+2. [**Comparison Option Structs**](#2-comparison-option-structs)<br>
+   [2.1 ra_path_compare_options_t](#21-ra_path_compare_optionst)<br>
+   [2.2 ra_path_metadata_compare_options_t](#22-ra_path_metadata_compare_optionst)<br>
+   [2.3 ra_json_compare_options_t](#23-ra_json_compare_optionst)<br>
+   [2.4 ra_text_compare_options_t](#24-ra_text_compare_optionst)
+
+3. [**Common Usage Patterns**](#3-common-usage-patterns)<br>
+   3.1 [Compare Two Paths While Ignoring Timestamps](#31-compare-two-paths-while-ignoring-timestamps)<br>
+   3.2 [Compare Path Metadata Including Modification Time](#32-compare-path-metadata-including-modification-time)<br>
+   3.3 [Compare JSON While Ignoring Object Key Order](#33-compare-json-while-ignoring-object-key-order)<br>
+   [3.4 Compare Text While Ignoring Whitespace and Line Endings](#34-compare-text-while-ignoring-whitespace-and-line-endings)
+
+4. [**Convenience Forms**](#4-convenience-forms)
+</details>
+
+<details>
+<summary><strong>1. Return Conventions</strong></summary>
 
 ## 1. Return Conventions
 </details>
 
 <details>
-<summary>1.1 Return Styles</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.1 Return Styles</summary>
 
 ### 1.1 Return Styles
 
@@ -112,7 +117,7 @@ BriteTest test helpers use three return styles:
 </details>
 
 <details>
-<summary>1.2 Assertion Guidance</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.2 Assertion Guidance</summary>
 
 ### 1.2 Assertion Guidance
 
@@ -124,7 +129,7 @@ Use the helper family to decide what to check:
 </details>
 
 <details>
-<summary>2. Comparison Option Structs</summary>
+<summary><strong>2. Comparison Option Structs</strong></summary>
 
 ## 2. Comparison Option Structs
 
@@ -132,7 +137,7 @@ The comparison helpers use small option structs instead of mixed boolean and fla
 </details>
 
 <details>
-<summary>2.1 `ra_path_compare_options_t`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1 `ra_path_compare_options_t`</summary>
 
 ### 2.1 `ra_path_compare_options_t`
 
@@ -160,7 +165,7 @@ Default initializer:
 </details>
 
 <details>
-<summary>2.2 `ra_path_metadata_compare_options_t`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.2 `ra_path_metadata_compare_options_t`</summary>
 
 ### 2.2 `ra_path_metadata_compare_options_t`
 
@@ -190,7 +195,7 @@ Passing `NULL` or the default initializer uses the common default metadata set: 
 </details>
 
 <details>
-<summary>2.3 `ra_json_compare_options_t`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.3 `ra_json_compare_options_t`</summary>
 
 ### 2.3 `ra_json_compare_options_t`
 
@@ -213,7 +218,7 @@ Use `ignore_key_order` when semantic JSON equality matters more than source orde
 </details>
 
 <details>
-<summary>2.4 `ra_text_compare_options_t`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.4 `ra_text_compare_options_t`</summary>
 
 ### 2.4 `ra_text_compare_options_t`
 
@@ -234,13 +239,13 @@ Default initializer:
 </details>
 
 <details>
-<summary>3. Common Usage Patterns</summary>
+<summary><strong>3. Common Usage Patterns</strong></summary>
 
 ## 3. Common Usage Patterns
 </details>
 
 <details>
-<summary>3.1 Compare Two Paths While Ignoring Timestamps</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1 Compare Two Paths While Ignoring Timestamps</summary>
 
 ### 3.1 Compare Two Paths While Ignoring Timestamps
 
@@ -254,7 +259,7 @@ RA_ASSERT(ta_compare_paths_with_options(expected_path, actual_path, &options) ==
 </details>
 
 <details>
-<summary>3.2 Compare Path Metadata Including Modification Time</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.2 Compare Path Metadata Including Modification Time</summary>
 
 ### 3.2 Compare Path Metadata Including Modification Time
 
@@ -268,7 +273,7 @@ RA_ASSERT(ta_compare_path_metadata(left_path, right_path, &options) == RA_OK, 0)
 </details>
 
 <details>
-<summary>3.3 Compare JSON While Ignoring Object Key Order</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.3 Compare JSON While Ignoring Object Key Order</summary>
 
 ### 3.3 Compare JSON While Ignoring Object Key Order
 
@@ -283,7 +288,7 @@ RA_ASSERT(ta_compare_json_with_limit(expected_json, actual_json, &options) == RA
 </details>
 
 <details>
-<summary>3.4 Compare Text While Ignoring Whitespace and Line Endings</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.4 Compare Text While Ignoring Whitespace and Line Endings</summary>
 
 ### 3.4 Compare Text While Ignoring Whitespace and Line Endings
 
@@ -298,7 +303,7 @@ RA_ASSERT(ta_compare_text_normalized(left_text, right_text, &options) == RA_OK, 
 </details>
 
 <details>
-<summary>4. Convenience Forms</summary>
+<summary><strong>4. Convenience Forms</strong></summary>
 
 ## 4. Convenience Forms
 

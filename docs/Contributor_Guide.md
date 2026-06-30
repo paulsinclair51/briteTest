@@ -6,7 +6,7 @@ rules, and versioning guidelines for contributors, reviewers, and approvers.
 #### Copyright (c) 2026 Paul Sinclair
 
 <details>
-<summary>License</summary>
+<summary><strong>License</strong></summary>
 
 #### **License**
 
@@ -32,7 +32,7 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>Preface</summary>
+<summary><strong>Preface</strong></summary>
 
 ## Preface
 
@@ -45,7 +45,7 @@ the Documentation Guide.
 For a glossary of terms, see the Glossary Reference.
 
 <details>
-<summary>Document Version History</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
  
 ### Document Version History
 
@@ -69,11 +69,11 @@ The document's update version tracks released updates to this document and does
 not correspond to a minor or patch version. `u` increments when document
 changes are released without a change to `M`, and it resets to
 `0` when `M` is incremented.
-</details>
+</details><br>
 </details>
 
 <details>
-<summary>Table of Contents</summary>
+<summary><strong>Table of Contents</strong></summary>
 
 ## Table of Contents
 
@@ -92,7 +92,7 @@ changes are released without a change to `M`, and it resets to
 
 6. [**Testing Requirements**](#6-testing-requirements)
 
-7, [**Making Modifications in a Branch**](M#7-making-modifications-in-a-branch)
+7. [**Making Modifications in a Branch**](M#7-making-modifications-in-a-branch)
 
 8. [**Pull Request (PR)**](#8-pull-request-pr)
 
@@ -101,10 +101,8 @@ changes are released without a change to `M`, and it resets to
 10. [**Glossary**](#10-glossary)
 </details>
 
-</details>
-
 <details>
-<summary>1. Introduction</summary>
+<summary><strong>1. Introduction</strong></summary>
 
 ## 1. Introduction
 
@@ -119,7 +117,7 @@ code and documentation.
 </details>
 
 <details>
-<summary>2. Versioning Guidelines</summary>
+<summary><strong>2. Versioning Guidelines</strong></summary>
 
 ## 2. Versioning Guidelines
 
@@ -190,7 +188,7 @@ followed.
 </details>
 
 <details>
-<summary>3. Branding</summary>
+<summary><strong>3. Branding</strong></summary>
 
 ## 3. Branding
 
@@ -198,7 +196,7 @@ This chapter discusses choices for the brand description and name
 plus how to change the brand name.
 
 <details>
-<summary>3.1. Alternative Brand Descriptions</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Alternative Brand Descriptions</summary>
 
 ### 3.1. Alternative Brand Descriptions
 
@@ -401,7 +399,7 @@ BriteTest is a compact C/C++ framework for defining, running, and reporting test
 </details>
 
 <details>
-<summary>3.2. Alternative Brand Names</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.2. Alternative Brand Names</summary>
 
 ### 3.2. Alternative Brand Names
 
@@ -435,9 +433,9 @@ are not a trademark search or legal clearance.
 </details>
 
 <details>
-<summary>3.3. Brand Name and Tagline Replacement</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.3. Brand Name and Tagline Replacement</summary>
 
-### 2.3. Brand Name and Tagline Replacement
+### 3.3. Brand Name and Tagline Replacement
 
 This workflow describes how to replace the brand name, tagline, and other phrases
 throughout the repository (documentation, monograms, and logos) using automated
@@ -521,11 +519,11 @@ scripts/bin/updatelogos
    - Optionally, add a note to `README.md` in root directory documenting the brand 
      transition.
    - Consider a separate release or major version bump if the replace is significant.
-</details>
+</details><br>
 </details>
 
 <details>
-<summary>4. Documentation Guidelines</summary>
+<summary><strong>4. Documentation Guidelines</strong></summary>
 
 ## 4. Documentation Guidelines
 
@@ -589,7 +587,7 @@ This guideline applies to all documentation (`.md` files).
 </details>
 
 <details>
-<summary>5. Code Guidelines</summary>
+<summary><strong>5. Code Guidelines</strong></summary>
 
 ## 5. Code Guidelines
 
@@ -600,7 +598,7 @@ This guideline applies to all documentation (`.md` files).
 </details>
 
 <details>
-<summary>6. Testing Requirements</summary>
+<summary><strong>6. Testing Requirements</strong></summary>
 
 ## 6. Testing Requirements
 
@@ -616,7 +614,7 @@ make run
 </details>
 
 <details>
-<summary>7. Making Modifications in a Branch</summary>
+<summary><strong>7. Making Modifications in a Branch</strong></summary>
 
 ## 7. Making Modifications in a Branch
 
@@ -638,7 +636,7 @@ make run
 </details>
 
 <details>
-<summary>8. Pull Request (PR)</summary>
+<summary><strong>8. Pull Request (PR)</strong></summary>
 
 ## 8. Pull Request (PR)
 
@@ -692,7 +690,7 @@ Before submitting a PR:
 </details>
 
 <details>
-<summary>9. Release</summary>
+<summary><strong>9. Release<strong></summary>
 
 ## 9. Release
 
@@ -743,7 +741,7 @@ Before releasing:
 </details>
 
 <details>
-<summary>10. Glossary</summary>
+<summary><strong>10. Glossary</strong></summary>
 
 ## 10. Glossary
 
