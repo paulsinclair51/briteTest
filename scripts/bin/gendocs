@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate PDFs by invoking scripts/bin/genpdf for
-# each source document individually.
+# gendocs
+#
+# Generate 'pdf' files from '.md' files and 'docx' files 
+# from '.pdf' files. See usage below for details, or run:
+#
+#  gendocs -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -59,11 +63,14 @@ Usage:
   gendocs [-f] -d [<document>[.md|.pdf] [<docx_dir>]
   gendocs -h | --help
 
-Generates BriteTest PDF and DOCX documentation from Markdown sources in docs/md.
-By default, only a document whose source Markdown changed is regenerated.
+Generates PDF documents from Markdown sources and DOCX documents from a
+PDF document generated from a Markdown source or from PDF document source.
+By default, when the source is in docs/md/, the document is only regenerated
+if the source Markdown has changed.
 
 Options:
-  -f           Force regeneration for the selected document(s).
+  -f           Force regeneration for the selected document(s) even if a source
+               is in docs/md/ and has not changed.
   -p           Generate PDFs only (no DOCX generation).
   -d           Generate DOCX only (generate temporary PDF for conversion).
   -h, --help   Show this help and exit.
