@@ -1,32 +1,34 @@
-# VS Code Workspace Configuration
+# .vscode/
 
-This directory contains VS Code workspace-specific settings and configurations for the BriteTest project.
+Directory containing VS Code workspace configuration files.
 
-## Contents
+Copyright (c) 2026 Paul Sinclair  
+SPDX-License-Identifier: MIT  
+For license details, see `LICENSE` in the root directory.
 
-### `settings.json`
-Workspace-level settings that override user-level VS Code settings. These configurations are applied when working in this project to ensure consistency across team members.
+See `README.md` in the root directory for an introduction to the project.
 
-## Getting Started
+## Files
 
-1. Open this repository in VS Code
-2. The workspace settings will automatically be applied
-3. Install any recommended extensions from the `.vscode/extensions.json` file (if present)
+- **settings.json**: Workspace-level settings that override user-level VS Code
+  settings. These configurations are applied when working in this project to
+  ensure consistency across team members.
 
-## Customization
+- **README.md**: This directory guide.
 
-To modify workspace settings:
-- Edit `settings.json` directly, or
-- Use VS Code's Settings UI: `Cmd/Ctrl + ,` → Search for setting → Click the "Workspace" tab
+## Subdirectories
 
-Changes made to files in this directory will apply to all developers working on this project.
+- None.
 
-## Additional Configuration Files (Optional)
+## Notes
 
-You may add more configuration files here:
-- `launch.json` - Debug configurations
-- `tasks.json` - Custom build and test tasks
-- `extensions.json` - Recommended VS Code extensions
-- `.code-workspace` - Multi-folder workspace definition
+Additional configuration files may be added here as needed:
 
-See the [VS Code Documentation](https://code.visualstudio.com/docs/getstarted/settings#_workspace-settings) for more information.
+- **launch.json**: Debug configurations for running and debugging the project.
+
+- **tasks.json**: Custom build and test tasks.
+
+- **extensions.json**: Recommended VS Code extensions for this project.
+
+See the [VS Code Documentation](https://code.visualstudio.com/docs/getstarted/settings)
+for more information on workspace settings.
