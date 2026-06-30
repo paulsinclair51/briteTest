@@ -13,7 +13,7 @@ See `README.md` in the root directory for an introduction to the project.
 ### Document and Brand Management
 
 - **ckdirectory_guides**: Validate required directory guides across the repository.
-- **genalldocs**: Regenerate all PDF and DOCX documentation.
+- **gendocs**: Regenerate all PDF and DOCX documentation.
 - **gendocx**: Generate DOCX files from PDF sources.
 - **genpdf**: Generate PDF files from markdown sources.
 - **genpng**: Regenerate branding PNG images from SVG files.

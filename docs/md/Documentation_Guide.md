@@ -190,7 +190,7 @@ include/                # Public API `.h` headers.
     testapi.h           # Declare Test API
 reports/                # Generated report files.
 scripts/                # Automation script assets.
-    bin/                # Scripts (e.g., genalldocs, mkbranch)
+    bin/                # Scripts (e.g., gendocs, mkbranch)
     helpers/            # Helper scripts for bin/scripts/*.
     genpdf
     test_genpdf.sh

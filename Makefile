@@ -81,7 +81,7 @@ test-lsbranch:
 	bash ./scripts/tests/test_lsbranch.sh
 
 gendocs:
-	bash ./scripts/bin/genalldocs
+	bash ./scripts/bin/gendocs
 
 genpng:
 	bash ./scripts/bin/genpng
