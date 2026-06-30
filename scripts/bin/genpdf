@@ -77,9 +77,9 @@ Converts Markdown to PDF after optionally removing or converting
 
 Examples:
   genpdf README.md
-  genpdf docs/Documentation_Guide
-  genpdf docs/Documentation_Guide.md docs/My_Documentation_Guide
-  genpdf docs
+  genpdf docs/md/Documentation_Guide
+  genpdf docs/md/Documentation_Guide.md docs/My_Documentation_Guide
+  genpdf docs/md
   genpdf docs build
 EOF
 }

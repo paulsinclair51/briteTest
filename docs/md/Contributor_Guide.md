@@ -1,4 +1,4 @@
-![Contributor Guide](branding/Contributor_Guide.png)
+![Contributor Guide](../branding/Contributor_Guide.png)
 
 This document defines the contribution process, coding standards, documentation
 rules, and versioning guidelines for contributors, reviewers, and approvers.
@@ -8,7 +8,7 @@ rules, and versioning guidelines for contributors, reviewers, and approvers.
 <details>
 <summary><strong>License</strong></summary>
 
-#### **License**
+### License
 
 SPDX-License-Identifier: MIT
 

@@ -34,7 +34,7 @@ Arguments:
   <basebranch>       Name of the base branch from which to create the new branch.
 
   If the base branch is main, the user must be an approver (see 
-  docs/Contributor_Guide.md), the new branch must be created locally and pushed to remote,
+  docs/md/Contributor_Guide.md), the new branch must be created locally and pushed to remote,
   the new branch name must match the form v<M>.<m>.<p> where:
     - M is 1-2 digits starting with 1-9.
     - m/p are either 0 or 1-2 digits starting with 1-9.
@@ -45,7 +45,7 @@ Arguments:
       and <p> is 1 or there is v<M>.<m>.<p-1> branch/release.
 
   If the base branch is not main, the user must be a contributor (see 
-  docs/Contributor_Guide.md), the new branch may be local or remote, and the
+  docs/md/Contributor_Guide.md), the new branch may be local or remote, and the
   new branch name must be a valid GitHub branch name except the name must
   neither be main nor contain periods.
 

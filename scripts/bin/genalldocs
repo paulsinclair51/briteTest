@@ -24,7 +24,7 @@ source document.
 
 Outputs:
   docs/pdf/BriteTest.pdf                         (from README.md)
-  docs/pdf/BriteTest_*.pdf                       (from docs/BriteTest_*.md)
+  docs/pdf/*.pdf                                 (from docs/md/*.md excluding README.md)
 EOF
 }
 
@@ -48,10 +48,10 @@ mkdir -p "$out_dir"
 
 "$genpdf_script" "$repo_root/README.md" "$out_dir/BriteTest.pdf"
 
-mapfile -t docs_files < <(find "$docs_dir" -maxdepth 1 -type f -name 'BriteTest_*.md' | sort)
+mapfile -t docs_files < <(find "$docs_dir/md" -maxdepth 1 -type f -name '*.md' ! -name 'README.md' | sort)
 
 if [[ ${#docs_files[@]} -eq 0 ]]; then
-  echo "Error: no docs/BriteTest_*.md files found." >&2
+  echo "Error: no docs/md/*.md files found (excluding README.md)." >&2
   exit 1
 fi
 
