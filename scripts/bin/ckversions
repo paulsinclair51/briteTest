@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Validate that major and minor versions are consistent across:
-# - docs/*.md (excluding docs/README.md)
+# - docs/md/*.md (excluding docs/md/README.md)
 # - include/*.h
 # - src/*.c
 #
@@ -111,7 +111,7 @@ while IFS= read -r file; do
   [[ "$(basename "$file")" == "README.md" ]] && continue
   semver="$(doc_major "$file")"
   record_and_check "$file" "$semver"
-done < <(find docs -maxdepth 1 -type f -name '*.md' | sort)
+done < <(find docs/md -maxdepth 1 -type f -name '*.md' | sort)
 
 while IFS= read -r file; do
   semver="$(header_major "$file")"

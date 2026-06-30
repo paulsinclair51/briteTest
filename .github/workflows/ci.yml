@@ -59,9 +59,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y wkhtmltopdf
 
-      - name: Generate docs PDFs (excluding docs/README.md)
+      - name: Generate docs PDFs (excluding docs/md/README.md)
         run: |
-          bash ./scripts/bin/genpdf -i "*.md" -x "README.md" docs docs/pdf
+          bash ./scripts/bin/genpdf -i "*.md" -x "README.md" docs/md docs/pdf
 
       - name: Upload docs PDF artifacts
         uses: actions/upload-artifact@v4

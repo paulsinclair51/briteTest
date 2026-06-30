@@ -7,9 +7,6 @@ This document explains how to set up a pre-commit hook to prevent accidental com
 Protected branches are critical branches that should not receive direct commits. The branch management scripts (`mkbranch` and `rmbranch`) prevent deletion of:
 
 - `main`
-- `master`
-- `develop`
-- `development`
 
 ## Setting Up a Pre-commit Hook
 

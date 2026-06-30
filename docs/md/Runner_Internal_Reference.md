@@ -1,4 +1,4 @@
-![Runner Internal Reference](branding/Runner_Internal_Reference.png)
+![Runner Internal Reference](../branding/Runner_Internal_Reference.png)
 
 This document provides a reference to the BriteTestRunner API internals.
 It includes types, structs, unions, enums, macros, and functions.

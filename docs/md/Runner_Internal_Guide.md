@@ -1,4 +1,4 @@
-![Runner Internal Guide](branding/Runner_Internal_Guide.png)
+![Runner Internal Guide](../branding/Runner_Internal_Guide.png)
 
 This guide documents the internal architecture and design of the Runner Famework
 and API. It complements the Runner Internal Reference.

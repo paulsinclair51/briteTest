@@ -6,9 +6,9 @@ repository layout.
 #### Copyright (c) 2026 Paul Sinclair
 
 <details>
-<summary>License</summary>
+<summary><strong>License</strong></summary>
 
-#### **License**
+### License
 
 SPDX-License-Identifier: MIT
 
@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 </details>
 
 <details>
-<summary>Preface</summary>
+<summary>VPreface</strong></summary>
 
 ## Preface
 
@@ -67,11 +67,11 @@ The document's update version tracks released updates to this document and does
 not correspond to a minor or patch version. `u` increments when document
 changes are released without a change to `M`, and it resets to
 `0` when `M` is incremented.
-</details>
+</details><br>
 </details>
 
 <details>
-<summary>Table of Contents</summary>
+<summary><strong>Table of Contents</strong></summary>
 
 ## Table of Contents
 
@@ -83,7 +83,7 @@ changes are released without a change to `M`, and it resets to
 </details>
 
 <details>
-<summary>1. Introduction</summary>
+<summary><strong>1. Introduction</strong></summary>
 
 ## 1. Introduction
 
@@ -111,7 +111,7 @@ Document formats:
 </details>
 
 <details>
-<summary>2. Documents</summary>
+<summary><strong>2. Documents</strong></summary>
 
 ## 2. Documents
 
@@ -160,7 +160,7 @@ The following are the user and contributor documents.
 </details>
 
 <details>
-<summary>3. Repository Layout</summary>
+<summary><strong>3. Repository Layout</strong></summary>
 
 ## 3. Repository Layout
 
@@ -169,30 +169,34 @@ The following shows the layout of the GitHub repository
 
 ```text
 .github/workflows/ci.yml
-README.md
-LICENSE
+.vscode/
 .gitignore
-Makefile
 build_test_runner.ps1
+LICENSE
+Makefile
+README.md
 build/                  # Build outputs and related artifacts.
 config/                 # Repository configuration files.
-    markdownlint.json
+    contributors.md     # List of authorized contributors.
+    markdownlint.json   # Customize lint behavior.
 docs/                   # User and contributor documentation.
-    *.md
-    pdf/                # Generated `*.pdf` files.
-    docx/               # Generated `*.docx` files.
+    branding/           # Monograms, logos, and document logos.
+    md/                 # `*.md` files (base documentation).
+    pdf/                # `*.pdf` files generated from `*.md` files.
+    docx/               # `*.docx` files generated from `*.pdf` files.
 examples/               # Usage examples.
 include/                # Public API `.h` headers.
-    runnerapi.h
-    testapi.h
+    runnerapi.h         # Declare Runner API
+    testapi.h           # Declare Test API
 reports/                # Generated report files.
-scripts/                # Automation scripts.
-    scripts/bin/ckdirectory_guides
+scripts/                # Automation script assets.
+    bin/                # Scripts (e.g., genalldocs, mkbranch)
+    helpers/            # Helper scripts for bin/scripts/*.
     genpdf
     test_genpdf.sh
 src/                    # API `.c` sources.
-    runnerapi.c
-    testapi.c
+    runnerapi.c         # Definition of Runner API.
+    testapi.c           # Definition of Test API.
 tests/                  # Testing assets.
     golden/             # Golden/baseline files for comparison.
     include/            # Test `.h` headers.

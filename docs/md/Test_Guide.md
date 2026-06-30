@@ -1,4 +1,4 @@
-![Test Internal Guide](branding/Test_Internal_Guide.png)
+![Test Guide](../branding/Test_Guide.png)
 
 This .
 
@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Preface
 
-This document is intended for contributors who .
+This document is intended for users and contributors who .
 
 For a list of other BriteTest documents and the BriteTest repository layout, see
 the Documentation Guide.

@@ -1,8 +1,8 @@
-![Test Internal Reference](branding/Test_Internal_Reference.png)
+![Test Internal Guide](../branding/Test_Internal_Guide.png)
 
 This .
 
-Copyright (c) 2026 Paul Sinclair
+#### Copyright (c) 2026 Paul Sinclair
 
 <details>
 <summary>License</summary>

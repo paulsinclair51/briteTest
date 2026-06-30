@@ -1,8 +1,8 @@
-![Test Guide](branding/Test_Guide.png)
+![Test Internal Reference](../branding/Test_Internal_Reference.png)
 
 This .
 
-#### Copyright (c) 2026 Paul Sinclair
+Copyright (c) 2026 Paul Sinclair
 
 <details>
 <summary>License</summary>
@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Preface
 
-This document is intended for users and contributors who .
+This document is intended for contributors who .
 
 For a list of other BriteTest documents and the BriteTest repository layout, see
 the Documentation Guide.
