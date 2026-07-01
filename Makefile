@@ -74,8 +74,11 @@ lint-md:
 	@find . -type f -name '*.md' ! -path './.git/*' -print0 | \
 		xargs -0 npx -y markdownlint-cli --config config/markdownlint.json
 
-test-genpdf:
-	bash ./scripts/tests/test_genpdf.sh
+check-doc:
+	bash ./scripts/bin/ckdocs
+
+test-gendocs:
+	bash ./scripts/tests/test_gendocs.sh
 
 test-lsbranch:
 	bash ./scripts/tests/test_lsbranch.sh
@@ -89,4 +92,4 @@ genpng:
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run lint-md test-genpdf test-lsbranch gendocs genpng clean
+.PHONY: all run lint-md check-doc test-gendocs test-lsbranch gendocs genpng clean

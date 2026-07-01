@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
 # rmbranch - Remove a branch locally and/or from remote.
+#
+# See usage below for details, or run: rmbranch -h
+#
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.

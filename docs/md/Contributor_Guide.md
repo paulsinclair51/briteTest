@@ -44,6 +44,8 @@ the Documentation Guide.
 
 For a glossary of terms, see the Glossary Reference.
 
+A printer-friendly PDF file for this document is available in `docs/pdf/`.
+
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
  
@@ -51,24 +53,19 @@ For a glossary of terms, see the Glossary Reference.
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+| 1.0.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 
-- The **Document** column records the document's version with the
-  format `M.u` (Major, update).
+- The **Document** column records the document's version.
 - The **Runner** column records the Runner API version
-  current when this document was released and is
-  defined by its `RA_VERSION` macro.
-- The **Test** column records the Test API version current
-  when this document was released and is defined by its
-  `TA_VERSION` macro.
-- Both the Runner API and Test API use the version format `"M.m.p"` (Major, minor,
-  patch).
-- `M` is the same for the Document, Runner, and Test versions.
+  current at the time this version of the document was published.
+- The **Test** column records the Test API version current at
+  the time this version of the document was published.
 
-The document's update version tracks released updates to this document and does
-not correspond to a minor or patch version. `u` increments when document
-changes are released without a change to `M`, and it resets to
-`0` when `M` is incremented.
+A version has the format `M.m.p` (Major, minor, patch) where `M` is the
+major version, `m` is the minor version, and `p` is the patch version.
+`p` increments when the document is updated without a change to `M` or `m`,
+and resets to 0 when `M` or `m` increases. The first table entry is the most
+recent version for this document at the time this document was published.
 </details><br>
 </details>
 
@@ -197,6 +194,13 @@ plus how to change the brand name.
 
 briteTest is a lightweight framework for defining, running, and reporting tests in C/C++ projects. It provides a simple core macro-based Runner Application Programming Interface (API), a function-based Test API, fault‑tolerant execution, and clear reporting. It can be used for unit and command-line testing.
 
+briteTest is a lightweight framework for defining, running, and
+reporting tests in C/C++ projects. It provides a compact macro‑based
+Runner API, a function‑driven Test API, fault‑tolerant execution, and
+clear, structured reporting. The framework is designed for small to
+medium C projects that need reliable automated testing without the overhead
+of large toolchains or external dependencies.
+
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Alternative Brand Descriptions</summary>
 
@@ -247,9 +251,7 @@ Review: BriteTest is a lightweight framework for defining, running, and reportin
 
 Takeaway: Your description of BriteTest is solid, but it can be tightened, clarified, and made more parallel to the tone you’ve been using for LiteTest. Below is a refined version that reads cleaner, is more precise, and positions the framework more strongly.
 
----
-
-⭐ Refined Review of BriteTest
+Refined Review of BriteTest
 
 BriteTest is a lightweight framework for defining, running, and reporting
 tests in C/C++ projects. It provides a compact macro‑based Runner API, a

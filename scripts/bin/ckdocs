@@ -1,0 +1,325 @@
+#!/usr/bin/env bash
+
+# ckdocs - Validate canonical document form across docs/md markdown files.
+#
+# See usage below for details, or run: ckdocs -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see ./LICENSE.
+
+set -euo pipefail
+
+readonly EXIT_OK=0
+readonly EXIT_VALIDATION=1
+readonly EXIT_USAGE=2
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ckdocs
+  ckdocs -h
+  ckdocs --help
+
+Validate the canonical form of markdown documents in docs/md,
+excluding README.md.
+
+Checks include front matter structure, details/summary pairing,
+table-of-contents numbering syntax, numbered heading formatting,
+summary/heading alignment, and the shared Document Version History block.
+
+Exit codes:
+  0  Success, or help requested with -h/--help.
+  1  Validation failure.
+  2  Invalid command-line argument.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "ERROR: unknown argument: $1" >&2
+      usage >&2
+      exit "$EXIT_USAGE"
+      ;;
+  esac
+done
+
+repo_root=$(cd "$(dirname "$0")/../.." && pwd)
+docs_dir="$repo_root/docs/md"
+
+license_summary='<summary><strong>License</strong></summary>'
+preface_summary='<summary><strong>Preface</strong></summary>'
+dvh_summary='<summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>'
+toc_summary='<summary><strong>Table of Contents</strong></summary>'
+overview_doc='briteTest.md'
+
+failures=0
+
+fail() {
+  echo "ERROR: $1" >&2
+  failures=1
+}
+
+front_matter() {
+  local file=$1
+  awk '{ print } /^## Table of Contents$/ { exit }' "$file"
+}
+
+summary_lines() {
+  local file=$1
+  front_matter "$file" | grep '^<summary>' || true
+}
+
+extract_dvh_block() {
+  local file=$1
+  awk '
+    /### Document Version History/ { capture=1 }
+    capture { print }
+    capture && /<\/details><br>/ { exit }
+  ' "$file"
+}
+
+check_standard_doc() {
+  local file=$1
+  local first_nonblank
+
+  first_nonblank=$(awk 'NF { print; exit }' "$file")
+  if ! printf '%s\n' "$first_nonblank" | grep -Eq '^!\[[^]]+\]\(\.\./branding/[^)]+\.png\)$'; then
+    fail "$file: first non-blank line must be the document banner image"
+  fi
+
+  if grep -q '^\[!\[' "$file"; then
+    fail "$file: badges are only allowed in $overview_doc"
+  fi
+}
+
+check_overview_doc() {
+  local file=$1
+  local first_four
+
+  mapfile -t first_four < <(awk 'NF { print; if (++count == 4) exit }' "$file")
+
+  [[ ${#first_four[@]} -ge 4 ]] || {
+    fail "$file: expected badges and logo before the copyright line"
+    return
+  }
+
+  [[ ${first_four[0]} == '[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)' ]] || \
+    fail "$file: missing canonical license badge"
+  [[ ${first_four[1]} == '[![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/BriteTest?display_name=tag)](https://github.com/paulsinclair51/BriteTest/releases)' ]] || \
+    fail "$file: missing canonical latest release badge"
+  [[ ${first_four[2]} == '[![CI](https://github.com/paulsinclair51/BriteTest/actions/workflows/ci.yml/badge.svg)](https://github.com/paulsinclair51/BriteTest/actions/workflows/ci.yml)' ]] || \
+    fail "$file: missing canonical CI badge"
+  [[ ${first_four[3]} == '![BriteTest Logo](../branding/Logo_with_BrandName.png)' ]] || \
+    fail "$file: missing canonical overview logo"
+}
+
+check_details_structure() {
+  local file=$1
+  local opens closes summaries
+
+  opens=$(grep -c '^<details>$' "$file" || true)
+  closes=$(grep -Ec '^[[:space:]]*</details>(<br>)?[[:space:]]*$' "$file" || true)
+  summaries=$(grep -c '^<summary>' "$file" || true)
+
+  [[ "$opens" -eq "$closes" ]] || fail "$file: <details> and </details> counts differ ($opens != $closes)"
+  [[ "$opens" -eq "$summaries" ]] || fail "$file: each <details> block must have exactly one <summary> ($opens != $summaries)"
+
+  awk -v file="$file" '
+    /^<details>$/ {
+      if (getline nextline <= 0) {
+        printf("ERROR: %s: <details> at end of file without a summary\n", file) > "/dev/stderr"
+        status=1
+        exit
+      }
+      if (nextline !~ /^<summary>/) {
+        printf("ERROR: %s: <details> must be followed immediately by <summary>\n", file) > "/dev/stderr"
+        status=1
+        exit
+      }
+      print nextline
+      next
+    }
+    { print }
+    END { exit status }
+  ' "$file" >/dev/null || failures=1
+}
+
+check_heading_numbering() {
+  local file=$1
+
+  awk -v file="$file" '
+    /^###[[:space:]]/ {
+      heading=$0
+      sub(/^###[[:space:]]+/, "", heading)
+      if (heading ~ /^[0-9]/ && heading !~ /^[0-9]+(\.[0-9]+)+(\.)?[[:space:]]+/) {
+        printf("ERROR: %s: malformed level-3 heading numbering: %s\n", file, $0) > "/dev/stderr"
+        status=1
+      }
+    }
+    /^##[[:space:]]/ {
+      if ($0 == "## Preface" || $0 == "## Table of Contents") {
+        next
+      }
+      heading=$0
+      sub(/^##[[:space:]]+/, "", heading)
+      if (heading ~ /^[0-9]/ && heading !~ /^[0-9]+(\.)?[[:space:]]+/) {
+        printf("ERROR: %s: malformed level-2 heading numbering: %s\n", file, $0) > "/dev/stderr"
+        status=1
+      }
+    }
+    END { exit status }
+  ' "$file" || failures=1
+}
+
+check_toc_syntax() {
+  local file=$1
+
+  awk -v file="$file" '
+    /^## Table of Contents$/ { in_toc=1; next }
+    in_toc && /^<\/details>$/ { exit status }
+    !in_toc { next }
+
+    /^[[:space:]]*$/ { next }
+
+    {
+      line=$0
+      gsub(/&nbsp;/, " ", line)
+
+      if (line ~ /^[[:space:]]*[0-9]+,[[:space:]]*\[/) {
+        printf("ERROR: %s: Table of Contents entry uses a comma instead of a period: %s\n", file, $0) > "/dev/stderr"
+        status=1
+      }
+
+      if (line ~ /^[[:space:]]*\[[^]]*[0-9]/) {
+        if (line !~ /^[[:space:]]*\[[^]]*[0-9]+(\.[0-9]+)*\./) {
+          printf("ERROR: %s: numbered Table of Contents entry is malformed: %s\n", file, $0) > "/dev/stderr"
+          status=1
+        }
+      }
+
+      if (line ~ /^[[:space:]]*[0-9]/ && line !~ /^[[:space:]]*[0-9]+(\.[0-9]+)*\.[[:space:]]+\[/) {
+        printf("ERROR: %s: Table of Contents numbering syntax is malformed: %s\n", file, $0) > "/dev/stderr"
+        status=1
+      }
+    }
+    END { exit status }
+  ' "$file" || failures=1
+}
+
+check_summary_heading_alignment() {
+  local file=$1
+
+  awk -v file="$file" '
+    function normalize_summary(text, result) {
+      result=text
+      sub(/^<summary>/, "", result)
+      sub(/<\/summary>$/, "", result)
+      gsub(/&nbsp;/, "", result)
+      gsub(/<strong>/, "", result)
+      gsub(/<\/strong>/, "", result)
+      sub(/^([0-9]+(\.[0-9]+)+) /, "\\1. ", result)
+      sub(/^[[:space:]]+/, "", result)
+      sub(/[[:space:]]+$/, "", result)
+      return result
+    }
+
+    /^<summary>/ {
+      summary=normalize_summary($0)
+      if (summary == "License" || summary == "Preface" || summary == "Document Version History" || summary == "Table of Contents") {
+        pending=""
+        next
+      }
+      if (summary ~ /^[0-9]+(\.[0-9]+)*\./) {
+        pending=summary
+      } else {
+        pending=""
+      }
+      next
+    }
+
+    pending != "" && /^###[[:space:]]/ {
+      heading=$0
+      sub(/^###[[:space:]]+/, "", heading)
+      if (heading != pending) {
+        printf("ERROR: %s: summary/heading mismatch: %s != %s\n", file, pending, heading) > "/dev/stderr"
+        status=1
+      }
+      pending=""
+      next
+    }
+
+    pending != "" && /^##[[:space:]]/ {
+      heading=$0
+      sub(/^##[[:space:]]+/, "", heading)
+      if (heading != pending) {
+        printf("ERROR: %s: summary/heading mismatch: %s != %s\n", file, pending, heading) > "/dev/stderr"
+        status=1
+      }
+      pending=""
+      next
+    }
+    END { exit status }
+  ' "$file" || failures=1
+}
+
+check_file() {
+  local file=$1
+  local base
+  local summaries
+
+  base=$(basename "$file")
+
+  if ! front_matter "$file" | grep -qx '## Table of Contents'; then
+    fail "$file: missing Table of Contents heading in front matter"
+    return
+  fi
+
+  if ! front_matter "$file" | grep -qx 'SPDX-License-Identifier: MIT'; then
+    fail "$file: missing SPDX identifier before Table of Contents"
+  fi
+
+  if ! front_matter "$file" | grep -qx '#### Copyright (c) 2026 Paul Sinclair'; then
+    fail "$file: missing canonical copyright line before Table of Contents"
+  fi
+
+  summaries=$(summary_lines "$file")
+  if [[ "$summaries" != "$license_summary
+$preface_summary
+$dvh_summary
+$toc_summary" ]]; then
+    fail "$file: summary tags before Table of Contents do not match the canonical order/style"
+  fi
+
+  if [[ "$base" == "$overview_doc" ]]; then
+    check_overview_doc "$file"
+  else
+    check_standard_doc "$file"
+  fi
+
+  check_details_structure "$file"
+  check_heading_numbering "$file"
+  check_toc_syntax "$file"
+  check_summary_heading_alignment "$file"
+}
+
+reference_dvh=$(extract_dvh_block "$docs_dir/$overview_doc")
+
+while IFS= read -r file; do
+  check_file "$file"
+
+  if [[ $(extract_dvh_block "$file") != "$reference_dvh" ]]; then
+    fail "$file: Document Version History block differs from $overview_doc"
+  fi
+done < <(find "$docs_dir" -maxdepth 1 -type f -name '*.md' ! -name 'README.md' ! -name 'PRE_COMMIT_HOOKS.md' | sort)
+
+if [[ $failures -ne 0 ]]; then
+  exit "$EXIT_VALIDATION"
+fi
+
+echo 'Document canonical-form check passed.'

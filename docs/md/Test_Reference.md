@@ -7,9 +7,9 @@ comparison helpers.
 #### Copyright (c) 2026 Paul Sinclair
 
 <details>
-<summary>License</summary>
+<summary><strong>License</strong></summary>
 
-#### **License**
+### License
 
 SPDX-License-Identifier: MIT
 
@@ -37,14 +37,15 @@ SOFTWARE.
 
 ## Preface
 
-This document is intended for BriteTest users and contributors who need
-quick access to the definitions of terms used in BriteTest or to browse
-through the terms.
+This document is intended for users and contributors who need
+a reference for the Test API.
 
-For a list of other BriteTest documents and the BriteTest repository layout, see
+For a list of other documents and the repository layout, see
 the Documentation Guide.
 
 For a glossary of terms, see the Glossary Reference.
+
+A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
@@ -53,25 +54,20 @@ For a glossary of terms, see the Glossary Reference.
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
+| 1.0.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 
-- The **Document** column records the document's version with the
-  format `M.u` (Major, update).
-- The **Runner** column records the BriteTest Runner API version
-  current at the time this document version was published and is
-  defined by its `RA_RUNNER_VERSION` macro.
-- The **Test** column records the BriteTest Test API version current at
-  the time this document version was published and is defined by its
-  `RA_TEST_VERSION` macro.
-- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
-  patch).
-- `M` is the same for the Document, Runner, and Test versions.
+- The **Document** column records the document's version.
+- The **Runner** column records the Runner API version
+  current at the time this version of the document was published.
+- The **Test** column records the Test API version current at
+  the time this version of the document was published.
 
-The document's update version tracks released updates to this document and does
-not correspond to a minor or patch version. `u` increments when document
-changes are published in a release without a change to `M`, and it resets to
-`0` when `M` is incremented.
-</details>
+A version has the format `M.m.p` (Major, minor, patch) where `M` is the
+major version, `m` is the minor version, and `p` is the patch version.
+`p` increments when the document is updated without a change to `M` or `m`,
+and resets to 0 when `M` or `m` increases. The first table entry is the most
+recent version for this document at the time this document was published.
+</details><br>
 </details>
 
 <details>
@@ -81,19 +77,19 @@ changes are published in a release without a change to `M`, and it resets to
 
 1. [**Return Conventions**](#1-return-conventions)<br>
    1.1. [Return Styles](#11-return-styles)<br>
-   1.2 [Assertion Guidance](#12-assertion-guidance)
+   1.2. [Assertion Guidance](#12-assertion-guidance)
 
 2. [**Comparison Option Structs**](#2-comparison-option-structs)<br>
-   [2.1 ra_path_compare_options_t](#21-ra_path_compare_optionst)<br>
-   [2.2 ra_path_metadata_compare_options_t](#22-ra_path_metadata_compare_optionst)<br>
-   [2.3 ra_json_compare_options_t](#23-ra_json_compare_optionst)<br>
-   [2.4 ra_text_compare_options_t](#24-ra_text_compare_optionst)
+   2.1. [ra_path_compare_options_t](#21-ra_path_compare_optionst)<br>
+   2.2. [ra_path_metadata_compare_options_t](#22-ra_path_metadata_compare_optionst)<br>
+   2.3. [ra_json_compare_options_t](#23-ra_json_compare_optionst)<br>
+   2.4. [ra_text_compare_options_t](#24-ra_text_compare_optionst)
 
 3. [**Common Usage Patterns**](#3-common-usage-patterns)<br>
-   3.1 [Compare Two Paths While Ignoring Timestamps](#31-compare-two-paths-while-ignoring-timestamps)<br>
-   3.2 [Compare Path Metadata Including Modification Time](#32-compare-path-metadata-including-modification-time)<br>
-   3.3 [Compare JSON While Ignoring Object Key Order](#33-compare-json-while-ignoring-object-key-order)<br>
-   [3.4 Compare Text While Ignoring Whitespace and Line Endings](#34-compare-text-while-ignoring-whitespace-and-line-endings)
+   3.1. [Compare Two Paths While Ignoring Timestamps](#31-compare-two-paths-while-ignoring-timestamps)<br>
+   3.2. [Compare Path Metadata Including Modification Time](#32-compare-path-metadata-including-modification-time)<br>
+   3.3. [Compare JSON While Ignoring Object Key Order](#33-compare-json-while-ignoring-object-key-order)<br>
+   3.4. [Compare Text While Ignoring Whitespace and Line Endings](#34-compare-text-while-ignoring-whitespace-and-line-endings)
 
 4. [**Convenience Forms**](#4-convenience-forms)
 </details>
@@ -105,9 +101,9 @@ changes are published in a release without a change to `M`, and it resets to
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.1 Return Styles</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.1. Return Styles</summary>
 
-### 1.1 Return Styles
+### 1.1. Return Styles
 
 BriteTest test helpers use three return styles:
 
@@ -117,9 +113,9 @@ BriteTest test helpers use three return styles:
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.2 Assertion Guidance</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.2. Assertion Guidance</summary>
 
-### 1.2 Assertion Guidance
+### 1.2. Assertion Guidance
 
 Use the helper family to decide what to check:
 
@@ -137,9 +133,9 @@ The comparison helpers use small option structs instead of mixed boolean and fla
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1 `ra_path_compare_options_t`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1. `ra_path_compare_options_t`</summary>
 
-### 2.1 `ra_path_compare_options_t`
+### 2.1. `ra_path_compare_options_t`
 
 Used by `ta_compare_paths_with_options`.
 
@@ -165,9 +161,9 @@ Default initializer:
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.2 `ra_path_metadata_compare_options_t`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.2. `ra_path_metadata_compare_options_t`</summary>
 
-### 2.2 `ra_path_metadata_compare_options_t`
+### 2.2. `ra_path_metadata_compare_options_t`
 
 Used by `ta_compare_path_metadata`.
 
@@ -195,9 +191,9 @@ Passing `NULL` or the default initializer uses the common default metadata set: 
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.3 `ra_json_compare_options_t`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.3. `ra_json_compare_options_t`</summary>
 
-### 2.3 `ra_json_compare_options_t`
+### 2.3. `ra_json_compare_options_t`
 
 Used by `ta_compare_json_with_limit`.
 
@@ -218,9 +214,9 @@ Use `ignore_key_order` when semantic JSON equality matters more than source orde
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.4 `ra_text_compare_options_t`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.4. `ra_text_compare_options_t`</summary>
 
-### 2.4 `ra_text_compare_options_t`
+### 2.4. `ra_text_compare_options_t`
 
 Used by `ta_compare_text_normalized`.
 
@@ -245,9 +241,9 @@ Default initializer:
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1 Compare Two Paths While Ignoring Timestamps</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Compare Two Paths While Ignoring Timestamps</summary>
 
-### 3.1 Compare Two Paths While Ignoring Timestamps
+### 3.1. Compare Two Paths While Ignoring Timestamps
 
 ```c
 const ra_path_compare_options_t options = {
@@ -259,9 +255,9 @@ RA_ASSERT(ta_compare_paths_with_options(expected_path, actual_path, &options) ==
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.2 Compare Path Metadata Including Modification Time</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.2. Compare Path Metadata Including Modification Time</summary>
 
-### 3.2 Compare Path Metadata Including Modification Time
+### 3.2. Compare Path Metadata Including Modification Time
 
 ```c
 const ra_path_metadata_compare_options_t options = {
@@ -273,9 +269,9 @@ RA_ASSERT(ta_compare_path_metadata(left_path, right_path, &options) == RA_OK, 0)
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.3 Compare JSON While Ignoring Object Key Order</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.3. Compare JSON While Ignoring Object Key Order</summary>
 
-### 3.3 Compare JSON While Ignoring Object Key Order
+### 3.3. Compare JSON While Ignoring Object Key Order
 
 ```c
 const ra_json_compare_options_t options = {
@@ -288,9 +284,9 @@ RA_ASSERT(ta_compare_json_with_limit(expected_json, actual_json, &options) == RA
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.4 Compare Text While Ignoring Whitespace and Line Endings</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.4. Compare Text While Ignoring Whitespace and Line Endings</summary>
 
-### 3.4 Compare Text While Ignoring Whitespace and Line Endings
+### 3.4. Compare Text While Ignoring Whitespace and Line Endings
 
 ```c
 const ra_text_compare_options_t options = {

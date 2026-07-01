@@ -2,7 +2,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/BriteTest?display_name=tag)](https://github.com/paulsinclair51/BriteTest/releases)
 [![CI](https://github.com/paulsinclair51/BriteTest/actions/workflows/ci.yml/badge.svg)](https://github.com/paulsinclair51/BriteTest/actions/workflows/ci.yml)
 
-![BriteTest Logo](docs/branding/Logo_with_BrandName.png)
+![BriteTest Logo](../branding/Logo_with_BrandName.png)
 
 briteTest is a lightweight framework for defining, running, and
 reporting tests in C/C++ projects. It provides a compact macro‑based
@@ -14,9 +14,9 @@ of large toolchains or external dependencies.
 #### Copyright (c) 2026 Paul Sinclair
 
 <details>
-<summary>License</summary>
+<summary><strong>License</strong></summary>
 
-#### License
+### License
 
 SPDX-License-Identifier: MIT
 
@@ -40,7 +40,7 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>Preface</summary>
+<summary><strong>Preface</strong></summary>
 
 ## Preface
 
@@ -54,38 +54,33 @@ the Documentation Guide (`Documentation_Guide.md`).
 For a glossary of terms, see the Glossary Reference
 (`Glossary_Reference.md`).
 
-For a printer-friendly PDF file for this document, see `docs/pdf/briteTest.pdf`.
+A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 <details>
-<summary>Document Version History</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
 
 ### Document Version History
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
+| 1.0.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 
-- The **Document** column records the document's version with the
-  format `M.u` (Major, update).
+- The **Document** column records the document's version.
 - The **Runner** column records the Runner API version
-  current at the time this document version was published and is
-  defined by its `RA_VERSION` macro.
+  current at the time this version of the document was published.
 - The **Test** column records the Test API version current at
-  the time this document version was published and is defined by its
-  `RA_TEST_VERSION` macro.
-- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
-  patch).
-- `M` is the same for the Document, Runner, and Test versions.
+  the time this version of the document was published.
 
-The document's update version tracks released updates to this document and does
-not correspond to a minor or patch version. `u` increments when document
-changes are published in a release without a change to `M`, and it resets to
-`0` when `M` is incremented.
-</details>
+A version has the format `M.m.p` (Major, minor, patch) where `M` is the
+major version, `m` is the minor version, and `p` is the patch version.
+`p` increments when the document is updated without a change to `M` or `m`,
+and resets to 0 when `M` or `m` increases. The first table entry is the most
+recent version for this document at the time this document was published.
+</details><br>
 </details>
 
 <details>
-<summary>Table of Contents</summary>1.4.
+<summary><strong>Table of Contents</strong></summary>
 
 ## Table of Contents
 
@@ -96,13 +91,13 @@ changes are published in a release without a change to `M`, and it resets to
    1.4. [Installation](#14-installation)<br>
 
 2. [**Runner Framework and API**](#2-test-runner-framework-and-api)<br>
-   2.1.[What the Runner Framework and API Does](#21-what-the-runner-framework-and-api-does)<br>
+   2.1. [What the Runner Framework and API Does](#21-what-the-runner-framework-and-api-does)<br>
 
 3. [**Running Tests**](#3-running-tests)
 
 4. [**Report Generation**](#4-report-generation)
 
-5, [**Customization**](#5-customization)<br>
+5. [**Customization**](#5-customization)<br>
 
 6. [**Test Report**](#6-test-report)
 
@@ -124,13 +119,12 @@ changes are published in a release without a change to `M`, and it resets to
 </details>
 
 <details>
-
 <summary>1. Introduction</summary>
 
 ## 1. Introduction
 
 <details>
-<summary>1.1. Key Strengths</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.1. Key Strengths</summary>
 
 ### 1.1. Key Strengths
 
@@ -147,7 +141,7 @@ changes are published in a release without a change to `M`, and it resets to
 </details>
 
 <details>
-<summary>1.2. Quick Start</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.2. Quick Start</summary>
 
 ### 1.2. Quick Start
 
@@ -259,7 +253,7 @@ Test Report
 </details>
 
 <details>
-<summary>1.3. Requirements</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.3. Requirements</summary>
 
 ### 1.3. Requirements
 
@@ -267,7 +261,7 @@ Supported compilers, C standard level, and any platform notes.
 </details>
 
 <details>
-<summary>1.4. Installation</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.4. Installation</summary>
 
 ### 1.4. Installation
 
@@ -290,7 +284,7 @@ tests. Developers use this API to express expected behavior, group related
 tests, and define optional setup/teardown logic.
 
 <details>
-<summary>2.1. What the Runner Framework and API Does</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1. What the Runner Framework and API Does</summary>
 
 ### 2.1. What the Runner Framework and API Does
 
@@ -418,9 +412,9 @@ See the Test Reference for a complete list of helpers provided by the API.
 The following two sections provide examples of file and compare functions.
 
 <details>
-<summary>13.1 File Functions</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;13.1 File Functions</summary>
 
-### 13.1 File Function Examples
+### 13.1. File Functions Examples
 
 These helpers cover file and directory-related functions in the Test API.
 
@@ -432,9 +426,9 @@ Examples include:
 </details>
 
 <details>
-<summary>13.2 Compare Functions</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;13.2. Compare Functions</summary>
 
-### 13.2 Compare Function Examples
+### 13.2. Compare Functions
 
 These helpers cover comparison and matching functions in the Test API.
 

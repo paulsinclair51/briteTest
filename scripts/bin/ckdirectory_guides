@@ -1,16 +1,57 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
-# ckdirectory_guides
+# ckdirectory_guides - Validate canonical README.md directory guides
+#                      in repository subdirectories.
 #
-# Validate that each repository subdirectory has a README.md directory guide and that it
-# conforms to the guidelines. The README.md for the root is the project README.md file
-# (the root does not have README.md directory guide). For the repository layout, See the
-# docs/md/Documentation_Guide.md.
+# See usage below for details, or run: ckdirectory_guides -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
-# For license details, see LICENSE in the repository root.
+# For license details, see ./LICENSE.
+
+set -euo pipefail
+
+readonly EXIT_OK=0
+readonly EXIT_VALIDATION=1
+readonly EXIT_USAGE=2
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ckdirectory_guides
+  ckdirectory_guides -h
+  ckdirectory_guides --help
+
+Validate that repository subdirectories have canonical README.md
+directory guides.
+
+Checks include:
+  - required README.md presence in non-exempt directories
+  - heading format matching the directory path
+  - canonical copyright, SPDX, license, and root README lines
+  - required Files and Subdirectories sections
+  - Files section appearing before Subdirectories
+
+Exit codes:
+  0  Success, or help requested with -h/--help.
+  1  Validation failure.
+  2  Invalid command-line argument.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit "$EXIT_OK"
+      ;;
+    *)
+      echo "ERROR: unknown argument: $1" >&2
+      usage >&2
+      exit "$EXIT_USAGE"
+      ;;
+  esac
+done
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
@@ -36,24 +77,10 @@ is_exempt_dir() {
   return 1
 }
 
-relative_parent_prefix() {
-  local rel_dir="$1"
-  local depth
-  local prefix=""
-
-  if [[ -z "$rel_dir" ]]; then
-    echo ""
-    return 0
-  fi
-
-  depth="$(awk -F'/' '{print NF}' <<<"$rel_dir")"
-  for ((i = 0; i < depth; i++)); do
-    prefix+="../"
-  done
-  echo "$prefix"
-}
-
 failures=0
+
+expected_license_line='For license details, see `LICENSE` in the root directory.'
+expected_intro_line='See `README.md` in the root directory for an introduction to the project.'
 
 mapfile -t dirs < <(find . -type d -not -path './.git*' | sort)
 
@@ -73,10 +100,6 @@ for dir in "${dirs[@]}"; do
 
   rel_dir="${dir#./}"
   expected_heading="# ${rel_dir}/"
-  expected_prefix="$(relative_parent_prefix "$rel_dir")"
-  expected_license_line="For license details, see \`${expected_prefix}LICENSE\`."
-  expected_intro_line="See \`${expected_prefix}README.md\` for an introduction to BriteTest."
-
   heading_line="$(sed -n '1p' "$readme")"
 
   if [[ "$heading_line" != "$expected_heading" ]]; then
@@ -108,8 +131,21 @@ for dir in "${dirs[@]}"; do
     failures=$((failures + 1))
   fi
 
+  copyright_ln="$(grep -nE '^Copyright \(c\) [0-9]{4} .+' "$readme" | cut -d: -f1 | head -n1 || true)"
+  spdx_ln="$(grep -n '^SPDX-License-Identifier: MIT  *$' "$readme" | cut -d: -f1 | head -n1 || true)"
+  license_ln="$(grep -nFx "$expected_license_line" "$readme" | cut -d: -f1 | head -n1 || true)"
+  intro_ln="$(grep -nFx "$expected_intro_line" "$readme" | cut -d: -f1 | head -n1 || true)"
+
   files_ln="$(grep -n '^## Files$' "$readme" | cut -d: -f1 | head -n1 || true)"
   subdirs_ln="$(grep -n '^## Subdirectories$' "$readme" | cut -d: -f1 | head -n1 || true)"
+
+  if [[ -n "$copyright_ln" && -n "$spdx_ln" && -n "$license_ln" && -n "$intro_ln" ]]; then
+    if ! [[ "$copyright_ln" -lt "$spdx_ln" && "$spdx_ln" -lt "$license_ln" && "$license_ln" -lt "$intro_ln" ]]; then
+      echo "ERROR: '$readme' has canonical header order mismatch"
+      echo "  Expected order: Copyright, SPDX, license line, root README line"
+      failures=$((failures + 1))
+    fi
+  fi
 
   if [[ -z "$files_ln" ]]; then
     echo "ERROR: '$readme' missing '## Files' section"
@@ -130,8 +166,8 @@ done
 
 if [[ "$failures" -ne 0 ]]; then
   echo
-  echo "README directory format check failed with $failures issue(s)."
-  exit 1
+  echo "Directory guide canonical-form check failed with $failures issue(s)."
+  exit "$EXIT_VALIDATION"
 fi
 
-echo "README directory format check passed."
+echo "Directory guide canonical-form check passed."

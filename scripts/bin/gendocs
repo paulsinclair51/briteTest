@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
 
-# gendocs
+# gendocs - Generate 'pdf' files from '.md' files and 'docx' files 
+#           from '.pdf' files. See usage below for details, or run:
 #
-# Generate 'pdf' files from '.md' files and 'docx' files 
-# from '.pdf' files. See usage below for details, or run:
-#
-#  gendocs -h
+# See usage below for details, or run: gendocs -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
+
+set -Eeuo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 genpdf_script="$repo_root/scripts/helpers/genpdf.sh"

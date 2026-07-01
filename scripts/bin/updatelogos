@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+
+# updatelogos - Update branding assets and propagate brand phrase replacements.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
 """
 Update .svg files in docs/branding with brand abbreviation replacements,
 then regenerate the corresponding PNG files, and update markdown documentation.

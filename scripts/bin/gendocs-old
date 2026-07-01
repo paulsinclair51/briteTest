@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
-# gendocs
+# gendocs-old - Legacy gendocs workflow for markdown-to-PDF and PDF-to-DOCX generation.
 #
 # Generate 'pdf' files from '.md' files and 'docx' files 
 # from '.pdf' files. See usage below for details, or run:
@@ -11,6 +10,8 @@ set -euo pipefail
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
+
+set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 genpdf_script="$repo_root/scripts/bin/genpdf"

@@ -2,6 +2,8 @@
 
 # mkpullrequest - Create or update pull request on GitHub.
 #
+# See usage below for details, or run: mkpullrequest -h
+#
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.

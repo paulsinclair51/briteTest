@@ -14,7 +14,12 @@ segment_glob=0
 declare -a include_patterns=()
 declare -a exclude_patterns=()
 
-log_info() { [[ $quiet -eq 0 ]] && echo "$1"; }
+log_info() {
+  if [[ $quiet -eq 0 ]]; then
+    echo "$1"
+  fi
+  return 0
+}
 log_debug() { [[ $verbose -eq 1 ]] && echo "Debug: $1" >&2; }
 log_error() { echo "Error: $1" >&2; }
 

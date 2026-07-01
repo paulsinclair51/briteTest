@@ -54,6 +54,9 @@ jobs:
       - name: Validate major release consistency
         run: ./scripts/bin/ckversions
 
+      - name: Validate docs canonical form
+        run: make check-doc
+
       - name: Install PDF generation dependency
         run: |
           sudo apt-get update

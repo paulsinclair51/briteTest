@@ -1,4 +1,4 @@
-![Documentation Guide](branding/Documentation_Guide.png)
+![Documentation Guide](../branding/Documentation_Guide.png)
 
 This document is a guide to the BriteTest documentation and
 repository layout.
@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 </details>
 
 <details>
-<summary>VPreface</strong></summary>
+<summary><strong>Preface</strong></summary>
 
 ## Preface
 
@@ -43,30 +43,25 @@ a guide to the documentation and repository layout.
 A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 <details>
-<summary>Document Version History</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
  
 ### Document Version History
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+| 1.0.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 
-- The **Document** column records the document's version with the
-  format `M.u` (Major, update).
+- The **Document** column records the document's version.
 - The **Runner** column records the Runner API version
-  current when this document was released and is
-  defined by its `RA_VERSION` macro.
-- The **Test** column records the Test API version current
-  when this document was released and is defined by its
-  `TA_VERSION` macro.
-- Both the Runner API and Test API use the version format `"M.m.p"` (Major, minor,
-  patch).
-- `M` is the same for the Document, Runner, and Test versions.
+  current at the time this version of the document was published.
+- The **Test** column records the Test API version current at
+  the time this version of the document was published.
 
-The document's update version tracks released updates to this document and does
-not correspond to a minor or patch version. `u` increments when document
-changes are released without a change to `M`, and it resets to
-`0` when `M` is incremented.
+A version has the format `M.m.p` (Major, minor, patch) where `M` is the
+major version, `m` is the minor version, and `p` is the patch version.
+`p` increments when the document is updated without a change to `M` or `m`,
+and resets to 0 when `M` or `m` increases. The first table entry is the most
+recent version for this document at the time this document was published.
 </details><br>
 </details>
 
@@ -190,10 +185,9 @@ include/                # Public API `.h` headers.
     testapi.h           # Declare Test API
 reports/                # Generated report files.
 scripts/                # Automation script assets.
-    bin/                # Scripts (e.g., gendocs, mkbranch)
+    bin/                # Scripts (e.g., gendocs, mkbranch).
     helpers/            # Helper scripts for bin/scripts/*.
-    genpdf
-    test_genpdf.sh
+    tests/              # Test scripts for testing bin/scripts.
 src/                    # API `.c` sources.
     runnerapi.c         # Definition of Runner API.
     testapi.c           # Definition of Test API.

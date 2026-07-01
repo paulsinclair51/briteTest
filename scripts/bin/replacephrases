@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
+
+# replacephrases - Wrapper for phrase replacement processing in documents.
 #
-# Wrapper script to invoke the phrase replacement script
+# See usage below for details, or run: replacephrases -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
