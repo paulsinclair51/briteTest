@@ -57,19 +57,19 @@ install_if_different() {
 
 usage() {
   cat <<'EOF'
-Primary Usage:
+Simple Usage:
   gendocs
 
 Generates a .pdf file in repository root docs/pdf/ from each .md file
 (except README.md) in docs/md/ and a .docx file in docs/docx/ from the
 .pdf if the .md file has changed since the last generation of the .pdf
 file. When converting an .md file to a .pdf file, <details>/<summary>
-content is skipped and not converted for the .pdf file. 
+lines are skipped and not converted for the .pdf file. 
 
-Advanced Usage:
-  gendocs [<options>] [<document>[.md] [<pdf_dir> <docx_dir>]
-  gendocs [<options>] -p [<document>[.md] [<pdf_dir>]
-  gendocs [<options>] -d [<document>[.md|.pdf] [<docx_dir>]
+Complete Usage (includes the simple usage case):
+  gendocs [<options>] [<document>[.md]] [<pdf_dir> <docx_dir>]
+  gendocs [<options>] -p [<document>[.md]] [<pdf_dir>]
+  gendocs [<options>] -d [<document>[.md|.pdf]] [<docx_dir>]
   gendocs -h | --help
 
 Generates PDF documents from Markdown sources, and DOCX documents from a
@@ -129,7 +129,7 @@ Options:
 Arguments:
   <document>[.md|.pdf]: Optional specification of source file(s):
     - If not specified, default is repository root docs/md/*.md.
-    - Default extension is '.md' and '.pdf' is only allowed if option '-p' is
+    - Default extension is '.md' and '.pdf' is only allowed if option '-d' is
       specified.
     - If  '.pdf' is specified, <source> is <document>.pdf; otherwise, <source>
       is <document>.md 
@@ -163,16 +163,16 @@ Exit Codes:
   1  Usage error or generation/conversion failure.
 
 Examples:
-  gendocx docs/pdf/briteTest.pdf
-  gendocx docs/pdf/briteTest.pdf docs/docx/briteTest
-  gendocx docs/pdf docs/docx
-
-Examples:
-  genpdf docs/md/briteTest.md
-  genpdf docs/md/Documentation_Guide
-  genpdf docs/md/Documentation_Guide.md docs/My_Documentation_Guide
-  genpdf docs/md
-  genpdf docs build
+  gendocs
+  gendocs -f
+  gendocs docs/md/briteTest.md
+  gendocs Documentation_Guide
+  gendocs -p docs/md
+  gendocs -d docs/pdf
+  gendocs -d docs/pdf/briteTest.pdf docs/docx
+  gendocs docs/md build/pdf build/docx
+  gendocs '*.md'
+  gendocs -d '*.pdf'
 EOF
 }
 
