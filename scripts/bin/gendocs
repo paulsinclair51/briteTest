@@ -125,7 +125,7 @@ Options:
       quiet mode when successful.
   -r  When the source is a directory, include matching source files
       in all subdirectories (except README.md files). Default is only
-      files directly in that directory).
+      files directly in that directory.
   -t  Tool check: report available conversion toolchains and exit.
   -v  Verbose mode: print backend diagnostics to stderr.
   -x  Exclude files whose relative path matches "<pattern>".
@@ -141,8 +141,8 @@ Arguments:
       - <absolute-relative filepath> for an existing file.
       - <absolute-relative directorypath/>*.md where
         <absolute-relative directorypath/> contains one or more .md
-        files other than a README.md file. A .pdf and .docx file are
-        not generated for a REAMDE.md file in this case.
+        files other than a README.md file. A README.md is excluded;
+        no .pdf or .docx file is generated for it.
       - <absolute-relative directorypath/>*.pdf where
         <absolute-relative directorypath/> contains one or more
         '.pdf' files.
@@ -163,9 +163,10 @@ Arguments:
             
 Notes:
   - Change detection for a source '.md' in repository root
-    docs/md/ uses a line count, a character count, and an
-    SHA-256 fingerprint of the .md file and stores this
-    metadata in repository root docs/md/.md_metadata.
+    docs/md/ uses the file name with the file's line count,
+    character count, and SHA-256 fingerprint and stores this
+    metadata in repository root docs/md/.md_metadata with
+    a line for each file.
 
 Exit Codes:
   0  Success.
