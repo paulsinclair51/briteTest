@@ -40,10 +40,4 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Subdirectories
 
-- **branding/**: .
-
-- **docx/**: Microsoft Word `.docx` formatted files generated from `.md` files.
-
-- **md/**: .
-
-- **pdf/**: PDF formatted `.pdf` files generated from `.md` files.
+- None.
