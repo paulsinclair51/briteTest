@@ -10,6 +10,9 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Files
 
+- **briteTest.md**: an introduction to the project. `README.md` in
+  the root directory is a link to this file.
+
 - **Contributor_Guide.md**: Contributor process and standards.
 
 - **Documentation_Guide.md**: Index of documents and the project
