@@ -61,11 +61,12 @@ Simple Usage:
   gendocs
 
 Generates a .pdf file in repository root docs/pdf/ from each
-.md file (except README.md) in docs/md/ and a .docx file in
-docs/docx/ from the .pdf if the .md file has changed since
-the last generation of the .pdf file. When converting an .md
-file to a .pdf file, <details>/<summary> lines are skipped
-and not converted for the .pdf file. 
+.md file (except README.md) in repository root docs/md/ and
+a .docx file in repository root docs/docx/ from the .pdf if
+the .md file has changed since the last generation of the
+.pdf file. When converting an .md file to a .pdf file,
+<details>/<summary> lines are skipped and not converted for
+the .pdf file. 
 
 Complete Usage (includes the simple usage case):
   gendocs [<options>] [<document>[.md]] [<pdf_dir> <docx_dir>]
@@ -103,28 +104,28 @@ Option values:
              where * and ? do not match '/'. Use the -g option to enable
              * and ? not matching '/'.
 Options:
-  -f  Force regeneration even if the source is in docs/md/ and has not
-      changed since the last time its .pdf was generated.
+  -f  Force regeneration even if the source is in docs/md/ and has
+      not changed since the last time its .pdf was generated.
   -b  Force conversion backend instead of auto-detecting.
       Useful for diagnostics and testing.
   -c  Convert details/summary lines to PDF-friendly form instead of
       removing details/summary lines. Default is to remove them.
-  -d  Output only .docx files. If sources are .md files, the .pdf is
-      generated as a temp file. The temp files is discarded after
-      generating the .docx file.
+  -d  Output only .docx files. If source is .md, a temporary .pdf
+      is generated for intermediate conversion and then discarded.
   -g  Use segment-style glob matching for -i/-x patterns:
       * and ? do not match '/'; ** matches across '/'.
   -h, --help  Output this help to stdout and exit.
   -i  Include only files whose relative path matches "<pattern>".
   -k  Keep directory structure under output directory (useful with -r).
   -n  Show planned conversions without writing output files.
-  -p  Output only .pdf files. A temp .docx file is generated from a .pdf;
-      the tempfile is discarded.
+  -p  Output only .pdf files. For validation, a temporary .docx is
+      also generated from each .pdf and then discarded..
   -q  Quiet mode: suppress informational messages to stdout. Help and
       diagnostics are not affected. There is no output to stdout in
       quiet mode when successful.
-  -r  When input is a directory, include .pdf files in all subdirectories
-      (default: only .pdf files directly in that directory).
+  -r  When input is a directory, convert .md (except README.md files
+      in all subdirectories (default: only .md files directly in that
+      directory).
   -t  Tool check: report available conversion toolchains and exit.
   -v  Verbose mode: print backend diagnostics to stderr.
   -x  Exclude files whose relative path matches "<pattern>".
@@ -140,7 +141,7 @@ Arguments:
       - <absolute-relative filepath> for an existing file.
       - <absolute-relative directorypath/>*.md where
         <absolute-relative directorypath/> contains one or more '.md'
-        files other than a README.md file (a .pdf and .docx fle are
+        files other than a README.md file (a .pdf and .docx file are
         not generated for this file).
       - <absolute-relative directorypath/>*.pdf where
         <absolute-relative directorypath/> contains one or more
@@ -156,14 +157,14 @@ Arguments:
              Default is repository root docs/pdf/ if source files are
              from docs/md/ and, otherwise, ./ (current directory).
   <docx_dir> Optional output directory for the generated '.docx' files. 
-             Default is docs/docx/ if source files are from repository
-             root docs/md/ or docs/pdf/ and, otherwise, ./ (current
-             directory).
+             Default is repositorty root docs/docx/ if source files are
+             from repository root docs/md/ or docs/pdf/ and, otherwise,
+             ./ (current directory).
             
 Notes:
   - Change detection for a source '.md' in docs/md/ uses a line
-    count, character count, and SHA-256 fingerprint of the .md
-    file and stores this metadata in docs/md/.md_metadata.
+    count, a character count, and an SHA-256 fingerprint of the
+    .md file and stores this metadata in docs/md/.md_metadata.
 
 Exit Codes:
   0  Success.
