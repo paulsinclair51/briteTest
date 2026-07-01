@@ -6,9 +6,11 @@ and API. It complements the Runner Internal Reference.
 #### Copyright (c) 2026 Paul Sinclair
 
 <details>
-<summary>License</summary>
+<summary><strong>License</strong></summary>
 
-#### **License**
+### License
+
+SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -30,11 +32,12 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>Preface</summary>
+<summary><strong>Preface</strong></summary>
 
 ## Preface
 
-This document is for contributors.
+This document is intended for contributors who need guidance for the
+internals of the Runner Framework and API.
 
 For a list of other documents and the repository layout, see
 the Documentation Guide (`Documentation_Guide.md`).
@@ -42,38 +45,34 @@ the Documentation Guide (`Documentation_Guide.md`).
 For a glossary of terms, see the Glossary Reference
 (`Glossary_Reference.md`).
 
-A printer-friendly PDF file for this document is available in `docs/pdf/`,
+A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 <details>
-<summary>Document Version History</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
 
 ### Document Version History
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0 |1.0.0 | 1.0.0 | 2026‑06‑11 |  Initial version. | Paul Sinclair |
+| 1.0.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 
-- The **Document** column records the document's version with the
-  format `M.u` (Major, update).
+- The **Document** column records the document's version.
 - The **Runner** column records the Runner API version
-  current at the time this document version was published and is
-  defined by its `RA_VERSION` macro.
+  current at the time this version of the document was published.
 - The **Test** column records the Test API version current at
-  the time this document version was published and is defined by its
-  `TA_VERSION` macro.
-- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
-  patch).
-- `M` is the same for the Document, Runner, and Test versions.
+  the time this version of the document was published.
 
-The document's update version tracks released updates to this document and does
-not correspond to a minor or patch version. `u` increments when document
-changes are published in a release without a change to `M`, and it resets to
-`0` when `M` is incremented.
+A version has the format `M.m.p` (Major, minor, patch) where `M` is the
+major version, `m` is the minor version, and `p` is the patch version.
+`p` increments when the document is updated without a change to `M` or `m`,
+and resets to 0 when `M` or `m` increases. The first table entry is the most
+recent version for this document at the time this document was published.
+</details><br>
 </details>
-</details>
+
 
 <details>
-<summary>Table of Contents</summary>
+<summary><strong>Table of Contents</strong></summary>
 
 ## Table of Contents
 
@@ -109,9 +108,9 @@ usage. Contributors may modify these symbols as needed, provided the public API
 contract remains intact.
 
 <details>
-<summary>1.1 Public and Internal Naming Conventions</summary>
+<summary>1.1. Public and Internal Naming Conventions</summary>
 
-### 1.1 Public and Internal Naming Conventions
+### 1.1. Public and Internal Naming Conventions
 
 Any Runner API names that are public and visible to Runner API users are prefixed
 with `ra_...` (typically lowercase) or `RA_...` (typically uppercase).

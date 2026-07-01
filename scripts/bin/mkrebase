@@ -2,6 +2,8 @@
 
 # mkrebase - Rebase current branch onto a different base branch.
 #
+# See usage below for details, or run: mkrebase -h
+#
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.

@@ -1,5 +1,52 @@
 #!/usr/bin/env bash
+
+# ckversions - Validate major.minor version consistency across docs,
+#              headers, and sources.
+#
+# See usage below for details, or run: ckversions -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
 set -euo pipefail
+
+readonly EXIT_OK=0
+readonly EXIT_VALIDATION=1
+readonly EXIT_USAGE=2
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ckversions
+  ckversions -h
+  ckversions --help
+
+Validate that the major and minor release versions are consistent across:
+  - docs/md/*.md (excluding docs/md/README.md)
+  - include/*.h
+  - src/*.c
+
+Exit codes:
+  0  Success, or help requested with -h/--help.
+  1  Validation failure.
+  2  Invalid command-line argument.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "ERROR: unknown argument: $1" >&2
+      usage >&2
+      exit "$EXIT_USAGE"
+      ;;
+  esac
+done
 
 # Validate that major and minor versions are consistent across:
 # - docs/md/*.md (excluding docs/md/README.md)
@@ -24,6 +71,11 @@ extract_semver() {
 extract_major() {
   local semver="$1"
   printf '%s\n' "${semver%%.*}"
+}
+
+extract_major_minor() {
+  local semver="$1"
+  printf '%s\n' "${semver%.*}"
 }
 
 doc_major() {
@@ -64,7 +116,7 @@ source_major() {
     return 0
   fi
 
-  include_line="$(grep -E '^#[[:space:]]*include[[:space:]]+"britetest_(runner|test)\.h"' "$file" | head -n 1 || true)"
+  include_line="$(grep -E '^#[[:space:]]*include[[:space:]]+"(britetest_(runner|test)|runnerapi|testapi)\.h"' "$file" | head -n 1 || true)"
 
   if [[ "$include_line" == *'"runnerapi.h"'* ]]; then
     semver="$(header_major "include/runnerapi.h")"
@@ -79,30 +131,34 @@ source_major() {
 
 failures=0
 expected_major=""
+expected_major_minor=""
 
 record_and_check() {
   local file="$1"
   local semver="$2"
   local major
+  local major_minor
 
   if [[ -z "$semver" ]]; then
-    echo "ERROR: Could not find semantic version in '$file'"
+    echo "ERROR: Could not find semantic version in '$file'" >&2
     failures=$((failures + 1))
     return
   fi
 
   major="$(extract_major "$semver")"
+  major_minor="$(extract_major_minor "$semver")"
 
-  if [[ -z "$expected_major" ]]; then
+  if [[ -z "$expected_major_minor" ]]; then
     expected_major="$major"
-    echo "Reference major release: $expected_major (from $file: $semver)"
+    expected_major_minor="$major_minor"
+    echo "Reference major.minor release: $expected_major_minor (from $file: $semver)"
     return
   fi
 
-  if [[ "$major" != "$expected_major" ]]; then
-    echo "ERROR: Major release mismatch in '$file'"
-    echo "  Found:    $semver (major $major)"
-    echo "  Expected: major $expected_major"
+  if [[ "$major_minor" != "$expected_major_minor" ]]; then
+    echo "ERROR: Major.minor release mismatch in '$file'" >&2
+    echo "  Found:    $semver (major.minor $major_minor)" >&2
+    echo "  Expected: major.minor $expected_major_minor" >&2
     failures=$((failures + 1))
   fi
 }
@@ -124,9 +180,9 @@ while IFS= read -r file; do
 done < <(find src -maxdepth 1 -type f -name '*.c' | sort)
 
 if [[ "$failures" -ne 0 ]]; then
-  echo
-  echo "Major release consistency check failed with $failures issue(s)."
-  exit 1
+  echo >&2
+  echo "Major.minor release consistency check failed with $failures issue(s)." >&2
+  exit "$EXIT_VALIDATION"
 fi
 
-echo "Major release consistency check passed."
+echo "Major.minor release consistency check passed."

@@ -7,9 +7,9 @@ provides a reference to Runner Framework concepts.
 #### Copyright (c) 2026 Paul Sinclair
 
 <details>
-<summary>License</summary>
+<summary><strong>License</strong></summary>
 
-#### **License**
+### License
 
 SPDX-License-Identifier: MIT
 
@@ -33,49 +33,46 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>Preface</summary>
+<summary><strong>Preface</strong></summary>
 
 ## Preface
 
-This document is intended for BriteTest user and contributors who need
-a reference for the BriteTest Runner framework and API.
+This document is intended for users and contributors who need
+a reference for the Runner Framework and API.
 
-For a list of other BriteTest documents and the repository layout, see
+For a list of other documents and the repository layout, see
 the Documentation Guide (`Documentation_Guide.md`).
 
 For a glossary of terms, see the Glossary Reference
 (`Glossary_Reference.md`).
 
+A printer-friendly PDF file for this document is available in `docs/pdf/`.
+
 <details>
-<summary>Document Version History</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
 
 ### Document Version History
 
-| Document  | Runner | Test  | Date       | Comment           | Author/Editor |
-|-----------|--------|-------|------------|-------------------|---------------|
-| 1.0       | 1.0.0  | 1.0.0 | 2026‑06‑11 | Initial version.  | Paul Sinclair |
+| Document | Runner | Test | Date | Comment | Author/Editor |
+|----------|------|--------|------|---------|---------------|
+| 1.0.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 
-- The **Document** column records the document's version with the
-  format `M.u` (Major, update).
+- The **Document** column records the document's version.
 - The **Runner** column records the Runner API version
-  current at the time this document version was published and is
-  defined by its `RA_RUNNER_VERSION` macro.
+  current at the time this version of the document was published.
 - The **Test** column records the Test API version current at
-  the time this document version was published and is defined by its
-  `RA_TEST_VERSION` macro.
-- Both Runner and Test use the version format `"M.m.p"` (Major, minor,
-  patch).
-- `M` is the same for the Document, Runner, and Test versions.
+  the time this version of the document was published.
 
-The document's update version tracks released updates to this document and does
-not correspond to a minor or patch version. `u` increments when document
-changes are published in a release without a change to `M`, and it resets to
-`0` when `M` is incremented.
-</details>
+A version has the format `M.m.p` (Major, minor, patch) where `M` is the
+major version, `m` is the minor version, and `p` is the patch version.
+`p` increments when the document is updated without a change to `M` or `m`,
+and resets to 0 when `M` or `m` increases. The first table entry is the most
+recent version for this document at the time this document was published.
+</details><br>
 </details>
 
 <details>
-<summary>Table of Contents</summary>
+<summary><strong>Table of Contents</strong></summary>
 
 ## Table of Contents
 
@@ -83,10 +80,10 @@ changes are published in a release without a change to `M`, and it resets to
 
 2. [**Types**](#2-types)<br>
    2.1. [**ra_result_t**](#21-ra_result_t)<br>
-   2.2.[**ra_state_t**](#22-ra_state_t)
+   2.2. [**ra_state_t**](#22-ra_state_t)
 
 3. [**Enums**](#3-enums)<br>
-   3,1. [**ra_exit_code_t**](#31-ra_exit_code_t)<br>
+   3.1. [**ra_exit_code_t**](#31-ra_exit_code_t)<br>
    3.2. [**ra_return_code_t**](#32-ra_return_code_t)
 
 4. [**Macros for Limits**](#4-macros-for-limits)<br>
@@ -539,7 +536,7 @@ and a forward-reference to the test group function.
 </details>
 
 <details>
-<summary>7. Macros to Execute a Test Group or Test</summary>
+<summary>7. Macros to Execute a Test Group or a Test</summary>
 
 ## 7. Macros to Execute a Test Group or a Test
 
@@ -824,7 +821,7 @@ Note: Use `ra_set_usage()` and/or `ra_set_help()` to define the help text.
 </details>
 
 <details>
-<summary>10.3. `int ra_print_note(const char *notes)`</summary>
+<summary>11.2. `int ra_print_note(const char *notes)`</summary>
 
 ### 11.2. `int ra_print_note(const char *notes)`
 
@@ -944,7 +941,7 @@ test output.
 <details>
 <summary>13.1. Output Files</summary>
 
-## 13.1. Output Files
+### 13.1. Output Files
 
 A oopy of a named output file is captured to `tests/output/` :
 - If the output file name has the form <name>.<ext>, the `tests/output/` file is named
@@ -974,9 +971,9 @@ An output file and its metadata file in `tests/output/` may be copied (promoted)
 </details>
 
 <details>
-<summary>13.1. Golden Files</summary>
+<summary>13.2. Golden Files</summary>
 
-## 13.2. Golden Files
+### 13.2. Golden Files
 
 A metadata golden file having a name with the form <name>.<ext> applies to all
 golden files named <name>-<uid>.ext and can be added manually or by customization
@@ -1035,5 +1032,5 @@ the common problems found in extension‑based naming schemes:
   Developers do not need to remember naming conventions or extension‑replacement
   rules. Golden files simply live in a parallel directory and share the same
   name as the output they validate.
-  </details>
-  </details>
+</details>
+</details>

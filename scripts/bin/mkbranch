@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
-# mkbranch - Create a new branch from a base branch and optionally push to remote.
+# mkbranch - Create a new branch from a base branch and
+#            optionally push to remote.
+#
+# See usage below for details, or run: mkbranch -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
