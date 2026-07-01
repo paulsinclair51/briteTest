@@ -8,11 +8,10 @@ For license details, see `LICENSE` in the root directory.
 
 See `README.md` in the root directory for an introduction to the project.
 
-`pdf` files can be generated from `.md` files using `../../scripts/bin/genpdf`.
-
 ## Files
 
-- ***.pdf**: Markdown `.pdf` files generated from the `docs/md/*.md` files.
+- ***.pdf**: `.pdf` files generated from the `docs/md/*.md` files using
+  `../../scripts/bin/gendocs`.
 
 - **README.md**: This directory guide.
 
