@@ -72,8 +72,8 @@ Complete Usage (includes the simple usage case):
   gendocs [<options>] -d [<document>[.md|.pdf]] [<docx_dir>]
   gendocs -h | --help
 
-Generates PDF documents from Markdown sources, and DOCX documents from a
-PDF document generated from a Markdown source or from PDF document source.
+Generates .pdf files from .md source files, and .docx files from
+.pdf files generated from .md source files, or from .pdf source files.
 
 By default, when the source is in repository root docs/md/, the document
 is only regenerated if the source Markdown has changed. Use the -f option
@@ -113,13 +113,13 @@ Options:
       * and ? do not match '/'; ** matches across '/'.
   -h, --help  Output this help to stdout and exit.
   -i  Include only files whose relative path matches "<pattern>".
-  -k  Keep directory structure under outdirectory (useful with -r).
+  -k  Keep directory structure under output directory (useful with -r).
   -n  Show planned conversions without writing output files.
   -p  Output only .pdf files. A temp .docx file is generated from a .pdf;
       the tempfile is discarded.
   -q  Quiet mode: suppress informational messages to stdout. Help and
-      diagnostics are not affected. There is no output to stdout in quiet mode
-      when successful.
+      diagnostics are not affected. There is no output to stdout in
+      quiet mode when successful.
   -r  When input is a directory, include .pdf files in all subdirectories
       (default: only .pdf files directly in that directory).
   -t  Tool check: report available conversion toolchains and exit.
@@ -131,7 +131,7 @@ Arguments:
     - If not specified, default is repository root docs/md/*.md.
     - Default extension is '.md' and '.pdf' is only allowed if option '-d' is
       specified.
-    - If  '.pdf' is specified, <source> is <document>.pdf; otherwise, <source>
+    - If '.pdf' is specified, <source> is <document>.pdf; otherwise, <source>
       is <document>.md 
     - <source> must be one of the following:
       - <absolute-relative filepath> for an existing file.
