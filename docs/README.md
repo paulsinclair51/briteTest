@@ -19,6 +19,6 @@ See `README.md` in the root directory for an introduction to the project.
 
 - **docx/**: Microsoft Word `*.docx` files generated from the `docs/pdf/*.pdf` files.
 
-- **md/**: Markdown `*.md` files (base documentation).
+- **md/**: Markdown `*.md` files (base/master documentation).
 
 - **pdf/**: PDF formatted `.pdf` files generated from the `docs/md/*.md` files.
