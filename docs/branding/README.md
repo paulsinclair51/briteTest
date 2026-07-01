@@ -31,8 +31,8 @@ See `README.md` in the root directory for an introduction to the project.
 
 - **README.md**: This directory guide.
 
-Note: The root `README.md` uses the `Logo_with_Brandname.png` generated from
-`Logo_with_BrandName.svg`.
+Note: The root `README.md` is a link to docs/md/<brandname>.md that uses
+the `Logo_with_Brandname.png` generated from Logo_with_BrandName.svg`.
 
 ## Subdirectories
 
