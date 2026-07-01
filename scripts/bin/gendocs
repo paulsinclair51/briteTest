@@ -112,6 +112,138 @@ Exit Codes:
 EOF
 }
 
+usage() {
+  cat <<'EOF'
+Usage:
+  gendocx [<doc_options>] <document>[.pdf] [<outdocument>[.docx]]
+  gendocx [<dir_options>] <indirectory> [<outdirectory>]
+  gendocx [<dir_options>]
+  gendocx -t
+  gendocx -h | --help
+
+The third form is the same as: gendocx [<dir_options>] ./
+
+<doc_options>:
+  [-b <backend>] [-n] [-p] [-q] [-s] [-v]
+
+<dir_options>:
+  [-b <backend>] [-g] [-k] [-n] [-p] [-q] [-r] [-s] [-v]
+  [-i "<pattern>"]... [-x "<pattern>"]...
+
+Option values:
+  <backend>  Conversion backend: auto, python, libreoffice
+  <pattern>  Bash glob pattern for relative paths:
+             - * or ** matches any characters, including '/'
+             - ? matches one character, including '/'
+             - [abc] matches one character from a set/range
+             - any other character matches itself
+             Note: this differs from common path-segment glob expectations,
+             where * and ? do not match '/'. Use the -g option to enable
+             * and ? not matching '/'.
+
+Options:
+  -b  Force conversion backend instead of auto-detecting.
+      Useful for diagnostics and testing.
+  -g  Use segment-style glob matching for -i/-x patterns:
+      * and ? do not match '/'; ** matches across '/'.
+  -h, --help  Output this help to stdout and exit.
+  -i  Include only files whose relative path matches "<pattern>".
+  -k  Keep directory structure under outdirectory (useful with -r).
+  -n  Show planned conversions without writing output files.
+  -p  Permissive: disable strict extension checks.
+  -q  Quiet mode: suppress informational messages to stdout. Help and
+      diagnostics are not affected. There is no output to stdout in quiet mode
+      when successful.
+  -r  When input is a directory, include .pdf files in all subdirectories
+      (default: only .pdf files directly in that directory).
+  -s  Strict: Require explicit input/output extensions (when provided) to be
+      .pdf and .docx respectively.
+  -t  Tool check: report available conversion toolchains and exit.
+  -v  Verbose mode: print backend diagnostics to stderr.
+  -x  Exclude files whose relative path matches "<pattern>".
+
+Environment:
+  GENDOCX_STRICT  Default strict-mode setting when flags are not provided.
+                  Strict:     1, true, yes, on
+                  Permissive: 0, false, no, off
+                  Otherwise:  Raises an error.
+
+Converts PDF files to DOCX.
+
+Examples:
+  gendocx docs/pdf/briteTest.pdf
+  gendocx docs/pdf/briteTest.pdf docs/docx/briteTest
+  gendocx docs/pdf docs/docx
+
+*************
+
+Usage:
+  genpdf [<doc_options>] <document>[.md] [<outdocument>[.pdf]]
+  genpdf [<dir_options>] <indirectory> [<outdirectory>]
+  genpdf [<dir_options>]
+  genpdf -t
+  genpdf -h | --help
+
+The third form is the same as: genpdf [<dir_options>] ./
+
+<doc_options>:
+  [-b <backend>] [-c] [-n] [-p] [-q] [-s] [-v]
+
+<dir_options>:
+  [-b <backend>] [-c] [-g] [-k] [-n] [-p] [-q] [-r] [-s] [-v]
+  [-i "<pattern>"]... [-x "<pattern>"]...
+
+Option values:
+  <backend>  Conversion backend: auto, pandoc, wkhtmltopdf, weasyprint
+  <pattern>  Bash glob pattern for relative paths:
+             - * or ** matches any characters, including '/'
+             - ? matches one character, including '/'
+             - [abc] matches one character from a set/range
+             - any other character matches itself
+             Note: this differs from common path-segment glob expectations,
+             where * and ? do not match '/'. Use the -g option to enable
+             * and ? not matching '/'.
+
+Options:
+  -b  Force conversion backend instead of auto-detecting.
+      Useful for diagnostics and testing.
+  -c  Convert details/summary blocks to PDF-friendly Markdown instead of
+      removing details/summary tag lines. Default is to remove them.
+  -h, --help  Output this help to stdout and exit.
+  -g  Use segment-style glob matching for -i/-x patterns:
+      * and ? do not match '/'; ** matches across '/'.
+  -i  Include only files whose relative path matches "<pattern>".
+  -k  Keep directory structure under outdirectory (useful with -r).
+  -n  Show planned conversions without writing output files.
+  -p  Permissive: disable strict extension checks.
+  -q  Quiet mode: suppress informational messages to stdout. Help and
+      diagnostics are not affected. There is no output to stdout in quiet mode
+      when successful.
+  -r  When input is a directory, include .md files in all subdirectories
+      (default: only .md files directly in that directory).
+  -s  Strict: Require explicit input/output extensions (when provided) to be
+      .md and .pdf respectively.
+  -t  Tool check: report available conversion toolchains and exit.
+  -v  Verbose mode: print backend diagnostics to stderr.
+  -x  Exclude files whose relative path matches "<pattern>".
+
+Environment:
+  GENPDF_STRICT  Default strict-mode setting when flags are not provided.
+                 Strict:     1, true, yes, on
+                 Permissive: 0, false, no, off
+                 Otherwise:  Raises an error.
+
+Converts Markdown to PDF after optionally removing or converting
+<details>/<summary> content for PDF output.
+
+Examples:
+  genpdf docs/md/briteTest.md
+  genpdf docs/md/Documentation_Guide
+  genpdf docs/md/Documentation_Guide.md docs/My_Documentation_Guide
+  genpdf docs/md
+  genpdf docs build
+EOF
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help)
