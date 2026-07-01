@@ -1,0 +1,270 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# gendocs
+#
+# Public CLI: orchestrates Markdown->PDF and PDF->DOCX generation via
+# internal helpers scripts/helpers/genpdf.sh and scripts/helpers/gendocx.sh.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+genpdf_script="$repo_root/scripts/helpers/genpdf.sh"
+gendocx_script="$repo_root/scripts/helpers/gendocx.sh"
+
+docs_dir="$repo_root/docs/md"
+pdf_out_dir="$repo_root/docs/pdf"
+docx_out_dir="$repo_root/docs/docx"
+meta_file="$docs_dir/.md_metadata"
+
+tmp_pdf=''
+tmp_docx=''
+
+force=0
+pdf_only=0
+docx_only=0
+dry_run=0
+quiet=0
+verbose=0
+recursive=0
+keep_structure=0
+segment_glob=0
+convert_details=0
+tool_check=0
+
+backend_md_pdf='auto'
+backend_pdf_docx='auto'
+
+declare -a include_patterns=()
+declare -a exclude_patterns=()
+declare -a positional=()
+
+cleanup() {
+  [[ -n "$tmp_pdf" ]] && rm -f "$tmp_pdf"
+  [[ -n "$tmp_docx" ]] && rm -f "$tmp_docx"
+}
+trap cleanup EXIT
+
+log_info() { [[ $quiet -eq 0 ]] && echo "$1"; }
+
+sha256_file() { sha256sum "$1" | awk '{print $1}'; }
+line_count_file() { wc -l < "$1" | tr -d ' '; }
+char_count_file() { wc -m < "$1" | tr -d ' '; }
+fingerprint_triplet() {
+  local f=$1
+  printf '%s %s %s\n' "$(line_count_file "$f")" "$(char_count_file "$f")" "$(sha256_file "$f")"
+}
+
+usage() {
+  cat <<'EOF'
+Simple Usage:
+  gendocs
+
+Complete Usage:
+  gendocs [<options>] [<document>[.md]] [<pdf_dir> <docx_dir>]
+  gendocs [<options>] -p [<document>[.md]] [<pdf_dir>]
+  gendocs [<options>] -d [<document>[.md|.pdf]] [<docx_dir>]
+  gendocs -h | --help
+
+Options:
+  -b <backend>  backend override:
+                <md-pdf>/<pdf-docx> or shared single backend token.
+                md-pdf: auto,pandoc,wkhtmltopdf,weasyprint
+                pdf-docx: auto,python,libreoffice
+  -c            Convert details/summary lines in markdown to PDF-friendly form
+                (passed to genpdf helper).
+  -d            Output only .docx files.
+  -f            Force regeneration (ignore unchanged metadata).
+  -g            Segment-style glob matching for -i/-x patterns.
+  -h, --help    Show help and exit.
+  -i <pattern>  Include only matching relative paths.
+  -k            Keep directory structure under output directory (with -r).
+  -n            Dry-run.
+  -p            Output only .pdf files; still validate DOCX generation via temp file.
+  -q            Quiet.
+  -r            Recurse when input is a directory.
+  -t            Tool check (both helper toolchains).
+  -v            Verbose.
+  -x <pattern>  Exclude matching relative paths.
+
+Exit Codes:
+  0 success
+  1 usage/conversion failure
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    -f) force=1 ;;
+    -p) pdf_only=1 ;;
+    -d) docx_only=1 ;;
+    -n) dry_run=1 ;;
+    -q) quiet=1 ;;
+    -v) verbose=1 ;;
+    -r) recursive=1 ;;
+    -k) keep_structure=1 ;;
+    -g) segment_glob=1 ;;
+    -c) convert_details=1 ;;
+    -t) tool_check=1 ;;
+    -i) shift; [[ $# -gt 0 ]] || { echo "Error: -i requires pattern" >&2; exit 1; }; include_patterns+=("$1") ;;
+    -x) shift; [[ $# -gt 0 ]] || { echo "Error: -x requires pattern" >&2; exit 1; }; exclude_patterns+=("$1") ;;
+    -b)
+      shift
+      [[ $# -gt 0 ]] || { echo "Error: -b requires value" >&2; exit 1; }
+      if [[ "$1" == */* ]]; then
+        backend_md_pdf="${1%%/*}"
+        backend_pdf_docx="${1##*/}"
+      else
+        backend_md_pdf="$1"
+        backend_pdf_docx="$1"
+      fi
+      ;;
+    -*) echo "Error: unknown option: $1" >&2; usage >&2; exit 1 ;;
+    *) positional+=("$1") ;;
+  esac
+  shift
+done
+
+[[ $pdf_only -eq 1 && $docx_only -eq 1 ]] && { echo "Error: -p and -d are mutually exclusive." >&2; exit 1; }
+
+[[ -f "$genpdf_script" ]] || { echo "Error: missing helper: $genpdf_script" >&2; exit 1; }
+[[ -f "$gendocx_script" ]] || { echo "Error: missing helper: $gendocx_script" >&2; exit 1; }
+
+if [[ $tool_check -eq 1 ]]; then
+  bash "$genpdf_script" -t || true
+  bash "$gendocx_script" -t || true
+  exit 0
+fi
+
+mkdir -p "$pdf_out_dir" "$docx_out_dir"
+
+declare -A prev_meta=()
+declare -A curr_meta=()
+
+if [[ -f "$meta_file" ]]; then
+  while read -r rel lc cc hash; do
+    [[ -z "${rel:-}" || -z "${lc:-}" || -z "${cc:-}" || -z "${hash:-}" ]] && continue
+    prev_meta["$rel"]="$lc $cc $hash"
+  done < "$meta_file"
+fi
+for rel in "${!prev_meta[@]}"; do curr_meta["$rel"]="${prev_meta["$rel"]}"; done
+
+tmp_pdf="$(mktemp --suffix=.pdf)"
+tmp_docx="$(mktemp --suffix=.docx)"
+
+# Build helper option arrays
+pdf_opts=()
+docx_opts=()
+[[ $dry_run -eq 1 ]] && { pdf_opts+=(-n); docx_opts+=(-n); }
+[[ $quiet -eq 1 ]] && { pdf_opts+=(-q); docx_opts+=(-q); }
+[[ $verbose -eq 1 ]] && { pdf_opts+=(-v); docx_opts+=(-v); }
+[[ $recursive -eq 1 ]] && { pdf_opts+=(-r); docx_opts+=(-r); }
+[[ $keep_structure -eq 1 ]] && { pdf_opts+=(-k); docx_opts+=(-k); }
+[[ $segment_glob -eq 1 ]] && { pdf_opts+=(-g); docx_opts+=(-g); }
+[[ $convert_details -eq 1 ]] && pdf_opts+=(-c)
+
+for p in "${include_patterns[@]}"; do pdf_opts+=(-i "$p"); docx_opts+=(-i "$p"); done
+for p in "${exclude_patterns[@]}"; do pdf_opts+=(-x "$p"); docx_opts+=(-x "$p"); done
+
+pdf_opts+=(-b "$backend_md_pdf")
+docx_opts+=(-b "$backend_pdf_docx")
+
+# Resolve sources and optional out dirs from positional arguments
+doc_arg="${positional[0]:-}"
+out1="${positional[1]:-}"
+out2="${positional[2]:-}"
+
+if [[ ${#positional[@]} -gt 3 ]]; then
+  echo "Error: too many positional arguments." >&2
+  exit 1
+fi
+
+declare -a sources=()
+
+if [[ -z "$doc_arg" ]]; then
+  mapfile -t sources < <(find "$docs_dir" -maxdepth 1 -type f -name '*.md' ! -name 'README.md' | sort)
+else
+  if [[ -f "$doc_arg" ]]; then
+    sources=("$doc_arg")
+  elif [[ -f "$docs_dir/$doc_arg" ]]; then
+    sources=("$docs_dir/$doc_arg")
+  elif [[ "$doc_arg" != *.md && -f "$docs_dir/$doc_arg.md" ]]; then
+    sources=("$docs_dir/$doc_arg.md")
+  elif [[ "$doc_arg" == *.pdf && -f "$doc_arg" ]]; then
+    sources=("$doc_arg")
+  else
+    echo "Error: document not found: $doc_arg" >&2
+    exit 1
+  fi
+fi
+
+[[ ${#sources[@]} -gt 0 ]] || { echo "Error: no source files found." >&2; exit 1; }
+
+for src in "${sources[@]}"; do
+  b="$(basename "$src")"
+
+  if [[ "$b" == "README.md" ]]; then
+    log_info "Skipping README.md: $src"
+    continue
+  fi
+
+  base="${b%.*}"
+  target_pdf="${out1:-$pdf_out_dir}/${base}.pdf"
+  target_docx="${out2:-$docx_out_dir}/${base}.docx"
+
+  if [[ "$src" == *.md ]]; then
+    rel="${src#"$docs_dir"/}"
+    fp="$(fingerprint_triplet "$src")"
+    curr_meta["$rel"]="$fp"
+
+    if [[ $force -eq 0 && -f "$target_pdf" && -f "$target_docx" ]]; then
+      prev="${prev_meta["$rel"]:-}"
+      if [[ "$fp" == "$prev" ]]; then
+        log_info "Unchanged source: $src"
+        continue
+      fi
+    fi
+
+    if [[ $docx_only -eq 1 ]]; then
+      bash "$genpdf_script" "${pdf_opts[@]}" "$src" "$tmp_pdf"
+      bash "$gendocx_script" "${docx_opts[@]}" "$tmp_pdf" "$target_docx"
+      continue
+    fi
+
+    bash "$genpdf_script" "${pdf_opts[@]}" "$src" "$target_pdf"
+
+    if [[ $pdf_only -eq 1 ]]; then
+      bash "$gendocx_script" "${docx_opts[@]}" "$target_pdf" "$tmp_docx"
+      rm -f "$tmp_docx"
+      continue
+    fi
+
+    bash "$gendocx_script" "${docx_opts[@]}" "$target_pdf" "$target_docx"
+
+  elif [[ "$src" == *.pdf ]]; then
+    # Only valid in -d mode per usage
+    [[ $docx_only -eq 1 ]] || { echo "Error: .pdf input requires -d mode." >&2; exit 1; }
+    base="${b%.pdf}"
+    target_docx="${out1:-$docx_out_dir}/${base}.docx"
+    bash "$gendocx_script" "${docx_opts[@]}" "$src" "$target_docx"
+  else
+    echo "Error: unsupported source type: $src" >&2
+    exit 1
+  fi
+done
+
+tmp_meta_file="$(mktemp)"
+for rel in "${!curr_meta[@]}"; do
+  printf '%s %s\n' "$rel" "${curr_meta["$rel"]}"
+done | sort > "$tmp_meta_file"
+mv -f "$tmp_meta_file" "$meta_file"
+
+if [[ $docx_only -eq 1 ]]; then
+  log_info "Generated DOCX files."
+elif [[ $pdf_only -eq 1 ]]; then
+  log_info "Generated PDF files and validated DOCX conversion via temporary outputs."
+else
+  log_info "Generated PDF and DOCX files."
+fi
