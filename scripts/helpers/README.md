@@ -1,6 +1,6 @@
 # scripts/helpers/
 
-Directory containing shared helper modules used by scripts in `scripts/bin/`.
+Directory containing helper modules used by scripts in `scripts/bin/`.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
@@ -11,6 +11,10 @@ See `README.md` in the root directory for an introduction to the project.
 ## Files
 
 - **common.sh**: Shared output and branch-detection helpers.
+
+- **gendocx.sh**: Generate DOCX files from PDF sources.
+
+- **genpdf.sh**: Generate PDF files from Markdown sources.
 
 - **git_helpers.sh**: Shared branch lookup and base/target branch resolution
   helpers.
