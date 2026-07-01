@@ -195,6 +195,8 @@ followed.
 This chapter discusses choices for the brand description and name
 plus how to change the brand name.
 
+briteTest is a lightweight framework for defining, running, and reporting tests in C/C++ projects. It provides a simple core macro-based Runner Application Programming Interface (API), a function-based Test API, fault‑tolerant execution, and clear reporting. It can be used for unit and command-line testing.
+
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Alternative Brand Descriptions</summary>
 
