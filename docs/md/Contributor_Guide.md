@@ -129,7 +129,7 @@ When to increment for a release:
 
 - Patch:
 
-  - Bug fixes, implementation improvements, documentation corrections
+  - Bug fixes, implementation improvements, documentation corrections.
 
 - Minor:
 
@@ -138,6 +138,9 @@ When to increment for a release:
   - No breaking changes (syntax or behavior) to the APIs.
   - No breaking changes to the Runner Framework.
   - Minor refactorying of implementation.
+  - If incremented, it must be updated for all files (.h, .c, and .md) to the
+    same minor value, even if the file was not otherwise modified
+    with patch reset to 0.
 
 - Major
 
@@ -149,24 +152,28 @@ When to increment for a release:
     - Breaking changes (syntax or behavior) to the APIs.
     - Breaking changes to the Runner Framework.
   - If incremented, it must be updated for all files (.h, .c, and .md) to the
-    same major value, even if the file was not otherwise modified or updated
-    with update, minor, and patch reset to 0.
+    same major value, even if the file was not otherwise modified
+    with, minor and patch reset to 0.
 
 When updating the version for the Runner API:
 
-- Update `RA_VERSION` in `runnerapi.h`.
-- Update `RA_VERSION_C` in `runnerapi.c`.
+- Update the `RA_VERSION` macro in `include/runnerapi.h`:
+  - Increment `p` if the major and minor versions are not incremented.
+  - Reset `p` to `0` when the major or minor version is incremented.
+- Update the `RA_VERSION_C` macro in `src/runnerapi.c` to match `RA_VERSION`.
 
 When updating the version for the Test API:
 
-- Update `TA_VERSION` in `testapi.h`.
-- Update `TA_VERSION_C` in `testapi.c`.
+- Update the `TA_VERSION` macro in `include/testapi.h`.
+  - Increment `p` if the major and minor versions are not incremented.
+  - Reset `p` to `0` when the major or minor version is incremented.
+- Update the `TA_VERSION_C` macro in `src/testapi.c` to match `TA_VERSION`.
 
 When updating the version for a document:
 
 - Add a new entry to the top of the Document Version History table.
-- Increment `u` if the major version is not incremented.
-- Reset `u` to `0` when the major version is incremented.
+- Increment `p` if the major and minor versions are not incremented.
+- Reset `p` to `0` when the major or minor version is incremented.
 
 API compatibility guidelines:
 
