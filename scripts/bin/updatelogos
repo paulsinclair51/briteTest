@@ -342,6 +342,8 @@ def insert_completion_marker(config_file):
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
+        prog='updatelogos',
+        usage='updatelogos [-h] [--dry-run] [config_file]',
         description='Update .svg files in docs/branding with brand replacements, regenerate PNGs, and update markdown docs',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''

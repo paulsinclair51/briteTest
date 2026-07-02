@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+
+# genpdf.sh - Normalize markdown input before delegating to genpdf.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
 set -euo pipefail
 
 # Internal helper: preserve the styled genpdf behavior by normalizing the

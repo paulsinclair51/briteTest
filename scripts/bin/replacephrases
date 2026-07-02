@@ -1,21 +1,38 @@
 #!/usr/bin/env bash
 
-# replacephrases - Wrapper for phrase replacement processing in documents.
-#
-# See usage below for details, or run: replacephrases -h
+# replacephrases - Run markdown phrase replacement from a config file.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
-#
-# Usage:
-#   scripts/bin/replacephrases [configfile] [--dry-run]
-#
-# Examples:
-#   scripts/bin/replacephrases                           # Uses default config
-#   scripts/bin/replacephrases config/phrase_replacements.txt
-#   scripts/bin/replacephrases config/custom.txt --dry-run
-#
+
+set -euo pipefail
+
+usage() {
+	cat <<'EOF'
+Usage:
+	replacephrases [config_file] [--dry-run]
+	replacephrases -h | --help
+
+Run phrase replacement across markdown files using scripts/helpers/replace_phrases.py.
+
+Arguments:
+	config_file  Optional replacement config path. Default: config/phrase_replacements.txt
+
+Options:
+	--dry-run    Show planned changes without modifying files.
+	-h, --help   Show this help and exit.
+EOF
+}
+
+for arg in "$@"; do
+	case "$arg" in
+		-h|--help)
+			usage
+			exit 0
+			;;
+	esac
+done
 
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
