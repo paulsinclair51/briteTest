@@ -61,3 +61,7 @@ logs/
 
 # Python virtual environments
 .venv/
+
+# Python bytecode caches
+__pycache__/
+*.pyc
