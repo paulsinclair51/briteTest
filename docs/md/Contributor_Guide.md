@@ -95,7 +95,7 @@ recent version for this document at the time this document was published.
 
 9. [**Pull Release**](#9-release)
 
-10. [**Pre-commit Hook Setup for Protected Branches**](#10-pre-commit-hook-setup-for-protected-branches)
+10. [**Protected Branches**](#10-protected-branches)
 
 11. [**Glossary**](#11-glossary)
 </details>
@@ -865,19 +865,22 @@ Before releasing:
 <details>
 <summary><strong>10. Pre-commit Hook Setup for Protected Branches</strong></summary>
 
-## 10. Pre-commit Hook Setup for Protected Branches
+## 10. Protected Branches
 
-This document explains how to set up a pre-commit hook to prevent accidental commits to protected branches.
+This section explains how to set up a pre-commit hook to prevent accidental commits
+to protected branches.
 
 ### What are Protected Branches?
 
-Protected branches are critical branches that should not receive direct commits. The branch management scripts (`mkbranch` and `rmbranch`) prevent deletion of:
+Protected branches are critical branches that should not receive direct commits.
+The branch management scripts (`mkbranch` and `rmbranch`) prevent deletion of:
 
 - `main`
 
 ### Setting Up a Pre-commit Hook
 
-A pre-commit hook prevents commits to these protected branches before they're pushed to remote.
+A pre-commit hook prevents commits to these protected branches before they're
+pushed to remote.
 
 #### 1. Create the hook file
 
