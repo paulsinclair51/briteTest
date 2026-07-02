@@ -139,8 +139,8 @@ When to change version:
   - No breaking changes to the Runner Framework.
   - Minor refactorying of implementation.
   - If incremented or reset to 0, it must be updated for all files
-    (.h, .c, and .md) to the same minor value, even if the file was
-    not otherwise modified with patch reset to 0.
+    (.h, .c, and .md) to the same minor value (even if the file was
+    not otherwise modified) with patch reset to 0.
 
 - Major
   - Major additions to the APIs.
@@ -151,7 +151,7 @@ When to change version:
     - Breaking changes (syntax or behavior) to the APIs.
     - Breaking changes to the Runner Framework.
   - If incremented, it must be updated for all files (.h, .c, and .md) to the
-    same major value, even if the file was not otherwise modified
+    same major value (even if the file was not otherwise modified)
     with minor and patch reset to 0.
 
 When changing the version:
@@ -173,6 +173,9 @@ API compatibility guidelines:
 
 Significant justification is required when these guidelines cannot be
 followed.
+
+Note: A major or minor release, includes all the versioned files. A patch
+release is for an individual versioned file.
 </details>
 
 <details>
