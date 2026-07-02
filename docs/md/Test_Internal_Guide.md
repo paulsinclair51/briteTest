@@ -77,7 +77,7 @@ recent version for this document at the time this document was published.
 </details>
 
 <details>
-<summary>1. Introduction</summary>
+<summary><strong>1. Introduction</strong></summary>
 
 ## 1. Introduction
 

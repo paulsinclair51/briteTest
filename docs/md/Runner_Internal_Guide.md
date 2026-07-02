@@ -83,7 +83,7 @@ recent version for this document at the time this document was published.
 </details>
 
 <details>
-<summary>1. Introduction</summary>
+<summary><strong>1. Introduction</strong></summary>
 
 ## 1. Introduction
 
@@ -108,7 +108,7 @@ usage. Contributors may modify these symbols as needed, provided the public API
 contract remains intact.
 
 <details>
-<summary>1.1. Public and Internal Naming Conventions</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.1. Public and Internal Naming Conventions</summary>
 
 ### 1.1. Public and Internal Naming Conventions
 
@@ -125,7 +125,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary>2. Architecture Overview</summary>
+<summary><strong>2. Architecture Overview</strong></summary>
 
 ## 2. Architecture Overview
 
@@ -137,7 +137,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary>3. Orchestrator Internals</summary>
+<summary><strong>3. Orchestrator Internals</strong></summary>
 
 ## 3. Orchestrator Internals
 
@@ -148,7 +148,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary>4. Test Group Internals</summary>
+<summary><strong>4. Test Group Internals</strong></summary>
 
 ## 4. Test Group Internals
 
@@ -158,7 +158,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary>5. Test Execution Engine</summary>
+<summary><strong>5. Test Execution Engine</strong></summary>
 
 ## 5. Test Execution Engine
 
@@ -169,7 +169,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary>6. Process‑Isolated Execution</summary>
+<summary><strong>6. Process‑Isolated Execution</strong></summary>
 
 ## 6. Process‑Isolated Execution
 
@@ -180,7 +180,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary>7. Thread‑Isolated Execution</summary>
+<summary><strong>7. Thread‑Isolated Execution</strong></summary>
 
 ## 7. Thread‑Isolated Execution
 
@@ -190,7 +190,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary>8. Signal Guard System</summary>
+<summary><strong>8. Signal Guard System</strong></summary>
 
 ## 8. Signal Guard System
 - Installed handlers  
@@ -200,7 +200,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary>9. Report Generation Internals</summary>
+<summary><strong>9. Report Generation Internals</strong></summary>
 
 ## 9. Report Generation Internals
 
@@ -211,7 +211,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary>10. Internal State and Global Variables</summary>
+<summary><strong>10. Internal State and Global Variables</strong></summary>
 
 ## 10. Internal State and Global Variables
 
@@ -219,7 +219,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary>11. Error Handling and Safety Guarantees</summary>
+<summary><strong>11. Error Handling and Safety Guarantees</strong></summary>
 
 ## 11. Error Handling and Safety Guarantees
 
@@ -227,7 +227,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary>12. Implementation Notes</summary>
+<summary><strong>12. Implementation Notes</strong></summary>
 
 ## 12. Implementation Notes
 
@@ -237,7 +237,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary>13. Future Improvements</summary>
+<summary><strong>13. Future Improvements</strong></summary>
 
 ## 13. Future Improvements
 
@@ -245,7 +245,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary>Glossary</summary>
+<summary><strong>Glossary</strong></summary>
 
 ## Glossary
 

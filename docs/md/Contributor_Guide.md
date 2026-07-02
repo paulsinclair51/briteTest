@@ -807,7 +807,7 @@ Before submitting a PR:
 </details>
 
 <details>
-<summary><strong>9. Release<strong></summary>
+<summary><strong>9. Release</strong></summary>
 
 ## 9. Release
 

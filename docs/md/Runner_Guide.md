@@ -80,7 +80,7 @@ recent version for this document at the time this document was published.
 </details>
 
 <details>
-<summary>1. Introduction</summary>
+<summary><strong>1. Introduction</strong></summary>
 
 ## 1. Introduction
 
@@ -100,7 +100,7 @@ A typical test executable includes:
 </details>
 
 <details>
-<summary>2. Execution Model</summary>
+<summary><strong>2. Execution Model</strong></summary>
 
 ## 2. Execution Model
 
@@ -119,7 +119,7 @@ reported without aborting the test run.
 </details>
 
 <details>
-<summary>3. Test Group Functions</summary>
+<summary><strong>3. Test Group Functions</strong></summary>
 
 ## 3. Test Group Functions
 
@@ -146,7 +146,7 @@ static RA_DECLARE_GROUP(test_math)
 </details>
 
 <details>
-<summary>4. Orchestrator (`main`) Function</summary>
+<summary><strong>4. Orchestrator (`main`) Function</strong></summary>
 
 ## 4. Orchestrator (`main`) Function
 
@@ -177,7 +177,7 @@ RA_DECLARE_ORCHESTRATOR(main)
 </details>
 
 <details>
-<summary>5. Test Inclusion Control (`-I` / `-In`)</summary>
+<summary><strong>5. Test Inclusion Control (`-I` / `-In`)</strong></summary>
 
 ## 5. Test Inclusion Control (`-I` / `-In`)
 
@@ -192,7 +192,7 @@ This allows selective execution of test subsets.
 </details>
 
 <details>
-<summary>6. Concurrent Blocks</summary>
+<summary><strong>6. Concurrent Blocks</strong></summary>
 
 ## 6. Concurrent Blocks
 
@@ -209,7 +209,7 @@ Concurrent blocks cannot be nested within a test function.
 </details>
 
 <details>
-<summary>7. Isolation Modes</summary>
+<summary><strong>7. Isolation Modes</strong></summary>
 
 ## 7. Isolation Modes
 
@@ -217,21 +217,21 @@ BriteTest supports:
 </details>
 
 <details>
-<summary>Same‑Thread Mode (default)</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Same‑Thread Mode (default)</summary>
 
 ### Same‑Thread Mode (default)
 Fastest execution; faults are caught via signal guards.
 </details>
 
 <details>
-<summary>Thread‑Isolated Mode</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Thread‑Isolated Mode</summary>
 
 ### Thread‑Isolated Mode
 Each test runs in a separate thread.
 </details>
 
 <details>
-<summary>Process‑Isolated Mode</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Process‑Isolated Mode</summary>
 
 ### Process‑Isolated Mode
 Each test runs in a separate process. This isolates:
@@ -246,13 +246,13 @@ Recommended for CI and fault‑injection testing.
 </details>
 
 <details>
-<summary>8. Building the Test Executable</summary>
+<summary><strong>8. Building the Test Executable</strong></summary>
 
 ## 8. Building the Test Executable
 </details>
 
 <details>
-<summary>Linux / macOS</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Linux / macOS</summary>
 
 ### Linux / macOS
 
@@ -268,7 +268,7 @@ make CC=gcc run
 </details>
 
 <details>
-<summary>Windows (POSIX toolchain required)</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Windows (POSIX toolchain required)</summary>
 
 ### Windows (POSIX toolchain required)
 
@@ -281,7 +281,7 @@ Use MSYS2 UCRT64 or Clang64:
 </details>
 
 <details>
-<summary>9. Executable Usage</summary>
+<summary><strong>9. Executable Usage</strong></summary>
 
 ## 9. Executable Usage
 
@@ -297,7 +297,7 @@ Use `--help` or `-h` to display usage information.
 </details>
 
 <details>
-<summary>10. Troubleshooting</summary>
+<summary><strong>10. Troubleshooting</strong></summary>
 
 ## 10. Troubleshooting
 
@@ -308,7 +308,7 @@ Use `--help` or `-h` to display usage information.
 </details>
 
 <details>
-<summary>11. Further Reading</summary>
+<summary><strong>11. Further Reading</strong></summary>
 
 ## 11. Further Reading
 
@@ -319,7 +319,7 @@ See:
 </details>
 
 <details>
-<summary>Quick Start</summary>
+<summary><strong>Quick Start</strong></summary>
 
 ## Quick Start
 
@@ -430,7 +430,7 @@ See [Building the Test Executable](#building-the-test-executable) for
 platform-specific notes and options.
 
 <details>
-<summary>Key Features</summary>
+<summary><strong>Key Features</strong></summary>
 
 ## Key Features
 
@@ -443,7 +443,7 @@ platform-specific notes and options.
 </details>
 
 <details>
-<summary>API Usage Requirements</summary>
+<summary><strong>API Usage Requirements</strong></summary>
 
 ## API Usage Requirements
 
@@ -462,7 +462,7 @@ validate behavior in their own systems.
 </details>
 
 <details>
-<summary>How BriteTest Compares</summary>
+<summary><strong>How BriteTest Compares</strong></summary>
 
 ## How BriteTest Compares
 
@@ -476,7 +476,7 @@ validate behavior in their own systems.
 </details>
 
 <details>
-<summary>What BriteTest Does Not Provide</summary>
+<summary><strong>What BriteTest Does Not Provide</strong></summary>
 
 ## What BriteTest Does Not Provide
 
@@ -498,7 +498,7 @@ BriteTest focuses on executing tests and reporting results. It does not:
 </details>
 
 <details>
-<summary>Introduction</summary>
+<summary><strong>Introduction</strong></summary>
 
 ## Introduction
 
@@ -547,7 +547,7 @@ When executed, BriteTest produces a report summarizing tests by category, includ
 </details>
 
 <details>
-<summary>Core API</summary>
+<summary><strong>Core API</strong></summary>
 
 ## Core API
 
@@ -562,7 +562,7 @@ functions. These macros fall into 3 types:
 </details>
 
 <details>
-<summary>Macros for the Orchestrator (`main`) Function</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Macros for the Orchestrator (`main`) Function</summary>
 
 ### Macros for the Orchestrator (`main`) Function
 
@@ -586,7 +586,7 @@ Note:
 </details>
 
 <details>
-<summary>Macros for a Test Group Function</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Macros for a Test Group Function</summary>
 
 ### Macros for a Test Group Function
 
@@ -603,7 +603,7 @@ Note:
 </details>
 
 <details>
-<summary>Macros for Executing a Test Group Function or Test Expression</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Macros for Executing a Test Group Function or Test Expression</summary>
 
 ### Macros for Executing a Test Group Function or Test Expression
 
@@ -644,7 +644,7 @@ Special values that can be used in any expression:
 </details>
 
 <details>
-<summary>Parallel Execution</summary>
+<summary><strong>Parallel Execution</strong></summary>
 
 #### Parallel Execution
 
@@ -654,7 +654,7 @@ When one finishes, another begins, until all are complete. `maxparallel` is set 
 </details>
 
 <details>
-<summary> Macros for Concurrent Execution</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Macros for Concurrent Execution</summary>
 
 ###  Macros for Concurrent Execution
 
@@ -668,7 +668,7 @@ The concurrent block macros ensure that all `RA_TEST` macros inside it start tog
 </details>
 
 <details>
-<summary>Isolation Modes and Fault Handling</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Isolation Modes and Fault Handling</summary>
 
 ### Isolation Modes and Fault Handling
 
@@ -770,7 +770,7 @@ not how they are written.
 </details>
 
 <details>
-<summary>BriteTest Runner Customization</summary>
+<summary><strong>BriteTest Runner Customization</strong></summary>
 
 ## BriteTest Runner Customization
 
@@ -796,7 +796,7 @@ See the Runner Reference for details on each of these.
 </details>
 
 <details>
-<summary>BriteTest Test API</summary>
+<summary><strong>BriteTest Test API</strong></summary>
 
 ## BriteTest Test API
 
@@ -833,7 +833,7 @@ Example of Environment helpers:
 See the Test Reference for details on each of these.
   
 <details>
-<summary>Headers (.h) and Sources (.c)</summary>
+<summary><strong>Headers (.h) and Sources (.c)</strong></summary>
 
 ## Headers (.h) and Sources (.c)
 
@@ -862,7 +862,7 @@ the BriteTest API and framework.
 </details>
 
 <details>
-<summary>Orchestrator (`main`) Function Template</summary>
+<summary><strong>Orchestrator (`main`) Function Template</strong></summary>
 
 ## Orchestrator (`main`) Function Template
 
@@ -912,7 +912,7 @@ RA_DECLARE_ORCHESTRATOR(main);
 ```
 
 <details>
-<summary>Test Group Function Template</summary>
+<summary><strong>Test Group Function Template</strong></summary>
 
 ## Test Group Function Template
 
@@ -957,7 +957,7 @@ or support testing.  Added code may use test support functions (see
 handled as if it occurs before the tests.
 
 <details>
-<summary>Example of Using the BriteTest API</summary>
+<summary><strong>Example of Using the BriteTest API</strong></summary>
 
 ## Example of Using the BriteTest API
 
@@ -981,7 +981,7 @@ The results of `test_guard1` and `test_guard2` are combined by the orchestrator
 into a single result for the "Guard 1 and 2" category.
 
 <details>
-<summary>Building the Test Executable</summary>
+<summary><strong>Building the Test Executable</strong></summary>
 
 ## Building the Test Executable
  
@@ -993,7 +993,7 @@ project root directory.
 </details>
 
 <details>
-<summary>Linux / macOS</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Linux / macOS</summary>
 
 #### Linux / macOS
 
@@ -1021,7 +1021,7 @@ make CC=gcc run
 </details>
 
 <details>
-<summary>Windows (POSIX Toolchain Required)</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Windows (POSIX Toolchain Required)</summary>
 
 #### Windows (POSIX Toolchain Required)
 
@@ -1047,7 +1047,7 @@ POSIX-capable compiler.
 </details>
 
 <details>
-<summary>Executable Usage</summary>
+<summary><strong>Executable Usage</strong></summary>
 
 ## Executable Usage
 
@@ -1064,7 +1064,7 @@ your test setup.
 </details>
 
 <details>
-<summary>PATH</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;PATH</summary>
 
 ### PATH
 
@@ -1081,7 +1081,7 @@ You may override the output location using the PATH argument:
 </details>
 
 <details>
-<summary>`-I` and `-In` Option</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;`-I` and `-In` Option</summary>
 
 ### `-I` and `-In` Option
 
@@ -1104,7 +1104,7 @@ See [Macros for Executing a Test Group Function or Test Expression](#macros-for-
 </details>
 
 <details>
-<summary>`--help` and `-h` Help Options</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;`--help` and `-h` Help Options</summary>
 
 ### `--help` and `-h` Help Options
 
@@ -1119,7 +1119,7 @@ options and usage details.
 </details>
 
 <details>
-<summary>Common Mistakes</summary>
+<summary><strong>Common Mistakes</strong></summary>
 
 ## Common Mistakes
 
@@ -1130,7 +1130,7 @@ options and usage details.
 </details>
 
 <details>
-<summary>Troubleshooting</summary>
+<summary><strong>Troubleshooting</strong></summary>
 
 ## Troubleshooting
 
@@ -1147,7 +1147,7 @@ options and usage details.
 </details>
 
 <details>
-<summary>Example Test Report</summary>
+<summary><strong>Example Test Report</strong></summary>
 
 ## Example Test Report
 
@@ -1163,7 +1163,7 @@ BriteTest Report
 </details>
 
 <details>
-<summary>Example Test Report for -i Option</summary>
+<summary><strong>Example Test Report for -i Option</strong></summary>
 
 ## Example Test Report for -i Option
 
@@ -1179,7 +1179,7 @@ BriteTest Report (-i)
 </details>
 
 <details>
-<summary>Further Reading</summary>
+<summary><strong>Further Reading</strong></summary>
 
 ## Further Reading
 
