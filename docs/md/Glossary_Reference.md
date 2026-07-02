@@ -54,7 +54,7 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+| 1.0.0 | 1.0.0 | 1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
 
 - The **Document** column records the document's version.
 - The **Runner** column records the Runner API version
@@ -88,7 +88,7 @@ recent version for this document at the time this document was published.
 The glossary defines generally used terms in the documentation and terms
 often used in the testing domain.
 
-Note: '†' indicates the definition of a term that has a specific meaning
+Note: '*' indicates the definition of a term that has a specific meaning
 in the documention which may differ from the meaning of the term in the
 testing domain or other contexts.
 
@@ -110,7 +110,7 @@ refer to the Runner or Test API Reference document for information.
   structs, enums, macros, and functions that provide a well-defined
   service. For example, the BriteTest Runner API and the BriteTest Test
   API.
-- **approver†**: A person listed in config/contributors.md as an approver.
+- **approver***: A person listed in config/contributors.md as an approver.
   Note that an approver is also a contributor and a reviewer.
   An approver may review and approve changes to BriteTest. An approver
   must follow the guidelines in docs/Contributor_Guide.md.
@@ -139,7 +139,7 @@ refer to the Runner or Test API Reference document for information.
 
 ### --C--
 
-- **category†**: A named set of `RA_GROUP` and `RA_TEST`
+- **category***: A named set of `RA_GROUP` and `RA_TEST`
   macros whose combined results are written by `RA_WRITE_RESULT` to
   the report with a specified category name.
 - **CD (Continuous Delivery/Deployment)**: Automated practices that
@@ -159,15 +159,15 @@ refer to the Runner or Test API Reference document for information.
 - **command line**: A line of text entered into a shell that specifies
   an executable and optional arguments or flags (options). Use
   command-line when used as an adjective.
-- **concurrent block†**: A set of tests bracketed by
+- **concurrent block***: A set of tests bracketed by
   `RA_BEGIN_CONCURRENT` and `RA_END_CONCURRENT` macros.
-- **contributor†**: A person listed in config/contributors.md.
+- **contributor***: A person listed in config/contributors.md.
   Note that a reviewer or approver, is also a contrubutor.
   A contributor may provide changes to BriteTest that are subject
   to review and approval before includding in a release. A contributor
   must follow the guidelines in docs/Contributor_Guide.md.
 - **control file**: See golden file.
-- **customization function†**: A Runner API function that
+- **customization function***: A Runner API function that
   can be used to help customize the orchestrator (main) function and
   test group functions.
 </details>
@@ -177,7 +177,7 @@ refer to the Runner or Test API Reference document for information.
 
 ### --D--
 
-- **default report filename†**: The report filename used
+- **default report filename***: The report filename used
   when only a directory path (or no `PATH`) is provided.
 </details>
 
@@ -197,15 +197,15 @@ refer to the Runner or Test API Reference document for information.
 
 ### --F--
 
-- **fail†**: A counted failure where the test expression for
+- **fail***: A counted failure where the test expression for
   an `RA_TEST` macro evaluates to zero.
-- **fault†**: A counted test group or test fault (e.g.,
+- **fault***: A counted test group or test fault (e.g.,
   invalid memory access) captured by a BriteTest guard. See also fault
   type, guard, `RA_FAULT`, and isolation.
-- **fault type†**: The various types of faults (e.g.,
+- **fault type***: The various types of faults (e.g.,
   `SIGSEGV`, `SIGBUS`, `SIGABRT`) that can occur or be injected. See
   also fault, `RA_FAULT` and `-I`.
-- **framework†**: Guidelines, templates, APIs, tools, and
+- **framework***: Guidelines, templates, APIs, tools, and
   documentation for a class of projects that simplify development
   within that class. For example, the BriteTest framework simplifies
   test development.
@@ -216,16 +216,16 @@ refer to the Runner or Test API Reference document for information.
 
 ### --G--
 
-- **golden file†**: A previously generated file that can be compared
+- **golden file***: A previously generated file that can be compared
   to a newly generated file for differences. Differences (other than
   expected ones like timestamps) typically indicate a test failure.
   Sometimes the golden file is out of date and must be replaced by
   promoting the new file. See also output file.
-- **group†**: See test group.
-- **guard†**: The protection mechanism used to catch faults
+- **group***: See test group.
+- **guard***: The protection mechanism used to catch faults
   and continue test execution. See also fault, fault type, isolation,
   isolation mode, thread isolation, and process isolation.
-- **guard level†**: The nesting depth of active guards for
+- **guard level***: The nesting depth of active guards for
   test groups and test expressions.
 </details>
 
@@ -242,12 +242,12 @@ _No terms currently defined._
 
 ### --I--
 
-- **`-I`†**: An optional command‑line flag that enables an
+- **`-I`***: An optional command-line flag that enables an
   `RA_TEST` macro with an argument value of `I` to be executed.
   Typically used to inject a fail or fault into a run of a test
   executable. Default is to skip the `RA_TEST` macro if it has an
   argument value of `I`. See also fault, `RA_FAIL`, and `RA_FAULT`.
-- **`-I<n>`†**: An optional command‑line flag that enables
+- **`-I<n>`***: An optional command-line flag that enables
   an `RA_TEST` macro with an argument value of `<m>` between 1 and 9
   to execute if `<m>` is between 1 and `<n>`. `<n>` must be between 1
   and 9. Default for `<n>` is 9 if this flag is not specified and, for
@@ -257,7 +257,7 @@ _No terms currently defined._
 - **isolation**: A mechanism that prevents failures and faults in one
   component from affecting other components of an executable or
   system.
-- **isolation mode†**: An execution mode for `RA_GROUP` and
+- **isolation mode***: An execution mode for `RA_GROUP` and
   `RA_TEST` macros: `0` = same thread, `1` = separate thread, `2` =
   separate process.
 </details>
@@ -294,11 +294,11 @@ _No terms currently defined._
 
 ### --M--
 
-- **`maxargs`†**: The maximum number of command‑line
+- **`maxargs`***: The maximum number of command-line
   arguments allowed by the `RA_PARSE_ARGS` macro. This macro parses
   only the first two arguments; additional arguments require custom
   code.
-- **`maxparallel`†**: The upper bound on concurrent
+- **`maxparallel`***: The upper bound on concurrent
   `RA_GROUP` and `RA_TEST` macros. That is, when the number of macros
   executing equals `maxparallel`, the next macro to execute is delayed
   until one of the executing macros finishes. `maxparallel` is a
@@ -310,7 +310,7 @@ _No terms currently defined._
 
 ### --N--
 
-- **`notes`†**: A string parameter for the `RA_CLOSE_REPORT`
+- **`notes`***: A string parameter for the `RA_CLOSE_REPORT`
   macro. This macro appends the string (which must include `\n` at the
   end of each line in the string) if the string is not NULL or empty.
   Alternatively or in addition, notes can be appended from a file
@@ -322,15 +322,15 @@ _No terms currently defined._
 
 ### --O--
 
-- **orchestrator†**: See orchestrator (`main`) function.
-- **orchestrator function†**: See orchestrator (`main`)
+- **orchestrator***: See orchestrator (`main`) function.
+- **orchestrator function***: See orchestrator (`main`)
   function.
-- **orchestrator (`main`) function†**: The `main` function
+- **orchestrator (`main`) function***: The `main` function
   of a runner executable (i.e., the test runner) that uses
   `RA_GROUP` macros to execute sets of tests (i.e., a test group) or
   `RA_TEST` macros to execute a specific test (i.e., a test
   expression).
-- **output file†**: TODO. See also golden file.
+- **output file***: TODO. See also golden file.
 </details>
 
 <details>
@@ -338,19 +338,19 @@ _No terms currently defined._
 
 ### --P--
 
-- **pass†**: A counted success where the test expression for
+- **pass***: A counted success where the test expression for
   an `RA_TEST` macro evaluates to non-zero.
-- **PATH†**: Optional command‑line argument indicating the
+- **PATH***: Optional command-line argument indicating the
   output destination; may be a report file path or directory path.
   Argument must be quoted if it contains spaces.
-- **process guard†**: The guard used for process isolation.
+- **process guard***: The guard used for process isolation.
   Unlike thread guards, a process guard can capture all signals but
   increases test execution time. For proven tests, use thread guards;
   otherwise, use process guards.
-- **process isolation†**: An isolation mode where a test
+- **process isolation***: An isolation mode where a test
   group or test expression runs in a separate process. See also
   isolation mode.
-- **project†**: A single-token project identifier used in
+- **project***: A single-token project identifier used in
   orchestrator initialization and default report naming.
 </details>
 
@@ -367,41 +367,41 @@ _No terms currently defined._
 
 ### --R--
 
-- **`RA_GROUP`†**: A Runner API macro that executes a test
+- **`RA_GROUP`***: A Runner API macro that executes a test
   group function with a given isolation mode, maxparallel, and other
   parameters. See Runner API Reference.
-- **`ra_internal_*`†**: A prefix for Runner API internal names. Do not
+- **`ra_internal_*`***: A prefix for Runner API internal names. Do not
   define, declare or use names with this prefix.
-- **`RA_INTERNAL_*`†**: A prefix for Runner API internal names. Do not
+- **`RA_INTERNAL_*`***: A prefix for Runner API internal names. Do not
   define, declare or use names with this prefix.
-- **`ra_*`†**: Prefix for Runner API functions, typedefs, structs, and
+- **`ra_*`***: Prefix for Runner API functions, typedefs, structs, and
 v variable names. See the Runner API Reference.
-- **`RA_*`†**: Prefix for Runner API macros and enum values. See the
+- **`RA_*`***: Prefix for Runner API macros and enum values. See the
   Runner API Reference.
-- **`RA_TEST`†**: A Runner API macro that executes a test
+- **`RA_TEST`***: A Runner API macro that executes a test
   expression with a given isolation mode and other parameters. See
   the Runner API Reference.
-- **`RA_FAIL`†**: A macro that returns 0. Typically used in
+- **`RA_FAIL`***: A macro that returns 0. Typically used in
   the `RA_TEST` macro to conditionally inject a fail. See also `-I`.
-- **`RA_FAULT`†**: A macro that injects (signals) a fault.
+- **`RA_FAULT`***: A macro that injects (signals) a fault.
   Typically used in the `RA_TEST` macro to conditionally inject a
   fault. See also fault, `-I`, and the Runner API Reference.
 - **report**: See test report.
-- **report header†**: Lines of text written at the beginning
+- **report header***: Lines of text written at the beginning
   of a test report that include the report title, a timestamp, etc.
-- **reviewer†**: A person listed in config/contributors.md as a reviewer.
+- **reviewer***: A person listed in config/contributors.md as a reviewer.
   Note that an reviewer is also a contributor and an approver is also a
   contributor and a reviewer. A reviewer may review changes to BriteTest.
   A reviewer must follow the guidelines in docs/Contributor_Guide.md.
-- **runner†**: See test runner.
+- **runner***: See test runner.
 - **runner**: (GitHub) A machine or environment that executes the jobs
   defined in a GitHub Actions workflow. A runner provides the
   operating system, tools, and runtime needed to perform workflow
   steps such as building, testing, or packaging a project. GitHub
-  provides hosted runners, and users may also configure self‑hosted
+  provides hosted runners, and users may also configure self-hosted
   runners.
-- **Runner API†**: An API that helps simplify implementing a test runner.
-- **Runner Framework†**: Guidelines, templates, APIs, tools, and
+- **Runner API***: An API that helps simplify implementing a test runner.
+- **Runner Framework***: Guidelines, templates, APIs, tools, and
 - documentation for building and running test executables.
 </details>
 
@@ -421,7 +421,7 @@ v variable names. See the Runner API Reference.
   `bash`, `sh`, `zsh`, and `cmd.exe`.
 - **step**: An individual action within a job. A step may run a shell
   command, execute a script, or invoke a reusable action. Steps run in
-  order and share the job’s execution environment.
+  order and share the job's execution environment.
 </details>
 
 <details>
@@ -429,48 +429,48 @@ v variable names. See the Runner API Reference.
 
 ### --T--
 
-- **`ta_internal_*`†**: A prefix for Test API internal names. Do not
+- **`ta_internal_*`***: A prefix for Test API internal names. Do not
   define, declare or use names with this prefix.
-- **`TA_INTERNAL_*`†**: A prefix for Test API internal names. Do not
+- **`TA_INTERNAL_*`***: A prefix for Test API internal names. Do not
   define, declare or use names with this prefix.
-- **`ta_*`†**: Prefix for Test API functions, typedefs, structs, and
+- **`ta_*`***: Prefix for Test API functions, typedefs, structs, and
   variable names. See the Test API Reference.
-- **`TA_*`†**: Prefix for Test API macros and enum values. See the Test
+- **`TA_*`***: Prefix for Test API macros and enum values. See the Test
   API Reference.
-- **test†**: See test expression.
-- **Test API†**: An API that helps simplify implementing tests.
-- **test artifact†**: A specific kind of artifact, i.e.,
+- **test***: See test expression.
+- **Test API***: An API that helps simplify implementing tests.
+- **test artifact***: A specific kind of artifact, i.e.,
   file or output generated by a runner executable (for example, a
   test report, `stdout`, and `stderr`).
 - **test case**: This term is not used in the documentation. In other contexts,
   it may mean a single test or a set of tests; the documentation uses test
   expression for an individual test and test group for a set of test
   expressions.
-- **test expression†**: An expression that is an argument of
+- **test expression***: An expression that is an argument of
   an `RA_TEST` macro that can be cast to `int`; zero means fail,
-  non‑zero means pass. A test expression and its underlying functions
+  non-zero means pass. A test expression and its underlying functions
   are user-written. The Test API is provided to help simplify
   writing a test expression and its underlying functions.
-- **test function†**: A user‑written function used in
+- **test function***: A user-written function used in
   implementing a test expression.
-- **test group†**: A grouping of `RA_TEST` macros and
+- **test group***: A grouping of `RA_TEST` macros and
   optionally `RA_GROUP` macros.
-- **test group function†**: A function declared with a
+- **test group function***: A function declared with a
   `RA_DECLARE_GROUP` macro and followed by a function body in `{ }`.
-- **test helper function†**: A Test API function that helps
+- **test helper function***: A Test API function that helps
   simplify implementing a test expression.
-- **testing artifact†**: See test artifact.
-- **test report†**: A file written by a test runner
+- **testing artifact***: See test artifact.
+- **test report***: A file written by a test runner
   that records the results of a test run, including pass/fail counts,
   faults, and optional notes. See also report header, title, and
   notes.
-- **test runner†**: An executable that runs a set of tests.
+- **test runner***: An executable that runs a set of tests.
 - **test suite**: A complete set of tests for a project or a subset of
   tests for a project. The documenation uses the term test group if it is a
   subset of the tests for a project. The documentaton does not use the term
   _test suite_ since whether a set of tests is _complete_ for a
   project is not well-defined.
-- **thread guard†**: The guard used for thread isolation. A
+- **thread guard***: The guard used for thread isolation. A
   thread guard can only reliably capture synchronous signals
   (`SIGSEGV`, `SIGBUS`, `SIGFPE`, and `SIGILL`). Other signals
   (`SIGABRT`, `SIGKILL`, `SIGSTOP`, `SIGTERM`, `SIGINT`, `SIGHUP`,
@@ -479,10 +479,10 @@ v variable names. See the Runner API Reference.
   capture all signals but increases the time to run the tests. For
   already proven tests, use thread guards; otherwise, use process
   guards.
-- **thread isolation†**: An isolation mode where a test
+- **thread isolation***: An isolation mode where a test
   group or test expression executes in a separate thread. See also
   isolation mode.
-- **title†**: An optional report header text provided when
+- **title***: An optional report header text provided when
   opening the report with an `RA_OPEN_REPORT` macro.
 </details>
 
@@ -508,7 +508,7 @@ _No terms currently defined._
 ### --W--
 
 - **workflow**: A defined sequence of automated steps executed by a CI
-  (continuous‑integration) system. In GitHub Actions, a workflow is
+  (continuous-integration) system. In GitHub Actions, a workflow is
   triggered by an event (such as a push, pull request, or scheduled
   run) and runs one or more jobs that perform tasks like building,
   testing, or packaging a project. Workflows may produce artifacts
@@ -537,5 +537,5 @@ _No terms currently defined._
 ### --Z--
 
 _No terms currently defined._
-</details>
+</details><br>
 </details>

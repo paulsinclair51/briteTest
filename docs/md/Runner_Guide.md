@@ -55,7 +55,7 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+| 1.0.0 | 1.0.0 | 1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
 
 - The **Document** column records the document's version.
 - The **Runner** column records the Runner API version
@@ -107,9 +107,9 @@ A typical test executable includes:
 BriteTest runs test expressions and test group functions under a configurable
 isolation model:
 
-- **Same‑thread execution** (default)
-- **Thread‑isolated execution**
-- **Process‑isolated execution**
+- **Same-thread execution** (default)
+- **Thread-isolated execution**
+- **Process-isolated execution**
 
 The orchestrator and each test group function specify a `maxparallel` value that
 controls how many tests or groups may run concurrently.
@@ -153,7 +153,7 @@ static RA_DECLARE_GROUP(test_math)
 The orchestrator:
 
 - Declares and initializes the test runner
-- Parses command‑line arguments
+- Parses command-line arguments
 - Opens the report
 - Executes test groups
 - Writes category results
@@ -181,12 +181,12 @@ RA_DECLARE_ORCHESTRATOR(main)
 
 ## 5. Test Inclusion Control (`-I` / `-In`)
 
-Each `RA_TEST` and `RA_GROUP` macro includes an optional **include parameter** that determines whether it executes based on command‑line options.
+Each `RA_TEST` and `RA_GROUP` macro includes an optional **include parameter** that determines whether it executes based on command-line options.
 
-- `1` — always execute (default)  
-- `2–9` — execute only when `-In` is provided and `n` is >= the include value  
-- `I` — execute only when `-I` is provided  
-- `0` — never execute  
+- `1` -- always execute (default)  
+- `2-9` -- execute only when `-In` is provided and `n` is >= the include value  
+- `I` -- execute only when `-I` is provided  
+- `0` -- never execute  
 
 This allows selective execution of test subsets.
 </details>
@@ -217,23 +217,23 @@ BriteTest supports:
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;Same‑Thread Mode (default)</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Same-Thread Mode (default)</summary>
 
-### Same‑Thread Mode (default)
+### Same-Thread Mode (default)
 Fastest execution; faults are caught via signal guards.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;Thread‑Isolated Mode</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Thread-Isolated Mode</summary>
 
-### Thread‑Isolated Mode
+### Thread-Isolated Mode
 Each test runs in a separate thread.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;Process‑Isolated Mode</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Process-Isolated Mode</summary>
 
-### Process‑Isolated Mode
+### Process-Isolated Mode
 Each test runs in a separate process. This isolates:
 
 - Aborts  
@@ -242,7 +242,7 @@ Each test runs in a separate process. This isolates:
 - Infinite loops  
 - Sanitizer aborts  
 
-Recommended for CI and fault‑injection testing.
+Recommended for CI and fault-injection testing.
 </details>
 
 <details>
@@ -301,10 +301,10 @@ Use `--help` or `-h` to display usage information.
 
 ## 10. Troubleshooting
 
-- Missing POSIX APIs on Windows → use MSYS2 UCRT64 or Clang64  
-- Report not found → check whether PATH was a file or directory  
-- Paths with spaces → quote them  
-- Unexpected behavior → ensure code and docs match the same BriteTest version  
+- Missing POSIX APIs on Windows -> use MSYS2 UCRT64 or Clang64  
+- Report not found -> check whether PATH was a file or directory  
+- Paths with spaces -> quote them  
+- Unexpected behavior -> ensure code and docs match the same BriteTest version  
 </details>
 
 <details>
@@ -338,7 +338,7 @@ cp /path/to/runnerapi.c .
 3. Copy and paste the code into `test_quick.c`:
 
 <details>
-<summary>💻 and copy</summary>
+<summary>code and copy</summary>
 
 ```c
 #include "runnerapi.h"
@@ -391,7 +391,7 @@ RA_DECLARE_ORCHESTRATOR(main)
   RA_EXIT;
 }
 ```
-</details>
+</details><br>
 </details>
 
 4. Build the executable `test_quick` in your current directory:
@@ -436,7 +436,7 @@ platform-specific notes and options.
 
 - Pure C implementation.
 - Fault handling with nested guard levels.
-- Minimal footprint — a single header and source file define the entire API.
+- Minimal footprint -- a single header and source file define the entire API.
 - Straightforward API: simple assertions, categories, and reporting so you can focus on writing tests.
 - Comprehensive reporting: pass/fail/fault counts per category and overall totals.
 - Test support functions that simplify writing and organizing tests.
@@ -449,13 +449,13 @@ platform-specific notes and options.
 
 BriteTest requires:
 
-- POSIX.1‑2001 (IEEE Std 1003.1‑2001) compatibility.
-- A C99‑compliant compiler.
+- POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility.
+- A C99-compliant compiler.
 
 Supported environments:
 
-- Linux, macOS, BSD — fully compatible.
-- Windows — requires a POSIX layer such as Cygwin, MSYS2, or WSL.
+- Linux, macOS, BSD -- fully compatible.
+- Windows -- requires a POSIX layer such as Cygwin, MSYS2, or WSL.
 
 BriteTest has been exercised in POSIX environments; users should
 validate behavior in their own systems.
@@ -468,11 +468,11 @@ validate behavior in their own systems.
 
 | Framework     | Language / Style | Dependencies | Fault Isolation | Strengths | How BriteTest Differs |
 |---------------|------------------|--------------|-----------------|-----------|------------------------|
-| **Unity**     | C, macro‑heavy   | None         | No              | Widely used, simple API | BriteTest adds POSIX signal‑based fault isolation and category‑level reporting. |
-| **cmocka**    | C, function‑based | None        | Yes (setjmp)    | Mature, feature‑rich | BriteTest is smaller, header‑driven, and easier to embed in small projects. |
-| **Check**     | C, process‑based | POSIX tools  | Yes (fork)      | Strong isolation, fixtures | BriteTest avoids process spawning and keeps a minimal footprint. |
-| **Criterion** | C, auto‑discovery | libc, POSIX | Yes             | Modern, fast, rich output | BriteTest is simpler, portable, and avoids auto‑discovery complexity. |
-| **BriteTest**  | C99, macro‑driven | None        | Yes (POSIX signals) | Minimal, portable, easy to embed | Designed for small C projects needing fault isolation without heavy frameworks. |
+| **Unity**     | C, macro-heavy   | None         | No              | Widely used, simple API | BriteTest adds POSIX signal-based fault isolation and category-level reporting. |
+| **cmocka**    | C, function-based | None        | Yes (setjmp)    | Mature, feature-rich | BriteTest is smaller, header-driven, and easier to embed in small projects. |
+| **Check**     | C, process-based | POSIX tools  | Yes (fork)      | Strong isolation, fixtures | BriteTest avoids process spawning and keeps a minimal footprint. |
+| **Criterion** | C, auto-discovery | libc, POSIX | Yes             | Modern, fast, rich output | BriteTest is simpler, portable, and avoids auto-discovery complexity. |
+| **BriteTest**  | C99, macro-driven | None        | Yes (POSIX signals) | Minimal, portable, easy to embed | Designed for small C projects needing fault isolation without heavy frameworks. |
 </details>
 
 <details>
@@ -482,16 +482,16 @@ validate behavior in their own systems.
 
 BriteTest focuses on executing tests and reporting results. It does not:
 
-- Generate test source files — users write their own test modules.
-- Perform automatic test discovery — tests are invoked explicitly by the orchestrator or from within test functions.
-- Provide mocking or stubbing frameworks — users implement their own mocking and stubbing.
-- Include built‑in setup/teardown systems — users implement their own patterns as needed.
-- Handle memory management or leak detection — external tools (e.g., Valgrind) must be used.
-- Manage source control or repository structure — BriteTest does not define SCM workflows.
-- Integrate with build systems or CI pipelines — users configure these as needed.
-- Manage test artifacts such as expected‑output (“control”) files.
+- Generate test source files -- users write their own test modules.
+- Perform automatic test discovery -- tests are invoked explicitly by the orchestrator or from within test functions.
+- Provide mocking or stubbing frameworks -- users implement their own mocking and stubbing.
+- Include built-in setup/teardown systems -- users implement their own patterns as needed.
+- Handle memory management or leak detection -- external tools (e.g., Valgrind) must be used.
+- Manage source control or repository structure -- BriteTest does not define SCM workflows.
+- Integrate with build systems or CI pipelines -- users configure these as needed.
+- Manage test artifacts such as expected-output ("control") files.
 - Define or enforce directory layouts for tests or project structure.
-- Promote output files to control files — users handle this workflow manually.
+- Promote output files to control files -- users handle this workflow manually.
 - Track versioning or history of test artifacts.
 - Produce rich reporting formats such as JUnit XML or HTML output.
 - Provide functionality outside the features explicitly described in this document.
@@ -510,14 +510,14 @@ BriteTest is a lightweight C/C++ testing framework built around a simple executi
 
 The BriteTest Runner API files:
 
- - [`include/runnerapi.h`](include/runnerapi.h) — public API (typedefs, enums, constants, macros,
+ - [`include/runnerapi.h`](include/runnerapi.h) -- public API (typedefs, enums, constants, macros,
    function declarations, and static inline function definitions).
- - [`src/runnerapi.c`](src/runnerapi.c) — function definitions for the BriteTest framework.
+ - [`src/runnerapi.c`](src/runnerapi.c) -- function definitions for the BriteTest framework.
 
 The BriteTest Test API files:
 
- - [`include/testapi.h`](include/testapi.h) — test support/helper function declarations.
- - [`src/testapi.c`](src/testapi.c) — test support/helper function definitions.
+ - [`include/testapi.h`](include/testapi.h) -- test support/helper function declarations.
+ - [`src/testapi.c`](src/testapi.c) -- test support/helper function definitions.
 
 A typical test executable includes:
 
@@ -623,14 +623,14 @@ omit the trailing semicolon. Otherwise, a semicolon is required.
 This parameter controls whether a test group or test expression executes
 based on the test executable's `-I` or `-In` option (see [`-I` and `-In` Option](#i-and-in-option)):
 
-- 0 — do not execute.
-- 1 — always execute.
-- 2 – 9 — execute only when the user specifies an `-In` option and the value is less than or
+- 0 -- do not execute.
+- 1 -- always execute.
+- 2 - 9 -- execute only when the user specifies an `-In` option and the value is less than or
 -         equal to n (a single non-zero digit).
-- I — execute only when the user specifies `-I` without a digit (valid only for RA_TEST),
+- I -- execute only when the user specifies `-I` without a digit (valid only for RA_TEST),
       Result is counted as an injected pass/fail/fault as well as the usual
       a pass/fail/fault count.
-- omitted — defaults to `1`.
+- omitted -- defaults to `1`.
 
 For `isolation`, see [Isolation Modes and Fault Handling](isolation-modes-and-fault-handling).
 
@@ -672,15 +672,15 @@ The concurrent block macros ensure that all `RA_TEST` macros inside it start tog
 
 ### Isolation Modes and Fault Handling
 
-BriteTest supports two execution isolation modes that balance speed and fault‑isolation. Both modes run
+BriteTest supports two execution isolation modes that balance speed and fault-isolation. Both modes run
 tests in a single thread within each process; the difference is whether all test groups and tests run
 inside one process or each runs in its own process.
 
 | Mode | Speed | Isolation | Best Use |
 | --- | --- | --- | --- |
-| 0 – Same thread | Fastest | Low | Local dev |
-| 1 – Thread | Fast | Medium | Concurrent tests |
-| 2 – Process | Slower | Full | CI, fault injection |
+| 0 - Same thread | Fastest | Low | Local dev |
+| 1 - Thread | Fast | Medium | Concurrent tests |
+| 2 - Process | Slower | Full | CI, fault injection |
 
 `isolation`:
 - 0 same thread (no parallelism)
@@ -700,10 +700,10 @@ A fault is handled as follows:
 - The execution completes normally
 - The final report includes fault counts and messages
 
-This allows you to test low‑level or unsafe code without aborting the entire
+This allows you to test low-level or unsafe code without aborting the entire
 test run.
 
-1. Single‑Process Mode (default)
+1. Single-Process Mode (default)
 
 In this mode, all test groups and tests run sequentially inside a single process and a single thread.
 This provides the fastest execution and the simplest debugging experience.
@@ -728,17 +728,17 @@ one of the following, the entire BriteTest process terminates:
 - Undefined behavior that escalates to process termination.
 - Deadlocks, infinite loops, or resource exhaustion.
 
-Single‑process mode is ideal for everyday development and fast feedback, but it does not
+Single-process mode is ideal for everyday development and fast feedback, but it does not
 provide complete fault isolation.
 
-2. Process‑Isolated Mode (parallel or serial)
+2. Process-Isolated Mode (parallel or serial)
 
 In this mode, each test group function and test expression runs in its own child process. BriteTest monitors each child and
 reports its result after the process exits.
 
 Because each test group function and test expression runs in a separate process, BriteTest can isolate:
 
-- `SIGABRT` and all abort‑based failures.
+- `SIGABRT` and all abort-based failures.
 - Memory corruption that triggers allocator aborts.
 - Sanitizer aborts.
 - Undefined behavior that terminates the process.
@@ -749,10 +749,10 @@ Because each test group function and test expression runs in a separate process,
 
 A failure in one test group cannot affect any other test group or the test runner itself.
 
-Process‑isolated mode is recommended for:
+Process-isolated mode is recommended for:
 
 - CI environments
-- fault‑injection testing
+- fault-injection testing
 - untrusted or experimental code
 - tests that may hang, abort, or corrupt memory
 - running test groups in parallel
@@ -761,8 +761,8 @@ Summary:
 
 | Mode              | Execution                     | Isolation Strength                     | Best For                    |
 |-------------------|-------------------------------|----------------------------------------|-----------------------------|
-| Single‑Process    | One process, one thread       | Partial (cannot isolate aborts/hangs)  | Fast local runs, debugging  |
-| Process‑Isolated  | One process per test group    | Full (survives all faults)             | CI, fault injection, parallel runs |
+| Single-Process    | One process, one thread       | Partial (cannot isolate aborts/hangs)  | Fast local runs, debugging  |
+| Process-Isolated  | One process per test group    | Full (survives all faults)             | CI, fault injection, parallel runs |
 
 Both modes use the same `RA_GROUP` and `RA_TEST` macros. The choice of isolation
 mode affects only how test group functions and test expressions are executed,
@@ -827,7 +827,7 @@ Examples of Comparison and matching helpers include:
 Example of Environment helpers:
 
 - `int ta_with_environment_variable(const char *variable_name, const char *temporary_value, int (*callback)(void *callback_context), void *callback_context)`
-</details>
+</details><br>
 </details>
 
 See the Test Reference for details on each of these.
@@ -867,7 +867,7 @@ the BriteTest API and framework.
 ## Orchestrator (`main`) Function Template
 
 <details>
-<summary>💻 and copy</summary>
+<summary>code and copy</summary>
 
 ```c
 RA_DECLARE_ORCHESTRATOR(main)
@@ -891,7 +891,7 @@ RA_DECLARE_ORCHESTRATOR(main)
   RA_EXIT;
 }
 ```
-</details>
+</details><br>
 </details>
 
 `RA_WRITE_RESULT` writes one category and resets its counts. Totals accumulate
@@ -917,7 +917,7 @@ RA_DECLARE_ORCHESTRATOR(main);
 ## Test Group Function Template
 
 <details>
-<summary>💻 and copy</summary>
+<summary>code and copy</summary>
 
 ```c
 [static] RA_DECLARE_GROUP(funcname)
@@ -935,7 +935,7 @@ RA_DECLARE_ORCHESTRATOR(main);
   RA_RETURN;
 }
 ```
-</details>
+</details><br>
 </details>
 
 Use `static` when the function is only referenced in the same module.
@@ -1025,7 +1025,7 @@ make CC=gcc run
 
 #### Windows (POSIX Toolchain Required)
 
-Use a POSIX‑capable toolchain such as MSYS2 UCRT64 or Clang64.
+Use a POSIX-capable toolchain such as MSYS2 UCRT64 or Clang64.
 
 On Windows, use `build_test_britetest.ps1` to build and run the test executable:
 
@@ -1098,7 +1098,7 @@ Only one of these forms may be specified.
   cause a failures or a fault.
 
 - If neither option is provided, all  `RA_GROUP` and `RA_TEST` macros with an `include`
-  argument that is `1` – `9` execute by default.
+  argument that is `1` - `9` execute by default.
 
 See [Macros for Executing a Test Group Function or Test Expression](#macros-for-executing-a-test-group-function-or-test-expression) for the `include` parameter and its interaction with the `-I` and `-In` options.
 </details>
@@ -1288,7 +1288,7 @@ BriteTest Report (-i)
 /**
  * @subsubsection FaultHandling Fault Handling
  *
- * BriteTest provides multi‑level signal guards to safely capture faults such as
+ * BriteTest provides multi-level signal guards to safely capture faults such as
  * `SIGSEGV` `SIGABRT`, and `SIGBUS`. When a fault occurs:
  *
  * - The fault is recorded
@@ -1296,7 +1296,7 @@ BriteTest Report (-i)
  * - The test suite completes normally
  * - The final report includes fault counts and messages
  *
- * This allows you to test low‑level or unsafe code without aborting the entire
+ * This allows you to test low-level or unsafe code without aborting the entire
  * test run.
  */
 

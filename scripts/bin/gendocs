@@ -22,6 +22,7 @@ meta_file="$docs_dir/.md_metadata"
 
 tmp_pdf=''
 tmp_docx=''
+tmp_md=''
 
 force=0
 pdf_only=0
@@ -103,6 +104,7 @@ trap 'on_unexpected_error $? $LINENO' ERR
 cleanup() {
   [[ -n "$tmp_pdf" ]] && rm -f "$tmp_pdf"
   [[ -n "$tmp_docx" ]] && rm -f "$tmp_docx"
+  [[ -n "$tmp_md" ]] && rm -f "$tmp_md"
   return 0
 }
 trap cleanup EXIT
@@ -310,6 +312,32 @@ fingerprint_triplet() {
   printf '%s %s %s\n' "$(line_count_file "$f")" "$(char_count_file "$f")" "$(sha256_file "$f")"
 }
 
+convert_markdown_to_docx() {
+  local transformed_md=$1
+  local target_docx=$2
+  local source_dir
+  local branding_dir
+  local resource_path
+  local doc_title
+
+  source_dir=$(cd "$(dirname "$3")" && pwd)
+  branding_dir=$(cd "$(dirname "$source_dir")/branding" && pwd 2>/dev/null || true)
+  resource_path="$source_dir"
+  if [[ -n "$branding_dir" ]]; then
+    resource_path="$resource_path:$branding_dir"
+  fi
+  resource_path="$resource_path:."
+
+  doc_title=$(basename "${3%.*}")
+
+  mkdir -p "$(dirname "$target_docx")"
+  pandoc -f markdown-implicit_figures \
+    --resource-path "$resource_path" \
+    --metadata "title=$doc_title" \
+    "$transformed_md" \
+    -o "$target_docx"
+}
+
 usage() {
   cat <<'EOF'
 Simple Usage:
@@ -330,8 +358,8 @@ Complete Usage:
   gendocs [-b <backend>] -t
   gendocs -h | --help
 
-Generates .pdf files from .md source files, and .docx files from .pdf
-files generated from .md source files, or from .pdf source files.
+Generates .pdf files from .md source files, and .docx files directly from
+.md source files when possible, or from .pdf source files.
 
 By default, when the source is in repository root docs/md/, a document
 is regenerated only if the source Markdown has changed. Use the -f
@@ -546,6 +574,7 @@ for rel in "${!prev_meta[@]}"; do curr_meta["$rel"]="${prev_meta["$rel"]}"; done
 
 tmp_pdf="$(mktemp --suffix=.pdf)"
 tmp_docx="$(mktemp --suffix=.docx)"
+tmp_md="$(mktemp --suffix=.md)"
 
 # Build helper option arrays
 pdf_opts=()
@@ -671,20 +700,38 @@ for src in "${sources[@]}"; do
     fi
 
     if [[ $docx_only -eq 1 ]]; then
-      if ! bash "$genpdf_script" "${pdf_opts[@]}" "$src" "$tmp_pdf"; then
-        exit_with "$EXIT_INTERNAL_GENPDF_FAILED" \
-          "genpdf helper failed while generating PDF from source: $src"
-      fi
-      if ! bash "$gendocx_script" "${docx_opts[@]}" "$tmp_pdf" "$target_docx"; then
-        exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
-          "gendocx helper failed while generating DOCX from temporary PDF for source: $src"
+      if command -v pandoc >/dev/null 2>&1; then
+        if ! bash "$genpdf_script" "${pdf_opts[@]}" -e "$tmp_md" "$src" "$tmp_pdf"; then
+          exit_with "$EXIT_INTERNAL_GENPDF_FAILED" \
+            "genpdf helper failed while generating transformed markdown for source: $src"
+        fi
+        if ! convert_markdown_to_docx "$tmp_md" "$target_docx" "$src"; then
+          exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
+            "pandoc failed while generating DOCX from transformed markdown for source: $src"
+        fi
+      else
+        if ! bash "$genpdf_script" "${pdf_opts[@]}" "$src" "$tmp_pdf"; then
+          exit_with "$EXIT_INTERNAL_GENPDF_FAILED" \
+            "genpdf helper failed while generating PDF from source: $src"
+        fi
+        if ! bash "$gendocx_script" "${docx_opts[@]}" "$tmp_pdf" "$target_docx"; then
+          exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
+            "gendocx helper failed while generating DOCX from temporary PDF for source: $src"
+        fi
       fi
       continue
     fi
 
-    if ! bash "$genpdf_script" "${pdf_opts[@]}" "$src" "$target_pdf"; then
-      exit_with "$EXIT_INTERNAL_GENPDF_FAILED" \
-        "genpdf helper failed while generating PDF from source: $src"
+    if command -v pandoc >/dev/null 2>&1 && [[ $pdf_only -eq 0 ]]; then
+      if ! bash "$genpdf_script" "${pdf_opts[@]}" -e "$tmp_md" "$src" "$target_pdf"; then
+        exit_with "$EXIT_INTERNAL_GENPDF_FAILED" \
+          "genpdf helper failed while generating PDF/transformed markdown from source: $src"
+      fi
+    else
+      if ! bash "$genpdf_script" "${pdf_opts[@]}" "$src" "$target_pdf"; then
+        exit_with "$EXIT_INTERNAL_GENPDF_FAILED" \
+          "genpdf helper failed while generating PDF from source: $src"
+      fi
     fi
 
     if [[ $pdf_only -eq 1 ]]; then
@@ -696,9 +743,16 @@ for src in "${sources[@]}"; do
       continue
     fi
 
-    if ! bash "$gendocx_script" "${docx_opts[@]}" "$target_pdf" "$target_docx"; then
-      exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
-        "gendocx helper failed while generating DOCX from PDF: $target_pdf"
+    if command -v pandoc >/dev/null 2>&1; then
+      if ! convert_markdown_to_docx "$tmp_md" "$target_docx" "$src"; then
+        exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
+          "pandoc failed while generating DOCX from transformed markdown for source: $src"
+      fi
+    else
+      if ! bash "$gendocx_script" "${docx_opts[@]}" "$target_pdf" "$target_docx"; then
+        exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
+          "gendocx helper failed while generating DOCX from PDF: $target_pdf"
+      fi
     fi
 
   elif [[ "$src" == *.pdf ]]; then

@@ -54,7 +54,7 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+| 1.0.0 | 1.0.0 | 1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
 
 - The **Document** column records the document's version.
 - The **Runner** column records the Runner API version
@@ -117,7 +117,7 @@ recent version for this document at the time this document was published.
 
 ## 1. Introduction
 
-BriteTest’s internal architecture consists of several cooperating subsystems,
+BriteTest's internal architecture consists of several cooperating subsystems,
 including the implementation of API macros and functions, the execution engine,
 guard/fault handling, isolation support, file/path utilities, matching/comparison
 helpers, and environment support. These components work together to run test
@@ -125,7 +125,7 @@ groups and test expressions reliably across threads and processes while capturin
 faults and producing structured reports.
 
 The remainder of this document describes each internal symbol used to implement
-these subsystems, organized from high‑level behavior down to low‑level details.
+these subsystems, organized from high-level behavior down to low-level details.
 
 In this document, a *symbol* refers to any named entity in the BriteTest framework, including:
 
@@ -139,7 +139,7 @@ In this document, a *symbol* refers to any named entity in the BriteTest framewo
 This document is organized by the named entities in the BriteTest Runner
 implementation. Each symbol (type, macro, function, etc.) is described individually, including its purpose, behavior, and usage. It serves as
 the reference companion to the BriteTest Framework Guide, defining the
-framework’s components precisely while the Guide explains their design
+framework's components precisely while the Guide explains their design
 and interaction.
 </details>
 
@@ -204,7 +204,7 @@ orchestrator aggregation logic.
 ```c
 ra_resubt_t result = {0, 0, 0, 0, 0};
 ```
-</details>
+</details><br>
 </details>
 
 <details>
@@ -229,8 +229,8 @@ typedef struct <StructName> {
 Explain the purpose of this struct, what data it aggregates, and how it participates in the BriteTest execution model.
 
 **Fields**
-- `<field-name>` — description  
-- `<field-name>` — description  
+- `<field-name>` -- description  
+- `<field-name>` -- description  
 
 **Usage Notes**  
 - Ownership or lifetime rules  
@@ -240,7 +240,7 @@ Explain the purpose of this struct, what data it aggregates, and how it particip
 ```c
 <StructName> s = { ... };
 ```
-</details>
+</details><br>
 </details>
 
 <details>
@@ -266,8 +266,8 @@ typedef enum <EnumName> {
 Explain what conceptual category this enum models and how the values are used by the framework.
 
 **Values**
-- `<ENUM_VALUE_1>` — meaning  
-- `<ENUM_VALUE_2>` — meaning  
+- `<ENUM_VALUE_1>` -- meaning  
+- `<ENUM_VALUE_2>` -- meaning  
 
 **Usage Notes**  
 - Any ordering assumptions  
@@ -277,7 +277,7 @@ Explain what conceptual category this enum models and how the values are used by
 ```c
 <EnumName> mode = <ENUM_VALUE_1>;
 ```
-</details>
+</details><br>
 </details>
 
 <details>
@@ -310,7 +310,7 @@ if (<VariableName> == ...) {
     ...
 }
 ```
-</details>
+</details><br>
 </details>
 
 <details>
@@ -332,8 +332,8 @@ if (<VariableName> == ...) {
 Describe the purpose of this macro, what it expands to conceptually, and how it fits into the BriteTest orchestration or test definition model.
 
 **Parameters**
-- `<param>` — meaning and constraints  
-- `<param>` — meaning  
+- `<param>` -- meaning and constraints  
+- `<param>` -- meaning  
 
 **Usage Notes**  
 - Side effects  
@@ -344,7 +344,7 @@ Describe the purpose of this macro, what it expands to conceptually, and how it 
 ```c
 <MACRO_NAME>(arg1, arg2);
 ```
-</details>
+</details><br>
 </details>
 
 <details>
@@ -369,8 +369,8 @@ depending on how they are used within the framework.
 Explain what this function does, when it is called, and how it interacts with the BriteTest runtime.
 
 **Parameters**
-- `<param-name>` — meaning, constraints, ownership  
-- `<param-name>` — meaning  
+- `<param-name>` -- meaning, constraints, ownership  
+- `<param-name>` -- meaning  
 
 **Return Value**  
 Describe what is returned and under what conditions.
@@ -388,7 +388,7 @@ Describe what is returned and under what conditions.
 ```c
 <return-type> result = <FunctionName>(...);
 ```
-</details>
+</details><br>
 </details>
 
 <details>
@@ -461,7 +461,7 @@ Since these are local, these names do not have to conform to the
 internal name conventions and more natural names may be used.
 
 (Placeholder)
-</details>
+</details><br>
 </details>
 
 <details>
@@ -571,9 +571,9 @@ Use this as a reference when adapting BriteTest into your own project structure.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;Framework‑Specific Terms</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Framework-Specific Terms</summary>
 
-### Framework‑Specific Terms
+### Framework-Specific Terms
 
 - **Orchestrator Lifecycle**: The sequence of initialization, group execution,
   test execution, and report finalization performed by the BriteTest framework.
@@ -581,12 +581,12 @@ Use this as a reference when adapting BriteTest into your own project structure.
   (e.g., segmentation faults) and continue executing remaining tests.
 - **Isolation Semantics**: The rules governing how tests and groups run in
   threads or processes to prevent interference and ensure fault containment.
-- **Concurrency Model**: The framework’s rules for running tests concurrently
+- **Concurrency Model**: The framework's rules for running tests concurrently
   within `RA_BEGIN_CONCURRENT` / `RA_END_CONCURRENT` blocks.
 - **Execution Phases**: The internal stages of orchestrator operation, including
   initialization, argument parsing, group dispatch, test dispatch, and report
   writing.
-- **Fault Handling Model**: The framework’s strategy for capturing and reporting
+- **Fault Handling Model**: The framework's strategy for capturing and reporting
   faults without terminating the entire test run.
 - **Control File Promotion**: The process of replacing an outdated control file
   with a newly generated file when differences are expected or intentional.
