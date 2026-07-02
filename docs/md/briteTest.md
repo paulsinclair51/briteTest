@@ -440,5 +440,3 @@ Examples include:
 - Text and pattern helpers: `ta_compare_text_normalized`
 </details>
 </details>
-
-SYNC_TEST_LINE
