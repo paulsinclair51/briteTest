@@ -174,7 +174,7 @@ API compatibility guidelines:
 Significant justification is required when these guidelines cannot be
 followed.
 
-Note: A major or minor release, includes all the versioned files. A patch
+Note: A major or minor release includes all the versioned files. A patch
 release is for an individual versioned file.
 </details>
 
