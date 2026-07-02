@@ -841,9 +841,9 @@ Opens a temporary file if not already open and writes the notes to the temporary
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;`void ra_current_time(char *current_time, size_t size)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;11.3. `void ra_current_time(char *current_time, size_t size)`</summary>
 
-### `void ra_current_time(char *current_time, size_t size)`
+### 11.3. `void ra_current_time(char *current_time, size_t size)`
 
 Get the current time as a formatted string.
 
@@ -856,9 +856,9 @@ Note: On error, current_time is set to "unknown time".
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;Customization: Get and set.</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;11.4. Customization: Get and set.</summary>
 
-### Customization: Get and set.
+### 11.4. Customization: Get and set.
 
 `char *ra_executable_name(void)`
 `void ra_set_executable_name(char *en)`
@@ -875,9 +875,9 @@ Note: On error, current_time is set to "unknown time".
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;Customization Helper Functions</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;11.5. Customization Helper Functions</summary>
 
-### Customization Helper Functions
+### 11.5. Customization Helper Functions
 
 `size_t ra_currentlevel(void)`
 `ra_resubt_t ra_currentresult(void)`

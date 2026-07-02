@@ -155,23 +155,59 @@ check_heading_numbering() {
   local file=$1
 
   awk -v file="$file" '
+    function is_numbered_heading(text) {
+      return text ~ /^[0-9]+(\.[0-9]+)*(\.)?[[:space:]]+/
+    }
+
+    (/^```/ || /^~~~/) {
+      in_code_block = !in_code_block
+      next
+    }
+
+    in_code_block {
+      next
+    }
+
     /^###[[:space:]]/ {
       heading=$0
       sub(/^###[[:space:]]+/, "", heading)
-      if (heading ~ /^[0-9]/ && heading !~ /^[0-9]+(\.[0-9]+)+(\.)?[[:space:]]+/) {
+      if (heading ~ /^[0-9]/ && !is_numbered_heading(heading)) {
         printf("ERROR: %s: malformed level-3 heading numbering: %s\n", file, $0) > "/dev/stderr"
+        status=1
+      }
+
+      if (heading ~ /^[0-9]/) {
+        if (current_section_heading == "") {
+          printf("ERROR: %s: numbered level-3 heading appears before a level-2 heading: %s\n", file, $0) > "/dev/stderr"
+          status=1
+        } else {
+          if (current_section_heading !~ /^[0-9]/) {
+            printf("ERROR: %s: numbered level-3 headings require a numbered level-2 section heading: %s\n", file, $0) > "/dev/stderr"
+            status=1
+          }
+          section_has_numbered_h3=1
+        }
+      } else if (section_has_numbered_h3) {
+        printf("ERROR: %s: all level-3 headings in a section must be numbered once one is numbered: %s\n", file, $0) > "/dev/stderr"
         status=1
       }
     }
     /^##[[:space:]]/ {
+      section_has_numbered_h3=0
       if ($0 == "## Preface" || $0 == "## Table of Contents") {
+        current_section_heading=""
         next
       }
       heading=$0
       sub(/^##[[:space:]]+/, "", heading)
-      if (heading ~ /^[0-9]/ && heading !~ /^[0-9]+(\.)?[[:space:]]+/) {
+      current_section_heading=heading
+      if (heading ~ /^[0-9]/ && !is_numbered_heading(heading)) {
         printf("ERROR: %s: malformed level-2 heading numbering: %s\n", file, $0) > "/dev/stderr"
         status=1
+      }
+
+      if (heading !~ /^[0-9]/) {
+        current_section_heading=heading
       }
     }
     END { exit status }
@@ -207,6 +243,15 @@ check_toc_syntax() {
       if (line ~ /^[[:space:]]*[0-9]/ && line !~ /^[[:space:]]*[0-9]+(\.[0-9]+)*\.[[:space:]]+\[/) {
         printf("ERROR: %s: Table of Contents numbering syntax is malformed: %s\n", file, $0) > "/dev/stderr"
         status=1
+      }
+
+      if (match(line, /^[[:space:]]*([0-9]+(\.[0-9]+)*)\.[[:space:]]+\[([^]]+)\]/, parts)) {
+        label=parts[3]
+        gsub(/\*\*/, "", label)
+        if (label ~ /^[0-9]+(\.[0-9]+)*\./) {
+          printf("ERROR: %s: Table of Contents label must not repeat the numbered prefix: %s\n", file, $0) > "/dev/stderr"
+          status=1
+        }
       }
     }
     END { exit status }

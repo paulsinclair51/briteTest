@@ -84,7 +84,7 @@ recent version for this document at the time this document was published.
 
 ## Table of Contents
 
-1. [**1. Introduction**](#1-introduction)<br>
+1. [**Introduction**](#1-introduction)<br>
    1.1. [Key Strengths](#11-key-strength)<br>
    1.2. [Quick Start](#12-quick-start)<br>
    1.3. [Requirements](#13-requirements)<br>
@@ -101,9 +101,9 @@ recent version for this document at the time this document was published.
 
 6. [**Test Report**](#6-test-report)
 
-7. [**7. Advanced Features and Topics**](#7-advanced-features-and-topics)
+7. [**Advanced Features and Topics**](#7-advanced-features-and-topics)
 
-8. [**8. Test Expressions**](#8-test-expressions)
+8. [**Test Expressions**](#8-test-expressions)
 
 9. [**Setup and Teardown**](#9-setup-and-teardown)
 
