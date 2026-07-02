@@ -863,7 +863,7 @@ Before releasing:
 </details>
 
 <details>
-<summary><strong>10. Pre-commit Hook Setup for Protected Branches</strong></summary>
+<summary><strong>10. Protected Branches</strong></summary>
 
 ## 10. Protected Branches
 
