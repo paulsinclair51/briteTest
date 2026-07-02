@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+
+# replace_phrases.py - Replace configured phrases across markdown files.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
 """
 Replace phrases in .md files based on a configuration file.
 

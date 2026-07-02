@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
 # test_lsbranch.sh - basic smoke tests for scripts/bin/lsbranch
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
 
 set -euo pipefail
 
