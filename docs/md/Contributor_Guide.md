@@ -130,6 +130,8 @@ When to increment for a release:
 - Patch:
 
   - Bug fixes, implementation improvements, documentation corrections.
+  - No changes to the APIs (e.g., new APi function or macro).
+  - No changes to the Runner Framework.
 
 - Minor:
 
@@ -138,9 +140,9 @@ When to increment for a release:
   - No breaking changes (syntax or behavior) to the APIs.
   - No breaking changes to the Runner Framework.
   - Minor refactorying of implementation.
-  - If incremented, it must be updated for all files (.h, .c, and .md) to the
-    same minor value, even if the file was not otherwise modified
-    with patch reset to 0.
+  - If incremented or reset to 0, it must be updated for all files
+    (.h, .c, and .md) to the same minor value, even if the file was
+    not otherwise modified with patch reset to 0.
 
 - Major
 
@@ -153,27 +155,27 @@ When to increment for a release:
     - Breaking changes to the Runner Framework.
   - If incremented, it must be updated for all files (.h, .c, and .md) to the
     same major value, even if the file was not otherwise modified
-    with, minor and patch reset to 0.
+    with minor and patch reset to 0.
 
 When updating the version for the Runner API:
 
 - Update the `RA_VERSION` macro in `include/runnerapi.h`:
-  - Increment `p` if the major and minor versions are not incremented.
-  - Reset `p` to `0` when the major or minor version is incremented.
+  - Increment `p` if the major and minor versions are not changed.
+  - Reset `p` to `0` when the major or minor version is changed.
 - Update the `RA_VERSION_C` macro in `src/runnerapi.c` to match `RA_VERSION`.
 
 When updating the version for the Test API:
 
 - Update the `TA_VERSION` macro in `include/testapi.h`.
-  - Increment `p` if the major and minor versions are not incremented.
-  - Reset `p` to `0` when the major or minor version is incremented.
+  - Increment `p` if the major and minor versions are not changed.
+  - Reset `p` to `0` when the major or minor version is changed.
 - Update the `TA_VERSION_C` macro in `src/testapi.c` to match `TA_VERSION`.
 
 When updating the version for a document:
 
 - Add a new entry to the top of the Document Version History table.
-- Increment `p` if the major and minor versions are not incremented.
-- Reset `p` to `0` when the major or minor version is incremented.
+- Increment `p` if the major and minor versions are not changed.
+- Reset `p` to `0` when the major or minor version is chsnged.
 
 API compatibility guidelines:
 
