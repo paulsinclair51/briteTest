@@ -120,7 +120,7 @@ code and documentation.
 
 ## 2. Versioning Guidelines
 
-Versioning is used for API `.h` and `.c` file, and documentation `.md` files and
+Versioning is used for API `.h` and `.c` files, and documentation `.md` files and
 has the format:
 
   ` M.m.p` (major, minor, patch).
