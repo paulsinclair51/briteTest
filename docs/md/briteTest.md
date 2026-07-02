@@ -116,9 +116,9 @@ recent version for this document at the time this document was published.
 
 12. [**Isolation**](#12-isolation)<br>
 
-[**13. Test API**](#13-test-api)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**13.1 File Functions**](#131-file-functions)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[**13.2 Compare Functions**](#132-compare-functions)
+13.  [**Test API**](#13-test-api)<br>
+[13.1 File Functions](#131-file-functions)<br>
+[**13.2 Compare Functions**](#132-compare-functions)
 </details>
 
 <details>
