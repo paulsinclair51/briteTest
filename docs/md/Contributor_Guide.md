@@ -641,7 +641,7 @@ scripts/bin/updatelogos
    - Optionally, add a note to `README.md` in root directory documenting the brand 
      transition.
    - Consider a separate release or major version bump if the replace is significant.
-</details><br>
+</details>
 </details>
 
 <details>
