@@ -186,29 +186,23 @@ followed.
 
 ## 3. Branding
 
-This chapter discusses choices for the brand description and name
+This chapter discusses choices for the brand name and description
 plus how to change the brand name.
 
-briteTest is a lightweight framework for defining, running, and reporting tests in C/C++ projects. It provides a simple core macro-based Runner Application Programming Interface (API), a function-based Test API, fault-tolerant execution, and clear reporting. It can be used for unit and command-line testing.
+briteTest is a lightweight Runner Framework for defining, running, and
+reporting tests in C/C++ projects. It provides a simple macro-based
+Runner Application Programming Interface (API), a function-based Test API,
+fault-tolerant execution, and clear reporting. It can be used for unit and
+command-line testing.
 
-briteTest is a lightweight framework for defining, running, and
-reporting tests in C/C++ projects. It provides a compact macro-based
-Runner API, a function-driven Test API, fault-tolerant execution, and
-clear, structured reporting. The framework is designed for small to
-medium C projects that need reliable automated testing without the overhead
-of large toolchains or external dependencies.
+The Runner Framework is designed for small to medium C projects that need
+reliable automated testing without the overhead of large toolchains
+or external dependencies.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Alternative Brand Descriptions</summary>
 
 ### 3.1. Alternative Brand Descriptions
-
-BriteTest is a lightweight framework for defining, running, and reporting
-tests in C/C++ projects. It provides a simple core macro-based Runner,
-Application Programming Interface (API), a function-based Test API,
-fault-tolerant execution, and clear reporting. It is ideal for small to
-medium C projects that need reliable testing without heavy tooling and
-dependencies. It can be used for unit and command-line testing.
 
 Tightened, clarified, and made more parallel to the tone you've been using
 for LiteTest. Below is a refined version that reads cleaner, is more precise,
