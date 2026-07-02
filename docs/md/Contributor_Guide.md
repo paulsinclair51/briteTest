@@ -125,7 +125,7 @@ has the format:
 
   ` M.m.p` (major, minor, patch).
 
-When to increment for a release:
+When to change for a release:
 
 - Patch:
 
@@ -198,6 +198,10 @@ followed.
 This chapter discusses choices for the brand name and description
 plus how to change the brand name.
 
+- Brand name: briteTest
+
+- Description:
+```text
 briteTest is a lightweight Runner Framework for defining, running, and
 reporting tests in C/C++ projects. It provides a simple macro-based
 Runner Application Programming Interface (API), a function-based Test API,
@@ -207,6 +211,7 @@ command-line testing.
 The Runner Framework is designed for small to medium C projects that need
 reliable automated testing without the overhead of large toolchains
 or external dependencies.
+```
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Alternative Brand Descriptions</summary>
