@@ -125,16 +125,14 @@ has the format:
 
   ` M.m.p` (major, minor, patch).
 
-When to change for a release:
+When to change version:
 
 - Patch:
-
   - Bug fixes, implementation improvements, documentation corrections.
   - No changes to the APIs (e.g., new APi function or macro).
   - No changes to the Runner Framework.
 
 - Minor:
-
   - Minor additions to the APIs (e.g., new function or macro).
   - Minor additions to the Runner Framework.
   - No breaking changes (syntax or behavior) to the APIs.
@@ -145,7 +143,6 @@ When to change for a release:
     not otherwise modified with patch reset to 0.
 
 - Major
-
   - Major additions to the APIs.
   - Major additions to the Runner Framework.
   - Significant refactoring of the implementation.
@@ -157,28 +154,16 @@ When to change for a release:
     same major value, even if the file was not otherwise modified
     with minor and patch reset to 0.
 
-When updating the version for the Runner API:
-
-- Update the `RA_VERSION` macro in `include/runnerapi.h`:
-  - Increment `p` if the major and minor versions are not changed.
-  - Reset `p` to `0` when the major or minor version is changed.
-- Update the `RA_VERSION_C` macro in `src/runnerapi.c` to match `RA_VERSION`.
-
-When updating the version for the Test API:
-
-- Update the `TA_VERSION` macro in `include/testapi.h`.
-  - Increment `p` if the major and minor versions are not changed.
-  - Reset `p` to `0` when the major or minor version is changed.
-- Update the `TA_VERSION_C` macro in `src/testapi.c` to match `TA_VERSION`.
-
-When updating the version for a document:
-
-- Add a new entry to the top of the Document Version History table.
+When changing the version:
 - Increment `p` if the major and minor versions are not changed.
-- Reset `p` to `0` when the major or minor version is chsnged.
+- Reset `p` to `0` when the major or minor version is changed.  
+- For the `include/runnerapi.h` file, update the `RA_VERSION` macro. 
+- For the `src/runnerapi.c` file, update the `ra_internal_version` function.
+- For the `include/testapi.h` file, update the `TA_VERSION` macro.
+- For the `src/testapi.c` file, update the `ta_internal_version` function.
+- For a document, add a new entry to the top of the `Document Version History` table.
 
 API compatibility guidelines:
-
 - Do not change API signatures.
 - Do not change API behavior.
 - Do not change exit and return code meanings.
