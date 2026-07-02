@@ -120,21 +120,16 @@ code and documentation.
 
 ## 2. Versioning Guidelines
 
-Versioning is used for:
+Versioning is used for API `.h` and `.c` file, and documentation `.md` files and
+has the format:
 
-- API .h and .c files: `M.m.p` (major, minor, patch).
-
-- Documentation .md files: `M.u` (major, update).
+  ` M.m.p` (major, minor, patch).
 
 When to increment for a release:
 
-- Update:
-
-  - Document updated.
-
 - Patch:
 
-  - Bug fixes or implementation improvements.
+  - Bug fixes, implementation improvements, documentation corrections
 
 - Minor:
 
