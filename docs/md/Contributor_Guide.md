@@ -154,7 +154,7 @@ When to change version:
     same major value (even if the file was not otherwise modified)
     with minor and patch reset to 0.
 
-When changing the version:
+When changing the version for file:
 - Increment `p` if the major and minor versions are not changed.
 - Reset `p` to `0` when the major or minor version is changed.  
 - For the `include/runnerapi.h` file, update the `RA_VERSION` macro. 
