@@ -27,7 +27,7 @@ excluding README.md.
 Checks include front matter structure, details/summary pairing,
 table-of-contents numbering syntax, numbered heading formatting,
 summary/heading alignment and numbered summary style,
-and the shared Document Version History block.
+ASCII-only content, and the shared Document Version History block.
 
 Exit codes:
   0  Success, or help requested with -h/--help.
@@ -149,6 +149,21 @@ check_details_structure() {
     { print }
     END { exit status }
   ' "$file" >/dev/null || failures=1
+
+  awk -v file="$file" '
+    {
+      lines[NR] = $0
+    }
+    END {
+      for (i = 1; i < NR; i++) {
+        if (lines[i] ~ /^[[:space:]]*<\/details>[[:space:]]*$/ && lines[i + 1] ~ /^[[:space:]]*<\/details>[[:space:]]*$/) {
+          printf("ERROR: %s: adjacent </details> blocks require the first closing tag to be </details><br>: %s\n", file, lines[i]) > "/dev/stderr"
+          status = 1
+        }
+      }
+      exit status
+    }
+  ' "$file" || failures=1
 }
 
 check_heading_numbering() {
@@ -331,6 +346,16 @@ check_summary_heading_alignment() {
   ' "$file" || failures=1
 }
 
+check_ascii_only() {
+  local file=$1
+  local first_match
+
+  first_match=$(LC_ALL=C grep -nP -m1 '[^\x00-\x7F]' "$file" || true)
+  if [[ -n "$first_match" ]]; then
+    fail "$file: non-ASCII character found: $first_match"
+  fi
+}
+
 check_file() {
   local file=$1
   local base
@@ -365,6 +390,7 @@ $toc_summary" ]]; then
     check_standard_doc "$file"
   fi
 
+  check_ascii_only "$file"
   check_details_structure "$file"
   check_heading_numbering "$file"
   check_toc_syntax "$file"
@@ -379,7 +405,7 @@ while IFS= read -r file; do
   if [[ $(extract_dvh_block "$file") != "$reference_dvh" ]]; then
     fail "$file: Document Version History block differs from $overview_doc"
   fi
-done < <(find "$docs_dir" -maxdepth 1 -type f -name '*.md' ! -name 'README.md' ! -name 'PRE_COMMIT_HOOKS.md' | sort)
+done < <(find "$docs_dir" -maxdepth 1 -type f -name '*.md' ! -name 'README.md' | sort)
 
 if [[ $failures -ne 0 ]]; then
   exit "$EXIT_VALIDATION"

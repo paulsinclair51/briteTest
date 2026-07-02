@@ -49,7 +49,7 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+| 1.0.0 | 1.0.0 | 1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
 
 - The **Document** column records the document's version.
 - The **Runner** column records the Runner API version
@@ -114,7 +114,7 @@ The following are the user and contributor documents.
 
 **User documentation**:
 
-- **README.md** — Introduction to BriteTest.
+- **README.md** -- Introduction to BriteTest.
 
 - **Documentation_Guide.md**: A guide to documents and the
   repository layout.

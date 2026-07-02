@@ -54,7 +54,7 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+| 1.0.0 | 1.0.0 | 1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
 
 - The **Document** column records the document's version.
 - The **Runner** column records the Runner API version
@@ -87,7 +87,7 @@ recent version for this document at the time this document was published.
 
 ## 1. Introduction
 
-Basic concepts and high‑level description of the framework internals and design goals.
+Basic concepts and high-level description of the framework internals and design goals.
 
 In this document, a *symbol* refers to any named entity in the framework, including:
 
@@ -121,7 +121,7 @@ by Runner API users.
 
 In general, users of the API should not define names prefixed with `ra_` or `RA_`,
 `, or reference names prefixed with `ra_internal_` or `RA_INTERNAL_`.
-</details>
+</details><br>
 </details>
 
 <details>
@@ -169,9 +169,9 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary><strong>6. Process‑Isolated Execution</strong></summary>
+<summary><strong>6. Process-Isolated Execution</strong></summary>
 
-## 6. Process‑Isolated Execution
+## 6. Process-Isolated Execution
 
 - Child process creation  
 - Monitoring and timeouts  
@@ -180,9 +180,9 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 </details>
 
 <details>
-<summary><strong>7. Thread‑Isolated Execution</strong></summary>
+<summary><strong>7. Thread-Isolated Execution</strong></summary>
 
-## 7. Thread‑Isolated Execution
+## 7. Thread-Isolated Execution
 
 - Thread creation  
 - Synchronization  
@@ -251,7 +251,7 @@ In general, users of the API should not define names prefixed with `ra_` or `RA_
 
 For general terms used the documentation, see the Glossary document.
 
-Runner‑Specific Terms:
+Runner-Specific Terms:
 
 - **Orchestrator Lifecycle**: The sequence of initialization, group execution,
   test execution, and report finalization performed by the BriteTest framework.
@@ -259,12 +259,12 @@ Runner‑Specific Terms:
   (e.g., segmentation faults) and continue executing remaining tests.
 - **Isolation Semantics**: The rules governing how tests and groups run in
   threads or processes to prevent interference and ensure fault containment.
-- **Concurrency Model**: The framework’s rules for running tests concurrently
+- **Concurrency Model**: The framework's rules for running tests concurrently
   within `RA_BEGIN_CONCURRENT` / `RA_END_CONCURRENT` blocks.
 - **Execution Phases**: The internal stages of orchestrator operation, including
   initialization, argument parsing, group dispatch, test dispatch, and report
   writing.
-- **Fault Handling Model**: The framework’s strategy for capturing and reporting
+- **Fault Handling Model**: The framework's strategy for capturing and reporting
   faults without terminating the entire test run.
 - **Control File Promotion**: The process of replacing an outdated control file
   with a newly generated file when differences are expected or intentional.

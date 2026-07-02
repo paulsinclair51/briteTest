@@ -55,7 +55,7 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+| 1.0.0 | 1.0.0 | 1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
 
 - The **Document** column records the document's version.
 - The **Runner** column records the Runner API version
@@ -206,7 +206,7 @@ typedef struct
   ra_state_t next;
 } ra_state_t;
 ```
-</details>
+</details><br>
 </details>
 
 <details>
@@ -311,7 +311,7 @@ typedef enum
     RA_SYSTEM_THREAD = -305
 } ra_return_code_t;
 ```
-</details>
+</details><br>
 </details>
 
 <details>
@@ -474,7 +474,7 @@ closes the test report.
 
 **Termination Exit Codes**:
 - `RA_EXIT_ERROR`
-</details>
+</details><br>
 </details>
 
 <details>
@@ -532,7 +532,7 @@ and a forward-reference to the test group function.
 
 **Termination Exit Codes**:
 - `RA_RETURN_ERROR`
-</details>
+</details><br>
 </details>
 
 <details>
@@ -557,12 +557,12 @@ A semicolon is not allowed if the macro is used as an argument to the
 
 **include**:
 - A single character token or omit (defaults to `1`):
-  - `0`   — Never execute. This is useful to disable a test (e.g., failing or
+  - `0`   -- Never execute. This is useful to disable a test (e.g., failing or
             faulting test for which the fix has been deferred).
-  - `1`   — Always execute (e.g., smoke tests).
-  - `2–9` — Execute only when the `-In` flag is specified in the test command line
+  - `1`   -- Always execute (e.g., smoke tests).
+  - `2-9` -- Execute only when the `-In` flag is specified in the test command line
             and n >= include.
-  - `I`   — Execute only when the `-I` flag is specified in the test command line.
+  - `I`   -- Execute only when the `-I` flag is specified in the test command line.
             This is useful for
             injecting a fail/fault for verifying behavior and report output if
             fails/faults were to occur. See also `RA_FAIL` and `RA_FAULT(type)`
@@ -572,9 +572,9 @@ See "Test Command Line" for details on command line flags.
 
 **isolation**:
 - Single character token or omit (defaults to 0):
-- `0` — Same thread.
-- `1` — Separate thread.
-- `2` — Separate process.
+- `0` -- Same thread.
+- `1` -- Separate thread.
+- `2` -- Separate process.
 
 See "Isolation" in the Runner Guide.
 
@@ -594,7 +594,7 @@ See "Isolation" in the Runner Guide.
 
 **Termination Exit Codes**:
 - `RA_TEST_ERROR`
-</details>
+</details><br>
 </details>
 
 <details>
@@ -626,7 +626,7 @@ See "Isolation" in the Runner Guide.
 
 **Termination Exit Codes**:
 - `RA_END_GROUP_ERROR`
-</details>
+</details><br>
 </details>
 
 <details>
@@ -653,9 +653,9 @@ The minor version is incremented for backward-compatible additions or deprecatin
 The patch version is incremented for bug fixes or internal improvements.
 
 **Examples**:
-- `RA_RUNNER_VERSION` → `"1.0.9"`
-- `RA_RUNNER_VERSION` → `"1.3.11"`
-- `RA_RUNNER_VERSION` → `"12.05.18"`
+- `RA_RUNNER_VERSION` -> `"1.0.9"`
+- `RA_RUNNER_VERSION` -> `"1.3.11"`
+- `RA_RUNNER_VERSION` -> `"12.05.18"`
 </details>
 
 <details>
@@ -670,8 +670,8 @@ The patch version is incremented for bug fixes or internal improvements.
 - Value is `RA_INVALID_VERSION` (`(int)-2`) *if* `v` is an invalid version string.
 
 **Examples**:
-- `RA_VERSION_MAJOR("5.0.9")` → `(int)5`
-- `RA_VERSION_MAJOR("5.000.9")` → `RA_INVALID_VERSION`
+- `RA_VERSION_MAJOR("5.0.9")` -> `(int)5`
+- `RA_VERSION_MAJOR("5.000.9")` -> `RA_INVALID_VERSION`
 </details>
 
 <details>
@@ -686,8 +686,8 @@ The patch version is incremented for bug fixes or internal improvements.
 - Value is `RA_INVALID_VERSION` (`(int)-2`) *if* `v` is an invalid version string.
 
 **Examples**:
-- `RA_VERSION_MINOR("5.00.9")` → `(int)0`
-- `RA_VERSION_MINOR("5.1.001")` → `RA_INVALID_VERSION`
+- `RA_VERSION_MINOR("5.00.9")` -> `(int)0`
+- `RA_VERSION_MINOR("5.1.001")` -> `RA_INVALID_VERSION`
 </details>
 
 <details>
@@ -702,8 +702,8 @@ The patch version is incremented for bug fixes or internal improvements.
 - Value is `RA_INVALID_VERSION` (`(int)-2`) *if* `v` is an invalid version string.
 
 **Examples**:
-- `RA_VERSION_PATCH("5.0.12")` → `(int)12`
-- `RA_VERSION_PATCH("5.000.9")` → `RA_INVALID_VERSION`
+- `RA_VERSION_PATCH("5.0.12")` -> `(int)12`
+- `RA_VERSION_PATCH("5.000.9")` -> `RA_INVALID_VERSION`
 </details>
 
 <details>
@@ -721,8 +721,8 @@ Form: MMmmpp for comparisons, e.g., 10000 for
 version 1.0.0, 10200 for version 1.2.0, or 11212 for version 1.12.12.
 
 **Examples**:
-- `RA_VERSION_NUM("1.0.9")` → `(int)0x010009`
-- `RA_VERSION_NUM("2.5.3")` → `(int)0x020503`
+- `RA_VERSION_NUM("1.0.9")` -> `(int)0x010009`
+- `RA_VERSION_NUM("2.5.3")` -> `(int)0x020503`
 </details>
 
 <details>
@@ -742,8 +742,8 @@ Hexadecimal form 0xMMmmpp for display/debugging, e.g.,
 or 0x011212 for version 1.12.12.
 
 **Examples**:
-- `RA_VERSION_HEX("1.0.9")` → `0x010009`
-- `RA_VERSION_HEX("2.5.3")` → `0x020503`
+- `RA_VERSION_HEX("1.0.9")` -> `0x010009`
+- `RA_VERSION_HEX("2.5.3")` -> `0x020503`
 </details>
 
 <details>
@@ -759,22 +759,22 @@ or 0x011212 for version 1.12.12.
 
 **Value**:
 - Integer (`int`) result comparing version `v1` to `v2`:
-  - `RA_EQUAL` (`(int)0`) — equal
-  - `RA_LESS` (`(int)-1`) — `v1` is less than `v2`
-  - `RA_GREATER` (`(int)1`) — `v1` is greater than `v2`
-  - `RA_INVALID_VERSION` (`(int)-2`) — invalid `v1` or invalid `v2`
+  - `RA_EQUAL` (`(int)0`) -- equal
+  - `RA_LESS` (`(int)-1`) -- `v1` is less than `v2`
+  - `RA_GREATER` (`(int)1`) -- `v1` is greater than `v2`
+  - `RA_INVALID_VERSION` (`(int)-2`) -- invalid `v1` or invalid `v2`
 - Leading zeros in `M`, `m`, and `p` are ignored during comparison.
 
 **Examples**:
-- `RA_VERSION_CMP(RA_RUNNER_VERSION, "1.10.0")` → `RA_GREATER` (*if* `RA_RUNNER_VERSION`
+- `RA_VERSION_CMP(RA_RUNNER_VERSION, "1.10.0")` -> `RA_GREATER` (*if* `RA_RUNNER_VERSION`
   is `"1.10.6"`)
-- `RA_VERSION_CMP(RA_RUNNER_VERSION, "1.10.0")` → `RA_LESS` (*if* `RA_RUNNER_VERSION`
+- `RA_VERSION_CMP(RA_RUNNER_VERSION, "1.10.0")` -> `RA_LESS` (*if* `RA_RUNNER_VERSION`
   is `"1.8.0"`)
-- `RA_VERSION_CMP(RA_RUNNER_VERSION, "1.10.0")` → `RA_EQUAL` (*if* `RA_RUNNER_VERSION`
+- `RA_VERSION_CMP(RA_RUNNER_VERSION, "1.10.0")` -> `RA_EQUAL` (*if* `RA_RUNNER_VERSION`
   is `"1.10.0"`)
-- `RA_VERSION_CMP("1.10.0x", "1.10.0")` → `RA_INVALID_VERSION`
-- `RA_VERSION_CMP("1.10.0", "1.10y.0")` → `RA_INVALID_VERSION`
-</details>
+- `RA_VERSION_CMP("1.10.0x", "1.10.0")` -> `RA_INVALID_VERSION`
+- `RA_VERSION_CMP("1.10.0", "1.10y.0")` -> `RA_INVALID_VERSION`
+</details><br>
 </details>
 
 <details>
@@ -806,7 +806,7 @@ Print err and help text to stdout.
 Note: Use `ra_set_err_prefix()` to set the prefix.
 
 Note: Use `ra_set_usage()` and/or `ra_set_help()` to define the help text.
-</details>
+</details><br>
 </details>
 
 <details>
@@ -918,7 +918,7 @@ Note: On error, current_time is set to "unknown time".
 **Return** 1 true, 0 false, -103 invalid file path.
 `int ra_isreadfilepath(char *path)`
 `int ra_iswritefilepath(char *path)`
-</details>
+</details><br>
 </details>
 
 <details>
@@ -1014,13 +1014,13 @@ automatically promote the output.
 
 BriteTest uses a parallel `tests/golden` directory with golden files that keep
 the exact same filename as their corresponding test output. This design avoids
-the common problems found in extension‑based naming schemes:
+the common problems found in extension-based naming schemes:
 
 - **No filename collisions**
   Different outputs such as `foo.c` and `foo.h` remain distinct (`foo-<uid>.c` vs.
   `foo-<uid>.h`) instead of collapsing into a single `foo.golden`.
 
-- **No special‑case rules**
+- **No special-case rules**
   The golden filename is always identical to the output filename.
 
 - **Preserves file type information**
@@ -1029,8 +1029,8 @@ the common problems found in extension‑based naming schemes:
   something else.
 
 - **Simpler mental model**
-  Developers do not need to remember naming conventions or extension‑replacement
+  Developers do not need to remember naming conventions or extension-replacement
   rules. Golden files simply live in a parallel directory and share the same
   name as the output they validate.
-</details>
+</details><br>
 </details>
