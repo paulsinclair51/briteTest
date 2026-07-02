@@ -66,7 +66,7 @@ major version, `m` is the minor version, and `p` is the patch version.
 `p` increments when the document is updated without a change to `M` or `m`,
 and resets to 0 when `M` or `m` increases. The first table entry is the most
 recent version for this document at the time this document was published.
-</details><br>
+</details>
 </details>
 
 <details>
