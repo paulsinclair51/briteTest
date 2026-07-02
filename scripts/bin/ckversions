@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-# ckversions - Validate major.minor version consistency across docs,
-#              headers, and sources.
+# ckversions - Validate version consistency across docs, headers, and sources.
+#              Also validates that version changes align with branch naming policy
+#              (patch, minor, major branches).
 #
 # See usage below for details, or run: ckversions -h
 #
@@ -22,10 +23,22 @@ Usage:
   ckversions -h
   ckversions --help
 
-Validate that the major and minor release versions are consistent across:
-  - docs/md/*.md (excluding docs/md/README.md)
-  - include/*.h
-  - src/*.c
+Validate that version consistency across docs, headers, and sources, and that
+version changes align with branch naming policy.
+
+This script:
+  1. Ensures major and minor release versions are consistent across:
+     - docs/md/*.md (excluding docs/md/README.md)
+     - include/*.h
+     - src/*.c
+  
+  2. If the current branch follows the naming convention (patch/*, minor/*,
+     major/*), validates that version changes match the branch type:
+     - patch/* branches: only patch version differs across files
+     - minor/* branches: all files updated to same major.minor (patch = 0)
+     - major/* branches: all files updated to same major (minor = patch = 0)
+  
+  3. If not on a versioned branch, only validates consistency.
 
 Exit codes:
   0  Success, or help requested with -h/--help.
@@ -48,15 +61,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Validate that major and minor versions are consistent across:
-# - docs/md/*.md (excluding docs/md/README.md)
-# - include/*.h
-# - src/*.c
-#
-# Copyright (c) 2026 Paul Sinclair
-# SPDX-License-Identifier: MIT
-# For license details, see LICENSE in the repository root.
-
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 
@@ -71,6 +75,18 @@ extract_semver() {
 extract_major() {
   local semver="$1"
   printf '%s\n' "${semver%%.*}"
+}
+
+extract_minor() {
+  local semver="$1"
+  local major="${semver%%.*}"
+  local minor_patch="${semver#*.}"
+  printf '%s\n' "${minor_patch%%.*}"
+}
+
+extract_patch() {
+  local semver="$1"
+  printf '%s\n' "${semver##*.}"
 }
 
 extract_major_minor() {
@@ -131,12 +147,16 @@ source_major() {
 
 failures=0
 expected_major=""
+expected_minor=""
 expected_major_minor=""
+declare -A versions
 
 record_and_check() {
   local file="$1"
   local semver="$2"
   local major
+  local minor
+  local patch
   local major_minor
 
   if [[ -z "$semver" ]]; then
@@ -146,10 +166,16 @@ record_and_check() {
   fi
 
   major="$(extract_major "$semver")"
+  minor="$(extract_minor "$semver")"
+  patch="$(extract_patch "$semver")"
   major_minor="$(extract_major_minor "$semver")"
+
+  # Store version for branch policy validation
+  versions["$file"]="$semver"
 
   if [[ -z "$expected_major_minor" ]]; then
     expected_major="$major"
+    expected_minor="$minor"
     expected_major_minor="$major_minor"
     echo "Reference major.minor release: $expected_major_minor (from $file: $semver)"
     return
@@ -163,6 +189,7 @@ record_and_check() {
   fi
 }
 
+# Collect all versions
 while IFS= read -r file; do
   [[ "$(basename "$file")" == "README.md" ]] && continue
   semver="$(doc_major "$file")"
@@ -186,3 +213,165 @@ if [[ "$failures" -ne 0 ]]; then
 fi
 
 echo "Major.minor release consistency check passed."
+
+# ============================================================================
+# Branch Policy Validation
+# ============================================================================
+# If on a versioned branch (patch/*, minor/*, major/*), validate that version
+# changes align with the branch type.
+
+current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+
+if [[ -z "$current_branch" ]]; then
+  exit "$EXIT_OK"
+fi
+
+# Extract branch type from branch name
+branch_type=""
+if [[ "$current_branch" == patch/* ]]; then
+  branch_type="patch"
+elif [[ "$current_branch" == minor/* ]]; then
+  branch_type="minor"
+elif [[ "$current_branch" == major/* ]]; then
+  branch_type="major"
+fi
+
+# If not on a versioned branch, skip policy validation
+if [[ -z "$branch_type" ]]; then
+  exit "$EXIT_OK"
+fi
+
+echo ""
+echo "Branch policy validation: $current_branch ($branch_type branch)"
+
+# Get main branch versions for comparison
+main_versions=()
+while IFS= read -r file; do
+  [[ "$(basename "$file")" == "README.md" ]] && continue
+  semver="$(git show main:"$file" 2>/dev/null | head -n 220 | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || echo "")"
+  if [[ -n "$semver" ]]; then
+    main_versions+=("$file:$semver")
+  fi
+done < <(find docs/md -maxdepth 1 -type f -name '*.md' | sort)
+
+while IFS= read -r file; do
+  semver="$(git show main:"$file" 2>/dev/null | grep -Ei '^#[[:space:]]*define[[:space:]]+RA_[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || echo "")"
+  if [[ -n "$semver" ]]; then
+    main_versions+=("$file:$semver")
+  fi
+done < <(find include -maxdepth 1 -type f -name '*.h' | sort)
+
+while IFS= read -r file; do
+  semver="$(git show main:"$file" 2>/dev/null | grep -Ei '^#[[:space:]]*define[[:space:]]+[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || echo "")"
+  if [[ -n "$semver" ]]; then
+    main_versions+=("$file:$semver")
+  fi
+done < <(find src -maxdepth 1 -type f -name '*.c' | sort)
+
+# Validate branch policy
+policy_failures=0
+
+case "$branch_type" in
+  patch)
+    # Patch branch: only patch version should differ
+    for entry in "${main_versions[@]}"; do
+      file="${entry%:*}"
+      main_semver="${entry#*:}"
+      current_semver="${versions[$file]:-}"
+
+      if [[ -z "$current_semver" ]]; then
+        continue
+      fi
+
+      main_major_minor="$(extract_major_minor "$main_semver")"
+      current_major_minor="$(extract_major_minor "$current_semver")"
+
+      if [[ "$main_major_minor" != "$current_major_minor" ]]; then
+        echo "ERROR (patch branch policy): Major.minor version changed in '$file'" >&2
+        echo "  main: $main_semver (major.minor $main_major_minor)" >&2
+        echo "  current: $current_semver (major.minor $current_major_minor)" >&2
+        echo "  Patch branches should only increment the patch version." >&2
+        policy_failures=$((policy_failures + 1))
+      fi
+    done
+    ;;
+
+  minor)
+    # Minor branch: all files must have same major.minor, patch must be 0
+    for entry in "${main_versions[@]}"; do
+      file="${entry%:*}"
+      main_semver="${entry#*:}"
+      current_semver="${versions[$file]:-}"
+
+      if [[ -z "$current_semver" ]]; then
+        continue
+      fi
+
+      current_patch="$(extract_patch "$current_semver")"
+      current_major_minor="$(extract_major_minor "$current_semver")"
+
+      if [[ "$current_patch" != "0" ]]; then
+        echo "ERROR (minor branch policy): Patch version is not 0 in '$file'" >&2
+        echo "  current: $current_semver (patch $current_patch)" >&2
+        echo "  Minor branches must have patch = 0 (e.g., 1.2.0)." >&2
+        policy_failures=$((policy_failures + 1))
+      fi
+
+      if [[ "$current_major_minor" != "$expected_major_minor" ]]; then
+        echo "ERROR (minor branch policy): Major.minor mismatch in '$file'" >&2
+        echo "  current: $current_semver (major.minor $current_major_minor)" >&2
+        echo "  expected: major.minor $expected_major_minor" >&2
+        echo "  All files in minor branches must have the same major.minor version." >&2
+        policy_failures=$((policy_failures + 1))
+      fi
+    done
+    ;;
+
+  major)
+    # Major branch: all files must have same major, minor and patch must be 0
+    for entry in "${main_versions[@]}"; do
+      file="${entry%:*}"
+      main_semver="${entry#*:}"
+      current_semver="${versions[$file]:-}"
+
+      if [[ -z "$current_semver" ]]; then
+        continue
+      fi
+
+      current_major="$(extract_major "$current_semver")"
+      current_minor="$(extract_minor "$current_semver")"
+      current_patch="$(extract_patch "$current_semver")"
+
+      if [[ "$current_major" != "$expected_major" ]]; then
+        echo "ERROR (major branch policy): Major version mismatch in '$file'" >&2
+        echo "  current: $current_semver (major $current_major)" >&2
+        echo "  expected: major $expected_major" >&2
+        echo "  All files in major branches must have the same major version." >&2
+        policy_failures=$((policy_failures + 1))
+      fi
+
+      if [[ "$current_minor" != "0" ]]; then
+        echo "ERROR (major branch policy): Minor version is not 0 in '$file'" >&2
+        echo "  current: $current_semver (minor $current_minor)" >&2
+        echo "  Major branches must have minor = 0 (e.g., 2.0.0)." >&2
+        policy_failures=$((policy_failures + 1))
+      fi
+
+      if [[ "$current_patch" != "0" ]]; then
+        echo "ERROR (major branch policy): Patch version is not 0 in '$file'" >&2
+        echo "  current: $current_semver (patch $current_patch)" >&2
+        echo "  Major branches must have patch = 0 (e.g., 2.0.0)." >&2
+        policy_failures=$((policy_failures + 1))
+      fi
+    done
+    ;;
+esac
+
+if [[ "$policy_failures" -ne 0 ]]; then
+  echo >&2
+  echo "Branch policy validation failed with $policy_failures issue(s)." >&2
+  exit "$EXIT_VALIDATION"
+fi
+
+echo "Branch policy validation passed."
+exit "$EXIT_OK"
