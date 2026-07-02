@@ -102,7 +102,7 @@ refer to the Runner or Test API Reference document for information.
 ## 2. Glossary
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;A</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--A--</summary>
 
 ### --A--
 
@@ -119,7 +119,7 @@ refer to the Runner or Test API Reference document for information.
   reports). See also test artifact.
 </details>
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;B</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--B--</summary>
 
 ### --B--
 - **Bash glob pattern**: A shell wildcard pattern used for filename
@@ -135,7 +135,7 @@ refer to the Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;C</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--C--</summary>
 
 ### --C--
 
@@ -173,7 +173,7 @@ refer to the Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;D</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--D--</summary>
 
 ### --D--
 
@@ -182,7 +182,7 @@ refer to the Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;E</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--E--</summary>
 
 ### --E--
 
@@ -193,7 +193,7 @@ refer to the Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;F</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--F--</summary>
 
 ### --F--
 
@@ -212,7 +212,7 @@ refer to the Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;G</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--G--</summary>
 
 ### --G--
 
@@ -230,7 +230,7 @@ refer to the Runner or Test API Reference document for information.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;H</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--H--</summary>
 
 ### --H--
 
@@ -238,7 +238,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;I</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--I--</summary>
 
 ### --I--
 
@@ -263,7 +263,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;J</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--J--</summary>
 
 ### --J--
 
@@ -274,7 +274,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;K</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--K--</summary>
 
 ### --K--
 
@@ -282,7 +282,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;L</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--L--</summary>
 
 ### --L--
 
@@ -290,7 +290,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;M</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--M--</summary>
 
 ### --M--
 
@@ -306,7 +306,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;N</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--N--</summary>
 
 ### --N--
 
@@ -318,7 +318,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;O</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--O--</summary>
 
 ### --O--
 
@@ -334,7 +334,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;P</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--P--</summary>
 
 ### --P--
 
@@ -355,7 +355,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;Q</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--Q--</summary>
 
 ### --Q--
 
@@ -363,7 +363,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;R</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--R--</summary>
 
 ### --R--
 
@@ -406,7 +406,7 @@ v variable names. See the Runner API Reference.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;S</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--S--</summary>
 
 ### --S--
 
@@ -425,7 +425,7 @@ v variable names. See the Runner API Reference.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;T</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--T--</summary>
 
 ### --T--
 
@@ -487,7 +487,7 @@ v variable names. See the Runner API Reference.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;U</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--U--</summary>
 
 ### --U--
 
@@ -495,7 +495,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;V</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--V--</summary>
 
 ### --V--
 
@@ -503,7 +503,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;W</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--W--</summary>
 
 ### --W--
 
@@ -516,7 +516,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;X</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--X--</summary>
 
 ### --X--
 
@@ -524,7 +524,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;Y</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--Y--</summary>
 
 ### --Y--
 
@@ -532,7 +532,7 @@ _No terms currently defined._
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;Z</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;--Z--</summary>
 
 ### --Z--
 
