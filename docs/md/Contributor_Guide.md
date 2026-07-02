@@ -169,7 +169,27 @@ API compatibility guidelines:
 - Do not change exit and return code meanings.
 - Deprecate before removing.
 - Provide migration guidance for major changes including how
-  to opt-in for new features and behavior.
+  to opt-in for new features and **Continuous Integration Enforcement**
+
+Version consistency is enforced automatically by the CI pipeline on all pull 
+requests and commits to the `main` branch:
+
+- The `ckversions` script validates that major and minor versions are consistent 
+  across all versioned files:
+  - API headers: `include/runnerapi.h`, `include/testapi.h`
+  - API implementations: `src/runnerapi.c`, `src/testapi.c`
+  - Documentation: `docs/md/*.md` (excluding `README.md`)
+
+- For branches with patch-only changes, `ckversions` confirms that only the patch 
+  version differs across files.
+
+- For branches with minor or major version changes, `ckversions` confirms that all 
+  versioned files have been updated to the same major.minor values.
+
+- If version consistency fails, the CI workflow blocks the PR merge. Contributors 
+  must update version numbers to match the policy and re-push their changes.
+
+See the `scripts/bin/ckversions` script for details on version validation logic.
 
 Significant justification is required when these guidelines cannot be
 followed.
