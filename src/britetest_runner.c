@@ -1,13 +1,13 @@
 /**
  * @file /paulsinclair51/src/litetest_runner.c
  *
- * @mainpage LiteTest Function Definitions
+ * @mainpage Runner Function Definitions
  * 
- * @brief This header provides (non-inline) function definitions for the LiteTest
+ * @brief This header provides (non-inline) function definitions for the Runner
  *        API and framework.
  * 
- *        For an overview of the LiteTest API and framework, see
- *        @ref README.md "README.md" in the /paulsinclair51/litetest
+ *        For an overview of the Runner Framework and API, see
+ *        "README.md" in the /paulsinclair51/briteTest
  *        repository. See the header @ref /paulsinclair51/include/litetest_runner.h
  *        "litetest_runner.h" in the include directory for the complete
  *        definition and documentation.
