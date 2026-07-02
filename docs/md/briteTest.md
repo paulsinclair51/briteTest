@@ -119,7 +119,7 @@ recent version for this document at the time this document was published.
 </details>
 
 <details>
-<summary>1. Introduction</summary>
+<summary><strong>1. Introduction</strong></summary>
 
 ## 1. Introduction
 
@@ -271,7 +271,7 @@ source file, or integrating via your build system.
 </details>
 
 <details>
-<summary>2. Runner Framework and API</summary>
+<summary><strong>2. Runner Framework and API</strong></summary>
 
 ## 2. Runner Framework and API
 
@@ -300,7 +300,7 @@ detection and reporting.
 </details>
 
 <details>
-<summary>3. Running Tests</summary>
+<summary><strong>3. Running Tests</strong></summary>
 
 ## 3. Running Tests
 
@@ -309,7 +309,7 @@ output paths or configuration flags.
 </details>
 
 <details>
-<summary>4. Report Generation</summary>
+<summary><strong>4. Report Generation</strong></summary>
 
 ## 4. Report Generation
 
@@ -317,7 +317,7 @@ How BriteTest collects pass/fail information and formats it for output.
 </details>
 
 <details>
-<summary>5. Customization</summary>
+<summary><strong>5. Customization</strong></summary>
 
 ## 5. Customization
 
@@ -326,7 +326,7 @@ filtering, or integration behavior.
 </details>
 
 <details>
-<summary>6. Test Report</summary>
+<summary><strong>6. Test Report</strong></summary>
 
 ## 6. Test Report
 
@@ -335,7 +335,7 @@ how to consume it in tooling or CI.
 </details>
 
 <details>
-<summary>7. Advanced Features and Topics</summary>
+<summary><strong>7. Advanced Features and Topics</strong></summary>
 
 ## 7. Advanced Features and Topics
 
@@ -343,7 +343,7 @@ how to consume it in tooling or CI.
 </details>
 
 <details>
-<summary>8. Test Expressions</summary>
+<summary><strong>8. Test Expressions</strong></summary>
 
 ## 8. Test Expressions
 
@@ -352,7 +352,7 @@ evaluated.
 </details>
 
 <details>
-<summary>9. Setup and Teardown</summary>
+<summary><strong>9. Setup and Teardown</strong></summary>
 
 ## 9. Setup and Teardown
 
@@ -360,7 +360,7 @@ Optional per‑group or per‑test initialization and cleanup helpers.
 </details>
 
 <details>
-<summary>10. Test Groups</summary>
+<summary><strong>10. Test Groups</strong></summary>
 
 ## 10. Test Groups
 
@@ -369,7 +369,7 @@ structure.
 </details>
 
 <details>
-<summary>11. Concurrent Tests</summary>
+<summary><strong>11. Concurrent Tests</strong></summary>
 
 ## 11. Concurrent Tests
 
@@ -378,7 +378,7 @@ safely.
 </details>
 
 <details>
-<summary>12. Isolation</summary>
+<summary><strong>12. Isolation</strong></summary>
 
 ## 12. Isolation
 
@@ -395,7 +395,7 @@ under test.
 </details>
 
 <details>
-<summary>13. Test API</summary>
+<summary><strong>13. Test API</strong></summary>
 
 ## 13. Test API
 
@@ -412,7 +412,7 @@ See the Test Reference for a complete list of helpers provided by the API.
 The following two sections provide examples of file and compare functions.
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;13.1 File Functions</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;13.1. File Functions Examples</summary>
 
 ### 13.1. File Functions Examples
 

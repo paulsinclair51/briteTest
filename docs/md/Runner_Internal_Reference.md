@@ -113,7 +113,7 @@ recent version for this document at the time this document was published.
 </details>
 
 <details>
-<summary>1. Introduction</summary>
+<summary><strong>1. Introduction</strong></summary>
 
 ## 1. Introduction
 
@@ -144,7 +144,7 @@ and interaction.
 </details>
 
 <details>
-<summary>1.1. Public and Internal Naming Conventions</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.1. Public and Internal Naming Conventions</summary>
 
 ###1.2. Public and Internal Naming Conventions
 
@@ -160,7 +160,7 @@ or `BRITETEST`, or reference names prefixed with `britetest_` or `BRITETEST_`.
 </details>
 
 <details>
-<summary>2. Symbols Defined in `runnerapi.h`</summary>
+<summary><strong>2. Symbols Defined in `runnerapi.h`</strong></summary>
 
 ## 2. Symbols Defined in `runnerapi.h`
 
@@ -168,7 +168,7 @@ These are used by `runnerapi.h` and `runnerapi.c`, and are public or internal
 based on their name per the naming conventions.
 
 <details>
-<summary>2.1. Types</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1. Types</summary>
 
 ### 2.1. Types
 
@@ -208,7 +208,7 @@ ra_resubt_t result = {0, 0, 0, 0, 0};
 </details>
 
 <details>
-<summary>2.2. Structs</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.2. Structs</summary>
 
 ### 2.2. Structs
 
@@ -244,7 +244,7 @@ Explain the purpose of this struct, what data it aggregates, and how it particip
 </details>
 
 <details>
-<summary>2.3. Enums and Enum Values</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.3. Enums and Enum Values</summary>
 
 ### 2.3. Enums and Enum Values
 
@@ -281,7 +281,7 @@ Explain what conceptual category this enum models and how the values are used by
 </details>
 
 <details>
-<summary>2.4. Global Variables</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.4. Global Variables</summary>
 
 ### 2.4. Global Variables
 
@@ -314,7 +314,7 @@ if (<VariableName> == ...) {
 </details>
 
 <details>
-<summary>2.5. Macros</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.5. Macros</summary>
 
 ### 2.5. Macros
 
@@ -348,7 +348,7 @@ Describe the purpose of this macro, what it expands to conceptually, and how it 
 </details>
 
 <details>
-<summary>2.6. Functions</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.6. Functions</summary>
 
 ### 2.6. Functions
 
@@ -392,7 +392,7 @@ Describe what is returned and under what conditions.
 </details>
 
 <details>
-<summary>3. Symbols Defined in `runnerapi.c`</summary>
+<summary><strong>3. Symbols Defined in `runnerapi.c`</strong></summary>
 
 ## 3. Symbols Defined in `runnerapi.c`
 
@@ -401,7 +401,7 @@ extern. Symbols that are local do not have to conform to the internal naming
 conventions and more natural names may be used.
 
 <details>
-<summary>3.1. Types</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Types</summary>
 
 ### 3.1. Types
 
@@ -409,7 +409,7 @@ conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>3.2. Structs</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.2. Structs</summary>
 
 ### 3.2. Structs
 
@@ -417,7 +417,7 @@ conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>3.3. Enums and Enum Values</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.3. Enums and Enum Values</summary>
 
 ### 3.3. Enums and Enum Values
 
@@ -425,7 +425,7 @@ conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>3.4. Global Variables</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.4. Global Variables</summary>
 
 ### 3.4. Global Variables
 
@@ -433,7 +433,7 @@ conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>3.5. Macros</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.5. Macros</summary>
 
 ### 3.5. Macros
 
@@ -441,7 +441,7 @@ conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>3.6. Functions (declared as a forward reference) in `runnerapi.h`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.6. Functions (declared as a forward reference) in `runnerapi.h`</summary>
 
 ### 3.6. Functions (declared as a forward reference) in `runnerapi.h`
 
@@ -452,7 +452,7 @@ These functions are (by default) extern and must conform to the internal name co
 </details>
 
 <details>
-<summary>3.7. Functions (not declared in `runnerapi.h`)</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.7. Functions (not declared in `runnerapi.h`)</summary>
 
 ### 3.7. Functions (not declared in `runnerapi.h`)
 
@@ -465,7 +465,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>4. Execution Engine</summary>
+<summary><strong>4. Execution Engine</strong></summary>
 
 ## 4. Execution Engine
 
@@ -473,7 +473,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>5. Signal Handling</summary>
+<summary><strong>5. Signal Handling</strong></summary>
 
 ## 5. Signal Handling
 
@@ -481,7 +481,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>6. Process Management</summary>
+<summary><strong>6. Process Management</strong></summary>
 
 ## 6. Process Management
 
@@ -489,7 +489,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>7. Thread Management</summary>
+<summary><strong>7. Thread Management</strong></summary>
 
 ## 7. Thread Management
 
@@ -497,7 +497,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>8. File and Path Support</summary>
+<summary><strong>8. File and Path Support</strong></summary>
 
 ## 8. File and Path Support
 
@@ -505,7 +505,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>9. Matching and Comparison Support</summary>
+<summary><strong>9. Matching and Comparison Support</strong></summary>
 
 ## 9. Matching and Comparison Support
 
@@ -513,7 +513,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>10. Environment Support</summary>
+<summary><strong>10. Environment Support</strong></summary>
 
 ## 10. Environment Support
 
@@ -521,7 +521,7 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary>Repository Layout</summary>
+<summary><strong>Repository Layout</strong></summary>
 
 ## Repository Layout
   
@@ -565,13 +565,13 @@ Use this as a reference when adapting BriteTest into your own project structure.
 </details>
 
 <details>
-<summary>Glossary</summary>
+<summary><strong>Glossary</strong></summary>
 
 ## Glossary
 </details>
 
 <details>
-<summary>Framework‑Specific Terms</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Framework‑Specific Terms</summary>
 
 ### Framework‑Specific Terms
 

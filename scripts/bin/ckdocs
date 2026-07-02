@@ -26,7 +26,8 @@ excluding README.md.
 
 Checks include front matter structure, details/summary pairing,
 table-of-contents numbering syntax, numbered heading formatting,
-summary/heading alignment, and the shared Document Version History block.
+summary/heading alignment and numbered summary style,
+and the shared Document Version History block.
 
 Exit codes:
   0  Success, or help requested with -h/--help.
@@ -216,6 +217,14 @@ check_summary_heading_alignment() {
   local file=$1
 
   awk -v file="$file" '
+    function is_strong_summary(raw) {
+      return raw ~ /^<summary><strong>.*<\/strong><\/summary>$/
+    }
+
+    function is_indented_summary(raw) {
+      return raw ~ /^<summary>&nbsp;&nbsp;&nbsp;&nbsp;.*<\/summary>$/
+    }
+
     function normalize_summary(text, result) {
       result=text
       sub(/^<summary>/, "", result)
@@ -230,16 +239,15 @@ check_summary_heading_alignment() {
     }
 
     /^<summary>/ {
+      raw_summary=$0
       summary=normalize_summary($0)
       if (summary == "License" || summary == "Preface" || summary == "Document Version History" || summary == "Table of Contents") {
         pending=""
+        pending_raw=""
         next
       }
-      if (summary ~ /^[0-9]+(\.[0-9]+)*\./) {
-        pending=summary
-      } else {
-        pending=""
-      }
+      pending=summary
+      pending_raw=raw_summary
       next
     }
 
@@ -250,7 +258,12 @@ check_summary_heading_alignment() {
         printf("ERROR: %s: summary/heading mismatch: %s != %s\n", file, pending, heading) > "/dev/stderr"
         status=1
       }
+      if (!is_indented_summary(pending_raw) || pending_raw ~ /<strong>/) {
+        printf("ERROR: %s: canonical summary style for level-3 headings must be indented without <strong>: %s\n", file, pending_raw) > "/dev/stderr"
+        status=1
+      }
       pending=""
+      pending_raw=""
       next
     }
 
@@ -261,7 +274,12 @@ check_summary_heading_alignment() {
         printf("ERROR: %s: summary/heading mismatch: %s != %s\n", file, pending, heading) > "/dev/stderr"
         status=1
       }
+      if (!is_strong_summary(pending_raw) || pending_raw ~ /&nbsp;/) {
+        printf("ERROR: %s: canonical summary style for level-2 headings must use <strong> with no &nbsp; prefix: %s\n", file, pending_raw) > "/dev/stderr"
+        status=1
+      }
       pending=""
+      pending_raw=""
       next
     }
     END { exit status }

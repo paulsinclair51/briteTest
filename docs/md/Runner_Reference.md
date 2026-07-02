@@ -135,7 +135,7 @@ recent version for this document at the time this document was published.
 </details>
 
 <details>
-<summary>1. Introduction</summary>
+<summary><strong>1. Introduction</strong></summary>
 
 ## 1. Introduction
 
@@ -143,12 +143,12 @@ TODO: add introduction, common rules.
 </details>
 
 <details>
-<summary>2. Types</summary>
+<summary><strong>2. Types</strong></summary>
 
 ## 2. Types
 
 <details>
-<summary>2.1. `ra_result_t`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1. `ra_result_t`</summary>
 
 ### 2.1. `ra_result_t`
 
@@ -174,9 +174,9 @@ typedef struct
 </details>
 
 <details>
-<summary>2.2 `ra_state_t`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.2. `ra_state_t`</summary>
 
-### 2.2 `ra_state_t`
+### 2.2. `ra_state_t`
 
 Type for maintaining the state of the orchestrator (main)
 or a test function.
@@ -210,12 +210,12 @@ typedef struct
 </details>
 
 <details>
-<summary>3. Enums</summary>
+<summary><strong>3. Enums</strong></summary>
 
 ## 3. Enums
 
 <details>
-<summary>3.1. `ra_exit_code_t`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. `ra_exit_code_t`</summary>
 
 ### 3.1. `ra_exit_code_t`
 
@@ -266,7 +266,7 @@ typedef enum
 </details>
 
 <details>
-<summary>3.2. `ra_return_code_t`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.2. `ra_return_code_t`</summary>
 
 ### 3.2. `ra_return_code_t`
 
@@ -315,7 +315,7 @@ typedef enum
 </details>
 
 <details>
-<summary>4. Macros for Limits</summary>
+<summary><strong>4. Macros for Limits</strong></summary>
 
 ## 4. Macros for Limits
 
@@ -330,14 +330,14 @@ more `RA_GROUP` or `RA_TEST` macros at each level. It is expected that a level w
 </details>
 
 <details>
-<summary>5. Macros for the Orchestrator Function</summary>
+<summary><strong>5. Macros for the Orchestrator Function</strong></summary>
 
 ## 5. Macros for the Orchestrator Function
 
 Macros used to define or declare the Orchestrator (`main`) function
 
 <details>
-<summary>5.1. `RA_DECLARE_ORCHESTRATOR(funcname)[;]`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.1. `RA_DECLARE_ORCHESTRATOR(funcname)[;]`</summary>
 
 ### 5.1. `RA_DECLARE_ORCHESTRATOR(funcname)[;]`
 
@@ -355,7 +355,7 @@ and a forward-reference to the orchestrator function.
 </details>
 
 <details>
-<summary>5.2. `RA_INIT_ORCHESTRATOR(funcname, id, project, size_t maxparallel);`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.2. `RA_INIT_ORCHESTRATOR(funcname, id, project, size_t maxparallel);`</summary>
 
 ### 5.2. `RA_INIT_ORCHESTRATOR(funcname, id, project, size_t maxparallel);`
 
@@ -385,7 +385,7 @@ allowed to execute in parallel.
 </details>
 
 <details>
-<summary>5.3. `RA_PARSE_ARGS(size_t maxargs, char *customflags, char *defaultreportfilename);`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.3. `RA_PARSE_ARGS(size_t maxargs, char *customflags, char *defaultreportfilename);`</summary>
 
 ### 5.3. `RA_PARSE_ARGS(size_t maxargs, char *customflags, char *defaultreportfilename);`
 
@@ -413,7 +413,7 @@ See "Test Command Line" for details on command-line argument and flags.
 </details>
 
 <details>
-<summary>5.4. `RA_OPEN_REPORT(char *title);`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.4. `RA_OPEN_REPORT(char *title);`</summary>
 
 ### 5.4. `RA_OPEN_REPORT(char *title);`
 
@@ -428,7 +428,7 @@ See "Test Command Line" for details on command-line argument and flags.
 </details>
 
 <details>
-<summary>5.5. `RA_WRITE_RESULT(gtm, char *category);`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.5. `RA_WRITE_RESULT(gtm, char *category);`</summary>
 
 ### 5.5. `RA_WRITE_RESULT(gtm, char *category);`
 
@@ -443,7 +443,7 @@ See "Test Command Line" for details on command-line argument and flags.
 </details>
 
 <details>
-<summary>5.6. `RA_CLOSE_REPORT(char *notes);`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.6. `RA_CLOSE_REPORT(char *notes);`</summary>
 
 ### 5.6. `RA_CLOSE_REPORT(char *notes);`
 
@@ -462,7 +462,7 @@ closes the test report.
 </details>
 
 <details>
-<summary>5.7. `RA_EXIT;`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.7. `RA_EXIT;`</summary>
 
 ### 5.7. `RA_EXIT;`
 
@@ -478,14 +478,14 @@ closes the test report.
 </details>
 
 <details>
-<summary>6. Macros for a Test Group Function</summary>
+<summary><strong>6. Macros for a Test Group Function</strong></summary>
 
 ## 6. Macros for a Test Group Function
 
 Macros used to define or declare a test group function.
 
 <details>
-<summary>6.1. `RA_DECLARE_GROUP(funcname)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;6.1. `RA_DECLARE_GROUP(funcname)`</summary>
 
 ### 6.1. `RA_DECLARE_GROUP(funcname)`
 
@@ -501,7 +501,7 @@ and a forward-reference to the test group function.
 </details>
 
 <details>
-<summary>6.2. `RA_INIT_GROUP(funcname, id, maxparallel)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;6.2. `RA_INIT_GROUP(funcname, id, maxparallel)`</summary>
 
 ### 6.2. `RA_INIT_GROUP(funcname, id, maxparallel)`
 
@@ -526,7 +526,7 @@ and a forward-reference to the test group function.
 </details>
 
 <details>
-<summary>6.3. `RA_RETURN`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;6.3. `RA_RETURN`</summary>
 
 ### 6.3. `RA_RETURN`
 
@@ -536,7 +536,7 @@ and a forward-reference to the test group function.
 </details>
 
 <details>
-<summary>7. Macros to Execute a Test Group or a Test</summary>
+<summary><strong>7. Macros to Execute a Test Group or a Test</strong></summary>
 
 ## 7. Macros to Execute a Test Group or a Test
 
@@ -579,7 +579,7 @@ See "Test Command Line" for details on command line flags.
 See "Isolation" in the Runner Guide.
 
 <details>
-<summary>7.1. `RA_GROUP(funcname, id, [include], [isolation])[;]`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;7.1. `RA_GROUP(funcname, id, [include], [isolation])[;]`</summary>
 
 ### 7.1. `RA_GROUP(funcname, id, [include], [isolation])[;]`
 
@@ -588,7 +588,7 @@ See "Isolation" in the Runner Guide.
 </details>
 
 <details>
-<summary>7.2. `RA_TEST(expression, id, [include], [isolation])[;]`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;7.2. `RA_TEST(expression, id, [include], [isolation])[;]`</summary>
 
 ### 7.2. `RA_TEST(expression, id, [include], [isolation])[;]`
 
@@ -598,12 +598,12 @@ See "Isolation" in the Runner Guide.
 </details>
 
 <details>
-<summary>8. Macros for Concurrent Blocks</summary>
+<summary><strong>8. Macros for Concurrent Blocks</strong></summary>
 
 ## 8. Macros for Concurrent Blocks
 
 <details>
-<summary>8.1. `RA_BEGIN_CONCURRENT(blockname)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;8.1. `RA_BEGIN_CONCURRENT(blockname)`</summary>
 
 ### 8.1. `RA_BEGIN_CONCURRENT(blockname)`
 
@@ -616,7 +616,7 @@ See "Isolation" in the Runner Guide.
 </details>
 
 <details>
-<summary>8.2. `RA_END_CONCURRENT(blockname);`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;8.2. `RA_END_CONCURRENT(blockname);`</summary>
 
 ### 8.2. `RA_END_CONCURRENT(blockname);`
 
@@ -630,12 +630,12 @@ See "Isolation" in the Runner Guide.
 </details>
 
 <details>
-<summary>9. Macros for Versioning</summary>
+<summary><strong>9. Macros for Versioning</strong></summary>
 
 ## 9. Macros for Versioning
 
 <details>
-<summary>9.1. `RA_RUNNER_VERSION`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;9.1. `RA_RUNNER_VERSION`</summary>
 
 ### 9.1. `RA_RUNNER_VERSION`
 
@@ -659,7 +659,7 @@ The patch version is incremented for bug fixes or internal improvements.
 </details>
 
 <details>
-<summary>9.2. `RA_VERSION_MAJOR(v)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;9.2. `RA_VERSION_MAJOR(v)`</summary>
 
 ### 9.2. `RA_VERSION_MAJOR(v)`
 
@@ -675,7 +675,7 @@ The patch version is incremented for bug fixes or internal improvements.
 </details>
 
 <details>
-<summary>9.3. `RA_VERSION_MINOR(v)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;9.3. `RA_VERSION_MINOR(v)`</summary>
 
 ### 9.3. `RA_VERSION_MINOR(v)`
 
@@ -691,7 +691,7 @@ The patch version is incremented for bug fixes or internal improvements.
 </details>
 
 <details>
-<summary>9.4. `RA_VERSION_PATCH(v)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;9.4. `RA_VERSION_PATCH(v)`</summary>
 
 ### 9.4. `RA_VERSION_PATCH(v)`
 
@@ -707,7 +707,7 @@ The patch version is incremented for bug fixes or internal improvements.
 </details>
 
 <details>
-<summary>9.5. `RA_VERSION_NUM(v)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;9.5. `RA_VERSION_NUM(v)`</summary>
 
 ### 9.5. `RA_VERSION_NUM(v)`
 
@@ -726,7 +726,7 @@ version 1.0.0, 10200 for version 1.2.0, or 11212 for version 1.12.12.
 </details>
 
 <details>
-<summary>9.6. `RA_VERSION_HEX(v)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;9.6. `RA_VERSION_HEX(v)`</summary>
 
 ### 9.6. `RA_VERSION_HEX(v)`
 
@@ -747,7 +747,7 @@ or 0x011212 for version 1.12.12.
 </details>
 
 <details>
-<summary>9.7. `RA_VERSION_CMP(v1, v2)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;9.7. `RA_VERSION_CMP(v1, v2)`</summary>
 
 ### 9.7. `RA_VERSION_CMP(v1, v2)`
 
@@ -778,12 +778,12 @@ or 0x011212 for version 1.12.12.
 </details>
 
 <details>
-<summary>10. Macros for Customization</summary>
+<summary><strong>10. Macros for Customization</strong></summary>
 
 ## 10. Macros for Customization
 
 <details>
-<summary>10.1. `RA_PRINT_ERR_HELP(char *err, char help)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;10.1. `RA_PRINT_ERR_HELP(char *err, char help)`</summary>
 
 ### 10.1. `RA_PRINT_ERR_HELP(char *err, char help)`
 
@@ -810,18 +810,18 @@ Note: Use `ra_set_usage()` and/or `ra_set_help()` to define the help text.
 </details>
 
 <details>
-<summary>11. Functions for Customization</summary>
+<summary><strong>11. Functions for Customization</strong></summary>
 
 ## 11. Functions for Customization
 
 <details>
-<summary>11.1. `int ra_funcname(char *funcname, size_t outlen)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;11.1. `int ra_funcname(char *funcname, size_t outlen)`</summary>
 
 ### 11.1. `int ra_funcname(char *funcname, size_t outlen)`
 </details>
 
 <details>
-<summary>11.2. `int ra_print_note(const char *notes)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;11.2. `int ra_print_note(const char *notes)`</summary>
 
 ### 11.2. `int ra_print_note(const char *notes)`
 
@@ -841,7 +841,7 @@ Opens a temporary file if not already open and writes the notes to the temporary
 </details>
 
 <details>
-<summary>`void ra_current_time(char *current_time, size_t size)`</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;`void ra_current_time(char *current_time, size_t size)`</summary>
 
 ### `void ra_current_time(char *current_time, size_t size)`
 
@@ -856,7 +856,7 @@ Note: On error, current_time is set to "unknown time".
 </details>
 
 <details>
-<summary>Customization: Get and set.</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Customization: Get and set.</summary>
 
 ### Customization: Get and set.
 
@@ -875,7 +875,7 @@ Note: On error, current_time is set to "unknown time".
 </details>
 
 <details>
-<summary>Customization Helper Functions</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Customization Helper Functions</summary>
 
 ### Customization Helper Functions
 
@@ -922,7 +922,7 @@ Note: On error, current_time is set to "unknown time".
 </details>
 
 <details>
-<summary>12. Test Command Line</summary>
+<summary><strong>12. Test Command Line</strong></summary>
 
 ## 12. Test Command Line
 
@@ -930,7 +930,7 @@ TODO.
 </details>
 
 <details>
-<summary>13. Output and Golden Files</summary>
+<summary><strong>13. Output and Golden Files</strong></summary>
 
 ## 13. Output and Golden Files
 
@@ -939,7 +939,7 @@ of the repository root provide a directory layout for capturing and validating
 test output.
 
 <details>
-<summary>13.1. Output Files</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;13.1. Output Files</summary>
 
 ### 13.1. Output Files
 
@@ -971,7 +971,7 @@ An output file and its metadata file in `tests/output/` may be copied (promoted)
 </details>
 
 <details>
-<summary>13.2. Golden Files</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;13.2. Golden Files</summary>
 
 ### 13.2. Golden Files
 
@@ -1008,7 +1008,7 @@ automatically promote the output.
 </details>
 
 <details>
-<summary>13.3. Output/Golden Rationale</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;13.3. Output/Golden Rationale</summary>
 
 ### 13.3. Output/Golden Rationale
 
