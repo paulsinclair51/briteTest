@@ -76,7 +76,7 @@ recent version for this document at the time this document was published.
 
 1. [**Introduction**](#1-introduction)
 
-2. [**Versioning Guidelines**](#2-versioning-guidelines)
+2. [**Versioning Guidelines**](#2-versioning-guidelines)<br>
    2.1. [Version Consistency Enforcement by CI](#21-version-consistency-enforcement-by-ci)<br>
    2.2. [Incompatible Change](#22-Incompatible-change)<br>
    2.3. [Examples(#23-ezamplesg)<br>
