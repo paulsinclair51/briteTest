@@ -812,11 +812,11 @@ are not a trademark search or legal clearance.
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;3.3. Brand Name and Tagline Replacement</summary>
 
-### 3.3. Brand Name and Tagline Replacement
+### 3.3. Brand Name, Brand Initials, and Tagline Replacement
 
-This workflow describes how to replace the brand name, tagline, and other phrases
-throughout the repository (documentation, monograms, and logos) using automated
-scripts.
+This workflow describes how to replace the brand name, brand initials,
+tagline throughout the repository (documentation, monograms, and logos)
+using automated scripts.
 
 #### Prerequisites
 
@@ -833,7 +833,7 @@ The replacement workflow depends on a configuration file and two scripts:
 
 - **Scripts**:
 
-  - `scripts/bin/updatelogos`: Updates SVG files in `docs/branding/` with phrase and
+  - `scripts/bin/updatebrand`: Updates SVG files in `docs/branding/` with phrase and
      abbreviation replacements, then regenerates PNG files
   - `scripts/bin/replacephrases`: Updates markdown files (`*.md`) in `docs/` with
     phrase replacements only
@@ -860,10 +860,10 @@ The replacement workflow depends on a configuration file and two scripts:
 
 4. Update SVG files and regenerate PNG files:
 
-   - Run the `updatelogos` script:
+   - Run the `updatebrand` script:
 
 ```bash
-scripts/bin/updatelogos
+scripts/bin/updatebrand
 ```
 
 5, The script performs the following:
@@ -873,7 +873,7 @@ scripts/bin/updatelogos
    - Validates the configuration to prevent infinite loops (circular references).
    - Applies both brand namd and abbreviation replacements to all SVG files in
      `docs/branding/`.
-   - Regenerates all PNG files from the updated SVGs using `scripts/bin/genpng`.
+   - Regenerates all PNG files from the updated SVGs using `scripts/bin/genpngs`.
    - Generates a detailed report of replacements and file modifications.
    - Review the output and documentation for accuracy, then commit the changes.
 
@@ -916,7 +916,7 @@ in all types of files (e,g., `.md`, `.h`, `.c`, `.yml`, `.dh`, `Makefile`, etc.)
    - An internal guide or reference must not leak into public docs.
    - Update documentation when enhancing macros, behavior, or report format.
    - For branding assets in `docs/branding/`: `*.svg` files are the source of
-     truth and `*.png` files are generated from SVG using `scripts/bin/genpng`.
+     truth and `*.png` files are generated from SVG using `scripts/bin/genpngs`.
 
 2. Tone
 

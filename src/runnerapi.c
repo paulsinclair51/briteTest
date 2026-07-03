@@ -1,3 +1,20 @@
+/**
+ * @file src/runnerapi.c
+ *
+ * @mainpage Runner API Function Definitions
+ *
+ * This file provides (non-inline) function definitions
+ * for the Runner API.
+ *
+ * For an overview of the Runner Framwork and API, see the
+ * README.md file in the repository root directory.
+ * See the header include/runnerapi.h for the API declarations.
+ *
+ * @copyright Copyright (c) 2026 Paul Sinclair
+ * SPDX-License-Identifier: MIT
+ * For license details, see LICENSE in the repository root directory.
+ */
+
 #include "runnerapi.h"
 
 #include <stdio.h>
@@ -99,7 +116,7 @@ void ra_internal_runner_set_report_path(int argc, char **argv, const char *defau
   }
   if (argc > 1 && argv && argv[1] && *argv[1]) {
     if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
-      fprintf(stdout, "Usage: test_britetest [REPORT_PATH|-h|--help]\n");
+      fprintf(stdout, "Usage: test_test [REPORT_PATH|-h|--help]\n");
       exit(0);
     }
     snprintf(g_report_path, sizeof(g_report_path), "%s", argv[1]);
@@ -108,7 +125,7 @@ void ra_internal_runner_set_report_path(int argc, char **argv, const char *defau
 
 void ra_internal_runner_open_report(const char *title)
 {
-  const char *report_title = (title && *title) ? title : "BriteTest Report";
+  const char *report_title = (title && *title) ? title : "Test Report";
 
   g_report = fopen(g_report_path, "w");
   if (!g_report) {

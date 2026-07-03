@@ -1,14 +1,17 @@
  /**
- * @file /paulsinclair51/include/litetest_runner.h
- * 
- * @brief LiteTest Runner is a lightweight framework and Application Programming and
- * Interface (API) framework for defining, running, and reporting tests in C/C++ projects.
- * It is implemented as a single .h and .c pair with no external dependencies requiring
- * only a POSIX.1‑2001 environment and a C99‑compliant compiler.
+ * @file src/runnerapi.h
+ *
+ * @mainpage Runner API Function Declarations
+ *
+ * This file provides declarations for the Runner API.
+ *
+ * For an overview of the Runner Framwork and API, see the
+ * README.md file in the repository root directory.
+ * See src/runnerapi.c for the API definitions.
  *
  * @copyright Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
- * See LICENSE in the repository root for details.
+ * For license details, see LICENSE in the repository root directory.
  */
 
 /**

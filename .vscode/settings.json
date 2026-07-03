@@ -1,3 +1,6 @@
 {
-  "markdownlint.configFile": "config/markdownlint.json"
+  "markdownlint.configFile": "config/markdownlint.json",
+  "files.associations": {
+    "scripts/bin/updatebrand": "shellscript"
+  }
 }

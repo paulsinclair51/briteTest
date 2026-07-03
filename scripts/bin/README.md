@@ -14,9 +14,9 @@ See `README.md` in the root directory for an introduction to the project.
 
 - **ckdirectory_guides**: Validate required directory guides across the repository.
 - **gendocs**: Generate PDF and DOCX documentation.
-- **genpng**: Generate branding PNG images from SVG files.
+- **genpngs**: Generate branding PNG images from SVG files.
 - **replacephrases**: Apply configured phrase replacements in markdown files.
-- **updatelogos**: Update branding text and regenerate related assets.
+- **updatebrand**: Update branding text and regenerate related assets.
 
 ### Branch and Workflow Management
 
