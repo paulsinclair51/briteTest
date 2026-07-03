@@ -19,8 +19,7 @@ usage() {
   cat <<'EOF'
 Usage:
   ckdirectory_guides
-  ckdirectory_guides -h
-  ckdirectory_guides --help
+  ckdirectory_guides -h | --help
 
 Validate that repository subdirectories have canonical README.md
 directory guides.

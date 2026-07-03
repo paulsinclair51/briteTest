@@ -1,42 +1,41 @@
 # brand_history.md
 
-This file defines the current brand name and tagline (logos) for use by
-scripts/bin/updatelogos and provides a history of changes.
-
+This file defines the current or a change to brand name, brand
+initials, and tagline for use by scripts/bin/updatebrand and
+provides a history of changes.
+ 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
 For license details, see `LICENSE` in the root directory.
 
-See `docs/md/Contributor_Guide.md` for details on changing the brand name and tsgline.
+See `docs/md/Contributor_Guide.md` for details on changing the brand name and tagline.
 
-## 1. Introduction
+## Brand History
 
-Special lines in this file:
+| Completed | Brand Name | Initials | Tagline |
+|-----------|------------|----------|---------|
+|  | briteTest | bT | Catch it before it breaks. |
+| 2026-05-24 15:30:45 | BriteTest | BT | Catch it before it breaks. |
+| 2026-05-24 15:30:45 | LiteTest | LT | Catch it before it breaks. |
 
-- **Replacement line**: "- Replace: old_phrase = new_phrase" (case-sensitive).
-  Insert a replacement line for each name/phrase change before the latest
-  completion line with additional commentary (see format below) for the change,
-  then run scripts/bin/updatelogos to update the logos in the documentation.
+## Usage
 
-- **Completion line**: "**Completed**: datetime.".
-  scripts/bin/updatelogos inserts a completion line before the first replacement
-  line.
+To change the brand name or tagline,
+- Add a new entry with no `Completed` date.
+- Run `scripts/bin/updatebrand`
 
-## 2. Change History
-
-### Rename Brand to briteTest
-Change to use more unique brand name with abbreviation bT to align with bT and
-canary accent in the monogram.
-
-- Replace: BriteTest = briteTest
-
-### Rename Brand to BriteTest
-Change to use more unique brand name.
-
-**Completed**: 2026-06-20 18:00:00.
-- Replace: LiteTest = BriteTest
-
-### Initial Definitions
-**Completed**: 2026-06-01 12:20:34.
-- **Brand name**: LiteTest
-- **Tagline**: Catch it before it breaks.
+updatebrand does the following if the first entry does not have `Completed`
+date:
+  - If `Initials` changed, update monogram `docs/branding/Monogram.svg`
+    files with `Initials` from the first entry.
+  - If the `Brand Name` changed, updates logo `docs/branding/Logo_with_*.svg`
+    and `docs/branding/<doctitle>.svg` files with the `Brand Name` from
+    the first entry.
+  - If the `Tagline` changed, updates `docs/branding/Logo_with_Tagline.svg`
+    with the `Tagline` from the first entry.
+  - Regenerates `docs/branding/*.png` files from the
+   `docs/branding/*.svg` files.
+  - Update `*.md` files in the repository replacing the last completed
+    `Brand Name` with the `Brand Name` from the first entry.
+  - Update `Completed` column for the first entry with the current date
+    time.

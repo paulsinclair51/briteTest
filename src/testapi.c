@@ -1,10 +1,18 @@
 /**
- * @file /paulsinclair51/src/testapi.c
+ * @file src/testapi.c
  *
- * @brief BriteTest Test API test helper definitions.
+ * @mainpage Test API Definitions
  *
- * Copyright (c) 2026 Paul Sinclair
+ * This file provides (non-inline) function definitions
+ * for the Test API.
+ *
+ * For an overview of the Test API, see the
+ * README.md file in the repository root directory.
+ * See the header include/testapi.h for the API declarations.
+ *
+ * @copyright Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
+ * For license details, see LICENSE in the repository root directory.
  */
 
 #define _POSIX_C_SOURCE 200809L
@@ -519,7 +527,7 @@ int ta_copy_file(const char *source_path, const char *destination_path)
 
 int ta_make_temp_dir(const char *prefix, char *out_path, size_t out_path_size)
 {
-  const char *use_prefix = "britetest-";
+  const char *use_prefix = "test-";
   char templ[PATH_MAX];
   int rc;
 
@@ -584,7 +592,7 @@ int ta_with_working_directory(const char *path,
 
 int ta_make_temp_file(const char *prefix, char *out_path, size_t out_path_size)
 {
-  const char *use_prefix = "britetest-";
+  const char *use_prefix = "test-";
   char templ[PATH_MAX];
   int fd;
   int rc;
@@ -2930,13 +2938,13 @@ int ta_temp_file_auto(const char *suffix, char *outpath, size_t outpathsz)
     return RA_EARG;
   }
 
-  template_len = sizeof("/tmp/britetest_XXXXXX") + strlen(suffix) + 1;
+  template_len = sizeof("/tmp/test_XXXXXX") + strlen(suffix) + 1;
   template_str = (char *)g_malloc_fn(template_len);
   if (!template_str) {
     return RA_ENOMEM;
   }
 
-  snprintf(template_str, template_len, "/tmp/britetest_XXXXXX%s", suffix);
+  snprintf(template_str, template_len, "/tmp/test_XXXXXX%s", suffix);
 
   fd = mkstemp(template_str);
   if (fd < 0) {

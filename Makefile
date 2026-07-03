@@ -86,10 +86,10 @@ test-lsbranch:
 gendocs:
 	bash ./scripts/bin/gendocs
 
-genpng:
-	bash ./scripts/bin/genpng
+genpngs:
+	bash ./scripts/bin/genpngs
 
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run lint-md check-doc test-gendocs test-lsbranch gendocs genpng clean
+.PHONY: all run lint-md check-doc test-gendocs test-lsbranch gendocs genpngs clean

@@ -20,8 +20,7 @@ usage() {
   cat <<'EOF'
 Usage:
   ckversions
-  ckversions -h
-  ckversions --help
+  ckversions -h | --help
 
 Validate that version consistency across docs, headers, and sources, and that
 version changes align with branch naming policy.

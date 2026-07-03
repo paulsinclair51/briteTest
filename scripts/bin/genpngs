@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# genpng - Generate branding PNG files from corresponding SVG sources.
+# genpngs - Generate branding PNG files from corresponding SVG sources.
 #
-# See usage below for details, or run: genpng -h
+# See usage below for details, or run: genpngs -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -16,8 +16,8 @@ branding_dir="$repo_root/docs/branding"
 usage() {
   cat <<'EOF'
 Usage:
-  genpng
-  genpng -h | --help
+  genpngs [-d]
+  genpngs -h | --help
 
 Generates all branding PNGs from docs/branding/*.svg.
 

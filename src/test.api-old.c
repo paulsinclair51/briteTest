@@ -1,15 +1,27 @@
 /**
- * @file /paulsinclair51/src/litetest_test.c
+ * @file src/testapi.c
  *
- * @brief LiteTest Test API test helper definitions.
+ * @mainpage Test API Definitions
  *
- * Copyright (c) 2026 Paul Sinclair
+ * This file provides (non-inline) function definitions
+ * for the Test API.
+ *
+ * For an overview of the Test API, see the
+ * README.md file in the repository root directory.
+ * See the header include/testapi.h for the API declarations.
+ *
+ * @copyright Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
+ * For license details, see LICENSE in the repository root directory.
+ *
+ * For an overview of the Test API, see the
+ * README.md file in the repository root directory.
+ * See the header include/testapi.h for the API declarations.
  */
 
 #define _POSIX_C_SOURCE 200809L
 
-#include "litetest_test.h"
+#include "testapi.h"
 
 #include <ctype.h>
 #include <dirent.h>

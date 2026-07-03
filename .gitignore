@@ -54,10 +54,13 @@ dkms.conf
 # debug information files
 *.dwo
 
-# Branch management logs (ignore directory by default)
-logs/
-# But track the remote branch history file
+# Branch management logs (ignore by default)
+logs/*
+# Track selected log files.
 !logs/remote_branch_history.md
+!logs/updatebrand-log-*.md
+# Ignore dry-run update logs.
+logs/updatebrand-log-dry-run-*.md
 
 # Python virtual environments
 .venv/

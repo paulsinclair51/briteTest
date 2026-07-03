@@ -1,16 +1,20 @@
-/**
- * @file /paulsinclair51/include/testapi.h
+ /**
+ * @file src/testapi.h
  *
- * @brief BriteTest Test API declarations.
+ * @mainpage Test API Function Declarations
  *
  * This header declares test helper functions that can be used in
  * test expressions or by their underlying functions. The helpers focus
  * on process execution, waiting, file operations, simple text matching,
  * and scoped environment overrides.
  *
- * Copyright (c) 2026 Paul Sinclair
+ * For an overview of the Test API, see the
+ * README.md file in the repository root directory.
+ * See src/testapi.c for the API definitions.
+ *
+ * @copyright Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
- * See LICENSE in the repository root for details.
+ * For license details, see LICENSE in the repository root directory.
  */
 
 /**
@@ -21,16 +25,16 @@
  * It provides declarations, definitions (other than non-inline function definitions
  * provided by testapi.c in the repository src directory).
  *
- * See README.md in the repository root directory for an introduction to BriteTest.
+ * See README.md in the repository root directory for an introduction to Test API.
  *
- * See BriteTest Docucmentation Guide for ,,,
+ * See Docucmentation Guide for ,,,
  *
- * @note BriteTest requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility and a
+ * @note The test requires POSIX.1-2001 (IEEE Std 1003.1-2001) compatibility and a
  *       C99-compliant compiler. Linux, macOS, and the BSD family natively meet these
  *       requirements. Windows requires a POSIX compatibility layer such as Cygwin,
  *       MSYS2, or WSL.
  *
- * @note BriteTest Runner has been exercised in a POSIX environment; however, users must
+ * @note The Test API has been exercised in a POSIX environment; however, users must
  *       confirm correct behavior in their own environment.
  */
 
@@ -50,7 +54,7 @@
  *       and safety guarantees are part of the documented and stable API
  *       and will not change without a major version increment.
  *
- * @note M is the same across all versioned entities in the BriteTest repository..
+ * @note M is the same across all versioned entities in the repository root.
  */
  
 #define RA_TEST_VERSION "1.0.0"
@@ -72,17 +76,17 @@ extern "C" {
 #endif
 
 /**
- * @section BriteTestVersionMacros BriteTest Version Macros
+ * @section TestVersionMacros Test Version Macros
  */
 
 /**
- * @defgroup BriteTestVersionMacros BriteTest Version Macros
+ * @defgroup TestVersionMacros Test Version Macros
  *
  * @name RA_VERSION_MAJOR, RA_VERSION_MINOR, RA_VERSION_PATCH,
  *       RA_VERSION_NUM, RA_VERSION_HEX, 
  *       RA_VERSION_CMP
  *
- * @brief Version macros for BriteTest (runnerapi.h and testapi.c):
+ * @brief Version macros for Test API (testapi.h and testapi.c):
  * 
  * RA_MAJOR(v)
  *    Major version
@@ -128,17 +132,17 @@ size_t ta_internal_get_test_minor_internal(const char *v);
 size_t ta_internal_get_test_patch_internal(const char *v);
 #define RA_VERSION_PATCH(v) ta_internal_get_test_patch_internal((v))
 
-// BriteTest version as an integer for comparisons.
+// Test API version as an integer for comparisons.
 
 size_t ta_internal_get_test_num_internal(const char *v);
 #define RA_VERSION_NUM(v) ta_internal_get_test_num_internal((v))
 
-// BriteTest version encoded as 0xMMmmpp (major, minor, patch) for display/debug.
+// Test API version encoded as 0xMMmmpp (major, minor, patch) for display/debug.
 
 size_t ta_internal_get_test_hex_internal(const char *v);
 #define RA_VERSION_HEX(v) ta_internal_get_test_hex_internal((v))
 
-// BriteTest version compared to specified version (1 if true, otherwie 0).
+// Test API version compared to specified version (1 if true, otherwie 0).
 
 int ta_internal_test_cmp_internal
 ( const char *v1, const char *v2 );

@@ -4,11 +4,11 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `LICENSE` in the root directory.
 
-See `README.md` in the root directory for an introduction to the project.
+See `README.md` in the root directory for an introduction to BriteTest.
 
 ## Overview
 
-This file lists the allowed contributors to the BriteTest project.
+This file lists the allowed contributors to BriteTest.
 
 An approver may modify this list to add/remove a contributor or change a
 contributor's role. If there are no approvers, a reviewer may modify the list.
@@ -19,14 +19,13 @@ Otherwise, any user may modify the list.
 
 Contributors are categorized by their role and permissions:
 
-- **C/name** (Contributor-only): Can contribute code and documentatio changes.
+- **C/name** (Contributor-only): Can contribute code and documentation changes.
 
-- **R/name** (Reviewer): Can contribute, review a pull request (PR) and contribute,
+- **R/name** (Reviewer): Can contribute ahd review a pull request (PR).
   Reviewers help maintain code and documentation quality through peer review.
 
 - **A/name** (Approver): Can contribute, review a pull request PR), approve a 
-  pull request for merging. Approvers have final authority on code documentation 
-  and changes.
+  pull request for merging. Approvers have final authority on code and documentation changes.
 
 ## Contributors
 

@@ -1,0 +1,609 @@
+#!/usr/bin/env bash
+
+# updatebrand - Updates branding assets and propagates a brand change
+#               across repository files.
+#
+# See usage below for details, or run: updatebrand -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+CONFIG_FILE="${REPO_ROOT}/logs/brand_history.md"
+BRANDING_DIR="${REPO_ROOT}/docs/branding"
+GENPNGS_SCRIPT="${SCRIPT_DIR}/genpngs"
+
+DRY_RUN=0
+
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+RUN_OUTPUT_FILE="$(mktemp)"
+RUN_LOG_FILE=""
+
+# Exit code definitions
+EXIT_SUCCESS=0
+EXIT_NO_PENDING_ROW=1
+EXIT_INVALID_ARGUMENT=2
+EXIT_CONFIG_NOT_FOUND=3
+EXIT_CONFIG_EMPTY=4
+EXIT_BRANDING_DIR_MISSING=5
+EXIT_MISSING_COMPLETED_ROW=6
+EXIT_MISSING_GENPNGS=7
+EXIT_COMMAND_FAILED=8
+EXIT_PENDING_MATCHES_COMPLETED=9
+EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_INITIALS=10
+EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_BRAND=11
+EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_TAGLINE=12
+EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_BRAND=13
+EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_TAGLINE=14
+EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_INITIALS=15
+
+usage() {
+  cat <<'EOF'
+Usage:
+  updatebrand [-d]
+  updatebrand -h | --help
+
+Update the branding assets and propagate a brand change across
+repository files.
+
+Options:
+  -d          Perform a dry run without making any changes.
+  -h, --help  Output this help to stdout and exit.
+
+Output (stdout):
+  - Loaded previous/pending brand values.
+  - Per-file replacement details for SVG and text files when matches exist.
+  - Section summaries with file/replacement counts.
+  - Dry-run notices, including whether scripts/bin/genpngs would run.
+  - Final status block (COMPLETED or DRY RUN COMPLETE).
+
+Logging:
+  - updatebrand and updatebrand -d write a log in logs/.
+  - Non-dry run log: updatebrand-log-YYYYMMDD-HHMMSS.md
+  - Dry-run log: updatebrand-log-dry-run-YYYYMMDD-HHMMSS.md
+  - -h/--help does not generate a log.
+  - On successful non-dry runs, existing dry-run logs are deleted.
+
+Exit Codes:
+    0  Success (includes help output).
+    1  No pending Brand History row found (nothing to do).
+    2  Invalid command-line argument or option.
+    3  Brand history file not found.
+    4  Brand history file is empty.
+    5  Branding directory not found.
+    6  Completed Brand History row not found for comparison.
+    7  scripts/bin/genpngs is missing or not executable.
+    8  Required command failed unexpectedly.
+    9  Pending Brand History row matches the following completed row.
+    10 New Brand Name equals previous Initials.
+    11 New Initials equals previous Brand Name.
+    12 New Brand Name equals previous Tagline.
+    13 New Tagline equals previous Brand Name.
+    14 New Initials equals previous Tagline.
+    15 New Tagline equals previous Initials.
+
+To change the brand name, brand initials, or tagline:
+  - Add a new entry with no Completed date to the Brand History
+    table in logs/brand_history.md.
+  - Run scripts/bin/updatebrand.
+
+The script will:
+  - Update SVG files in docs/branding based on pending row values
+    if they cause a change for the SVG.
+  - Regenerate docs/branding/*.png files from SVG files that changed.
+  - Update *.md, *.c, and *.h files by replacing the previous
+    completed Brand Name with the pending Brand Name if it changed.
+  - Mark the pending row Completed with the current date and time.
+EOF
+}
+
+error_exit() {
+    local message="$1"
+    local code="${2:-1}"
+
+    echo "Error: ${message}" >&2
+    exit "$code"
+}
+
+extract_history_first_two_rows() {
+    [[ -f "$CONFIG_FILE" ]] || return 0
+
+    awk '
+        BEGIN {
+            got_header = 0
+            got_separator = 0
+            rows = 0
+        }
+
+        /^\|[[:space:]]*Completed[[:space:]]*\|/ && !got_header {
+            print
+            got_header = 1
+            next
+        }
+
+        got_header && !got_separator && /^\|[[:space:]-]+\|[[:space:]-]+\|[[:space:]-]+\|[[:space:]-]+\|[[:space:]]*$/ {
+            print
+            got_separator = 1
+            next
+        }
+
+        got_separator && /^\|/ {
+            print
+            rows++
+            if (rows == 2) {
+                exit
+            }
+        }
+    ' "$CONFIG_FILE"
+}
+
+setup_output_capture() {
+    exec > >(tee "$RUN_OUTPUT_FILE") 2>&1
+}
+
+format_change_line() {
+    local label="$1"
+    local previous="$2"
+    local pending="$3"
+    local quoted=0
+
+    if [[ "$label" == "Tagline" ]]; then
+        quoted=1
+    fi
+
+    if [[ "$quoted" -eq 1 ]]; then
+        if [[ -n "$previous" ]]; then
+            previous="'${previous}'"
+        fi
+        if [[ -n "$pending" ]]; then
+            pending="'${pending}'"
+        fi
+    fi
+
+    if [[ -z "$previous" && -z "$pending" ]]; then
+        echo "${label}: unavailable"
+    elif [[ "$previous" == "$pending" ]]; then
+        echo "${label}: ${previous} unchanged."
+    elif [[ -z "$previous" ]]; then
+        echo "${label}: (none) -> ${pending}"
+    elif [[ -z "$pending" ]]; then
+        echo "${label}: ${previous} -> (empty)"
+    else
+        echo "${label}: ${previous} -> ${pending}"
+    fi
+}
+
+write_run_log_on_exit() {
+    local exit_code="$?"
+    local history_table
+    local previous_brand_value="${previous_brand-}"
+    local pending_brand_value="${pending_brand-}"
+    local previous_initials_value="${previous_initials-}"
+    local pending_initials_value="${pending_initials-}"
+    local previous_tagline_value="${previous_tagline-}"
+    local pending_tagline_value="${pending_tagline-}"
+
+    set +e
+
+    history_table="$(extract_history_first_two_rows)"
+
+    {
+        echo "# Update Brand ${RUN_TS_DISPLAY}"
+        echo
+        if [[ -n "$history_table" ]]; then
+            printf '%s\n' "$history_table"
+        else
+            echo "| Completed | Brand Name | Brand Initials | Tagline |"
+            echo "| --- | --- | --- | --- |"
+        fi
+        echo
+        printf '%s  \n' "$(format_change_line "Brand Name" "$previous_brand_value" "$pending_brand_value")"
+        printf '%s  \n' "$(format_change_line "Initials" "$previous_initials_value" "$pending_initials_value")"
+        printf '%s  \n' "$(format_change_line "Tagline" "$previous_tagline_value" "$pending_tagline_value")"
+        echo
+        echo "## Output"
+        echo '```text'
+        sed -n '1,$p' "$RUN_OUTPUT_FILE"
+        echo '```'
+    } > "$RUN_LOG_FILE"
+
+    rm -f "$RUN_OUTPUT_FILE"
+    trap - EXIT
+    exit "$exit_code"
+}
+
+on_unexpected_error() {
+    local code="$?"
+    if [[ "$code" -ne 0 ]]; then
+        echo "Error: A required command failed unexpectedly." >&2
+        exit "$EXIT_COMMAND_FAILED"
+    fi
+}
+
+trap on_unexpected_error ERR
+
+count_occurrences() {
+    local file="$1"
+    local needle="$2"
+    awk -v needle="$needle" '
+        BEGIN { count = 0 }
+        {
+            line = $0
+            while ((idx = index(line, needle)) > 0) {
+                count++
+                line = substr(line, idx + length(needle))
+            }
+        }
+        END { print count }
+    ' "$file"
+}
+
+extract_brand_rows() {
+    awk '
+        function trim(s) {
+            gsub(/^[ \t]+|[ \t]+$/, "", s)
+            return s
+        }
+
+        BEGIN {
+            pending_found = 0
+            completed_found = 0
+        }
+
+        $0 ~ /^\|/ {
+            row = $0
+            gsub(/\r$/, "", row)
+
+            if (row ~ /^\|[[:space:]-]+\|[[:space:]-]+\|[[:space:]-]+\|[[:space:]-]+\|[[:space:]]*$/) {
+                next
+            }
+
+            if (row ~ /^\|[[:space:]]*Completed[[:space:]]*\|/) {
+                next
+            }
+
+            n = split(row, parts, "|")
+            if (n < 6) {
+                next
+            }
+
+            completed = trim(parts[2])
+            brand = trim(parts[3])
+            initials = trim(parts[4])
+            tagline = trim(parts[5])
+
+            if (!pending_found && completed == "") {
+                print "PENDING\t" brand "\t" initials "\t" tagline "\t" NR
+                pending_found = 1
+                next
+            }
+
+            if (pending_found && !completed_found && completed != "") {
+                print "COMPLETED\t" brand "\t" initials "\t" tagline "\t" NR
+                completed_found = 1
+            }
+        }
+    ' "$CONFIG_FILE"
+}
+
+replace_text_file() {
+    local file="$1"
+    local old_text="$2"
+    local new_text="$3"
+
+    local tmp_file
+    tmp_file="$(mktemp)"
+
+    OLD_TEXT="$old_text" NEW_TEXT="$new_text" perl -0777 -pe 's/\Q$ENV{OLD_TEXT}\E/$ENV{NEW_TEXT}/g' "$file" > "$tmp_file"
+    mv "$tmp_file" "$file"
+}
+
+update_completion_timestamp() {
+    local target_line="$1"
+    local timestamp="$2"
+    local tmp_file
+
+    tmp_file="$(mktemp)"
+
+    awk -v target_line="$target_line" -v timestamp="$timestamp" '
+        function trim(s) {
+            gsub(/^[ \t]+|[ \t]+$/, "", s)
+            return s
+        }
+
+        NR == target_line {
+            n = split($0, parts, "|")
+            if (n >= 6) {
+                brand = trim(parts[3])
+                initials = trim(parts[4])
+                tagline = trim(parts[5])
+                print "| " timestamp " | " brand " | " initials " | " tagline " |"
+                next
+            }
+        }
+
+        { print }
+    ' "$CONFIG_FILE" > "$tmp_file"
+
+    mv "$tmp_file" "$CONFIG_FILE"
+}
+
+process_text_brand_replacement() {
+    local old_brand="$1"
+    local new_brand="$2"
+    local dry_run="$3"
+
+    local -a text_files=()
+    local file
+    local count
+    local files_processed=0
+    local files_modified=0
+    local total_replacements=0
+
+    mapfile -t text_files < <(find "$REPO_ROOT" -type f \
+        \( -name '*.md' -o -name '*.c' -o -name '*.h' \) \
+        ! -path '*/.git/*' ! -path '*/.github/*' \
+        ! -path "$CONFIG_FILE" | sort)
+
+    files_processed="${#text_files[@]}"
+
+    for file in "${text_files[@]}"; do
+        count="$(count_occurrences "$file" "$old_brand")"
+        if [[ "$count" -gt 0 ]]; then
+            files_modified=$((files_modified + 1))
+            total_replacements=$((total_replacements + count))
+
+            echo "${file#${REPO_ROOT}/}:"
+            echo "  - Replaced '${old_brand}' -> '${new_brand}' (${count} occurrence(s))"
+            echo
+
+            if [[ "$dry_run" -eq 0 ]]; then
+                replace_text_file "$file" "$old_brand" "$new_brand"
+            fi
+        fi
+    done
+
+    echo "============================================================"
+    if [[ "$dry_run" -eq 1 ]]; then
+        echo "TEXT FILE DRY RUN SUMMARY:"
+    else
+        echo "TEXT FILE UPDATE SUMMARY:"
+    fi
+    echo "  Files processed: ${files_processed}"
+    echo "  Files modified: ${files_modified}"
+    echo "  Total replacements: ${total_replacements}"
+}
+
+cleanup_dry_run_logs() {
+    local -a dry_run_logs=()
+
+    mapfile -t dry_run_logs < <(find "${REPO_ROOT}/logs" -maxdepth 1 -type f -name 'updatebrand-log-dry-run-*.md' | sort)
+
+    if [[ "${#dry_run_logs[@]}" -eq 0 ]]; then
+        return
+    fi
+
+    rm -f "${dry_run_logs[@]}"
+    echo "Removed ${#dry_run_logs[@]} dry-run log file(s)"
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -d)
+            DRY_RUN=1
+            ;;
+        -h|--help)
+            usage
+            exit "$EXIT_SUCCESS"
+            ;;
+        *)
+            usage >&2
+            error_exit "Unknown argument or option: $1" "$EXIT_INVALID_ARGUMENT"
+            ;;
+    esac
+    shift
+done
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+    RUN_LOG_FILE="${REPO_ROOT}/logs/updatebrand-log-dry-run-${RUN_TS_FILE}.md"
+else
+    RUN_LOG_FILE="${REPO_ROOT}/logs/updatebrand-log-${RUN_TS_FILE}.md"
+fi
+
+trap write_run_log_on_exit EXIT
+setup_output_capture
+
+[[ -f "$CONFIG_FILE" ]] || error_exit "Brand history file not found: logs/brand_history.md" "$EXIT_CONFIG_NOT_FOUND"
+[[ -s "$CONFIG_FILE" ]] || error_exit "Brand history file is empty: logs/brand_history.md" "$EXIT_CONFIG_EMPTY"
+[[ -d "$BRANDING_DIR" ]] || error_exit "Branding directory not found: docs/branding" "$EXIT_BRANDING_DIR_MISSING"
+
+pending_brand=""
+pending_initials=""
+pending_tagline=""
+pending_line=""
+previous_brand=""
+previous_initials=""
+previous_tagline=""
+
+while IFS=$'\t' read -r row_type brand initials tagline line_number; do
+    [[ -z "${row_type}" ]] && continue
+
+    if [[ "$row_type" == "PENDING" ]]; then
+        pending_brand="$brand"
+        pending_initials="$initials"
+        pending_tagline="$tagline"
+        pending_line="$line_number"
+    elif [[ "$row_type" == "COMPLETED" ]]; then
+        previous_brand="$brand"
+        previous_initials="$initials"
+        previous_tagline="$tagline"
+    fi
+done < <(extract_brand_rows)
+
+if [[ -z "$pending_line" ]]; then
+    echo "No pending Brand History row found (first row already has Completed)."
+    exit "$EXIT_NO_PENDING_ROW"
+fi
+
+if [[ -z "$previous_brand" && -z "$previous_initials" && -z "$previous_tagline" ]]; then
+    error_exit "Could not find a completed Brand History row to compare against" "$EXIT_MISSING_COMPLETED_ROW"
+fi
+
+if [[ "$pending_brand" == "$previous_brand" && "$pending_initials" == "$previous_initials" && "$pending_tagline" == "$previous_tagline" ]]; then
+    error_exit "Pending Brand History row matches the following completed row; nothing to apply" "$EXIT_PENDING_MATCHES_COMPLETED"
+fi
+
+declare -a old_values=()
+declare -a new_values=()
+
+brand_changed=0
+initials_changed=0
+tagline_changed=0
+
+if [[ "$previous_brand" != "$pending_brand" && -n "$previous_brand" ]]; then
+    old_values+=("$previous_brand")
+    new_values+=("$pending_brand")
+    brand_changed=1
+fi
+
+if [[ "$previous_initials" != "$pending_initials" && -n "$previous_initials" ]]; then
+    old_values+=("$previous_initials")
+    new_values+=("$pending_initials")
+    initials_changed=1
+fi
+
+if [[ "$previous_tagline" != "$pending_tagline" && -n "$previous_tagline" ]]; then
+    old_values+=("$previous_tagline")
+    new_values+=("$pending_tagline")
+    tagline_changed=1
+fi
+
+if [[ "$brand_changed" -eq 1 && "$initials_changed" -eq 1 && "$pending_brand" == "$previous_initials" ]]; then
+    error_exit "Conflict: new Brand Name matches previous Initials" "$EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_INITIALS"
+fi
+
+if [[ "$initials_changed" -eq 1 && "$brand_changed" -eq 1 && "$pending_initials" == "$previous_brand" ]]; then
+    error_exit "Conflict: new Initials matches previous Brand Name" "$EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_BRAND"
+fi
+
+if [[ "$brand_changed" -eq 1 && "$tagline_changed" -eq 1 && "$pending_brand" == "$previous_tagline" ]]; then
+    error_exit "Conflict: new Brand Name matches previous Tagline" "$EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_TAGLINE"
+fi
+
+if [[ "$tagline_changed" -eq 1 && "$brand_changed" -eq 1 && "$pending_tagline" == "$previous_brand" ]]; then
+    error_exit "Conflict: new Tagline matches previous Brand Name" "$EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_BRAND"
+fi
+
+if [[ "$initials_changed" -eq 1 && "$tagline_changed" -eq 1 && "$pending_initials" == "$previous_tagline" ]]; then
+    error_exit "Conflict: new Initials matches previous Tagline" "$EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_TAGLINE"
+fi
+
+if [[ "$tagline_changed" -eq 1 && "$initials_changed" -eq 1 && "$pending_tagline" == "$previous_initials" ]]; then
+    error_exit "Conflict: new Tagline matches previous Initials" "$EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_INITIALS"
+fi
+
+echo "Loaded pending brand change from logs/brand_history.md"
+echo "  Previous: brand='${previous_brand}', initials='${previous_initials}', tagline='${previous_tagline}'"
+echo "  Pending:  brand='${pending_brand}', initials='${pending_initials}', tagline='${pending_tagline}'"
+echo
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "DRY RUN MODE - No files will be modified"
+    echo
+fi
+
+mapfile -t svg_files < <(find "$BRANDING_DIR" -maxdepth 1 -type f -name '*.svg' | sort)
+
+svg_files_modified=0
+svg_total_replacements=0
+
+for svg_file in "${svg_files[@]}"; do
+    file_replacements=0
+    declare -a replacement_counts=()
+
+    for i in "${!old_values[@]}"; do
+        count="$(count_occurrences "$svg_file" "${old_values[$i]}")"
+        replacement_counts+=("$count")
+        file_replacements=$((file_replacements + count))
+    done
+
+    if [[ "$file_replacements" -gt 0 ]]; then
+        echo "${svg_file#${REPO_ROOT}/}:"
+        for i in "${!old_values[@]}"; do
+            count="${replacement_counts[$i]}"
+            if [[ "$count" -gt 0 ]]; then
+                echo "  - Replaced '${old_values[$i]}' -> '${new_values[$i]}' (${count} occurrence(s))"
+            fi
+        done
+        echo
+
+        svg_files_modified=$((svg_files_modified + 1))
+        svg_total_replacements=$((svg_total_replacements + file_replacements))
+
+        if [[ "$DRY_RUN" -eq 0 ]]; then
+            for i in "${!old_values[@]}"; do
+                replace_text_file "$svg_file" "${old_values[$i]}" "${new_values[$i]}"
+            done
+        fi
+    fi
+done
+
+echo "============================================================"
+if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "SVG DRY RUN SUMMARY:"
+else
+    echo "SVG UPDATE SUMMARY:"
+fi
+echo "  Files processed: ${#svg_files[@]}"
+echo "  SVG files modified: ${svg_files_modified}"
+echo "  Total replacements: ${svg_total_replacements}"
+
+if [[ "$svg_total_replacements" -gt 0 ]]; then
+    if [[ ! -x "$GENPNGS_SCRIPT" ]]; then
+        error_exit "Missing executable: scripts/bin/genpngs" "$EXIT_MISSING_GENPNGS"
+    fi
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        echo
+        echo "[DRY RUN] Would execute: scripts/bin/genpngs"
+    else
+        echo
+        echo "Regenerating PNG files from SVG sources..."
+        "$GENPNGS_SCRIPT"
+    fi
+fi
+
+if [[ "$previous_brand" != "$pending_brand" && -n "$previous_brand" ]]; then
+    echo
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        echo "Updating text files (.md, .c, .h) (dry run)..."
+    else
+        echo "Updating text files (.md, .c, .h)..."
+    fi
+
+    process_text_brand_replacement "$previous_brand" "$pending_brand" "$DRY_RUN"
+else
+    echo
+    echo "Skipping text file update because Brand Name did not change"
+fi
+
+if [[ "$DRY_RUN" -eq 0 ]]; then
+    timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+    update_completion_timestamp "$pending_line" "$timestamp"
+    cleanup_dry_run_logs
+
+    echo
+    echo "============================================================"
+    echo "COMPLETED"
+    echo "Marked pending Brand History row as completed: $timestamp"
+else
+    echo
+    echo "============================================================"
+    echo "DRY RUN COMPLETE"
+    echo "Run without -d to apply these changes"
+fi

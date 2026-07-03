@@ -1,3 +1,31 @@
+/**
+ * @file /paulsinclair51/include/runnerapi.h
+ *
+ * @brief Runner API declarations.
+ *
+ * This header declares the Runner API that can be used
+ * to orchestrate test execution, report generation, and
+ * result aggregation.
+ *
+ * Copyright (c) 2026 Paul Sinclair
+ * SPDX-License-Identifier: MIT
+ * See LICENSE in the repository root for details.
+ */ /**
+ * @file src/runnerapi.h
+ *
+ * @mainpage Runner API Function Declarations
+ *
+ * This file provides declarations for the Runner API.
+ *
+ * For an overview of the Runner Framwork and API, see the
+ * README.md file in the repository root directory.
+ * See src/runnerapi.c for the API definitions.
+ *
+ * @copyright Copyright (c) 2026 Paul Sinclair
+ * SPDX-License-Identifier: MIT
+ * For license details, see LICENSE in the repository root directory.
+ */
+
 #pragma once
 
 #include <setjmp.h>

@@ -1,16 +1,20 @@
-/**
- * @file /paulsinclair51/include/litetest_test.h
+ /**
+ * @file src/testapi.h
  *
- * @brief LiteTest Test API declarations.
+ * @mainpage Test API Function Declarations
  *
  * This header declares test helper functions that can be used in
  * test expressions or by their underlying functions. The helpers focus
  * on process execution, waiting, file operations, simple text matching,
  * and scoped environment overrides.
  *
- * Copyright (c) 2026 Paul Sinclair
+ * For an overview of the Test API, see the
+ * README.md file in the repository root directory.
+ * See src/testapi.c for the API definitions.
+ *
+ * @copyright Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
- * See LICENSE in the repository root for details.
+ * For license details, see LICENSE in the repository root directory.
  */
 
 /**

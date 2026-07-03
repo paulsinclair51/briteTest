@@ -1,21 +1,18 @@
 /**
- * @file /paulsinclair51/src/litetest_runner.c
+ * @file src/runnerapi-old.c
  *
- * @mainpage Runner Function Definitions
- * 
- * @brief This header provides (non-inline) function definitions for the Runner
- *        API and framework.
- * 
- *        For an overview of the Runner Framework and API, see
- *        "README.md" in the /paulsinclair51/briteTest
- *        repository. See the header @ref /paulsinclair51/include/litetest_runner.h
- *        "litetest_runner.h" in the include directory for the complete
- *        definition and documentation.
- * 
+ * @mainpage Runner API Function Definitions
+ *
+ * This file provides (non-inline) function definitions
+ * for the Runner API.
+ *
+ * For an overview of the Runner Framwork and API, see the
+ * README.md file in the repository root directory.
+ * See the header include/runnerapi.h for the API declarations.
+ *
  * @copyright Copyright (c) 2026 Paul Sinclair
  * SPDX-License-Identifier: MIT
- * For license details, see @ref LICENSE "LICENSE" in the
- * paulsinclair51/LiteTest repository root.
+ * For license details, see LICENSE in the repository root directory.
  */
 
 /**
