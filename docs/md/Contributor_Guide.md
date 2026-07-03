@@ -137,7 +137,7 @@ When to change version:
   - Minor additions to the Runner Framework.
   - Minor refactorying of implementation.
   - The changes must not introduce an incompatible. change.
-    See the **Incompatible Changes** section.
+    See the **Incompatible Change** section.
   - If incremented or reset to 0, it must be updated for all versioned files
     (`.h`, `.c, .md, `.pdf`, and  `.docx`) to the same minor value
     (even if the file was not otherwise modified) with patch reset to 0. 
@@ -147,7 +147,7 @@ When to change version:
   - Major additions to the Runner Framework.
   - Significant refactoring of the implementation.
   - Changes introducing incompatibilities with previously
-    releaed versions. See **Incompatible Changes** section if such a chsnge
+    releaed versions. See **Incompatible Change** section if such a chsnge
     is proposed,
   - If incremented, it must be updated for all brrdioned files (`.h`,
     `.c, .md, `.pdf`, and  `.docx`) to the same major value (even if 
