@@ -81,7 +81,7 @@ recent version for this document at the time this document was published.
 3. [**Branding**](#3-branding)<br>
    3.1. [Alternative Brand Descriptions](#31-alternative-brand-descriptons)<br>
    3.2. [Alternative Brand Names](#32-alternative-brand-names)<br>
-   3.3. [How to Update Branding](#33-how-to-update-brand)<br>
+   3.3. [How to Update Branding](#33-how-to-update-branding)<br>
 
 4. [**Documentation Guidelines**](#4-documentation-guidelines)
 
@@ -171,7 +171,7 @@ API compatibility guidelines:
 - Provide migration guidance for major changes including how
   to opt-in for new features and **Continuous Integration Enforcement**
 
-Version consistency is enforced automatically by the CI pipeline on all pull 
+Version consistency is enforced by the CI pipeline on all pull 
 requests and commits to the `main` branch:
 
 - The `ckversions` script validates that major and minor versions are consistent 
@@ -189,19 +189,16 @@ requests and commits to the `main` branch:
 - If version consistency fails, the CI workflow blocks the PR merge. Contributors 
   must update version numbers to match the policy and re-push their changes.
 
-See the `scripts/bin/ckversions` script for details on version validation ================================================================================
-SECTION 1: CI ENFORCEMENT OF VERSIONING GUIDELINES
-================================================================================
+See the `scripts/bin/ckversions` script for details on version validation.
+
 
 Location: Insert after line 172 (after "Provide migration guidance...") and 
 before line 174 (before "Significant justification is required...")
 
----
+### Continuous Integration Enforcement
 
-**Continuous Integration Enforcement**
-
-Version consistency is enforced automatically by the CI pipeline on all pull 
-requests and commits to the `main` branch:
+Version consistency is enforced by the CI pipeline on all pull 
+requests (PR) and commits to the `main` branch:
 
 - The `ckversions` script validates that major and minor versions are consistent 
   across all versioned files:
@@ -258,17 +255,6 @@ When an exception is necessary:
 
 Exceptions are rare. Before requesting an exception, consult with reviewers to 
 confirm the change truly requires special handling.
-
----
-
-================================================================================
-SECTION 3: VERSIONING EXAMPLES
-================================================================================
-
-Location: Insert after the "Exception Process" section (after the paragraph 
-about consulting reviewers) and before "Note: A major or minor release..."
-
----
 
 ### Examples
 
@@ -351,38 +337,8 @@ document, `docs/md/Test_API_Reference.md`
   - Reference the PR justification in release notes.
 - CI Check: `ckversions` confirms all files have major 2.0.0.
 
----
 
-================================================================================
-SECTION 4: VERSIONING CHECKLIST FOR PULL REQUESTS
-================================================================================
 
-Location: Insert at the end of Section 8 (Pull Request), after "Step 4: Merge 
-into Main" section (after line 799)
-
----
-
-### Versioning Checklist
-
-Use this checklist to ensure version numbers are correct before opening a PR:
-
-**Before Opening the PR:**
-
-- [ ] I have identified which versioned files I modified (API headers `.h`, API 
-      implementations `.c`, documentation `.md`).
-- [ ] I have determined the appropriate version change (patch, minor, or major) 
-      per the Versioning Guidelines.
-- [ ] I have updated the version numbers in all affected files:
-  - [ ] For patch changes: incremented patch only in the modified file(s).
-  - [ ] For minor changes: updated all versioned files to the same major.minor 
-        with patch reset to 0.
-  - [ ] For major changes: updated all versioned files to the same major value 
-        with minor and patch reset to 0.
-- [ ] I have verified version consistency locally by running: `scripts/bin/ckversions`
-- [ ] For documentation files, I have added a new entry to the top of the 
-      Document Version History table with today's date and a brief comment.
-- [ ] If I am making an exception to the versioning guidelines, I have included 
-      written justification in my PR description.
 
 **In the PR Description:**
 
@@ -1038,6 +994,28 @@ Before submitting a PR:
 - Once approved, the PR is merged into the `main` branch.
 - Changes are now part of the official codebase but not yet released.
 - The branch can be deleted after merging.
+
+### Versioning Checklist
+
+Use this checklist to ensure version numbers are correct before opening a PR:
+
+**Before Opening the PR:**
+
+- [ ] I have identified which versioned files I modified (API headers `.h`, API 
+      implementations `.c`, documentation `.md`).
+- [ ] I have determined the appropriate version change (patch, minor, or major) 
+      per the Versioning Guidelines.
+- [ ] I have updated the version numbers in all affected files:
+  - [ ] For patch changes: incremented patch only in the modified file(s).
+  - [ ] For minor changes: updated all versioned files to the same major.minor 
+        with patch reset to 0.
+  - [ ] For major changes: updated all versioned files to the same major value 
+        with minor and patch reset to 0.
+- [ ] I have verified version consistency locally by running: `scripts/bin/ckversions`
+- [ ] For documentation files, I have added a new entry to the top of the 
+      Document Version History table with today's date and a brief comment.
+- [ ] If I am making an exception to the versioning guidelines, I have included 
+      written justification in my PR description.
 </details>
 
 <details>
