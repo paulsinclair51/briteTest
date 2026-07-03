@@ -60,7 +60,7 @@ If you run this outside a Git repository, set the repository root
 explicitly:
 
 ```sh
-repo_root="/absolute/path/to/BriteTest"
+repo_root="/absolute/path/to/briteTest"
 repo_bin="$repo_root/scripts/bin"
 line="export PATH=\"$repo_bin:\$PATH\""
 grep -qxF "$line" ~/.bashrc || echo "$line" >> ~/.bashrc

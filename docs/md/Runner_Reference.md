@@ -392,12 +392,12 @@ allowed to execute in parallel.
 **maxargs**:
 - The maximum number arguments in the command line.
 - The value must 2 or greater.
-- The first 2 arguments and BriteTest flags are parsed by the macro.
+- The first 2 arguments and briteTest flags are parsed by the macro.
 - Additional arguments must be parsed by customization code.
 
 **customflags**:
 - A string of custom flags (e.g., "-l--file-Q").
-- The macro causes the test runner to terminate if a non-BriteTest flag is not in the string.
+- The macro causes the test runner to terminate if a non-briteTest flag is not in the string.
 - The actual parsing of these must be customization code.
 
 **defaultreportfilename**:
@@ -640,7 +640,7 @@ See "Isolation" in the Runner Guide.
 ### 9.1. `RA_RUNNER_VERSION`
 
 **Value**:
-- BriteTest Runner's version as a literal string of type `char[n]`, where `n` is
+- briteTest Runner's version as a literal string of type `char[n]`, where `n` is
   between 5 and 9 (including
   the terminating null character).
 - Format: `M.m.p`, where `M`, `m`, and `p` are one or two digits.
@@ -1012,7 +1012,7 @@ automatically promote the output.
 
 ### 13.3. Output/Golden Rationale
 
-BriteTest uses a parallel `tests/golden` directory with golden files that keep
+briteTest uses a parallel `tests/golden` directory with golden files that keep
 the exact same filename as their corresponding test output. This design avoids
 the common problems found in extension-based naming schemes:
 

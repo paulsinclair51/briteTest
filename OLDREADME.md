@@ -1,10 +1,10 @@
-# BriteTest
+# briteTest
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/BriteTest?display_name=tag)](https://github.com/paulsinclair51/BriteTest/releases)
-[![CI](https://github.com/paulsinclair51/BriteTest/actions/workflows/ci.yml/badge.svg)](https://github.com/paulsinclair51/BriteTest/actions/workflows/ci.yml)
+[![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/briteTest?display_name=tag)](https://github.com/paulsinclair51/briteTest/releases)
+[![CI](https://github.com/paulsinclair51/briteTest/actions/workflows/ci.yml/badge.svg)](https://github.com/paulsinclair51/briteTest/actions/workflows/ci.yml)
 
-BriteTest is a lightweight Application Programming Interface (API) and framework for defining,
+briteTest is a lightweight Application Programming Interface (API) and framework for defining,
 running, and reporting tests in C/C++ projects. It is implemented as a single `.h` and `.c` pair
 with no external dependencies requiring only a POSIX.1‑2001 environment and a C99‑compliant compiler.
 
@@ -18,8 +18,8 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [Documentation Scope](#documentation-scope)
 - [Key Features](#key-features)
 - [API Usage Requirements](#api-usage-requirements)
-- [How BriteTest Compares](#how-britetest-compares)
-- [What BriteTest Does Not Provide](#what-britetest-does-not-provide)
+- [How briteTest Compares](#how-britetest-compares)
+- [What briteTest Does Not Provide](#what-britetest-does-not-provide)
 - [Overview](#overview)
 - [Core API Macros](#core-api-macros)
   - [Macros for the Orchestrator (main) Function](#macros-for-the-orchestrator-main-function)
@@ -33,7 +33,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 - [Headers (.h) and Sources (.c)](#headers-h-and-sources-c)
 - [Orchestrator (main) Function Template](#orchestrator-main-function-template)
 - [Test Group Function Template](#test-group-function-template)
-- [Example of Using the BriteTest API](#example-of-using-the-britetest-api)
+- [Example of Using the briteTest API](#example-of-using-the-britetest-api)
 - [Building the Test Executable](#building-the-test-executable)
   - [Linux / macOS](#linux--macos)
   - [Windows (POSIX Toolchain Required)](#windows-posix-toolchain-required)
@@ -53,10 +53,10 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
 
 ## Quick Start
 
-BriteTest tests are C/C++ expressions/functions, and the orchestrator controls
+briteTest tests are C/C++ expressions/functions, and the orchestrator controls
 reporting and execution.
 
-1. To try BriteTest, copy 'runnerapi.h' and 'runnerapi.c' to your current directory:
+1. To try briteTest, copy 'runnerapi.h' and 'runnerapi.c' to your current directory:
 
 ```sh
 cp /path/to/runnerapi.h .
@@ -102,7 +102,7 @@ RA_DECLARE_ORCHESTRATOR(main)
   // Single test category.
   RA_WRITE_RESULT(RA_GROUP(test_quick), "Quick tests");
 
-  RA_CLOSE_REPORT("Note: This report is a very simple example of using BriteTest.\n"
+  RA_CLOSE_REPORT("Note: This report is a very simple example of using briteTest.\n"
                   "Note: Multiple test categories can be added using multiple\n"
                   "      test functions.\n"
                   "Note: Orchestrator (`main`) and test functions can be placed in\n"
@@ -117,7 +117,7 @@ RA_DECLARE_ORCHESTRATOR(main)
                   "Note: Larger projects can place files in a more conventional\n"
                   "      layout (e.g., `include/` and `src/`, but this example keeps\n"
                   "      everything in your current directory for simplification.\n"
-                  "Note: See README.md for BriteTest for additional API features.\n");
+                  "Note: See README.md for briteTest for additional API features.\n");
   RA_EXIT;
 }
 ```
@@ -147,7 +147,7 @@ Example of the report:
 <summary>💻 Click to view</summary>
 
 ```text
-BriteTest Report
+briteTest Report
                              Pass   Fail     Fault
 --------------------------------------------------
 1. Orchestrator                 4
@@ -164,8 +164,8 @@ platform-specific notes and options.
 
 ## Documentation Scope
 
-This README serves as the introduction and usage guide to BriteTest. It focuses on concepts,
-workflow, and practical examples to help you quickly integrate BriteTest into your project.
+This README serves as the introduction and usage guide to briteTest. It focuses on concepts,
+workflow, and practical examples to help you quickly integrate briteTest into your project.
 
 Detailed API behavior, macro semantics, and lower‑level implementation details are documented
 directly in `include/runnerapi.h`.
@@ -188,7 +188,7 @@ directly in `include/runnerapi.h`.
 <details>
 <summary>Click to view</summary>
 
-BriteTest requires:
+briteTest requires:
 
 - POSIX.1‑2001 (IEEE Std 1003.1‑2001) compatibility.
 - A C99‑compliant compiler.
@@ -198,37 +198,37 @@ Supported environments:
 - Linux, macOS, BSD — fully compatible.
 - Windows — requires a POSIX layer such as Cygwin, MSYS2, or WSL.
 
-BriteTest has been exercised in POSIX environments; users should
+briteTest has been exercised in POSIX environments; users should
 validate behavior in their own systems.
 </details>
 
-## How BriteTest Compares
+## How briteTest Compares
 
 <details>
 <summary>Click to view</summary>
 
-| Framework     | Language / Style | Dependencies | Fault Isolation | Strengths | How BriteTest Differs |
+| Framework     | Language / Style | Dependencies | Fault Isolation | Strengths | How briteTest Differs |
 |---------------|------------------|--------------|-----------------|-----------|------------------------|
-| **Unity**     | C, macro‑heavy   | None         | No              | Widely used, simple API | BriteTest adds POSIX signal‑based fault isolation and category‑level reporting. |
-| **cmocka**    | C, function‑based | None        | Yes (setjmp)    | Mature, feature‑rich | BriteTest is smaller, header‑driven, and easier to embed in small projects. |
-| **Check**     | C, process‑based | POSIX tools  | Yes (fork)      | Strong isolation, fixtures | BriteTest avoids process spawning and keeps a minimal footprint. |
-| **Criterion** | C, auto‑discovery | libc, POSIX | Yes             | Modern, fast, rich output | BriteTest is simpler, portable, and avoids auto‑discovery complexity. |
-| **BriteTest**  | C99, macro‑driven | None        | Yes (POSIX signals) | Minimal, portable, easy to embed | Designed for small C projects needing fault isolation without heavy frameworks. |
+| **Unity**     | C, macro‑heavy   | None         | No              | Widely used, simple API | briteTest adds POSIX signal‑based fault isolation and category‑level reporting. |
+| **cmocka**    | C, function‑based | None        | Yes (setjmp)    | Mature, feature‑rich | briteTest is smaller, header‑driven, and easier to embed in small projects. |
+| **Check**     | C, process‑based | POSIX tools  | Yes (fork)      | Strong isolation, fixtures | briteTest avoids process spawning and keeps a minimal footprint. |
+| **Criterion** | C, auto‑discovery | libc, POSIX | Yes             | Modern, fast, rich output | briteTest is simpler, portable, and avoids auto‑discovery complexity. |
+| **briteTest**  | C99, macro‑driven | None        | Yes (POSIX signals) | Minimal, portable, easy to embed | Designed for small C projects needing fault isolation without heavy frameworks. |
 </details>
 
-## What BriteTest Does Not Provide
+## What briteTest Does Not Provide
 
 <details>
 <summary>Click to view</summary>
 
-BriteTest focuses on executing tests and reporting results. It does not:
+briteTest focuses on executing tests and reporting results. It does not:
 
 - Generate test source files — users write their own test modules.
 - Perform automatic test discovery — tests are invoked explicitly by the orchestrator or from within test functions.
 - Provide mocking or stubbing frameworks — users implement their own mocking and stubbing.
 - Include built‑in setup/teardown systems — users implement their own patterns as needed.
 - Handle memory management or leak detection — external tools (e.g., Valgrind) must be used.
-- Manage source control or repository structure — BriteTest does not define SCM workflows.
+- Manage source control or repository structure — briteTest does not define SCM workflows.
 - Integrate with build systems or CI pipelines — users configure these as needed.
 - Manage test artifacts such as expected‑output (“control”) files.
 - Define or enforce directory layouts for tests or project structure.
@@ -240,19 +240,19 @@ BriteTest focuses on executing tests and reporting results. It does not:
 
 ## Overview
 
-BriteTest is a lightweight C/C++ testing framework built around a simple execution model:
+briteTest is a lightweight C/C++ testing framework built around a simple execution model:
 1. You write C test expressions (that typically invoke functions) for each test and wrap each
    of these expressions with the `RA_TEST` macro in a test group function.
 2. You wrap each test group function name with the `RA_GROUP` macro in the orchestrator.
 3. The orchestrator (`main`) function runs the test group functions and reports results.
 
-The BriteTest Runner API files:
+The briteTest Runner API files:
 
  - [`include/runnerapi.h`](include/runnerapi.h) — public API (typedefs, enums, constants, macros,
    function declarations, and static inline function definitions).
- - [`src/runnerapi.c`](src/runnerapi.c) — function definitions for the BriteTest framework.
+ - [`src/runnerapi.c`](src/runnerapi.c) — function definitions for the briteTest framework.
 
-The BriteTest Test API files:
+The briteTest Test API files:
 
  - [`include/testapi.h`](include/testapi.h) — test support/helper function declarations.
  - [`src/testapi.c`](src/testapi.c) — test support/helper function definitions.
@@ -262,8 +262,8 @@ A typical test executable includes:
 - An orchestrator (`main`) function that opens the report, invokes test group functions,
   writes category results, and closes the report.
 - Multiple test group functions that execute the tests.
-- The BriteTest Runner API files (`runnerapi.h`, `runnerapi.c`).
-- The BriteTest Test API files (`testapi.h`, `testapi.c`).
+- The briteTest Runner API files (`runnerapi.h`, `runnerapi.c`).
+- The briteTest Test API files (`testapi.h`, `testapi.c`).
 - The headers and source files for the project being tested.
 
 main()
@@ -277,7 +277,7 @@ main()
 Recommended: Put the orchestrator function in one source file and each test group function
 in its own source file.
    
-When executed, BriteTest produces a report summarizing tests by category, including:
+When executed, briteTest produces a report summarizing tests by category, including:
 
 - Pass/fail/fault counts per category.
 - Totals across all categories.
@@ -366,7 +366,7 @@ Special values that can be used in any expression:
 
 #### Parallel Execution
 
-BriteTest starts up to `maxparallel` test group functions or test expressions concurrently.
+briteTest starts up to `maxparallel` test group functions or test expressions concurrently.
 When one finishes, another begins, until all are complete. `maxparallel` is set by the
 `RA_INIT_ORCHESTRATOR` and `RA_INIT_GROUP` macros.
 
@@ -382,7 +382,7 @@ The concurrent block macros ensure that all `RA_TEST` macros inside it start tog
 
 ### Isolation Modes and Fault Handling
 
-BriteTest supports two execution isolation modes that balance speed and fault‑isolation. Both modes run
+briteTest supports two execution isolation modes that balance speed and fault‑isolation. Both modes run
 tests in a single thread within each process; the difference is whether all test groups and tests run
 inside one process or each runs in its own process.
 
@@ -418,7 +418,7 @@ test run.
 In this mode, all test groups and tests run sequentially inside a single process and a single thread.
 This provides the fastest execution and the simplest debugging experience.
 
-BriteTest installs a signal guard that can detect and report certain synchronous faults,
+briteTest installs a signal guard that can detect and report certain synchronous faults,
 including:
 
 - `SIGSEGV` (invalid memory access)
@@ -429,7 +429,7 @@ including:
 These faults can be caught and reported without terminating the test run.
 
 However, some failures cannot be isolated in a single process. If a test triggers
-one of the following, the entire BriteTest process terminates:
+one of the following, the entire briteTest process terminates:
 
 - `SIGABRT` (abort(), assert() failures, malloc corruption).
 - `SIGKILL`, `SIGSTOP`.
@@ -443,10 +443,10 @@ provide complete fault isolation.
 
 2. Process‑Isolated Mode (parallel or serial)
 
-In this mode, each test group function and test expression runs in its own child process. BriteTest monitors each child and
+In this mode, each test group function and test expression runs in its own child process. briteTest monitors each child and
 reports its result after the process exits.
 
-Because each test group function and test expression runs in a separate process, BriteTest can isolate:
+Because each test group function and test expression runs in a separate process, briteTest can isolate:
 
 - `SIGABRT` and all abort‑based failures.
 - Memory corruption that triggers allocator aborts.
@@ -550,10 +550,10 @@ source file includes these two headers:
 #include "runnerapi.h"
 ```
 
-Example: Self-Testing BriteTest Project
+Example: Self-Testing briteTest Project
 
 The `tests` directory for this repository provides an example self-test for
-the BriteTest API and framework.
+the briteTest API and framework.
 
 ```c
 #include "runnerapi.h"
@@ -646,10 +646,10 @@ or support testing.  Added code may use test support functions (see
 **Recommended**: do not intermix code with the tests; such code is
 handled as if it occurs before the tests.
 
-## Example of Using the BriteTest API
+## Example of Using the briteTest API
 
 The `tests` directory for this repository provides a self-test implementation of
-the BriteTest API and framework. It includes:
+the briteTest API and framework. It includes:
 
 <details>
 <summary>Click to view</summary>
@@ -675,7 +675,7 @@ into a single result for the "Guard 1 and 2" category.
 Modify a copy of an existing Makefile that builds a test executable for
 a project to a Makefile for your project. For example, use the Makefile
 for testing the lubtype project or the Makefile for self-testing this
-BriteTest project as a starting point for creating your Makefile in your
+briteTest project as a starting point for creating your Makefile in your
 project root directory.
 
 #### Linux / macOS
@@ -733,7 +733,7 @@ existing writable file is overwritten):
 test_<testname> [-I|-In] [PATH]
 ```
 
-By default, if `PATH` is not specified, BriteTest writes the report to the
+By default, if `PATH` is not specified, briteTest writes the report to the
 current working directory using the default report filename configured by
 your test setup.
 
@@ -744,10 +744,10 @@ You may override the output location using the PATH argument:
 - `PATH` can point to either a report file or a directory. Quote it only when
   it contains spaces (for example, `"my reports/"`).
 
-- If `PATH` is a file path (existing or new), BriteTest writes the report to
+- If `PATH` is a file path (existing or new), briteTest writes the report to
   that file.
 
-- If `PATH` is a directory path, BriteTest writes the report in that directory
+- If `PATH` is a directory path, briteTest writes the report in that directory
   using the default report filename configured by your test setup.
 
 ### `-I` and `-In` Option
@@ -760,7 +760,7 @@ Only one of these forms may be specified.
   that is a non-zero digit less than or equal to `n`.
 
 - Use `-I` to enable `RA_TEST` macros that have an `include`  argument that is `I`. This
-  can be used to exercise the BriteTest framework and verify report formatting
+  can be used to exercise the briteTest framework and verify report formatting
   (typically, these `RA_TEST` macros have a test expression that is coded to
   cause a failures or a fault.
 
@@ -797,7 +797,7 @@ options and usage details.
 - Output path with spaces fails: quote `PATH` (for example,
   `"my reports/report.txt"`).
 - Unexpected behavior after macro updates: ensure code and docs match the same
-  BriteTest version (`RA_VERSION` in `runnerapi.h` and `RA_VERSION_C` in
+  briteTest version (`RA_VERSION` in `runnerapi.h` and `RA_VERSION_C` in
   `runnerapi.c`).
 
 ## Contributing
@@ -845,7 +845,7 @@ API compatibility policy:
 ## Example Test Report
 
 ```text
-BriteTest Report
+briteTest Report
                              Pass   Fail     Fault
 --------------------------------------------------
 1. Orchestrator                 4
@@ -857,7 +857,7 @@ BriteTest Report
 ## Example Test Report for -i Option
 
 ```text
-BriteTest Report (-i)
+briteTest Report (-i)
 
                              Pass   Fail     Fault
 --------------------------------------------------
@@ -869,7 +869,7 @@ BriteTest Report (-i)
 
 ## Repository Layout
 
-GitHub repository: `paulsinclair51/BriteTest`
+GitHub repository: `paulsinclair51/briteTest`
 
 Repository layout (with core files listed):
 
@@ -877,7 +877,7 @@ Repository layout (with core files listed):
 <summary>Click to view</summary>
 
 ```text
-BriteTest/
+briteTest/
 |- .github/
 |  \- workflows/
 |     \- ci.yml
@@ -905,7 +905,7 @@ BriteTest/
 <details>
 <summary>Click to view</summary>k
 
-Use this as a reference when adapting BriteTest into your own project structure.
+Use this as a reference when adapting briteTest into your own project structure.
 
 ## Further Reading
 
@@ -932,13 +932,13 @@ Use this as a reference when adapting BriteTest into your own project structure.
 - `customization suppport functions`: API functions provided to support
    customizing the orchestrator and test group functions.
    See [Customization Support Functions](#customization-support-functions).
-- `default report filename`: The report filename BriteTest uses when only a
+- `default report filename`: The report filename briteTest uses when only a
   directory path (or no `PATH`) is provided.
 - `executable`: The compiled test program that runs the orchestrator and test
   functions.
 - `fail`: A counted test failure where the RA_TEST or RA_INJECT_TEST
    expression evaluates to false (i.e., zero).
-- `fault`: A counted runtime fault captured by BriteTest guards (for example,
+- `fault`: A counted runtime fault captured by briteTest guards (for example,
   invalid memory access).
 - `Concurrent block`: A set of tests (RA_TEST and RA_INJECT_TEST macros)
    bracketed by `RA_BEGIN_CONCURRENT` and `RA_END_CONCURRENT;`.
@@ -958,7 +958,7 @@ Use this as a reference when adapting BriteTest into your own project structure.
 - `maxparallel`: Upper bound on concurrent RA_GROUP, RA_TEST, RA_INJECT_TEST. Value set in
    RA_INIT_ORCHESTRATOR and RA_GROUP macros.
 - `notes`: Optional text for RA_CLOSE_REPORT to append to the report before closing it.
-- `orchestrator`: The `main` function that initializes BriteTest, runs groups or tests,
+- `orchestrator`: The `main` function that initializes briteTest, runs groups or tests,
   and writes report output.
 - `pass`: A counted successful test where the RA_TEST or RA_INJECT_TEST
    expression evaluates to true (i.e., non-zero).
@@ -973,8 +973,8 @@ Use this as a reference when adapting BriteTest into your own project structure.
    that contains 'RA_TEST' and 'RA_GROUP` macros.
 - `thread isolation`: Isolation mode where a test/assert call runs in a
   separate thread.
-- `test case`: This term is not used in BriteTest. In some contexts, it means
-   a single individual test and, in other contexts, a set of tests, In BriteTest, the former
+- `test case`: This term is not used in briteTest. In some contexts, it means
+   a single individual test and, in other contexts, a set of tests, In briteTest, the former
    is referred to as a test (or test expression) and the latter, as a test group.
 - `test`: see test expression.
 - `test expression`: An expression passed to an `RA_TEST` macro that can be cast
@@ -983,7 +983,7 @@ Use this as a reference when adapting BriteTest into your own project structure.
    be in the project being tested or a testing function to implement the test.
 - `testing artifact`: typically, a file generated by the test executable (e.g.,
    a test report) but also stdout and stderr output plus anything that is captured
-   by the test executable or the BriteTest framework.
+   by the test executable or the briteTest framework.
 - `testing function`; a user written function to implement or help implement a
    test expression.
 - `test support functions`: API functions provided to simplifying writing

@@ -4,11 +4,11 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `LICENSE` in the root directory.
 
-See `README.md` in the root directory for an introduction to BriteTest.
+See `README.md` in the root directory for an introduction to briteTest.
 
 ## Overview
 
-This file lists the allowed contributors to BriteTest.
+This file lists the allowed contributors to briteTest.
 
 An approver may modify this list to add/remove a contributor or change a
 contributor's role. If there are no approvers, a reviewer may modify the list.

@@ -105,7 +105,7 @@ recent version for this document at the time this document was published.
 
 ### 1.1. Return Styles
 
-BriteTest test helpers use three return styles:
+briteTest test helpers use three return styles:
 
 - Structured helpers return `RA_OK`, `RA_MISMATCH`, `RA_TIMEOUT`, or an `RA_E*` error code.
 - Predicate helpers return `1` for true or match, `0` for false or no match, and `-1` on invalid input or runtime error.

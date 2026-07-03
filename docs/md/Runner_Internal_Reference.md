@@ -1,6 +1,6 @@
 ![Runner Internal Reference](../branding/Runner_Internal_Reference.png)
 
-This document provides a reference to the BriteTestRunner API internals.
+This document provides a reference to the briteTestRunner API internals.
 It includes types, structs, unions, enums, macros, and functions.
 
 #### Copyright (c) 2026 Paul Sinclair
@@ -117,7 +117,7 @@ recent version for this document at the time this document was published.
 
 ## 1. Introduction
 
-BriteTest's internal architecture consists of several cooperating subsystems,
+briteTest's internal architecture consists of several cooperating subsystems,
 including the implementation of API macros and functions, the execution engine,
 guard/fault handling, isolation support, file/path utilities, matching/comparison
 helpers, and environment support. These components work together to run test
@@ -127,7 +127,7 @@ faults and producing structured reports.
 The remainder of this document describes each internal symbol used to implement
 these subsystems, organized from high-level behavior down to low-level details.
 
-In this document, a *symbol* refers to any named entity in the BriteTest framework, including:
+In this document, a *symbol* refers to any named entity in the briteTest framework, including:
 
 - typedefs
 - structs
@@ -136,9 +136,9 @@ In this document, a *symbol* refers to any named entity in the BriteTest framewo
 - variables
 - functions
 
-This document is organized by the named entities in the BriteTest Runner
+This document is organized by the named entities in the briteTest Runner
 implementation. Each symbol (type, macro, function, etc.) is described individually, including its purpose, behavior, and usage. It serves as
-the reference companion to the BriteTest Framework Guide, defining the
+the reference companion to the briteTest Framework Guide, defining the
 framework's components precisely while the Guide explains their design
 and interaction.
 </details>
@@ -148,10 +148,10 @@ and interaction.
 
 ###1.2. Public and Internal Naming Conventions
 
-Any framework names that are public and visible to BriteTest API users are prefixed
+Any framework names that are public and visible to briteTest API users are prefixed
 with `ra_...` (typically lowercase) or `RA_...` (typically uppercase).
 
-Any framework names that are internal (but technically visible to BriteTest API users)
+Any framework names that are internal (but technically visible to briteTest API users)
 follow the pattern `britetest_..._internal_t`, `britetest_..._internal`, or `BRITETEST_..._INTERNAL`.
 These names should not be referenced by API users.
 
@@ -172,7 +172,7 @@ based on their name per the naming conventions.
 
 ### 2.1. Types
 
-These typedefs declare fundamental internal types used throughout the BriteTest framework.
+These typedefs declare fundamental internal types used throughout the briteTest framework.
 
 <details>
 <summary>ra_resubt_t</summary>
@@ -226,7 +226,7 @@ typedef struct <StructName> {
 ```
 
 **Description**  
-Explain the purpose of this struct, what data it aggregates, and how it participates in the BriteTest execution model.
+Explain the purpose of this struct, what data it aggregates, and how it participates in the briteTest execution model.
 
 **Fields**
 - `<field-name>` -- description  
@@ -296,7 +296,7 @@ extern <type> <VariableName>;
 ```
 
 **Description**  
-Explain the purpose of this global variable, what state it represents, and how it is used by the BriteTest framework.
+Explain the purpose of this global variable, what state it represents, and how it is used by the briteTest framework.
 
 **Usage Notes**  
 - Whether the variable is read-only or writable  
@@ -329,7 +329,7 @@ if (<VariableName> == ...) {
 ```
 
 **Description**  
-Describe the purpose of this macro, what it expands to conceptually, and how it fits into the BriteTest orchestration or test definition model.
+Describe the purpose of this macro, what it expands to conceptually, and how it fits into the briteTest orchestration or test definition model.
 
 **Parameters**
 - `<param>` -- meaning and constraints  
@@ -366,7 +366,7 @@ depending on how they are used within the framework.
 ```
 
 **Description**  
-Explain what this function does, when it is called, and how it interacts with the BriteTest runtime.
+Explain what this function does, when it is called, and how it interacts with the briteTest runtime.
 
 **Parameters**
 - `<param-name>` -- meaning, constraints, ownership  
@@ -382,7 +382,7 @@ Describe what is returned and under what conditions.
 **Usage Notes**  
 - Thread safety  
 - Lifetime rules  
-- Interaction with other BriteTest components
+- Interaction with other briteTest components
 
 **Example**
 ```c
@@ -525,12 +525,12 @@ internal name conventions and more natural names may be used.
 
 ## Repository Layout
   
-GitHub repository: `paulsinclair51/BriteTest`
+GitHub repository: `paulsinclair51/briteTest`
 
 Repository layout (listing core files):
 
 ```text
-BriteTest/
+briteTest/
 |- .github/
 |  \- workflows/
 |     \- ci.yml
@@ -540,11 +540,11 @@ BriteTest/
 |- build_test_britetest.ps1
 |- build/
 |- docs/
-|  \- BriteTest_API_User_Guide.md
-|  \- BriteTest_API_Reference.md
+|  \- briteTest_API_User_Guide.md
+|  \- briteTest_API_Reference.md
 |  \- Contributor_Guide.md
-|  \- BriteTest_Framework_Guide.md
-|  \- BriteTest_Framework_Reference.md
+|  \- briteTest_Framework_Guide.md
+|  \- briteTest_Framework_Reference.md
 |- examples/
 |- include/
 |  \- runnerapi.h
@@ -561,7 +561,7 @@ BriteTest/
 |  \- guard2_tests.c
 ```
 
-Use this as a reference when adapting BriteTest into your own project structure.
+Use this as a reference when adapting briteTest into your own project structure.
 </details>
 
 <details>
@@ -576,8 +576,8 @@ Use this as a reference when adapting BriteTest into your own project structure.
 ### Framework-Specific Terms
 
 - **Orchestrator Lifecycle**: The sequence of initialization, group execution,
-  test execution, and report finalization performed by the BriteTest framework.
-- **Guard Behavior**: The mechanism BriteTest uses to catch runtime faults
+  test execution, and report finalization performed by the briteTest framework.
+- **Guard Behavior**: The mechanism briteTest uses to catch runtime faults
   (e.g., segmentation faults) and continue executing remaining tests.
 - **Isolation Semantics**: The rules governing how tests and groups run in
   threads or processes to prevent interference and ensure fault containment.

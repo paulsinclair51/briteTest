@@ -37,7 +37,7 @@ SOFTWARE.
 ## Preface
 
 This document is for contributors, reviewers, and approvers who need guidance
-on enhancing and maintaining BriteTest.
+on enhancing and maintaining briteTest.
 
 For a list of other documents and the repository layout, see
 the Documentation Guide.
@@ -121,7 +121,7 @@ code and documentation.
 ## 2. Versioning Guidelines
 
 Versioning is used for API `.h` and `.c` files, and documentation (`.md`,
-`.pdf`, and  `.docx`) files and has the format:
+`.pdf`, and `.docx`) files and has the format:
 
   ` M.m.p` (major, minor, patch).
 
@@ -139,7 +139,7 @@ When to change version:
   - The changes must not introduce an incompatible. change.
     See the **Incompatible Change** section.
   - If incremented or reset to 0, it must be updated for all versioned files
-    (`.h`, `.c, .md, `.pdf`, and  `.docx`) to the same minor value
+    (`.h`, `.c`, `.md`, `.pdf`, and  `.docx`) to the same minor value
     (even if the file was not otherwise modified) with patch reset to 0. 
 
 - Major
@@ -148,8 +148,8 @@ When to change version:
   - Significant refactoring of the implementation.
   - Changes introducing incompatibilities with previously
     releaed versions. See the **Incompatible Change** section,
-  - If incremented, it must be updated for all brrdioned files (`.h`,
-    `.c, .md, `.pdf`, and  `.docx`) to the same major value (even if 
+  - If incremented, it must be updated for all versioned files (`.h`,
+    `.c`, `.md`, `.pdf`, and  `.docx`) to the same major value (even if 
     the file was not otherwise modified) with minor and patch reset to 0.
 
 When changing the version for a file:
@@ -169,20 +169,21 @@ release is for an individual versioned file.
 Version consistency is enforced by the continuous integration (CI)
 pipeline on all pull requests (PR) and commits to the `main` branch:
 
-- The `ckversions` script validates that major and minor versions are consistent 
-  across all versioned files:
+- The `ckversions` script validates that major and minor versions are
+  consistent across all versioned files:
   - API headers: `include/runnerapi.h`, `include/testapi.h`
   - API implementations: `src/runnerapi.c`, `src/testapi.c`
   - Documentation: `docs/md/*.md` (excluding `README.md`)
 
-- For branches with patch-only changes, `ckversions` confirms that only the patch 
-  version differs across files.
+- For branches with patch-only changes, `ckversions` confirms that only the
+  patch version differs across files.
 
-- For branches with minor or major version changes, `ckversions` confirms that all 
-  versioned files have been updated to the same major.minor values.
+- For branches with minor or major version changes, `ckversions` confirms
+  that all versioned files have been updated to the same major.minor values.
 
-- If version consistency fails, the CI workflow blocks the PR merge. Contributors 
-  must update version numbers to match the policy and re-push their changes.
+- If version consistency fails, the CI workflow blocks the PR merge.
+  Contributors must update version numbers to match the policy and
+  re-push their changes.
 
 See the `scripts/bin/ckversions` script for details on version validation logic.
 
@@ -390,50 +391,50 @@ Tightened, clarified, and made more parallel to the tone you've been using
 for LiteTest. Below is a refined version that reads cleaner, is more precise,
 and positions the framework more strongly.
 
-BriteTest is a lightweight framework for defining, running, and reporting tests
+briteTest is a lightweight framework for defining, running, and reporting tests
 in C/C++ projects. It provides a compact macro-based Runner API, a function-driven
 Test API, fault-tolerant execution, and clear, structured reporting. The framework
 is designed for small to medium C projects that need reliable automated testing
 without the overhead of large toolchains or external dependencies.
 
-BriteTest supports both unit testing and command-line driven testing, making it
+briteTest supports both unit testing and command-line driven testing, making it
 flexible enough for embedded utilities, libraries, and standalone executables.
 
 Option 1 -- Concise & Technical
 
-BriteTest is a lightweight C/C++ testing framework providing a macro-based runner,
+briteTest is a lightweight C/C++ testing framework providing a macro-based runner,
 function-based tests, fault-tolerant execution, and clear reporting. It enables
 reliable unit and command-line testing for small to medium C projects without heavy
 tooling dependencies.
 
 Option 2 -- Clean & Professional
 
-BriteTest is a compact C/C++ framework for defining, running, and reporting tests.
+briteTest is a compact C/C++ framework for defining, running, and reporting tests.
 It offers a simple macro runner, function-style tests, robust fault handling, and
 readable output, ideal for small to medium C projects that need light-weight,
 reliable testing.
 
 Option 3 -- More Emphasis on Purpose
 
-BriteTest is a minimal C/C++ test framework designed for fast, reliable unit and
+briteTest is a minimal C/C++ test framework designed for fast, reliable unit and
 command-line testing. Its macro-based runner, function-driven tests, and 
 fault-tolerant execution provide strong fundamentals for small to medium C projects
 without heavy dependencies.
 
-Review: BriteTest is a lightweight framework for defining, running, and reporting tests in C/C++ projects. It provides a simple core macro-based Runner Application Programming Interface (API), a function-based Test API, fault-tolerant execution, and clear reporting. It is ideal for small to medium C projects that need reliable testing without heavy tooling and dependencies. It can be used for unit and command-line testing.
+Review: briteTest is a lightweight framework for defining, running, and reporting tests in C/C++ projects. It provides a simple core macro-based Runner Application Programming Interface (API), a function-based Test API, fault-tolerant execution, and clear reporting. It is ideal for small to medium C projects that need reliable testing without heavy tooling and dependencies. It can be used for unit and command-line testing.
 
-Takeaway: Your description of BriteTest is solid, but it can be tightened, clarified, and made more parallel to the tone you've been using for LiteTest. Below is a refined version that reads cleaner, is more precise, and positions the framework more strongly.
+Takeaway: Your description of briteTest is solid, but it can be tightened, clarified, and made more parallel to the tone you've been using for LiteTest. Below is a refined version that reads cleaner, is more precise, and positions the framework more strongly.
 
-Refined Review of BriteTest
+Refined Review of briteTest
 
-BriteTest is a lightweight framework for defining, running, and reporting
+briteTest is a lightweight framework for defining, running, and reporting
 tests in C/C++ projects. It provides a compact macro-based Runner API, a
 function-driven Test API, fault-tolerant execution, and clear, structured
 reporting. The framework is designed for small to medium C projects that need
 reliable automated testing without the overhead of large toolchains or external
 dependencies.
 
-BriteTest supports both unit testing and command-line driven testing, making
+briteTest supports both unit testing and command-line driven testing, making
 it flexible enough for embedded utilities, libraries, and standalone executables.
 
 Takeaway: Here are three polished, README-ready project descriptions under 350
@@ -442,21 +443,21 @@ for a title-page abstract.
 
 Option 1 -- Concise & Technical
 
-BriteTest is a lightweight C/C++ testing framework providing a macro-based
+briteTest is a lightweight C/C++ testing framework providing a macro-based
 runner, function-based tests, fault-tolerant execution, and clear reporting.
 It enables reliable unit and command-line testing without external tooling or
 heavy dependencies.
 
 Option 2 -- Clean & Professional
 
-BriteTest is a compact C/C++ framework for defining, running, and reporting tests.
+briteTest is a compact C/C++ framework for defining, running, and reporting tests.
 It offers a simple macro runner, function-style tests, robust fault handling, and
 readable output, ideal for small to medium projects needing dependable testing
 with minimal overhead.
 
 Option 3 -- More Emphasis on Purpose
 
-BriteTest is a minimal C/C++ test framework designed for fast, reliable unit
+briteTest is a minimal C/C++ test framework designed for fast, reliable unit
 and command-line testing. Its macro-based runner, function-driven tests, and
 fault-tolerant execution provide clear reporting without the weight of large
 toolchains or dependencies.
@@ -467,21 +468,21 @@ suitable for a title-page abstract.
 
 Option 1 -- Concise & Technical
 
-BriteTest is a lightweight C/C++ testing framework providing a macro-based
+briteTest is a lightweight C/C++ testing framework providing a macro-based
 runner, function-based tests, fault-tolerant execution, and clear reporting.
 It enables reliable unit and command-line testing without external tooling
 or heavy dependencies.
 
 Option 2 -- Clean & Professional
 
-BriteTest is a compact C/C++ framework for defining, running, and reporting
+briteTest is a compact C/C++ framework for defining, running, and reporting
 tests. It offers a simple macro runner, function-style tests, robust fault
 handling, and readable output, ideal for small to medium projects needing
 dependable testing with minimal overhead.
 
 Option 3 -- More Emphasis on Purpose
 
-BriteTest is a minimal C/C++ test framework designed for fast, reliable unit
+briteTest is a minimal C/C++ test framework designed for fast, reliable unit
 and command-line testing. Its macro-based runner, function-driven tests, and
 fault-tolerant execution provide clear reporting without the weight of large
 toolchains or dependencies.
@@ -492,21 +493,21 @@ or literal. Each keeps a formal tone suitable for a title-page abstract.
 
 Option 1 -- "Bright + Clear" (clean, crisp)
 
-BriteTest is a lightweight C/C++ testing framework focused on clarity and
+briteTest is a lightweight C/C++ testing framework focused on clarity and
 reliability. It provides a macro-based runner, function-style tests,
 fault-tolerant execution, and clear reporting--ideal for projects that need
 dependable testing with minimal overhead.
 
 Option 2 -- "Bright + Minimal" (emphasizes lightness)
 
-BriteTest is a minimal, fast C/C++ test framework offering a simple macro
+briteTest is a minimal, fast C/C++ test framework offering a simple macro
 runner, function-based tests, resilient execution, and clear, concise reports. 
 It brings bright, low-overhead testing to small and medium projects without 
 external tooling.
 
 Option 3 -- "Bright + Purposeful" (subtle thematic resonance)
 
-BriteTest is a lightweight C/C++ framework designed for clear, dependable testing.
+briteTest is a lightweight C/C++ framework designed for clear, dependable testing.
 Its macro runner, function-driven tests, and fault-tolerant execution deliver
 bright, readable reports and reliable automation without heavy dependencies.
 
@@ -520,21 +521,21 @@ for a title-page abstract.
 
 Option 1 -- Concise & Technical
 
-BriteTest is a lightweight C/C++ testing framework providing a macro-based
+briteTest is a lightweight C/C++ testing framework providing a macro-based
 runner, function-based tests, fault-tolerant execution, and clear reporting.
 It enables reliable unit and command-line testing without external tooling
 or heavy dependencies.
 
 Option 2 -- Clean & Professional
 
-BriteTest is a compact C/C++ framework for defining, running, and reporting
+briteTest is a compact C/C++ framework for defining, running, and reporting
 tests. It offers a simple macro runner, function-style tests, robust fault
 handling, and readable output, ideal for small to medium projects needing
 dependable testing with minimal overhead.
 
 Option 3 -- More Emphasis on Purpose
 
-BriteTest is a minimal C/C++ test framework designed for fast, reliable unit
+briteTest is a minimal C/C++ test framework designed for fast, reliable unit
 and command-line testing. Its macro-based runner, function-driven tests, and
 fault-tolerant execution provide clear reporting without the weight of large
 toolchains or dependencies.
@@ -548,21 +549,21 @@ or literal. Each keeps a formal tone suitable for a title-page abstract.
 
 Option 1 -- "Bright + Clear" (clean, crisp)
 
-BriteTest is a lightweight C/C++ testing framework focused on clarity and
+briteTest is a lightweight C/C++ testing framework focused on clarity and
 reliability. It provides a macro-based runner, function-style tests,
 fault-tolerant execution, and clear reporting--ideal for projects that need
 dependable testing with minimal overhead.
 
 Option 2 -- "Bright + Minimal" (emphasizes lightness)
 
-BriteTest is a minimal, fast C/C++ test framework offering a simple macro
+briteTest is a minimal, fast C/C++ test framework offering a simple macro
 runner, function-based tests, resilient execution, and clear, concise reports.
 It brings bright, low-overhead testing to small and medium projects without
 external tooling.
 
 Option 3 -- "Bright + Purposeful" (subtle thematic resonance)
 
-BriteTest is a lightweight C/C++ framework designed for clear, dependable
+briteTest is a lightweight C/C++ framework designed for clear, dependable
 testing. Its macro runner, function-driven tests, and fault-tolerant
 execution deliver bright, readable reports and reliable automation without
 heavy dependencies.
@@ -572,21 +573,21 @@ abstracts that weave in the brite/bright theme with momentum and confidence.
 
 Option 1 -- Energetic + Crisp
 
-BriteTest is a fast, lightweight C/C++ testing framework built for clarity
+briteTest is a fast, lightweight C/C++ testing framework built for clarity
 and momentum. Its macro runner, function-based tests, and fault-tolerant
 execution deliver bright, reliable reports with minimal overhead--ideal
 for projects that want testing that stays out of the way.
 
 Option 2 -- Energetic + Punchy
 
-BriteTest brings bright, low-overhead testing to C/C++ projects. With a
+briteTest brings bright, low-overhead testing to C/C++ projects. With a
 simple macro runner, clean function-style tests, resilient execution, and
 sharp reporting, it keeps test cycles quick and clear for teams that want
 speed without sacrificing reliability.
 
 Option 3 -- Energetic + Brand-Forward
 
-BriteTest is a lightweight C/C++ test framework engineered for bright, fast,
+briteTest is a lightweight C/C++ test framework engineered for bright, fast,
 dependable feedback. Its macro runner, function-driven tests, and robust
 fault handling keep results clear and cycles tight--perfect for projects that
 value clarity and pace.
@@ -599,28 +600,28 @@ saying bright which is already in the brand name.
 
 Got it -- you're gravitating toward the version that feels bright without
 literally saying it. That's exactly the right instinct for a brand like
-BriteTest: let the tone carry the theme, not the wording.
+briteTest: let the tone carry the theme, not the wording.
 
 Here's a tightened, energetic version in that same style, still under 350
 characters and keeping the "bright without saying bright" vibe:
 
 Polished Energetic Abstract
 
-BriteTest is a lightweight C/C++ testing framework built for clarity and
+briteTest is a lightweight C/C++ testing framework built for clarity and
 speed. Its macro runner, function-driven tests, and fault-tolerant execution
 keep feedback sharp and cycles fast--ideal for projects that want dependable
 testing with minimal overhead.
 
 Got it -- you're gravitating toward the version that feels bright without
 literally saying it. That's exactly the right instinct for a brand like
-BriteTest: let the tone carry the theme, not the wording.
+briteTest: let the tone carry the theme, not the wording.
 
 Here's a tightened, energetic version in that same style, still under 350
 characters and keeping the "bright without saying bright" vibe:
 
 Polished Energetic Abstract
 
-BriteTest is a lightweight C/C++ testing framework built for clarity
+briteTest is a lightweight C/C++ testing framework built for clarity
 and speed. Its macro runner, function-driven tests, and fault-tolerant execution
 keep feedback sharp and cycles fast--ideal for projects that want dependable
 testing with minimal overhead.
@@ -632,7 +633,7 @@ It keeps the "brite without saying bright" tone, removes soft language, and
 sharpens the engineering vocabulary--still under 350 characters.
 Technically Precise Version
 
-BriteTest is a compact C/C++ framework for defining, running, and reporting
+briteTest is a compact C/C++ framework for defining, running, and reporting
 tests. It provides a macro-driven runner, clean function-style test definitions,
 resilient fault isolation, and clear output--well-suited for small to medium
 projects requiring fast, dependable, low-overhead testing.
@@ -643,21 +644,21 @@ characters and keep the "brite without saying bright" tone.
 
 Top Choice 1 -- Technically Precise + Energetic
 
-BriteTest is a compact C/C++ framework for defining, running, and reporting 
+briteTest is a compact C/C++ framework for defining, running, and reporting 
 tests. It provides a macro-driven runner, clean function-style test definitions,
 resilient fault isolation, and clear output--well-suited for small to medium
 projects requiring fast, dependable, low-overhead testing.
 
 Top Choice 2 -- Clean, Energetic, Balanced
 
-BriteTest is a compact C/C++ framework for defining, running, and reporting 
+briteTest is a compact C/C++ framework for defining, running, and reporting 
 tests. It offers a simple macro runner, clean function-style tests, robust 
 fault handling, and clear output--ideal for small to medium projects that need
 fast, dependable testing with minimal overhead.
 
 Top Choice 3 -- Slightly More Dynamic
 
-BriteTest is a lightweight C/C++ framework for defining, running, and
+briteTest is a lightweight C/C++ framework for defining, running, and
 reporting tests. Its macro runner, function-driven tests, and fault-tolerant
 execution deliver clear, reliable results--suited for small to medium projects
 that want fast, dependable testing without heavy tooling.
@@ -668,20 +669,20 @@ breaking the "brite-without-saying-bright" tone. All stay under 350 characters.
 
 Option A -- Technical + Ease of Use (balanced)
 
-BriteTest is a compact C/C++ framework for defining, running, and reporting
+briteTest is a compact C/C++ framework for defining, running, and reporting
 tests. It provides an easy-to-use macro runner, clean function-style test 
 definitions, resilient fault isolation, and clear output--ideal for small
 to medium projects needing fast, dependable, low-overhead testing.
 Option B -- More Energetic + Ease of Use
 
-BriteTest is a compact C/C++ framework for defining, running, and reporting
+briteTest is a compact C/C++ framework for defining, running, and reporting
 tests. Its easy-to-use macro runner, clean function-style tests, robust
 fault isolation, and clear output make it well-suited for small to medium
 projects that need fast, dependable testing with minimal overhead.
 
 Option C -- Most Technical + Ease of Use
 
-BriteTest is a compact C/C++ framework for defining, running, and reportingn
+briteTest is a compact C/C++ framework for defining, running, and reportingn
 ppptests. It offers an easy-to-use macro-driven runner, concise function-style
  test definitions, strong fault isolation, and clear reporting--ideal for small to medium projects requiring fast, reliable, low-overhead testing.
 </details>
