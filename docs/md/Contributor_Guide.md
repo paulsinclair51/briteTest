@@ -164,7 +164,10 @@ When changing the version for a file:
 Note: A major or minor release includes all the versioned files. A patch
 release is for an individual versioned file.
 
-### Version Consistency Enforcement by CI
+<details>
+<summary>2.1. Versioning Guidelines</summary>
+
+### 2.1 Version Consistency Enforcement by CI
 
 Version consistency is enforced by the continuous integration (CI)
 pipeline on all pull requests (PR) and commits to the `main` branch:
@@ -187,7 +190,10 @@ pipeline on all pull requests (PR) and commits to the `main` branch:
 
 See the `scripts/bin/ckversions` script for details on version validation logic.
 
-### Incompatible Change
+<details>
+<summary>2.2. Incompatible Change</summary>
+
+### 2.2 Incompatible Change
 
 An incompatible change is a change to the APIs or the Runner Framework
 that requires a user to modify their code such as changes to:
@@ -220,6 +226,9 @@ A request for an incompatibie change requires special handling:
   on whether the change is rejected or is deferred to a later major release
   (e.g., to allow for a deprecation or upcoming change notice in the next major
   or minor release).
+
+<details>
+<summary>2.3. Examples</summary>
 
 ### Examples
 
