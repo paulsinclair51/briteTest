@@ -227,6 +227,7 @@ A request for an incompatibie change requires special handling:
   on whether the change is rejected or is deferred to a later major release
   (e.g., to allow for a deprecation or upcoming change notice in the next major
   or minor release).
+</details>
 
 <details>
 <summary>2.3. Examples</summary>
