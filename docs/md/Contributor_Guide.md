@@ -316,6 +316,7 @@ microsecond precision in a future integration.
   - Reference the PR justification in release notes.
 - CI Check: `ckversions` confirms all files have major 2.0.0.
 </details>
+</details>
 
 <details>
 <summary><strong>3. Branding</strong></summary>
