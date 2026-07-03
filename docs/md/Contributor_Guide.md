@@ -81,7 +81,7 @@ recent version for this document at the time this document was published.
 3. [**Branding**](#3-branding)<br>
    3.1. [Alternative Brand Descriptions](#31-alternative-brand-descriptons)<br>
    3.2. [Alternative Brand Names](#32-alternative-brand-names)<br>
-    3.3. [Brand Name, Brand Initials, and Tagline Replacement](#33-brand-name-brand-initials-and-tagline-replacement)<br>
+   3.3. [How to Update Branding](#33-how-to-update-brand)<br>
 
 4. [**Documentation Guidelines**](#4-documentation-guidelines)
 
@@ -451,18 +451,23 @@ release is for an individual versioned file.
 ## 3. Branding
 
 This chapter discusses choices for the brand name and description
-plus how to change the brand name.
+plus how to update the branding.
 
 - Brand name: briteTest
 
 - Description:
+
 ```text
 briteTest is a lightweight Runner Framework for defining, running, and
 reporting tests in C/C++ projects. It provides a simple macro-based
 Runner Application Programming Interface (API), a function-based Test API,
 fault-tolerant execution, and clear reporting. It can be used for unit and
 command-line testing.
+```
 
+Deescription addendum:
+
+```text
 The Runner Framework is designed for small to medium C projects that need
 reliable automated testing without the overhead of large toolchains
 or external dependencies.
@@ -541,7 +546,6 @@ It offers a simple macro runner, function-style tests, robust fault handling, an
 readable output, ideal for small to medium projects needing dependable testing
 with minimal overhead.
 
-
 Option 3 -- More Emphasis on Purpose
 
 BriteTest is a minimal C/C++ test framework designed for fast, reliable unit
@@ -598,7 +602,9 @@ BriteTest is a lightweight C/C++ framework designed for clear, dependable testin
 Its macro runner, function-driven tests, and fault-tolerant execution deliver
 bright, readable reports and reliable automation without heavy dependencies.
 
-If you want, I can tune one further to feel more energetic, more formal, or more brand-forward, such as emphasizing the "brite/bright" theme more strongly through tone or rhythm. You can choose one to refine: Option 1, Option 2, or Option_3.
+If you want, I can tune one further to feel more energetic, more formal,
+or more brand-forward, such as emphasizing the "brite/bright" theme more
+strongly through tone or rhythm.
 
 Takeaway: Here are three polished, README-ready project descriptions under 350
 characters, each with a slightly different tone. All stay formal and suitable
@@ -643,7 +649,8 @@ Option 2 -- "Bright + Minimal" (emphasizes lightness)
 
 BriteTest is a minimal, fast C/C++ test framework offering a simple macro
 runner, function-based tests, resilient execution, and clear, concise reports.
-It brings bright, low-overhead testing to small and medium projects without external tooling.
+It brings bright, low-overhead testing to small and medium projects without
+external tooling.
 
 Option 3 -- "Bright + Purposeful" (subtle thematic resonance)
 
@@ -651,10 +658,6 @@ BriteTest is a lightweight C/C++ framework designed for clear, dependable
 testing. Its macro runner, function-driven tests, and fault-tolerant
 execution deliver bright, readable reports and reliable automation without
 heavy dependencies.
-
-If you want, I can tune one further to feel more energetic, more formal, or
-more brand-forward, such as emphasizing the "brite/bright" theme more strongly
-through tone or rhythm. You can choose one to refine: Option 1, Option 2, or Option_3.
 
 Takeaway: Here are three more energetic, still-formal, <=350-character README
 abstracts that weave in the brite/bright theme with momentum and confidence.
@@ -810,11 +813,11 @@ are not a trademark search or legal clearance.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.3. Brand Name, Brand Initials, and Tagline Replacement</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.3. How to Update Branding</summary>
 
-### 3.3. Brand Name, Brand Initials, and Tagline Replacement
+### 3.3. How to Update Branding
 
-This workflow describes how to change the brand name, initials, and/or tagline
+This workflow describes how to update the brand name, initials, and/or tagline
 using `scripts/bin/updatebrand`.
 
 #### Workflow Steps
@@ -852,12 +855,15 @@ scripts/bin/updatebrand
      date/time.
    - A run log is written to:
      `logs/updatebrand-log-YYYYMMDD-HHMMSS.md`.
+   - `logs/updatebrand-log-dry-run-YYYYMMDD-HHMMSS.md` files are deleted if 
+      updatebrand is successful.
 
 4. Review and validate.
 
    - Review `git diff` and the generated update log.
    - Run the project validation steps required for your change (for example,
      `make run` and documentation generation checks).
+   - Review docs/md/*.md files (vslid logo and use of brsndnsme.
 
 5. Commit and open a PR.
 
