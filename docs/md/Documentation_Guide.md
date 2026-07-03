@@ -1,6 +1,6 @@
 ![Documentation Guide](../branding/Documentation_Guide.png)
 
-This document is a guide to the BriteTest documentation and
+This document is a guide to the briteTest documentation and
 repository layout.
 
 #### Copyright (c) 2026 Paul Sinclair
@@ -100,8 +100,8 @@ Document formats:
 
 - **.md**: Markdown documentation format for online viewing.
 
-- **.pdf**: Portable Document Format for printing. A BriteTest .pdf file is generated
-  from a BriteTest .md file using genpdf in the scripts directory of the repository
+- **.pdf**: Portable Document Format for printing. A briteTest .pdf file is generated
+  from a briteTest .md file using genpdf in the scripts directory of the repository
   root.
 </details>
 
@@ -114,14 +114,14 @@ The following are the user and contributor documents.
 
 **User documentation**:
 
-- **README.md** -- Introduction to BriteTest.
+- **README.md** -- Introduction to briteTest.
 
 - **Documentation_Guide.md**: A guide to documents and the
   repository layout.
 
 - **Glossary_Reference.md**: An alphabetically ordered list of terms
   generally used in the documentation (emphasizing their specific meaning in
-  BriteTest) and terms often used in the testing domain.
+  briteTest) and terms often used in the testing domain.
 
 - **Runner_Guide.md**: Concepts, usage, and examples for
   the Runner Framework and API.

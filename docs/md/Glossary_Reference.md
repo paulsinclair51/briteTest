@@ -108,11 +108,11 @@ refer to the Runner or Test API Reference document for information.
 
 - **API**: Application Programming Interface: public typedefs,
   structs, enums, macros, and functions that provide a well-defined
-  service. For example, the BriteTest Runner API and the BriteTest Test
+  service. For example, the briteTest Runner API and the briteTest Test
   API.
 - **approver***: A person listed in config/contributors.md as an approver.
   Note that an approver is also a contributor and a reviewer.
-  An approver may review and approve changes to BriteTest. An approver
+  An approver may review and approve changes to briteTest. An approver
   must follow the guidelines in docs/Contributor_Guide.md.
 - **artifact**: A file or bundle of files produced by a GitHub Actions
   workflow and stored for later download (e.g., build outputs, logs,
@@ -123,7 +123,7 @@ refer to the Runner or Test API Reference document for information.
 
 ### --B--
 - **Bash glob pattern**: A shell wildcard pattern used for filename
-  and path matching in Bash. In BriteTest `genpdf`, this is used for
+  and path matching in Bash. In briteTest `genpdf`, this is used for
   relative-path filtering with `-i` and `-x`.
   Default matching rules: `*` and `**` match any characters (including
   `/`), `?` matches one character (including `/`), `[abc]` matches one
@@ -163,7 +163,7 @@ refer to the Runner or Test API Reference document for information.
   `RA_BEGIN_CONCURRENT` and `RA_END_CONCURRENT` macros.
 - **contributor***: A person listed in config/contributors.md.
   Note that a reviewer or approver, is also a contrubutor.
-  A contributor may provide changes to BriteTest that are subject
+  A contributor may provide changes to briteTest that are subject
   to review and approval before includding in a release. A contributor
   must follow the guidelines in docs/Contributor_Guide.md.
 - **control file**: See golden file.
@@ -187,8 +187,8 @@ refer to the Runner or Test API Reference document for information.
 ### --E--
 
 - **executable**: A compiled/linked program, for example, one that
-  contains, for BriteTest, the orchestrator, test groups, test
-  expressions (and underlying functions), and the BriteTest APIs. It is
+  contains, for briteTest, the orchestrator, test groups, test
+  expressions (and underlying functions), and the briteTest APIs. It is
   run from a shell using a command line.
 </details>
 
@@ -200,14 +200,14 @@ refer to the Runner or Test API Reference document for information.
 - **fail***: A counted failure where the test expression for
   an `RA_TEST` macro evaluates to zero.
 - **fault***: A counted test group or test fault (e.g.,
-  invalid memory access) captured by a BriteTest guard. See also fault
+  invalid memory access) captured by a briteTest guard. See also fault
   type, guard, `RA_FAULT`, and isolation.
 - **fault type***: The various types of faults (e.g.,
   `SIGSEGV`, `SIGBUS`, `SIGABRT`) that can occur or be injected. See
   also fault, `RA_FAULT` and `-I`.
 - **framework***: Guidelines, templates, APIs, tools, and
   documentation for a class of projects that simplify development
-  within that class. For example, the BriteTest framework simplifies
+  within that class. For example, the briteTest framework simplifies
   test development.
 </details>
 
@@ -391,7 +391,7 @@ v variable names. See the Runner API Reference.
   of a test report that include the report title, a timestamp, etc.
 - **reviewer***: A person listed in config/contributors.md as a reviewer.
   Note that an reviewer is also a contributor and an approver is also a
-  contributor and a reviewer. A reviewer may review changes to BriteTest.
+  contributor and a reviewer. A reviewer may review changes to briteTest.
   A reviewer must follow the guidelines in docs/Contributor_Guide.md.
 - **runner***: See test runner.
 - **runner**: (GitHub) A machine or environment that executes the jobs

@@ -1,8 +1,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/BriteTest?display_name=tag)](https://github.com/paulsinclair51/BriteTest/releases)
-[![CI](https://github.com/paulsinclair51/BriteTest/actions/workflows/ci.yml/badge.svg)](https://github.com/paulsinclair51/BriteTest/actions/workflows/ci.yml)
+[![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/briteTest?display_name=tag)](https://github.com/paulsinclair51/briteTest/releases)
+[![CI](https://github.com/paulsinclair51/briteTest/actions/workflows/ci.yml/badge.svg)](https://github.com/paulsinclair51/briteTest/actions/workflows/ci.yml)
 
-![BriteTest Logo](../branding/Logo_with_BrandName.png)
+![briteTest Logo](../branding/Logo_with_BrandName.png)
 
 briteTest is a lightweight Runner Framework for defining, running, and
 reporting tests in C/C++ projects. It provides a simple macro-based
@@ -47,7 +47,7 @@ SOFTWARE.
 
 ## Preface
 
-BriteTest provides a Runner API and a Test API, each implemented with a single
+briteTest provides a Runner API and a Test API, each implemented with a single
 .h / .c pair with no external dependencies and requiring only a POSIX.1‑2001
 environment and a C99‑compliant compiler.
 
@@ -316,7 +316,7 @@ output paths or configuration flags.
 
 ## 4. Report Generation
 
-How BriteTest collects pass/fail information and formats it for output.
+How briteTest collects pass/fail information and formats it for output.
 </details>
 
 <details>

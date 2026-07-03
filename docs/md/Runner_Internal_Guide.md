@@ -254,8 +254,8 @@ For general terms used the documentation, see the Glossary document.
 Runner-Specific Terms:
 
 - **Orchestrator Lifecycle**: The sequence of initialization, group execution,
-  test execution, and report finalization performed by the BriteTest framework.
-- **Guard Behavior**: The mechanism BriteTest uses to catch runtime faults
+  test execution, and report finalization performed by the briteTest framework.
+- **Guard Behavior**: The mechanism briteTest uses to catch runtime faults
   (e.g., segmentation faults) and continue executing remaining tests.
 - **Isolation Semantics**: The rules governing how tests and groups run in
   threads or processes to prevent interference and ensure fault containment.
