@@ -120,8 +120,8 @@ code and documentation.
 
 ## 2. Versioning Guidelines
 
-Versioning is used for API `.h` and `.c` files, and documentation `.md` files and
-has the format:
+Versioning is used for API `.h` and `.c` files, and documentation (`.md`,
+`.pdf`, and  `.docx`) files and has the format:
 
   ` M.m.p` (major, minor, patch).
 
@@ -135,24 +135,25 @@ When to change version:
 - Minor:
   - Minor additions to the APIs (e.g., new function or macro).
   - Minor additions to the Runner Framework.
-  - No breaking changes (syntax or behavior) to the APIs.
-  - No breaking changes to the Runner Framework.
   - Minor refactorying of implementation.
-  - If incremented or reset to 0, it must be updated for all files
-    (.h, .c, and .md) to the same minor value (even if the file was
-    not otherwise modified) with patch reset to 0.
+  - The changes must not introduce incompatibilities with previously
+    releaed versions for the APIs (syntax or behavior) or the Runner
+    Framework.
+  - If incremented or reset to 0, it must be updated for all versioned files
+    (`.h`, `.c, .md, `.pdf`, and  `.docx`) to the same minor value
+    (even if the file was not otherwise modified) with patch reset to 0.
 
 - Major
   - Major additions to the APIs.
   - Major additions to the Runner Framework.
   - Significant refactoring of the implementation.
-  - The following require incrementing the Major version but should be
-    avoided by having opt-in or other mechanism to maintain compatibility:
-    - Breaking changes (syntax or behavior) to the APIs.
-    - Breaking changes to the Runner Framework.
-  - If incremented, it must be updated for all files (.h, .c, and .md) to the
-    same major value (even if the file was not otherwise modified)
-    with minor and patch reset to 0.
+  - Changes introducing incompatibilities with previously
+    releaed versions for the APIs (syntax or behavior) or the Runner
+    Framework. See **Incompatible Changes** section if such a chsnge
+    is proposed,
+  - If incremented, it must be updated for all brrdioned files (`.h`,
+    `.c, .md, `.pdf`, and  `.docx`) to the same major value (even if 
+    the file was not otherwise modified) with minor and patch reset to 0.
 
 When changing the version for file:
 - Increment `p` if the major and minor versions are not changed.
@@ -163,6 +164,9 @@ When changing the version for file:
 - For the `src/testapi.c` file, update the `ta_internal_version` function.
 - For a document, add a new entry to the top of the `Document Version History` table.
 
+Note: A major or minor release includes all the versioned files. A patch
+release is for an individual versioned file.
+
 API compatibility guidelines:
 - Do not change API signatures.
 - Do not change API behavior.
@@ -171,34 +175,10 @@ API compatibility guidelines:
 - Provide migration guidance for major changes including how
   to opt-in for new features and **Continuous Integration Enforcement**
 
-Version consistency is enforced by the CI pipeline on all pull 
-requests and commits to the `main` branch:
+### Version Consistency Enforcement by CI
 
-- The `ckversions` script validates that major and minor versions are consistent 
-  across all versioned files:
-  - API headers: `include/runnerapi.h`, `include/testapi.h`
-  - API implementations: `src/runnerapi.c`, `src/testapi.c`
-  - Documentation: `docs/md/*.md` (excluding `README.md`)
-
-- For branches with patch-only changes, `ckversions` confirms that only the patch 
-  version differs across files.
-
-- For branches with minor or major version changes, `ckversions` confirms that all 
-  versioned files have been updated to the same major.minor values.
-
-- If version consistency fails, the CI workflow blocks the PR merge. Contributors 
-  must update version numbers to match the policy and re-push their changes.
-
-See the `scripts/bin/ckversions` script for details on version validation.
-
-
-Location: Insert after line 172 (after "Provide migration guidance...") and 
-before line 174 (before "Significant justification is required...")
-
-### Continuous Integration Enforcement
-
-Version consistency is enforced by the CI pipeline on all pull 
-requests (PR) and commits to the `main` branch:
+Version consistency is enforced by the continuous integration (CI)
+pipeline on all pull requests (PR) and commits to the `main` branch:
 
 - The `ckversions` script validates that major and minor versions are consistent 
   across all versioned files:
@@ -217,44 +197,28 @@ requests (PR) and commits to the `main` branch:
 
 See the `scripts/bin/ckversions` script for details on version validation logic.
 
----
+### Incompatible Changes
 
-================================================================================
-SECTION 2: EXCEPTION PROCESS (Replaces existing paragraph)
-================================================================================
+Preferably, an incompatible change should be avoided by having opt-in or other
+mechanism to maintain compatibility.
 
-Location: Replace lines 174-175:
-"Significant justification is required when these guidelines cannot be followed."
+An actual incompatble change is expected to be rare. Before requesting
+such a change, consult with reviewers and approvers to confirm the change
+is truly required and cannot be avoided.
 
-With:
+A request for an incompatibie change requires special handling:
 
----
-
-**Exception Process**
-
-The versioning guidelines define clear rules for when to increment versions. 
-Exceptions occur when a change does not fit standard categories or requires a 
-different interpretation of the policy.
-
-When an exception is necessary:
-
-- **Contributor:** Provide written justification in the PR description explaining 
-  why the standard versioning rule cannot be applied and what alternative is being 
-  used instead. Include a reference to the specific guideline being deviated from.
+- **Contributor:** Provide written justification in the PR description for the 
+  change and why it cannot be avoided.
 
 - **Reviewers:** Examine the justification and the change together. Reviewers verify 
   that:
-  - The exception is technically sound and does not compromise API stability or user 
-    expectations.
-  - The alternative versioning approach is clearly explained in the justification.
+  - The justification is clear.
+  - The change is needed and technically sound.
   - The change is documented or communicated appropriately to users.
 
 - **Approver:** After reviewer feedback is addressed, the approver makes the final 
-  decision to accept the exception and approve the PR. The approver ensures the 
-  exception aligns with the project's versioning philosophy and sustainability goals.
-
-Exceptions are rare. Before requesting an exception, consult with reviewers to 
-confirm the change truly requires special handling.
+  decision whether to approve the PR.
 
 ### Examples
 
@@ -387,18 +351,6 @@ File: docs/md/Contributor_Guide.md
    - Insert at end of Section 8 (Pull Request)
    - After "Step 4: Merge into Main" (currently ends at line 799)
    - Adds comprehensive checklist for contributors
-
-================================================================================
-
-
-
-
-
-Significant justification is required when these guidelines cannot be
-followed.
-
-Note: A major or minor release includes all the versioned files. A patch
-release is for an individual versioned file.
 </details>
 
 <details>
