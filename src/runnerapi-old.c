@@ -52,7 +52,7 @@ LT_STATIC_ASSERT(!LT_VERSION_CMP(LT_VERSION_C), VERSION_C_must_match_VERSION);
  * for Windows).
  */
 
-#include "litetest_runner.h"
+#include "runnerapi-old.h"
 
 // Allow functions to be invoked from C++.
 #if defined(__cplusplus)

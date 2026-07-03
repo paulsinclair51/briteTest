@@ -81,7 +81,7 @@ recent version for this document at the time this document was published.
 3. [**Branding**](#3-branding)<br>
    3.1. [Alternative Brand Descriptions](#31-alternative-brand-descriptons)<br>
    3.2. [Alternative Brand Names](#32-alternative-brand-names)<br>
-   3.3. [Brand Name and Tagline Replacement](#33-brand-and-tagline-replacement)<br>
+    3.3. [Brand Name, Brand Initials, and Tagline Replacement](#33-brand-name-brand-initials-and-tagline-replacement)<br>
 
 4. [**Documentation Guidelines**](#4-documentation-guidelines)
 
@@ -810,92 +810,60 @@ are not a trademark search or legal clearance.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.3. Brand Name and Tagline Replacement</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.3. Brand Name, Brand Initials, and Tagline Replacement</summary>
 
 ### 3.3. Brand Name, Brand Initials, and Tagline Replacement
 
-This workflow describes how to replace the brand name, brand initials,
-tagline throughout the repository (documentation, monograms, and logos)
-using automated scripts.
-
-#### Prerequisites
-
-The replacement workflow depends on a configuration file and two scripts:
-
-- **Configuration**: `docs/branding/brand.md`:
-
-  - Defines old-to-new phrase replacements.
-  - For a brand name change, its brand abbreviation is auto-generated from the
-    first letter of each word concatenated into the brand name.
-  - Example: `- **Replace**: LiteTest = briteTest` generates replacements for both 
-    "LiteTest" to "briteTest" (brand name) and, for monograms and logos,
-    "LT" to "bT" (brand abbreviation)
-
-- **Scripts**:
-
-  - `scripts/bin/updatebrand`: Updates SVG files in `docs/branding/` with phrase and
-     abbreviation replacements, then regenerates PNG files
-  - `scripts/bin/replacephrases`: Updates markdown files (`*.md`) in `docs/` with
-    phrase replacements only
+This workflow describes how to change the brand name, initials, and/or tagline
+using `scripts/bin/updatebrand`.
 
 #### Workflow Steps
 
-1. Choose a replacement brand name and/or tagline plus any other phrases that
-   need changing.
+1. Add a pending row in `logs/brand_history.md`.
 
-2. Update the brand configuration file `docs/branding/brand.md` to define
-   the replacements (see this file for examples of previous changes):
+   - The first row with an empty **Completed** value is treated as the pending
+     brand change.
+   - The next row below it with a non-empty **Completed** value is treated as
+     the previous (current) brand values.
+   - Fill in **Brand Name**, **Initials**, and **Tagline** in the pending row.
 
-```text
-### <change title>
-\<Reason for the change.\>
+2. Run a dry run first.
 
- - \*\*Replace\*\*: old_phrase = new_phrase
-...
+```bash
+scripts/bin/updatebrand -d
+```
 
-3, The file supports multiple replacements (one per line):
+   - This shows planned replacements without modifying files.
+   - A dry-run log is written to:
+     `logs/updatebrand-log-dry-run-YYYYMMDD-HHMMSS.md`.
 
-   - Each replacement is validated to prevent circular references (an old phrase
-     cannot match any new phrase).
-
-4. Update SVG files and regenerate PNG files:
-
-   - Run the `updatebrand` script:
+3. Apply the change.
 
 ```bash
 scripts/bin/updatebrand
 ```
 
-5, The script performs the following:
+   - The script updates matching `docs/branding/*.svg` values.
+   - The script regenerates PNG files using `scripts/bin/genpngs` when SVG
+     files changed.
+   - The script updates matching `*.md`, `*.c`, and `*.h` files for brand-name
+     replacement.
+   - The script marks the pending Brand History row completed with the current
+     date/time.
+   - A run log is written to:
+     `logs/updatebrand-log-YYYYMMDD-HHMMSS.md`.
 
-   - Parses `docs/branding/brand.md` for new phrase replacements (occurring
-     before the first "\*\*Completed\*\*: \<datetime\>." line in the file.
-   - Validates the configuration to prevent infinite loops (circular references).
-   - Applies both brand namd and abbreviation replacements to all SVG files in
-     `docs/branding/`.
-   - Regenerates all PNG files from the updated SVGs using `scripts/bin/genpngs`.
-   - Generates a detailed report of replacements and file modifications.
-   - Review the output and documentation for accuracy, then commit the changes.
+4. Review and validate.
 
-6. Update project identifier and repository name (optional:
+   - Review `git diff` and the generated update log.
+   - Run the project validation steps required for your change (for example,
+     `make run` and documentation generation checks).
 
-   - Update references in CI/CD workflows, and external links.
+5. Commit and open a PR.
 
-7. Validate and test
-
-  - Run `make run` to ensure tests pass.
-  - Run `make pdf` or the PDF generation script to verify branding updates in
-    generated documents.
-  - Perform a repository-wide text search for stale old-brand references.
-  - Verify that all SVG taglines have been updated correctly.
-
-8. Commit and ship
-
-   - Commit SVG/PNG changes with a clear commit message.
-   - Commit markdown changes with a clear commit message.
-   - Optionally, add a note to `README.md` in root directory documenting the brand 
-     transition.
-   - Consider a separate release or major version bump if the replace is significant.
+   - Commit branding updates (SVG, PNG, docs, source/header updates, and
+     `logs/brand_history.md`) with a clear message.
+   - Open a PR with a short summary of the brand transition.
 </details>
 </details>
 
