@@ -191,7 +191,7 @@ See the `scripts/bin/ckversions` script for details on version validation logic.
 
 An incompatible change is a change to the APIs or the Runner Framework
 that requires a user to modify their code such as changes to:
-- API signatures.
+- API signatures including removal of a signature.
 - API or Runner Framework behavior.
 - Exit and return code meanings.
 
@@ -206,8 +206,8 @@ A request for an incompatibie change requires special handling:
 
 - **Contributor:** Provide written justification in the PR description for the 
   change and why it cannot be avoided. State whether it was documented as
-  deprecated or as upcoming change in a previous major or minor release.
-  Provide migration guidance for the change.
+  deprecated (if the change removes an API declaration) or as an upcoming change
+  in a previous major or minor release. Provide migration guidance for the change.
 
 - **Reviewers:** Examine the justification and the change together. Reviewers verify 
   that:
@@ -272,8 +272,9 @@ comparing XML documents.
   - Update `TA_VERSION` macro in `include/testapi.h` to 1.1.0.
   - Update `ta_internal_version` function in `src/testapi.c` to 1.1.0.
   - Update document to 1.1.0 and add entry to Document Version History table.
-  - Because minor version changed, all versioned files must sync. Increment 
-    `docs/md/Contributor_Guide.md` to 1.1.0 (even though it was not modified).
+  - Because minor version changed, all versioned files must sync, Fot example,
+    increment `docs/md/Contributor_Guide.md` to 1.1.0 even though it was not
+    modified.
 - CI Check: `ckversions` confirms all files have major.minor 1.1 with patch 0.
 
 #### Example 4: Breaking API Change (Requires Exception)
@@ -282,76 +283,29 @@ comparing XML documents.
 structure instead of milliseconds. This is a breaking change needed to support 
 microsecond precision in a future integration.
 
-**Files Modified:** `include/testapi.h`, `src/testapi.c`, migration guide 
-document, `docs/md/Test_API_Reference.md`
+**Files Modified:** `include/testapi.h`, `src/testapi.c`,
+`docs/md/briteTest.md` (aka root README.md), `docs/md/Test_API_Guide.md`, 
+`docs/md/Test_API_Reference.md`, `docs/md/Test_Internal_Guide.md`, 
+`docs/md/Test_Internal_Reference.md`
 
 **Versioning:**
 - Current version: 1.1.0
 - Proposed version: 2.0.0
 - Reason: Breaking change requires major version bump per guidelines.
-- Justification (in PR): "The `ta_execute_command` signature change is necessary 
+- Justification (in PR): The `ta_execute_command` signature change is necessary 
   to support sub-millisecond precision required by the upcoming real-time test 
-  harness feature. Migration path: old code using `ta_execute_command(cmd, 1000, 
+  harness feature. Migration path: user code using `ta_execute_command(cmd, 1000, 
   ...)` should be updated to use the new struct-based timeout. A migration guide 
   is included in docs/Migration_Guide_1.1_to_2.0.md detailing the transition 
-  steps and providing helper macros for compatibility."
+  steps and providing helper macros for compatibility. A notice of this change
+  and migration guide was included in docs/briteTest.md (aka root README.md)
+  version 1.1.0.
 - Action:
   - Update major version to 2.0.0 in all versioned files (resetting minor and 
     patch to 0).
   - Include migration documentation.
   - Reference the PR justification in release notes.
 - CI Check: `ckversions` confirms all files have major 2.0.0.
-
-
-
-
-**In the PR Description:**
-
-- [ ] PR title and description clearly describe the change.
-- [ ] If versioning is non-standard or requires an exception, I have explained why 
-      and which guideline is being deviated from.
-- [ ] If this is a minor or major release, I have summarized the impact on users 
-      and any migration requirements.
-
-**During Review:**
-
-- [ ] Reviewers will verify version changes align with the guidelines during code 
-      review.
-- [ ] CI will automatically run `ckversions` and report consistency errors.
-- [ ] If CI or reviewers request version updates, I will make the corrections and 
-      re-push.
-
-**Approver Verification:**
-
-- [ ] Approver confirms CI version check passed.
-- [ ] Approver confirms version numbers align with the Versioning Guidelines and 
-      PR justification (if any).
-
----
-
-================================================================================
-INTEGRATION SUMMARY
-================================================================================
-
-File: docs/md/Contributor_Guide.md
-
-1. SECTION 1 (CI Enforcement):
-   - Insert between current lines 172 and 174
-   - Adds new content describing automated CI enforcement
-
-2. SECTION 2 (Exception Process):
-   - REPLACE current lines 174-175 (removes old "Significant justification" paragraph)
-   - Replaces with detailed 3-part process
-
-3. SECTION 3 (Examples):
-   - Insert after Exception Process section
-   - Before the existing "Note: A major or minor release..." paragraph (currently line 177)
-   - Adds 4 concrete examples
-
-4. SECTION 4 (Checklist):
-   - Insert at end of Section 8 (Pull Request)
-   - After "Step 4: Merge into Main" (currently ends at line 799)
-   - Adds comprehensive checklist for contributors
 </details>
 
 <details>
@@ -948,7 +902,7 @@ Before submitting a PR:
 - Changes are now part of the official codebase but not yet released.
 - The branch can be deleted after merging.
 
-### Versioning Checklist
+### Versioning Checklists
 
 Use this checklist to ensure version numbers are correct before opening a PR:
 
@@ -969,6 +923,28 @@ Use this checklist to ensure version numbers are correct before opening a PR:
       Document Version History table with today's date and a brief comment.
 - [ ] If I am making an exception to the versioning guidelines, I have included 
       written justification in my PR description.
+
+**In the PR Description:**
+
+- [ ] PR title and description clearly describe the change.
+- [ ] If versioning is non-standard or requires an exception, I have explained why 
+      and which guideline is being deviated from.
+- [ ] If this is a minor or major release, I have summarized the impact on users 
+      and any migration requirements.
+
+**During Review:**
+
+- [ ] Reviewers will verify version changes align with the guidelines during code 
+      review.
+- [ ] CI will automatically run `ckversions` and report consistency errors.
+- [ ] If CI or reviewers request version updates, I will make the corrections and 
+      re-push.
+
+**Approver Verification:**
+
+- [ ] Approver confirms CI version check passed.
+- [ ] Approver confirms version numbers align with the Versioning Guidelines and 
+      PR justification (if any).
 </details>
 
 <details>
