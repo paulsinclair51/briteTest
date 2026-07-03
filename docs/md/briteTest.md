@@ -4,15 +4,10 @@
 
 ![briteTest Logo](../branding/Logo_with_BrandName.png)
 
-briteTest is a lightweight Runner Framework for defining, running, and
-reporting tests in C/C++ projects. It provides a simple macro-based
-Runner Application Programming Interface (API), a function-based Test API,
-fault-tolerant execution, and clear reporting. It can be used for unit and
-command-line testing.
-
-The Runner Framework is designed for small to medium C projects that need
-reliable automated testing without the overhead of large toolchains
-or external dependencies.
+briteTest is a lightweight, easy-to-use C/C++ framework for running unit and
+command-line tests focused on clarity and reliability. It provides a simple
+macro-based Runner API with customization macros and functions, a function-based Test API, fault-tolerant execution, clear reporting, comprehensive documentation,
+and no external dependencies.
 
 #### Copyright (c) 2026 Paul Sinclair
 
