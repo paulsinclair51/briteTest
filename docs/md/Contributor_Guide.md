@@ -189,6 +189,7 @@ pipeline on all pull requests (PR) and commits to the `main` branch:
   re-push their changes.
 
 See the `scripts/bin/ckversions` script for details on version validation logic.
+</details>
 
 <details>
 <summary>2.2. Incompatible Change</summary>
