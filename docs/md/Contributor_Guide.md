@@ -136,26 +136,24 @@ When to change version:
   - Minor additions to the APIs (e.g., new function or macro).
   - Minor additions to the Runner Framework.
   - Minor refactorying of implementation.
-  - The changes must not introduce incompatibilities with previously
-    releaed versions for the APIs (syntax or behavior) or the Runner
-    Framework.
+  - The changes must not introduce an incompatible. change.
+    See the **Incompatible Changes** section.
   - If incremented or reset to 0, it must be updated for all versioned files
     (`.h`, `.c, .md, `.pdf`, and  `.docx`) to the same minor value
-    (even if the file was not otherwise modified) with patch reset to 0.
+    (even if the file was not otherwise modified) with patch reset to 0. 
 
 - Major
   - Major additions to the APIs.
   - Major additions to the Runner Framework.
   - Significant refactoring of the implementation.
   - Changes introducing incompatibilities with previously
-    releaed versions for the APIs (syntax or behavior) or the Runner
-    Framework. See **Incompatible Changes** section if such a chsnge
+    releaed versions. See **Incompatible Changes** section if such a chsnge
     is proposed,
   - If incremented, it must be updated for all brrdioned files (`.h`,
     `.c, .md, `.pdf`, and  `.docx`) to the same major value (even if 
     the file was not otherwise modified) with minor and patch reset to 0.
 
-When changing the version for file:
+When changing the version for a file:
 - Increment `p` if the major and minor versions are not changed.
 - Reset `p` to `0` when the major or minor version is changed.  
 - For the `include/runnerapi.h` file, update the `RA_VERSION` macro. 
@@ -166,14 +164,6 @@ When changing the version for file:
 
 Note: A major or minor release includes all the versioned files. A patch
 release is for an individual versioned file.
-
-API compatibility guidelines:
-- Do not change API signatures.
-- Do not change API behavior.
-- Do not change exit and return code meanings.
-- Deprecate before removing.
-- Provide migration guidance for major changes including how
-  to opt-in for new features and **Continuous Integration Enforcement**
 
 ### Version Consistency Enforcement by CI
 
@@ -197,7 +187,13 @@ pipeline on all pull requests (PR) and commits to the `main` branch:
 
 See the `scripts/bin/ckversions` script for details on version validation logic.
 
-### Incompatible Changes
+### Incompatible Change
+
+An incompatible change is a change to the APIs or the Runner Framework
+that requires a user to modify their code such as changes to:
+- API signatures.
+- API or Runner Framework behavior.
+- Exit and return code meanings.
 
 Preferably, an incompatible change should be avoided by having opt-in or other
 mechanism to maintain compatibility.
@@ -209,7 +205,9 @@ is truly required and cannot be avoided.
 A request for an incompatibie change requires special handling:
 
 - **Contributor:** Provide written justification in the PR description for the 
-  change and why it cannot be avoided.
+  change and why it cannot be avoided. State whether it was documented as
+  deprecated or as upcoming change in a previous major or minor release.
+  Provide migration guidance for the change.
 
 - **Reviewers:** Examine the justification and the change together. Reviewers verify 
   that:
@@ -218,7 +216,10 @@ A request for an incompatibie change requires special handling:
   - The change is documented or communicated appropriately to users.
 
 - **Approver:** After reviewer feedback is addressed, the approver makes the final 
-  decision whether to approve the PR.
+  decision whether to approve the PR. If not approved, approver provides guidance
+  on whether the change is rejected or is deferred to a later major release
+  (e.g., to allow for a deprecation or upcoming change notice in the next major
+  or minor release).
 
 ### Examples
 
