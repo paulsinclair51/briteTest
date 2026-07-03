@@ -79,7 +79,7 @@ recent version for this document at the time this document was published.
 2. [**Versioning Guidelines**](#2-versioning-guidelines)<br>
    2.1. [Version Consistency Enforcement by CI](#21-version-consistency-enforcement-by-ci)<br>
    2.2. [Incompatible Change](#22-Incompatible-change)<br>
-   2.3. [Examples(#23-ezamplesg)<br>
+   2.3. [Examples](#23-ezamplesg)<br>
 
 3. [**Branding**](#3-branding)<br>
    3.1. [Alternative Brand Descriptions](#31-alternative-brand-descriptons)<br>
