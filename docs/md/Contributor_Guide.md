@@ -147,8 +147,7 @@ When to change version:
   - Major additions to the Runner Framework.
   - Significant refactoring of the implementation.
   - Changes introducing incompatibilities with previously
-    releaed versions. See **Incompatible Change** section if such a chsnge
-    is proposed,
+    releaed versions. See the **Incompatible Change** section,
   - If incremented, it must be updated for all brrdioned files (`.h`,
     `.c, .md, `.pdf`, and  `.docx`) to the same major value (even if 
     the file was not otherwise modified) with minor and patch reset to 0.
