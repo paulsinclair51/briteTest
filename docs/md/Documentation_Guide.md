@@ -86,7 +86,7 @@ The  documentation consists of documents for:
 
 - **Users**: Public-facing framework and API documents.
 
-- **Contributors**; Contributor Guide and API internal documents.
+- **Contributors**: Contributor Guide and API internal documents.
 
 Document types:
 
