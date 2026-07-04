@@ -1,4 +1,4 @@
-![Test Internal Guide](../branding/Test_Internal_Guide.png)
+![Test Internal Guide](/docs/branding/Test_Internal_Guide.png)
 
 This is the internal guide.
 

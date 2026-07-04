@@ -1,4 +1,4 @@
-![Runner Guide](../branding/Runner_Guide.png)
+![Runner Guide](/docs/branding/Runner_Guide.png)
 
 This guide explains how to use the Runner Framework and API
 covering concepts, workflow, execution model, examples, and practical,usage

@@ -1,4 +1,4 @@
-![Test Guide](../branding/Test_Guide.png)
+![Test Guide](/docs/branding/Test_Guide.png)
 
 This document is the Test Guide.
 
