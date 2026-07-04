@@ -115,7 +115,7 @@ Document formats:
 
 ## 2. Documents
 
-The following are the user and contributor documents.
+The following are the user and contributor documents:
 
 **User documentation**:
 
