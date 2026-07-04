@@ -48,7 +48,7 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
- 
+
 ### Document Version History
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
@@ -83,8 +83,9 @@ recent version for this document at the time this document was published.
    2.4. [Examples](#24-examples)<br>
 
 3. [**Branding**](#3-branding)<br>
-   3.1. [Alternative Brand Names](#31-alternative-brand-names)<br>
-   3.2. [How to Update Branding](#32-how-to-update-branding)<br>
+   3.1. [Current Branding](#31-current-branding)<br>
+   3.2. [Alternative Brand Names](#32-alternative-brand-names)<br>
+   3.3. [How to Update Branding](#32-how-to-update-branding)<br>
 
 4. [**Documentation Guidelines**](#4-documentation-guidelines)
 
@@ -96,7 +97,7 @@ recent version for this document at the time this document was published.
 
 8. [**Pull Request (PR)**](#8-pull-request-pr)
 
-9. [**Pull Release**](#9-release)
+9. [**Release**](#9-release)
 
 10. [**Protected Branches**](#10-protected-branches)
 
@@ -112,7 +113,7 @@ This Contributor Guide defines the expectations and rules for contributing to
 briteTest. It covers versioning, testing, documentation, code style, pull
 request, and release requirements.
 
-The config/contibutors.md file defines the contributors and which contributors
+The config/contributors.md file defines the contributors and which contributors
 are also reviewers or approvers. Contributors should read this document before
 submitting changes, reviewing, or approving to ensure consistency across the
 code and documentation.
@@ -126,7 +127,7 @@ code and documentation.
 Versioning is used for API `.h` and `.c` files, and documentation (`.md`,
 `.pdf`, and `.docx`) files and has the format:
 
-  ` M.m.p` (major, minor, patch).
+  `M.m.p` (major, minor, patch).
 
 
 <details>
@@ -136,33 +137,33 @@ Versioning is used for API `.h` and `.c` files, and documentation (`.md`,
 
 - Patch:
   - Bug fixes, implementation improvements, documentation corrections.
-  - No changes to the APIs (e.g., new APi function or macro).
+  - No changes to the APIs (e.g., new API function or macro).
   - No changes to the Runner Framework.
 
 - Minor:
   - Minor additions to the APIs (e.g., new function or macro).
   - Minor additions to the Runner Framework.
-  - Minor refactorying of implementation.
-  - The changes must not introduce an incompatible. change.
+  - Minor refactoring of implementation.
+  - The changes must not introduce an incompatible change.
     See the **Incompatible Change** section.
   - If incremented or reset to 0, it must be updated for all versioned files
-    (`.h`, `.c`, `.md`, `.pdf`, and  `.docx`) to the same minor value
-    (even if the file was not otherwise modified) with patch reset to 0. 
+    (`.h`, `.c`, `.md`, `.pdf`, and `.docx`) to the same minor value
+    (even if the file was not otherwise modified) with patch reset to 0.
 
-- Major
+- Major:
   - Major additions to the APIs.
   - Major additions to the Runner Framework.
   - Significant refactoring of the implementation.
   - Changes introducing incompatibilities with previously
-    releaed versions. See the **Incompatible Change** section,
+    released versions. See the **Incompatible Change** section.
   - If incremented, it must be updated for all versioned files (`.h`,
-    `.c`, `.md`, `.pdf`, and  `.docx`) to the same major value (even if 
+    `.c`, `.md`, `.pdf`, and `.docx`) to the same major value (even if
     the file was not otherwise modified) with minor and patch reset to 0.
 
 When changing the version for a file:
 - Increment `p` if the major and minor versions are not changed.
-- Reset `p` to `0` when the major or minor version is changed.  
-- For the `include/runnerapi.h` file, update the `RA_VERSION` macro. 
+- Reset `p` to `0` when the major or minor version is changed.
+- For the `include/runnerapi.h` file, update the `RA_VERSION` macro.
 - For the `src/runnerapi.c` file, update the `ra_internal_version` function.
 - For the `include/testapi.h` file, update the `TA_VERSION` macro.
 - For the `src/testapi.c` file, update the `ta_internal_version` function.
@@ -175,7 +176,7 @@ release is for an individual versioned file.
 <details>
 <summary>2.2. Continuous Integration (CI) Version Checks</summary>
 
-### 2.2  Continuous Integration (CI) Version Checks
+### 2.2. Continuous Integration (CI) Version Checks
 
 Version consistency is enforced by the CI
 pipeline on all pull requests (PR) and commits to the `main` branch:
@@ -202,7 +203,7 @@ See the `scripts/bin/ckversions` script for details on version validation logic.
 <details>
 <summary>2.3. Incompatible Change</summary>
 
-### 2.3 Incompatible Change
+### 2.3. Incompatible Change
 
 An incompatible change is a change to the APIs or the Runner Framework
 that requires a user to modify their code such as changes to:
@@ -213,24 +214,24 @@ that requires a user to modify their code such as changes to:
 Preferably, an incompatible change should be avoided by having opt-in or other
 mechanism to maintain compatibility.
 
-An actual incompatble change is expected to be rare. Before requesting
+An actual incompatible change is expected to be rare. Before requesting
 such a change, consult with reviewers and approvers to confirm the change
 is truly required and cannot be avoided.
 
-A request for an incompatibie change requires special handling:
+A request for an incompatible change requires special handling:
 
-- **Contributor:** Provide written justification in the PR description for the 
+- **Contributor:** Provide written justification in the PR description for the
   change and why it cannot be avoided. State whether it was documented as
   deprecated (if the change removes an API declaration) or as an upcoming change
   in a previous major or minor release. Provide migration guidance for the change.
 
-- **Reviewers:** Examine the justification and the change together. Reviewers verify 
-  that:
+- **Reviewers:** Examine the justification and the change together.
+  Reviewers verify that:
   - The justification is clear.
   - The change is needed and technically sound.
   - The change is documented or communicated appropriately to users.
 
-- **Approver:** After reviewer feedback is addressed, the approver makes the final 
+- **Approver:** After reviewer feedback is addressed, the approver makes the final
   decision whether to approve the PR. If not approved, approver provides guidance
   on whether the change is rejected or is deferred to a later major release
   (e.g., to allow for a deprecation or upcoming change notice in the next major
@@ -240,50 +241,57 @@ A request for an incompatibie change requires special handling:
 <details>
 <summary>2.4. Examples</summary>
 
-### Examples
+### 2.4. Examples
 
-The following examples illustrate common scenarios and the appropriate version 
+The following examples illustrate common scenarios and the appropriate version
 change:
 
 **Example 1: Bug Fix to runnerapi.c**:
 
-**Change:** Fix a segmentation fault in `ra_internal_runner_run_test` when a 
-callback returns an error code.
+**Change**:
+- Fix a segmentation fault in `ra_internal_runner_run_test` when a
+  callback returns an error code.
 
-**Files Modified:** `src/runnerapi.c`
+**Files Modified**:
+- `src/runnerapi.c`
 
 **Versioning:**
 - Current version: 1.0.2
 - New version: 1.0.3
 - Reason: Bug fix with no API signature or behavior changes.
 - Action: Increment patch version in `src/runnerapi.c` only.
-- CI Check: `ckversions` confirms runnerapi.h remains 1.0.0 (no change), 
+- CI Check: `ckversions` confirms runnerapi.h remains 1.0.0 (no change),
   runnerapi.c becomes 1.0.3 (patch bump).
 
 **Example 2: Documentation Update for testapi.h**:
 
-**Change:** Clarify docstring for `ta_read_file` function and update the Test 
-API Reference document with additional usage examples.
+**Change**:
+- Clarify docstring for `ta_read_file` function and update the Test
+  API Reference document with additional usage examples.
 
-**Files Modified:** `include/testapi.h`, `docs/md/Test_API_Reference.md`
+**Files Modified:**:
+- `include/testapi.h`, `docs/md/Test_API_Reference.md`
 
-**Versioning:**
+**Versioning**:
 - Current version: 1.0.0
 - New version: 1.0.1
 - Reason: Documentation corrections only; no API changes.
-- Action: Increment patch version in both files and add entry to Document 
+- Action: Increment patch version in both files and add entry to Document
   Version History table.
-- CI Check: `ckversions` confirms both testapi.h and the document have patch 1.0.1.
+- CI Check: `ckversions` confirms both testapi.h and the document have
+  patch 1.0.1.
 
 **Example 3: New Test Helper Function**:
 
-**Change:** Add a new public function `ta_compare_xml` to the Test API for 
-comparing XML documents.
+**Change**:
+- Add a new public function `ta_compare_xml` to the Test API for
+  comparing XML documents.
 
-**Files Modified:** `include/testapi.h`, `src/testapi.c`, 
+**Files Modified**:
+- `include/testapi.h`, `src/testapi.c`,
 `docs/md/Test_API_Reference.md`
 
-**Versioning:**
+**Versioning**:
 - Current version: 1.0.1
 - New version: 1.1.0
 - Reason: New function is a backward-compatible minor addition to the API.
@@ -291,37 +299,40 @@ comparing XML documents.
   - Update `TA_VERSION` macro in `include/testapi.h` to 1.1.0.
   - Update `ta_internal_version` function in `src/testapi.c` to 1.1.0.
   - Update document to 1.1.0 and add entry to Document Version History table.
-  - Because minor version changed, all versioned files must sync, Fot example,
+  - Because minor version changed, all versioned files must sync. For example,
     increment `docs/md/Contributor_Guide.md` to 1.1.0 even though it was not
     modified.
 - CI Check: `ckversions` confirms all files have major.minor 1.1 with patch 0.
 
-**Example 4: Incmpatibileo API Change (Requires Speical Handling)**
+**Example 4: Incompatible API Change (Requires Special Handling)**
 
-**Change:** Modify the signature of `ta_execute_command` to accept a timeout 
-structure instead of milliseconds. This is a breaking change needed to support 
-microsecond precision in a future integration.
+**Change**:
+- Modify the signature of `ta_execute_command` to accept a timeout
+  structure instead of milliseconds. This is a breaking change needed
+  to support microsecond precision in a future integration.
 
-**Files Modified:** `include/testapi.h`, `src/testapi.c`,
-`docs/md/briteTest.md` (aka root README.md), `docs/md/Test_API_Guide.md`, 
-`docs/md/Test_API_Reference.md`, `docs/md/Test_Internal_Guide.md`, 
-`docs/md/Test_Internal_Reference.md`
+**Files Modified**:
+- `include/testapi.h`, `src/testapi.c`,
+  `docs/md/briteTest.md` (aka root README.md), `docs/md/Test_API_Guide.md`,
+  `docs/md/Test_API_Reference.md`, `docs/md/Test_Internal_Guide.md`,
+  `docs/md/Test_Internal_Reference.md`
 
-**Versioning:**
+**Versioning**:
 - Current version: 1.1.0
 - Proposed version: 2.0.0
 - Reason: Breaking change requires major version bump per guidelines.
-- Justification (in PR): The `ta_execute_command` signature change is necessary 
-  to support sub-millisecond precision required by the upcoming real-time test 
-  harness feature. Migration path: user code using `ta_execute_command(cmd, 1000, 
-  ...)` should be updated to use the new struct-based timeout. A migration guide 
-  is included in docs/Migration_Guide_1.1_to_2.0.md detailing the transition 
-  steps and providing helper macros for compatibility. A notice of this change
+- Justification (in PR): The `ta_execute_command` signature change is
+  necessary to support sub-millisecond precision required by the upcoming
+  real-time test harness feature. Migration path: user code using
+  `ta_execute_command(cmd, 1000, ...)` should be updated to use the new
+  struct-based timeout. A migration guide is included in
+  docs/Migration_Guide_1.1_to_2.0.md detailing the transition steps and
+  providing helper macros for compatibility. A notice of this change
   and migration guide was included in docs/briteTest.md (aka root README.md)
   version 1.1.0.
 - Action:
-  - Update major version to 2.0.0 in all versioned files (resetting minor and 
-    patch to 0).
+  - Update major version to 2.0.0 in all versioned files (resetting minor
+    and patch to 0).
   - Include migration documentation.
   - Reference the PR justification in release notes.
 - CI Check: `ckversions` confirms all files have major 2.0.0.
@@ -336,9 +347,14 @@ microsecond precision in a future integration.
 This chapter discusses the choices for the brand name and description
 plus how to update the branding.
 
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Current Branding</summary>
+
+### 3.1. Current Branding
+
 - Brand name: briteTest
 
-- Description (350 characters or less:
+- Description (GitHub limit: 350 characters or less):
 
 ```text
 briteTest is a lightweight, easy-to-use C/C++ framework for running unit and
@@ -347,48 +363,86 @@ macro-based Runner API with customization macros and functions, a function-based
 and no external dependencies.
 ```
 
-TODO: why this brand and description
+Why this brand name:
+- The name is a relatively low-risk branding choice because its distinctive
+  camelCase form and specific presentation reduce the chance of a brand name
+  conflict.
+- The `briteTest` camelCase form is distinctive and aligns with the `bT`
+  branding monogram used in project visuals.
+- The uppercase `T` is intentional: it represents the canary theme, with the
+  canary perched on the `T` in the `bT` monogram, echoing the
+  canary-in-a-coal-mine analogy as an early warning signal in testing.
+- The name is easy to recognize, pronounce, and remember while still
+  signaling software testing intent.
+- The lowercase/uppercase contrast in `briteTest` helps the name stand out
+  from other test-framework names.
+- Generic `Runner` and `Test` API names reduce coupling to the project
+  brand and make a future brand rename less disruptive.
 
-T for canary (in coal mine) to perch on.
+Why this description:
+- It states scope and usage clearly: lightweight C/C++ unit and command-line
+  testing.
+- It names the two core interfaces used throughout the docs: Runner API and
+  Test API.
+- It emphasizes practical value for adopters: fault-tolerant execution, clear
+  reporting, comprehensive documentation, and no external dependencies.
+</details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Alternative Brand Names</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.2. Alternative Brand Names</summary>
 
-### 3.1. Alternative Brand Names
+### 3.2. Alternative Brand Names
 
-TODO - add these to table:
-
-- briteTest (bT)
-- litetest (lT)
-- openTest (oT)
-- canaryRunner (cR)
-- CanaryTestRunner (CTR)
-- canaryTestRunner (cTR)
-- canaryTestrunner (cTr)
-
-These names are fallback options if a naming conflict requires a brand/project rename.
+These names are options if a naming conflict requires a brand/project rename.
 
 These notes are an informal naming screen only. They are based on how generic,
 descriptive, or commonly used the terms appear in software and testing. They
 are not a trademark search or legal clearance.
 
-| Name | Abbrev. | Informal conflict note | Likelihood |
-|------|---------|------------------------|------------|
-| LiteTest | LT | Clear and close to the project's lightweight positioning, but both `lite` and `test` are common software terms, so overlap with existing package or tool names is plausible. | Medium |
-| briteTest | bT | Strong fit for the project brand with canary monogram, distinctive camelCase format, and clear semantic meaning. Low conflict likelihood. | Low |
-| canaryTest | cT | Strong fit for the canary theme, but `canary` and `canary testing` are already common software terms, which makes the name less distinctive. | Higher |
-| clearTest | cT | Readable and descriptive, but the name is broad and likely to overlap with existing testing or QA branding. | Medium |
-| tinyTest | tT | Good match for a lightweight framework, but it is fairly descriptive and similar in shape to other small-test framework names. | Medium |
-| swiftTest | sT | Memorable, but `Swift` has strong existing association with Apple's Swift ecosystem, which could create confusion. | Higher |
-| quickTest | qT | Familiar and easy to say, but `QuickTest` has long-standing use in software testing and QA tooling. | Higher |
-| compactTest | cT | Fits the lightweight positioning and is somewhat more distinctive than `CoreTest` or `ClearTest`, though still descriptive. | Medium-Low |
-| fastTest | fT | Strong performance-oriented signal, but `fast` and `test` are both generic terms and likely to overlap with existing tooling names. | Medium-High |
+The preferred naming style is camelCase; however, PascalCase
+(UpperCamelCase) may be an acceptable alternative.
+
+#### Fallback
+
+Brand names that are acceptable if the brand name briteTest cannot be used.
+
+| Name | Initial | Reason |
+|------|---------|--------|
+| BriteTest | BT | Strong fit for the project brand and clear connection to the canary monogram. |
+| liteTest | lT | Clear fit for the lightweight positioning, though still somewhat generic. |
+| compactTest | cT | Good match for the lightweight position and slightly more distinctive than other descriptive alternatives. |
+| tinyTest | tT | Good thematic fit for a small, lightweight framework, though still descriptive. |
+
+#### Deprioritized
+
+Brand names usable in theory but weaker than the current preferred/fallback
+options.
+
+| Name | Initial | Reason |
+|------|---------|--------|
+| openTest | oT | Readable, but built from broad software terms that are more likely to overlap with existing names. |
+| canaryRunner | cR | Strong theme match, but `canary` is already common software terminology and reduces distinctiveness. |
+| CanaryTestRunner | CTR | Explicit and descriptive, but long and composed of highly generic testing terms. |
+| canaryTestRunner | cTR | Similar to `CanaryTestRunner`, with camelCase branding potential, but still fairly generic. |
+| canaryTestrunner | cTr | Slightly more distinctive in presentation, but still closely tied to common `canary` and `test runner` terminology. |
+| clearTest | cT | Readable and descriptive, but broad enough to risk overlap with existing testing or QA branding. |
+| fastTest | fT | Strong performance signal, but both `fast` and `test` are generic software terms. |
+
+#### Rejected
+
+Brand names with strong likely confusion or established association.
+
+| Name | Initial | Reason |
+|------|---------|--------|
+| canaryTest | cT | Too close to common `canary testing` terminology to be distinctive. |
+| swiftTest | sT | Likely to be confused with Apple's Swift ecosystem. |
+| quickTest | qT | Already strongly associated with established testing and QA tooling. |
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.2. How to Update Branding</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.3. How to Update Branding</summary>
 
-### 3.2. How to Update Branding
+### 3.3. How to Update Branding
 
 This workflow describes how to update the brand name, initials, and/or tagline
 using `scripts/bin/updatebrand`.
@@ -428,15 +482,15 @@ scripts/bin/updatebrand
      date/time.
    - A run log is written to:
      `logs/updatebrand-log-YYYYMMDD-HHMMSS.md`.
-   - `logs/updatebrand-log-dry-run-YYYYMMDD-HHMMSS.md` files are deleted if 
-      updatebrand is successful.
+   - `logs/updatebrand-log-dry-run-YYYYMMDD-HHMMSS.md` files are deleted if
+     `updatebrand` is successful.
 
 4. Review and validate.
 
    - Review `git diff` and the generated update log.
    - Run the project validation steps required for your change (for example,
      `make run` and documentation generation checks).
-   - Review docs/md/*.md files (vslid logo and use of brsndnsme.
+   - Review `docs/md/*.md` files (valid logo and use of brand name).
 
 5. Commit and open a PR.
 
@@ -453,13 +507,13 @@ scripts/bin/updatebrand
 
 This section exists here to ensure contributors do not overlook the requirement
 for parallel structure and consistent writing patterns across all documentation
-in all types of files (e,g., `.md`, `.h`, `.c`, `.yml`, `.dh`, `Makefile`, etc.).
+in all types of files (e.g., `.md`, `.h`, `.c`, `.yml`, `.dh`, `Makefile`, etc.).
 
 1. General
 
    - Root `README.md` must remain short and onboarding-focused.
    - A User Guide contains conceptual explanations and examples.
-   - A API Reference contains public API definitions only.
+   - An API Reference contains public API definitions only.
    - An internal guide or reference must not leak into public docs.
    - Update documentation when enhancing macros, behavior, or report format.
    - For branding assets in `docs/branding/`: `*.svg` files are the source of
@@ -476,8 +530,8 @@ in all types of files (e,g., `.md`, `.h`, `.c`, `.yml`, `.dh`, `Makefile`, etc.)
    - Use backticks for code identifiers.
    - Use fenced code blocks for file trees, examples, and commands.
    - Keep line lengths reasonable for GitHub rendering.
-   - Use boldface for a term or phrase when defining it
-   - Ccnform to formatting styles existing in the documentation.
+   - Use boldface for a term or phrase when defining it.
+   - Conform to formatting styles existing in the documentation.
 
 4. Writing Guidelines
 
@@ -493,8 +547,8 @@ in all types of files (e,g., `.md`, `.h`, `.c`, `.yml`, `.dh`, `Makefile`, etc.)
      readable while still accommodating large amounts of technical detail.
    - Collapsing sections allows readers to scan the structure and expand only what
      they need.
-   - This keeps the document manageable, avoids overwhelming readers with unrelated
-     detail, and makes the document easier to navigate.
+   - This keeps the document manageable, avoids overwhelming readers with
+     unrelated detail, and makes the document easier to navigate.
 
 6. Style Consistency
 
@@ -504,7 +558,7 @@ structure** within lists and related sentences:
 - Start list items with the same part of speech (typically a verb).
 - Keep grammatical patterns consistent across bullets.
 - Avoid mixing styles such as "Keep paragraphs short" with "Using lists for
-  enumerations.".
+  enumerations."
 - Rewrite items as needed so the list reads smoothly and uniformly.
 
 This guideline applies to all documentation (`.md` files).
@@ -533,7 +587,7 @@ make run
 ```
 
 - Ensure report formatting changes are reflected in documentation examples.
-- Keep test code aligned with the current version of `runnerapi.h` and  
+- Keep test code aligned with the current version of `runnerapi.h` and
   `testapi.h`.
 </details>
 
@@ -542,17 +596,19 @@ make run
 
 ## 7. Making Modifications in a Branch
 
-- Define modifications that are focused (not mixing unrelated changes), 
+- Define modifications that are focused (not mixing unrelated changes),
   logically grouped, and well-scoped.
-- Define an appropriate name for your changes to use as the branch nmme.
+- Define an appropriate name for your changes to use as the branch name.
 - Obtain preliminary approval and target release for the modifications and
   branch name.
 - Create a branch using your branch name.
 - Modify the code in the branch as needed.
-- Modify the documentation in the branch as needed in parallel with any code changes.
+- Modify the documentation in the branch as needed in parallel with any
+  code changes.
 - Ensure the modifications in the branch are still focused (not mixing
   unrelated changes), logically grouped, and well-scoped.
-- Ensure modifications follow the Documentation Guidelines and the Code Guidelines,
+- Ensure modifications follow the Documentation Guidelines and the Code
+  Guidelines.
 - Ensure version numbers are updated for modified versioned files as needed
   per the Versioning Guidelines.
 - Include test coverage for new behavior and modifications.
@@ -564,7 +620,7 @@ make run
 
 ## 8. Pull Request (PR)
 
-A **Pull Request (PR)** is a formal proposal to merge your code changes into 
+A **Pull Request (PR)** is a formal proposal to merge your code changes into
 the `main` branch of the repository. It's the mechanism that enables code
 review, quality assurance, and collaborative development before changes become
 part of the official codebase.
@@ -575,10 +631,10 @@ part of the official codebase.
 
 Before submitting a PR:
 
-- Ensure changes for PR are focused (not mixing unrelated changes), logically grouped,
-  and well-scoped.
+- Ensure changes for the PR are focused (not mixing unrelated changes),
+  logically grouped, and well-scoped.
 - Update documentation as needed in parallel with code changes.
-- Ensure changes follow the Documentation Guidelines and Code Guidelines,
+- Ensure changes follow the Documentation Guidelines and Code Guidelines.
 - Update version numbers of modified versioned files as needed per the Versioning
   Guidelines.
 - Include test coverage for new behavior and modifications.
@@ -599,7 +655,7 @@ Before submitting a PR:
   - Versioning rules are enforced,
   - Documentation consistency is maintained,
   - Changes align with code and contribution guidelines,
-  - The Approver or a reviewing contributor may equest changes.
+  - An approver or a reviewer may request changes.
 - The approver does one of the following:
   - Approves the PR for the next release - continue with Step 4.
   - Rejects the PR.
@@ -618,42 +674,42 @@ Use this checklist to ensure version numbers are correct before opening a PR:
 
 **Before Opening the PR:**
 
-- [ ] I have identified which versioned files I modified (API headers `.h`, API 
+- [ ] I have identified which versioned files I modified (API headers `.h`, API
       implementations `.c`, documentation `.md`).
-- [ ] I have determined the appropriate version change (patch, minor, or major) 
+- [ ] I have determined the appropriate version change (patch, minor, or major)
       per the Versioning Guidelines.
 - [ ] I have updated the version numbers in all affected files:
   - [ ] For patch changes: incremented patch only in the modified file(s).
-  - [ ] For minor changes: updated all versioned files to the same major.minor 
+  - [ ] For minor changes: updated all versioned files to the same major.minor
         with patch reset to 0.
-  - [ ] For major changes: updated all versioned files to the same major value 
+  - [ ] For major changes: updated all versioned files to the same major value
         with minor and patch reset to 0.
 - [ ] I have verified version consistency locally by running: `scripts/bin/ckversions`
-- [ ] For documentation files, I have added a new entry to the top of the 
+- [ ] For documentation files, I have added a new entry to the top of the
       Document Version History table with today's date and a brief comment.
-- [ ] If I am making an exception to the versioning guidelines, I have included 
+- [ ] If I am making an exception to the versioning guidelines, I have included
       written justification in my PR description.
 
 **In the PR Description:**
 
 - [ ] PR title and description clearly describe the change.
-- [ ] If versioning is non-standard or requires an exception, I have explained why 
+- [ ] If versioning is non-standard or requires an exception, I have explained why
       and which guideline is being deviated from.
-- [ ] If this is a minor or major release, I have summarized the impact on users 
+- [ ] If this is a minor or major release, I have summarized the impact on users
       and any migration requirements.
 
 **During Review:**
 
-- [ ] Reviewers will verify version changes align with the guidelines during code 
+- [ ] Reviewers will verify version changes align with the guidelines during code
       review.
 - [ ] CI will automatically run `ckversions` and report consistency errors.
-- [ ] If CI or reviewers request version updates, I will make the corrections and 
+- [ ] If CI or reviewers request version updates, I will make the corrections and
       re-push.
 
 **Approver Verification:**
 
 - [ ] Approver confirms CI version check passed.
-- [ ] Approver confirms version numbers align with the Versioning Guidelines and 
+- [ ] Approver confirms version numbers align with the Versioning Guidelines and
       PR justification (if any).
 </details>
 
@@ -662,7 +718,7 @@ Use this checklist to ensure version numbers are correct before opening a PR:
 
 ## 9. Release
 
-A **Release** is the act of publishing a specific version for public use. 
+A **Release** is the act of publishing a specific version for public use.
 It packages approved and merged changes into a versioned, immutable snapshot
 that users can download and depend on.
 
@@ -672,14 +728,14 @@ that users can download and depend on.
 
 Before releasing:
 
-- Prepare a preliminary release note for user that summarizes the changes.
-- Verify if release qualifies as a major, minor, patch, or documentation-only,
+- Prepare a preliminary release note for users that summarizes the changes.
+- Verify if release qualifies as a major, minor, or patch.
 - Verify modified versioned files have the correct versions consistently across
-  all files per the Version Guidelines.
+  all files per the Versioning Guidelines.
 - Ensure API compatibility guidelines are followed.
 - Document all breaking changes with migration guidance.
 - Test thoroughly.
-- Finalize a clear and concise release note. 
+- Finalize a clear and concise release note.
 
 #### Step 2: Validate Changes
 
@@ -726,7 +782,7 @@ The branch management scripts (`mkbranch` and `rmbranch`) prevent deletion of:
 ### Setting Up a Pre-commit Hook
 
 A pre-commit hook prevents commits to these protected branches before they're
-pushed to remote.
+pushed to the remote.
 
 #### 1. Create the hook file
 
@@ -756,7 +812,7 @@ CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 for protected in "${PROTECTED_BRANCHES[@]}"; do
   if [[ "$CURRENT_BRANCH" == "$protected" ]]; then
     echo "Error: You are trying to commit to the protected branch '$CURRENT_BRANCH'"
-   echo "Please create a feature branch using: scripts/bin/mkbranch -r <branchname> $CURRENT_BRANCH"
+    echo "Please create a feature branch using: scripts/bin/mkbranch -r <branchname> $CURRENT_BRANCH"
     exit 1
   fi
 done
@@ -892,24 +948,28 @@ Reference.
 
 Contributor-Specific Terms:
 
-- **Approver**: A contributor with commit access who reviews pull requests, enforceS
-  versioning rules, and ensures documentation consistency.
-- **Breaking Change**: A change that alters public API behavior, removes or renames
-  macros, changes return semantics, or requires a major version bump.
-- **Contributor**: A person submitting code, documentation, fixes, or improvements.
-- **Deprecated**: A public API element marked for removal in a future major version, 
-  requiring documentation updates and migration guidance.
+- **Approver**: A contributor with commit access who reviews pull requests,
+  enforces versioning rules, and ensures documentation consistency.
+- **Breaking Change**: A change that alters public API behavior, removes or
+  renames macros, changes return semantics, or requires a major version bump.
+- **Contributor**: A person submitting code, documentation, fixes, or
+  improvements.
+- **Deprecated**: A public API element marked for removal in a future major
+  version, requiring documentation updates and migration guidance.
 - **Documentation Update**: Any modification to versioned documentation requires
   incrementing the update version or, if an API major version is incremented,
   incrementing the major version per the Versioning Guidelines.
-- **Internal API Change**: A change to an API's internals that does not affect public
-  API users but may require updates to an Internal Guide or Internal Reference.
+- **Internal API Change**: A change to an API's internals that does not affect
+  public API users but may require updates to an Internal Guide or Internal
+  Reference.
 - **Major Increment**: A structural or conceptual overhaul that causes a
   breaking change.
-- **Public API Change**: Any modification to the Runner Framework/API or rhe Test API
-  that requires a version bump.
-- **Pull Request**: 
-- **Release**: 
+- **Public API Change**: Any modification to the Runner Framework/API or the
+  Test API that requires a major version bump.
+- **Pull Request**: A formal proposal to merge changes into a target branch
+  for review and approval.
+- **Release**: A published, versioned snapshot of the project made available
+  to users.
 - **Test Coverage Requirement**: The expectation that all code changes include
   new tests (if adding behavior), updated tests (if modifying behavior), and no
   regressions.
