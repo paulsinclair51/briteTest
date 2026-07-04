@@ -86,11 +86,13 @@ The  documentation consists of documents for:
 
 - **Users**: Public-facing framework and API documents.
 
-- **Contributors**; Guide and API internal documents.
+- **Contributors**; Contributor Guide and API internal documents.
 
 Document types:
 
-- **README**: Introduction or description.
+- **README**: 
+  - In root, link to the /docs/md/briteTest_Guide,md file,
+  - In a subdirectory of root, a directory guide.
 
 - **Guide**: Usage information.
 
@@ -98,11 +100,14 @@ Document types:
 
 Document formats:
 
-- **.md**: Markdown documentation format for online viewing.
+- **.md**: Markdown format for online viewing and the base/master
+  from which to generate .pdf and .docx format files.
 
-- **.pdf**: Portable Document Format for printing. A briteTest .pdf file is generated
-  from a briteTest .md file using genpdf in the scripts directory of the repository
-  root.
+- **.pdf**: Portable Document Format useful as a portable and printable
+  form of a document. A .pdf file is generated from an .md file.
+
+- **.docx**: MS Word DOCX format. A briteTest .docx file is generated
+  from a .pdf file.
 </details>
 
 <details>
@@ -114,14 +119,14 @@ The following are the user and contributor documents.
 
 **User documentation**:
 
-- **README.md** -- Introduction to briteTest.
-
 - **Documentation_Guide.md**: A guide to documents and the
   repository layout.
 
 - **Glossary_Reference.md**: An alphabetically ordered list of terms
   generally used in the documentation (emphasizing their specific meaning in
   briteTest) and terms often used in the testing domain.
+
+- **Guide.md** -- briteTest concepts and quick start example.
 
 - **Runner_Guide.md**: Concepts, usage, and examples for
   the Runner Framework and API.
@@ -135,8 +140,6 @@ The following are the user and contributor documents.
 - **Test_Reference.md**: Reference document for the Test API.
 
 **Contributor documentation**:
-
-- **README.md**: Directory description, one for each subdirectory.
 
 - **Contributor_Guide.md**: Versioning, documentation/coding
   guidelines, branching, testing, and CI/release checklists.
@@ -169,14 +172,14 @@ The following shows the layout of the GitHub repository
 build_test_runner.ps1
 LICENSE
 Makefile
-README.md
+README.md.              # Link to /docs/md/Guide.md,
 build/                  # Build outputs and related artifacts.
 config/                 # Repository configuration files.
     contributors.md     # List of authorized contributors.
     markdownlint.json   # Customize lint behavior.
 docs/                   # User and contributor documentation.
-    branding/           # Monograms, logos, and document logos.
-    md/                 # `*.md` files (base documentation).
+    branding/           # Monograms, logos, and document title logos.
+    md/                 # `*.md` files (base/master documentation).
     pdf/                # `*.pdf` files generated from `*.md` files.
     docx/               # `*.docx` files generated from `*.pdf` files.
 examples/               # Usage examples.
