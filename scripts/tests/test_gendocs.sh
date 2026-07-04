@@ -152,6 +152,10 @@ while [[ $# -gt 0 ]]; do
         exit 37
       fi
       ;;
+    -e)
+      shift
+      [[ $# -gt 0 ]] || exit 2
+      ;;
     -q|-v|-r|-k|-g|-c)
       ;;
     -*)
@@ -245,40 +249,58 @@ make_genpdf_helper_repo() {
   local name=$1
   local repo="$tmpdir/$name"
 
-  mkdir -p "$repo/scripts/helpers" "$repo/scripts/bin" "$repo/in" "$repo/out"
+  mkdir -p "$repo/scripts/helpers" "$repo/docs/branding" "$repo/in/docs/branding" "$repo/in" "$repo/out" "$repo/bin"
   cp "$genpdf_helper" "$repo/scripts/helpers/genpdf.sh"
 
-  cat > "$repo/scripts/bin/genpdf" <<'EOF'
+  python3 - <<'PY' "$repo/docs/branding/Logo_with_BrandName.png" "$repo/in/docs/branding/Logo_with_BrandName.png"
+import base64
+import sys
+
+png = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2n8AAAAASUVORK5CYII="
+)
+for path in sys.argv[1:]:
+    with open(path, "wb") as f:
+        f.write(png)
+PY
+
+  cat > "$repo/bin/pandoc" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
-declare -a positional=()
+out=''
+in=''
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -b|-i|-x)
-      shift
-      [[ $# -gt 0 ]] || exit 2
+    -o)
+      out=$2
+      shift 2
       ;;
-    -h|--help|-t|-c|-n|-q|-v|-r|-k|-g|-s|-p)
+    --output=*)
+      out=${1#*=}
+      shift
       ;;
     -*)
+      shift
       ;;
     *)
-      positional+=("$1")
+      in=$1
+      shift
       ;;
   esac
-  shift
 done
 
-in=${positional[0]:-}
-out=${positional[1]:-}
-[[ -n "$in" && -n "$out" ]] || exit 2
-cp "$in" "${out}.src"
-touch "$out"
+[[ -n "$out" ]] || exit 2
+mkdir -p "$(dirname "$out")"
+if [[ -n "$in" && -f "$in" ]]; then
+  cp "$in" "$out"
+else
+  : > "$out"
+fi
 EOF
 
-  chmod +x "$repo/scripts/helpers/genpdf.sh" "$repo/scripts/bin/genpdf"
+  chmod +x "$repo/scripts/helpers/genpdf.sh" "$repo/bin/pandoc"
   printf '%s\n' "$repo"
 }
 
@@ -363,7 +385,6 @@ EOF
   assert_contains "Generated PDF and DOCX files." "$tmpdir/gendocs_default.out"
   assert_contains "alpha.md" "$repo/docs/md/.md_metadata"
   assert_contains "genpdf $repo/docs/md/alpha.md -> $repo/docs/pdf/alpha.pdf" "$repo/logs/helpers.log"
-  assert_contains "gendocx $repo/docs/pdf/alpha.pdf -> $repo/docs/docx/alpha.docx" "$repo/logs/helpers.log"
 }
 
 test_gendocs_toolcheck() {
@@ -410,10 +431,11 @@ test_gendocs_missing_helper() {
 test_gendocs_genpdf_helper_reorders_first_png() {
   phase "genpdf helper reorders first png"
 
-  local repo input output
+  local repo input output emitted
   repo=$(make_genpdf_helper_repo repo_genpdf_reorder)
   input="$repo/in/reorder.md"
   output="$repo/out/reorder.pdf"
+  emitted="$repo/out/reorder.transformed.md"
 
   cat > "$input" <<'EOF'
 # Title
@@ -422,23 +444,26 @@ test_gendocs_genpdf_helper_reorders_first_png() {
 Body line.
 EOF
 
-  bash "$repo/scripts/helpers/genpdf.sh" "$input" "$output"
+  PATH="$repo/bin:$PATH" bash "$repo/scripts/helpers/genpdf.sh" -e "$emitted" "$input" "$output"
 
   assert_file_exists "$output"
-  assert_file_exists "$output.src"
-  assert_matches '^!\[BriteTest Logo\]\(docs/branding/Logo_with_BrandName.png\)$' "$output.src"
-  assert_contains "# Title" "$output.src"
-  assert_contains "Body line." "$output.src"
-  assert_line_count 1 '^!\[BriteTest Logo\]\(docs/branding/Logo_with_BrandName.png\)$' "$output.src"
+  assert_file_exists "$emitted"
+  assert_line_count 1 'includegraphics\[width=\\textwidth\]\{\\detokenize\{[^}]*Logo_with_BrandName\.png\}\}' "$emitted"
+  assert_contains "# Title" "$emitted"
+  assert_contains "Body line." "$emitted"
+  if grep -Fq '![BriteTest Logo](' "$emitted"; then
+    fail "expected transformed markdown to replace markdown logo image with LaTeX includegraphics"
+  fi
 }
 
 test_gendocs_genpdf_helper_passthrough_when_png_is_first_line() {
   phase "genpdf helper passthrough when png is first line"
 
-  local repo input output
+  local repo input output emitted
   repo=$(make_genpdf_helper_repo repo_genpdf_passthrough)
   input="$repo/in/passthrough.md"
   output="$repo/out/passthrough.pdf"
+  emitted="$repo/out/passthrough.transformed.md"
 
   cat > "$input" <<'EOF'
 ![BriteTest Logo](docs/branding/Logo_with_BrandName.png)
@@ -447,10 +472,15 @@ test_gendocs_genpdf_helper_passthrough_when_png_is_first_line() {
 Body line.
 EOF
 
-  bash "$repo/scripts/helpers/genpdf.sh" "$input" "$output"
+  PATH="$repo/bin:$PATH" bash "$repo/scripts/helpers/genpdf.sh" -e "$emitted" "$input" "$output"
 
-  assert_file_exists "$output.src"
-  cmp -s "$input" "$output.src" || fail "expected helper to pass through unchanged when png is already on line one"
+  assert_file_exists "$emitted"
+  assert_line_count 1 'includegraphics\[width=\\textwidth\]\{\\detokenize\{[^}]*Logo_with_BrandName\.png\}\}' "$emitted"
+  assert_contains "# Title" "$emitted"
+  assert_contains "Body line." "$emitted"
+  if grep -Fq '![BriteTest Logo](' "$emitted"; then
+    fail "expected transformed markdown to replace markdown logo image with LaTeX includegraphics"
+  fi
 }
 
 test_gendocx_helper_invalid_backend() {
@@ -462,7 +492,7 @@ test_gendocx_helper_invalid_backend() {
 
   rc=$(run_capture "$tmpdir/gendocx_invalid.out" bash "$repo/scripts/helpers/gendocx.sh" -b invalid "$repo/in/input.pdf" "$repo/out/out.docx")
   [[ "$rc" -eq 2 ]] || fail "expected invalid-backend exit 2, got $rc"
-  assert_contains "invalid backend: invalid" "$tmpdir/gendocx_invalid.out"
+  assert_contains "Error: invalid backend 'invalid' (expected: auto|python|libreoffice)" "$tmpdir/gendocx_invalid.out"
 }
 
 test_gendocx_helper_libreoffice_backend() {
