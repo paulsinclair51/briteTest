@@ -23,7 +23,7 @@ See `README.md` in the root directory for an introduction to the project.
 
 - **history_log.sh**: Shared branch-history markdown logging helpers.
 
-- **replace_phrases.py**: Shared Python helper used by
+- **replace_phrases.sh**: Shared Bash helper used by
   `scripts/bin/replacephrases` to apply configured phrase replacements
   in markdown files.
 

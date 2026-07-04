@@ -6,6 +6,12 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Provides shared Git helper functions for branch lookup, status checks, and
+#   history operations.
+# - Encapsulates repeated Git command patterns used by scripts/bin workflows.
+# - Standardizes error handling and output for Git-related helper calls.
+
 bt_get_current_branch() {
   git rev-parse --abbrev-ref HEAD 2>/dev/null
 }

@@ -6,6 +6,13 @@
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
+
+# Summary of script behavior:
+# - Converts markdown documents to PDF with optional front-matter/section
+#   handling.
+# - Builds temporary transformed markdown when needed, then invokes a PDF
+#   conversion backend.
+# - Applies branding/header conventions and writes PDFs to docs/pdf.
 #
 # Dependencies: pandoc (with a PDF engine), or
 #               python3 plus wkhtmltopdf or weasyprint.

@@ -6,6 +6,11 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Provides shared functions to append and format branch history markdown logs.
+# - Ensures consistent row formatting and timestamp handling across scripts.
+# - Centralizes history-log write operations for workflow scripts.
+
 bt_init_history_log() {
   local log_file="$1"
 

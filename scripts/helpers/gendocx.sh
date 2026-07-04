@@ -5,6 +5,11 @@
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
+
+# Summary of script behavior:
+# - Implements helper functions for PDF-to-DOCX conversion workflows.
+# - Validates input/output paths and conversion-tool availability.
+# - Returns standardized success/failure results to calling scripts.
 #
 # Dependencies: python3 + pdf2docx package, or libreoffice/soffice.
 

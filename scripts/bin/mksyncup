@@ -8,6 +8,12 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Brings base-branch changes into the current branch using project sync-up
+#   workflow.
+# - Validates branch relationships and merge/rebase preconditions.
+# - Reports integration outcomes and required follow-up actions.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

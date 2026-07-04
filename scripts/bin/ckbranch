@@ -8,6 +8,13 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Resolves branch context, base-branch relationship, and remote
+#   synchronization status.
+# - Collects ahead/behind, dirty-worktree, and optional PR metadata details.
+# - Writes a branch-status report and optionally appends status snapshots to
+#   history logs.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

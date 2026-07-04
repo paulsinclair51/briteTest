@@ -51,9 +51,9 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 ### Document Version History
 
-| Document | Runner | Test | Date | Comment | Author/Editor |
-|----------|------|--------|------|---------|---------------|
-| 1.0.0 | 1.0.0 | 1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
+| Document | Runner | Test  | Date       | Comment          | Author/Editor |
+| -------- | ------ | ----- | ---------- | ---------------- | ------------- |
+| 1.0.0    | 1.0.0  | 1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
 
 - The **Document** column records the document's version.
 - The **Runner** column records the Runner API version
@@ -85,7 +85,7 @@ recent version for this document at the time this document was published.
 3. [**Branding**](#3-branding)<br>
    3.1. [Current Branding](#31-current-branding)<br>
    3.2. [Alternative Brand Names](#32-alternative-brand-names)<br>
-   3.3. [How to Update Branding](#32-how-to-update-branding)<br>
+   3.3. [How to Update Branding](#33-how-to-update-branding)<br>
 
 4. [**Documentation Guidelines**](#4-documentation-guidelines)
 
@@ -102,6 +102,7 @@ recent version for this document at the time this document was published.
 10. [**Protected Branches**](#10-protected-branches)
 
 11. [**Glossary**](#11-glossary)
+
 </details>
 
 <details>
@@ -128,7 +129,6 @@ Versioning is used for API `.h` and `.c` files, and documentation (`.md`,
 `.pdf`, and `.docx`) files and has the format:
 
   `M.m.p` (major, minor, patch).
-
 
 <details>
 <summary>2.1. When to Change Version</summary>
@@ -161,6 +161,7 @@ Versioning is used for API `.h` and `.c` files, and documentation (`.md`,
     the file was not otherwise modified) with minor and patch reset to 0.
 
 When changing the version for a file:
+
 - Increment `p` if the major and minor versions are not changed.
 - Reset `p` to `0` when the major or minor version is changed.
 - For the `include/runnerapi.h` file, update the `RA_VERSION` macro.
@@ -207,6 +208,7 @@ See the `scripts/bin/ckversions` script for details on version validation logic.
 
 An incompatible change is a change to the APIs or the Runner Framework
 that requires a user to modify their code such as changes to:
+
 - API signatures including removal of a signature.
 - API or Runner Framework behavior.
 - Exit and return code meanings.
@@ -236,6 +238,7 @@ A request for an incompatible change requires special handling:
   on whether the change is rejected or is deferred to a later major release
   (e.g., to allow for a deprecation or upcoming change notice in the next major
   or minor release).
+
 </details>
 
 <details>
@@ -246,16 +249,19 @@ A request for an incompatible change requires special handling:
 The following examples illustrate common scenarios and the appropriate version
 change:
 
-**Example 1: Bug Fix to runnerapi.c**:
+#### Example 1: Bug Fix to runnerapi.c
 
 **Change**:
+
 - Fix a segmentation fault in `ra_internal_runner_run_test` when a
   callback returns an error code.
 
 **Files Modified**:
+
 - `src/runnerapi.c`
 
 **Versioning:**
+
 - Current version: 1.0.2
 - New version: 1.0.3
 - Reason: Bug fix with no API signature or behavior changes.
@@ -263,16 +269,19 @@ change:
 - CI Check: `ckversions` confirms runnerapi.h remains 1.0.0 (no change),
   runnerapi.c becomes 1.0.3 (patch bump).
 
-**Example 2: Documentation Update for testapi.h**:
+#### Example 2: Documentation Update for testapi.h
 
 **Change**:
+
 - Clarify docstring for `ta_read_file` function and update the Test
   API Reference document with additional usage examples.
 
-**Files Modified:**:
+**Files Modified**:
+
 - `include/testapi.h`, `docs/md/Test_API_Reference.md`
 
 **Versioning**:
+
 - Current version: 1.0.0
 - New version: 1.0.1
 - Reason: Documentation corrections only; no API changes.
@@ -281,17 +290,20 @@ change:
 - CI Check: `ckversions` confirms both testapi.h and the document have
   patch 1.0.1.
 
-**Example 3: New Test Helper Function**:
+#### Example 3: New Test Helper Function
 
 **Change**:
+
 - Add a new public function `ta_compare_xml` to the Test API for
   comparing XML documents.
 
 **Files Modified**:
+
 - `include/testapi.h`, `src/testapi.c`,
-`docs/md/Test_API_Reference.md`
+  `docs/md/Test_API_Reference.md`
 
 **Versioning**:
+
 - Current version: 1.0.1
 - New version: 1.1.0
 - Reason: New function is a backward-compatible minor addition to the API.
@@ -304,20 +316,23 @@ change:
     modified.
 - CI Check: `ckversions` confirms all files have major.minor 1.1 with patch 0.
 
-**Example 4: Incompatible API Change (Requires Special Handling)**
+#### Example 4: Incompatible API Change (Requires Special Handling)
 
 **Change**:
+
 - Modify the signature of `ta_execute_command` to accept a timeout
   structure instead of milliseconds. This is a breaking change needed
   to support microsecond precision in a future integration.
 
 **Files Modified**:
+
 - `include/testapi.h`, `src/testapi.c`,
   `docs/md/briteTest.md` (aka root README.md), `docs/md/Test_API_Guide.md`,
   `docs/md/Test_API_Reference.md`, `docs/md/Test_Internal_Guide.md`,
   `docs/md/Test_Internal_Reference.md`
 
 **Versioning**:
+
 - Current version: 1.1.0
 - Proposed version: 2.0.0
 - Reason: Breaking change requires major version bump per guidelines.
@@ -336,6 +351,7 @@ change:
   - Include migration documentation.
   - Reference the PR justification in release notes.
 - CI Check: `ckversions` confirms all files have major 2.0.0.
+
 </details>
 </details>
 
@@ -364,6 +380,7 @@ and no external dependencies.
 ```
 
 Why this brand name:
+
 - The name is a relatively low-risk branding choice because its distinctive
   camelCase form and specific presentation reduce the chance of a brand name
   conflict.
@@ -380,12 +397,14 @@ Why this brand name:
   brand and make a future brand rename less disruptive.
 
 Why this description:
+
 - It states scope and usage clearly: lightweight C/C++ unit and command-line
   testing.
 - It names the two core interfaces used throughout the docs: Runner API and
   Test API.
 - It emphasizes practical value for adopters: fault-tolerant execution, clear
   reporting, comprehensive documentation, and no external dependencies.
+
 </details>
 
 <details>
@@ -407,7 +426,7 @@ The preferred naming style is camelCase; however, PascalCase
 Brand names that are acceptable if the brand name briteTest cannot be used.
 
 | Name | Initial | Reason |
-|------|---------|--------|
+| ------ | --------- | -------- |
 | BriteTest | BT | Strong fit for the project brand and clear connection to the canary monogram. |
 | liteTest | lT | Clear fit for the lightweight positioning, though still somewhat generic. |
 | compactTest | cT | Good match for the lightweight position and slightly more distinctive than other descriptive alternatives. |
@@ -419,7 +438,7 @@ Brand names usable in theory but weaker than the current preferred/fallback
 options.
 
 | Name | Initial | Reason |
-|------|---------|--------|
+| ------ | --------- | -------- |
 | openTest | oT | Readable, but built from broad software terms that are more likely to overlap with existing names. |
 | canaryRunner | cR | Strong theme match, but `canary` is already common software terminology and reduces distinctiveness. |
 | CanaryTestRunner | CTR | Explicit and descriptive, but long and composed of highly generic testing terms. |
@@ -433,10 +452,11 @@ options.
 Brand names with strong likely confusion or established association.
 
 | Name | Initial | Reason |
-|------|---------|--------|
+| ------ | --------- | -------- |
 | canaryTest | cT | Too close to common `canary testing` terminology to be distinctive. |
 | swiftTest | sT | Likely to be confused with Apple's Swift ecosystem. |
 | quickTest | qT | Already strongly associated with established testing and QA tooling. |
+
 </details>
 
 <details>
@@ -449,7 +469,7 @@ using `scripts/bin/updatebrand`.
 
 #### Workflow Steps
 
-1. Add a pending row in `logs/brand_history.md`.
+1. Add a pending row in `logs/brand_history.md`:
 
    - The first row with an empty **Completed** value is treated as the pending
      brand change.
@@ -457,46 +477,47 @@ using `scripts/bin/updatebrand`.
      the previous (current) brand values.
    - Fill in **Brand Name**, **Initials**, and **Tagline** in the pending row.
 
-2. Run a dry run first.
+2. Run a dry run first:
 
 ```bash
 scripts/bin/updatebrand -d
 ```
 
-   - This shows planned replacements without modifying files.
-   - A dry-run log is written to:
+- This shows planned replacements without modifying files.
+- A dry-run log is written to:
      `logs/updatebrand-log-dry-run-YYYYMMDD-HHMMSS.md`.
 
-3. Apply the change.
+3. Apply the change:
 
 ```bash
 scripts/bin/updatebrand
 ```
 
-   - The script updates matching `docs/branding/*.svg` values.
-   - The script regenerates PNG files using `scripts/bin/genpngs` when SVG
+- The script updates matching `docs/branding/*.svg` values.
+- The script regenerates PNG files using `scripts/bin/genpngs` when SVG
      files changed.
-   - The script updates matching `*.md`, `*.c`, and `*.h` files for brand-name
+- The script updates matching `*.md`, `*.c`, and `*.h` files for brand-name
      replacement.
-   - The script marks the pending Brand History row completed with the current
+- The script marks the pending Brand History row completed with the current
      date/time.
-   - A run log is written to:
+- A run log is written to:
      `logs/updatebrand-log-YYYYMMDD-HHMMSS.md`.
-   - `logs/updatebrand-log-dry-run-YYYYMMDD-HHMMSS.md` files are deleted if
+- `logs/updatebrand-log-dry-run-YYYYMMDD-HHMMSS.md` files are deleted if
      `updatebrand` is successful.
 
-4. Review and validate.
+4. Review and validate:
 
    - Review `git diff` and the generated update log.
    - Run the project validation steps required for your change (for example,
      `make run` and documentation generation checks).
    - Review `docs/md/*.md` files (valid logo and use of brand name).
 
-5. Commit and open a PR.
+5. Commit and open a PR:
 
    - Commit branding updates (SVG, PNG, docs, source/header updates, and
      `logs/brand_history.md`) with a clear message.
    - Open a PR with a short summary of the brand transition.
+
 </details>
 </details>
 
@@ -509,56 +530,56 @@ This section exists here to ensure contributors do not overlook the requirement
 for parallel structure and consistent writing patterns across all documentation
 in all types of files (e.g., `.md`, `.h`, `.c`, `.yml`, `.dh`, `Makefile`, etc.).
 
-1. General
+#### 1. General
 
-   - Root `README.md` must remain short and onboarding-focused.
-   - A User Guide contains conceptual explanations and examples.
-   - An API Reference contains public API definitions only.
-   - An internal guide or reference must not leak into public docs.
-   - Update documentation when enhancing macros, behavior, or report format.
-   - For branding assets in `docs/branding/`: `*.svg` files are the source of
+- Root `README.md` must remain short and onboarding-focused.
+- A User Guide contains conceptual explanations and examples.
+- An API Reference contains public API definitions only.
+- An internal guide or reference must not leak into public docs.
+- Update documentation when enhancing macros, behavior, or report format.
+- For branding assets in `docs/branding/`: `*.svg` files are the source of
      truth and `*.png` files are generated from SVG using `scripts/bin/genpngs`.
 
-2. Tone
+#### 2. Tone
 
-   - Technical, precise, and neutral.
-   - Minimal marketing language.
-   - Prefer clarity over cleverness.
+- Technical, precise, and neutral.
+- Minimal marketing language.
+- Prefer clarity over cleverness.
 
-3. Formatting
+#### 3. Formatting
 
-   - Use backticks for code identifiers.
-   - Use fenced code blocks for file trees, examples, and commands.
-   - Keep line lengths reasonable for GitHub rendering.
-   - Use boldface for a term or phrase when defining it.
-   - Conform to formatting styles existing in the documentation.
+- Use backticks for code identifiers.
+- Use fenced code blocks for file trees, examples, and commands.
+- Keep line lengths reasonable for GitHub rendering.
+- Use boldface for a term or phrase when defining it.
+- Conform to formatting styles existing in the documentation.
 
-4. Writing Guidelines
+#### 4. Writing Guidelines
 
-   - Define terms once, and then use them consistently.
-   - Avoid synonyms for technical concepts (e.g., always "update version,"
+- Define terms once, and then use them consistently.
+- Avoid synonyms for technical concepts (e.g., always "update version,"
      never "revision").
-   - Keep paragraphs short.
-   - Use lists for enumerations.
+- Keep paragraphs short.
+- Use lists for enumerations.
 
-5. Collapsible Sections in `.md` Files
+#### 5. Collapsible Sections in `.md` Files
 
-   - Use collapsible chapters, sections and subsections to keep the document
-     readable while still accommodating large amounts of technical detail.
-   - Collapsing sections allows readers to scan the structure and expand only what
-     they need.
-   - This keeps the document manageable, avoids overwhelming readers with
-     unrelated detail, and makes the document easier to navigate.
+- Use collapsible chapters, sections and subsections to keep the document
+  readable while still accommodating large amounts of technical detail.
+- Collapsing sections allows readers to scan the structure and expand
+  only what they need.
+- This keeps the document manageable, avoids overwhelming readers with
+  unrelated detail, and makes the document easier to navigate.
 
-6. Style Consistency
+#### 6. Style Consistency
 
 To keep documentation clear and easy to read, maintain **parallel
 structure** within lists and related sentences:
 
 - Start list items with the same part of speech (typically a verb).
 - Keep grammatical patterns consistent across bullets.
-- Avoid mixing styles such as "Keep paragraphs short" with "Using lists for
-  enumerations."
+- Avoid mixing styles such as "Keep paragraphs short" with "Using lists
+  for enumerations."
 - Rewrite items as needed so the list reads smoothly and uniformly.
 
 This guideline applies to all documentation (`.md` files).
@@ -573,6 +594,7 @@ This guideline applies to all documentation (`.md` files).
 - POSIX.1-2001 APIs only.
 - Keep `runnerapi.h` and `testapi.h` each self-contained.
 - Keep `runnerapi.c` and `testapi.c` implementation-only.
+
 </details>
 
 <details>
@@ -589,6 +611,7 @@ make run
 - Ensure report formatting changes are reflected in documentation examples.
 - Keep test code aligned with the current version of `runnerapi.h` and
   `testapi.h`.
+
 </details>
 
 <details>
@@ -599,8 +622,8 @@ make run
 - Define modifications that are focused (not mixing unrelated changes),
   logically grouped, and well-scoped.
 - Define an appropriate name for your changes to use as the branch name.
-- Obtain preliminary approval and target release for the modifications and
-  branch name.
+- Obtain preliminary approval and target release for the modifications
+  and branch name.
 - Create a branch using your branch name.
 - Modify the code in the branch as needed.
 - Modify the documentation in the branch as needed in parallel with any
@@ -609,10 +632,11 @@ make run
   unrelated changes), logically grouped, and well-scoped.
 - Ensure modifications follow the Documentation Guidelines and the Code
   Guidelines.
-- Ensure version numbers are updated for modified versioned files as needed
-  per the Versioning Guidelines.
+- Ensure version numbers are updated for modified versioned files as
+  needed per the Versioning Guidelines.
 - Include test coverage for new behavior and modifications.
 - Ensure tests pass: run `make run` from the repository root.
+
 </details>
 
 <details>
@@ -620,10 +644,10 @@ make run
 
 ## 8. Pull Request (PR)
 
-A **Pull Request (PR)** is a formal proposal to merge your code changes into
-the `main` branch of the repository. It's the mechanism that enables code
-review, quality assurance, and collaborative development before changes become
-part of the official codebase.
+A **Pull Request (PR)** is a formal proposal to merge your code changes
+into the `main` branch of the repository. It's the mechanism that
+enables code review, quality assurance, and collaborative development
+before changes become part of the official codebase.
 
 ### Pull Request Workflow
 
@@ -635,8 +659,8 @@ Before submitting a PR:
   logically grouped, and well-scoped.
 - Update documentation as needed in parallel with code changes.
 - Ensure changes follow the Documentation Guidelines and Code Guidelines.
-- Update version numbers of modified versioned files as needed per the Versioning
-  Guidelines.
+- Update version numbers of modified versioned files as needed per the
+  Versioning Guidelines.
 - Include test coverage for new behavior and modifications.
 - Ensure tests pass: run `make run` from the repository root.
 
@@ -682,35 +706,38 @@ Use this checklist to ensure version numbers are correct before opening a PR:
   - [ ] For patch changes: incremented patch only in the modified file(s).
   - [ ] For minor changes: updated all versioned files to the same major.minor
         with patch reset to 0.
-  - [ ] For major changes: updated all versioned files to the same major value
-        with minor and patch reset to 0.
-- [ ] I have verified version consistency locally by running: `scripts/bin/ckversions`
+  - [ ] For major changes: updated all versioned files to the same major
+        value with minor and patch reset to 0.
+- [ ] I have verified version consistency locally by running:
+      `scripts/bin/ckversions`
 - [ ] For documentation files, I have added a new entry to the top of the
       Document Version History table with today's date and a brief comment.
-- [ ] If I am making an exception to the versioning guidelines, I have included
-      written justification in my PR description.
+- [ ] If I am making an exception to the versioning guidelines, I have
+      included written justification in my PR description.
 
 **In the PR Description:**
 
 - [ ] PR title and description clearly describe the change.
-- [ ] If versioning is non-standard or requires an exception, I have explained why
-      and which guideline is being deviated from.
-- [ ] If this is a minor or major release, I have summarized the impact on users
-      and any migration requirements.
+- [ ] If versioning is non-standard or requires an exception, I have
+      explained why and which guideline is being deviated from.
+- [ ] If this is a minor or major release, I have summarized the impact
+      on users and any migration requirements.
 
 **During Review:**
 
-- [ ] Reviewers will verify version changes align with the guidelines during code
-      review.
-- [ ] CI will automatically run `ckversions` and report consistency errors.
-- [ ] If CI or reviewers request version updates, I will make the corrections and
-      re-push.
+- [ ] Reviewers will verify version changes align with the guidelines
+      during code review.
+- [ ] CI will automatically run `ckversions` and report consistency
+      errors.
+- [ ] If CI or reviewers request version updates, I will make the
+      corrections and re-push.
 
 **Approver Verification:**
 
 - [ ] Approver confirms CI version check passed.
-- [ ] Approver confirms version numbers align with the Versioning Guidelines and
-      PR justification (if any).
+- [ ] Approver confirms version numbers align with the Versioning
+      Guidelines and PR justification (if any).
+
 </details>
 
 <details>
@@ -719,8 +746,8 @@ Use this checklist to ensure version numbers are correct before opening a PR:
 ## 9. Release
 
 A **Release** is the act of publishing a specific version for public use.
-It packages approved and merged changes into a versioned, immutable snapshot
-that users can download and depend on.
+It packages approved and merged changes into a versioned, immutable
+snapshot that users can download and depend on.
 
 ### Release Workflow
 
@@ -730,8 +757,8 @@ Before releasing:
 
 - Prepare a preliminary release note for users that summarizes the changes.
 - Verify if release qualifies as a major, minor, or patch.
-- Verify modified versioned files have the correct versions consistently across
-  all files per the Versioning Guidelines.
+- Verify modified versioned files have the correct versions consistently
+  across all files per the Versioning Guidelines.
 - Ensure API compatibility guidelines are followed.
 - Document all breaking changes with migration guidance.
 - Test thoroughly.
@@ -762,6 +789,7 @@ Before releasing:
 - Push the tag to the repository.
 - Create a GitHub release with the release note.
 - Make the release publicly available for download.
+
 </details>
 
 <details>
@@ -774,15 +802,16 @@ to protected branches.
 
 ### What are Protected Branches?
 
-Protected branches are critical branches that should not receive direct commits.
-The branch management scripts (`mkbranch` and `rmbranch`) prevent deletion of:
+Protected branches are critical branches that should not receive
+direct commits. The branch management scripts (`mkbranch` and
+`rmbranch`) prevent deletion of:
 
 - `main`
 
 ### Setting Up a Pre-commit Hook
 
-A pre-commit hook prevents commits to these protected branches before they're
-pushed to the remote.
+A pre-commit hook prevents commits to these protected branches
+before they're pushed to the remote.
 
 #### 1. Create the hook file
 
@@ -875,24 +904,27 @@ Please create a feature branch using: scripts/bin/mkbranch -r <branchname> main
 
 The commit is rejected, and you must:
 
-1. Switch to or create a feature branch
-2. Make your changes on that branch
-3. Create a pull request for review
+1. Switch to or create a feature branch.
+2. Make your changes on that branch.
+3. Create a pull request for review.
 
 ### Recommended Workflow
 
 1. **Create a feature branch:**
+
    ```bash
    scripts/bin/mkbranch -r my-feature main
    ```
 
 2. **Make your changes:**
+
    ```bash
    git add .
    git commit -m "Add my feature"
    ```
 
 3. **Push to remote:**
+
    ```bash
    git push origin patch/my-feature
    ```
@@ -900,6 +932,7 @@ The commit is rejected, and you must:
 4. **Create a pull request** on GitHub/GitLab
 
 5. **After approval, merge and clean up:**
+
    ```bash
    scripts/bin/rmbranch -a patch/my-feature
    ```
@@ -909,6 +942,7 @@ The commit is rejected, and you must:
 #### Hook is not running
 
 Check that:
+
 - The hook file is executable: `ls -la .git/hooks/pre-commit`
 - The shebang line is correct: `#!/usr/bin/env bash`
 - Git hooks are enabled in your repository
@@ -921,11 +955,13 @@ Use the `--no-verify` flag to skip hooks:
 git commit --no-verify -m "message"
 ```
 
-**Note:** This should only be used in emergencies and is not recommended for shared repositories.
+**Note:** This should only be used in emergencies and is not
+recommended for shared repositories.
 
 ### Additional Server-Side Protection
 
-For maximum protection, configure branch protection rules in your repository settings:
+For maximum protection, configure branch protection rules in
+your repository settings:
 
 1. Go to Repository Settings -> Branches
 2. Add a branch protection rule for `main`, `master`, `develop`, etc.
@@ -935,7 +971,8 @@ For maximum protection, configure branch protection rules in your repository set
    - Dismiss stale pull request approvals
    - Require branches to be up to date before merging
 
-This prevents any direct pushes to protected branches, even if someone bypasses the local hook.
+This prevents any direct pushes to protected branches, even if
+someone bypasses the local hook.
 </details>
 
 <details>
@@ -943,8 +980,8 @@ This prevents any direct pushes to protected branches, even if someone bypasses 
 
 ## 11. Glossary
 
-For a glossary of terms generally used in the documentation, see the Glossary
-Reference.
+For a glossary of terms generally used in the documentation, see
+the Glossary Reference.
 
 Contributor-Specific Terms:
 
@@ -974,4 +1011,5 @@ Contributor-Specific Terms:
   new tests (if adding behavior), updated tests (if modifying behavior), and no
   regressions.
 - **Versioned Files**: Files that include a version and version history.
+
 </details>

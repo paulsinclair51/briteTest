@@ -6,21 +6,27 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Invokes phrase-replacement workflow for markdown files using configured
+#   mappings.
+# - Supports dry-run preview and apply modes.
+# - Reports file-level replacement counts and summary totals.
+
 set -euo pipefail
 
 usage() {
 	cat <<'EOF'
 Usage:
-	replacephrases [config_file] [--dry-run]
+	replacephrases [config_file] [-d]
 	replacephrases -h | --help
 
-Run phrase replacement across markdown files using scripts/helpers/replace_phrases.py.
+Run phrase replacement across markdown files using scripts/helpers/replace_phrases.sh.
 
 Arguments:
 	config_file  Optional replacement config path. Default: config/phrase_replacements.txt
 
 Options:
-	--dry-run    Show planned changes without modifying files.
+	-d           Show planned changes without modifying files.
 	-h, --help   Show this help and exit.
 EOF
 }
@@ -37,5 +43,5 @@ done
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Invoke the Python script with all arguments
-python3 "$SCRIPT_DIR/../helpers/replace_phrases.py" "$@"
+# Invoke the helper script with all arguments
+bash "$SCRIPT_DIR/../helpers/replace_phrases.sh" "$@"

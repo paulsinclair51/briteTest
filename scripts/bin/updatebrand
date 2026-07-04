@@ -9,6 +9,14 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Reads pending/previous brand values from logs/brand_history.md and validates
+#   conflicts.
+# - Applies brand, initials, and tagline replacements to branding SVGs and
+#   repository text files.
+# - Regenerates PNG assets, records run logs, and marks pending history rows
+#   complete.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -392,6 +400,54 @@ cleanup_dry_run_logs() {
     echo "Removed ${#dry_run_logs[@]} dry-run log file(s)"
 }
 
+normalize_doc_title_svg_if_same_as_brand() {
+    local svg_file="$1"
+    local brand_name="$2"
+    local dry_run="$3"
+    local file_name
+    local doc_title
+    local doctitle_matches
+    local title_matches
+
+    normalize_changed=0
+
+    file_name="$(basename "$svg_file")"
+    case "$file_name" in
+        canary-live.svg|canary.svg|Monogram.svg|Logo_with_BrandName.svg|Logo_with_Tagline.svg)
+            return
+            ;;
+    esac
+
+    doc_title="${file_name%.svg}"
+    doc_title="${doc_title//_/ }"
+
+    if [[ "$doc_title" != "$brand_name" ]]; then
+        return
+    fi
+
+    doctitle_matches="$(BRAND_NAME="$brand_name" perl -0777 -ne 'my $count = () = $_ =~ /<text\b(?=[^>]*font-size="43")[^>]*>\Q$ENV{BRAND_NAME}\E<\/text>/g; print $count;' "$svg_file")"
+    title_matches="$(BRAND_NAME="$brand_name" perl -0777 -ne 'my $count = () = $_ =~ /<title id="title">\Q$ENV{BRAND_NAME}\E\s+\Q$ENV{BRAND_NAME}\E Logo<\/title>/g; print $count;' "$svg_file")"
+
+    if [[ "$doctitle_matches" -eq 0 && "$title_matches" -eq 0 ]]; then
+        return
+    fi
+
+    echo "${svg_file#${REPO_ROOT}/}:"
+    if [[ "$doctitle_matches" -gt 0 ]]; then
+        echo "  - Removed doctitle text because doctitle matches Brand Name"
+    fi
+    if [[ "$title_matches" -gt 0 ]]; then
+        echo "  - Normalized duplicate Brand Name in SVG <title> metadata"
+    fi
+    echo
+
+    if [[ "$dry_run" -eq 0 ]]; then
+        BRAND_NAME="$brand_name" perl -0777 -i -pe 's/\n?[ \t]*<text\b(?=[^>]*font-size="43")[^>]*>\Q$ENV{BRAND_NAME}\E<\/text>//g; s/(<title id="title">\Q$ENV{BRAND_NAME}\E)\s+\Q$ENV{BRAND_NAME}\E( Logo<\/title>)/$1$2/g;' "$svg_file"
+    fi
+
+    normalize_changed=1
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -d)
@@ -550,6 +606,14 @@ for svg_file in "${svg_files[@]}"; do
                 replace_text_file "$svg_file" "${old_values[$i]}" "${new_values[$i]}"
             done
         fi
+    fi
+
+    normalize_doc_title_svg_if_same_as_brand "$svg_file" "$pending_brand" "$DRY_RUN"
+    if [[ "$normalize_changed" -eq 1 ]]; then
+        if [[ "$file_replacements" -eq 0 ]]; then
+            svg_files_modified=$((svg_files_modified + 1))
+        fi
+        svg_total_replacements=$((svg_total_replacements + 1))
     fi
 done
 

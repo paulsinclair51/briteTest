@@ -8,6 +8,13 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Merges the current branch into its base branch with pre-merge safety
+#   validations.
+# - Applies workflow policy checks and optional history logging around the merge
+#   action.
+# - Reports merge outcomes and next-step guidance.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

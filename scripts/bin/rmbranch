@@ -8,6 +8,12 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Deletes branches locally and optionally on remote with protected-branch
+#   safeguards.
+# - Validates branch existence, current-branch constraints, and deletion scope.
+# - Reports deletion results and skipped/protected targets.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
