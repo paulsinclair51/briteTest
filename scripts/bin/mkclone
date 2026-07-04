@@ -8,6 +8,13 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Clones the configured repository URL into a default or user-specified
+#   target directory.
+# - Validates arguments, comment options, and target-path preconditions before
+#   cloning.
+# - Reports clone results and prints next-step workflow guidance.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

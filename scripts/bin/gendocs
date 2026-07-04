@@ -9,6 +9,13 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Runs the documentation pipeline for markdown-to-PDF and PDF-to-DOCX
+#   generation.
+# - Invokes helper scripts/tools in sequence and propagates conversion failures.
+# - Writes updated docs/pdf and docs/docx outputs for repository
+#   documentation.
+
 set -Eeuo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

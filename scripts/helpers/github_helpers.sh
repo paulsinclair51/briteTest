@@ -6,6 +6,11 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Provides shared GitHub CLI helper functions for PR/repository interactions.
+# - Encapsulates repeated gh command patterns and argument validation.
+# - Standardizes error handling and output for GitHub-related helper calls.
+
 bt_gh_find_pr_number_for_branch() {
   local branch="$1"
   local state="${2:-all}"

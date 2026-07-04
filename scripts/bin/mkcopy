@@ -8,6 +8,11 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Cherry-picks selected commits from a source branch into a target branch.
+# - Validates branch/commit inputs and guards against unsafe copy scenarios.
+# - Reports applied commits and failures for conflict resolution.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -2,7 +2,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/briteTest?display_name=tag)](https://github.com/paulsinclair51/briteTest/releases)
 [![CI](https://github.com/paulsinclair51/briteTest/actions/workflows/ci.yml/badge.svg)](https://github.com/paulsinclair51/briteTest/actions/workflows/ci.yml)
 
-![briteTest Logo](../branding/Logo_with_BrandName.png)
+![briteTest Logo](https://raw.githubusercontent.com/paulsinclair51/BriteTest/main/docs/branding/briteTest.png)
 
 briteTest is a lightweight, easy-to-use C/C++ framework for running unit and
 command-line tests focused on clarity and reliability. It provides a simple

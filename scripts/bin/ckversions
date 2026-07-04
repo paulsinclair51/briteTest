@@ -10,6 +10,12 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Extracts semantic versions from headers, sources, and markdown docs.
+# - Validates major/minor consistency and allowed patch-only differences across
+#   versioned files.
+# - Emits validation failures suitable for local checks and CI gate enforcement.
+
 set -euo pipefail
 
 readonly EXIT_OK=0

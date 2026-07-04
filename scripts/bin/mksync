@@ -8,6 +8,12 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Synchronizes current branch with remote by fetching and pulling latest
+#   updates.
+# - Validates branch/repository conditions before sync operations.
+# - Reports sync results and non-fast-forward/error situations.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

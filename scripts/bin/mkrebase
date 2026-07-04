@@ -8,6 +8,11 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Rebases the current branch onto a specified base branch.
+# - Runs preflight checks to reduce risky rebase operations.
+# - Reports rebase progress and conflict/error states.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -6,6 +6,11 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Provides shared output helpers for info/success/warn messaging.
+# - Provides a common error-exit helper and branch-detection utility.
+# - Maintains consistent lightweight shell behavior across scripts/bin tools.
+
 bt_info() {
   echo "$1"
 }

@@ -8,50 +8,183 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Parses required positional input as either *[.svg] (all) or <name>[.svg]
+#   (single file).
+# - Validates converter dependency and resolves eligible SVG input files in
+#   docs/branding.
+# - Generates PNG outputs (or prints planned actions with -d) and returns
+#   explicit exit codes.
+
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 branding_dir="$repo_root/docs/branding"
 
+EXIT_SUCCESS=0
+EXIT_INVALID_ARGUMENT=1
+EXIT_MISSING_DEPENDENCY=2
+EXIT_SVG_NOT_FOUND=3
+EXIT_NO_SVGS_FOUND=4
+EXIT_COMMAND_FAILED=5
+
+error_exit() {
+  local code="$1"
+  local message="$2"
+
+  echo "Error: $message" >&2
+  exit "$code"
+}
+
 usage() {
   cat <<'EOF'
 Usage:
-  genpngs [-d]
+  genpngs *[.svg]
+  genpngs <name>[.svg]
+  genpngs -d *[.svg]
+  genpngs -d <name>[.svg]
   genpngs -h | --help
 
-Generates all branding PNGs from docs/branding/*.svg.
+Generates branding PNGs from all SVG sources in docs/branding/
+or from a specified SVG file in docs/branding/.
+
+Arguments:
+  *[.svg]               Generate PNGs for all SVGs in docs/branding/.
+                        Quote wildcard arguments in shells if needed.
+  <name>[.svg]          Generate only the specified SVG's PNG.
+                        The file must exist in docs/branding/.
+
+Options:
+  -d                    Show what would be generated without writing files.
+  -h, --help            Show this help and exit.
+
+Exit Codes:
+  0  Success (includes help output).
+  1  Invalid argument.
+  2  Missing dependency (rsvg-convert).
+  3  Requested SVG was not found in docs/branding/.
+  4  No SVG files found in docs/branding/ for *[.svg].
+  5  PNG generation command failed.
 
 Outputs:
-  docs/branding/BriteTest_*.png  (from docs/branding/*.svg)
+  docs/branding/*.png      (from docs/branding/*.svg when using *[.svg])
+  docs/branding/<name>.png (from docs/branding/<name>.svg)
+
+Examples:
+  genpngs "*.svg"
+  genpngs briteTest
+  genpngs briteTest.svg
+  genpngs -d "*.svg"
+  genpngs -d briteTest
 EOF
 }
 
-if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
-  usage
-  exit 0
-fi
+# Summary of argument handling and execution behavior:
+# - One positional argument is required: either *[.svg] or <name>[.svg].
+# - *.svg (or *) means process all SVGs under docs/branding.
+# - <name> accepts an optional .svg suffix and resolves to docs/branding/<name>.svg.
+# - -d prints planned PNG outputs without invoking rsvg-convert.
 
-if [[ $# -ne 0 ]]; then
-  echo "Error: no positional arguments are supported." >&2
-  usage >&2
-  exit 1
-fi
+target_svg=""
+generate_all=0
+dry_run=0
+declare -a svg_files=()
 
-if ! command -v rsvg-convert >/dev/null 2>&1; then
-  echo "Error: missing required command: rsvg-convert" >&2
-  exit 1
-fi
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help)
+        usage
+        exit "$EXIT_SUCCESS"
+        ;;
+      -d)
+        dry_run=1
+        ;;
+      -*)
+        error_exit "$EXIT_INVALID_ARGUMENT" "unknown option: $1"
+        ;;
+      *)
+        if [[ -n "$target_svg" ]]; then
+          error_exit "$EXIT_INVALID_ARGUMENT" "exactly one argument is required"
+        fi
+        target_svg="$1"
+        ;;
+    esac
+    shift
+  done
 
-mapfile -t svg_files < <(find "$branding_dir" -maxdepth 1 -type f -name '*.svg' | sort)
+  if [[ -z "$target_svg" ]]; then
+    error_exit "$EXIT_INVALID_ARGUMENT" "exactly one argument is required"
+  fi
 
-if [[ ${#svg_files[@]} -eq 0 ]]; then
-  echo "Error: no docs/branding/*.svg files found." >&2
-  exit 1
-fi
+  if [[ "$target_svg" == */* ]]; then
+    error_exit "$EXIT_INVALID_ARGUMENT" "expected a file name in docs/branding, not a path: $target_svg"
+  fi
 
-for src in "${svg_files[@]}"; do
-  dst="${src%.svg}.png"
-  rsvg-convert "$src" -o "$dst"
-done
+  if [[ "$target_svg" == "*" || "$target_svg" == "*.svg" ]]; then
+    generate_all=1
+  elif [[ "$target_svg" != *.svg ]]; then
+    target_svg="${target_svg}.svg"
+  fi
+}
 
-echo "Generated all branding PNGs in $branding_dir"
+ensure_dependency() {
+  if ! command -v rsvg-convert >/dev/null 2>&1; then
+    error_exit "$EXIT_MISSING_DEPENDENCY" "missing required command: rsvg-convert"
+  fi
+}
+
+collect_svg_files() {
+  local src
+
+  if [[ "$generate_all" -eq 0 ]]; then
+    src="$branding_dir/$target_svg"
+    if [[ ! -f "$src" ]]; then
+      error_exit "$EXIT_SVG_NOT_FOUND" "SVG not found in docs/branding: $target_svg"
+    fi
+    svg_files=("$src")
+  else
+    mapfile -t svg_files < <(find "$branding_dir" -maxdepth 1 -type f -name '*.svg' | sort)
+  fi
+
+  if [[ ${#svg_files[@]} -eq 0 ]]; then
+    error_exit "$EXIT_NO_SVGS_FOUND" "no docs/branding/*.svg files found for wildcard input (*[.svg])"
+  fi
+}
+
+generate_pngs() {
+  local src
+  local dst
+
+  for src in "${svg_files[@]}"; do
+    dst="${src%.svg}.png"
+    if [[ "$dry_run" -eq 1 ]]; then
+      echo "[DRY RUN] Would generate ${dst#${repo_root}/} from ${src#${repo_root}/}"
+      continue
+    fi
+
+    if ! rsvg-convert "$src" -o "$dst"; then
+      error_exit "$EXIT_COMMAND_FAILED" "failed to generate ${dst#${repo_root}/} from ${src#${repo_root}/}"
+    fi
+  done
+}
+
+print_summary() {
+  if [[ "$generate_all" -eq 0 ]]; then
+    if [[ "$dry_run" -eq 0 ]]; then
+      echo "Generated docs/branding/${target_svg%.svg}.png from docs/branding/$target_svg"
+    fi
+  else
+    if [[ "$dry_run" -eq 1 ]]; then
+      echo "[DRY RUN] Would generate ${#svg_files[@]} PNG file(s) in $branding_dir"
+    else
+      echo "Generated ${#svg_files[@]} PNG file(s) in $branding_dir"
+    fi
+  fi
+}
+
+parse_args "$@"
+ensure_dependency
+collect_svg_files
+generate_pngs
+print_summary

@@ -11,6 +11,13 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Runs the legacy end-to-end docs generation flow maintained for
+#   compatibility.
+# - Converts markdown sources through the historical PDF/DOCX pipeline.
+# - Preserves previous behavior for environments still depending on legacy
+#   tooling.
+
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

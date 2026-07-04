@@ -8,6 +8,12 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Summary of script behavior:
+# - Stages and commits repository changes with workflow-aware validation.
+# - Pushes the commit and records commit metadata to history logs when
+#   configured.
+# - Checks branch context and clean/dirty states before commit operations.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
