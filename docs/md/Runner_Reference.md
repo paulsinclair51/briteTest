@@ -1,4 +1,4 @@
-![Runner Reference](../branding/Runner_Reference.png)
+![Runner Reference](/docs/branding/Runner_Reference.png)
 
 This document provides a reference to the Runner API. It includes
 types, structs, unions, enums, macros, and functions. Additionally, it

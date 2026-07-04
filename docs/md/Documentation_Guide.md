@@ -1,4 +1,4 @@
-![Documentation Guide](../branding/Documentation_Guide.png)
+![Documentation Guide](/docs/branding/Documentation_Guide.png)
 
 This document is a guide to the briteTest documentation and
 repository layout.

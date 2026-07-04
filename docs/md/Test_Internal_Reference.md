@@ -1,4 +1,4 @@
-![Test Internal Reference](../branding/Test_Internal_Reference.png)
+![Test Internal Reference](/docs/branding/Test_Internal_Reference.png)
 
 This is the internal reference.
 

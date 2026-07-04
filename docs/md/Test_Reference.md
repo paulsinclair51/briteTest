@@ -1,4 +1,4 @@
-![Test Reference](../branding/Test_Reference.png)
+![Test Reference](/docs/branding/Test_Reference.png)
 
 This document summarizes the public Test API declared in `include/testapi.h`.
 It focuses on the helper-specific return conventions and the option structs used by the
