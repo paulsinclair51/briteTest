@@ -91,7 +91,7 @@ The  documentation consists of documents for:
 Document types:
 
 - **README**: 
-  - In root, link to the /docs/md/briteTest_Guide,md file,
+  - In root, link to the /docs/md/briteTest_Guide,md file.
   - In a subdirectory of root, a directory guide.
 
 - **Guide**: Usage information.
