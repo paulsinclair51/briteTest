@@ -412,7 +412,7 @@ _No terms currently defined._
 ### --S--
 
 - **semantic versioning**: A versioning scheme for artifacts. For
-  example, `v<M>.<m>.<p>` where <M>, <m>, and <p>
+  example, `v<M>.<m>.<p>` where `<M>`, `<m>`, and `<p>`
   are one or two digits and M indicates the major release, m
   indicates the minor release, and p indicates the patch version.
 - **shell**: A command-line interface that allows a user or script to
