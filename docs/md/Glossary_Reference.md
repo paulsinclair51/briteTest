@@ -43,7 +43,7 @@ quick access to the definitions of terms or to browse
 through the terms.
 
 For a list of other documents and the repository layout, see
-the Documentation Guide (`Documentation_Guide.md`).
+`/docs/md/Documentation_Guide.md`.
 
 A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
