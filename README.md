@@ -1,1 +1,1 @@
-docs/md/briteTest.md
+docs/md/Guide.md
