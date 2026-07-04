@@ -42,6 +42,10 @@ SOFTWARE.
 
 ## Preface
 
+This document is intended for user and contributors who need guidance on using
+briteTest including concepts and a quick start example. This also serves as the
+README.md for briteTest.
+
 briteTest provides a Runner API and a Test API, each implemented with a single
 .h / .c pair with no external dependencies and requiring only a POSIX.1‑2001
 environment and a C99‑compliant compiler.
