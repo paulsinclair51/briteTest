@@ -18,10 +18,10 @@ See `README.md` in the root directory for an introduction to the project.
 - **Documentation_Guide.md**: Index of documents and the project
   repository layout.
 
-- **Guide.md**: an introduction to the project. `README.md` in
-  the root directory is a link to this file.
-
 - **Glossary_Reference.md**: Glossary of project terms and testing terms.
+
+- **Guide.md**: briteTest concepts and auick start example. `README.md` in
+  the root directory is a link to this file.
 
 - **Runner_Guide.md**: Runner API concepts, usage, and examples.
 
