@@ -110,7 +110,7 @@ refer to the Runner or Test API Reference document for information.
   structs, enums, macros, and functions that provide a well-defined
   service. For example, the briteTest Runner API and the briteTest Test
   API.
-- **approver***: A person listed in `;config/contributors.md` as an approver.
+- **approver***: A person listed in `/config/contributors.md` as an approver.
   Note that an approver is also a contributor and a reviewer.
   An approver may review and approve changes to briteTest. An approver
   must follow the guidelines in `/docs/Contributor_Guide.md`.
