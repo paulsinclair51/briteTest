@@ -41,7 +41,7 @@ Checks include:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - Writes a validation report to reports/directory_guides-report-<datetime>.md.
+  - Writes a validation report to reports/directory_guides-<datetime>.md.
   - Removes previous reports when a new one is successfully written.
 
 Logging:
@@ -93,7 +93,7 @@ write_run_log_on_exit() {
 
   # Remove old reports if new one was written successfully
   if [[ -f "$RUN_LOG_FILE" ]]; then
-    for old_report in "$repo_root"/reports/directory_guides-report-*.md; do
+    for old_report in "$repo_root"/reports/directory_guides-*.md; do
       [[ "$old_report" == "$RUN_LOG_FILE" ]] && continue
       [[ -e "$old_report" ]] || continue
       rm -f "$old_report"
@@ -127,7 +127,7 @@ done
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 
-RUN_LOG_FILE="${repo_root}/reports/directory_guides-report-${RUN_TS_FILE}.md"
+RUN_LOG_FILE="${repo_root}/reports/directory_guides-${RUN_TS_FILE}.md"
 trap write_run_log_on_exit EXIT
 setup_output_capture
 

@@ -10,13 +10,13 @@ See `/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **docs-report-<datetime>.md**: Validation report from `scripts/bin/ckdocs`,
+- **docs-<datetime>.md**: Validation report from `scripts/bin/ckdocs`,
 	where `<datetime>` has the form `YYYYMMDD-HHMMSS`.
 
-- **versions-report-<datetime>.md**: Validation report from `scripts/bin/ckversions`,
+- **versions-<datetime>.md**: Validation report from `scripts/bin/ckversions`,
 	where `<datetime>` has the form `YYYYMMDD-HHMMSS`.
 
-- **directory_guides-report-<datetime>.md**: Validation report from
+- **directory_guides-<datetime>.md**: Validation report from
 	`scripts/bin/ckdirectory_guides`, where `<datetime>` has the form
 	`YYYYMMDD-HHMMSS`.
 
