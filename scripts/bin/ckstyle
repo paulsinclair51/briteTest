@@ -42,7 +42,7 @@ Directory Guide Checks:
   - README.md listed last in file entries
   
 Versioning Checks:
-  - Versioned filed all specify the same major and minor version
+  - Versioned files all specify the same major and minor version
     and, if the branch is named for a version, that version has the same
     major and minor version.
   
