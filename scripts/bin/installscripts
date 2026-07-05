@@ -21,7 +21,7 @@ This script:
   - Adds /scripts/bin/ to PATH in ~/.bashrc if not already present.
   - Sources ~/.bashrc to apply changes to current session.
 
-After running, scripts in /scipts/bib/ will be:
+After running, scripts in /scripts/bin/ will be:
   - Executable by the user.
   - Available by name in the shell (e.g., ckbranch -h).
   - Persistent across new shell sessions.
@@ -35,7 +35,7 @@ Examples:
   bash /scripts/bin/installscripts
 
   # Show help
-  bash /scripts/bin/installscripts -h | --help
+  bash /scripts/bin/installscripts -h
 
 
 Outputs:
