@@ -286,7 +286,7 @@ if [[ -n "$BRANCHES_TO_CHECK" ]]; then
   while IFS= read -r branch; do
     if [[ -n "$branch" ]]; then
       _is_current=false
-      [[ "$branch" == "$ORIGINAL_BRANCH" && -z "$BRANCH_PATTERN" ]] && _is_current=true
+      [[ "$branch" == "$ORIGINAL_BRANCH" ]] && _is_current=true
       check_branch_status "$branch" "$OUTPUT_FILE" "$_is_current" || true
     fi
   done <<< "$BRANCHES_TO_CHECK"
