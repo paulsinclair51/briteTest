@@ -181,8 +181,13 @@ cleanup_old_reports() {
 check_branch_status() {
   local branch="$1"
   local report_file="$2"
+  local is_current="${3:-false}"
 
-  bt_info "Checking branch: $branch"
+  if [[ "$is_current" == true ]]; then
+    bt_info "Checking current branch: $branch"
+  else
+    bt_info "Checking branch: $branch"
+  fi
 
   # Attempt checkout; on failure write an error entry and continue
   if ! git checkout "$branch" >/dev/null 2>&1; then
@@ -251,8 +256,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-bt_info "Checking branch status..."
-
 # Validate reports directory and set output path
 if [[ ! -d "$repo_root/reports" ]]; then
   bt_error_exit 3 "Reports directory not found: $repo_root/reports"
@@ -266,7 +269,6 @@ ORIGINAL_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine 
 if [[ -z "$BRANCH_PATTERN" ]]; then
   # Check current branch only
   BRANCHES_TO_CHECK="$ORIGINAL_BRANCH"
-  bt_info "Checking current branch: $ORIGINAL_BRANCH"
 else
   # Check branches matching pattern
   BRANCHES_TO_CHECK=$(get_branches_matching_pattern "$BRANCH_PATTERN")
@@ -286,7 +288,9 @@ generate_report_header
 if [[ -n "$BRANCHES_TO_CHECK" ]]; then
   while IFS= read -r branch; do
     if [[ -n "$branch" ]]; then
-      check_branch_status "$branch" "$OUTPUT_FILE" || true
+      _is_current=false
+      [[ "$branch" == "$ORIGINAL_BRANCH" && -z "$BRANCH_PATTERN" ]] && _is_current=true
+      check_branch_status "$branch" "$OUTPUT_FILE" "$_is_current" || true
     fi
   done <<< "$BRANCHES_TO_CHECK"
 fi
@@ -314,7 +318,6 @@ if [[ "$VERBOSE" == true ]]; then
   sed 's/^/  /' "$OUTPUT_FILE"
 fi
 
-bt_success "Done"
 if [[ "$BRANCH_ERRORS" -gt 0 ]]; then
   exit 2
 fi
