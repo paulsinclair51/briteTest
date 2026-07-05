@@ -109,13 +109,17 @@ readonly EXIT_OK=0
 readonly EXIT_VALIDATION=1
 readonly EXIT_USAGE=2
 
+# Check for help first — if specified, show usage and exit, ignoring all other arguments
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit "$EXIT_OK"
+  fi
+done
 
+# Parse remaining arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -h|--help)
-      usage
-      exit "$EXIT_OK"
-      ;;
     *)
       echo "ERROR: unknown argument: $1" >&2
       usage >&2
