@@ -297,6 +297,8 @@ EOF
   [[ "$branch_type" == *remote* && "$branch_type" != *local* ]] && tags+=("[remote]") || tags+=("[local]")
   [[ "$is_current" == true ]] && tags+=("[current]")
   [[ "$repo_status" == "dirty" ]] && tags+=("[dirty]")
+  [[ "$staged_count" =~ ^[0-9]+$ && "$staged_count" -gt 0 ]] && tags+=("[staged]")
+  [[ "$unstaged_count" =~ ^[0-9]+$ && "$unstaged_count" -gt 0 ]] && tags+=("[unstaged]")
   [[ "$pr_status" != "No PR" && "$pr_status" != "N/A" ]] && tags+=("[PR: $pr_status]")
   printf '%s %s\n' "$branch" "${tags[*]}"
 
