@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# ckstyle - Validate canonical style across repository.
+# ckstyle - Validate consistent style in repository files.
 #
 # See usage below for details, or run: ckstyle -h
 #
@@ -14,7 +14,8 @@ Usage:
   ckstyle [OPTIONS]
   ckstyle -h | --help
 
-Validate canonical style across repository for the current branch.
+Validate style across repository for the current branch.
+See /docs/md/Contributor_Guide.md for guidelines and requirements.
 
 This script performs comprehensive style validation including:
   - Document canonical form in docs/md/
@@ -43,7 +44,8 @@ Directory Guide Checks:
   
 Versioning Checks:
   - Versioned files all specify the same major and minor version
-    and, if the branch is named for a version, that version has the same
+    and, if the current branch is named for a version, that version
+    has the same
     major and minor version.
   
 Options:
@@ -51,23 +53,24 @@ Options:
               and arguments are ignored).
   -d          Check documents.
   -r          Check directory guide README.md files.
-  -r          Check directory guide README.md files.
-  -v           Check versioned files and branch name (if versioed) for
-               versioning consistency.
-               
+  -v          Check versioned files and branch name (if versioed) for
+              versioning consistency.
 
-  If neither -d nor -r is specified, same as specifying both -d and -r
-  (i.e., both documents and directory guides are checked).
-
+  If no checks are specified, same as specifying all checks; otherwise,
+  only the specified checks are done.
+  
 Examples:
-  # Check both documents and directory guides
+  # Check all
   ckstyle
 
   # Check only documents
   ckstyle -d
 
-  # Check only directory guides
+  # Check only README.md directory guides
   ckstyle -r
+  
+  # Check doucuments and versions
+  ckstyle -d -v
 
   # Show help
   ckstyle -h
@@ -86,9 +89,15 @@ EOF
 }
 
 # High-Level Flow:
-# - Validates document structure, front matter, and directory guides
-# - Checks document-to-SVG correspondence and directory README requirements
-# - Reports all validation failures with detailed diagnostics
+# - Determines current branch and extracts version from branch name if
+#.  it has one.
+# - (-d) Checks document structure and front matter.
+# - (-r) Checks directory README.md guide structure.
+# - (-d) Checks document-to-SVG correspondence.
+# - (-c) Checks versions of versioned files and, if the currenf branch name
+#        contains a version (with or without leading v), the branch version
+#.       for compliance with versioning guidelines.
+# - Reports all validation failures with detailed diagnostics.
 
 set -euo pipefail
 
