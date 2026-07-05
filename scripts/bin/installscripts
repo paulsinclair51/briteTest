@@ -2,7 +2,7 @@
 
 # installscripts - Make all scripts in /scripts/bin/ executable and add to PATH.
 #
-# See usage below for details, or run: installscripts -h
+# See usage below for details, or run: bash /scripts/bin/installscripts -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,20 +11,20 @@
 usage() {
   cat <<'EOF'
 Usage:
-  installscripts
-  installscripts -h | --help
+  bash /scripts/bin/installscripts
+  bash /scripts/bin/installscripts -h | --help
 
 Make all scripts in /scripts/bin/ executable and add /scripts/bin/ to PATH.
 
 This script:
-  - Makes all scripts in /scripts/bin/ executable (chmod +x)
-  - Adds /scripts/bin/ to PATH in ~/.bashrc if not already present
-  - Sources ~/.bashrc to apply changes to current session
+  - Makes all scripts in /scripts/bin/ executable (chmod +x).
+  - Adds /scripts/bin/ to PATH in ~/.bashrc if not already present.
+  - Sources ~/.bashrc to apply changes to current session.
 
-After running, scripts will be:
-  - Executable by the user
-  - Available by name in the shell (e.g., ckbranch -h)
-  - Persistent across new shell sessions
+After running, scripts in /scipts/bib/ will be:
+  - Executable by the user.
+  - Available by name in the shell (e.g., ckbranch -h).
+  - Persistent across new shell sessions.
 
 Options:
   -h, --help  Output this help to stdout and exit (other options
@@ -32,10 +32,10 @@ Options:
 
 Examples:
   # Install scripts and add to PATH
-  installscripts
+  bash /scripts/bin/installscripts
 
   # Show help
-  installscripts -h
+  bash /scripts/bin/installscripts -h | --help
 
 
 Outputs:
