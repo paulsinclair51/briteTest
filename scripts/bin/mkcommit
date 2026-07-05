@@ -49,7 +49,8 @@ Push Options:
                      Only applies with -p/--push
 
 Options:
-  -h, --help         Output this help to stdout and exit.
+  -h, --help         Output this help to stdout and exit (other options
+                     and arguments are ignored).
 
 Examples:
   # Commit all changes locally only

@@ -34,7 +34,8 @@ Features:
   - Supports stopping on first failure or continuing
 
 Options:
-  -h, --help           Output this help to stdout and exit.
+  -h, --help           Output this help to stdout and exit (other options
+                       and arguments are ignored).
   -v, --verbose        Show detailed test output and logs
   -c, --continue       Continue running all tests even if some fail
   -d, --docs           Regenerate and validate documentation

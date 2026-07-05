@@ -31,7 +31,8 @@ Features:
   - Updates logs/remote_branch_history.md with undo record
 
 Options:
-  -h, --help           Output this help to stdout and exit.
+  -h, --help           Output this help to stdout and exit (other options
+                       and arguments are ignored).
   -f, --force          Skip confirmation prompt
   -v, --verbose        Show detailed information
   -m, --message MSG    Custom message for undo operation

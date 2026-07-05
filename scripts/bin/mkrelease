@@ -33,7 +33,8 @@ Features:
   - Pre-release validation
 
 Options:
-  -h, --help           Output this help to stdout and exit.
+  -h, --help           Output this help to stdout and exit (other options
+                       and arguments are ignored).
   -v, --verbose        Show detailed information
 
 Examples:

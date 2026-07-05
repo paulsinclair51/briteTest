@@ -21,7 +21,8 @@ Arguments:
                      If not specified, lists all branches grouped by branch group
 
 Options:
-  -h, --help         Output this help to stdout and exit.
+  -h, --help         Output this help to stdout and exit (other options
+                     and arguments are ignored).
   -r                 Show remote branches instead of local branches.
   -a                 Show both local and remote branches (with source labels).
   -s                 Show summary view: counts instead of full branch lists.

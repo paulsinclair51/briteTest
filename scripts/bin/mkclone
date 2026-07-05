@@ -32,7 +32,8 @@ Comment Options (mutually exclusive):
                      Note: No quotes needed, captures all remaining arguments
 
 Options:
-  -h, --help         Output this help to stdout and exit.
+  -h, --help         Output this help to stdout and exit (other options
+                     and arguments are ignored).
   -m, --message MSG  Add comment message (GitHub style, requires quotes if spaces)
   -- TEXT            Add comment (Unix style, everything after -- is the comment)
 

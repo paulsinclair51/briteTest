@@ -36,7 +36,8 @@ Features:
   - Optional force mode to skip confirmations
 
 Options:
-  -h, --help         Output this help to stdout and exit.
+  -h, --help         Output this help to stdout and exit (other options
+                     and arguments are ignored).
   -f, --force        Skip all confirmations (auto-merge and auto-push)
   -v, --verbose      Show detailed merge information
   -m, --message MSG  Custom merge commit message (GitHub style)

@@ -27,7 +27,8 @@ Arguments:
   that version instead.
 
 Options:
-  -h, --help        Output this help to stdout and exit.
+  -h, --help        Output this help to stdout and exit (other options
+                    and arguments are ignored).
   -v                Validate only without performing rebase (dry-run).
   -f, --force       Force rebase with --force-with-lease push to remote.
   -m "MSG"          Attach a comment/reason to the operation
