@@ -12,10 +12,6 @@ See `/README.md` for an introduction to briteTest.
 
 - **brand_history.md**: log of the current and previous brands and taglines.
 
-- **ckdirectory_guides-log-<datetime>.md**: latest output from
-	`/scripts/bin/ckdirectory_guides`, where `<datetime>` has the form
-	`YYYYMMDD-HHMMSS`. Old outputs are deleted.
-
 - **local_branch_history.md**: log of local branch operations.
 
 - **remote_branch_history.md**: log of remote branch operations.
