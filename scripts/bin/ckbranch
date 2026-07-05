@@ -37,6 +37,8 @@ Features:
 Options:
   -h, --help      Output this help to stdout and exit.
   -v, --verbose   Show detailed information to stdout.
+  -l, --local     Include only local branches (default: include both).
+  -r, --remote    Include only remote branches (default: include both).
 
 Examples:
   # Check current branch
@@ -47,6 +49,12 @@ Examples:
 
   # Check branches matching pattern
   ckbranch "*auth*"
+
+  # Check only local branches
+  ckbranch "*" -l
+
+  # Check only remote branches
+  ckbranch "*" -r
 
   # Verbose output
   ckbranch -v
@@ -93,6 +101,8 @@ OUTPUT_FILE=""
 BRANCH_PATTERN=""
 VERBOSE=false
 BRANCH_ERRORS=0
+INCLUDE_LOCAL=true
+INCLUDE_REMOTE=true
 
 get_branches_matching_pattern() {
   local pattern="$1"
@@ -100,28 +110,46 @@ get_branches_matching_pattern() {
   # Convert glob pattern to regex
   local regex="${pattern//\*/.*}"
   
-  # Get all branches and filter by pattern, trimming leading whitespace
-  git branch -r | sed 's|origin/||' | sed 's/^[[:space:]]*//' | grep -v HEAD | grep "^$regex$" | sort || echo ""
+  # Get all branches (local and remote) and filter by pattern, trimming leading whitespace
+  local local_branches remote_branches result
+  local_branches=$(git branch --list | sed 's/^[[:space:]]*//' | sed 's/^\* //' | grep "^$regex$" | sort || echo "")
+  remote_branches=$(git branch -r | sed 's|origin/||' | sed 's/^[[:space:]]*//' | grep -v HEAD | grep "^$regex$" | while IFS= read -r branch; do
+    [[ -n "$branch" ]] || continue
+    # Only include if not local
+    if ! git branch --list "$branch" >/dev/null 2>&1; then
+      echo "$branch"
+    fi
+  done | sort || echo "")
+  
+  if [[ -n "$local_branches" && -n "$remote_branches" ]]; then
+    result="$(echo -e "$local_branches\n$remote_branches" | sort -u)"
+  elif [[ -n "$local_branches" ]]; then
+    result="$local_branches"
+  elif [[ -n "$remote_branches" ]]; then
+    result="$remote_branches"
+  else
+    result=""
+  fi
+  
+  echo "$result"
+}
+
+get_local_branches() {
+  local pattern="$1"
+  local regex="${pattern//\*/.*}"
+  git branch --list | sed 's/^[[:space:]]*//' | sed 's/^\* //' | grep "^$regex$" | sort || echo ""
 }
 
 get_remote_only_branches() {
   local pattern="$1"
-  
-  # Convert glob pattern to regex
   local regex="${pattern//\*/.*}"
-  
-  local all_branches
-  all_branches=$(get_branches_matching_pattern "$pattern")
-  
-  # Filter to only remote-only branches (exist on remote but not locally)
-  echo "$all_branches" | while IFS= read -r branch; do
+  git branch -r | sed 's|origin/||' | sed 's/^[[:space:]]*//' | grep -v HEAD | grep "^$regex$" | while IFS= read -r branch; do
     [[ -n "$branch" ]] || continue
+    # Only include if not local
     if ! git branch --list "$branch" >/dev/null 2>&1; then
-      if git branch -r --list "origin/$branch" >/dev/null 2>&1; then
-        echo "$branch"
-      fi
+      echo "$branch"
     fi
-  done || echo ""
+  done | sort || echo ""
 }
 
 check_repo_status() {
@@ -325,6 +353,16 @@ while [[ $# -gt 0 ]]; do
       VERBOSE=true
       shift
       ;;
+    -l | --local)
+      INCLUDE_LOCAL=true
+      INCLUDE_REMOTE=false
+      shift
+      ;;
+    -r | --remote)
+      INCLUDE_LOCAL=false
+      INCLUDE_REMOTE=true
+      shift
+      ;;
     -*)
       bt_error_exit 1 "Unknown option: $1"
       ;;
@@ -348,11 +386,31 @@ ORIGINAL_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine 
 if [[ -z "$BRANCH_PATTERN" ]]; then
   # Check current branch only
   BRANCHES_TO_CHECK="$ORIGINAL_BRANCH"
+  REMOTE_ONLY=""
 else
   # Check branches matching pattern
-  BRANCHES_TO_CHECK=$(get_branches_matching_pattern "$BRANCH_PATTERN")
+  local_branches=$(get_local_branches "$BRANCH_PATTERN")
+  remote_branches=$(get_remote_only_branches "$BRANCH_PATTERN")
   
-  if [[ -z "$BRANCHES_TO_CHECK" ]]; then
+  # Filter based on INCLUDE_LOCAL and INCLUDE_REMOTE flags
+  if [[ "$INCLUDE_LOCAL" == true ]]; then
+    BRANCHES_TO_CHECK="$local_branches"
+  else
+    BRANCHES_TO_CHECK=""
+  fi
+  
+  if [[ "$INCLUDE_REMOTE" == true ]]; then
+    if [[ -n "$BRANCHES_TO_CHECK" && -n "$remote_branches" ]]; then
+      BRANCHES_TO_CHECK="$(echo -e "$BRANCHES_TO_CHECK\n$remote_branches" | sort -u)"
+    elif [[ -n "$remote_branches" ]]; then
+      BRANCHES_TO_CHECK="$remote_branches"
+    fi
+    REMOTE_ONLY="$remote_branches"
+  else
+    REMOTE_ONLY=""
+  fi
+  
+  if [[ -z "$BRANCHES_TO_CHECK" && -z "$REMOTE_ONLY" ]]; then
     bt_warn "No branches found matching pattern: $BRANCH_PATTERN"
   fi
 fi
@@ -360,20 +418,28 @@ fi
 # Generate report header
 generate_report_header
 
-# Check each branch
-if [[ -n "$BRANCHES_TO_CHECK" ]]; then
-  while IFS= read -r branch; do
-    if [[ -n "$branch" ]]; then
-      _is_current=false
-      [[ "$branch" == "$ORIGINAL_BRANCH" ]] && _is_current=true
-      check_branch_status "$branch" "$OUTPUT_FILE" "$_is_current" || true
-    fi
-  done <<< "$BRANCHES_TO_CHECK"
+# Check local branches
+if [[ "$INCLUDE_LOCAL" == true ]]; then
+  local_to_check=""
+  if [[ -z "$BRANCH_PATTERN" ]]; then
+    local_to_check="$BRANCHES_TO_CHECK"
+  else
+    local_to_check=$(get_local_branches "$BRANCH_PATTERN")
+  fi
+  
+  if [[ -n "$local_to_check" ]]; then
+    while IFS= read -r branch; do
+      if [[ -n "$branch" ]]; then
+        _is_current=false
+        [[ "$branch" == "$ORIGINAL_BRANCH" ]] && _is_current=true
+        check_branch_status "$branch" "$OUTPUT_FILE" "$_is_current" || true
+      fi
+    done <<< "$local_to_check"
+  fi
 fi
 
-# Check remote-only branches if pattern provided
-if [[ -n "$BRANCH_PATTERN" ]]; then
-  REMOTE_ONLY=$(get_remote_only_branches "$BRANCH_PATTERN")
+# Check remote-only branches if enabled
+if [[ "$INCLUDE_REMOTE" == true && -n "$BRANCH_PATTERN" ]]; then
   if [[ -n "$REMOTE_ONLY" ]]; then
     while IFS= read -r branch; do
       if [[ -n "$branch" ]]; then
