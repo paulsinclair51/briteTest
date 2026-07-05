@@ -1,6 +1,6 @@
 # /scripts/bin/
 
-Directory containing contributor command scripts.
+Directory containing contributor scripts.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
