@@ -1,12 +1,12 @@
-# scripts/helpers/
+# /scripts/helpers/
 
 Directory containing helper modules used by scripts in `scripts/bin/`.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `LICENSE` in the root directory.
+For license details, see `/LICENSE`.
 
-See `README.md` in the root directory for an introduction to the project.
+See `/README.md` for an introduction to briteTest.
 
 ## Files
 
@@ -26,6 +26,8 @@ See `README.md` in the root directory for an introduction to the project.
 - **replace_phrases.sh**: Shared Bash helper used by
   `scripts/bin/replacephrases` to apply configured phrase replacements
   in markdown files.
+
+- **README.md**: This directory guide.
 
 ## Subdirectories
 

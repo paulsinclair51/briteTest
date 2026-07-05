@@ -9,47 +9,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Reads pending/previous brand values from logs/brand_history.md and validates
-#   conflicts.
-# - Applies brand, initials, and tagline replacements to branding SVGs and
-#   repository text files.
-# - Regenerates PNG assets, records run logs, and marks pending history rows
-#   complete.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-CONFIG_FILE="${REPO_ROOT}/logs/brand_history.md"
-BRANDING_DIR="${REPO_ROOT}/docs/branding"
-GENPNGS_SCRIPT="${SCRIPT_DIR}/genpngs"
-
-DRY_RUN=0
-
-RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
-RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
-RUN_OUTPUT_FILE="$(mktemp)"
-RUN_LOG_FILE=""
-
-# Exit code definitions
-EXIT_SUCCESS=0
-EXIT_NO_PENDING_ROW=1
-EXIT_INVALID_ARGUMENT=2
-EXIT_CONFIG_NOT_FOUND=3
-EXIT_CONFIG_EMPTY=4
-EXIT_BRANDING_DIR_MISSING=5
-EXIT_MISSING_COMPLETED_ROW=6
-EXIT_MISSING_GENPNGS=7
-EXIT_COMMAND_FAILED=8
-EXIT_PENDING_MATCHES_COMPLETED=9
-EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_INITIALS=10
-EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_BRAND=11
-EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_TAGLINE=12
-EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_BRAND=13
-EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_TAGLINE=14
-EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_INITIALS=15
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -63,7 +22,7 @@ Options:
   -d          Perform a dry run without making any changes.
   -h, --help  Output this help to stdout and exit.
 
-Output (stdout):
+Outputs:
   - Loaded previous/pending brand values.
   - Per-file replacement details for SVG and text files when matches exist.
   - Section summaries with file/replacement counts.
@@ -109,6 +68,48 @@ The script will:
   - Mark the pending row Completed with the current date and time.
 EOF
 }
+
+# High-Level Flow:
+# - Reads pending/previous brand values from logs/brand_history.md and validates
+#   conflicts.
+# - Applies brand, initials, and tagline replacements to branding SVGs and
+#   repository text files.
+# - Regenerates PNG assets, records run logs, and marks pending history rows
+#   complete.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+CONFIG_FILE="${REPO_ROOT}/logs/brand_history.md"
+BRANDING_DIR="${REPO_ROOT}/docs/branding"
+GENPNGS_SCRIPT="${SCRIPT_DIR}/genpngs"
+
+DRY_RUN=0
+
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+RUN_OUTPUT_FILE="$(mktemp)"
+RUN_LOG_FILE=""
+
+# Exit code definitions
+EXIT_SUCCESS=0
+EXIT_NO_PENDING_ROW=1
+EXIT_INVALID_ARGUMENT=2
+EXIT_CONFIG_NOT_FOUND=3
+EXIT_CONFIG_EMPTY=4
+EXIT_BRANDING_DIR_MISSING=5
+EXIT_MISSING_COMPLETED_ROW=6
+EXIT_MISSING_GENPNGS=7
+EXIT_COMMAND_FAILED=8
+EXIT_PENDING_MATCHES_COMPLETED=9
+EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_INITIALS=10
+EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_BRAND=11
+EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_TAGLINE=12
+EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_BRAND=13
+EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_TAGLINE=14
+EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_INITIALS=15
+
 
 error_exit() {
     local message="$1"

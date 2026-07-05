@@ -8,29 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Merges the current branch into its base branch with pre-merge safety
-#   validations.
-# - Applies workflow policy checks and optional history logging around the merge
-#   action.
-# - Reports merge outcomes and next-step guidance.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Shared helpers
-# shellcheck source=helpers/common.sh
-source "$SCRIPT_DIR/../helpers/common.sh"
-# shellcheck source=helpers/git_helpers.sh
-source "$SCRIPT_DIR/../helpers/git_helpers.sh"
-# shellcheck source=helpers/github_helpers.sh
-source "$SCRIPT_DIR/../helpers/github_helpers.sh"
-
-# Default options
-CUSTOM_MESSAGE=""
-VERBOSE=false
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -70,6 +47,12 @@ Examples:
   # Merge with verbose output
   mkmerge -v
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   Success
   1   Argument or validation error
@@ -81,6 +64,30 @@ Exit codes:
   7   PR not found or invalid state
 EOF
 }
+
+# High-Level Flow:
+# - Merges the current branch into its base branch with pre-merge safety
+#   validations.
+# - Applies workflow policy checks and optional history logging around the merge
+#   action.
+# - Reports merge outcomes and next-step guidance.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/github_helpers.sh
+source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+
+# Default options
+CUSTOM_MESSAGE=""
+VERBOSE=false
+
 
 get_current_user() {
   git config user.name 2>/dev/null || bt_error_exit 2 "Failed to determine current user"

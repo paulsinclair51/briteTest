@@ -8,29 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Clones the configured repository URL into a default or user-specified
-#   target directory.
-# - Validates arguments, comment options, and target-path preconditions before
-#   cloning.
-# - Reports clone results and prints next-step workflow guidance.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Shared helpers
-# shellcheck source=helpers/common.sh
-source "$SCRIPT_DIR/../helpers/common.sh"
-
-# Repository configuration
-REPO_URL="https://github.com/paulsinclair51/BriteTest"
-REPO_NAME="BriteTest"
-
-# Default options
-COMMENT=""
-TARGET_DIR=""
-
 usage() {
   cat <<EOF
 Usage:
@@ -74,6 +51,12 @@ Examples:
   # With Unix-style comment
   mkclone work-repo -- Starting feature branch work
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   Success
   1   Argument error
@@ -81,6 +64,30 @@ Exit codes:
   3   Target directory already exists
 EOF
 }
+
+# High-Level Flow:
+# - Clones the configured repository URL into a default or user-specified
+#   target directory.
+# - Validates arguments, comment options, and target-path preconditions before
+#   cloning.
+# - Reports clone results and prints next-step workflow guidance.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+
+# Repository configuration
+REPO_URL="https://github.com/paulsinclair51/BriteTest"
+REPO_NAME="BriteTest"
+
+# Default options
+COMMENT=""
+TARGET_DIR=""
+
 
 # Parse options and arguments
 POSITIONAL_ARGS=()

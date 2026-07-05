@@ -9,12 +9,168 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Runs the documentation pipeline for markdown-to-PDF and PDF-to-DOCX
-#   generation.
-# - Invokes helper scripts/tools in sequence and propagates conversion failures.
-# - Writes updated docs/pdf and docs/docx outputs for repository
-#   documentation.
+
+usage() {
+  cat <<'EOF'
+Simple Usage:
+  gendocs
+
+Generates a .pdf file in repository root docs/pdf/ from each .md file
+(except README.md) in repository root docs/md/, and a .docx file in
+repository root docs/docx/ from each .pdf when the source .md file has
+changed since the last generation.
+
+When converting an .md file to a .pdf file, <details>/<summary> lines
+are skipped and not converted for the .pdf file.
+
+Complete Usage:
+  gendocs [<options>] [<document>[.md]] [<pdf_dir> <docx_dir>]
+  gendocs [<options>] -p [<document>[.md]] [<pdf_dir>]
+  gendocs [<options>] -d [<document>[.md|.pdf]] [<docx_dir>]
+  gendocs [-b <backend>] -t
+  gendocs -h | --help
+
+Generates .pdf files from .md source files, and .docx files directly from
+.md source files when possible, or from .pdf source files.
+
+By default, when the source is in repository root docs/md/, a document
+is regenerated only if the source Markdown has changed. Use the -f
+option to force regeneration.
+
+By default, when converting an .md file to a .pdf file,
+<details>/<summary> lines are skipped and not converted. Use the -c
+option to convert details/summary lines to a PDF-friendly form.
+
+<options>:
+  [-b <backend>] [-c] [-f] [-g] [-k] [-n] [-q] [-r] [-v]
+  [-i "<pattern>"]... [-x "<pattern>"]...
+
+Option values:
+  <backend>  <md-pdf>/<pdf-docx> where:
+               <md-pdf>: auto, all, pandoc, wkhtmltopdf, weasyprint
+               <pdf-docx>: auto, all, python, libreoffice
+             Default is 'auto/auto', which auto-detects the best
+             available backend for each conversion.
+             Use 'all' with -t to validate all md-pdf or pdf-docx
+             backends. 'all' is not valid unless -t is specified.
+  <pattern>  Bash glob pattern for relative paths:
+             - * or ** matches any characters, including '/'
+             - ? matches one character, including '/'
+             - [abc] matches one character from a set/range
+             - any other character matches itself
+             Note: this differs from common path-segment glob
+             expectations, where * and ? do not match '/'. Use -g to
+             enable * and ? not matching '/'.
+
+Options:
+  -b  Force conversion backend instead of auto-detecting.
+      Useful for diagnostics and testing.
+  -c  Convert details/summary lines to PDF-friendly form instead of
+      removing details/summary lines. Default is to remove them.
+  -d  Output only .docx files. If source is .md, a temporary .pdf
+      is generated for intermediate conversion and then discarded.
+  -f  Force regeneration even if the source is in docs/md/ and has
+      not changed since the last time its .pdf was generated.
+  -g  Use segment-style glob matching for -i/-x patterns:
+      * and ? do not match '/'; ** matches across '/'.
+  -h, --help  Output this help to stdout and exit.
+  -i  Include only files whose relative path matches "<pattern>".
+  -k  Keep directory structure under output directory (useful with -r).
+  -n  Show planned conversions without writing output files.
+  -p  Output only .pdf files. For validation, a temporary .docx is
+      generated from each .pdf and then discarded.
+  -q  Quiet mode: suppress informational messages to stdout.
+      Help and diagnostics are not affected.
+      There is no output to stdout in quiet mode when successful.
+  -r  When the source is a directory, include matching source files
+      in all subdirectories (except README.md files). Default is only
+      files directly in that directory.
+  -t  Tool check: report backends (see -b option) status and exit.
+      When -t is used, no options other than -b are allowed.
+  -v  Verbose mode: print backend diagnostics to stderr.
+  -x  Exclude files whose relative path matches "<pattern>".
+
+Arguments:
+  <document>[.md|.pdf]: Optional specification of source file(s):
+    - If not specified, default is repository root docs/md/*.md.
+    - Default extension is '.md' and '.pdf' is only allowed if option
+      '-d' is specified.
+    - If '.pdf' is specified, <source> is <document>.pdf; otherwise,
+      <source> is <document>.md
+    - <source> must be one of the following:
+      - <absolute-relative filepath> for an existing file.
+      - <absolute-relative directorypath/>*.md where
+        <absolute-relative directorypath/> contains one or more .md
+        files other than a README.md file. A README.md is excluded;
+        no .pdf or .docx file is generated for it.
+      - <absolute-relative directorypath/>*.pdf where
+        <absolute-relative directorypath/> contains one or more
+        '.pdf' files.
+      - <filename> with extension '.md' where docs/md/filename exists
+        or, if it doesn't exist, ./filename exists.
+      - <filename> with extension '.pdf' where docs/pdf/filename exists
+        or, if it doesn't exist, ./filename exists.
+      - *.md indicating all '.md' files under docs/md/ other than the
+        README.md file.
+      - *.pdf indicating all '.pdf' files under docs/pdf/.
+  <pdf_dir>:  Optional output directory for generated '.pdf' files.
+              Default is repository root docs/pdf/ if source files are
+              from docs/md/ and, otherwise, ./ (current directory).
+  <docx_dir>: Optional output directory for the generated '.docx' files.
+              Default is repository root docs/docx/ if source files are
+              from repository root docs/md/ or docs/pdf/ and,
+              otherwise, ./ (current directory).
+
+Notes:
+  - Change detection for a source '.md' in repository root docs/md/
+    uses the file name with line count, character count, and
+    SHA-256 fingerprint, and stores this metadata in
+    repository root docs/md/.md_metadata with one line per file.
+
+Exit Codes:
+  0   Success.
+  1   Usage error: general.
+  2   Usage error: invalid or incomplete option.
+  3   Usage error: invalid argument.
+  4   Usage error: invalid option combination/mode.
+  5   Input not found.
+  6   No source files to process.
+  100 Internal setup error: helper script missing.
+  110 Internal helper/toolchain check failed.
+  111 Internal helper failure: genpdf helper returned non-zero.
+  112 Internal helper failure: gendocx helper returned non-zero.
+  249 System/runtime call failure.
+
+Examples:
+  gendocs
+  gendocs -f
+  gendocs docs/md/briteTest.md
+  gendocs Documentation_Guide
+  gendocs -p docs/md
+  gendocs -d docs/pdf
+  gendocs -d docs/pdf/briteTest.pdf docs/docx
+  gendocs docs/md build/pdf build/docx
+  gendocs '*.md'
+  gendocs -d '*.pdf'
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
+EOF
+}
+
+# High-Level Flow:
+# - Parses CLI options, validates mode/backend constraints, and runs tool-check
+#   mode (-t) early when requested.
+# - Resolves and filters source files, then derives output paths with recursive
+#   and keep-structure behavior as needed.
+# - Converts Markdown to PDF and PDF to DOCX by invoking helper scripts/tools
+#   in sequence, propagating conversion failures.
+# - Uses metadata-based skip logic, writes updated docs/pdf and docs/docx
+#   outputs, persists metadata, and exits through a single status/exit-code
+#   path.
 
 set -Eeuo pipefail
 
@@ -344,157 +500,6 @@ convert_markdown_to_docx() {
     "$transformed_md" \
     -o "$target_docx"
 }
-
-usage() {
-  cat <<'EOF'
-Simple Usage:
-  gendocs
-
-Generates a .pdf file in repository root docs/pdf/ from each .md file
-(except README.md) in repository root docs/md/, and a .docx file in
-repository root docs/docx/ from each .pdf when the source .md file has
-changed since the last generation.
-
-When converting an .md file to a .pdf file, <details>/<summary> lines
-are skipped and not converted for the .pdf file.
-
-Complete Usage:
-  gendocs [<options>] [<document>[.md]] [<pdf_dir> <docx_dir>]
-  gendocs [<options>] -p [<document>[.md]] [<pdf_dir>]
-  gendocs [<options>] -d [<document>[.md|.pdf]] [<docx_dir>]
-  gendocs [-b <backend>] -t
-  gendocs -h | --help
-
-Generates .pdf files from .md source files, and .docx files directly from
-.md source files when possible, or from .pdf source files.
-
-By default, when the source is in repository root docs/md/, a document
-is regenerated only if the source Markdown has changed. Use the -f
-option to force regeneration.
-
-By default, when converting an .md file to a .pdf file,
-<details>/<summary> lines are skipped and not converted. Use the -c
-option to convert details/summary lines to a PDF-friendly form.
-
-<options>:
-  [-b <backend>] [-c] [-f] [-g] [-k] [-n] [-q] [-r] [-v]
-  [-i "<pattern>"]... [-x "<pattern>"]...
-
-Option values:
-  <backend>  <md-pdf>/<pdf-docx> where:
-               <md-pdf>: auto, all, pandoc, wkhtmltopdf, weasyprint
-               <pdf-docx>: auto, all, python, libreoffice
-             Default is 'auto/auto', which auto-detects the best
-             available backend for each conversion.
-             Use 'all' with -t to validate all md-pdf or pdf-docx
-             backends. 'all' is not valid unless -t is specified.
-  <pattern>  Bash glob pattern for relative paths:
-             - * or ** matches any characters, including '/'
-             - ? matches one character, including '/'
-             - [abc] matches one character from a set/range
-             - any other character matches itself
-             Note: this differs from common path-segment glob
-             expectations, where * and ? do not match '/'. Use -g to
-             enable * and ? not matching '/'.
-
-Options:
-  -b  Force conversion backend instead of auto-detecting.
-      Useful for diagnostics and testing.
-  -c  Convert details/summary lines to PDF-friendly form instead of
-      removing details/summary lines. Default is to remove them.
-  -d  Output only .docx files. If source is .md, a temporary .pdf
-      is generated for intermediate conversion and then discarded.
-  -f  Force regeneration even if the source is in docs/md/ and has
-      not changed since the last time its .pdf was generated.
-  -g  Use segment-style glob matching for -i/-x patterns:
-      * and ? do not match '/'; ** matches across '/'.
-  -h, --help  Output this help to stdout and exit.
-  -i  Include only files whose relative path matches "<pattern>".
-  -k  Keep directory structure under output directory (useful with -r).
-  -n  Show planned conversions without writing output files.
-  -p  Output only .pdf files. For validation, a temporary .docx is
-      generated from each .pdf and then discarded.
-  -q  Quiet mode: suppress informational messages to stdout.
-      Help and diagnostics are not affected.
-      There is no output to stdout in quiet mode when successful.
-  -r  When the source is a directory, include matching source files
-      in all subdirectories (except README.md files). Default is only
-      files directly in that directory.
-  -t  Tool check: report backends (see -b option) status and exit.
-      When -t is used, no options other than -b are allowed.
-  -v  Verbose mode: print backend diagnostics to stderr.
-  -x  Exclude files whose relative path matches "<pattern>".
-
-Arguments:
-  <document>[.md|.pdf]: Optional specification of source file(s):
-    - If not specified, default is repository root docs/md/*.md.
-    - Default extension is '.md' and '.pdf' is only allowed if option
-      '-d' is specified.
-    - If '.pdf' is specified, <source> is <document>.pdf; otherwise,
-      <source> is <document>.md
-    - <source> must be one of the following:
-      - <absolute-relative filepath> for an existing file.
-      - <absolute-relative directorypath/>*.md where
-        <absolute-relative directorypath/> contains one or more .md
-        files other than a README.md file. A README.md is excluded;
-        no .pdf or .docx file is generated for it.
-      - <absolute-relative directorypath/>*.pdf where
-        <absolute-relative directorypath/> contains one or more
-        '.pdf' files.
-      - <filename> with extension '.md' where docs/md/filename exists
-        or, if it doesn't exist, ./filename exists.
-      - <filename> with extension '.pdf' where docs/pdf/filename exists
-        or, if it doesn't exist, ./filename exists.
-      - *.md indicating all '.md' files under docs/md/ other than the
-        README.md file.
-      - *.pdf indicating all '.pdf' files under docs/pdf/.
-  <pdf_dir>:  Optional output directory for generated '.pdf' files.
-              Default is repository root docs/pdf/ if source files are
-              from docs/md/ and, otherwise, ./ (current directory).
-  <docx_dir>: Optional output directory for the generated '.docx' files.
-              Default is repository root docs/docx/ if source files are
-              from repository root docs/md/ or docs/pdf/ and,
-              otherwise, ./ (current directory).
-
-Notes:
-  - Change detection for a source '.md' in repository root docs/md/
-    uses the file name with line count, character count, and
-    SHA-256 fingerprint, and stores this metadata in
-    repository root docs/md/.md_metadata with one line per file.
-
-Exit Codes:
-  0   Success.
-  1   Usage error: general.
-  2   Usage error: invalid or incomplete option.
-  3   Usage error: invalid argument.
-  4   Usage error: invalid option combination/mode.
-  5   Input not found.
-  6   No source files to process.
-  100 Internal setup error: helper script missing.
-  110 Internal helper/toolchain check failed.
-  111 Internal helper failure: genpdf helper returned non-zero.
-  112 Internal helper failure: gendocx helper returned non-zero.
-  249 System/runtime call failure.
-
-Examples:
-  gendocs
-  gendocs -f
-  gendocs docs/md/briteTest.md
-  gendocs Documentation_Guide
-  gendocs -p docs/md
-  gendocs -d docs/pdf
-  gendocs -d docs/pdf/briteTest.pdf docs/docx
-  gendocs docs/md build/pdf build/docx
-  gendocs '*.md'
-  gendocs -d '*.pdf'
-EOF
-}
-
-# High-level flow: parse CLI options and validate mode/backend constraints, run
-# tool-check mode (-t) early when requested, then resolve/filter source files,
-# derive output paths (including recursive/keep-structure behavior), convert via
-# helper scripts with metadata-based skip logic, persist metadata, and exit
-# through a single status/exit-code path.
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

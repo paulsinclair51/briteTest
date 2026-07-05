@@ -1,19 +1,24 @@
-# scripts/bin/
+# /scripts/bin/
 
 Directory containing contributor command scripts.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `LICENSE` in the root directory.
+For license details, see `/LICENSE`.
 
-See `README.md` in the root directory for an introduction to the project.
+See `/README.md` for an introduction to briteTest.
 
 ## Files
 
 ### Document and Brand Management
 
 - **ckdirectory_guides**: Validate required directory guides across the repository.
+- **ckdocs**: Validate canonical documentation links and structure.
 - **gendocs**: Generate PDF and DOCX documentation.
+- **gendocs-old**: Legacy documentation generation wrapper.
+- **gendocx-old**: Legacy DOCX generation wrapper.
+- **genpdf**: Generate PDF documentation from Markdown sources.
+- **genpdf-old**: Legacy PDF generation wrapper.
 - **genpngs**: Generate branding PNG images from SVG files.
 - **replacephrases**: Apply configured phrase replacements in markdown files.
 - **updatebrand**: Update branding text and regenerate related assets.
@@ -38,6 +43,10 @@ See `README.md` in the root directory for an introduction to the project.
 - **mktest**: Run tests and optional documentation checks.
 - **mkundo**: Undo recent merge/release/commit operations.
 - **rmbranch**: Remove local and/or remote branches.
+
+### README Directory Guide
+
+- **README.md**: This directory guide.
 
 ## Subdirectories
 

@@ -1,33 +1,34 @@
-# docs/branding/
+# /docs/branding/
 
 Directory containing assets for the brand name and monogram.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `LICENSE` in the root directory.
+For license details, see `/LICENSE`.
 
-See `README.md` in the root directory for an introduction to the project.
+See `/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **`canary-live.svg`**: photo of a yellow canary with transparent background
-   perched on partially removed branch.
+- **`*.png`**: generated `.png` files corresponding to branding SVG assets.
 
-- **`canary.svg`**: Canary accent: traced from canary-live.svg with canary
-  yellow fill, added black dot eye, and overlaid triangle for beak.
+- **`<doctitle>.svg`**: monogram, brand name, and doctitle (for a document in
+  `docs`) with transparent background.
 
-- **`Monogram.svg`**: Monogram-only `bT` with canary accent perched on T in a
-  rounded-square.
-
-- **`Logo_with_BrandName.svg`**: monogram and brand name with transparent background.
+- **`Logo_with_BrandName.svg`**: monogram and brand name with transparent
+  background.
 
 - **`Logo_with_Tagline.svg`**: monogram, brand name, and tagline
   "Catch it before it breaks." with transparent background.
 
-- **`<doctitle>.svg`**: monogram, brand name, and doctitle (for a document in `docs`)
-  with transparent background.
+- **`Monogram.svg`**: Monogram-only `bT` with canary accent perched on T in a
+  rounded-square.
 
-- `*.png`: generated `.png` files corresponding to each `*.svg` file.
+- **`canary-live.svg`**: photo of a yellow canary with transparent background
+  perched on partially removed branch.
+
+- **`canary.svg`**: Canary accent: traced from canary-live.svg with canary
+  yellow fill, added black dot eye, and overlaid triangle for beak.
 
 - **README.md**: This directory guide.
 

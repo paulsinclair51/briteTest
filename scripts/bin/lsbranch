@@ -8,38 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Lists local/remote branches grouped by branch type conventions.
-# - Supports filtering, formatting, and status decoration for quick branch
-#   inspection.
-# - Reports branch names and workflow state before branch operations.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-
-# Branch groups aligned with mkbranch naming model
-VALID_TYPES=("version" "nonversion")
-
-# Default behavior
-FILTER_TYPE=""
-FILTER_NAME=""
-FILTER_EXCEPT=false
-SHOW_REMOTE=false
-SUMMARY_MODE=false
-COUNT_ONLY=false
-DETAILED_MODE=false
-SORT_BY="type"
-OUTPUT_FORMAT="table"
-LIMIT_RESULTS=0
-INVALID_ONLY=false
-STRICT_MODE=false
-INVALID_FOUND=false
-SHOW_REMOTE_INFO=false
-REMOTE_NAME="origin"
-INVALID_NAME_LABEL="invalid name"
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -137,6 +105,12 @@ Examples:
   lsbranch -d -n 5 version     # first 5 detailed version branches
   lsbranch -f json -x api      # JSON for branches not matching "*api*"
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   Success
   1   Invalid arguments or options
@@ -145,6 +119,39 @@ Exit codes:
   4   Invalid branch names found (strict mode)
 EOF
 }
+
+# High-Level Flow:
+# - Lists local/remote branches grouped by branch type conventions.
+# - Supports filtering, formatting, and status decoration for quick branch
+#   inspection.
+# - Reports branch names and workflow state before branch operations.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Branch groups aligned with mkbranch naming model
+VALID_TYPES=("version" "nonversion")
+
+# Default behavior
+FILTER_TYPE=""
+FILTER_NAME=""
+FILTER_EXCEPT=false
+SHOW_REMOTE=false
+SUMMARY_MODE=false
+COUNT_ONLY=false
+DETAILED_MODE=false
+SORT_BY="type"
+OUTPUT_FORMAT="table"
+LIMIT_RESULTS=0
+INVALID_ONLY=false
+STRICT_MODE=false
+INVALID_FOUND=false
+SHOW_REMOTE_INFO=false
+REMOTE_NAME="origin"
+INVALID_NAME_LABEL="invalid name"
+
 
 # Script flow summary:
 # 1) Parse and validate CLI options.

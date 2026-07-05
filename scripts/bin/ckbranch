@@ -8,30 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Resolves branch context, base-branch relationship, and remote
-#   synchronization status.
-# - Collects ahead/behind, dirty-worktree, and optional PR metadata details.
-# - Writes a branch-status report and optionally appends status snapshots to
-#   history logs.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Shared helpers
-# shellcheck source=helpers/common.sh
-source "$SCRIPT_DIR/../helpers/common.sh"
-# shellcheck source=helpers/git_helpers.sh
-source "$SCRIPT_DIR/../helpers/git_helpers.sh"
-# shellcheck source=helpers/github_helpers.sh
-source "$SCRIPT_DIR/../helpers/github_helpers.sh"
-
-# Default options
-OUTPUT_FILE="reports/branch_status.md"
-BRANCH_PATTERN=""
-VERBOSE=false
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -79,6 +55,12 @@ Examples:
   # Verbose output
   ckbranch -v
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   Success
   1   Argument or validation error
@@ -86,6 +68,30 @@ Exit codes:
   3   Output directory does not exist
 EOF
 }
+
+# High-Level Flow:
+# - Resolves branch context, base-branch relationship, and remote
+#   synchronization status.
+# - Collects ahead/behind, dirty-worktree, and optional PR metadata details.
+# - Writes a branch-status report and optionally appends status snapshots to
+#   history logs.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/github_helpers.sh
+source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+
+# Default options
+OUTPUT_FILE="reports/branch_status.md"
+BRANCH_PATTERN=""
+VERBOSE=false
 
 get_branches_matching_pattern() {
   local pattern="$1"

@@ -8,27 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Brings base-branch changes into the current branch using project sync-up
-#   workflow.
-# - Validates branch relationships and merge/rebase preconditions.
-# - Reports integration outcomes and required follow-up actions.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Shared helpers
-# shellcheck source=helpers/common.sh
-source "$SCRIPT_DIR/../helpers/common.sh"
-# shellcheck source=helpers/git_helpers.sh
-source "$SCRIPT_DIR/../helpers/git_helpers.sh"
-
-# Default options
-FORCE=false
-VERBOSE=false
-CUSTOM_MESSAGE=""
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -85,6 +64,12 @@ Examples:
   # Unix-style message with force
   mksyncup -f -- Sync up with latest changes
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   Success
   1   Argument or validation error
@@ -94,6 +79,28 @@ Exit codes:
   5   Failed to determine base branch
 EOF
 }
+
+# High-Level Flow:
+# - Brings base-branch changes into the current branch using project sync-up
+#   workflow.
+# - Validates branch relationships and merge/rebase preconditions.
+# - Reports integration outcomes and required follow-up actions.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+
+# Default options
+FORCE=false
+VERBOSE=false
+CUSTOM_MESSAGE=""
+
 
 get_base_branch() {
   local current_branch="$1"

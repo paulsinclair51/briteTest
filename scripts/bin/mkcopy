@@ -8,27 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Cherry-picks selected commits from a source branch into a target branch.
-# - Validates branch/commit inputs and guards against unsafe copy scenarios.
-# - Reports applied commits and failures for conflict resolution.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Shared helpers
-# shellcheck source=helpers/common.sh
-source "$SCRIPT_DIR/../helpers/common.sh"
-# shellcheck source=helpers/git_helpers.sh
-source "$SCRIPT_DIR/../helpers/git_helpers.sh"
-
-# Default options
-CUSTOM_MESSAGE=""
-VERBOSE=false
-CONTINUE_MODE=false
-SOURCE_BRANCH=""
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -79,6 +58,12 @@ Workflow:
   3. Continue: mkcopy --continue
   4. Repeat steps 2-3 if more conflicts
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   Success
   1   Argument or validation error
@@ -88,6 +73,28 @@ Exit codes:
   5   Cherry-pick conflicts (pause for resolution)
 EOF
 }
+
+# High-Level Flow:
+# - Cherry-picks selected commits from a source branch into a target branch.
+# - Validates branch/commit inputs and guards against unsafe copy scenarios.
+# - Reports applied commits and failures for conflict resolution.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+
+# Default options
+CUSTOM_MESSAGE=""
+VERBOSE=false
+CONTINUE_MODE=false
+SOURCE_BRANCH=""
+
 
 check_working_directory_clean() {
   if ! git diff-index --quiet HEAD --; then

@@ -8,26 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Rebases the current branch onto a specified base branch.
-# - Runs preflight checks to reduce risky rebase operations.
-# - Reports rebase progress and conflict/error states.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-LOG_FILE="$REPO_ROOT/logs/remote_branch_history.md"
-
-# Shared helpers
-# shellcheck source=helpers/history_log.sh
-source "$SCRIPT_DIR/../helpers/history_log.sh"
-
-# Default options
-MODE="rebase"  # rebase or validate
-FORCE=false
-COMMENT=""
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -91,6 +71,12 @@ Examples: With force push.
   mkrebase -f v2.2.0
   mkrebase -f v2.2.0 -m "Retarget and force push."
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   Success (or validation passed).
   1   Arguments/options invalid.
@@ -102,6 +88,27 @@ Exit codes:
   9   Validation failed.
 EOF
 }
+
+# High-Level Flow:
+# - Rebases the current branch onto a specified base branch.
+# - Runs preflight checks to reduce risky rebase operations.
+# - Reports rebase progress and conflict/error states.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+LOG_FILE="$REPO_ROOT/logs/remote_branch_history.md"
+
+# Shared helpers
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
+
+# Default options
+MODE="rebase"  # rebase or validate
+FORCE=false
+COMMENT=""
+
 
 log_operation() {
   local status="$1"

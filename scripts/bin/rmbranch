@@ -8,33 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Deletes branches locally and optionally on remote with protected-branch
-#   safeguards.
-# - Validates branch existence, current-branch constraints, and deletion scope.
-# - Reports deletion results and skipped/protected targets.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-REMOTE_LOG_FILE="$REPO_ROOT/logs/remote_branch_history.md"
-LOCAL_LOG_FILE="$REPO_ROOT/logs/local_branch_history.md"
-
-# Shared helpers
-# shellcheck source=helpers/common.sh
-source "$SCRIPT_DIR/../helpers/common.sh"
-# shellcheck source=helpers/history_log.sh
-source "$SCRIPT_DIR/../helpers/history_log.sh"
-
-# Default options
-MODE="local"  # local, remote, or both
-FORCE=false
-COMMENT=""
-
-# Protected branches that cannot be deleted
-PROTECTED_BRANCHES=("main")
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -97,6 +70,12 @@ Examples: Force removal with comment.
   rmbranch -f temp -m "Temporary testing branch."
   rmbranch -a -f old -- Cleanup old feature branch.
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   Success
   1   Argument error
@@ -106,6 +85,34 @@ Exit codes:
   5   Operation cancelled
 EOF
 }
+
+# High-Level Flow:
+# - Deletes branches locally and optionally on remote with protected-branch
+#   safeguards.
+# - Validates branch existence, current-branch constraints, and deletion scope.
+# - Reports deletion results and skipped/protected targets.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REMOTE_LOG_FILE="$REPO_ROOT/logs/remote_branch_history.md"
+LOCAL_LOG_FILE="$REPO_ROOT/logs/local_branch_history.md"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
+
+# Default options
+MODE="local"  # local, remote, or both
+FORCE=false
+COMMENT=""
+
+# Protected branches that cannot be deleted
+PROTECTED_BRANCHES=("main")
+
 
 append_log_entry() {
   local log_file="$1"

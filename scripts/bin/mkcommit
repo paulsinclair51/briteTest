@@ -8,28 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Stages and commits repository changes with workflow-aware validation.
-# - Pushes the commit and records commit metadata to history logs when
-#   configured.
-# - Checks branch context and clean/dirty states before commit operations.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Shared helpers
-# shellcheck source=helpers/common.sh
-source "$SCRIPT_DIR/../helpers/common.sh"
-# shellcheck source=helpers/git_helpers.sh
-source "$SCRIPT_DIR/../helpers/git_helpers.sh"
-
-# Default options
-COMMIT_MESSAGE=""
-PUSH=false
-FORCE=false
-FILES=()
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -92,6 +70,12 @@ Examples:
   # Commit specific files with Unix-style message
   mkcommit file1.js file2.js -- Update parser logic
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   Success
   1   Argument or validation error
@@ -100,6 +84,29 @@ Exit codes:
   4   Conflict handling failed
 EOF
 }
+
+# High-Level Flow:
+# - Stages and commits repository changes with workflow-aware validation.
+# - Pushes the commit and records commit metadata to history logs when
+#   configured.
+# - Checks branch context and clean/dirty states before commit operations.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+
+# Default options
+COMMIT_MESSAGE=""
+PUSH=false
+FORCE=false
+FILES=()
+
 
 is_protected_branch() {
   local branch="$1"

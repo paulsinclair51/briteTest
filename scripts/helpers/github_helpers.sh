@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
+# High-Level Flow:
 # - Provides shared GitHub CLI helper functions for PR/repository interactions.
 # - Encapsulates repeated gh command patterns and argument validation.
 # - Standardizes error handling and output for GitHub-related helper calls.
