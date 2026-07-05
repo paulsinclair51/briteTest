@@ -294,7 +294,13 @@ EOF
 
   # Build and print compact status line
   local tags=()
-  [[ "$branch_type" == *remote* && "$branch_type" != *local* ]] && tags+=("[remote]") || tags+=("[local]")
+  if [[ "$branch_type" == "local (tracking origin)" ]]; then
+    tags+=("[local]" "[remote]")
+  elif [[ "$branch_type" == "remote" ]]; then
+    tags+=("[remote]")
+  else
+    tags+=("[local]")
+  fi
   [[ "$is_current" == true ]] && tags+=("[current]")
   [[ "$repo_status" == "dirty" ]] && tags+=("[dirty]")
   [[ "$staged_count" =~ ^[0-9]+$ && "$staged_count" -gt 0 ]] && tags+=("[staged]")
