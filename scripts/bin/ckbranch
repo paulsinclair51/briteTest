@@ -13,14 +13,13 @@ usage() {
 Usage:
   ckbranch [OPTIONS]
   ckbranch "PATTERN" [OPTIONS]
-  ckbranch "*" [OPTIONS]
   ckbranch -h | --help
 
 Check branch and repository status, generate detailed report.
 
-By default, checks the current branch. Use PATTERN to check matching branches
-(glob-like: "feature/*", "*auth*"). Use "*" to check all branches. PATTERN
-must be quoted to prevent shell glob expansion.
+By default, checks the current branch. Use "-a" to check all branches.
+Use PATTERN to check matching branches (glob-like: "feature/*", "*auth*").
+PATTERN must be quoted to prevent shell glob expansion.
 
 Report includes:
   - Branch name
@@ -39,6 +38,7 @@ Features:
 Options:
   -h, --help  Output this help to stdout and exit (other options
               and arguments are ignored).
+  -a          Check all branches.
   -v          Show detailed information to stdout.
   -l          Include local branches.
   -r          Include remote branches.
@@ -51,7 +51,7 @@ Examples:
   ckbranch
 
   # Check all branches
-  ckbranch "*"
+  ckbranch -a
 
   # Check feature branches
   ckbranch "feature/*"
@@ -60,10 +60,10 @@ Examples:
   ckbranch "*auth*"
 
   # Check only local branches
-  ckbranch "*" -l
+  ckbranch -a -l
 
   # Check only remote branches
-  ckbranch "*" -r
+  ckbranch -a -r
 
   # Verbose output
   ckbranch -v
@@ -110,6 +110,7 @@ OUTPUT_FILE=""
 BRANCH_PATTERN=""
 VERBOSE=false
 BRANCH_ERRORS=0
+ALL_BRANCHES=false
 INCLUDE_LOCAL_FLAG=false
 INCLUDE_REMOTE_FLAG=false
 
@@ -362,6 +363,10 @@ done
 # Parse options and arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    -a)
+      ALL_BRANCHES=true
+      shift
+      ;;
     -v)
       VERBOSE=true
       shift
@@ -389,6 +394,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# If -a specified, set pattern to match all branches
+if $ALL_BRANCHES; then
+  BRANCH_PATTERN="*"
+fi
 
 # Determine what to include based on flags
 # If neither flag specified, default to both; if at least one flag specified, use the flags
