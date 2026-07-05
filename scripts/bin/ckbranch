@@ -378,6 +378,12 @@ while [[ $# -gt 0 ]]; do
       bt_error_exit 1 "Unknown option: $1"
       ;;
     *)
+      if [[ -n "$BRANCH_PATTERN" ]]; then
+        printf 'Error: Unexpected argument: %q\n' "$1" >&2
+        printf 'Multiple positional arguments received — pattern was likely expanded by the shell.\n' >&2
+        printf 'Quote the pattern to prevent expansion, e.g.: ckbranch "*"\n' >&2
+        exit 1
+      fi
       BRANCH_PATTERN="$1"
       shift
       ;;
