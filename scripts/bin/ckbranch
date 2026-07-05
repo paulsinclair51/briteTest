@@ -35,9 +35,8 @@ Features:
   - Verbose mode for debugging
 
 Options:
-  -h, --help           Output this help to stdout and exit.
-  -o, --output FILE    Output file (default: reports/branch_status.md)
-  -v, --verbose        Show detailed information to stdout
+  -h, --help      Output this help to stdout and exit.
+  -v, --verbose   Show detailed information to stdout.
 
 Examples:
   # Check current branch
@@ -49,23 +48,20 @@ Examples:
   # Check branches matching pattern
   ckbranch "*auth*"
 
-  # Custom output file
-  ckbranch -o status.md
-
   # Verbose output
   ckbranch -v
-
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - Writes a report to reports/ckbranch-<datetime>.md.
+  - Removes previous reports when a new one is successfully written.
 
 Exit codes:
   0   Success
   1   Argument or validation error
   2   Git operation failed
-  3   Output directory does not exist
+  3   Reports directory does not exist
 EOF
 }
 
@@ -79,6 +75,7 @@ EOF
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
@@ -88,8 +85,11 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/github_helpers.sh
 source "$SCRIPT_DIR/../helpers/github_helpers.sh"
 
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+
 # Default options
-OUTPUT_FILE="reports/branch_status.md"
+OUTPUT_FILE=""
 BRANCH_PATTERN=""
 VERBOSE=false
 
@@ -160,19 +160,21 @@ get_pr_status() {
 
 generate_report_header() {
   cat > "$OUTPUT_FILE" << EOF
-# Branch Status Report
+# ckbranch Report
 
-Copyright (c) 2026 Paul Sinclair  
-SPDX-License-Identifier: MIT  
-For license details, see \`LICENSE\` in the repository root.
-
-See \`README.md\` in the root directory for an introduction to the project.
-
-## Report Details
-
-Generated: $(date)
+**Timestamp:** ${RUN_TS_DISPLAY}
 
 EOF
+}
+
+cleanup_old_reports() {
+  local old_report
+  [[ -f "$OUTPUT_FILE" ]] || return
+  for old_report in "$repo_root"/reports/ckbranch-*.md; do
+    [[ "$old_report" == "$OUTPUT_FILE" ]] && continue
+    [[ -e "$old_report" ]] || continue
+    rm -f "$old_report"
+  done
 }
 
 check_branch_status() {
@@ -234,13 +236,6 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    -o | --output)
-      if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -o requires a file argument"
-      fi
-      OUTPUT_FILE="$2"
-      shift 2
-      ;;
     -v | --verbose)
       VERBOSE=true
       shift
@@ -257,11 +252,11 @@ done
 
 bt_info "Checking branch status..."
 
-# Ensure output directory exists
-OUTPUT_DIR=$(dirname "$OUTPUT_FILE")
-if [[ ! -d "$OUTPUT_DIR" ]]; then
-  mkdir -p "$OUTPUT_DIR" || bt_error_exit 3 "Failed to create output directory: $OUTPUT_DIR"
+# Validate reports directory and set output path
+if [[ ! -d "$repo_root/reports" ]]; then
+  bt_error_exit 3 "Reports directory not found: $repo_root/reports"
 fi
+OUTPUT_FILE="$repo_root/reports/ckbranch-${RUN_TS_FILE}.md"
 
 # Get current branch to restore later
 ORIGINAL_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
@@ -300,11 +295,13 @@ if ! git checkout "$ORIGINAL_BRANCH" 2>/dev/null; then
   bt_warn "Failed to return to original branch: $ORIGINAL_BRANCH"
 fi
 
-bt_success "Report generated: $OUTPUT_FILE"
+cleanup_old_reports
+
+bt_success "Report generated: ${OUTPUT_FILE#${repo_root}/}"
 if [[ "$VERBOSE" == true ]]; then
   echo ""
   bt_info "Report contents:"
-  cat "$OUTPUT_FILE" | sed 's/^/  /'
+  sed 's/^/  /' "$OUTPUT_FILE"
 fi
 
 bt_success "Done"

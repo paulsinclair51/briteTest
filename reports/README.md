@@ -20,7 +20,8 @@ See `/README.md` for an introduction to briteTest.
 	`scripts/bin/ckdirectory_guides`, where `<datetime>` has the form
 	`YYYYMMDD-HHMMSS`.
 
-- **branch_status.md**: Latest status report from `scripts/bin/ckbranch`.
+- **ckbranch-<datetime>.md**: Latest status report from `scripts/bin/ckbranch`,
+	where `<datetime>` has the form `YYYYMMDD-HHMMSS`.
 
 - **updatebrand-<datetime>.md**: Report from `scripts/bin/updatebrand`,
 	where `<datetime>` has the form `YYYYMMDD-HHMMSS`.
