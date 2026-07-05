@@ -41,10 +41,12 @@ Checks include:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - Writes a validation report to reports/directory_guides_validation.md.
+  - Writes a validation report to reports/directory_guides-report-<datetime>.md.
+  - Removes previous reports when a new one is successfully written.
 
 Logging:
-  - Writes a log file in reports/ named directory_guides_validation.md.
+  - Writes a file in /reports/ named directory_guides-report-<datetime>.md.
+  - Removes previous reports when a new one is successfully written.
 
 Exit codes:
   0  Success, or help requested with -h/--help.
@@ -74,7 +76,7 @@ setup_output_capture() {
 
 write_run_log_on_exit() {
   local exit_code="$?"
-  local old_log
+  local old_report
 
   set +e
 
@@ -88,6 +90,15 @@ write_run_log_on_exit() {
     sed -n '1,$p' "$RUN_OUTPUT_FILE"
     echo '```'
   } > "$RUN_LOG_FILE"
+
+  # Remove old reports if new one was written successfully
+  if [[ -f "$RUN_LOG_FILE" ]]; then
+    for old_report in "$repo_root"/reports/directory_guides-report-*.md; do
+      [[ "$old_report" == "$RUN_LOG_FILE" ]] && continue
+      [[ -e "$old_report" ]] || continue
+      rm -f "$old_report"
+    done
+  fi
 
   rm -f "$RUN_OUTPUT_FILE"
   trap - EXIT
