@@ -112,6 +112,7 @@ REPORT_FILE=""
 
 CHECK_DOCUMENTS_FLAG=false
 CHECK_GUIDES_FLAG=false
+CHECK_VERSIONS_FLAG=false
 
 setup_output_capture() {
   exec > >(tee "$RUN_OUTPUT_FILE") 2>&1
@@ -166,6 +167,10 @@ while [[ $# -gt 0 ]]; do
       CHECK_GUIDES_FLAG=true
       shift
       ;;
+    -v)
+      CHECK_VERSIONS_FLAG=true
+      shift
+      ;;
     *)
       echo "ERROR: unknown argument: $1" >&2
       usage >&2
@@ -175,15 +180,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Determine what to check based on flags
-# If neither flag specified, default to both; if at least one flag specified, use the flags
-if ! $CHECK_DOCUMENTS_FLAG && ! $CHECK_GUIDES_FLAG; then
-  # Default: check both
+# If no flags specified, default to all; if at least one flag specified, use the flags
+if ! $CHECK_DOCUMENTS_FLAG && ! $CHECK_GUIDES_FLAG && ! $CHECK_VERSIONS_FLAG; then
+  # Default: check all
   CHECK_DOCUMENTS=true
   CHECK_GUIDES=true
+  CHECK_VERSIONS=true
 else
   # At least one flag specified: use exactly what was specified
   CHECK_DOCUMENTS=$CHECK_DOCUMENTS_FLAG
   CHECK_GUIDES=$CHECK_GUIDES_FLAG
+  CHECK_VERSIONS=$CHECK_VERSIONS_FLAG
 fi
 
 repo_root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -1118,6 +1125,225 @@ check_directory_guides() {
 }
 
 # ============================================================================
+# VERSIONING VALIDATION FUNCTIONS
+# ============================================================================
+
+_extract_major() {
+  local semver="$1"
+  printf '%s\n' "${semver%%.*}"
+}
+
+_extract_minor() {
+  local semver="$1"
+  local major="${semver%%.*}"
+  local minor_patch="${semver#*.}"
+  printf '%s\n' "${minor_patch%%.*}"
+}
+
+_extract_patch() {
+  local semver="$1"
+  printf '%s\n' "${semver##*.}"
+}
+
+_extract_major_minor() {
+  local semver="$1"
+  printf '%s\n' "${semver%.*}"
+}
+
+_doc_version() {
+  local file="$1"
+  # Version appears near top of each docs file in a version history table.
+  head -n 220 "$file" | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true
+}
+
+_header_version() {
+  local file="$1"
+  local semver
+  semver="$(grep -Ei '^#[[:space:]]*define[[:space:]]+RA_[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' "$file" \
+    | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
+  if [[ -z "$semver" ]]; then
+    semver="$(grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' "$file" | head -n 1 || true)"
+  fi
+  printf '%s\n' "$semver"
+}
+
+_source_version() {
+  local file="$1"
+  local semver include_line
+  semver="$(grep -Ei '^#[[:space:]]*define[[:space:]]+[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' "$file" \
+    | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
+  if [[ -n "$semver" ]]; then
+    printf '%s\n' "$semver"
+    return 0
+  fi
+  include_line="$(grep -E '^#[[:space:]]*include[[:space:]]+"(runnerapi|testapi)\.h"' "$file" | head -n 1 || true)"
+  if [[ "$include_line" == *'"runnerapi.h"'* ]]; then
+    semver="$(_header_version "include/runnerapi.h")"
+  elif [[ "$include_line" == *'"testapi.h"'* ]]; then
+    semver="$(_header_version "include/testapi.h")"
+  else
+    semver="$(grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' "$file" | head -n 1 || true)"
+  fi
+  printf '%s\n' "$semver"
+}
+
+check_versions() {
+  local starting_failures="$failures"
+  local ver_expected_major_minor=""
+  local ver_ref_file=""
+  declare -A ver_versions
+
+  _record_and_check() {
+    local file="$1"
+    local semver="$2"
+    local major_minor
+
+    if [[ -z "$semver" ]]; then
+      echo "ERROR: Could not find semantic version in '$file'"
+      failures=$((failures + 1))
+      return
+    fi
+
+    major_minor="$(_extract_major_minor "$semver")"
+    ver_versions["$file"]="$semver"
+
+    if [[ -z "$ver_expected_major_minor" ]]; then
+      ver_expected_major_minor="$major_minor"
+      ver_ref_file="$file"
+      echo "  Reference major.minor: $ver_expected_major_minor (from $file: $semver)"
+      return
+    fi
+
+    if [[ "$major_minor" != "$ver_expected_major_minor" ]]; then
+      echo "ERROR: Major.minor version mismatch in '$file'"
+      echo "  Found:    $semver (major.minor $major_minor)"
+      echo "  Expected: major.minor $ver_expected_major_minor (from $ver_ref_file)"
+      failures=$((failures + 1))
+    fi
+  }
+
+  # Collect versions from docs, headers, and sources
+  while IFS= read -r file; do
+    [[ "$(basename "$file")" == "README.md" ]] && continue
+    local semver
+    semver="$(_doc_version "$file")"
+    _record_and_check "$file" "$semver"
+  done < <(find "$repo_root/docs/md" -maxdepth 1 -type f -name '*.md' 2>/dev/null | sort)
+
+  while IFS= read -r file; do
+    local semver
+    semver="$(_header_version "$file")"
+    _record_and_check "$file" "$semver"
+  done < <(find "$repo_root/include" -maxdepth 1 -type f -name '*.h' 2>/dev/null | sort)
+
+  while IFS= read -r file; do
+    local semver
+    semver="$(_source_version "$file")"
+    _record_and_check "$file" "$semver"
+  done < <(find "$repo_root/src" -maxdepth 1 -type f -name '*.c' 2>/dev/null | sort)
+
+  # Branch policy validation: if on a versioned branch, check alignment
+  local current_branch
+  current_branch="$(git -C "$repo_root" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+
+  if [[ -n "$current_branch" ]]; then
+    local branch_type=""
+    if [[ "$current_branch" == patch/* ]]; then
+      branch_type="patch"
+    elif [[ "$current_branch" == minor/* ]]; then
+      branch_type="minor"
+    elif [[ "$current_branch" == major/* ]]; then
+      branch_type="major"
+    fi
+
+    if [[ -n "$branch_type" ]]; then
+      echo "  Branch policy: $current_branch ($branch_type branch)"
+
+      # Get main branch versions for comparison
+      local main_versions=()
+      while IFS= read -r file; do
+        [[ "$(basename "$file")" == "README.md" ]] && continue
+        local msemver
+        msemver="$(git -C "$repo_root" show main:"${file#$repo_root/}" 2>/dev/null \
+          | head -n 220 | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || echo "")"
+        [[ -n "$msemver" ]] && main_versions+=("$file:$msemver")
+      done < <(find "$repo_root/docs/md" -maxdepth 1 -type f -name '*.md' 2>/dev/null | sort)
+
+      while IFS= read -r file; do
+        local msemver
+        msemver="$(git -C "$repo_root" show main:"${file#$repo_root/}" 2>/dev/null \
+          | grep -Ei '^#[[:space:]]*define[[:space:]]+RA_[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' \
+          | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || echo "")"
+        [[ -n "$msemver" ]] && main_versions+=("$file:$msemver")
+      done < <(find "$repo_root/include" -maxdepth 1 -type f -name '*.h' 2>/dev/null | sort)
+
+      while IFS= read -r file; do
+        local msemver
+        msemver="$(git -C "$repo_root" show main:"${file#$repo_root/}" 2>/dev/null \
+          | grep -Ei '^#[[:space:]]*define[[:space:]]+[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' \
+          | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || echo "")"
+        [[ -n "$msemver" ]] && main_versions+=("$file:$msemver")
+      done < <(find "$repo_root/src" -maxdepth 1 -type f -name '*.c' 2>/dev/null | sort)
+
+      for entry in "${main_versions[@]}"; do
+        local mfile="${entry%:*}"
+        local main_semver="${entry#*:}"
+        local current_semver="${ver_versions[$mfile]:-}"
+        [[ -z "$current_semver" ]] && continue
+
+        case "$branch_type" in
+          patch)
+            local main_mm current_mm
+            main_mm="$(_extract_major_minor "$main_semver")"
+            current_mm="$(_extract_major_minor "$current_semver")"
+            if [[ "$main_mm" != "$current_mm" ]]; then
+              echo "ERROR (patch branch policy): Major.minor changed in '$mfile'"
+              echo "  main: $main_semver  current: $current_semver"
+              echo "  Patch branches should only increment the patch version."
+              failures=$((failures + 1))
+            fi
+            ;;
+          minor)
+            local current_patch current_mm
+            current_patch="$(_extract_patch "$current_semver")"
+            current_mm="$(_extract_major_minor "$current_semver")"
+            if [[ "$current_patch" != "0" ]]; then
+              echo "ERROR (minor branch policy): Patch is not 0 in '$mfile' ($current_semver)"
+              failures=$((failures + 1))
+            fi
+            if [[ "$current_mm" != "$ver_expected_major_minor" ]]; then
+              echo "ERROR (minor branch policy): Major.minor mismatch in '$mfile'"
+              echo "  current: $current_semver  expected: major.minor $ver_expected_major_minor"
+              failures=$((failures + 1))
+            fi
+            ;;
+          major)
+            local current_major current_minor current_patch
+            current_major="$(_extract_major "$current_semver")"
+            current_minor="$(_extract_minor "$current_semver")"
+            current_patch="$(_extract_patch "$current_semver")"
+            if [[ "$current_major" != "$(_extract_major "$ver_expected_major_minor.0")" ]]; then
+              echo "ERROR (major branch policy): Major version mismatch in '$mfile' ($current_semver)"
+              failures=$((failures + 1))
+            fi
+            if [[ "$current_minor" != "0" ]]; then
+              echo "ERROR (major branch policy): Minor is not 0 in '$mfile' ($current_semver)"
+              failures=$((failures + 1))
+            fi
+            if [[ "$current_patch" != "0" ]]; then
+              echo "ERROR (major branch policy): Patch is not 0 in '$mfile' ($current_semver)"
+              failures=$((failures + 1))
+            fi
+            ;;
+        esac
+      done
+    fi
+  fi
+
+  [[ $failures -eq $starting_failures ]]
+}
+
+# ============================================================================
 # MAIN VALIDATION FLOW
 # ============================================================================
 
@@ -1153,6 +1379,14 @@ if [[ "$CHECK_GUIDES" == true ]]; then
   echo "Checking directory guide canonical form..."
   check_directory_guides || true
   echo "✓ Directory guide checks complete"
+  echo
+fi
+
+# Validate versioning if requested
+if [[ "$CHECK_VERSIONS" == true ]]; then
+  echo "Checking version consistency..."
+  check_versions || true
+  echo "✓ Version checks complete"
   echo
 fi
 
