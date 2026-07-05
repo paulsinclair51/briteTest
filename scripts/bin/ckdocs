@@ -92,12 +92,17 @@ write_report_on_exit() {
   exit "$exit_code"
 }
 
+# Check for help first — if specified, show usage and exit, ignoring all other arguments
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+done
+
+# Parse remaining arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -h|--help)
-      usage
-      exit 0
-      ;;
     *)
       echo "ERROR: unknown argument: $1" >&2
       usage >&2

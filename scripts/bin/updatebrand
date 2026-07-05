@@ -450,14 +450,19 @@ normalize_doc_title_svg_if_same_as_brand() {
     normalize_changed=1
 }
 
+# Check for help first — if specified, show usage and exit, ignoring all other arguments
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit "$EXIT_SUCCESS"
+  fi
+done
+
+# Parse remaining arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -d)
             DRY_RUN=1
-            ;;
-        -h|--help)
-            usage
-            exit "$EXIT_SUCCESS"
             ;;
         *)
             usage >&2
