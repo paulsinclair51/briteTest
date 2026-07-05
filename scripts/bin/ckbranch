@@ -104,6 +104,26 @@ get_branches_matching_pattern() {
   git branch -r | sed 's|origin/||' | sed 's/^[[:space:]]*//' | grep -v HEAD | grep "^$regex$" | sort || echo ""
 }
 
+get_remote_only_branches() {
+  local pattern="$1"
+  
+  # Convert glob pattern to regex
+  local regex="${pattern//\*/.*}"
+  
+  local all_branches
+  all_branches=$(get_branches_matching_pattern "$pattern")
+  
+  # Filter to only remote-only branches (exist on remote but not locally)
+  echo "$all_branches" | while IFS= read -r branch; do
+    [[ -n "$branch" ]] || continue
+    if ! git branch --list "$branch" >/dev/null 2>&1; then
+      if git branch -r --list "origin/$branch" >/dev/null 2>&1; then
+        echo "$branch"
+      fi
+    fi
+  done || echo ""
+}
+
 check_repo_status() {
   local branch="$1"
   
@@ -264,6 +284,36 @@ EOF
   fi
 }
 
+check_remote_branch_status() {
+  local branch="$1"
+  local report_file="$2"
+
+  bt_info "Checking remote branch: $branch"
+
+  # Get PR status for remote branch
+  local pr_status
+  pr_status=$(get_pr_status "$branch") || pr_status="N/A"
+
+  # Get last commit info
+  local last_commit
+  last_commit=$(git log "origin/$branch" -1 --pretty=format:"%h - %s" 2>/dev/null || echo "N/A")
+
+  cat >> "$report_file" << EOF
+### Branch: \`$branch\` (remote only)
+
+- **Type**: remote
+- **Last Commit**: $last_commit
+- **PR Status**: $pr_status
+
+EOF
+
+  if [[ "$VERBOSE" == true ]]; then
+    echo "  Last Commit: $last_commit"
+    echo "  PR: $pr_status"
+  fi
+}
+
+
 # Parse options and arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -319,6 +369,18 @@ if [[ -n "$BRANCHES_TO_CHECK" ]]; then
       check_branch_status "$branch" "$OUTPUT_FILE" "$_is_current" || true
     fi
   done <<< "$BRANCHES_TO_CHECK"
+fi
+
+# Check remote-only branches if pattern provided
+if [[ -n "$BRANCH_PATTERN" ]]; then
+  REMOTE_ONLY=$(get_remote_only_branches "$BRANCH_PATTERN")
+  if [[ -n "$REMOTE_ONLY" ]]; then
+    while IFS= read -r branch; do
+      if [[ -n "$branch" ]]; then
+        check_remote_branch_status "$branch" "$OUTPUT_FILE" || true
+      fi
+    done <<< "$REMOTE_ONLY"
+  fi
 fi
 
 # Return to original branch
