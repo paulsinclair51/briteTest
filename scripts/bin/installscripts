@@ -2,18 +2,70 @@
 
 # installscripts - Make all scripts in /scripts/bin/ executable and add to PATH.
 #
-# Usage: installscripts
-#
-# This script:
-#   - Makes all scripts in /scripts/bin/ executable (chmod +x)
-#   - Adds /scripts/bin/ to PATH in ~/.bashrc if not already present
-#   - Sources ~/.bashrc to apply changes to current session
+# See usage below for details, or run: installscripts -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+usage() {
+  cat <<'EOF'
+Usage:
+  installscripts
+  installscripts -h | --help
+
+Make all scripts in /scripts/bin/ executable and add /scripts/bin/ to PATH.
+
+This script:
+  - Makes all scripts in /scripts/bin/ executable (chmod +x)
+  - Adds /scripts/bin/ to PATH in ~/.bashrc if not already present
+  - Sources ~/.bashrc to apply changes to current session
+
+After running, scripts will be:
+  - Executable by the user
+  - Available by name in the shell (e.g., ckbranch -h)
+  - Persistent across new shell sessions
+
+Options:
+  -h, --help  Output this help to stdout and exit (other options
+              and arguments are ignored).
+
+Examples:
+  # Install scripts and add to PATH
+  installscripts
+
+  # Show help
+  installscripts -h
+
+
+Outputs:
+  - Writes help text, status messages, and results to stdout.
+  - Writes errors and diagnostics to stderr.
+  - Modifies ~/.bashrc to add /scripts/bin/ to PATH.
+
+Exit codes:
+  0  Success
+  1  scripts/bin directory not found
+  2  Failed to source ~/.bashrc
+EOF
+}
+
 set -euo pipefail
+
+# Check for help options first
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+done
+
+# Reject any other arguments
+if [[ $# -gt 0 ]]; then
+  echo "Error: Unknown argument: $1" >&2
+  echo "Use -h or --help for usage information" >&2
+  exit 1
+fi
 
 # Determine repository root from git or from this script's location
 if git rev-parse --git-dir > /dev/null 2>&1; then
@@ -58,8 +110,10 @@ fi
 # Source bashrc to apply changes
 echo ""
 echo "Sourcing ~/.bashrc to apply changes..."
-# shellcheck source=/dev/null
-source ~/.bashrc
+if ! source ~/.bashrc 2>/dev/null; then
+  echo "Warning: Failed to source ~/.bashrc, but changes have been made" >&2
+  exit 2
+fi
 
 echo ""
 echo "✓ Installation complete!"
