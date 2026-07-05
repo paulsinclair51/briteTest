@@ -185,7 +185,7 @@ check_branch_status() {
   bt_info "Checking branch: $branch"
 
   # Attempt checkout; on failure write an error entry and continue
-  if ! git checkout "$branch" 2>/dev/null; then
+  if ! git checkout "$branch" >/dev/null 2>&1; then
     bt_warn "Failed to checkout branch: $branch"
     cat >> "$report_file" << EOF
 ### Branch: \`$branch\`
@@ -292,7 +292,7 @@ if [[ -n "$BRANCHES_TO_CHECK" ]]; then
 fi
 
 # Return to original branch
-if ! git checkout "$ORIGINAL_BRANCH" 2>/dev/null; then
+if ! git checkout "$ORIGINAL_BRANCH" >/dev/null 2>&1; then
   bt_warn "Failed to return to original branch: $ORIGINAL_BRANCH"
 fi
 
