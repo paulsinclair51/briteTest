@@ -92,6 +92,7 @@ RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 OUTPUT_FILE=""
 BRANCH_PATTERN=""
 VERBOSE=false
+BRANCH_ERRORS=0
 
 get_branches_matching_pattern() {
   local pattern="$1"
@@ -99,8 +100,8 @@ get_branches_matching_pattern() {
   # Convert glob pattern to regex
   local regex="${pattern//\*/.*}"
   
-  # Get all branches and filter by pattern
-  git branch -r | sed 's|origin/||' | grep -v HEAD | grep "^$regex$" | sort || echo ""
+  # Get all branches and filter by pattern, trimming leading whitespace
+  git branch -r | sed 's|origin/||' | sed 's/^[[:space:]]*//' | grep -v HEAD | grep "^$regex$" | sort || echo ""
 }
 
 check_repo_status() {
@@ -180,34 +181,42 @@ cleanup_old_reports() {
 check_branch_status() {
   local branch="$1"
   local report_file="$2"
-  
+
   bt_info "Checking branch: $branch"
-  
-  # Switch to branch
+
+  # Attempt checkout; on failure write an error entry and continue
   if ! git checkout "$branch" 2>/dev/null; then
-    bt_warn "Failed to checkout branch $branch"
-    return 1
+    bt_warn "Failed to checkout branch: $branch"
+    cat >> "$report_file" << EOF
+### Branch: \`$branch\`
+
+> **ERROR:** Could not check out branch \`$branch\`. It may be a remote-only branch
+> or contain uncommitted conflicts preventing checkout.
+
+EOF
+    BRANCH_ERRORS=$((BRANCH_ERRORS + 1))
+    return 0
   fi
-  
+
   # Fetch latest
   git fetch origin 2>/dev/null || true
-  
+
   # Gather status information
   local repo_status
   repo_status=$(check_repo_status "$branch")
-  
+
   local staged_count
   staged_count=$(get_staged_changes "$branch")
-  
+
   local unstaged_count
   unstaged_count=$(get_unstaged_changes "$branch")
-  
+
   local unpushed_count
   unpushed_count=$(get_unpushed_commits "$branch")
-  
+
   local pr_status
   pr_status=$(get_pr_status "$branch")
-  
+
   # Append to report
   cat >> "$report_file" << EOF
 ### Branch: \`$branch\`
@@ -285,7 +294,7 @@ generate_report_header
 if [[ -n "$BRANCHES_TO_CHECK" ]]; then
   while IFS= read -r branch; do
     if [[ -n "$branch" ]]; then
-      check_branch_status "$branch" "$OUTPUT_FILE"
+      check_branch_status "$branch" "$OUTPUT_FILE" || true
     fi
   done <<< "$BRANCHES_TO_CHECK"
 fi
@@ -293,6 +302,15 @@ fi
 # Return to original branch
 if ! git checkout "$ORIGINAL_BRANCH" 2>/dev/null; then
   bt_warn "Failed to return to original branch: $ORIGINAL_BRANCH"
+fi
+
+# Append summary footer if any branches failed
+if [[ "$BRANCH_ERRORS" -gt 0 ]]; then
+  cat >> "$OUTPUT_FILE" << EOF
+---
+
+**Warning:** $BRANCH_ERRORS branch(es) could not be checked out and were skipped.
+EOF
 fi
 
 cleanup_old_reports
@@ -305,4 +323,7 @@ if [[ "$VERBOSE" == true ]]; then
 fi
 
 bt_success "Done"
+if [[ "$BRANCH_ERRORS" -gt 0 ]]; then
+  exit 2
+fi
 exit 0
