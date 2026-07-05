@@ -23,7 +23,7 @@ This script:
 
 After running, scripts in /scripts/bin/ will be:
   - Executable by the user.
-  - Available by name in the shell (e.g., ckbranch -h).
+  - Available by name in the shell (e.g., ckbranch -h, installscripts -h).
   - Persistent across new shell sessions.
 
 Options:
