@@ -48,6 +48,10 @@ Logging:
   - Writes a file in /reports/ named directory_guides-report-<datetime>.md.
   - Removes previous reports when a new one is successfully written.
 
+Options:
+  -h, --help  Output this help to stdout and exit (other options
+              and arguments are ignored).
+
 Exit codes:
   0  Success, or help requested with -h/--help.
   1  Validation failure.
