@@ -28,6 +28,7 @@ docs/md/<doctitle>.md (excluding README.md).
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
+  - Writes a validation report to reports/docs_validation.md.
   - May generate files, reports, or other artifacts in the documented output locations.
 
 Exit codes:
@@ -51,6 +52,33 @@ readonly EXIT_OK=0
 readonly EXIT_VALIDATION=1
 readonly EXIT_USAGE=2
 
+RUN_TS="$(date '+%Y-%m-%d %H:%M:%S')"
+RUN_OUTPUT_FILE="$(mktemp)"
+REPORT_FILE=""
+
+setup_output_capture() {
+  exec > >(tee "$RUN_OUTPUT_FILE") 2>&1
+}
+
+write_report_on_exit() {
+  local exit_code="$?"
+  set +e
+
+  {
+    echo "# ckdocs Validation Report"
+    echo
+    echo "**Timestamp:** $RUN_TS"
+    echo
+    echo "## Validation Output"
+    echo '```text'
+    sed -n '1,$p' "$RUN_OUTPUT_FILE"
+    echo '```'
+  } > "$REPORT_FILE"
+
+  rm -f "$RUN_OUTPUT_FILE"
+  trap - EXIT
+  exit "$exit_code"
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -67,6 +95,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 repo_root=$(cd "$(dirname "$0")/../.." && pwd)
+REPORT_FILE="$repo_root/reports/docs_validation.md"
+
+trap write_report_on_exit EXIT
+setup_output_capture
+
 docs_dir="$repo_root/docs/md"
 branding_dir="$repo_root/docs/branding"
 svg_template="$branding_dir/Test_Guide.svg"

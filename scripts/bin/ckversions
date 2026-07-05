@@ -83,13 +83,65 @@ EOF
 #   versioned files.
 # - Emits validation failures suitable for local checks and CI gate enforcement.
 
+set -euo pipefail
+
+readonly EXIT_OK=0
+readonly EXIT_VALIDATION=1
+readonly EXIT_USAGE=2
+
+RUN_TS="$(date '+%Y-%m-%d %H:%M:%S')"
+RUN_OUTPUT_FILE="$(mktemp)"
+REPORT_FILE=""
+
+setup_output_capture() {
+  exec > >(tee "$RUN_OUTPUT_FILE") 2>&1
+}
+
+write_report_on_exit() {
+  local exit_code="$?"
+  set +e
+
+  {
+    echo "# ckversions Validation Report"
+    echo
+    echo "**Timestamp:** $RUN_TS"
+    echo
+    echo "## Validation Output"
+    echo '```text'
+    sed -n '1,$p' "$RUN_OUTPUT_FILE"
+    echo '```'
+  } > "$REPORT_FILE"
+
+  rm -f "$RUN_OUTPUT_FILE"
+  trap - EXIT
+  exit "$exit_code"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help)
       usage
-}
+      exit 0
+      ;;
+    *)
+      echo "ERROR: unknown argument: $1" >&2
+      usage >&2
+      exit "$EXIT_USAGE"
+      ;;
+  esac
+done
 
-extract_minor() {
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$repo_root"
+REPORT_FILE="$repo_root/reports/versions_validation.md"
+
+trap write_report_on_exit EXIT
+setup_output_capture
+
+extract_major() {
+  local semver="$1"
+  printf '%s\n' "${semver%%.*}"
+}
   local semver="$1"
   local major="${semver%%.*}"
   local minor_patch="${semver#*.}"

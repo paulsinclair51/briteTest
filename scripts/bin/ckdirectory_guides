@@ -41,10 +41,10 @@ Checks include:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
+  - Writes a validation report to reports/directory_guides_validation.md.
 
 Logging:
-  - Writes a log file in logs/ named ckdirectory_guides-log-YYYYMMDD-HHMMSS.md.
-  - Removes older ckdirectory_guides log files in logs/ after writing the new log.
+  - Writes a log file in reports/ named directory_guides_validation.md.
 
 Exit codes:
   0  Success, or help requested with -h/--help.
@@ -79,19 +79,15 @@ write_run_log_on_exit() {
   set +e
 
   {
-    echo "# ckdirectory_guides ${RUN_TS_DISPLAY}"
+    echo "# directory_guides Validation Report"
     echo
-    echo "## Output"
+    echo "**Timestamp:** $RUN_TS_DISPLAY"
+    echo
+    echo "## Validation Output"
     echo '```text'
     sed -n '1,$p' "$RUN_OUTPUT_FILE"
     echo '```'
   } > "$RUN_LOG_FILE"
-
-  for old_log in "$repo_root"/logs/ckdirectory_guides-log-*.md; do
-    [[ "$old_log" == "$RUN_LOG_FILE" ]] && continue
-    [[ -e "$old_log" ]] || continue
-    rm -f "$old_log"
-  done
 
   rm -f "$RUN_OUTPUT_FILE"
   trap - EXIT
@@ -120,7 +116,7 @@ done
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 
-RUN_LOG_FILE="${repo_root}/logs/ckdirectory_guides-log-${RUN_TS_FILE}.md"
+RUN_LOG_FILE="${repo_root}/reports/directory_guides_validation.md"
 trap write_run_log_on_exit EXIT
 setup_output_capture
 
