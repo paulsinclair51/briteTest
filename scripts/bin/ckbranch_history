@@ -32,7 +32,8 @@ History File Format:
     - [timestamp] [UNDO] operation: details
 
 Options:
-  -h, --help           Output this help to stdout and exit.
+  -h, --help           Output this help to stdout and exit (other options
+                       and arguments are ignored).
   -t, --type TYPE      Filter by operation type (merged, deleted, created, released, undo, etc.)
   -b, --branch BRANCH  Filter by branch name (substring match)
   -u, --user USER      Filter by user (substring match)

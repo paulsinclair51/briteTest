@@ -32,7 +32,8 @@ Features:
   - Optionally opens PR in browser
 
 Options:
-  -h, --help           Output this help to stdout and exit.
+  -h, --help           Output this help to stdout and exit (other options
+                       and arguments are ignored).
   -t, --title TITLE    PR title (auto-generated from branch name if not specified)
   -d, --description D  PR description
   --draft              Create as draft PR (Work In Progress)

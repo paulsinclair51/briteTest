@@ -41,7 +41,8 @@ Options:
       Useful for diagnostics and testing.
   -g  Use segment-style glob matching for -i/-x patterns:
       * and ? do not match '/'; ** matches across '/'.
-  -h, --help  Output this help to stdout and exit.
+  -h, --help  Output this help to stdout and exit (other options
+              and arguments are ignored).
   -i  Include only files whose relative path matches "<pattern>".
   -k  Keep directory structure under outdirectory (useful with -r).
   -n  Show planned conversions without writing output files.

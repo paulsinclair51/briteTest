@@ -26,7 +26,8 @@ Protected branches):
     by an approver (see docs/Contributor_Guide_md)
 
 Options:
-  -h, --help         Output this help to stdout and exit.
+  -h, --help         Output this help to stdout and exit (other options
+                     and arguments are ignored).
   -l                 Remove local branch only (default).
   -r                 Remove branch from remote only.
   -a                 Remove from both local and remote.

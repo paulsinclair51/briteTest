@@ -45,7 +45,8 @@ Options:
   -e <file>
       For debugging (single-document mode only): write transformed markdown
       used for conversion to <file>.
-  -h, --help  Output this help to stdout and exit.
+  -h, --help  Output this help to stdout and exit (other options
+              and arguments are ignored).
   -g  Use segment-style glob matching for -i/-x patterns:
       * and ? do not match '/'; ** matches across '/'.
   -i  Include only files whose relative path matches "<pattern>".

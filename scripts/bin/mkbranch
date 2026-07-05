@@ -47,7 +47,8 @@ Arguments:
     mkbranch fix-login-bug v1.0.2
 
 Options:
-  -h, --help        Output this help to stdout and exit.
+  -h, --help        Output this help to stdout and exit (other options
+                    and arguments are ignored).
   -l                Create local branch only (default if base branch is not main).
   -r                Create local branch and push to remote (default if base branch is main).
   -v                Validate only without creating branch.

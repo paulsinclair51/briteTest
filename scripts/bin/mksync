@@ -26,7 +26,8 @@ Features:
   - Detects diverged branches and suggests resolution
 
 Options:
-  -h, --help         Output this help to stdout and exit.
+  -h, --help         Output this help to stdout and exit (other options
+                     and arguments are ignored).
   -a, --all          Fetch all branches (default: current branch only)
   -v, --verbose      Show detailed change information
   -m, --message MSG  Add comment message (GitHub style, requires quotes if spaces)

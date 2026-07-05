@@ -43,7 +43,8 @@ Options:
       Useful for diagnostics and testing.
   -c  Convert details/summary blocks to PDF-friendly Markdown instead of
       removing details/summary tag lines. Default is to remove them.
-  -h, --help  Output this help to stdout and exit.
+  -h, --help  Output this help to stdout and exit (other options
+              and arguments are ignored).
   -g  Use segment-style glob matching for -i/-x patterns:
       * and ? do not match '/'; ** matches across '/'.
   -i  Include only files whose relative path matches "<pattern>".

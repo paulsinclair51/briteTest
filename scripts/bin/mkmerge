@@ -33,7 +33,8 @@ Features:
   - No branch cleanup (branches remain after merge)
 
 Options:
-  -h, --help           Output this help to stdout and exit.
+  -h, --help           Output this help to stdout and exit (other options
+                       and arguments are ignored).
   -m, --message MSG    Custom squash commit message (uses PR title if not specified)
   -v, --verbose        Show detailed information
 

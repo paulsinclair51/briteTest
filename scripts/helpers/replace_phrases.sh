@@ -17,7 +17,8 @@ Configuration file format:
 
 Options:
   -d           Show what would be replaced without modifying files.
-  -h, --help   Show this help and exit.
+  -h, --help   Output this help to stdout and exit (other options
+               and arguments are ignored).
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.

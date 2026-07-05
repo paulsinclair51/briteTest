@@ -36,7 +36,8 @@ Features:
   - Verbose mode for debugging
 
 Options:
-  -h, --help  Output this help to stdout and exit.
+  -h, --help  Output this help to stdout and exit (other options
+              and arguments are ignored).
   -v          Show detailed information to stdout.
   -l          Include local branches.
   -r          Include remote branches.
