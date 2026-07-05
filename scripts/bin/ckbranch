@@ -264,15 +264,9 @@ check_branch_status() {
   local report_file="$2"
   local is_current="${3:-false}"
 
-  if [[ "$is_current" == true ]]; then
-    bt_info "Checking current branch: $branch"
-  else
-    bt_info "Checking branch: $branch"
-  fi
-
-  # Attempt checkout; on failure write an error entry and continue
+  # Attempt checkout; on failure write error entry and print status line
   if ! git checkout "$branch" >/dev/null 2>&1; then
-    bt_warn "Failed to checkout branch: $branch"
+    printf '%s [check failed]\n' "$branch"
     local current_marker=""
     [[ "$is_current" == true ]] && current_marker=" (current)"
     cat >> "$report_file" << EOF
@@ -297,6 +291,14 @@ EOF
   unpushed_count=$(get_unpushed_commits "$branch") || unpushed_count="N/A"
   pr_status=$(get_pr_status          "$branch") || pr_status="N/A"
   branch_type=$(get_branch_type      "$branch") || branch_type="unknown"
+
+  # Build and print compact status line
+  local tags=()
+  [[ "$branch_type" == *remote* && "$branch_type" != *local* ]] && tags+=("[remote]") || tags+=("[local]")
+  [[ "$is_current" == true ]] && tags+=("[current]")
+  [[ "$repo_status" == "dirty" ]] && tags+=("[dirty]")
+  [[ "$pr_status" != "No PR" && "$pr_status" != "N/A" ]] && tags+=("[PR: $pr_status]")
+  printf '%s %s\n' "$branch" "${tags[*]}"
 
   # Append to report
   local current_marker=""
@@ -326,15 +328,15 @@ check_remote_branch_status() {
   local branch="$1"
   local report_file="$2"
 
-  bt_info "Checking remote branch: $branch"
-
-  # Get PR status for remote branch
-  local pr_status
+  # Get PR status and last commit
+  local pr_status last_commit
   pr_status=$(get_pr_status "$branch") || pr_status="N/A"
-
-  # Get last commit info
-  local last_commit
   last_commit=$(git log "origin/$branch" -1 --pretty=format:"%h - %s" 2>/dev/null || echo "N/A")
+
+  # Build and print compact status line
+  local tags=("[remote]")
+  [[ "$pr_status" != "No PR" && "$pr_status" != "N/A" ]] && tags+=("[PR: $pr_status]")
+  printf '%s %s\n' "$branch" "${tags[*]}"
 
   cat >> "$report_file" << EOF
 ### Branch: \`$branch\` (remote only)
