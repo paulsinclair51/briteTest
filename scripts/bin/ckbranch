@@ -101,8 +101,8 @@ OUTPUT_FILE=""
 BRANCH_PATTERN=""
 VERBOSE=false
 BRANCH_ERRORS=0
-INCLUDE_LOCAL=true
-INCLUDE_REMOTE=true
+INCLUDE_LOCAL_FLAG=false
+INCLUDE_REMOTE_FLAG=false
 
 get_branches_matching_pattern() {
   local pattern="$1"
@@ -354,13 +354,11 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -l | --local)
-      INCLUDE_LOCAL=true
-      INCLUDE_REMOTE=false
+      INCLUDE_LOCAL_FLAG=true
       shift
       ;;
     -r | --remote)
-      INCLUDE_LOCAL=false
-      INCLUDE_REMOTE=true
+      INCLUDE_REMOTE_FLAG=true
       shift
       ;;
     -*)
@@ -372,6 +370,18 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Determine what to include based on flags
+# If neither flag specified, default to both; if at least one flag specified, use the flags
+if ! $INCLUDE_LOCAL_FLAG && ! $INCLUDE_REMOTE_FLAG; then
+  # Default: include both
+  INCLUDE_LOCAL=true
+  INCLUDE_REMOTE=true
+else
+  # At least one flag specified: use exactly what was specified
+  INCLUDE_LOCAL=$INCLUDE_LOCAL_FLAG
+  INCLUDE_REMOTE=$INCLUDE_REMOTE_FLAG
+fi
 
 # Validate reports directory and set output path
 if [[ ! -d "$repo_root/reports" ]]; then
