@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+# installscripts - Make all scripts in /scripts/bin/ executable and add to PATH.
+#
+# Usage: installscripts
+#
+# This script:
+#   - Makes all scripts in /scripts/bin/ executable (chmod +x)
+#   - Adds /scripts/bin/ to PATH in ~/.bashrc if not already present
+#   - Sources ~/.bashrc to apply changes to current session
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
+set -euo pipefail
+
+# Determine repository root from git or from this script's location
+if git rev-parse --git-dir > /dev/null 2>&1; then
+  repo_root="$(git rev-parse --show-toplevel)"
+else
+  repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+fi
+
+scripts_bin="$repo_root/scripts/bin"
+
+# Verify the scripts/bin directory exists
+if [[ ! -d "$scripts_bin" ]]; then
+  echo "Error: scripts/bin directory not found at $scripts_bin" >&2
+  exit 1
+fi
+
+echo "Installing scripts from $scripts_bin..."
+
+# Make all scripts executable (chmod +x)
+echo "Making scripts executable..."
+for script in "$scripts_bin"/*; do
+  # Skip directories and README
+  if [[ -f "$script" && "$script" != *"README.md" ]]; then
+    chmod +x "$script"
+    echo "  ✓ $(basename "$script")"
+  fi
+done
+
+# Add /scripts/bin/ to PATH in ~/.bashrc if not already present
+echo ""
+echo "Adding $scripts_bin to PATH..."
+
+path_line="export PATH=\"$scripts_bin:\$PATH\""
+
+if grep -qxF "$path_line" ~/.bashrc 2>/dev/null; then
+  echo "  → Already in ~/.bashrc"
+else
+  echo "$path_line" >> ~/.bashrc
+  echo "  ✓ Added to ~/.bashrc"
+fi
+
+# Source bashrc to apply changes
+echo ""
+echo "Sourcing ~/.bashrc to apply changes..."
+# shellcheck source=/dev/null
+source ~/.bashrc
+
+echo ""
+echo "✓ Installation complete!"
+echo ""
+echo "Scripts in $scripts_bin are now:"
+echo "  - Executable"
+echo "  - Available in PATH for current and future sessions"
+echo ""
+echo "You can now run scripts by name, e.g.: ckbranch -h"
