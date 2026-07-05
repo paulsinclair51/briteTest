@@ -192,8 +192,10 @@ check_branch_status() {
   # Attempt checkout; on failure write an error entry and continue
   if ! git checkout "$branch" >/dev/null 2>&1; then
     bt_warn "Failed to checkout branch: $branch"
+    local current_marker=""
+    [[ "$is_current" == true ]] && current_marker=" (current)"
     cat >> "$report_file" << EOF
-### Branch: \`$branch\`
+### Branch: \`$branch\`$current_marker
 
 > **ERROR:** Could not check out branch \`$branch\`. It may be a remote-only branch
 > or contain uncommitted conflicts preventing checkout.
@@ -215,8 +217,10 @@ EOF
   pr_status=$(get_pr_status          "$branch") || pr_status="N/A"
 
   # Append to report
+  local current_marker=""
+  [[ "$is_current" == true ]] && current_marker=" (current)"
   cat >> "$report_file" << EOF
-### Branch: \`$branch\`
+### Branch: \`$branch\`$current_marker
 
 - **Status**: $repo_status
 - **Staged Changes**: $staged_count
