@@ -35,10 +35,10 @@ Features:
   - Verbose mode for debugging
 
 Options:
-  -h, --help      Output this help to stdout and exit.
-  -v, --verbose   Show detailed information to stdout.
-  -l, --local     Include only local branches (default: include both).
-  -r, --remote    Include only remote branches (default: include both).
+  -h, --help  Output this help to stdout and exit.
+  -v          Show detailed information to stdout.
+  -l          Include only local branches (default: include both).
+  -r          Include only remote branches (default: include both).
 
 Examples:
   # Check current branch
@@ -349,15 +349,15 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    -v | --verbose)
+    -v)
       VERBOSE=true
       shift
       ;;
-    -l | --local)
+    -l)
       INCLUDE_LOCAL_FLAG=true
       shift
       ;;
-    -r | --remote)
+    -r)
       INCLUDE_REMOTE_FLAG=true
       shift
       ;;
