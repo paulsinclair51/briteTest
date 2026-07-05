@@ -11,7 +11,7 @@
 usage() {
   cat <<'EOF'
 Usage:
-  ckstyle
+  ckstyle [OPTIONS]
   ckstyle -h | --help
 
 Validate canonical style across documents and directory guides.
@@ -44,6 +44,24 @@ Directory Guide Checks:
 Options:
   -h, --help  Output this help to stdout and exit (other options
               and arguments are ignored).
+  -d          Check documents.
+  -r          Check directory guide README.md files.
+
+  If neither -d nor -r is specified, same as specifying both -d and -r
+  (i.e., both documents and directory guides are checked).
+
+Examples:
+  # Check both documents and directory guides
+  ckstyle
+
+  # Check only documents
+  ckstyle -d
+
+  # Check only directory guides
+  ckstyle -r
+
+  # Show help
+  ckstyle -h
 
 Outputs:
   - Writes help text, status messages, and results to stdout.
@@ -73,6 +91,9 @@ RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 RUN_OUTPUT_FILE="$(mktemp)"
 REPORT_FILE=""
+
+CHECK_DOCUMENTS_FLAG=false
+CHECK_GUIDES_FLAG=false
 
 setup_output_capture() {
   exec > >(tee "$RUN_OUTPUT_FILE") 2>&1
@@ -116,9 +137,17 @@ for arg in "$@"; do
   fi
 done
 
-# Parse remaining arguments
+# Parse options
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    -d)
+      CHECK_DOCUMENTS_FLAG=true
+      shift
+      ;;
+    -r)
+      CHECK_GUIDES_FLAG=true
+      shift
+      ;;
     *)
       echo "ERROR: unknown argument: $1" >&2
       usage >&2
@@ -126,6 +155,18 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Determine what to check based on flags
+# If neither flag specified, default to both; if at least one flag specified, use the flags
+if ! $CHECK_DOCUMENTS_FLAG && ! $CHECK_GUIDES_FLAG; then
+  # Default: check both
+  CHECK_DOCUMENTS=true
+  CHECK_GUIDES=true
+else
+  # At least one flag specified: use exactly what was specified
+  CHECK_DOCUMENTS=$CHECK_DOCUMENTS_FLAG
+  CHECK_GUIDES=$CHECK_GUIDES_FLAG
+fi
 
 repo_root=$(cd "$(dirname "$0")/../.." && pwd)
 
@@ -632,31 +673,37 @@ check_directory_guides() {
 echo "=== Starting ckstyle validation ==="
 echo
 
-# Validate documents
-if [[ -d "$docs_dir" ]]; then
+# Validate documents if requested
+if [[ "$CHECK_DOCUMENTS" == true ]]; then
   echo "Checking document canonical form..."
   
-  ensure_doc_svgs
-  
-  reference_dvh=$(extract_dvh_block "$docs_dir/$overview_doc")
-  
-  while IFS= read -r file; do
-    check_doc_file "$file"
+  if [[ -d "$docs_dir" ]]; then
+    ensure_doc_svgs
     
-    if [[ $(extract_dvh_block "$file") != "$reference_dvh" ]]; then
-      fail "$file: Document Version History block differs from $overview_doc"
-    fi
-  done < <(find "$docs_dir" -maxdepth 1 -type f -name '*.md' ! -name 'README.md' | sort)
-  
-  echo "✓ Document checks complete"
+    reference_dvh=$(extract_dvh_block "$docs_dir/$overview_doc")
+    
+    while IFS= read -r file; do
+      check_doc_file "$file"
+      
+      if [[ $(extract_dvh_block "$file") != "$reference_dvh" ]]; then
+        fail "$file: Document Version History block differs from $overview_doc"
+      fi
+    done < <(find "$docs_dir" -maxdepth 1 -type f -name '*.md' ! -name 'README.md' | sort)
+    
+    echo "✓ Document checks complete"
+  else
+    echo "⚠ Document directory not found: $docs_dir"
+  fi
   echo
 fi
 
-# Validate directory guides
-echo "Checking directory guide canonical form..."
-check_directory_guides || true
-echo "✓ Directory guide checks complete"
-echo
+# Validate directory guides if requested
+if [[ "$CHECK_GUIDES" == true ]]; then
+  echo "Checking directory guide canonical form..."
+  check_directory_guides || true
+  echo "✓ Directory guide checks complete"
+  echo
+fi
 
 if [[ $failures -ne 0 ]]; then
   echo "Canonical-form checks FAILED with $failures issue(s)."
