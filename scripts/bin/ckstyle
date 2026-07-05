@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# ckstyle - Validate canonical document and directory guide form.
+# ckstyle - Validate canonical style across repository.
 #
 # See usage below for details, or run: ckstyle -h
 #
@@ -14,7 +14,7 @@ Usage:
   ckstyle [OPTIONS]
   ckstyle -h | --help
 
-Validate canonical style across documents and directory guides.
+Validate canonical style across repository for the current branch.
 
 This script performs comprehensive style validation including:
   - Document canonical form in docs/md/
@@ -40,12 +40,21 @@ Directory Guide Checks:
   - Files section with proper alphabetical ordering
   - Subdirectories section accuracy
   - README.md listed last in file entries
-
+  
+Versioning Checks:
+  - Versioned filed all specify the same major and minor version
+    and, if the branch is named for a version, that version has the same
+    major and minor version.
+  
 Options:
   -h, --help  Output this help to stdout and exit (other options
               and arguments are ignored).
   -d          Check documents.
   -r          Check directory guide README.md files.
+  -r          Check directory guide README.md files.
+  -v           Check versioned files and branch name (if versioed) for
+               versioning consistency.
+               
 
   If neither -d nor -r is specified, same as specifying both -d and -r
   (i.e., both documents and directory guides are checked).
