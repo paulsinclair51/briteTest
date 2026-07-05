@@ -275,9 +275,6 @@ else
   
   if [[ -z "$BRANCHES_TO_CHECK" ]]; then
     bt_warn "No branches found matching pattern: $BRANCH_PATTERN"
-  else
-    bt_info "Found branches matching pattern '$BRANCH_PATTERN':"
-    echo "$BRANCHES_TO_CHECK" | sed 's/^/  /'
   fi
 fi
 
