@@ -128,8 +128,8 @@ get_unstaged_changes() {
 
 get_unpushed_commits() {
   local branch="$1"
-  
-  git log "origin/$branch..HEAD" --oneline 2>/dev/null | wc -l
+  # Use a subshell so pipefail doesn't propagate when origin/$branch doesn't exist
+  { git log "origin/$branch..HEAD" --oneline 2>/dev/null || true; } | wc -l
 }
 
 get_pr_status() {
@@ -174,7 +174,7 @@ cleanup_old_reports() {
   for old_report in "$repo_root"/reports/ckbranch-*.md; do
     [[ "$old_report" == "$OUTPUT_FILE" ]] && continue
     [[ -e "$old_report" ]] || continue
-    rm -f "$old_report"
+    rm -f "$old_report" || true
   done
 }
 
@@ -201,21 +201,13 @@ EOF
   # Fetch latest
   git fetch origin 2>/dev/null || true
 
-  # Gather status information
-  local repo_status
-  repo_status=$(check_repo_status "$branch")
-
-  local staged_count
-  staged_count=$(get_staged_changes "$branch")
-
-  local unstaged_count
-  unstaged_count=$(get_unstaged_changes "$branch")
-
-  local unpushed_count
-  unpushed_count=$(get_unpushed_commits "$branch")
-
-  local pr_status
-  pr_status=$(get_pr_status "$branch")
+  # Gather status information — use fallback values if any step fails
+  local repo_status staged_count unstaged_count unpushed_count pr_status
+  repo_status=$(check_repo_status   "$branch") || repo_status="unknown"
+  staged_count=$(get_staged_changes  "$branch") || staged_count="N/A"
+  unstaged_count=$(get_unstaged_changes "$branch") || unstaged_count="N/A"
+  unpushed_count=$(get_unpushed_commits "$branch") || unpushed_count="N/A"
+  pr_status=$(get_pr_status          "$branch") || pr_status="N/A"
 
   # Append to report
   cat >> "$report_file" << EOF
