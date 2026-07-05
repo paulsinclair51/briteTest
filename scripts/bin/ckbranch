@@ -13,12 +13,13 @@ usage() {
 Usage:
   ckbranch [OPTIONS]
   ckbranch [PATTERN] [OPTIONS]
+  ckbranch * [OPTIONS]
   ckbranch -h | --help
 
 Check branch and repository status, generate detailed report.
 
-By default, checks the current branch. Use PATTERN to check matching branches.
-Patterns support glob-like matching (e.g., "feature/*", "*auth*").
+By default, checks the current branch. Use PATTERN to check matching branches
+(glob-like: "feature/*", "*auth*"). Use * to check all branches.
 
 Report includes:
   - Branch name
@@ -37,14 +38,20 @@ Features:
 Options:
   -h, --help  Output this help to stdout and exit.
   -v          Show detailed information to stdout.
-  -l          Include only local branches (default: include both).
-  -r          Include only remote branches (default: include both).
+  -l          Include local branches.
+  -r          Include remote branches.
+
+  If neither -l nor -r is specified, same as specifying both -l and -r
+  (i.e., both local and remote branches are included).
 
 Examples:
   # Check current branch
   ckbranch
 
-  # Check all feature branches
+  # Check all branches
+  ckbranch *
+
+  # Check feature branches
   ckbranch "feature/*"
 
   # Check branches matching pattern
@@ -342,13 +349,17 @@ EOF
 }
 
 
+# Check for help first — if specified, ignore all other arguments
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+done
+
 # Parse options and arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -h | --help)
-      usage
-      exit 0
-      ;;
     -v)
       VERBOSE=true
       shift
