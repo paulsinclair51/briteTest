@@ -19,7 +19,7 @@ Make all scripts in /scripts/bin/ executable and add /scripts/bin/ to PATH.
 This script:
   - Makes all scripts in /scripts/bin/ executable (chmod +x).
   - Adds /scripts/bin/ to PATH in ~/.bashrc if not already present.
-  - Sources ~/.bashrc to apply changes to current session.
+  - Loads the updated configuration so scripts are available immediately.
 
 After running, scripts in /scripts/bin/ will be:
   - Executable by the user.
@@ -46,7 +46,7 @@ Outputs:
 Exit codes:
   0  Success
   1  scripts/bin directory not found
-  2  Failed to source ~/.bashrc
+  2  Failed to load configuration
 EOF
 }
 
@@ -107,11 +107,11 @@ else
   echo "  ✓ Added to ~/.bashrc"
 fi
 
-# Source bashrc to apply changes
+# Load the updated configuration
 echo ""
-echo "Sourcing ~/.bashrc to apply changes..."
+echo "Loading updated configuration..."
 if ! source ~/.bashrc 2>/dev/null; then
-  echo "Warning: Failed to source ~/.bashrc, but changes have been made" >&2
+  echo "Warning: Failed to load configuration, but changes have been made" >&2
   exit 2
 fi
 
