@@ -190,6 +190,12 @@ get_unpushed_commits() {
   { git log "origin/$branch..HEAD" --oneline 2>/dev/null || true; } | wc -l
 }
 
+get_behind_count() {
+  local branch="$1"
+  # Commits on remote not yet in local
+  { git log "HEAD..origin/$branch" --oneline 2>/dev/null || true; } | wc -l
+}
+
 get_pr_status() {
   local branch="$1"
   
@@ -291,22 +297,48 @@ EOF
   unpushed_count=$(get_unpushed_commits "$branch") || unpushed_count="N/A"
   pr_status=$(get_pr_status          "$branch") || pr_status="N/A"
   branch_type=$(get_branch_type      "$branch") || branch_type="unknown"
+  local behind_count="0"
+  [[ "$branch_type" == "local (tracking origin)" ]] && \
+    behind_count=$(get_behind_count "$branch") || behind_count="0"
 
-  # Build and print compact status line
-  local tags=()
+  # Determine if local and remote have diverged
+  local diverged=false
   if [[ "$branch_type" == "local (tracking origin)" ]]; then
-    tags+=("[local]" "[remote]")
-  elif [[ "$branch_type" == "remote" ]]; then
-    tags+=("[remote]")
-  else
-    tags+=("[local]")
+    [[ "$unpushed_count" =~ ^[0-9]+$ && "$unpushed_count" -gt 0 ]] && diverged=true
+    [[ "$behind_count" =~ ^[0-9]+$ && "$behind_count" -gt 0 ]] && diverged=true
   fi
-  [[ "$is_current" == true ]] && tags+=("[current]")
-  [[ "$repo_status" == "dirty" ]] && tags+=("[dirty]")
-  [[ "$staged_count" =~ ^[0-9]+$ && "$staged_count" -gt 0 ]] && tags+=("[staged]")
-  [[ "$unstaged_count" =~ ^[0-9]+$ && "$unstaged_count" -gt 0 ]] && tags+=("[unstaged]")
-  [[ "$pr_status" != "No PR" && "$pr_status" != "N/A" ]] && tags+=("[PR: $pr_status]")
-  printf '%s %s\n' "$branch" "${tags[*]}"
+
+  # Build and print compact status line(s)
+  if [[ "$diverged" == true ]]; then
+    # Local line
+    local local_tags=("[local]")
+    [[ "$is_current" == true ]] && local_tags+=("[current]")
+    [[ "$repo_status" == "dirty" ]] && local_tags+=("[dirty]")
+    [[ "$staged_count" =~ ^[0-9]+$ && "$staged_count" -gt 0 ]] && local_tags+=("[staged]")
+    [[ "$unstaged_count" =~ ^[0-9]+$ && "$unstaged_count" -gt 0 ]] && local_tags+=("[unstaged]")
+    [[ "$unpushed_count" =~ ^[0-9]+$ && "$unpushed_count" -gt 0 ]] && local_tags+=("[ahead $unpushed_count]")
+    printf '%s %s\n' "$branch" "${local_tags[*]}"
+    # Remote line
+    local remote_tags=("[remote]")
+    [[ "$behind_count" =~ ^[0-9]+$ && "$behind_count" -gt 0 ]] && remote_tags+=("[ahead $behind_count of local]")
+    [[ "$pr_status" != "No PR" && "$pr_status" != "N/A" ]] && remote_tags+=("[PR: $pr_status]")
+    printf '%s %s\n' "$branch" "${remote_tags[*]}"
+  else
+    local tags=()
+    if [[ "$branch_type" == "local (tracking origin)" ]]; then
+      tags+=("[local]" "[remote]")
+    elif [[ "$branch_type" == "remote" ]]; then
+      tags+=("[remote]")
+    else
+      tags+=("[local]")
+    fi
+    [[ "$is_current" == true ]] && tags+=("[current]")
+    [[ "$repo_status" == "dirty" ]] && tags+=("[dirty]")
+    [[ "$staged_count" =~ ^[0-9]+$ && "$staged_count" -gt 0 ]] && tags+=("[staged]")
+    [[ "$unstaged_count" =~ ^[0-9]+$ && "$unstaged_count" -gt 0 ]] && tags+=("[unstaged]")
+    [[ "$pr_status" != "No PR" && "$pr_status" != "N/A" ]] && tags+=("[PR: $pr_status]")
+    printf '%s %s\n' "$branch" "${tags[*]}"
+  fi
 
   # Append to report
   local current_marker=""
@@ -319,6 +351,7 @@ EOF
 - **Staged Changes**: $staged_count
 - **Unstaged Changes**: $unstaged_count
 - **Unpushed Commits**: $unpushed_count
+- **Commits Behind Remote**: $behind_count
 - **PR Status**: $pr_status
 
 EOF
