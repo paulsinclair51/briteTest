@@ -12,14 +12,15 @@ usage() {
   cat <<'EOF'
 Usage:
   ckbranch [OPTIONS]
-  ckbranch [PATTERN] [OPTIONS]
-  ckbranch * [OPTIONS]
+  ckbranch "PATTERN" [OPTIONS]
+  ckbranch "*" [OPTIONS]
   ckbranch -h | --help
 
 Check branch and repository status, generate detailed report.
 
 By default, checks the current branch. Use PATTERN to check matching branches
-(glob-like: "feature/*", "*auth*"). Use * to check all branches.
+(glob-like: "feature/*", "*auth*"). Use "*" to check all branches. PATTERN
+must be quoted to prevent shell glob expansion.
 
 Report includes:
   - Branch name
@@ -50,7 +51,7 @@ Examples:
   ckbranch
 
   # Check all branches
-  ckbranch *
+  ckbranch "*"
 
   # Check feature branches
   ckbranch "feature/*"
