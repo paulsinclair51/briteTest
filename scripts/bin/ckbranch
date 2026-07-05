@@ -38,7 +38,7 @@ Features:
 Options:
   -h, --help  Output this help to stdout and exit (other options
               and arguments are ignored).
-  -a          Check all branches.
+  -a          Check all branches for local (-l) and/or remote (-r).
   -v          Show detailed information to stdout.
   -l          Include local branches.
   -r          Include remote branches.
