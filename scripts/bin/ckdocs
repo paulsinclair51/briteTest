@@ -79,7 +79,7 @@ write_report_on_exit() {
   } > "$REPORT_FILE"
 
   # Remove old reports if new one was written successfully
-  if [[ -f "$REPORT_FILE" ]]; then
+  if [[ -n "$repo_root" && -f "$REPORT_FILE" ]]; then
     for old_report in "$repo_root"/reports/docs-*.md; do
       [[ "$old_report" == "$REPORT_FILE" ]] && continue
       [[ -e "$old_report" ]] || continue
@@ -107,6 +107,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 repo_root=$(cd "$(dirname "$0")/../.." && pwd)
+
+# Validate reports directory exists before proceeding
+if [[ ! -d "$repo_root/reports" ]]; then
+  echo "ERROR: reports directory not found: $repo_root/reports" >&2
+  exit "$EXIT_VALIDATION"
+fi
 REPORT_FILE="$repo_root/reports/docs-${RUN_TS_FILE}.md"
 
 trap write_report_on_exit EXIT

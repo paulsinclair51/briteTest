@@ -92,7 +92,7 @@ write_run_log_on_exit() {
   } > "$RUN_LOG_FILE"
 
   # Remove old reports if new one was written successfully
-  if [[ -f "$RUN_LOG_FILE" ]]; then
+  if [[ -n "$repo_root" && -f "$RUN_LOG_FILE" ]]; then
     for old_report in "$repo_root"/reports/directory_guides-*.md; do
       [[ "$old_report" == "$RUN_LOG_FILE" ]] && continue
       [[ -e "$old_report" ]] || continue
@@ -125,6 +125,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Validate reports directory exists before proceeding
+if [[ ! -d "$repo_root/reports" ]]; then
+  echo "ERROR: reports directory not found: $repo_root/reports" >&2
+  exit "$EXIT_VALIDATION"
+fi
 cd "$repo_root"
 
 RUN_LOG_FILE="${repo_root}/reports/directory_guides-${RUN_TS_FILE}.md"

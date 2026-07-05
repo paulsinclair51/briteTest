@@ -48,6 +48,35 @@ readonly EXIT_VALIDATION=1
 readonly EXIT_USAGE=2
 
 
+usage() {
+  cat <<'EOF'
+Usage:
+  ckversions
+  ckversions -h | --help
+
+Validate that version consistency across docs, headers, and sources, and that
+version changes align with branch naming policy.
+
+This script:
+  1. Ensures major and minor release versions are consistent across:
+     - docs/md/*.md (excluding docs/md/README.md)
+     - include/*.h
+     - src/*.c
+  
+  2. If the current branch follows the naming convention (patch/*, minor/*,
+     major/*), validates that version changes match the branch type:
+     - patch/* branches: only patch version differs across files
+     - minor/* branches: all files updated to same major.minor (patch = 0)
+     - major/* branches: all files updated to same major (minor = patch = 0)
+  
+  3. If not on a versioned branch, only validates consistency.
+
+Exit codes:
+  0  Success, or help requested with -h/--help.
+  1  Validation failure.
+  2  Invalid command-line argument.
+EOF
+}
 
 # High-Level Flow:
 # - Extracts semantic versions from headers, sources, and markdown docs.
@@ -55,7 +84,11 @@ readonly EXIT_USAGE=2
 #   versioned files.
 # - Emits validation failures suitable for local checks and CI gate enforcement.
 
+set -euo pipefail
 
+readonly EXIT_OK=0
+readonly EXIT_VALIDATION=1
+readonly EXIT_USAGE=2
 
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
@@ -83,7 +116,7 @@ write_report_on_exit() {
   } > "$REPORT_FILE"
 
   # Remove old reports if new one was written successfully
-  if [[ -n "$repo_root" && -f "$REPORT_FILE" ]]; then
+  if [[ -f "$REPORT_FILE" ]]; then
     for old_report in "$repo_root"/reports/versions-*.md; do
       [[ "$old_report" == "$REPORT_FILE" ]] && continue
       [[ -e "$old_report" ]] || continue
@@ -111,12 +144,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-
-# Validate reports directory exists before proceeding
-if [[ ! -d "$repo_root/reports" ]]; then
-  echo "ERROR: reports directory not found: $repo_root/reports" >&2
-  exit "$EXIT_VALIDATION"
-fi
 cd "$repo_root"
 REPORT_FILE="$repo_root/reports/versions-${RUN_TS_FILE}.md"
 
@@ -144,14 +171,6 @@ extract_major_minor() {
   local semver="$1"
   printf '%s\n' "${semver%.*}"
 }
-
-extract_semver() {
-  local file="$1"
-  # Extract semantic version from file using grep pattern.
-  # Looks for X.Y.Z format in #define or version strings.
-  grep -Eo "[0-9]{1,2}.[0-9]{1,2}.[0-9]{1,2}" "$file" | head -n 1 || printf ""
-}
-
 
 doc_major() {
   local file="$1"
