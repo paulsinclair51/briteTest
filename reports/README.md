@@ -22,6 +22,12 @@ See `/README.md` for an introduction to briteTest.
 
 - **branch_status.md**: Latest status report from `scripts/bin/ckbranch`.
 
+- **updatebrand-<datetime>.md**: Report from `scripts/bin/updatebrand`,
+	where `<datetime>` has the form `YYYYMMDD-HHMMSS`.
+
+- **updatebrand-dry-run-<datetime>.md**: Dry-run report from `scripts/bin/updatebrand`.
+	Old dry-run reports are deleted on a successful non-dry-run.
+
 - **test_report-I.txt**: Report file for an injected test run.
 
 - **test_report.txt**: Report file for a test run without the `-I` option.

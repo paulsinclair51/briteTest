@@ -16,10 +16,6 @@ See `/README.md` for an introduction to briteTest.
 
 - **remote_branch_history.md**: log of remote branch operations.
 
-- **updatebrand-log-<datetime>.md**: Outputs from `scripts/bin/updatebrand`,
-	where `<datetime>` has the form `YYYYMMDD-HHMMSS`. Old dry-runs are deleted
-    on a successful non-dry-run.
-
 - **README.md**: This directory guide.
 
 ## Subdirectories
