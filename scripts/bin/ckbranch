@@ -159,6 +159,29 @@ get_pr_status() {
   fi
 }
 
+get_branch_type() {
+  local branch="$1"
+  
+  local is_local=false
+  local is_remote=false
+  
+  # Check if branch exists locally
+  git branch --list "$branch" >/dev/null 2>&1 && is_local=true
+  
+  # Check if branch exists on remote
+  git branch -r --list "origin/$branch" >/dev/null 2>&1 && is_remote=true
+  
+  if [[ "$is_local" == true && "$is_remote" == true ]]; then
+    echo "local (tracking origin)"
+  elif [[ "$is_local" == true ]]; then
+    echo "local"
+  elif [[ "$is_remote" == true ]]; then
+    echo "remote"
+  else
+    echo "unknown"
+  fi
+}
+
 generate_report_header() {
   cat > "$OUTPUT_FILE" << EOF
 # ckbranch Report
@@ -209,12 +232,13 @@ EOF
   git fetch origin 2>/dev/null || true
 
   # Gather status information — use fallback values if any step fails
-  local repo_status staged_count unstaged_count unpushed_count pr_status
+  local repo_status staged_count unstaged_count unpushed_count pr_status branch_type
   repo_status=$(check_repo_status   "$branch") || repo_status="unknown"
   staged_count=$(get_staged_changes  "$branch") || staged_count="N/A"
   unstaged_count=$(get_unstaged_changes "$branch") || unstaged_count="N/A"
   unpushed_count=$(get_unpushed_commits "$branch") || unpushed_count="N/A"
   pr_status=$(get_pr_status          "$branch") || pr_status="N/A"
+  branch_type=$(get_branch_type      "$branch") || branch_type="unknown"
 
   # Append to report
   local current_marker=""
@@ -222,6 +246,7 @@ EOF
   cat >> "$report_file" << EOF
 ### Branch: \`$branch\`$current_marker
 
+- **Type**: $branch_type
 - **Status**: $repo_status
 - **Staged Changes**: $staged_count
 - **Unstaged Changes**: $unstaged_count
