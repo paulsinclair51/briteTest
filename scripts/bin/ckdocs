@@ -52,7 +52,8 @@ readonly EXIT_OK=0
 readonly EXIT_VALIDATION=1
 readonly EXIT_USAGE=2
 
-RUN_TS="$(date '+%Y-%m-%d %H:%M:%S')"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 RUN_OUTPUT_FILE="$(mktemp)"
 REPORT_FILE=""
 
@@ -65,9 +66,9 @@ write_report_on_exit() {
   set +e
 
   {
-    echo "# ckdocs Validation Report"
+    echo "# ckdocs Report"
     echo
-    echo "**Timestamp:** $RUN_TS"
+    echo "**Timestamp:** $RUN_TS_DISPLAY"
     echo
     echo "## Validation Output"
     echo '```text'
@@ -95,7 +96,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 repo_root=$(cd "$(dirname "$0")/../.." && pwd)
-REPORT_FILE="$repo_root/reports/docs_validation.md"
+REPORT_FILE="$repo_root/reports/docs-report-${RUN_TS_FILE}.md"
 
 trap write_report_on_exit EXIT
 setup_output_capture

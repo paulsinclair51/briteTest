@@ -79,7 +79,7 @@ write_run_log_on_exit() {
   set +e
 
   {
-    echo "# directory_guides Validation Report"
+    echo "# directory_guides Report"
     echo
     echo "**Timestamp:** $RUN_TS_DISPLAY"
     echo
@@ -116,7 +116,7 @@ done
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 
-RUN_LOG_FILE="${repo_root}/reports/directory_guides_validation.md"
+RUN_LOG_FILE="${repo_root}/reports/directory_guides-report-${RUN_TS_FILE}.md"
 trap write_run_log_on_exit EXIT
 setup_output_capture
 

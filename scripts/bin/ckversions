@@ -89,7 +89,8 @@ readonly EXIT_OK=0
 readonly EXIT_VALIDATION=1
 readonly EXIT_USAGE=2
 
-RUN_TS="$(date '+%Y-%m-%d %H:%M:%S')"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 RUN_OUTPUT_FILE="$(mktemp)"
 REPORT_FILE=""
 
@@ -102,9 +103,9 @@ write_report_on_exit() {
   set +e
 
   {
-    echo "# ckversions Validation Report"
+    echo "# ckversions Report"
     echo
-    echo "**Timestamp:** $RUN_TS"
+    echo "**Timestamp:** $RUN_TS_DISPLAY"
     echo
     echo "## Validation Output"
     echo '```text'
@@ -133,7 +134,7 @@ done
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
-REPORT_FILE="$repo_root/reports/versions_validation.md"
+REPORT_FILE="$repo_root/reports/versions-report-${RUN_TS_FILE}.md"
 
 trap write_report_on_exit EXIT
 setup_output_capture
@@ -142,6 +143,8 @@ extract_major() {
   local semver="$1"
   printf '%s\n' "${semver%%.*}"
 }
+
+extract_minor() {
   local semver="$1"
   local major="${semver%%.*}"
   local minor_patch="${semver#*.}"
