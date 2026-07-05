@@ -29,12 +29,12 @@ Outputs:
   - Dry-run notices, including whether scripts/bin/genpngs would run.
   - Final status block (COMPLETED or DRY RUN COMPLETE).
 
-Logging:
-  - updatebrand and updatebrand -d write a log in logs/.
-  - Non-dry run log: updatebrand-log-YYYYMMDD-HHMMSS.md
-  - Dry-run log: updatebrand-log-dry-run-YYYYMMDD-HHMMSS.md
-  - -h/--help does not generate a log.
-  - On successful non-dry runs, existing dry-run logs are deleted.
+Reporting:
+  - updatebrand and updatebrand -d write a report in reports/.
+  - Non-dry run report: updatebrand-YYYYMMDD-HHMMSS.md
+  - Dry-run report: updatebrand-dry-run-YYYYMMDD-HHMMSS.md
+  - -h/--help does not generate a report.
+  - On successful non-dry runs, existing dry-run reports are deleted.
 
 Exit Codes:
     0  Success (includes help output).
@@ -84,6 +84,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CONFIG_FILE="${REPO_ROOT}/logs/brand_history.md"
 BRANDING_DIR="${REPO_ROOT}/docs/branding"
 GENPNGS_SCRIPT="${SCRIPT_DIR}/genpngs"
+REPORTS_DIR="${REPO_ROOT}/reports"
 
 DRY_RUN=0
 
@@ -388,17 +389,17 @@ process_text_brand_replacement() {
     echo "  Total replacements: ${total_replacements}"
 }
 
-cleanup_dry_run_logs() {
-    local -a dry_run_logs=()
+cleanup_dry_run_reports() {
+    local -a dry_run_reports=()
 
-    mapfile -t dry_run_logs < <(find "${REPO_ROOT}/logs" -maxdepth 1 -type f -name 'updatebrand-log-dry-run-*.md' | sort)
+    mapfile -t dry_run_reports < <(find "${REPORTS_DIR}" -maxdepth 1 -type f -name 'updatebrand-dry-run-*.md' | sort)
 
-    if [[ "${#dry_run_logs[@]}" -eq 0 ]]; then
+    if [[ "${#dry_run_reports[@]}" -eq 0 ]]; then
         return
     fi
 
-    rm -f "${dry_run_logs[@]}"
-    echo "Removed ${#dry_run_logs[@]} dry-run log file(s)"
+    rm -f "${dry_run_reports[@]}"
+    echo "Removed ${#dry_run_reports[@]} dry-run report file(s)"
 }
 
 normalize_doc_title_svg_if_same_as_brand() {
@@ -466,10 +467,15 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+# Validate reports directory exists
+if [[ ! -d "$REPORTS_DIR" ]]; then
+    error_exit "Reports directory not found: $REPORTS_DIR" "$EXIT_COMMAND_FAILED"
+fi
+
 if [[ "$DRY_RUN" -eq 1 ]]; then
-    RUN_LOG_FILE="${REPO_ROOT}/logs/updatebrand-log-dry-run-${RUN_TS_FILE}.md"
+    RUN_LOG_FILE="${REPORTS_DIR}/updatebrand-dry-run-${RUN_TS_FILE}.md"
 else
-    RUN_LOG_FILE="${REPO_ROOT}/logs/updatebrand-log-${RUN_TS_FILE}.md"
+    RUN_LOG_FILE="${REPORTS_DIR}/updatebrand-${RUN_TS_FILE}.md"
 fi
 
 trap write_run_log_on_exit EXIT
@@ -660,7 +666,7 @@ fi
 if [[ "$DRY_RUN" -eq 0 ]]; then
     timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
     update_completion_timestamp "$pending_line" "$timestamp"
-    cleanup_dry_run_logs
+    cleanup_dry_run_reports
 
     echo
     echo "============================================================"
