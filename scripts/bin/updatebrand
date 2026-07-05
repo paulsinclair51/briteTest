@@ -20,7 +20,8 @@ repository files.
 
 Options:
   -d          Perform a dry run without making any changes.
-  -h, --help  Output this help to stdout and exit.
+  -h, --help  Output this help to stdout and exit (other options
+              and arguments are ignored).
 
 Outputs:
   - Loaded previous/pending brand values.
