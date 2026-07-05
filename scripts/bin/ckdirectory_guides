@@ -7,21 +7,7 @@
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
-# For license details, see ./LICENSE.
-
-# Summary of script behavior:
-# - Enumerates repository directories (with configured exemptions) and requires
-#   README.md guides.
-# - Validates each guide's heading, canonical header lines, and required
-#   Files/Subdirectories sections.
-# - Reports per-directory violations and exits non-zero when any canonical-form
-#   checks fail.
-
-set -euo pipefail
-
-readonly EXIT_OK=0
-readonly EXIT_VALIDATION=1
-readonly EXIT_USAGE=2
+# For license details, see /LICENSE.
 
 usage() {
   cat <<'EOF'
@@ -33,11 +19,32 @@ Validate that repository subdirectories have canonical README.md
 directory guides.
 
 Checks include:
-  - required README.md presence in non-exempt directories
-  - heading format matching the directory path
-  - canonical copyright, SPDX, license, and root README lines
-  - required Files and Subdirectories sections
-  - Files section appearing before Subdirectories
+  - Required README.md presence in subdirectories other than .github.
+  - Heading format matching the directory path.
+  - Second line blank.
+  - Third line starting with 'Directory containing '.
+  - No additional H1 headings ('# ') after line 1.
+  - Lines 4-8 matching canonical header layout.
+  - Canonical copyright, SPDX, license, and root README lines.
+  - Required Files and Subdirectories sections.
+  - Files section entries covering all immediate non-hidden files via exact,
+    wildcard, extension-group, or <datetime> pattern entries.
+  - Files section entries in alphabetical order; supports either a single list
+    or level-3 grouped subsections with alphabetical entries per subsection.
+  - Exception: /docs/branding/README.md may use logical file ordering.
+  - README.md listed last in a single list, or in the final subsection when
+    level-3 grouped subsections are used.
+  - Files section appearing before Subdirectories section.
+  - Subdirectories section entries matching the directory's immediate child
+    subdirectories, or a single '- None.' line when there are none.
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+
+Logging:
+  - Writes a log file in logs/ named ckdirectory_guides-log-YYYYMMDD-HHMMSS.md.
+  - Removes older ckdirectory_guides log files in logs/ after writing the new log.
 
 Exit codes:
   0  Success, or help requested with -h/--help.
@@ -45,6 +52,56 @@ Exit codes:
   2  Invalid command-line argument.
 EOF
 }
+
+# High-Level Flow:
+# - Enumerates repository directories (with configured exemptions) and requires
+#   README.md guides.
+# - Validates each guide's heading, canonical header lines, and required
+#   Files/Subdirectories sections.
+# - Reports per-directory violations and exits non-zero when any canonical-form
+#   checks fail.
+
+set -euo pipefail
+
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+RUN_OUTPUT_FILE="$(mktemp)"
+RUN_LOG_FILE=''
+
+setup_output_capture() {
+  exec > >(tee "$RUN_OUTPUT_FILE") 2>&1
+}
+
+write_run_log_on_exit() {
+  local exit_code="$?"
+  local old_log
+
+  set +e
+
+  {
+    echo "# ckdirectory_guides ${RUN_TS_DISPLAY}"
+    echo
+    echo "## Output"
+    echo '```text'
+    sed -n '1,$p' "$RUN_OUTPUT_FILE"
+    echo '```'
+  } > "$RUN_LOG_FILE"
+
+  for old_log in "$repo_root"/logs/ckdirectory_guides-log-*.md; do
+    [[ "$old_log" == "$RUN_LOG_FILE" ]] && continue
+    [[ -e "$old_log" ]] || continue
+    rm -f "$old_log"
+  done
+
+  rm -f "$RUN_OUTPUT_FILE"
+  trap - EXIT
+  exit "$exit_code"
+}
+
+readonly EXIT_OK=0
+readonly EXIT_VALIDATION=1
+readonly EXIT_USAGE=2
+
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -62,6 +119,10 @@ done
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
+
+RUN_LOG_FILE="${repo_root}/logs/ckdirectory_guides-log-${RUN_TS_FILE}.md"
+trap write_run_log_on_exit EXIT
+setup_output_capture
 
 # Directories that are intentionally exempt from requiring a README.md directory guide.:
 #   Note: .github is excluded because GitHub does not expose it as a normal browsable
@@ -86,8 +147,315 @@ is_exempt_dir() {
 
 failures=0
 
-expected_license_line='For license details, see `LICENSE` in the root directory.'
-expected_intro_line='See `README.md` in the root directory for an introduction to the project.'
+list_immediate_subdirs() {
+  local dir="$1"
+
+  find "$dir" -mindepth 1 -maxdepth 1 -type d -not -path './.git*' -printf '%f\n' | sort
+}
+
+extract_subdirectory_entries() {
+  local file="$1"
+  awk '
+    BEGIN { in_section = 0 }
+    /^## Subdirectories$/ { in_section = 1; next }
+    /^## / && in_section { exit }
+    in_section { print }
+  ' "$file"
+}
+
+extract_files_entries() {
+  local file="$1"
+  awk '
+    BEGIN { in_section = 0 }
+    /^## Files$/ { in_section = 1; next }
+    /^## / && in_section { exit }
+    in_section {
+      if (match($0, /^-[[:space:]]*\*\*(.+)\*\*:[[:space:]]*/, m)) {
+        print m[1]
+      }
+    }
+  ' "$file"
+}
+
+extract_files_section_lines() {
+  local file="$1"
+  awk '
+    BEGIN { in_section = 0 }
+    /^## Files$/ { in_section = 1; next }
+    /^## / && in_section { exit }
+    in_section { print }
+  ' "$file"
+}
+
+list_immediate_files() {
+  local dir="$1"
+
+  find "$dir" -mindepth 1 -maxdepth 1 -type f -not -name '.*' -printf '%f\n' | sort
+}
+
+normalize_file_entry() {
+  local entry="$1"
+
+  entry="$(printf '%s' "$entry" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  entry="${entry#\`}"
+  entry="${entry%\`}"
+
+  printf '%s\n' "$entry"
+}
+
+entry_matches_file() {
+  local entry="$1"
+  local file="$2"
+  local ext
+  local entry_regex
+
+  entry="$(normalize_file_entry "$entry")"
+
+  # Pattern form: '.ext files' means any file with extension '.ext'.
+  if [[ "$entry" =~ ^\.([A-Za-z0-9_+-]+)[[:space:]]+files$ ]]; then
+    ext="${BASH_REMATCH[1]}"
+    [[ "$file" == *."$ext" ]]
+    return
+  fi
+
+  # Pattern form: timestamp placeholder in file names.
+  if [[ "$entry" == *"<datetime>"* ]]; then
+    entry_regex="${entry//./\\.}"
+    entry_regex="${entry_regex//\*/.*}"
+    entry_regex="${entry_regex//<datetime>/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]}"
+    [[ "$file" =~ ^${entry_regex}$ ]]
+    return
+  fi
+
+  # Pattern form: generic placeholder token, e.g. '<doctitle>.svg'.
+  if printf '%s\n' "$entry" | grep -Eq '<[A-Za-z0-9_+-]+>'; then
+    entry_regex="${entry//./\\.}"
+    entry_regex="${entry_regex//\*/.*}"
+    entry_regex="$(printf '%s' "$entry_regex" | sed -E 's/<[A-Za-z0-9_+-]+>/[^\/]+/g')"
+    [[ "$file" =~ ^${entry_regex}$ ]]
+    return
+  fi
+
+  # Glob wildcard entry.
+  if [[ "$entry" == *'*'* ]]; then
+    [[ "$file" == $entry ]]
+    return
+  fi
+
+  # Exact file entry.
+  [[ "$file" == "$entry" ]]
+}
+
+is_filelike_entry() {
+  local entry="$1"
+
+  entry="$(normalize_file_entry "$entry")"
+
+  if printf '%s\n' "$entry" | grep -Eq '^[A-Za-z0-9_.<>/-]+$'; then
+    return 0
+  fi
+  [[ "$entry" == *"*"* ]] && return 0
+  [[ "$entry" == *"<datetime>"* ]] && return 0
+  [[ "$entry" =~ ^\.[A-Za-z0-9_+-]+[[:space:]]+files$ ]] && return 0
+  [[ "$entry" =~ ^[^[:space:]]+\.[^[:space:]]+$ ]] && return 0
+
+  return 1
+}
+
+check_files_section() {
+  local readme="$1"
+  local dir="$2"
+  local rel_dir
+  local allow_logical_order=0
+  local files_section_entries=()
+  local files_section_lines
+  local actual_files
+  local actual
+  local entry
+  local found_match
+  local line
+  local section='__ROOT__'
+  local section_name
+  local has_h3=0
+  local root_entry_count=0
+  local first_readme_section=''
+  local last_readme_section=''
+  local last_section='__ROOT__'
+  local last_entry_in_last_section=''
+  local prev
+
+  declare -A prev_by_section=()
+  declare -A readme_seen_by_section=()
+  declare -A section_seen=()
+  declare -A last_entry_by_section=()
+
+  rel_dir="${dir#./}"
+  if [[ "$rel_dir" == "docs/branding" ]]; then
+    allow_logical_order=1
+  fi
+
+  mapfile -t files_section_lines < <(extract_files_section_lines "$readme")
+  mapfile -t actual_files < <(list_immediate_files "$dir")
+
+  for line in "${files_section_lines[@]}"; do
+    if [[ "$line" =~ ^###[[:space:]]+(.+)$ ]]; then
+      has_h3=1
+      section_name="${BASH_REMATCH[1]}"
+      section="$section_name"
+      section_seen["$section"]=1
+      last_section="$section"
+      continue
+    fi
+
+    if [[ "$line" =~ ^-[[:space:]]*\*\*(.+)\*\*:[[:space:]]* ]]; then
+      entry="$(normalize_file_entry "${BASH_REMATCH[1]}")"
+      files_section_entries+=("$entry")
+
+      if [[ "$section" == '__ROOT__' ]]; then
+        root_entry_count=$((root_entry_count + 1))
+      fi
+
+      if is_filelike_entry "$entry"; then
+        if [[ "$entry" == 'README.md' ]]; then
+          readme_seen_by_section["$section"]=1
+        else
+          if [[ "${readme_seen_by_section[$section]-0}" -eq 1 ]]; then
+            if [[ "$section" == '__ROOT__' ]]; then
+              echo "ERROR: '$readme' lists entries after 'README.md' in '## Files' section"
+            else
+              echo "ERROR: '$readme' lists entries after 'README.md' in Files subsection '$section'"
+            fi
+            return 1
+          fi
+
+          prev="${prev_by_section[$section]-}"
+          if [[ $allow_logical_order -eq 0 && -n "$prev" && "$entry" < "$prev" ]]; then
+            if [[ "$section" == '__ROOT__' ]]; then
+              echo "ERROR: '$readme' has non-alphabetical Files entries ('$prev' before '$entry')"
+            else
+              echo "ERROR: '$readme' has non-alphabetical Files entries in subsection '$section' ('$prev' before '$entry')"
+            fi
+            return 1
+          fi
+          prev_by_section["$section"]="$entry"
+        fi
+      fi
+
+      if [[ "$entry" == 'README.md' ]]; then
+        [[ -z "$first_readme_section" ]] && first_readme_section="$section"
+        last_readme_section="$section"
+      fi
+
+      last_entry_by_section["$section"]="$entry"
+    fi
+  done
+
+  if [[ ${#files_section_entries[@]} -eq 0 ]]; then
+    echo "ERROR: '$readme' has no file entries in '## Files' section"
+    return 1
+  fi
+
+  if [[ $has_h3 -eq 1 && $root_entry_count -gt 0 ]]; then
+    echo "ERROR: '$readme' mixes top-level file entries with level-3 Files subsections"
+    return 1
+  fi
+
+  # Each real file in the directory must be representable by a Files entry.
+  for actual in "${actual_files[@]}"; do
+    found_match=0
+    for entry in "${files_section_entries[@]}"; do
+      if entry_matches_file "$entry" "$actual"; then
+        found_match=1
+        break
+      fi
+    done
+
+    if [[ $found_match -eq 0 ]]; then
+      echo "ERROR: '$readme' does not list file '$actual' in '## Files' section"
+      return 1
+    fi
+  done
+
+  if [[ $has_h3 -eq 0 ]]; then
+    if [[ "${files_section_entries[-1]}" != 'README.md' ]]; then
+      echo "ERROR: '$readme' must list 'README.md' last in '## Files' section"
+      return 1
+    fi
+  else
+    if [[ -z "$last_readme_section" ]]; then
+      echo "ERROR: '$readme' must include 'README.md' in the final Files subsection"
+      return 1
+    fi
+
+    if [[ "$last_readme_section" != "$last_section" ]]; then
+      echo "ERROR: '$readme' must place 'README.md' in the final Files subsection"
+      return 1
+    fi
+
+    last_entry_in_last_section="${last_entry_by_section[$last_section]-}"
+    if [[ "$last_entry_in_last_section" != 'README.md' ]]; then
+      echo "ERROR: '$readme' must list 'README.md' last within the final Files subsection"
+      return 1
+    fi
+  fi
+
+  return 0
+}
+
+check_subdirectories_section() {
+  local readme="$1"
+  local dir="$2"
+  local subdirs_section
+  local expected_subdirs
+  local found_subdirs
+  local missing_subdir
+  local extra_subdir
+  local line
+
+  subdirs_section="$(extract_subdirectory_entries "$readme")"
+
+  mapfile -t expected_subdirs < <(list_immediate_subdirs "$dir")
+  mapfile -t found_subdirs < <(
+    printf '%s\n' "$subdirs_section" | \
+      sed -n 's/^-[[:space:]]*\*\*\([^*][^*]*\)\*\*:.*$/\1/p' | \
+      sed 's:/$::' | \
+      sort
+  )
+
+  if [[ ${#expected_subdirs[@]} -eq 0 ]]; then
+    if ! printf '%s\n' "$subdirs_section" | grep -qx '[-][[:space:]]None\.'; then
+      echo "ERROR: '$readme' missing '- None.' line in '## Subdirectories' section"
+      return 1
+    fi
+    return 0
+  fi
+
+  if printf '%s\n' "$subdirs_section" | grep -qx '[-][[:space:]]None\.'; then
+    echo "ERROR: '$readme' has '- None.' line but directory contains subdirectories"
+    return 1
+  fi
+
+  for line in "${found_subdirs[@]}"; do
+    [[ -z "$line" ]] && continue
+    if ! printf '%s\n' "${expected_subdirs[@]}" | grep -qxF "$line"; then
+      echo "ERROR: '$readme' lists unexpected subdirectory '$line'"
+      return 1
+    fi
+  done
+
+  for line in "${expected_subdirs[@]}"; do
+    [[ -z "$line" ]] && continue
+    if ! printf '%s\n' "${found_subdirs[@]}" | grep -qxF "$line"; then
+      echo "ERROR: '$readme' is missing subdirectory '$line'"
+      return 1
+    fi
+  done
+
+  return 0
+}
+
+expected_license_line='For license details, see `/LICENSE`.'
+expected_intro_line='See `/README.md` for an introduction to briteTest.'
 
 mapfile -t dirs < <(find . -type d -not -path './.git*' | sort)
 
@@ -106,13 +474,73 @@ for dir in "${dirs[@]}"; do
   fi
 
   rel_dir="${dir#./}"
-  expected_heading="# ${rel_dir}/"
+  expected_heading="# /${rel_dir}/"
   heading_line="$(sed -n '1p' "$readme")"
+  second_line="$(sed -n '2p' "$readme")"
+  description_line="$(sed -n '3p' "$readme")"
+  line4="$(sed -n '4p' "$readme")"
+  line5="$(sed -n '5p' "$readme")"
+  line6="$(sed -n '6p' "$readme")"
+  line7="$(sed -n '7p' "$readme")"
+  line8="$(sed -n '8p' "$readme")"
 
   if [[ "$heading_line" != "$expected_heading" ]]; then
     echo "ERROR: '$readme' heading mismatch"
     echo "  Expected: $expected_heading"
     echo "  Found:    $heading_line"
+    failures=$((failures + 1))
+  fi
+
+  if [[ -n "$second_line" ]]; then
+    echo "ERROR: '$readme' second line must be blank"
+    echo "  Found:    $second_line"
+    failures=$((failures + 1))
+  fi
+
+  if [[ "$description_line" != 'Directory containing '* ]]; then
+    echo "ERROR: '$readme' third line must start with 'Directory containing '"
+    echo "  Found:    $description_line"
+    failures=$((failures + 1))
+  fi
+
+  if sed -n '2,$p' "$readme" | grep -q '^# '; then
+    extra_h1_line="$(sed -n '2,$p' "$readme" | grep -n '^# ' | head -n1 | cut -d: -f1)"
+    extra_h1_text="$(sed -n '2,$p' "$readme" | grep '^# ' | head -n1)"
+    extra_h1_line=$((extra_h1_line + 1))
+    echo "ERROR: '$readme' contains an unexpected H1 heading after line 1"
+    echo "  Found:    $extra_h1_text"
+    echo "  Line:     $extra_h1_line"
+    failures=$((failures + 1))
+  fi
+
+  if [[ -n "$line4" ]]; then
+    echo "ERROR: '$readme' line 4 must be blank"
+    echo "  Found:    $line4"
+    failures=$((failures + 1))
+  fi
+
+  if ! [[ "$line5" =~ ^Copyright\ \(c\)\ [0-9]{4}\ .+ ]]; then
+    echo "ERROR: '$readme' line 5 must be a valid copyright line"
+    echo "  Found:    $line5"
+    failures=$((failures + 1))
+  fi
+
+  if [[ "$line6" != 'SPDX-License-Identifier: MIT  ' ]]; then
+    echo "ERROR: '$readme' line 6 must be 'SPDX-License-Identifier: MIT  '"
+    echo "  Found:    $line6"
+    failures=$((failures + 1))
+  fi
+
+  if [[ "$line7" != "$expected_license_line" ]]; then
+    echo "ERROR: '$readme' line 7 must match expected license reference"
+    echo "  Expected: $expected_license_line"
+    echo "  Found:    $line7"
+    failures=$((failures + 1))
+  fi
+
+  if [[ -n "$line8" ]]; then
+    echo "ERROR: '$readme' line 8 must be blank"
+    echo "  Found:    $line8"
     failures=$((failures + 1))
   fi
 
@@ -144,7 +572,11 @@ for dir in "${dirs[@]}"; do
   intro_ln="$(grep -nFx "$expected_intro_line" "$readme" | cut -d: -f1 | head -n1 || true)"
 
   files_ln="$(grep -n '^## Files$' "$readme" | cut -d: -f1 | head -n1 || true)"
+  files_heading_any_ln="$(grep -nE '^#{1,6}[[:space:]]+Files$' "$readme" | cut -d: -f1 | head -n1 || true)"
+  files_heading_any_text="$(grep -E '^#{1,6}[[:space:]]+Files$' "$readme" | head -n1 || true)"
   subdirs_ln="$(grep -n '^## Subdirectories$' "$readme" | cut -d: -f1 | head -n1 || true)"
+  subdirs_heading_any_ln="$(grep -nE '^#{1,6}[[:space:]]+Subdirectories$' "$readme" | cut -d: -f1 | head -n1 || true)"
+  subdirs_heading_any_text="$(grep -E '^#{1,6}[[:space:]]+Subdirectories$' "$readme" | head -n1 || true)"
 
   if [[ -n "$copyright_ln" && -n "$spdx_ln" && -n "$license_ln" && -n "$intro_ln" ]]; then
     if ! [[ "$copyright_ln" -lt "$spdx_ln" && "$spdx_ln" -lt "$license_ln" && "$license_ln" -lt "$intro_ln" ]]; then
@@ -155,17 +587,39 @@ for dir in "${dirs[@]}"; do
   fi
 
   if [[ -z "$files_ln" ]]; then
-    echo "ERROR: '$readme' missing '## Files' section"
+    if [[ -n "$files_heading_any_ln" ]]; then
+      echo "ERROR: '$readme' has incorrect heading level for Files section"
+      echo "  Expected: ## Files"
+      echo "  Found:    $files_heading_any_text"
+      echo "  Line:     $files_heading_any_ln"
+    else
+      echo "ERROR: '$readme' missing '## Files' section"
+    fi
     failures=$((failures + 1))
   fi
 
   if [[ -z "$subdirs_ln" ]]; then
-    echo "ERROR: '$readme' missing '## Subdirectories' section"
+    if [[ -n "$subdirs_heading_any_ln" ]]; then
+      echo "ERROR: '$readme' has incorrect heading level for Subdirectories section"
+      echo "  Expected: ## Subdirectories"
+      echo "  Found:    $subdirs_heading_any_text"
+      echo "  Line:     $subdirs_heading_any_ln"
+    else
+      echo "ERROR: '$readme' missing '## Subdirectories' section"
+    fi
     failures=$((failures + 1))
   fi
 
   if [[ -n "$files_ln" && -n "$subdirs_ln" && "$files_ln" -ge "$subdirs_ln" ]]; then
     echo "ERROR: '$readme' has section order mismatch ('## Files' must come before '## Subdirectories')"
+    failures=$((failures + 1))
+  fi
+
+  if [[ -n "$files_ln" ]] && ! check_files_section "$readme" "$dir"; then
+    failures=$((failures + 1))
+  fi
+
+  if [[ -n "$subdirs_ln" ]] && ! check_subdirectories_section "$readme" "$dir"; then
     failures=$((failures + 1))
   fi
 

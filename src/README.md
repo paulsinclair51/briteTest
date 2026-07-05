@@ -1,17 +1,21 @@
-# src/
+# /src/
 
 Directory containing `.c` files and internal `.h` headers.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `LICENSE` in the root directory.
+For license details, see `/LICENSE`.
 
-See `README.md` in the root directory for an introduction to the project.
+See `/README.md` for an introduction to briteTest.
 
 ## Files
 
+- **runnerapi-old.c**: Legacy Runner API implementation source.
+
 - **runnerapi.c**: Defines the Runner API implementation.
   See `../include/runnerapi.h` for the declarations for the Runner API.
+
+- **test.api-old.c**: Legacy Test API implementation source.
 
 - **testapi.c**: Defines the Test API implementation.
   See `../include/testapi.h` for declarations for the Test API.

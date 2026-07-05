@@ -1,17 +1,17 @@
-# docs/pdf/
+# /docs/pdf/
 
 Directory containing PDF documentation `pdf` files.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `LICENSE` in the root directory.
+For license details, see `/LICENSE`.
 
-See `README.md` in the root directory for an introduction to the project.
+See `/README.md` for an introduction to briteTest.
 
 ## Files
 
-- ***.pdf**: `.pdf` files generated from the `docs/md/*.md` files using
-  `scripts/bin/gendocs`.
+- **`*.pdf`**: `.pdf` files generated from `/docs/md/*.md` files using
+  `/scripts/bin/gendocs`.
 
 - **README.md**: This directory guide.
 

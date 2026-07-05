@@ -1,15 +1,15 @@
-# tests/output/
+# /tests/output/
 
 Directory containing copies of generated test outputs.
 
-- Output files in this directory are compared against corresponding
-  golden files and metadata files in `../golden/`.
-
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `LICENSE` in the root directory.
+For license details, see `/LICENSE`.
 
-See `README.md` in the root directory for an introduction to the project.
+See `/README.md` for an introduction to briteTest.
+
+- Output files in this directory are compared against corresponding
+  golden files and metadata files in `../golden/`.
 
 ## Files
 

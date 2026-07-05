@@ -387,7 +387,7 @@ RA_DECLARE_ORCHESTRATOR(main)
                   "Note: Larger projects can place files in a more conventional\n"
                   "      layout (e.g., `include/` and `src/`, but this example keeps\n"
                   "      everything in your current directory for simplification.\n"
-                  "Note: See README.md for briteTest for additional API features.\n");
+                   "Note: See /README.md for briteTest for additional API features.\n");
   RA_EXIT;
 }
 ```
@@ -510,14 +510,14 @@ briteTest is a lightweight C/C++ testing framework built around a simple executi
 
 The briteTest Runner API files:
 
- - [`include/runnerapi.h`](include/runnerapi.h) -- public API (typedefs, enums, constants, macros,
+- [`/include/runnerapi.h`](/include/runnerapi.h) -- public API (typedefs, enums, constants, macros,
    function declarations, and static inline function definitions).
- - [`src/runnerapi.c`](src/runnerapi.c) -- function definitions for the briteTest framework.
+- [`/src/runnerapi.c`](/src/runnerapi.c) -- function definitions for the briteTest framework.
 
 The briteTest Test API files:
 
- - [`include/testapi.h`](include/testapi.h) -- test support/helper function declarations.
- - [`src/testapi.c`](src/testapi.c) -- test support/helper function definitions.
+- [`/include/testapi.h`](/include/testapi.h) -- test support/helper function declarations.
+- [`/src/testapi.c`](/src/testapi.c) -- test support/helper function definitions.
 
 A typical test executable includes:
 
@@ -632,7 +632,7 @@ based on the test executable's `-I` or `-In` option (see [`-I` and `-In` Option]
       a pass/fail/fault count.
 - omitted -- defaults to `1`.
 
-For `isolation`, see [Isolation Modes and Fault Handling](isolation-modes-and-fault-handling).
+For `isolation`, see [Isolation Modes and Fault Handling](/docs/md/Runner_Guide.md#isolation-modes-and-fault-handling).
 
 Special values that can be used in any expression:
 
@@ -1183,10 +1183,10 @@ briteTest Report (-i)
 
 ## Further Reading
 
-- [include/README.md](include/README.md)
-- [src/README.md](src/README.md)
-- [tests/README.md](tests/README.md)
-- [reports/README.md](reports/README.md)
+- [/include/README.md](/include/README.md)
+- [/src/README.md](/src/README.md)
+- [/tests/README.md](/tests/README.md)
+- [/reports/README.md](/reports/README.md)
 
 
 **

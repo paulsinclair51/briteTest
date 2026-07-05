@@ -27,7 +27,7 @@ SPDX-License-Identifier: MIT. See `LICENSE` for details.
   - [Macros for Executing a Test Group Function or Test Expression](#macros-for-executing-a-test-group-function-or-test-expression)
     - [Parallel Execution](#parallel-execution)
   - [Macros for Concurrent Execution](#macros-for-concurrent-execution)
-  - [Isolation Modes and Fault Handling](#isolation-modes-and-fault-handling)
+  - [Isolation Modes and Fault Handling](/OLDREADME.md#isolation-modes-and-fault-handling)
 - [Customization Support API](#customization-support-api)
 - [Test Support API](#test-support-api)
 - [Headers (.h) and Sources (.c)](#headers-h-and-sources-c)
@@ -354,7 +354,7 @@ based on the test executable's `-I` or `-In` option (see [`-I` and `-In` Option]
       a pass/fail/fault count.
 - omitted — defaults to `1`.
 
-For `isolation`, see [Isolation Modes and Fault Handling](isolation-modes-and-fault-handling).
+For `isolation`, see [Isolation Modes and Fault Handling](/OLDREADME.md#isolation-modes-and-fault-handling).
 
 Special values that can be used in any expression:
 

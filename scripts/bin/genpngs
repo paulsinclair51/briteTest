@@ -8,34 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Parses required positional input as either *[.svg] (all) or <name>[.svg]
-#   (single file).
-# - Validates converter dependency and resolves eligible SVG input files in
-#   docs/branding.
-# - Generates PNG outputs (or prints planned actions with -d) and returns
-#   explicit exit codes.
-
-set -euo pipefail
-
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-branding_dir="$repo_root/docs/branding"
-
-EXIT_SUCCESS=0
-EXIT_INVALID_ARGUMENT=1
-EXIT_MISSING_DEPENDENCY=2
-EXIT_SVG_NOT_FOUND=3
-EXIT_NO_SVGS_FOUND=4
-EXIT_COMMAND_FAILED=5
-
-error_exit() {
-  local code="$1"
-  local message="$2"
-
-  echo "Error: $message" >&2
-  exit "$code"
-}
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -78,6 +50,35 @@ Examples:
   genpngs -d briteTest
 EOF
 }
+
+# High-Level Flow:
+# - Parses required positional input as either *[.svg] (all) or <name>[.svg]
+#   (single file).
+# - Validates converter dependency and resolves eligible SVG input files in
+#   docs/branding.
+# - Generates PNG outputs (or prints planned actions with -d) and returns
+#   explicit exit codes.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+branding_dir="$repo_root/docs/branding"
+
+EXIT_SUCCESS=0
+EXIT_INVALID_ARGUMENT=1
+EXIT_MISSING_DEPENDENCY=2
+EXIT_SVG_NOT_FOUND=3
+EXIT_NO_SVGS_FOUND=4
+EXIT_COMMAND_FAILED=5
+
+error_exit() {
+  local code="$1"
+  local message="$2"
+
+  echo "Error: $message" >&2
+  exit "$code"
+}
+
 
 # Summary of argument handling and execution behavior:
 # - One positional argument is required: either *[.svg] or <name>[.svg].

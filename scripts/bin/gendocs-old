@@ -11,58 +11,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Runs the legacy end-to-end docs generation flow maintained for
-#   compatibility.
-# - Converts markdown sources through the historical PDF/DOCX pipeline.
-# - Preserves previous behavior for environments still depending on legacy
-#   tooling.
-
-set -euo pipefail
-
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-genpdf_script="$repo_root/scripts/bin/genpdf"
-gendocx_script="$repo_root/scripts/bin/gendocx"
-docs_dir="$repo_root/docs/md"
-pdf_out_dir="$repo_root/docs/pdf"
-docx_out_dir="$repo_root/docs/docx"
-meta_file="$docs_dir/.md_metadata"
-tmp_pdf=''
-tmp_docx=''
-force=0
-target_input=''
-
-cleanup() {
-  [[ -n "$tmp_pdf" ]] && rm -f "$tmp_pdf"
-  [[ -n "$tmp_docx" ]] && rm -f "$tmp_docx"
-}
-
-sha256_file() {
-  local file=$1
-  sha256sum "$file" | awk '{print $1}'
-}
-
-build_fingerprint() {
-  local src=$1
-  sha256_file "$src"
-}
-
-install_if_different() {
-  local candidate=$1
-  local target=$2
-
-  mkdir -p "$(dirname "$target")"
-
-  if [[ -f "$target" ]] && cmp -s "$candidate" "$target"; then
-    rm -f "$candidate"
-    echo "Unchanged: $target"
-    return 0
-  fi
-
-  mv -f "$candidate" "$target"
-  echo "Updated:   $target"
-}
-
 usage() {
   cat <<'EOF'
 Simple Usage:
@@ -191,8 +139,67 @@ Examples:
   gendocs docs/md build/pdf build/docx
   gendocs '*.md'
   gendocs -d '*.pdf'
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 EOF
 }
+
+# High-Level Flow:
+# - Runs the legacy end-to-end docs generation flow maintained for
+#   compatibility.
+# - Converts markdown sources through the historical PDF/DOCX pipeline.
+# - Preserves previous behavior for environments still depending on legacy
+#   tooling.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+genpdf_script="$repo_root/scripts/bin/genpdf"
+gendocx_script="$repo_root/scripts/bin/gendocx"
+docs_dir="$repo_root/docs/md"
+pdf_out_dir="$repo_root/docs/pdf"
+docx_out_dir="$repo_root/docs/docx"
+meta_file="$docs_dir/.md_metadata"
+tmp_pdf=''
+tmp_docx=''
+force=0
+target_input=''
+
+cleanup() {
+  [[ -n "$tmp_pdf" ]] && rm -f "$tmp_pdf"
+  [[ -n "$tmp_docx" ]] && rm -f "$tmp_docx"
+}
+
+sha256_file() {
+  local file=$1
+  sha256sum "$file" | awk '{print $1}'
+}
+
+build_fingerprint() {
+  local src=$1
+  sha256_file "$src"
+}
+
+install_if_different() {
+  local candidate=$1
+  local target=$2
+
+  mkdir -p "$(dirname "$target")"
+
+  if [[ -f "$target" ]] && cmp -s "$candidate" "$target"; then
+    rm -f "$candidate"
+    echo "Unchanged: $target"
+    return 0
+  fi
+
+  mv -f "$candidate" "$target"
+  echo "Updated:   $target"
+}
+
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

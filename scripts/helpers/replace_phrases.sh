@@ -6,14 +6,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Loads phrase replacement rules from a config file.
-# - Traverses markdown files and applies phrase replacements (or previews with
-#   -d).
-# - Reports per-file replacement details and aggregate summary totals.
-
-set -euo pipefail
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -26,8 +18,23 @@ Configuration file format:
 Options:
   -d           Show what would be replaced without modifying files.
   -h, --help   Show this help and exit.
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 EOF
 }
+
+# High-Level Flow:
+# - Loads phrase replacement rules from a config file.
+# - Traverses markdown files and applies phrase replacements (or previews with
+#   -d).
+# - Reports per-file replacement details and aggregate summary totals.
+
+set -euo pipefail
+
 
 count_occurrences() {
   local file="$1"

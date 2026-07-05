@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
+# High-Level Flow:
 # - Provides shared Git helper functions for branch lookup, status checks, and
 #   history operations.
 # - Encapsulates repeated Git command patterns used by scripts/bin workflows.

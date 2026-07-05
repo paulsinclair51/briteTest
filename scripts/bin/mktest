@@ -8,25 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Executes project test and validation commands for code/documentation
-#   changes.
-# - Aggregates results to indicate pass/fail state for workflow gating.
-# - Reports failures with actionable command output.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Shared helpers
-# shellcheck source=helpers/common.sh
-source "$SCRIPT_DIR/../helpers/common.sh"
-
-# Default options
-VERBOSE=false
-STOP_ON_FAIL=true
-GENERATE_DOCS=false
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -75,6 +56,12 @@ Examples:
   # Run all checks (tests, docs, coverage)
   mktest -a
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   All tests passed
   1   Argument or validation error
@@ -84,6 +71,26 @@ Exit codes:
   5   Some tests failed (with --continue)
 EOF
 }
+
+# High-Level Flow:
+# - Executes project test and validation commands for code/documentation
+#   changes.
+# - Aggregates results to indicate pass/fail state for workflow gating.
+# - Reports failures with actionable command output.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+
+# Default options
+VERBOSE=false
+STOP_ON_FAIL=true
+GENERATE_DOCS=false
+
 
 # Parse options and arguments
 while [[ $# -gt 0 ]]; do

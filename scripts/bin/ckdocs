@@ -8,20 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see ./LICENSE.
 
-# Summary of script behavior:
-# - Validates canonical document structure and front matter in docs/md/*.md
-#   (excluding README.md).
-# - Checks numbering, details/summary structure, TOC syntax, and shared
-#   history block consistency.
-# - Ensures matching docs/branding/<doctitle>.svg files exist and reports all
-#   validation failures.
-
-set -euo pipefail
-
-readonly EXIT_OK=0
-readonly EXIT_VALIDATION=1
-readonly EXIT_USAGE=2
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -38,12 +24,33 @@ ASCII-only content, and the shared Document Version History block.
 Also ensures docs/branding/<doctitle>.svg exists for each
 docs/md/<doctitle>.md (excluding README.md).
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0  Success, or help requested with -h/--help.
   1  Validation failure.
   2  Invalid command-line argument.
 EOF
 }
+
+# High-Level Flow:
+# - Validates canonical document structure and front matter in docs/md/*.md
+#   (excluding README.md).
+# - Checks numbering, details/summary structure, TOC syntax, and shared
+#   history block consistency.
+# - Ensures matching docs/branding/<doctitle>.svg files exist and reports all
+#   validation failures.
+
+set -euo pipefail
+
+readonly EXIT_OK=0
+readonly EXIT_VALIDATION=1
+readonly EXIT_USAGE=2
+
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
+# High-Level Flow:
 # - Provides shared functions to append and format branch history markdown logs.
 # - Ensures consistent row formatting and timestamp handling across scripts.
 # - Centralizes history-log write operations for workflow scripts.

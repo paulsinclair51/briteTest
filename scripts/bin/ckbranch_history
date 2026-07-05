@@ -8,31 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Reads branch history markdown logs from logs/ and filters by
-#   branch/date/type options.
-# - Formats matching entries for terminal output and optional report files.
-# - Supports concise history queries to inspect prior workflow actions.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-
-# Shared helpers
-# shellcheck source=helpers/common.sh
-source "$SCRIPT_DIR/../helpers/common.sh"
-
-# Default options
-HISTORY_FILE="$REPO_ROOT/logs/remote_branch_history.md"
-OUTPUT_FILE=""
-VERBOSE=false
-FILTER_TYPE=""
-FILTER_BRANCH=""
-FILTER_USER=""
-LIMIT=0
-REVERSE=false
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -95,6 +70,12 @@ Examples:
   # Combine filters: merges by alice on auth branches
   ckbranch_history -t merged -u alice -b auth -l 20
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   Success
   1   Argument or validation error
@@ -102,6 +83,32 @@ Exit codes:
   3   No entries found matching criteria
 EOF
 }
+
+# High-Level Flow:
+# - Reads branch history markdown logs from logs/ and filters by
+#   branch/date/type options.
+# - Formats matching entries for terminal output and optional report files.
+# - Supports concise history queries to inspect prior workflow actions.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+
+# Default options
+HISTORY_FILE="$REPO_ROOT/logs/remote_branch_history.md"
+OUTPUT_FILE=""
+VERBOSE=false
+FILTER_TYPE=""
+FILTER_BRANCH=""
+FILTER_USER=""
+LIMIT=0
+REVERSE=false
+
 
 # Parse options and arguments
 while [[ $# -gt 0 ]]; do

@@ -8,29 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Reverts recent workflow operations such as commit, merge, or release
-#   actions.
-# - Applies safe undo procedures with branch-state validation.
-# - Reports what was reverted and any manual cleanup required.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-
-# Shared helpers
-# shellcheck source=helpers/common.sh
-source "$SCRIPT_DIR/../helpers/common.sh"
-# shellcheck source=helpers/git_helpers.sh
-source "$SCRIPT_DIR/../helpers/git_helpers.sh"
-
-# Default options
-UNDO_TYPE=""
-VERBOSE=false
-FORCE=false
-COMMENT=""
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -78,6 +55,12 @@ Examples:
   # Undo merge with verbose output
   mkundo merge -v
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   Success
   1   Argument or validation error
@@ -88,6 +71,30 @@ Exit codes:
   6   Configuration error
 EOF
 }
+
+# High-Level Flow:
+# - Reverts recent workflow operations such as commit, merge, or release
+#   actions.
+# - Applies safe undo procedures with branch-state validation.
+# - Reports what was reverted and any manual cleanup required.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+
+# Default options
+UNDO_TYPE=""
+VERBOSE=false
+FORCE=false
+COMMENT=""
+
 
 get_current_user() {
   git config user.name 2>/dev/null || bt_error_exit 2 "Failed to determine current user"

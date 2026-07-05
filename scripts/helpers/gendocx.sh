@@ -6,15 +6,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Implements helper functions for PDF-to-DOCX conversion workflows.
-# - Validates input/output paths and conversion-tool availability.
-# - Returns standardized success/failure results to calling scripts.
-#
-# Dependencies: python3 + pdf2docx package, or libreoffice/soffice.
-
-set -euo pipefail
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -69,8 +60,24 @@ Examples:
   gendocx docs/pdf/briteTest.pdf
   gendocx docs/pdf/briteTest.pdf docs/docx/briteTest
   gendocx docs/pdf docs/docx
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 EOF
 }
+
+# High-Level Flow:
+# - Implements helper functions for PDF-to-DOCX conversion workflows.
+# - Validates input/output paths and conversion-tool availability.
+# - Returns standardized success/failure results to calling scripts.
+#
+# Dependencies: python3 + pdf2docx package, or libreoffice/soffice.
+
+set -euo pipefail
+
 
 quiet=0
 verbose=0

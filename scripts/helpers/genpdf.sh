@@ -7,20 +7,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Implements helper functions used by markdown-to-PDF generation workflows.
-# - Handles markdown preprocessing, branding/header/footer integration, and
-#   converter invocation.
-# - Provides reusable conversion logic for scripts that generate documentation
-#   PDFs.
-#
-# Dependencies: pandoc (with a PDF engine), or
-#               python3 plus wkhtmltopdf or weasyprint.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -83,8 +69,29 @@ Examples:
   genpdf docs/md/Documentation_Guide.md docs/My_Documentation_Guide
   genpdf docs/md
   genpdf docs build
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 EOF
 }
+
+# High-Level Flow:
+# - Implements helper functions used by markdown-to-PDF generation workflows.
+# - Handles markdown preprocessing, branding/header/footer integration, and
+#   converter invocation.
+# - Provides reusable conversion logic for scripts that generate documentation
+#   PDFs.
+#
+# Dependencies: pandoc (with a PDF engine), or
+#               python3 plus wkhtmltopdf or weasyprint.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 
 # ============================================================================
 # CONFIGURATION AND CONSTANTS

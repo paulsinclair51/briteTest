@@ -10,7 +10,31 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
+usage() {
+  cat <<'EOF'
+Usage:
+  ckversions
+  ckversions -h | --help
+
+Validate version consistency across versioned project files.
+
+Checks include the shared version tuple across headers, sources, and docs,
+and reports mismatches that violate repository versioning rules.
+
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
+Exit codes:
+  0  Success, or help requested with -h/--help.
+  1  Validation failure.
+  2  Invalid command-line argument.
+EOF
+}
+
+# High-Level Flow:
 # - Extracts semantic versions from headers, sources, and markdown docs.
 # - Validates major/minor consistency and allowed patch-only differences across
 #   versioned files.
@@ -21,6 +45,7 @@ set -euo pipefail
 readonly EXIT_OK=0
 readonly EXIT_VALIDATION=1
 readonly EXIT_USAGE=2
+
 
 usage() {
   cat <<'EOF'
@@ -52,34 +77,16 @@ Exit codes:
 EOF
 }
 
+# High-Level Flow:
+# - Extracts semantic versions from headers, sources, and markdown docs.
+# - Validates major/minor consistency and allowed patch-only differences across
+#   versioned files.
+# - Emits validation failures suitable for local checks and CI gate enforcement.
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help)
       usage
-      exit 0
-      ;;
-    *)
-      echo "ERROR: unknown argument: $1" >&2
-      usage >&2
-      exit "$EXIT_USAGE"
-      ;;
-  esac
-done
-
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "$repo_root"
-
-extract_semver() {
-  local file="$1"
-  local semver
-
-  semver="$(grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' "$file" | head -n 1 || true)"
-  printf '%s\n' "$semver"
-}
-
-extract_major() {
-  local semver="$1"
-  printf '%s\n' "${semver%%.*}"
 }
 
 extract_minor() {

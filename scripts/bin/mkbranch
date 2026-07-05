@@ -9,27 +9,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Creates a new branch from a specified base branch using project naming
-#   conventions.
-# - Validates branch name/type inputs and repository state before creation.
-# - Records branch-creation details in history logs when configured.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-LOG_FILE="$REPO_ROOT/logs/remote_branch_history.md"
-CONFIG_FILE="$REPO_ROOT/config/contributors.md"
-
-# Shared helpers
-# shellcheck source=helpers/history_log.sh
-source "$SCRIPT_DIR/../helpers/history_log.sh"
-
-# Default options
-MODE="local"  # local, remote, or validate
-COMMENT=""
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -121,6 +100,12 @@ Examples: Validation mode for invalid mkbranch.
   mkbranch -v redesign main
   mkbranch -v -r hotfix v2.0.0
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   Success (or validation passed).
   1   Arguments/options invalid.
@@ -133,6 +118,28 @@ Exit codes:
   9   Validation failed.
 EOF
 }
+
+# High-Level Flow:
+# - Creates a new branch from a specified base branch using project naming
+#   conventions.
+# - Validates branch name/type inputs and repository state before creation.
+# - Records branch-creation details in history logs when configured.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+LOG_FILE="$REPO_ROOT/logs/remote_branch_history.md"
+CONFIG_FILE="$REPO_ROOT/config/contributors.md"
+
+# Shared helpers
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
+
+# Default options
+MODE="local"  # local, remote, or validate
+COMMENT=""
+
 
 log_operation() {
   local status="$1"

@@ -1,20 +1,28 @@
-# logs/
+# /logs/
 
 Directory containing local and remote logs.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `LICENSE` in the root directory.
+For license details, see `/LICENSE`.
 
-See `README.md` in the root directory for an introduction to the project.
+See `/README.md` for an introduction to briteTest.
 
 ## Files
 
 - **brand_history.md**: log of the current and previous brands and taglines.
 
+- **ckdirectory_guides-log-<datetime>.md**: latest output from
+	`/scripts/bin/ckdirectory_guides`, where `<datetime>` has the form
+	`YYYYMMDD-HHMMSS`. Old outputs are deleted.
+
 - **local_branch_history.md**: log of local branch operations.
 
 - **remote_branch_history.md**: log of remote branch operations.
+
+- **updatebrand-log-<datetime>.md**: Outputs from `scripts/bin/updatebrand`,
+	where `<datetime>` has the form `YYYYMMDD-HHMMSS`. Old dry-runs are deleted
+    on a successful non-dry-run.
 
 - **README.md**: This directory guide.
 

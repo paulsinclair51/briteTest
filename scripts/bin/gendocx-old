@@ -6,16 +6,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Converts PDF documentation files into DOCX outputs using legacy conversion
-#   workflow.
-# - Handles per-file conversion options and output placement.
-# - Reports conversion errors for missing inputs or failed converter commands.
-#
-# Dependencies: python3 + pdf2docx package, or libreoffice/soffice.
-
-set -euo pipefail
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -78,8 +68,25 @@ Examples:
   gendocx docs/pdf/briteTest.pdf
   gendocx docs/pdf/briteTest.pdf docs/docx/briteTest
   gendocx docs/pdf docs/docx
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 EOF
 }
+
+# High-Level Flow:
+# - Converts PDF documentation files into DOCX outputs using legacy conversion
+#   workflow.
+# - Handles per-file conversion options and output placement.
+# - Reports conversion errors for missing inputs or failed converter commands.
+#
+# Dependencies: python3 + pdf2docx package, or libreoffice/soffice.
+
+set -euo pipefail
+
 
 strict_ext=0
 quiet=0

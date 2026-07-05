@@ -8,33 +8,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
-# - Creates or updates a GitHub pull request using branch/workflow metadata.
-# - Validates branch context and required PR fields before submission.
-# - Integrates with gh CLI and reports resulting PR identifiers/links.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Shared helpers
-# shellcheck source=helpers/common.sh
-source "$SCRIPT_DIR/../helpers/common.sh"
-# shellcheck source=helpers/git_helpers.sh
-source "$SCRIPT_DIR/../helpers/git_helpers.sh"
-# shellcheck source=helpers/github_helpers.sh
-source "$SCRIPT_DIR/../helpers/github_helpers.sh"
-
-# Default options
-DRAFT=false
-VERBOSE=false
-CUSTOM_TITLE=""
-CUSTOM_DESCRIPTION=""
-LABELS=""
-ASSIGNEES=""
-OPEN_BROWSER=false
-PROMPT_BROWSER=true
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -92,6 +65,12 @@ Workflow:
   3. Make changes and commit: git add . && git commit -m "Address feedback"
   4. Update PR and mark ready: mkpr
 
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented output locations.
+
 Exit codes:
   0   Success
   1   Argument or validation error
@@ -101,6 +80,34 @@ Exit codes:
   5   Configuration error (missing contributors.md or no approvers)
 EOF
 }
+
+# High-Level Flow:
+# - Creates or updates a GitHub pull request using branch/workflow metadata.
+# - Validates branch context and required PR fields before submission.
+# - Integrates with gh CLI and reports resulting PR identifiers/links.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/github_helpers.sh
+source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+
+# Default options
+DRAFT=false
+VERBOSE=false
+CUSTOM_TITLE=""
+CUSTOM_DESCRIPTION=""
+LABELS=""
+ASSIGNEES=""
+OPEN_BROWSER=false
+PROMPT_BROWSER=true
+
 
 get_target_branch() {
   local current_branch="$1"

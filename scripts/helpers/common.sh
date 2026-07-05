@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-# Summary of script behavior:
+# High-Level Flow:
 # - Provides shared output helpers for info/success/warn messaging.
 # - Provides a common error-exit helper and branch-detection utility.
 # - Maintains consistent lightweight shell behavior across scripts/bin tools.
