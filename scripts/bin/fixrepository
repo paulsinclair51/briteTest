@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
-# For license details, see /LICENSE.
+# For license details, see LICENSE in the repository root.
 
 usage() {
   cat <<'EOF'
@@ -106,13 +106,13 @@ append_check() {
     echo "✓ **$check_name**: $status" >> "$OUTPUT_FILE"
   elif [[ "$status" == "ISSUE" ]]; then
     echo "⚠ **$check_name**: $status" >> "$OUTPUT_FILE"
-    ISSUES_FOUND=$((ISSUES_FOUND + 1))
+    ((ISSUES_FOUND++))
   elif [[ "$status" == "FIXED" ]]; then
     echo "✓ **$check_name**: $status" >> "$OUTPUT_FILE"
-    ISSUES_FIXED=$((ISSUES_FIXED + 1))
+    ((ISSUES_FIXED++))
   elif [[ "$status" == "ERROR" ]]; then
     echo "✗ **$check_name**: $status" >> "$OUTPUT_FILE"
-    ISSUES_FOUND=$((ISSUES_FOUND + 1))
+    ((ISSUES_FOUND++))
     CRITICAL_ERROR=true
   fi
   
@@ -174,7 +174,6 @@ check_loose_objects() {
       bt_info "Running git gc to optimize repository..."
       if cd "$repo_root" && git gc --aggressive 2>&1 >/dev/null; then
         append_check "Repository Optimization" "FIXED" "Ran git gc --aggressive"
-        ISSUES_FIXED=$((ISSUES_FIXED + 1))
       else
         append_check "Repository Optimization" "ISSUE" "git gc encountered an error"
       fi
@@ -260,8 +259,7 @@ check_repository_structure() {
       append_check "Exists: $item" "PASS" ""
     else
       append_check "Missing: $item" "ISSUE" "Required item not found"
-      missing_items=$((missing_items + 1))
-      ISSUES_FOUND=$((ISSUES_FOUND + 1))
+      ((missing_items++))
     fi
   done
   
@@ -282,7 +280,6 @@ cleanup_repository() {
     
     if cd "$repo_root" && git gc --prune=now 2>&1 >/dev/null; then
       append_check "Garbage Collection" "FIXED" "Cleaned up object database"
-      ISSUES_FIXED=$((ISSUES_FIXED + 1))
     fi
   fi
 }
