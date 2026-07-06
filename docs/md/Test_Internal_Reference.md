@@ -44,7 +44,7 @@ the Documentation Guide.
 
 For a glossary of terms, see the Glossary Reference.
 
-A printer-friendly PDF file for this document is available in `docs/pdf/`.
+A printer-friendly PDF file for this document is available.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
@@ -53,20 +53,15 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0.0 | 1.0.0 | 1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
+| v1.0.0 | v1.0.0 | v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 
-- The **Document** column records the document's version.
-- The **Runner** column records the Runner API version
-  current at the time this version of the document was published.
-- The **Test** column records the Test API version current at
-  the time this version of the document was published.
+- **Document**: A version of this document.
+- **Runner**: The Runner API version current at the time of publication.
+- **Test**: The Test API version current at the time of publication.
 
-A version has the format `M.m.p` (Major, minor, patch) where `M` is the
-major version, `m` is the minor version, and `p` is the patch version.
-`p` increments when the document is updated without a change to `M` or `m`,
-and resets to 0 when `M` or `m` increases. The first table entry is the most
-recent version for this document at the time this document was published.
-</details><br>
+A version has the format `v<M>.<m>.<p>` where `<M>` is the major version,
+`<m>` is the minor version, and `<p>` is the patch version.
+</details>
 </details>
 
 <details>
