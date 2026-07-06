@@ -21,6 +21,10 @@ and high-signal output contracts.
   help output, local/remote listing, invalid-only behavior, and selected
   error paths.
 
+- **test_ckbranch.sh**: Smoke tests for `scripts/bin/ckbranch` covering
+  help output, local/remote inclusion flags, report marker formatting,
+  remote-only branch visibility, and pattern matching behavior.
+
 - **README.md**: This directory guide.
 
 ## Subdirectories
@@ -34,6 +38,7 @@ From repository root:
 ```sh
 make test-lsbranch
 make test-gendocs
+make test-ckbranch
 ```
 
 Or run directly:
@@ -41,4 +46,5 @@ Or run directly:
 ```sh
 bash ./scripts/tests/test_lsbranch.sh
 bash ./scripts/tests/test_gendocs.sh
+bash ./scripts/tests/test_ckbranch.sh
 ```
