@@ -19,8 +19,8 @@ See `/README.md` for an introduction to briteTest.
 
 - **Glossary_Reference.md**: Glossary of project terms and testing terms.
 
-- **Guide.md**: briteTest concepts and auick start example. `README.md` in
-  the root directory is a link to this file.
+- **Guide.md**: briteTest concepts and quick start example. `/README.md` is
+  a link to this file.
 
 - **Runner_Guide.md**: Runner API concepts, usage, and examples.
 
