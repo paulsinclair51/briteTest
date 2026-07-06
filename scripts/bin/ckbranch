@@ -267,7 +267,7 @@ generate_report_header() {
 
 **Timestamp:** ${RUN_TS_DISPLAY}
 
-| **Branch** | **Type** | **Tracking** | **Status** | **Staged/<br>Unstaged** | **Unpushed<br>Commits** | **Ahead/<br>Behind** | **PR** |
+| **Branch** | **Type** | **Base** | **Status** | **Staged/<br>Unstaged** | **Unpushed<br>Commits** | **Ahead/<br>Behind** | **PR** |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 EOF
 }
@@ -275,7 +275,7 @@ EOF
 append_report_row() {
   local branch="$1"
   local type="$2"
-  local tracking="$3"
+  local base="$3"
   local status="$4"
   local staged_unstaged="$5"
   local unpushed_commits="$6"
@@ -285,7 +285,7 @@ append_report_row() {
   # Escape markdown-table delimiters in cell values so row column counts stay stable.
   branch="${branch//|/\\|}"
   type="${type//|/\\|}"
-  tracking="${tracking//|/\\|}"
+  base="${base//|/\\|}"
   status="${status//|/\\|}"
   staged_unstaged="${staged_unstaged//|/\\|}"
   unpushed_commits="${unpushed_commits//|/\\|}"
@@ -293,7 +293,7 @@ append_report_row() {
   pr="${pr//|/\\|}"
 
   printf '| %s | %s | %s | %s | %s | %s | %s | %s |\n' \
-    "$branch" "$type" "$tracking" "$status" "$staged_unstaged" "$unpushed_commits" "$ahead_behind" "$pr" >> "$OUTPUT_FILE"
+    "$branch" "$type" "$base" "$status" "$staged_unstaged" "$unpushed_commits" "$ahead_behind" "$pr" >> "$OUTPUT_FILE"
 }
 
 format_ratio_or_blank() {
@@ -427,7 +427,7 @@ EOF
         local staged_unstaged_display
         local_ahead_behind=$(format_ratio_or_blank "$unpushed_count" "$behind_count")
         staged_unstaged_display=$(format_ratio_or_blank "$staged_count" "$unstaged_count")
-        append_report_row "$branch_local_display" "local" "origin/$branch" "$local_status" "$staged_unstaged_display" "$unpushed_display" "$local_ahead_behind" "$pr_count_display"
+        append_report_row "$branch_local_display" "local" "remote origin/$branch" "$local_status" "$staged_unstaged_display" "$unpushed_display" "$local_ahead_behind" "$pr_count_display"
       fi
 
       local remote_status="synced"
@@ -447,15 +447,15 @@ EOF
       staged_unstaged_display=$(format_ratio_or_blank "$staged_count" "$unstaged_count")
       unpushed_display=$(format_zero_as_blank "$unpushed_count")
       if [[ "$include_local_rows" == true ]]; then
-        append_report_row "$branch_local_display" "local" "none" "$local_status" "$staged_unstaged_display" "$unpushed_display" "" "$pr_count_display"
+        append_report_row "$branch_local_display" "local" "" "$local_status" "$staged_unstaged_display" "$unpushed_display" "" "$pr_count_display"
       elif [[ "$include_remote_rows" == true ]]; then
-        append_report_row "$branch" "remote" "none" "not tracking origin" "" "" "" "$pr_count_display"
+        append_report_row "$branch" "remote" "" "not tracking origin" "" "" "" "$pr_count_display"
       fi
     else
       local pr_count_display
       pr_count_display=$(format_zero_as_blank "$pr_count")
       if [[ "$include_remote_rows" == true ]]; then
-        append_report_row "$branch" "remote" "not tracked locally" "$repo_status" "" "" "" "$pr_count_display"
+        append_report_row "$branch" "remote" "" "$repo_status" "" "" "" "$pr_count_display"
       fi
     fi
 
@@ -485,7 +485,7 @@ check_remote_branch_status() {
 
   local pr_count_display
   pr_count_display=$(format_zero_as_blank "$pr_count")
-  append_report_row "$branch" "remote" "not tracked locally" "$last_commit" "" "" "" "$pr_count_display"
+  append_report_row "$branch" "remote" "" "$last_commit" "" "" "" "$pr_count_display"
 
   if [[ "$VERBOSE" == true ]]; then
     echo "  Last Commit: $last_commit"
@@ -653,15 +653,16 @@ cat >> "$OUTPUT_FILE" << 'EOF'
 
 **Type**: Indicates branch is `local` or `remote`.
 
-**Tracking**: The corresponding tracked branch or tracking relationship.
+**Base**: Base branch reference for the row when applicable (for example,
+`remote origin/main` or `local v1.0.0`).
 
 **Status**: `clean` or `dirty` for local worktree state, `synced` or `diverged` for tracked-branch state, or `unknown`.
 
 **Staged/Unstaged**: Counts of staged and unstaged files.
 
-**Unpushed Commits**: Count of local commits not yet pushed to the tracked remote.
+**Unpushed Commits**: Count of local commits pending sync for this branch.
 
-**Ahead/Behind**: Counts of `commts` this branch is ahead of / behind its tracked branch.
+**Ahead/Behind**: Counts of commits this branch is ahead of / behind its tracked branch.
 
 **PR**: Count of pending (not closed) pull requests.
 EOF
