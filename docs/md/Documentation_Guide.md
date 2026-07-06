@@ -1,7 +1,6 @@
 ![Documentation Guide](/docs/branding/Documentation_Guide.png)
 
-This document is a guide to the briteTest documentation and
-repository layout.
+This document is a guide to the briteTest documentation and repository layout.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -37,10 +36,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Preface
 
-This document is for users and contributors who need
-a guide to the documentation and repository layout.
+This document is for users and contributors who need a guide to the
+documentation and repository layout.
 
-A printer-friendly PDF file for this document is available in `docs/pdf/`.
+A printer-friendly PDF file for this document is available in `/docs/pdf/`.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
