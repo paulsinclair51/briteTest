@@ -83,6 +83,9 @@ test-gendocs:
 test-lsbranch:
 	bash ./scripts/tests/test_lsbranch.sh
 
+test-ckbranch:
+	bash ./scripts/tests/test_ckbranch.sh
+
 gendocs:
 	bash ./scripts/bin/gendocs
 
@@ -92,4 +95,4 @@ genpngs:
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run lint-md check-doc test-gendocs test-lsbranch gendocs genpngs clean
+.PHONY: all run lint-md check-doc test-gendocs test-lsbranch test-ckbranch gendocs genpngs clean
