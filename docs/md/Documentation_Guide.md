@@ -52,8 +52,7 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 | v1.0.0 | v1.0.0 | v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 
 - The **Document** column records a history of versions for this document.
-  The first table entry is the most recent version for this document at the
-  time this documen was published.
+  The most recent version is listed first.
 - The **Runner** column records the Runner API version
   current at the time the version of the document was published.
 - The **Test** column records the Test API version current at
