@@ -1,5 +1,7 @@
 ![Contributor Guide](/docs/branding/Contributor_Guide.png)
 
+#### Version: v1.0.0
+
 This document defines the contribution process, coding standards, documentation
 rules, and versioning guidelines for contributors, reviewers, and approvers.
 
