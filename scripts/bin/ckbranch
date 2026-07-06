@@ -249,8 +249,8 @@ generate_report_header() {
 
 **Timestamp:** ${RUN_TS_DISPLAY}
 
-| **Branch** | **Type** | **Tracking** | **Status** | **Staged** | **Unstaged** | **Unpushed Commits** | **Ahead/Behind** | **PR** |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Branch** | **Type** | **Tracking** | **Status** | **Staged/<br>Unstaged** | **Unpushed<br>Commits** | **Ahead/<br>Behind** | **PR** |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 EOF
 }
 
@@ -259,25 +259,41 @@ append_report_row() {
   local type="$2"
   local tracking="$3"
   local status="$4"
-  local staged="$5"
-  local unstaged="$6"
-  local unpushed_commits="$7"
-  local ahead_behind="$8"
-  local pr="$9"
+  local staged_unstaged="$5"
+  local unpushed_commits="$6"
+  local ahead_behind="$7"
+  local pr="$8"
 
   # Escape markdown-table delimiters in cell values so row column counts stay stable.
   branch="${branch//|/\\|}"
   type="${type//|/\\|}"
   tracking="${tracking//|/\\|}"
   status="${status//|/\\|}"
-  staged="${staged//|/\\|}"
-  unstaged="${unstaged//|/\\|}"
+  staged_unstaged="${staged_unstaged//|/\\|}"
   unpushed_commits="${unpushed_commits//|/\\|}"
   ahead_behind="${ahead_behind//|/\\|}"
   pr="${pr//|/\\|}"
 
-  printf '| %s | %s | %s | %s | %s | %s | %s | %s | %s |\n' \
-    "$branch" "$type" "$tracking" "$status" "$staged" "$unstaged" "$unpushed_commits" "$ahead_behind" "$pr" >> "$OUTPUT_FILE"
+  printf '| %s | %s | %s | %s | %s | %s | %s | %s |\n' \
+    "$branch" "$type" "$tracking" "$status" "$staged_unstaged" "$unpushed_commits" "$ahead_behind" "$pr" >> "$OUTPUT_FILE"
+}
+
+format_ratio_zero_as_dash() {
+  local left="$1"
+  local right="$2"
+
+  local left_display right_display
+  left_display=$(format_zero_as_dash "$left")
+  right_display=$(format_zero_as_dash "$right")
+
+  if [[ -z "$left_display" || "$left_display" == "N/A" ]]; then
+    left_display="-"
+  fi
+  if [[ -z "$right_display" || "$right_display" == "N/A" ]]; then
+    right_display="-"
+  fi
+
+  echo "$left_display/$right_display"
 }
 
 format_ahead_behind() {
@@ -410,8 +426,10 @@ EOF
       pr_count_display=$(format_zero_as_dash "$pr_count")
       if [[ "$include_local_rows" == true ]]; then
         local local_ahead_behind
+        local staged_unstaged_display
         local_ahead_behind=$(format_ahead_behind "$unpushed_count" "$behind_count")
-        append_report_row "$branch_local_display" "local" "origin/$branch" "$local_status" "$staged_count" "$unstaged_count" "$unpushed_count" "$local_ahead_behind" "$pr_count_display"
+        staged_unstaged_display=$(format_ratio_zero_as_dash "$staged_count" "$unstaged_count")
+        append_report_row "$branch_local_display" "local" "origin/$branch" "$local_status" "$staged_unstaged_display" "$unpushed_count" "$local_ahead_behind" "$pr_count_display"
       fi
 
       local remote_status="synced"
@@ -421,21 +439,23 @@ EOF
       if [[ "$include_remote_rows" == true ]]; then
         local remote_ahead_behind
         remote_ahead_behind=$(format_ahead_behind "$behind_count" "$unpushed_count")
-        append_report_row "$branch" "remote" "local $branch" "$remote_status" "-" "-" "-" "$remote_ahead_behind" "$pr_count_display"
+        append_report_row "$branch" "remote" "local $branch" "$remote_status" "-/-" "-" "$remote_ahead_behind" "$pr_count_display"
       fi
     elif [[ "$branch_type" == "local" ]]; then
       local pr_count_display
+      local staged_unstaged_display
       pr_count_display=$(format_zero_as_dash "$pr_count")
+      staged_unstaged_display=$(format_ratio_zero_as_dash "$staged_count" "$unstaged_count")
       if [[ "$include_local_rows" == true ]]; then
-        append_report_row "$branch_local_display" "local" "none" "$local_status" "$staged_count" "$unstaged_count" "$unpushed_count" "-" "$pr_count_display"
+        append_report_row "$branch_local_display" "local" "none" "$local_status" "$staged_unstaged_display" "$unpushed_count" "-" "$pr_count_display"
       elif [[ "$include_remote_rows" == true ]]; then
-        append_report_row "$branch" "remote" "none" "not tracking origin" "-" "-" "-" "-" "$pr_count_display"
+        append_report_row "$branch" "remote" "none" "not tracking origin" "-/-" "-" "-" "$pr_count_display"
       fi
     else
       local pr_count_display
       pr_count_display=$(format_zero_as_dash "$pr_count")
       if [[ "$include_remote_rows" == true ]]; then
-        append_report_row "$branch" "remote" "not tracked locally" "$repo_status" "-" "-" "-" "-" "$pr_count_display"
+        append_report_row "$branch" "remote" "not tracked locally" "$repo_status" "-/-" "-" "-" "$pr_count_display"
       fi
     fi
 
@@ -465,7 +485,7 @@ check_remote_branch_status() {
 
   local pr_count_display
   pr_count_display=$(format_zero_as_dash "$pr_count")
-  append_report_row "$branch" "remote" "not tracked locally" "$last_commit" "-" "-" "-" "-" "$pr_count_display"
+  append_report_row "$branch" "remote" "not tracked locally" "$last_commit" "-/-" "-" "-" "$pr_count_display"
 
   if [[ "$VERBOSE" == true ]]; then
     echo "  Last Commit: $last_commit"
@@ -627,25 +647,23 @@ if [[ "$BRANCH_ERRORS" -gt 0 ]]; then
 EOF
 fi
 
-cat >> "$OUTPUT_FILE" << EOF
+cat >> "$OUTPUT_FILE" << 'EOF'
+
+**\***: Indicates this is the current branch.
 
 **Branch**: The branch name for the row.
 
-**\***: A trailing \* on a branch name marks the currently checked-out local branch.
-
-**Type**: Whether the row describes the local branch or the remote branch.
+**Type**: Indicates branch is `local` or `remote`.
 
 **Tracking**: The corresponding tracked branch or tracking relationship.
 
-**Status**: Clean or dirty for local worktree state, synced or diverged for tracked-branch state, or unknown.
+**Status**: `clean` or `dirty` for local worktree state, `synced` or `diverged` for tracked-branch state, or `unknown`.
 
-**Staged**: Count of staged file changes not yet committed.
-
-**Unstaged**: Count of unstaged working-tree file changes.
+**Staged/Unstaged**: Counts of staged and unstaged files.
 
 **Unpushed Commits**: Count of local commits not yet pushed to the tracked remote.
 
-**Ahead/Behind**: Commits this branch is ahead of / behind its tracked branch.
+**Ahead/Behind**: Counts of `commts` this branch is ahead of / behind its tracked branch.
 
 **PR**: Count of pending (not closed) pull requests.
 EOF
