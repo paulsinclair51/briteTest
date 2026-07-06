@@ -15,8 +15,7 @@ See `/README.md` for an introduction to briteTest.
 
 - **Contributor_Guide.md**: Contributor process and standards.
 
-- **Documentation_Guide.md**: Index of documents and the project
-  repository layout.
+- **Documentation_Guide.md**: Index of documents and the repository layout.
 
 - **Glossary_Reference.md**: Glossary of project terms and testing terms.
 
