@@ -68,3 +68,7 @@ logs/updatebrand-log-dry-run-*.md
 # Python bytecode caches
 __pycache__/
 *.pyc
+
+# Reports (track only the directory README)
+reports/*
+!reports/README.md
