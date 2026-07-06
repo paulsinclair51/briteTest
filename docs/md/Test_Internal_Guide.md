@@ -48,6 +48,7 @@ A printer-friendly PDF file for this document is available.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
+
 ### Document Version History
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
