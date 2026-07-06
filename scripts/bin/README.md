@@ -1,6 +1,6 @@
 # /scripts/bin/
 
-Directory containing contributor command scripts.
+Directory containing contributor scripts.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
@@ -9,6 +9,10 @@ For license details, see `/LICENSE`.
 See `/README.md` for an introduction to briteTest.
 
 ## Files
+
+### Setup and Installation
+
+- **installscripts**: Make all scripts executable and add /scripts/bin/ to PATH.
 
 ### Document and Brand Management
 
@@ -52,28 +56,23 @@ See `/README.md` for an introduction to briteTest.
 
 - None.
 
-## Adding Scripts to PATH
+## Getting Started with Scripts
 
-To make scripts available by name and persist for Bash, run from
-anywhere inside this repository:
+To make all scripts executable and add them to your PATH, run:
 
 ```sh
-repo_root="$(git rev-parse --show-toplevel)"
-repo_bin="$repo_root/scripts/bin"
-line="export PATH=\"$repo_bin:\$PATH\""
-grep -qxF "$line" ~/.bashrc || echo "$line" >> ~/.bashrc
-source ~/.bashrc
+bash /scripts/bin/installscripts
 ```
 
-If you run this outside a Git repository, set the repository root
-explicitly:
+This script will:
+- Make all scripts executable (chmod +x)
+- Add /scripts/bin/ to PATH in ~/.bashrc
+- Load the updated configuration so scripts are available immediately
+
+For more information, run:
 
 ```sh
-repo_root="/absolute/path/to/briteTest"
-repo_bin="$repo_root/scripts/bin"
-line="export PATH=\"$repo_bin:\$PATH\""
-grep -qxF "$line" ~/.bashrc || echo "$line" >> ~/.bashrc
-source ~/.bashrc
+bash /scripts/bin/installscripts -h
 ```
 
 ## Script Usage
@@ -86,8 +85,40 @@ ckbranch -h
 
 ## Troubleshooting
 
-If a script is not executable in your environment, run:
+### Scripts not executable
+
+If a script is not executable in your environment, you can:
+
+1. **Run the setup script** to fix all scripts at once:
+   ```sh
+   bash /scripts/bin/installscripts
+   ```
+
+2. **Manually fix individual scripts**:
+   ```sh
+   chmod +x /scripts/bin/<script_name>
+   ```
+
+### Scripts not in PATH
+
+If scripts are not available by name in your shell, ensure you've run:
 
 ```sh
-chmod +x scripts/bin/<script_name>
+bash /scripts/bin/installscripts
+```
+
+This adds the necessary PATH configuration to ~/.bashrc. You may need to start a new terminal session for changes to take effect.
+
+### Manual PATH configuration
+
+If you prefer to configure PATH manually instead of using `installscripts`, add this line to ~/.bashrc:
+
+```sh
+export PATH="/scripts/bin:$PATH"
+```
+
+Then reload your shell configuration:
+
+```sh
+source ~/.bashrc
 ```
