@@ -44,19 +44,18 @@ SOFTWARE.
 
 This document is intended for user and contributors who need guidance on using
 briteTest including concepts and a quick start example. This also serves as the
-README.md for briteTest.
+`/README.md` for briteTest.
 
 briteTest provides a Runner API and a Test API, each implemented with a single
-.h / .c pair with no external dependencies and requiring only a POSIX.1‑2001
+`.h` / `.c` pair with no external dependencies and requiring only a POSIX.1‑2001
 environment and a C99‑compliant compiler.
 
 For a list of other documents and the repository layout, see
-the Documentation Guide (`Documentation_Guide.md`).
+the Documentation Guide.
 
-For a glossary of terms, see the Glossary Reference
-(`Glossary_Reference.md`).
+For a glossary of terms, see the Glossary Reference.
 
-A printer-friendly PDF file for this document is available in `docs/pdf/`.
+A printer-friendly PDF file for this document is available in `/docs/pdf/`.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
@@ -65,7 +64,7 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 | Document | Runner | Test | Date | Comment | Author/Editor |
 |----------|------|--------|------|---------|---------------|
-| 1.0.0 | 1.0.0 | 1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+| v1.0.0 | v1.0.0 | v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 
 - The **Document** column records the document's version.
 - The **Runner** column records the Runner API version
@@ -73,11 +72,10 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 - The **Test** column records the Test API version current at
   the time this version of the document was published.
 
-A version has the format `M.m.p` (Major, minor, patch) where `M` is the
-major version, `m` is the minor version, and `p` is the patch version.
-`p` increments when the document is updated without a change to `M` or `m`,
-and resets to 0 when `M` or `m` increases. The first table entry is the most
-recent version for this document at the time this document was published.
+A version has the format `v<M>.<m>.<p>` where `<M>` is the major version,
+`<m>` is the minor version, and `<p>` is the patch version. The first table
+entry is the most recent version for this document at the time this document
+was published.
 </details>
 </details>
 
