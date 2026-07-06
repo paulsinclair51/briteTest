@@ -11,7 +11,7 @@ See `/README.md` for an introduction to briteTest.
 ## Files
 
 - **runnerapi.h**: Header for the Runner API.
-  See `../src/runnerapi.c` for the corresponding implementation.
+  See `/src/runnerapi.c` for the corresponding implementation.
 
 - **testapi.h**: Header for the Test API.
   See `/src/testapi.c` for the corresponding implementation.
