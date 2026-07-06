@@ -228,6 +228,16 @@ format_zero_as_dash() {
   fi
 }
 
+format_zero_as_blank() {
+  local value="$1"
+
+  if [[ "$value" =~ ^[0-9]+$ && "$value" -eq 0 ]]; then
+    echo ""
+  else
+    echo "$value"
+  fi
+}
+
 get_branch_type() {
   local branch="$1"
   
@@ -286,40 +296,18 @@ append_report_row() {
     "$branch" "$type" "$tracking" "$status" "$staged_unstaged" "$unpushed_commits" "$ahead_behind" "$pr" >> "$OUTPUT_FILE"
 }
 
-format_ratio_zero_as_dash() {
+format_ratio_or_blank() {
   local left="$1"
   local right="$2"
 
-  local left_display right_display
-  left_display=$(format_zero_as_dash "$left")
-  right_display=$(format_zero_as_dash "$right")
-
-  if [[ -z "$left_display" || "$left_display" == "N/A" ]]; then
-    left_display="-"
-  fi
-  if [[ -z "$right_display" || "$right_display" == "N/A" ]]; then
-    right_display="-"
-  fi
-
-  echo "$left_display/$right_display"
-}
-
-format_ahead_behind() {
-  local ahead="$1"
-  local behind="$2"
-
-  if [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]]; then
-    if [[ "$ahead" -eq 0 && "$behind" -eq 0 ]]; then
-      echo "-"
-    elif [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
-      echo "$ahead/-"
-    elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
-      echo "-/$behind"
+  if [[ "$left" =~ ^[0-9]+$ && "$right" =~ ^[0-9]+$ ]]; then
+    if [[ "$left" -eq 0 && "$right" -eq 0 ]]; then
+      echo ""
     else
-      echo "$ahead/$behind"
+      echo "$left/$right"
     fi
   else
-    echo "-"
+    echo ""
   fi
 }
 
@@ -427,17 +415,19 @@ EOF
   # Append report row(s)
     local branch_local_display="$branch"
     local local_status="$repo_status"
-    [[ "$is_current" == true ]] && branch_local_display="${branch}**\\***"
+    [[ "$is_current" == true ]] && branch_local_display="${branch}*"
 
     if [[ "$branch_type" == "local (tracking origin)" ]]; then
       local pr_count_display
-      pr_count_display=$(format_zero_as_dash "$pr_count")
+      local unpushed_display
+      pr_count_display=$(format_zero_as_blank "$pr_count")
+      unpushed_display=$(format_zero_as_blank "$unpushed_count")
       if [[ "$include_local_rows" == true ]]; then
         local local_ahead_behind
         local staged_unstaged_display
-        local_ahead_behind=$(format_ahead_behind "$unpushed_count" "$behind_count")
-        staged_unstaged_display=$(format_ratio_zero_as_dash "$staged_count" "$unstaged_count")
-        append_report_row "$branch_local_display" "local" "origin/$branch" "$local_status" "$staged_unstaged_display" "$unpushed_count" "$local_ahead_behind" "$pr_count_display"
+        local_ahead_behind=$(format_ratio_or_blank "$unpushed_count" "$behind_count")
+        staged_unstaged_display=$(format_ratio_or_blank "$staged_count" "$unstaged_count")
+        append_report_row "$branch_local_display" "local" "origin/$branch" "$local_status" "$staged_unstaged_display" "$unpushed_display" "$local_ahead_behind" "$pr_count_display"
       fi
 
       local remote_status="synced"
@@ -446,24 +436,26 @@ EOF
       fi
       if [[ "$include_remote_rows" == true ]]; then
         local remote_ahead_behind
-        remote_ahead_behind=$(format_ahead_behind "$behind_count" "$unpushed_count")
-        append_report_row "$branch" "remote" "local $branch" "$remote_status" "-/-" "-" "$remote_ahead_behind" "$pr_count_display"
+        remote_ahead_behind=$(format_ratio_or_blank "$behind_count" "$unpushed_count")
+        append_report_row "$branch" "remote" "local $branch" "$remote_status" "" "" "$remote_ahead_behind" "$pr_count_display"
       fi
     elif [[ "$branch_type" == "local" ]]; then
       local pr_count_display
       local staged_unstaged_display
-      pr_count_display=$(format_zero_as_dash "$pr_count")
-      staged_unstaged_display=$(format_ratio_zero_as_dash "$staged_count" "$unstaged_count")
+      local unpushed_display
+      pr_count_display=$(format_zero_as_blank "$pr_count")
+      staged_unstaged_display=$(format_ratio_or_blank "$staged_count" "$unstaged_count")
+      unpushed_display=$(format_zero_as_blank "$unpushed_count")
       if [[ "$include_local_rows" == true ]]; then
-        append_report_row "$branch_local_display" "local" "none" "$local_status" "$staged_unstaged_display" "$unpushed_count" "-" "$pr_count_display"
+        append_report_row "$branch_local_display" "local" "none" "$local_status" "$staged_unstaged_display" "$unpushed_display" "" "$pr_count_display"
       elif [[ "$include_remote_rows" == true ]]; then
-        append_report_row "$branch" "remote" "none" "not tracking origin" "-/-" "-" "-" "$pr_count_display"
+        append_report_row "$branch" "remote" "none" "not tracking origin" "" "" "" "$pr_count_display"
       fi
     else
       local pr_count_display
-      pr_count_display=$(format_zero_as_dash "$pr_count")
+      pr_count_display=$(format_zero_as_blank "$pr_count")
       if [[ "$include_remote_rows" == true ]]; then
-        append_report_row "$branch" "remote" "not tracked locally" "$repo_status" "-/-" "-" "-" "$pr_count_display"
+        append_report_row "$branch" "remote" "not tracked locally" "$repo_status" "" "" "" "$pr_count_display"
       fi
     fi
 
@@ -492,8 +484,8 @@ check_remote_branch_status() {
   printf '%s %s\n' "$branch" "${tags[*]}"
 
   local pr_count_display
-  pr_count_display=$(format_zero_as_dash "$pr_count")
-  append_report_row "$branch" "remote" "not tracked locally" "$last_commit" "-/-" "-" "-" "$pr_count_display"
+  pr_count_display=$(format_zero_as_blank "$pr_count")
+  append_report_row "$branch" "remote" "not tracked locally" "$last_commit" "" "" "" "$pr_count_display"
 
   if [[ "$VERBOSE" == true ]]; then
     echo "  Last Commit: $last_commit"
@@ -657,7 +649,7 @@ fi
 
 cat >> "$OUTPUT_FILE" << 'EOF'
 
-**Branch**: Indicates the branch name. `**\***` indicates this is the current branch.
+**Branch**: Indicates the branch name. `*` indicates this is the current branch.
 
 **Type**: Indicates branch is `local` or `remote`.
 
