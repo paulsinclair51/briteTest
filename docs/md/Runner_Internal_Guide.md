@@ -1,5 +1,7 @@
 ![Runner Internal Guide](/docs/branding/Runner_Internal_Guide.png)
 
+#### Version: V1.0.0
+
 This guide documents the internal architecture and design of the Runner Famework
 and API. It complements the Runner Internal Reference.
 
@@ -51,16 +53,9 @@ A printer-friendly PDF file for this document is available.
 
 ### Document Version History
 
-| Document | Runner | Test | Date | Comment | Author/Editor |
-|----------|------|--------|------|---------|---------------|
-| v1.0.0 | v1.0.0 | v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
-
-- **Document**: A version of this document.
-- **Runner**: The Runner API version current at the time of publication.
-- **Test**: The Test API version current at the time of publication.
-
-A version has the format `v<M>.<m>.<p>` where `<M>` is the major version,
-`<m>` is the minor version, and `<p>` is the patch version.
+| Version | Date | Comment | Author/Editor |
+|----------|------|---------|---------------|
+| v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 </details>
 </details>
 
