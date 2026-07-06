@@ -165,8 +165,10 @@ get_remote_only_branches() {
 
 check_repo_status() {
   local branch="$1"
-  
-  if git diff-index --quiet HEAD -- 2>/dev/null; then
+  local tracked_changes
+
+  tracked_changes=$(git status --porcelain --untracked-files=no 2>/dev/null || true)
+  if [[ -z "$tracked_changes" ]]; then
     echo "clean"
   else
     echo "dirty"
@@ -175,14 +177,20 @@ check_repo_status() {
 
 get_staged_changes() {
   local branch="$1"
-  
-  git diff --cached --name-only 2>/dev/null | wc -l
+
+  git status --porcelain --untracked-files=no 2>/dev/null | awk '
+    substr($0,1,1) != " " { c++ }
+    END { print c + 0 }
+  '
 }
 
 get_unstaged_changes() {
   local branch="$1"
-  
-  git diff --name-only 2>/dev/null | wc -l
+
+  git status --porcelain --untracked-files=no 2>/dev/null | awk '
+    substr($0,2,1) != " " { c++ }
+    END { print c + 0 }
+  '
 }
 
 get_unpushed_commits() {
@@ -419,7 +427,7 @@ EOF
   # Append report row(s)
     local branch_local_display="$branch"
     local local_status="$repo_status"
-    [[ "$is_current" == true ]] && branch_local_display="${branch}*"
+    [[ "$is_current" == true ]] && branch_local_display="${branch}**\\***"
 
     if [[ "$branch_type" == "local (tracking origin)" ]]; then
       local pr_count_display
@@ -649,9 +657,7 @@ fi
 
 cat >> "$OUTPUT_FILE" << 'EOF'
 
-**\***: Indicates this is the current branch.
-
-**Branch**: The branch name for the row.
+**Branch**: Indicates the branch name. `**\***` indicates this is the current branch.
 
 **Type**: Indicates branch is `local` or `remote`.
 
