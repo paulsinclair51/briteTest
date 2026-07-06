@@ -2,102 +2,38 @@
 
 # ckstyle - Validate consistent style in repository files.
 #
-# See usage below for details, or run: ckstyle -h
-#
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
 usage() {
-  cat <<'EOF'
+  cat <<'USAGE'
 Usage:
   ckstyle [OPTIONS]
   ckstyle -h | --help
 
-Validate style across repository for the current branch.
-See /docs/md/Contributor_Guide.md for guidelines and requirements.
+Validate style across repository files.
 
-This script performs comprehensive style validation including:
-  - Document canonical form in docs/md/
-  - Directory guide structure in all subdirectories
-  - Document front matter and structure
-  - Directory README.md requirements
-  - File and subdirectory section consistency
-
-Document Checks:
-  - Front matter structure and SPDX identifiers
-  - Details/summary pairing and formatting
-  - Table-of-contents numbering syntax
-  - Numbered heading formatting
-  - Summary/heading alignment
-  - ASCII-only content
-  - Shared Document Version History blocks
-  - Corresponding docs/branding/*.svg files
-
-Directory Guide Checks:
-  - Required README.md presence in subdirectories
-  - Canonical heading and header layout
-  - Copyright, SPDX, and license information
-  - Files section with proper alphabetical ordering
-  - Subdirectories section accuracy
-  - README.md listed last in file entries
-  
-Versioning Checks:
-  - Versioned files all specify the same major and minor version
-    and, if the current branch is named for a version, that version
-    has the same
-    major and minor version.
-  
 Options:
-  -h, --help  Output this help to stdout and exit (other options
-              and arguments are ignored).
-  -d          Check documents.
-  -r          Check directory guide README.md files.
-  -v          Check versioned files and branch name (if versioed) for
-              versioning consistency.
+  -h, --help  Output help and exit.
+  -d          Run document checks.
+  -r          Run directory guide README checks.
+  -v          Run version consistency checks.
 
-  If no checks are specified, same as specifying all checks; otherwise,
-  only the specified checks are done.
-  
-Examples:
-  # Check all
-  ckstyle
+If no check flags are provided, all checks are enabled.
 
-  # Check only documents
-  ckstyle -d
-
-  # Check only README.md directory guides
-  ckstyle -r
-  
-  # Check doucuments and versions
-  ckstyle -d -v
-
-  # Show help
-  ckstyle -h
-
-Outputs:
-  - Writes help text, status messages, and results to stdout.
-  - Writes errors and diagnostics to stderr.
-  - Writes a validation report to reports/ckstyle-<datetime>.md.
-  - Removes previous reports when a new one is successfully written.
+Behavior:
+  - Scans repository files while excluding /obsolete and /.git.
+  - Applies enabled checks to applicable files.
+  - Produces exactly one report: reports/ckstyle-<datetime>.md
+  - Groups all issues by file in the report.
 
 Exit codes:
-  0  Success, or help requested with -h/--help.
-  1  Validation failure.
-  2  Invalid command-line argument.
-EOF
+  0  Success (no issues found).
+  1  Validation issues found.
+  2  Invalid usage.
+USAGE
 }
-
-# High-Level Flow:
-# - Determines current branch and extracts version from branch name if
-#.  it has one.
-# - (-d) Checks document structure and front matter.
-# - (-r) Checks directory README.md guide structure.
-# - (-d) Checks document-to-SVG correspondence.
-# - (-c) Checks versions of versioned files and, if the currenf branch name
-#        contains a version (with or without leading v), the branch version
-#.       for compliance with versioning guidelines.
-# - Reports all validation failures with detailed diagnostics.
 
 set -euo pipefail
 
@@ -105,50 +41,10 @@ readonly EXIT_OK=0
 readonly EXIT_VALIDATION=1
 readonly EXIT_USAGE=2
 
-RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
-RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
-RUN_OUTPUT_FILE="$(mktemp)"
-REPORT_FILE=""
-
 CHECK_DOCUMENTS_FLAG=false
 CHECK_GUIDES_FLAG=false
 CHECK_VERSIONS_FLAG=false
 
-setup_output_capture() {
-  exec > >(tee "$RUN_OUTPUT_FILE") 2>&1
-}
-
-write_report_on_exit() {
-  local exit_code="$?"
-  local old_report
-  set +e
-
-  {
-    echo "# ckstyle Validation Report"
-    echo
-    echo "**Timestamp:** $RUN_TS_DISPLAY"
-    echo
-    echo "## Validation Output"
-    echo '```text'
-    sed -n '1,$p' "$RUN_OUTPUT_FILE"
-    echo '```'
-  } > "$REPORT_FILE"
-
-  # Remove old reports if new one was written successfully
-  if [[ -n "$repo_root" && -f "$REPORT_FILE" ]]; then
-    for old_report in "$repo_root"/reports/ckstyle-*.md; do
-      [[ "$old_report" == "$REPORT_FILE" ]] && continue
-      [[ -e "$old_report" ]] || continue
-      rm -f "$old_report"
-    done
-  fi
-
-  rm -f "$RUN_OUTPUT_FILE"
-  trap - EXIT
-  exit "$exit_code"
-}
-
-# Check for help first — if specified, show usage and exit, ignoring all other arguments
 for arg in "$@"; do
   if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
     usage
@@ -156,7 +52,6 @@ for arg in "$@"; do
   fi
 done
 
-# Parse options
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -d)
@@ -179,66 +74,83 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Determine what to check based on flags
-# If no flags specified, default to all; if at least one flag specified, use the flags
 if ! $CHECK_DOCUMENTS_FLAG && ! $CHECK_GUIDES_FLAG && ! $CHECK_VERSIONS_FLAG; then
-  # Default: check all
   CHECK_DOCUMENTS=true
   CHECK_GUIDES=true
   CHECK_VERSIONS=true
 else
-  # At least one flag specified: use exactly what was specified
   CHECK_DOCUMENTS=$CHECK_DOCUMENTS_FLAG
   CHECK_GUIDES=$CHECK_GUIDES_FLAG
   CHECK_VERSIONS=$CHECK_VERSIONS_FLAG
 fi
 
-repo_root=$(cd "$(dirname "$0")/../../" && pwd)
+repo_root="$(cd "$(dirname "$0")/../../" && pwd)"
+cd "$repo_root"
 
-# Validate reports directory exists before proceeding
-if [[ ! -d "$repo_root/reports" ]]; then
+if [[ ! -d reports ]]; then
   echo "ERROR: reports directory not found: $repo_root/reports" >&2
   exit "$EXIT_VALIDATION"
 fi
-cd "$repo_root"
+
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 REPORT_FILE="$repo_root/reports/ckstyle-${RUN_TS_FILE}.md"
 
-trap write_report_on_exit EXIT
-setup_output_capture
+# -----------------------------
+# Issue collection
+# -----------------------------
+declare -A FILE_ISSUES=()
+declare -A FILE_SEEN=()
+declare -a ISSUE_FILES=()
+TOTAL_ISSUES=0
 
-docs_dir="$repo_root/docs/md"
-branding_dir="$repo_root/docs/branding"
-svg_template="$branding_dir/Test_Guide.svg"
-
-failures=0
-
-fail() {
-  echo "ERROR: $1" >&2
-  failures=$((failures + 1))
+normalize_path() {
+  local p="$1"
+  p="${p#./}"
+  printf '%s\n' "$p"
 }
 
-# ============================================================================
-# DOCUMENT VALIDATION FUNCTIONS
-# ============================================================================
+add_issue() {
+  local file="$1"
+  local msg="$2"
+  local norm
+  norm="$(normalize_path "$file")"
 
+  if [[ -z "${FILE_SEEN[$norm]+x}" ]]; then
+    FILE_SEEN["$norm"]=1
+    ISSUE_FILES+=("$norm")
+    FILE_ISSUES["$norm"]=""
+  fi
+
+  FILE_ISSUES["$norm"]+="- $msg"$'\n'
+  TOTAL_ISSUES=$((TOTAL_ISSUES + 1))
+}
+
+is_excluded_path() {
+  local p="$1"
+  [[ "$p" == ./.git* || "$p" == ./.git || "$p" == ./obsolete* || "$p" == ./obsolete ]]
+}
+
+# -----------------------------
+# Document checks
+# -----------------------------
 license_summary='<summary><strong>License</strong></summary>'
 preface_summary='<summary><strong>Preface</strong></summary>'
 dvh_summary='<summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>'
 toc_summary='<summary><strong>Table of Contents</strong></summary>'
-overview_doc='briteTest.md'
 
-front_matter() {
-  local file=$1
+doc_front_matter() {
+  local file="$1"
   awk '{ print } /^## Table of Contents$/ { exit }' "$file"
 }
 
-summary_lines() {
-  local file=$1
-  front_matter "$file" | grep '^<summary>' || true
+doc_summary_lines() {
+  local file="$1"
+  doc_front_matter "$file" | grep '^<summary>' || true
 }
 
-extract_dvh_block() {
-  local file=$1
+doc_extract_dvh_block() {
+  local file="$1"
   awk '
     /### Document Version History/ { capture=1 }
     capture { print }
@@ -246,129 +158,952 @@ extract_dvh_block() {
   ' "$file"
 }
 
-check_standard_doc() {
-  local file=$1
+doc_check_standard_doc() {
+  local file="$1"
   local first_nonblank
 
-  first_nonblank=$(awk 'NF { print; exit }' "$file")
+  first_nonblank="$(awk 'NF { print; exit }' "$file")"
   if ! printf '%s\n' "$first_nonblank" | grep -Eq '^!\[[^]]+\]\(\.\./branding/[^)]+\.png\)$'; then
-    fail "$file: first non-blank line must be the document banner image"
+    add_issue "$file" "first non-blank line must be a banner image in ../branding/*.png format"
   fi
 
   if grep -q '^\[!\[' "$file"; then
-    fail "$file: badges are only allowed in $overview_doc"
+    add_issue "$file" "badges are not allowed in docs/md documents"
   fi
 }
 
-check_overview_doc() {
-  local file=$1
-  local first_four
-
-  mapfile -t first_four < <(awk 'NF { print; if (++count == 4) exit }' "$file")
-
-  [[ ${#first_four[@]} -ge 4 ]] || {
-    fail "$file: expected badges and logo before the copyright line"
-    return
-  }
-
-  [[ ${first_four[0]} == '[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)' ]] || \
-    fail "$file: missing canonical license badge"
-  [[ ${first_four[1]} == '[![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/BriteTest?display_name=tag)](https://github.com/paulsinclair51/BriteTest/releases)' ]] || \
-    fail "$file: missing canonical latest release badge"
-  [[ ${first_four[2]} == '[![CI](https://github.com/paulsinclair51/BriteTest/actions/workflows/ci.yml/badge.svg)](https://github.com/paulsinclair51/BriteTest/actions/workflows/ci.yml)' ]] || \
-    fail "$file: missing canonical CI badge"
-  [[ ${first_four[3]} == '![BriteTest Logo](../branding/Logo_with_BrandName.png)' ]] || \
-    fail "$file: missing canonical overview logo"
-}
-
-check_details_structure() {
-  local file=$1
+doc_check_details_structure() {
+  local file="$1"
   local opens closes summaries
 
   opens=$(grep -c '^<details>$' "$file" || true)
   closes=$(grep -Ec '^[[:space:]]*</details>(<br>)?[[:space:]]*$' "$file" || true)
   summaries=$(grep -c '^<summary>' "$file" || true)
 
-  [[ "$opens" -eq "$closes" ]] || fail "$file: <details> and </details> counts differ ($opens != $closes)"
-  [[ "$opens" -eq "$summaries" ]] || fail "$file: each <details> block must have exactly one <summary> ($opens != $summaries)"
+  [[ "$opens" -eq "$closes" ]] || add_issue "$file" "<details> and </details> counts differ ($opens != $closes)"
+  [[ "$opens" -eq "$summaries" ]] || add_issue "$file" "each <details> must have one <summary> ($opens != $summaries)"
+
+  while IFS= read -r msg; do
+    [[ -n "$msg" ]] && add_issue "$file" "$msg"
+  done < <(
+    awk '
+      /^<details>$/ {
+        if (getline nextline <= 0) {
+          print "<details> at end of file without a summary"
+          status=1
+          exit
+        }
+        if (nextline !~ /^<summary>/) {
+          print "<details> must be followed immediately by <summary>"
+          status=1
+          exit
+        }
+        next
+      }
+      END { exit status }
+    ' "$file" || true
+  )
+
+  while IFS= read -r msg; do
+    [[ -n "$msg" ]] && add_issue "$file" "$msg"
+  done < <(
+    awk '
+      { lines[NR] = $0 }
+      END {
+        for (i = 1; i < NR; i++) {
+          if (lines[i] ~ /^[[:space:]]*<\/details>[[:space:]]*$/ && lines[i + 1] ~ /^[[:space:]]*<\/details>[[:space:]]*$/) {
+            print "adjacent </details> blocks require first closing tag to be </details><br>"
+          }
+        }
+      }
+    ' "$file"
+  )
 }
 
-check_ascii_only() {
-  local file=$1
-  local first_match
+doc_check_heading_numbering() {
+  local file="$1"
+  while IFS= read -r msg; do
+    [[ -n "$msg" ]] && add_issue "$file" "$msg"
+  done < <(
+    awk '
+      function is_numbered_heading(text) {
+        return text ~ /^[0-9]+(\.[0-9]+)*(\.)?[[:space:]]+/
+      }
 
-  first_match=$(LC_ALL=C grep -nP -m1 '[^\x00-\x7F]' "$file" || true)
+      (/^```/ || /^~~~/) { in_code_block = !in_code_block; next }
+      in_code_block { next }
+
+      /^###[[:space:]]/ {
+        heading=$0
+        sub(/^###[[:space:]]+/, "", heading)
+        if (heading ~ /^[0-9]/ && !is_numbered_heading(heading)) {
+          print "malformed level-3 heading numbering: " $0
+        }
+
+        if (heading ~ /^[0-9]/) {
+          if (current_section_heading == "") {
+            print "numbered level-3 heading appears before a level-2 heading: " $0
+          } else {
+            if (current_section_heading !~ /^[0-9]/) {
+              print "numbered level-3 heading requires numbered level-2 section: " $0
+            }
+            section_has_numbered_h3=1
+          }
+        } else if (section_has_numbered_h3) {
+          print "all level-3 headings in section must be numbered once one is numbered: " $0
+        }
+      }
+
+      /^##[[:space:]]/ {
+        section_has_numbered_h3=0
+        if ($0 == "## Preface" || $0 == "## Table of Contents") {
+          current_section_heading=""
+          next
+        }
+        heading=$0
+        sub(/^##[[:space:]]+/, "", heading)
+        current_section_heading=heading
+        if (heading ~ /^[0-9]/ && !is_numbered_heading(heading)) {
+          print "malformed level-2 heading numbering: " $0
+        }
+      }
+    ' "$file"
+  )
+}
+
+doc_check_toc_syntax() {
+  local file="$1"
+  while IFS= read -r msg; do
+    [[ -n "$msg" ]] && add_issue "$file" "$msg"
+  done < <(
+    awk '
+      /^## Table of Contents$/ { in_toc=1; next }
+      in_toc && /^<\/details>$/ { exit }
+      !in_toc { next }
+      /^[[:space:]]*$/ { next }
+
+      {
+        line=$0
+        gsub(/&nbsp;/, " ", line)
+
+        if (line ~ /^[[:space:]]*[0-9]+,[[:space:]]*\[/) {
+          print "Table of Contents entry uses comma instead of period: " $0
+        }
+
+        if (line ~ /^[[:space:]]*\[[^]]*[0-9]/) {
+          if (line !~ /^[[:space:]]*\[[^]]*[0-9]+(\.[0-9]+)*\./) {
+            print "numbered Table of Contents entry is malformed: " $0
+          }
+        }
+
+        if (line ~ /^[[:space:]]*[0-9]/ && line !~ /^[[:space:]]*[0-9]+(\.[0-9]+)*\.[[:space:]]+\[/) {
+          print "Table of Contents numbering syntax is malformed: " $0
+        }
+
+        if (match(line, /^[[:space:]]*([0-9]+(\.[0-9]+)*)\.[[:space:]]+\[([^]]+)\]/, parts)) {
+          label=parts[3]
+          gsub(/\*\*/, "", label)
+          if (label ~ /^[0-9]+(\.[0-9]+)*\./) {
+            print "Table of Contents label repeats numbered prefix: " $0
+          }
+        }
+      }
+    ' "$file"
+  )
+}
+
+doc_check_summary_alignment() {
+  local file="$1"
+  while IFS= read -r msg; do
+    [[ -n "$msg" ]] && add_issue "$file" "$msg"
+  done < <(
+    awk '
+      function is_strong_summary(raw) { return raw ~ /^<summary><strong>.*<\/strong><\/summary>$/ }
+      function is_indented_summary(raw) { return raw ~ /^<summary>&nbsp;&nbsp;&nbsp;&nbsp;.*<\/summary>$/ }
+
+      function normalize_summary(text, result) {
+        result=text
+        sub(/^<summary>/, "", result)
+        sub(/<\/summary>$/, "", result)
+        gsub(/&nbsp;/, "", result)
+        gsub(/<strong>/, "", result)
+        gsub(/<\/strong>/, "", result)
+        sub(/^([0-9]+(\.[0-9]+)+) /, "\\1. ", result)
+        sub(/^[[:space:]]+/, "", result)
+        sub(/[[:space:]]+$/, "", result)
+        return result
+      }
+
+      /^<summary>/ {
+        raw_summary=$0
+        summary=normalize_summary($0)
+        if (summary == "License" || summary == "Preface" || summary == "Document Version History" || summary == "Table of Contents") {
+          pending=""
+          pending_raw=""
+          next
+        }
+        pending=summary
+        pending_raw=raw_summary
+        next
+      }
+
+      pending != "" && /^###[[:space:]]/ {
+        heading=$0
+        sub(/^###[[:space:]]+/, "", heading)
+        if (heading != pending) {
+          print "summary/heading mismatch: " pending " != " heading
+        }
+        if (!is_indented_summary(pending_raw) || pending_raw ~ /<strong>/) {
+          print "level-3 summary style must be indented without <strong>: " pending_raw
+        }
+        pending=""
+        pending_raw=""
+        next
+      }
+
+      pending != "" && /^##[[:space:]]/ {
+        heading=$0
+        sub(/^##[[:space:]]+/, "", heading)
+        if (heading != pending) {
+          print "summary/heading mismatch: " pending " != " heading
+        }
+        if (!is_strong_summary(pending_raw) || pending_raw ~ /&nbsp;/) {
+          print "level-2 summary style must use <strong> with no &nbsp; prefix: " pending_raw
+        }
+        pending=""
+        pending_raw=""
+        next
+      }
+    ' "$file"
+  )
+}
+
+doc_check_ascii_only() {
+  local file="$1"
+  local first_match
+  first_match="$(LC_ALL=C grep -nP -m1 '[^\x00-\x7F]' "$file" || true)"
   if [[ -n "$first_match" ]]; then
-    fail "$file: non-ASCII character found: $first_match"
+    add_issue "$file" "non-ASCII character found: $first_match"
   fi
 }
 
-check_doc_file() {
-  local file=$1
-  local base
-  local summaries
+run_documents_checks() {
+  local docs_dir="$repo_root/docs/md"
+  local branding_dir="$repo_root/docs/branding"
+  local svg_template="$branding_dir/Test_Guide.svg"
+  local file base summaries svg_file expected_name found
+  local reference_dvh reference_dvh_file
+  local md_files=()
+  local expected_svgs=()
+  local branding_svgs=()
 
-  base=$(basename "$file")
-
-  if ! front_matter "$file" | grep -qx '## Table of Contents'; then
-    fail "$file: missing Table of Contents heading in front matter"
+  if [[ ! -d "$docs_dir" ]]; then
+    add_issue "docs/md" "missing directory"
     return
   fi
 
-  if ! front_matter "$file" | grep -qx 'SPDX-License-Identifier: MIT'; then
-    fail "$file: missing SPDX identifier before Table of Contents"
+  if [[ ! -d "$branding_dir" ]]; then
+    add_issue "docs/branding" "missing directory"
   fi
 
-  if ! front_matter "$file" | grep -qx '#### Copyright (c) 2026 Paul Sinclair'; then
-    fail "$file: missing canonical copyright line before Table of Contents"
+  if [[ ! -f "$svg_template" ]]; then
+    add_issue "docs/branding/Test_Guide.svg" "missing SVG template used for guide consistency"
   fi
 
-  summaries=$(summary_lines "$file")
-  if [[ "$summaries" != "$license_summary
+  mapfile -t md_files < <(find "$docs_dir" -maxdepth 1 -type f -name '*.md' ! -name 'README.md' | sort)
+  mapfile -t branding_svgs < <(find "$branding_dir" -maxdepth 1 -type f -name '*.svg' | sort)
+
+  if [[ ${#md_files[@]} -gt 0 ]]; then
+    reference_dvh_file="$(basename "${md_files[0]}")"
+    reference_dvh="$(doc_extract_dvh_block "${md_files[0]}")"
+  else
+    reference_dvh_file=""
+    reference_dvh=""
+  fi
+
+  for file in "${md_files[@]}"; do
+    base="$(basename "$file")"
+
+    if ! doc_front_matter "$file" | grep -qx '## Table of Contents'; then
+      add_issue "$file" "missing Table of Contents heading in front matter"
+      continue
+    fi
+
+    if ! doc_front_matter "$file" | grep -qx 'SPDX-License-Identifier: MIT'; then
+      add_issue "$file" "missing SPDX identifier before Table of Contents"
+    fi
+
+    if ! doc_front_matter "$file" | grep -qx '#### Copyright (c) 2026 Paul Sinclair'; then
+      add_issue "$file" "missing canonical copyright line before Table of Contents"
+    fi
+
+    summaries="$(doc_summary_lines "$file")"
+    if [[ "$summaries" != "$license_summary
 $preface_summary
 $dvh_summary
 $toc_summary" ]]; then
-    fail "$file: summary tags before Table of Contents do not match the canonical order/style"
-  fi
+      add_issue "$file" "summary tags before Table of Contents do not match canonical order/style"
+    fi
 
-  if [[ "$base" == "$overview_doc" ]]; then
-    check_overview_doc "$file"
-  else
-    check_standard_doc "$file"
-  fi
+    doc_check_standard_doc "$file"
 
-  check_ascii_only "$file"
-  check_details_structure "$file"
+    doc_check_ascii_only "$file"
+    doc_check_details_structure "$file"
+    doc_check_heading_numbering "$file"
+    doc_check_toc_syntax "$file"
+    doc_check_summary_alignment "$file"
+
+    if [[ -n "$reference_dvh" ]]; then
+      if [[ "$(doc_extract_dvh_block "$file")" != "$reference_dvh" ]]; then
+        add_issue "$file" "Document Version History block differs from $reference_dvh_file"
+      fi
+    fi
+
+    # Ensure matching SVG exists (report only, no mutation).
+    base="$(basename "$file" .md)"
+    expected_svgs+=("${base}.svg")
+    if [[ ! -f "$branding_dir/${base}.svg" ]]; then
+      add_issue "docs/branding/${base}.svg" "missing SVG matching docs/md/${base}.md"
+    fi
+  done
+
+  for svg_file in "${branding_svgs[@]}"; do
+    base="$(basename "$svg_file")"
+    case "$base" in
+      canary-live.svg|canary.svg|Monogram.svg|Logo_with_BrandName.svg|Logo_with_Tagline.svg)
+        continue
+        ;;
+    esac
+
+    found=0
+    for expected_name in "${expected_svgs[@]}"; do
+      if [[ "$base" == "$expected_name" ]]; then
+        found=1
+        break
+      fi
+    done
+
+    if [[ "$found" -eq 0 ]]; then
+      add_issue "$svg_file" "unexpected SVG (does not correspond to a document in docs/md/)"
+    fi
+  done
 }
 
-# ============================================================================
-# MAIN VALIDATION FLOW
-# ============================================================================
+# -----------------------------
+# Directory guide checks
+# -----------------------------
+exempt_dirs=(
+  "."
+  "./.git"
+  "./.github"
+  "./obsolete"
+)
 
-if [[ $CHECK_DOCUMENTS == true ]]; then
-  echo "Checking documents..."
-  for doc in "$docs_dir"/*.md; do
-    [[ -f "$doc" ]] || continue
-    check_doc_file "$doc"
+is_exempt_dir() {
+  local dir="$1"
+  local e
+  for e in "${exempt_dirs[@]}"; do
+    if [[ "$dir" == "$e" ]]; then
+      return 0
+    fi
   done
+  return 1
+}
+
+list_immediate_subdirs() {
+  local dir="$1"
+  find "$dir" -mindepth 1 -maxdepth 1 -type d -not -path './.git*' -not -name 'obsolete' -printf '%f\n' | sort
+}
+
+extract_subdirectory_entries() {
+  local file="$1"
+  awk '
+    BEGIN { in_section = 0 }
+    /^## Subdirectories$/ { in_section = 1; next }
+    /^## / && in_section { exit }
+    in_section { print }
+  ' "$file"
+}
+
+extract_files_section_lines() {
+  local file="$1"
+  awk '
+    BEGIN { in_section = 0 }
+    /^## Files$/ { in_section = 1; next }
+    /^## / && in_section { exit }
+    in_section { print }
+  ' "$file"
+}
+
+list_immediate_files() {
+  local dir="$1"
+  find "$dir" -mindepth 1 -maxdepth 1 -type f -not -name '.*' -printf '%f\n' | sort
+}
+
+normalize_file_entry() {
+  local entry="$1"
+  entry="$(printf '%s' "$entry" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  entry="${entry#\`}"; entry="${entry%\`}"
+  printf '%s\n' "$entry"
+}
+
+entry_matches_file() {
+  local entry="$1"
+  local file="$2"
+  local ext
+  local entry_regex
+
+  entry="$(normalize_file_entry "$entry")"
+
+  if [[ "$entry" =~ ^\.([A-Za-z0-9_+-]+)[[:space:]]+files$ ]]; then
+    ext="${BASH_REMATCH[1]}"
+    [[ "$file" == *."$ext" ]]
+    return
+  fi
+
+  if [[ "$entry" == *"<datetime>"* ]]; then
+    entry_regex="${entry//./\\.}"
+    entry_regex="${entry_regex//\*/.*}"
+    entry_regex="${entry_regex//<datetime>/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]}"
+    [[ "$file" =~ ^${entry_regex}$ ]]
+    return
+  fi
+
+  if printf '%s\n' "$entry" | grep -Eq '<[A-Za-z0-9_+-]+>'; then
+    entry_regex="${entry//./\\.}"
+    entry_regex="${entry_regex//\*/.*}"
+    entry_regex="$(printf '%s' "$entry_regex" | sed -E 's/<[A-Za-z0-9_+-]+>/[^\/]+/g')"
+    [[ "$file" =~ ^${entry_regex}$ ]]
+    return
+  fi
+
+  if [[ "$entry" == *'*'* ]]; then
+    [[ "$file" == $entry ]]
+    return
+  fi
+
+  [[ "$file" == "$entry" ]]
+}
+
+is_filelike_entry() {
+  local entry="$1"
+  entry="$(normalize_file_entry "$entry")"
+
+  if printf '%s\n' "$entry" | grep -Eq '^[A-Za-z0-9_.<>/-]+$'; then
+    return 0
+  fi
+  [[ "$entry" == *"*"* ]] && return 0
+  [[ "$entry" == *"<datetime>"* ]] && return 0
+  [[ "$entry" =~ ^\.[A-Za-z0-9_+-]+[[:space:]]+files$ ]] && return 0
+  [[ "$entry" =~ ^[^[:space:]]+\.[^[:space:]]+$ ]] && return 0
+  return 1
+}
+
+guide_check_files_section() {
+  local readme="$1"
+  local dir="$2"
+  local rel_dir allow_logical_order
+  local files_section_entries=()
+  local files_section_lines=()
+  local actual_files=()
+  local actual entry line section section_name
+  local has_h3 root_entry_count first_readme_section last_readme_section last_section last_entry_in_last_section prev
+  declare -A prev_by_section=()
+  declare -A readme_seen_by_section=()
+  declare -A last_entry_by_section=()
+  local found_match
+
+  rel_dir="${dir#./}"
+  allow_logical_order=0
+  if [[ "$rel_dir" == "docs/branding" ]]; then
+    allow_logical_order=1
+  fi
+
+  section='__ROOT__'
+  has_h3=0
+  root_entry_count=0
+  first_readme_section=''
+  last_readme_section=''
+  last_section='__ROOT__'
+
+  mapfile -t files_section_lines < <(extract_files_section_lines "$readme")
+  mapfile -t actual_files < <(list_immediate_files "$dir")
+
+  for line in "${files_section_lines[@]}"; do
+    if [[ "$line" =~ ^###[[:space:]]+(.+)$ ]]; then
+      has_h3=1
+      section_name="${BASH_REMATCH[1]}"
+      section="$section_name"
+      last_section="$section"
+      continue
+    fi
+
+    if [[ "$line" =~ ^-[[:space:]]*\*\*(.+)\*\*:[[:space:]]* ]]; then
+      entry="$(normalize_file_entry "${BASH_REMATCH[1]}")"
+      files_section_entries+=("$entry")
+
+      if [[ "$section" == '__ROOT__' ]]; then
+        root_entry_count=$((root_entry_count + 1))
+      fi
+
+      if is_filelike_entry "$entry"; then
+        if [[ "$entry" == 'README.md' ]]; then
+          readme_seen_by_section["$section"]=1
+        else
+          if [[ "${readme_seen_by_section[$section]-0}" -eq 1 ]]; then
+            if [[ "$section" == '__ROOT__' ]]; then
+              add_issue "$readme" "lists entries after README.md in Files section"
+            else
+              add_issue "$readme" "lists entries after README.md in Files subsection '$section'"
+            fi
+          fi
+
+          prev="${prev_by_section[$section]-}"
+          if [[ $allow_logical_order -eq 0 && -n "$prev" && "$entry" < "$prev" ]]; then
+            if [[ "$section" == '__ROOT__' ]]; then
+              add_issue "$readme" "non-alphabetical Files entries ('$prev' before '$entry')"
+            else
+              add_issue "$readme" "non-alphabetical Files entries in subsection '$section' ('$prev' before '$entry')"
+            fi
+          fi
+          prev_by_section["$section"]="$entry"
+        fi
+      fi
+
+      if [[ "$entry" == 'README.md' ]]; then
+        [[ -z "$first_readme_section" ]] && first_readme_section="$section"
+        last_readme_section="$section"
+      fi
+
+      last_entry_by_section["$section"]="$entry"
+    fi
+  done
+
+  if [[ ${#files_section_entries[@]} -eq 0 ]]; then
+    add_issue "$readme" "no file entries in Files section"
+  fi
+
+  if [[ $has_h3 -eq 1 && $root_entry_count -gt 0 ]]; then
+    add_issue "$readme" "mixes top-level file entries with level-3 Files subsections"
+  fi
+
+  for actual in "${actual_files[@]}"; do
+    found_match=0
+    for entry in "${files_section_entries[@]}"; do
+      if entry_matches_file "$entry" "$actual"; then
+        found_match=1
+        break
+      fi
+    done
+
+    if [[ $found_match -eq 0 ]]; then
+      add_issue "$readme" "does not list file '$actual' in Files section"
+    fi
+  done
+
+  if [[ ${#files_section_entries[@]} -gt 0 ]]; then
+    if [[ $has_h3 -eq 0 ]]; then
+      if [[ "${files_section_entries[-1]}" != 'README.md' ]]; then
+        add_issue "$readme" "must list README.md last in Files section"
+      fi
+    else
+      if [[ -z "$last_readme_section" ]]; then
+        add_issue "$readme" "must include README.md in final Files subsection"
+      elif [[ "$last_readme_section" != "$last_section" ]]; then
+        add_issue "$readme" "must place README.md in final Files subsection"
+      else
+        last_entry_in_last_section="${last_entry_by_section[$last_section]-}"
+        if [[ "$last_entry_in_last_section" != 'README.md' ]]; then
+          add_issue "$readme" "must list README.md last within final Files subsection"
+        fi
+      fi
+    fi
+  fi
+}
+
+guide_check_subdirectories_section() {
+  local readme="$1"
+  local dir="$2"
+  local subdirs_section
+  local expected_subdirs=()
+  local found_subdirs=()
+  local line
+
+  subdirs_section="$(extract_subdirectory_entries "$readme")"
+  mapfile -t expected_subdirs < <(list_immediate_subdirs "$dir")
+  mapfile -t found_subdirs < <(
+    printf '%s\n' "$subdirs_section" | \
+      sed -n 's/^-[[:space:]]*\*\*\([^*][^*]*\)\*\*:.*$/\1/p' | \
+      sed 's:/$::' | \
+      sort
+  )
+
+  if [[ ${#expected_subdirs[@]} -eq 0 ]]; then
+    if ! printf '%s\n' "$subdirs_section" | grep -qx '[-][[:space:]]None\.'; then
+      add_issue "$readme" "missing '- None.' line in Subdirectories section"
+    fi
+    return
+  fi
+
+  if printf '%s\n' "$subdirs_section" | grep -qx '[-][[:space:]]None\.'; then
+    add_issue "$readme" "has '- None.' but directory contains subdirectories"
+  fi
+
+  for line in "${found_subdirs[@]}"; do
+    [[ -z "$line" ]] && continue
+    if ! printf '%s\n' "${expected_subdirs[@]}" | grep -qxF "$line"; then
+      add_issue "$readme" "lists unexpected subdirectory '$line'"
+    fi
+  done
+
+  for line in "${expected_subdirs[@]}"; do
+    [[ -z "$line" ]] && continue
+    if ! printf '%s\n' "${found_subdirs[@]}" | grep -qxF "$line"; then
+      add_issue "$readme" "is missing subdirectory '$line'"
+    fi
+  done
+}
+
+run_directory_guides_checks() {
+  local expected_license_line expected_intro_line
+  local dirs=() dir readme display_dir rel_dir expected_heading
+  local heading_line second_line description_line line4 line5 line6 line7 line8
+  local copyright_ln spdx_ln license_ln intro_ln
+  local files_ln files_heading_any_ln files_heading_any_text
+  local subdirs_ln subdirs_heading_any_ln subdirs_heading_any_text
+
+  expected_license_line='For license details, see `/LICENSE`.'
+  expected_intro_line='See `/README.md` for an introduction to briteTest.'
+
+  mapfile -t dirs < <(find . -type d -not -path './.git*' -not -path './obsolete*' | sort)
+
+  for dir in "${dirs[@]}"; do
+    if is_exempt_dir "$dir"; then
+      continue
+    fi
+
+    readme="$dir/README.md"
+    display_dir="${dir#./}"
+
+    if [[ ! -f "$readme" ]]; then
+      add_issue "$readme" "missing README.md in directory '$display_dir'"
+      continue
+    fi
+
+    rel_dir="${dir#./}"
+    expected_heading="# /${rel_dir}/"
+    heading_line="$(sed -n '1p' "$readme")"
+    second_line="$(sed -n '2p' "$readme")"
+    description_line="$(sed -n '3p' "$readme")"
+    line4="$(sed -n '4p' "$readme")"
+    line5="$(sed -n '5p' "$readme")"
+    line6="$(sed -n '6p' "$readme")"
+    line7="$(sed -n '7p' "$readme")"
+    line8="$(sed -n '8p' "$readme")"
+
+    [[ "$heading_line" == "$expected_heading" ]] || add_issue "$readme" "heading mismatch (expected '$expected_heading', found '$heading_line')"
+    [[ -z "$second_line" ]] || add_issue "$readme" "second line must be blank"
+    [[ "$description_line" == 'Directory containing '* ]] || add_issue "$readme" "third line must start with 'Directory containing '"
+
+    if sed -n '2,$p' "$readme" | grep -q '^# '; then
+      add_issue "$readme" "contains unexpected H1 heading after line 1"
+    fi
+
+    [[ -z "$line4" ]] || add_issue "$readme" "line 4 must be blank"
+    [[ "$line5" =~ ^Copyright\ \(c\)\ [0-9]{4}\ .+ ]] || add_issue "$readme" "line 5 must be a valid copyright line"
+    [[ "$line6" == 'SPDX-License-Identifier: MIT  ' ]] || add_issue "$readme" "line 6 must be 'SPDX-License-Identifier: MIT  '"
+    [[ "$line7" == "$expected_license_line" ]] || add_issue "$readme" "line 7 must match expected license reference"
+    [[ -z "$line8" ]] || add_issue "$readme" "line 8 must be blank"
+
+    grep -qE '^Copyright \(c\) [0-9]{4} .+' "$readme" || add_issue "$readme" "missing/invalid copyright line"
+    grep -qx 'SPDX-License-Identifier: MIT  *' "$readme" || add_issue "$readme" "missing SPDX line"
+    grep -qxF "$expected_license_line" "$readme" || add_issue "$readme" "missing expected license reference"
+    grep -qxF "$expected_intro_line" "$readme" || add_issue "$readme" "missing expected root README reference"
+
+    copyright_ln="$(grep -nE '^Copyright \(c\) [0-9]{4} .+' "$readme" | cut -d: -f1 | head -n1 || true)"
+    spdx_ln="$(grep -n '^SPDX-License-Identifier: MIT  *$' "$readme" | cut -d: -f1 | head -n1 || true)"
+    license_ln="$(grep -nFx "$expected_license_line" "$readme" | cut -d: -f1 | head -n1 || true)"
+    intro_ln="$(grep -nFx "$expected_intro_line" "$readme" | cut -d: -f1 | head -n1 || true)"
+
+    if [[ -n "$copyright_ln" && -n "$spdx_ln" && -n "$license_ln" && -n "$intro_ln" ]]; then
+      if ! [[ "$copyright_ln" -lt "$spdx_ln" && "$spdx_ln" -lt "$license_ln" && "$license_ln" -lt "$intro_ln" ]]; then
+        add_issue "$readme" "canonical header order mismatch (Copyright, SPDX, license line, root README line)"
+      fi
+    fi
+
+    files_ln="$(grep -n '^## Files$' "$readme" | cut -d: -f1 | head -n1 || true)"
+    files_heading_any_ln="$(grep -nE '^#{1,6}[[:space:]]+Files$' "$readme" | cut -d: -f1 | head -n1 || true)"
+    files_heading_any_text="$(grep -E '^#{1,6}[[:space:]]+Files$' "$readme" | head -n1 || true)"
+
+    subdirs_ln="$(grep -n '^## Subdirectories$' "$readme" | cut -d: -f1 | head -n1 || true)"
+    subdirs_heading_any_ln="$(grep -nE '^#{1,6}[[:space:]]+Subdirectories$' "$readme" | cut -d: -f1 | head -n1 || true)"
+    subdirs_heading_any_text="$(grep -E '^#{1,6}[[:space:]]+Subdirectories$' "$readme" | head -n1 || true)"
+
+    if [[ -z "$files_ln" ]]; then
+      if [[ -n "$files_heading_any_ln" ]]; then
+        add_issue "$readme" "incorrect heading level for Files section (found '$files_heading_any_text')"
+      else
+        add_issue "$readme" "missing '## Files' section"
+      fi
+    fi
+
+    if [[ -z "$subdirs_ln" ]]; then
+      if [[ -n "$subdirs_heading_any_ln" ]]; then
+        add_issue "$readme" "incorrect heading level for Subdirectories section (found '$subdirs_heading_any_text')"
+      else
+        add_issue "$readme" "missing '## Subdirectories' section"
+      fi
+    fi
+
+    if [[ -n "$files_ln" && -n "$subdirs_ln" && "$files_ln" -ge "$subdirs_ln" ]]; then
+      add_issue "$readme" "section order mismatch ('## Files' must come before '## Subdirectories')"
+    fi
+
+    if [[ -n "$files_ln" ]]; then
+      guide_check_files_section "$readme" "$dir"
+    fi
+
+    if [[ -n "$subdirs_ln" ]]; then
+      guide_check_subdirectories_section "$readme" "$dir"
+    fi
+  done
+}
+
+# -----------------------------
+# Version checks
+# -----------------------------
+extract_major() { printf '%s\n' "${1%%.*}"; }
+extract_minor() { local minor_patch="${1#*.}"; printf '%s\n' "${minor_patch%%.*}"; }
+extract_patch() { printf '%s\n' "${1##*.}"; }
+extract_major_minor() { printf '%s\n' "${1%.*}"; }
+
+extract_semver_from_file() {
+  local file="$1"
+  grep -Eo "[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}" "$file" | head -n 1 || true
+}
+
+doc_semver() {
+  local file="$1"
+  head -n 220 "$file" | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true
+}
+
+header_semver() {
+  local file="$1"
+  local semver
+
+  semver="$(grep -Ei '^#[[:space:]]*define[[:space:]]+RA_[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' "$file" \
+    | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' \
+    | head -n 1 || true)"
+
+  if [[ -z "$semver" ]]; then
+    semver="$(extract_semver_from_file "$file")"
+  fi
+
+  printf '%s\n' "$semver"
+}
+
+source_semver() {
+  local file="$1"
+  local semver include_line
+
+  semver="$(grep -Ei '^#[[:space:]]*define[[:space:]]+[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' "$file" \
+    | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' \
+    | head -n 1 || true)"
+
+  if [[ -n "$semver" ]]; then
+    printf '%s\n' "$semver"
+    return
+  fi
+
+  include_line="$(grep -E '^#[[:space:]]*include[[:space:]]+"(britetest_(runner|test)|runnerapi|testapi)\.h"' "$file" | head -n 1 || true)"
+  if [[ "$include_line" == *'"runnerapi.h"'* ]]; then
+    semver="$(header_semver "include/runnerapi.h")"
+  elif [[ "$include_line" == *'"testapi.h"'* ]]; then
+    semver="$(header_semver "include/testapi.h")"
+  else
+    semver="$(extract_semver_from_file "$file")"
+  fi
+
+  printf '%s\n' "$semver"
+}
+
+run_versions_checks() {
+  local expected_major expected_major_minor
+  local file semver major_minor current_branch branch_type
+  local -A versions=()
+  local -a main_versions=()
+  local entry main_semver current_semver current_major_minor current_patch current_major current_minor
+
+  expected_major=""
+  expected_major_minor=""
+
+  record_and_check() {
+    local file_path="$1"
+    local semver_val="$2"
+    local mm
+
+    if [[ -z "$semver_val" ]]; then
+      add_issue "$file_path" "semantic version not found"
+      return
+    fi
+
+    versions["$file_path"]="$semver_val"
+    mm="$(extract_major_minor "$semver_val")"
+
+    if [[ -z "$expected_major_minor" ]]; then
+      expected_major="$(extract_major "$semver_val")"
+      expected_major_minor="$mm"
+      return
+    fi
+
+    if [[ "$mm" != "$expected_major_minor" ]]; then
+      add_issue "$file_path" "major.minor release mismatch (found $mm, expected $expected_major_minor)"
+    fi
+  }
+
+  while IFS= read -r file; do
+    [[ "$(basename "$file")" == "README.md" ]] && continue
+    semver="$(doc_semver "$file")"
+    record_and_check "$file" "$semver"
+  done < <(find docs/md -maxdepth 1 -type f -name '*.md' | sort)
+
+  while IFS= read -r file; do
+    semver="$(header_semver "$file")"
+    record_and_check "$file" "$semver"
+  done < <(find include -maxdepth 1 -type f -name '*.h' | sort)
+
+  while IFS= read -r file; do
+    semver="$(source_semver "$file")"
+    record_and_check "$file" "$semver"
+  done < <(find src -maxdepth 1 -type f -name '*.c' | sort)
+
+  current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  branch_type=""
+  if [[ "$current_branch" == patch/* ]]; then
+    branch_type="patch"
+  elif [[ "$current_branch" == minor/* ]]; then
+    branch_type="minor"
+  elif [[ "$current_branch" == major/* ]]; then
+    branch_type="major"
+  fi
+
+  if [[ -z "$branch_type" ]]; then
+    return
+  fi
+
+  while IFS= read -r file; do
+    [[ "$(basename "$file")" == "README.md" ]] && continue
+    semver="$(git show main:"$file" 2>/dev/null | head -n 220 | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
+    [[ -n "$semver" ]] && main_versions+=("$file:$semver")
+  done < <(find docs/md -maxdepth 1 -type f -name '*.md' | sort)
+
+  while IFS= read -r file; do
+    semver="$(git show main:"$file" 2>/dev/null | grep -Ei '^#[[:space:]]*define[[:space:]]+RA_[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
+    [[ -n "$semver" ]] && main_versions+=("$file:$semver")
+  done < <(find include -maxdepth 1 -type f -name '*.h' | sort)
+
+  while IFS= read -r file; do
+    semver="$(git show main:"$file" 2>/dev/null | grep -Ei '^#[[:space:]]*define[[:space:]]+[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
+    [[ -n "$semver" ]] && main_versions+=("$file:$semver")
+  done < <(find src -maxdepth 1 -type f -name '*.c' | sort)
+
+  for entry in "${main_versions[@]}"; do
+    file="${entry%:*}"
+    main_semver="${entry#*:}"
+    current_semver="${versions[$file]:-}"
+
+    [[ -z "$current_semver" ]] && continue
+
+    case "$branch_type" in
+      patch)
+        current_major_minor="$(extract_major_minor "$current_semver")"
+        if [[ "$current_major_minor" != "$(extract_major_minor "$main_semver")" ]]; then
+          add_issue "$file" "patch branch policy violation: major.minor changed from main ($main_semver -> $current_semver)"
+        fi
+        ;;
+      minor)
+        current_patch="$(extract_patch "$current_semver")"
+        current_major_minor="$(extract_major_minor "$current_semver")"
+        [[ "$current_patch" == "0" ]] || add_issue "$file" "minor branch policy violation: patch must be 0 (found $current_semver)"
+        [[ "$current_major_minor" == "$expected_major_minor" ]] || add_issue "$file" "minor branch policy violation: major.minor mismatch (found $current_major_minor, expected $expected_major_minor)"
+        ;;
+      major)
+        current_major="$(extract_major "$current_semver")"
+        current_minor="$(extract_minor "$current_semver")"
+        current_patch="$(extract_patch "$current_semver")"
+        [[ "$current_major" == "$expected_major" ]] || add_issue "$file" "major branch policy violation: major mismatch (found $current_semver, expected major $expected_major)"
+        [[ "$current_minor" == "0" ]] || add_issue "$file" "major branch policy violation: minor must be 0 (found $current_semver)"
+        [[ "$current_patch" == "0" ]] || add_issue "$file" "major branch policy violation: patch must be 0 (found $current_semver)"
+        ;;
+    esac
+  done
+}
+
+# -----------------------------
+# Execute selected checks
+# -----------------------------
+if [[ "$CHECK_DOCUMENTS" == true ]]; then
+  run_documents_checks
 fi
 
-if [[ $CHECK_GUIDES == true ]]; then
-  echo "Checking directory guides..."
-  # Directory guide checks stubbed
-  echo "INFO: directory guide checks stubbed for now"
+if [[ "$CHECK_GUIDES" == true ]]; then
+  run_directory_guides_checks
 fi
 
-if [[ $CHECK_VERSIONS == true ]]; then
-  echo "Checking versions..."
-  # Version check logic would be added here
-  echo "INFO: versioning checks now available with -v flag"
+if [[ "$CHECK_VERSIONS" == true ]]; then
+  run_versions_checks
 fi
 
-if [[ $failures -gt 0 ]]; then
-  echo "ERROR: validation failed with $failures error(s)"
+# -----------------------------
+# Write single consolidated report
+# -----------------------------
+{
+  echo "# ckstyle Validation Report"
+  echo
+  echo "**Timestamp:** $RUN_TS_DISPLAY"
+  echo
+  echo "## Configuration"
+  echo
+  echo "- Documents checks: $CHECK_DOCUMENTS"
+  echo "- Directory guide checks: $CHECK_GUIDES"
+  echo "- Version checks: $CHECK_VERSIONS"
+  echo "- Excluded paths: .git, obsolete"
+  echo
+  echo "## Summary"
+  echo
+  echo "- Files with issues: ${#ISSUE_FILES[@]}"
+  echo "- Total issues: $TOTAL_ISSUES"
+  echo
+
+  if [[ ${#ISSUE_FILES[@]} -eq 0 ]]; then
+    echo "## Result"
+    echo
+    echo "No issues found."
+  else
+    echo "## Issues By File"
+    echo
+    while IFS= read -r f; do
+      echo "### $f"
+      echo
+      printf '%s' "${FILE_ISSUES[$f]}"
+      echo
+    done < <(printf '%s\n' "${ISSUE_FILES[@]}" | sort)
+  fi
+} > "$REPORT_FILE"
+
+# Remove old ckstyle reports only after successful write.
+for old_report in "$repo_root"/reports/ckstyle-*.md; do
+  [[ "$old_report" == "$REPORT_FILE" ]] && continue
+  [[ -e "$old_report" ]] || continue
+  rm -f "$old_report"
+done
+
+if [[ $TOTAL_ISSUES -gt 0 ]]; then
+  echo "ERROR: validation failed with $TOTAL_ISSUES issue(s) across ${#ISSUE_FILES[@]} file(s)."
+  echo "INFO: report written to $REPORT_FILE"
   exit "$EXIT_VALIDATION"
-else
-  echo "INFO: all validations passed"
-  exit "$EXIT_OK"
 fi
+
+echo "INFO: all selected validations passed."
+echo "INFO: report written to $REPORT_FILE"
+exit "$EXIT_OK"
