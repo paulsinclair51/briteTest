@@ -39,23 +39,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 This document is for users and contributors who need a guide to the
 documentation and repository layout.
 
-A printer-friendly PDF file for this document is available in `/docs/pdf/`.
+A printer-friendly PDF file for this document is available.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
  
 ### Document Version History
 
-| Document | Runner | Test | Date | Comment | Author/Editor |
-|----------|------|--------|------|---------|---------------|
-| v1.0.0 | v1.0.0 | v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
-
-- **Document**: A version of this document.
-- **Runner**: The Runner API version current at the time of publication.
-- **Test**: The Test API version current at the time of publication.
-
-A version has the format `v<M>.<m>.<p>` where `<M>` is the major version,
-`<m>` is the minor version, and `<p>` is the patch version.
+| Document | Date | Comment | Author/Editor |
+|----------|------|---------|---------------|
+| v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 </details>
 </details>
 
