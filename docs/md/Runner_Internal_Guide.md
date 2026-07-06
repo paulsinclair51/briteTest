@@ -44,7 +44,7 @@ the Documentation Guide.
 
 For a glossary of terms, see the Glossary Reference.
 
-A printer-friendly PDF file for this document is available`.
+A printer-friendly PDF file for this document is available.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
