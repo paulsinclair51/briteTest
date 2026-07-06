@@ -16,13 +16,9 @@ See `/README.md` for an introduction to briteTest.
 
 ### Document and Brand Management
 
-- **ckdirectory_guides**: Validate required directory guides across the repository.
 - **ckdocs**: Validate canonical documentation links and structure.
 - **gendocs**: Generate PDF and DOCX documentation.
-- **gendocs-old**: Legacy documentation generation wrapper.
-- **gendocx-old**: Legacy DOCX generation wrapper.
 - **genpdf**: Generate PDF documentation from Markdown sources.
-- **genpdf-old**: Legacy PDF generation wrapper.
 - **genpngs**: Generate branding PNG images from SVG files.
 - **replacephrases**: Apply configured phrase replacements in markdown files.
 - **updatebrand**: Update branding text and regenerate related assets.
