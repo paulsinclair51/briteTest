@@ -4,6 +4,8 @@
 
 ![briteTest Logo](/docs/branding/Guide.png)
 
+#### Version: v1.0.9
+
 briteTest is a lightweight, easy-to-use C/C++ framework for running unit and
 command-line tests focused on clarity and reliability. It provides a simple
 macro-based Runner API with customization macros and functions, a function-based Test API, fault-tolerant execution, clear reporting, comprehensive documentation,
