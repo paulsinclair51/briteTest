@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+
+# installscripts - Make all scripts in /scripts/bin/ executable and add to PATH.
+#
+# See usage below for details, or run: bash /scripts/bin/installscripts -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  bash /scripts/bin/installscripts
+  bash /scripts/bin/installscripts -h | --help
+
+Make all scripts in /scripts/bin/ executable and add /scripts/bin/ to PATH.
+
+This script:
+  - Makes all scripts in /scripts/bin/ executable (chmod +x).
+  - Adds /scripts/bin/ to PATH in ~/.bashrc if not already present.
+  - Loads the updated configuration so scripts are available immediately.
+
+After running, scripts in /scripts/bin/ will be:
+  - Executable by the user.
+  - Available by name in the shell (e.g., ckbranch -h, installscripts -h).
+  - Persistent across new shell sessions.
+
+Options:
+  -h, --help  Output this help to stdout and exit (other options
+              and arguments are ignored).
+
+Examples:
+  # Install scripts and add to PATH
+  bash /scripts/bin/installscripts
+
+  # Show help
+  bash /scripts/bin/installscripts -h
+
+
+Outputs:
+  - Writes help text, status messages, and results to stdout.
+  - Writes errors and diagnostics to stderr.
+  - Modifies ~/.bashrc to add /scripts/bin/ to PATH.
+
+Exit codes:
+  0  Success
+  1  scripts/bin directory not found
+  2  Failed to load configuration
+EOF
+}
+
+set -euo pipefail
+
+# Check for help options first
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+done
+
+# Reject any other arguments
+if [[ $# -gt 0 ]]; then
+  echo "Error: Unknown argument: $1" >&2
+  echo "Use -h or --help for usage information" >&2
+  exit 1
+fi
+
+# Determine repository root from git or from this script's location
+if git rev-parse --git-dir > /dev/null 2>&1; then
+  repo_root="$(git rev-parse --show-toplevel)"
+else
+  repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+fi
+
+scripts_bin="$repo_root/scripts/bin"
+
+# Verify the scripts/bin directory exists
+if [[ ! -d "$scripts_bin" ]]; then
+  echo "Error: scripts/bin directory not found at $scripts_bin" >&2
+  exit 1
+fi
+
+echo "Installing scripts from $scripts_bin..."
+
+# Make all scripts executable (chmod +x)
+echo "Making scripts executable..."
+for script in "$scripts_bin"/*; do
+  # Skip directories and README
+  if [[ -f "$script" && "$script" != *"README.md" ]]; then
+    chmod +x "$script"
+    echo "  ✓ $(basename "$script")"
+  fi
+done
+
+# Add /scripts/bin/ to PATH in ~/.bashrc if not already present
+echo ""
+echo "Adding $scripts_bin to PATH..."
+
+path_line="export PATH=\"$scripts_bin:\$PATH\""
+
+if grep -qxF "$path_line" ~/.bashrc 2>/dev/null; then
+  echo "  → Already in ~/.bashrc"
+else
+  echo "$path_line" >> ~/.bashrc
+  echo "  ✓ Added to ~/.bashrc"
+fi
+
+# Load the updated configuration
+echo ""
+echo "Loading updated configuration..."
+if ! source ~/.bashrc 2>/dev/null; then
+  echo "Warning: Failed to load configuration, but changes have been made" >&2
+  exit 2
+fi
+
+echo ""
+echo "✓ Installation complete!"
+echo ""
+echo "Scripts in $scripts_bin are now:"
+echo "  - Executable"
+echo "  - Available in PATH for current and future sessions"
+echo ""
+echo "You can now run scripts by name, e.g.: ckbranch -h"
