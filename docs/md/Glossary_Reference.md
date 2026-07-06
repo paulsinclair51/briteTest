@@ -1,5 +1,7 @@
 ![Glossary Reference](/docs/branding/Glossary_Reference.png)
 
+#### Version: v1.0.0
+
 This glossary defines generally used terms in the documentation
 and terms often used in the testing domain. It is a companion document to
 the Documentation Guide.
