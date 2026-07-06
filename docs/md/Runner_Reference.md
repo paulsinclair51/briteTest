@@ -43,7 +43,7 @@ a reference for the Runner Framework and API.
 For a list of other documents and the repository layout, see
 the Documentation Guide.
 
-For a glossary of terms, see the Glossary Referenced.
+For a glossary of terms, see the Glossary Reference.
 
 A printer-friendly PDF file for this document is available.
 
