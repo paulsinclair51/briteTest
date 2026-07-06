@@ -8,7 +8,7 @@ For license details, see `/LICENSE`.
 
 See `/README.md` for an introduction to briteTest.
 
-<datetiem> has the form `YYYYMMDD-HHMMSS`. Old reports are deleted when a
+`<datetiem>` has the form `YYYYMMDD-HHMMSS`. Old reports are deleted when a
 new report is successfully generated. Reports are not tracked by GitHub.
 
 ## Files
