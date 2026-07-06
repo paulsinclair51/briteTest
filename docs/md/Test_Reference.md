@@ -93,7 +93,6 @@ A version has the format `v<M>.<m>.<p>` where `<M>` is the major version,
 <summary><strong>1. Return Conventions</strong></summary>
 
 ## 1. Return Conventions
-</details>
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;1.1. Return Styles</summary>
@@ -118,6 +117,7 @@ Use the helper family to decide what to check:
 - Existence, string, wildcard, and regex predicates should usually be checked against `1` or `0`.
 - Command-execution helpers should usually be checked against `0` or `1`.
 </details>
+</details>
 
 <details>
 <summary><strong>2. Comparison Option Structs</strong></summary>
@@ -125,7 +125,6 @@ Use the helper family to decide what to check:
 ## 2. Comparison Option Structs
 
 The comparison helpers use small option structs instead of mixed boolean and flag parameter lists.
-</details>
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1. `ra_path_compare_options_t`</summary>
@@ -227,6 +226,7 @@ Default initializer:
 ```c
 #define RA_TEXT_COMPARE_OPTIONS_INIT {0, 0}
 ```
+</details>
 </details>
 
 <details>
