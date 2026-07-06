@@ -1,5 +1,7 @@
 ![Documentation Guide](/docs/branding/Documentation_Guide.png)
 
+#### Version: v1.0.0
+
 This document is a guide to the briteTest documentation and repository layout.
 
 #### Copyright (c) 2026 Paul Sinclair
