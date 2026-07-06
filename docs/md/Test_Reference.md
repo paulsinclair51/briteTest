@@ -233,7 +233,6 @@ Default initializer:
 <summary><strong>3. Common Usage Patterns</strong></summary>
 
 ## 3. Common Usage Patterns
-</details>
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Compare Two Paths While Ignoring Timestamps</summary>
@@ -291,6 +290,7 @@ const ra_text_compare_options_t options = {
 
 RA_ASSERT(ta_compare_text_normalized(left_text, right_text, &options) == RA_OK, 0);
 ```
+</details>
 </details>
 
 <details>
