@@ -1,5 +1,7 @@
 ![Runner Guide](/docs/branding/Runner_Guide.png)
 
+Version: v1.0.0
+
 This guide explains how to use the Runner Framework and API
 covering concepts, workflow, execution model, examples, and practical,usage
 patterns. It complements the Runner Reference, which documents
