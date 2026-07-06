@@ -83,7 +83,7 @@ report_path="$SCRIPT_DIR/../../$report_rel"
 [[ -f "$report_path" ]] || fail "generated report file should exist"
 
 current_branch=$(git rev-parse --abbrev-ref HEAD)
-grep -E "\| ${current_branch}\* \| local \|" "$report_path" >/dev/null || fail "current branch should be marked with trailing * in local report row"
+grep -F "| ${current_branch}**\*** | local |" "$report_path" >/dev/null || fail "current branch should be marked with bold trailing * in local report row"
 pass "current branch report marker"
 
 # 5) Literal dots in pattern should be treated literally, not as regex wildcard
