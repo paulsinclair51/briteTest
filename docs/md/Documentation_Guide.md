@@ -51,12 +51,9 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 |----------|------|--------|------|---------|---------------|
 | v1.0.0 | v1.0.0 | v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
 
-- The **Document** column records a history of versions for this document.
-  The most recent version is listed first.
-- The **Runner** column records the Runner API version
-  current at the time the version of the document was published.
-- The **Test** column records the Test API version current at
-  the time the version of the document was published.
+- **Document**: A version of this document.
+- **Runner**: The Runner API version current at the time of publication.
+- **Test**: The Test API version current at the time of publication.
 
 A version has the format `v<M>.<m>.<p>` where `<M>` is the major version,
 `<m>` is the minor version, and `<p>` is the patch version.
