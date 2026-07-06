@@ -17,7 +17,7 @@ new report is successfully generated. Reports are not tracked by GitHub.
 
 - **branch-<datetime>.md**: Status report from `/scripts/bin/ckbranch`.
 
-- **branch-history-<datetime>.md**: Status report from `/scripts/bin/ckbranch_history`.
+- **branch-history-<datetime>.md**: Report from `/scripts/bin/ckbranch_history`.
 
 - **repository-<datetime>.md**: Report from `/scripts/bin/fixrepository`.
 
