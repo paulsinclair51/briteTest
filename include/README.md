@@ -14,7 +14,7 @@ See `/README.md` for an introduction to briteTest.
   See `../src/runnerapi.c` for the corresponding implementation.
 
 - **testapi.h**: Header for the Test API.
-  See `../src/testapi.c` for the corresponding implementation.
+  See `/src/testapi.c` for the corresponding implementation.
 
 - **README.md**: This directory guide.
 
