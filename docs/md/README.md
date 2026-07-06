@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 For license details, see `/LICENSE`.
 
 These are the base/master documents. Generated PDF and DOCX documents are in
- `docs/pdf` and `docs/docx/`, respectively.
+ `/docs/pdf` and `/docs/docx/`, respectively.
 
 See `/README.md` for an introduction to briteTest.
 
