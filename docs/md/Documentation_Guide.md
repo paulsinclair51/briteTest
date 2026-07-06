@@ -57,7 +57,7 @@ A printer-friendly PDF file for this document is available in `docs/pdf/`.
 
 A version has the format `v<M>.<m>.<p>` where `<M>` is the major version,
 `<m>` is the minor version, and `<p>` is the patch version.
-</details><br>
+</details>
 </details>
 
 <details>
