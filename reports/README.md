@@ -22,7 +22,9 @@ new report is successfully generated. Reports are not tracked by GitHub.
 
 - **updatebrand[-dry-run]-\<datetime\>.md**: Report from `<repo>/scripts/bin/updatebrand`.
 
-- **test_report.txt-\<datetim\e>**: Report file for a test run without the `-I` option.
+- **test_report-\<datetime\>,txt**: Report file for a test run without the `-I` option.
+
+- **test_report-I-\<datetime\>,txt**: Report file for a test run with the `-I` option.
 
 - **README.md**: This directory guide.
 
