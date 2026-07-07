@@ -1,5 +1,7 @@
 ![Glossary Reference](/docs/branding/Glossary_Reference.png)
 
+#### Version: v1.0.0
+
 This glossary defines generally used terms in the documentation
 and terms often used in the testing domain. It is a companion document to
 the Documentation Guide.
@@ -38,36 +40,23 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Preface
 
-This document is for users and contributors who need
-quick access to the definitions of terms or to browse
-through the terms.
+This document is for users and contributors who need quick access to the
+definitions of terms or to browse through the terms.
 
 For a list of other documents and the repository layout, see
-`/docs/md/Documentation_Guide.md`.
+the Documentation Guide.
 
-A printer-friendly PDF file for this document is available in `/docs/pdf/`.
+A printer-friendly PDF file for this document is available.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
 
 ### Document Version History
 
-| Document | Runner | Test | Date | Comment | Author/Editor |
-|----------|------|--------|------|---------|---------------|
-| 1.0.0 | 1.0.0 | 1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
-
-- The **Document** column records the document's version.
-- The **Runner** column records the Runner API version
-  current at the time this version of the document was published.
-- The **Test** column records the Test API version current at
-  the time this version of the document was published.
-
-A version has the format `M.m.p` (Major, minor, patch) where `M` is the
-major version, `m` is the minor version, and `p` is the patch version.
-`p` increments when the document is updated without a change to `M` or `m`,
-and resets to 0 when `M` or `m` increases. The first table entry is the most
-recent version for this document at the time this document was published.
-</details><br>
+| Version | Date | Comment | Author/Editor |
+|----------|------|---------|---------------|
+| v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+</details>
 </details>
 
 <details>

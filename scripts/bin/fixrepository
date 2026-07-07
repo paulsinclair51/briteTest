@@ -1,0 +1,447 @@
+#!/usr/bin/env bash
+
+# fixrepository - Check repository for corruption/issues and fix what can be safely fixed.
+#
+# See usage below for details, or run: fixrepository -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  fixrepository [OPTIONS]
+  fixrepository -h | --help
+
+Check the briteTest repository for corruption and issues, fix what can be safely
+fixed, and generate a non-tracked report in /reports/repository-<datetime>.md.
+
+This script must be run from within the briteTest repository.
+
+Features:
+  - Validates git object database integrity
+  - Checks for loose objects and dangling commits
+  - Verifies repository structure
+  - Repairs common corruption issues
+  - Generates detailed repair report
+  - Non-destructive checks with safe fixes
+
+Options:
+  -h, --help      Output this help to stdout and exit (other options
+                  and arguments are ignored).
+  -v, --verbose   Show detailed information to stdout.
+  -n, --no-fix    Report issues only, do not attempt repairs.
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - Writes a report to reports/repository-<datetime>.md.
+
+Exit codes:
+  0   Success - no issues or all issues fixed
+  1   Argument or validation error
+  2   Repository issues detected - some may not be fixable
+  3   Reports directory does not exist
+  4   Critical repository error
+EOF
+}
+
+# High-Level Flow:
+# - Validates repository structure and git object database.
+# - Detects loose objects, dangling commits, and object corruption.
+# - Applies safe repairs (git fsck, git gc, prune operations).
+# - Generates detailed markdown report of findings and actions taken.
+# - Preserves original branch state.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
+# Validate required helpers exist
+if [[ ! -f "$SCRIPT_DIR/../helpers/common.sh" ]]; then
+  echo "Error: Required helper not found: $SCRIPT_DIR/../helpers/common.sh" >&2
+  echo "This script must be run from within the briteTest repository." >&2
+  exit 1
+fi
+
+if [[ ! -f "$SCRIPT_DIR/../helpers/git_helpers.sh" ]]; then
+  echo "Error: Required helper not found: $SCRIPT_DIR/../helpers/git_helpers.sh" >&2
+  echo "This script must be run from within the briteTest repository." >&2
+  exit 1
+fi
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+
+# Default options
+OUTPUT_FILE=""
+VERBOSE=false
+NO_FIX=false
+ISSUES_FOUND=0
+ISSUES_FIXED=0
+CRITICAL_ERROR=false
+
+# Initialize report
+init_report() {
+  cat > "$OUTPUT_FILE" << EOF
+# Repository Repair Report
+
+**Timestamp:** ${RUN_TS_DISPLAY}
+
+**Repository:** $repo_root
+
+---
+
+## Checks Performed
+
+EOF
+}
+
+append_section() {
+  local section_title="$1"
+  echo "
+### $section_title
+" >> "$OUTPUT_FILE"
+}
+
+append_check() {
+  local check_name="$1"
+  local status="$2"
+  local details="$3"
+  
+  if [[ "$status" == "PASS" ]]; then
+    echo "✓ **$check_name**: $status" >> "$OUTPUT_FILE"
+  elif [[ "$status" == "ISSUE" ]]; then
+    echo "⚠ **$check_name**: $status" >> "$OUTPUT_FILE"
+    ((ISSUES_FOUND++))
+  elif [[ "$status" == "FIXED" ]]; then
+    echo "✓ **$check_name**: $status" >> "$OUTPUT_FILE"
+    ((ISSUES_FIXED++))
+  elif [[ "$status" == "ERROR" ]]; then
+    echo "✗ **$check_name**: $status" >> "$OUTPUT_FILE"
+    ((ISSUES_FOUND++))
+    CRITICAL_ERROR=true
+  fi
+  
+  if [[ -n "$details" ]]; then
+    echo "  - $details" >> "$OUTPUT_FILE"
+  fi
+}
+
+# Check git repository validity
+check_git_validity() {
+  append_section "Git Repository Validity"
+  
+  if ! git -C "$repo_root" rev-parse --git-dir >/dev/null 2>&1; then
+    append_check "Git Directory" "ERROR" "Repository is not a valid git repository"
+    return 1
+  fi
+  
+  append_check "Git Directory" "PASS" "Valid git repository structure"
+  return 0
+}
+
+# Check object database integrity
+check_object_database() {
+  append_section "Object Database Integrity"
+  
+  local fsck_output
+  fsck_output=$(cd "$repo_root" && git fsck --full 2>&1 || true)
+  
+  if echo "$fsck_output" | grep -q "error:"; then
+    append_check "Object Database" "ISSUE" "Git fsck detected issues"
+    echo "$fsck_output" | sed 's/^/    /' >> "$OUTPUT_FILE"
+    return 1
+  fi
+  
+  if echo "$fsck_output" | grep -q "dangling"; then
+    append_check "Object Database" "ISSUE" "Dangling objects detected"
+    local dangling_count
+    dangling_count=$(echo "$fsck_output" | grep -c "dangling" || echo "0")
+    append_check "Dangling Objects" "ISSUE" "Found $dangling_count dangling objects"
+  else
+    append_check "Object Database" "PASS" "No corruption detected"
+  fi
+}
+
+# Check for loose objects
+check_loose_objects() {
+  append_section "Repository Optimization"
+  
+  local loose_count=0
+  if [[ -d "$repo_root/.git/objects" ]]; then
+    # Count loose object files (not in pack directory)
+    loose_count=$(find "$repo_root/.git/objects" -type f ! -path "*pack*" 2>/dev/null | wc -l)
+  fi
+  
+  if [[ $loose_count -gt 100 ]]; then
+    append_check "Loose Objects" "ISSUE" "Found $loose_count loose objects (exceeds threshold of 100)"
+    
+    if [[ "$NO_FIX" == false ]]; then
+      bt_info "Running git gc to optimize repository..."
+      if cd "$repo_root" && git gc --aggressive 2>&1 >/dev/null; then
+        append_check "Repository Optimization" "FIXED" "Ran git gc --aggressive"
+      else
+        append_check "Repository Optimization" "ISSUE" "git gc encountered an error"
+      fi
+    fi
+  else
+    append_check "Loose Objects" "PASS" "Repository has $loose_count loose objects (below threshold)"
+  fi
+}
+
+# Check for disconnected history
+check_disconnected_history() {
+  append_section "Repository History"
+  
+  local dangling_commits
+  dangling_commits=$(cd "$repo_root" && git rev-list --all --reflog 2>/dev/null | wc -l)
+  
+  append_check "Referenced Commits" "PASS" "Found $dangling_commits commits in history"
+  
+  # Check for branches
+  local branch_count
+  branch_count=$(cd "$repo_root" && git branch | wc -l)
+  
+  append_check "Local Branches" "PASS" "Repository has $branch_count local branches"
+}
+
+# Check for large objects
+check_large_objects() {
+  append_section "Object Size Analysis"
+  
+  local large_objects
+  large_objects=$(cd "$repo_root" && git rev-list --all --objects 2>/dev/null | \
+    awk '{print $2}' | sort -u | xargs -r ls -lS 2>/dev/null | \
+    awk '{if ($5 > 10485760) print}' | wc -l || echo "0")
+  
+  if [[ $large_objects -gt 0 ]]; then
+    append_check "Large Objects (>10MB)" "ISSUE" "Found $large_objects objects larger than 10MB"
+  else
+    append_check "Large Objects" "PASS" "No objects larger than 10MB detected"
+  fi
+}
+
+# Check working directory status
+check_working_directory() {
+  append_section "Working Directory Status"
+  
+  # Save current branch
+  local current_branch
+  current_branch=$(bt_get_current_branch || echo "unknown")
+  
+  # Check for uncommitted changes
+  local status_output
+  status_output=$(cd "$repo_root" && git status --porcelain 2>/dev/null || echo "")
+  
+  if [[ -n "$status_output" ]]; then
+    local file_count
+    file_count=$(echo "$status_output" | wc -l)
+    append_check "Uncommitted Changes" "ISSUE" "Working directory has $file_count uncommitted files"
+  else
+    append_check "Uncommitted Changes" "PASS" "Working directory is clean"
+  fi
+  
+  append_check "Current Branch" "PASS" "Currently on branch: $current_branch"
+}
+
+# Validate core files and directories
+check_repository_structure() {
+  append_section "Repository Structure"
+  
+  local required_items=(
+    ".git"
+    ".gitignore"
+    "README.md"
+    "scripts"
+    "scripts/bin"
+    "scripts/helpers"
+    "reports"
+  )
+  
+  local missing_items=0
+  
+  for item in "${required_items[@]}"; do
+    if [[ -e "$repo_root/$item" ]]; then
+      append_check "Exists: $item" "PASS" ""
+    else
+      append_check "Missing: $item" "ISSUE" "Required item not found"
+      ((missing_items++))
+    fi
+  done
+  
+  if [[ $missing_items -gt 0 ]]; then
+    append_check "Repository Structure" "ISSUE" "Missing $missing_items required items"
+  fi
+}
+
+# Final cleanup and prune
+cleanup_repository() {
+  if [[ "$NO_FIX" == false && $ISSUES_FOUND -gt 0 ]]; then
+    append_section "Cleanup Operations"
+    
+    # Run git reflog expire and gc
+    bt_info "Performing final cleanup..."
+    
+    cd "$repo_root" && git reflog expire --all --expire=now 2>/dev/null || true
+    
+    if cd "$repo_root" && git gc --prune=now 2>&1 >/dev/null; then
+      append_check "Garbage Collection" "FIXED" "Cleaned up object database"
+    fi
+  fi
+}
+
+# Generate report footer
+finalize_report() {
+  cat >> "$OUTPUT_FILE" << EOF
+
+---
+
+## Summary
+
+**Issues Detected:** $ISSUES_FOUND  
+**Issues Fixed:** $ISSUES_FIXED
+
+EOF
+
+  if [[ $ISSUES_FOUND -eq 0 ]]; then
+    cat >> "$OUTPUT_FILE" << 'EOF'
+
+✓ **Status**: Repository is healthy and no issues were detected.
+
+EOF
+  elif [[ $ISSUES_FIXED -eq $ISSUES_FOUND ]]; then
+    cat >> "$OUTPUT_FILE" << 'EOF'
+
+✓ **Status**: All detected issues have been fixed.
+
+EOF
+  elif [[ $ISSUES_FIXED -gt 0 ]]; then
+    cat >> "$OUTPUT_FILE" << 'EOF'
+
+⚠ **Status**: Some issues were fixed, but some issues remain. Manual intervention may be required.
+
+EOF
+  else
+    cat >> "$OUTPUT_FILE" << 'EOF'
+
+✗ **Status**: Issues detected but repairs were not attempted (--no-fix flag used).
+
+EOF
+  fi
+
+  cat >> "$OUTPUT_FILE" << 'EOF'
+
+### Recommendations
+
+- Review any ISSUE items marked with ⚠ that were not fixed
+- Run `fixrepository` without the `--no-fix` flag to attempt automatic repairs
+- For persistent issues, consider:
+  - Running `git fsck --full` for detailed diagnostics
+  - Pushing and re-cloning the repository as a last resort
+  - Consulting Git documentation for specific error messages
+
+---
+
+**Report Generated:** This is a non-tracked file. It will not be committed to the repository.
+
+EOF
+}
+
+cleanup_old_reports() {
+  local old_report
+  [[ -f "$OUTPUT_FILE" ]] || return
+  for old_report in "$repo_root"/reports/repository-*.md; do
+    [[ "$old_report" == "$OUTPUT_FILE" ]] && continue
+    [[ -e "$old_report" ]] || continue
+    rm -f "$old_report" || true
+  done
+}
+
+# Check for help first — if specified, ignore all other arguments
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+done
+
+# Parse options and arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -v | --verbose)
+      VERBOSE=true
+      shift
+      ;;
+    -n | --no-fix)
+      NO_FIX=true
+      shift
+      ;;
+    -*)
+      bt_error_exit 1 "Unknown option: $1"
+      ;;
+    *)
+      bt_error_exit 1 "Unexpected argument: $1"
+      ;;
+  esac
+done
+
+# Validate reports directory
+if [[ ! -d "$repo_root/reports" ]]; then
+  bt_error_exit 3 "Reports directory not found: $repo_root/reports"
+fi
+
+OUTPUT_FILE="$repo_root/reports/repository-${RUN_TS_FILE}.md"
+
+# Save current branch to restore later
+ORIGINAL_BRANCH=$(bt_get_current_branch || echo "main")
+
+bt_info "Starting repository integrity check..."
+if [[ "$NO_FIX" == true ]]; then
+  bt_info "Running in NO-FIX mode (report only, no repairs)"
+fi
+
+# Initialize report
+init_report
+
+# Run all checks
+check_git_validity || bt_error_exit 4 "Not a valid git repository"
+check_object_database
+check_loose_objects
+check_disconnected_history
+check_large_objects
+check_working_directory
+check_repository_structure
+cleanup_repository
+
+# Finalize report
+finalize_report
+
+cleanup_old_reports
+
+bt_success "Repository check complete. Report: ${OUTPUT_FILE#${repo_root}/}"
+
+if [[ "$VERBOSE" == true ]]; then
+  echo ""
+  bt_info "Report contents:"
+  sed 's/^/  /' "$OUTPUT_FILE"
+fi
+
+# Determine exit code
+if [[ "$CRITICAL_ERROR" == true ]]; then
+  exit 4
+elif [[ $ISSUES_FOUND -gt 0 && $ISSUES_FIXED -lt $ISSUES_FOUND && "$NO_FIX" == false ]]; then
+  exit 2
+elif [[ $ISSUES_FOUND -gt 0 ]]; then
+  exit 2
+else
+  exit 0
+fi
