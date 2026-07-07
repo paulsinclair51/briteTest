@@ -16,7 +16,7 @@ See `/README.md` for an introduction to briteTest.
 - **Output files**: Captured copies of `stdout`, `stderr`, and named output files
   produced during test runs.
 
-- **Metadata files**: Markdown Document (`.md`) sidecar files associated with
+- **Metadata files**: Markdown Document (`.md`) metadata files associated with
   captured output files and related file groups.
 
 - **README.md**: This directory guide.
