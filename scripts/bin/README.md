@@ -28,7 +28,6 @@ See `<repo>/README.md` for an introduction to briteTest.
 - **ckbranch**: Check branch and repository status.
 - **ckbranch_history**: Query branch history log entries.
 - **ckversions**: Validate version consistency across `<repo>/docs/include/src.`
-- **lsbranch**: List branches with filtering and formatting options.
 - **mkbranch**: Create branches with policy validation.
 - **mkclone**: Clone the repository with optional target naming.
 - **mkcommit**: Commit and optionally push changes.
