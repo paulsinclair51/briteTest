@@ -14,7 +14,7 @@ new report is successfully generated. Reports are not tracked by GitHub.
 
 - **style-\<datetime\>.md**: Validation report from `<repo>/scripts/bin/ckstyle`.
 
-- **branch-\<datetime\>.md**: Status report from `<repo>/scripts/bin/ckbranch`.
+- **branch-\<datetime\>.md**: Status report from `<repo>/scripts/bin/lsbranch`.
 
 - **branch-history-\<datetime\>.md**: Report from `<repo>/scripts/bin/ckbranch_history`.
 

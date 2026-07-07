@@ -14,7 +14,7 @@ and high-signal output contracts.
 
 ## Files
 
-- **test_ckbranch.sh**: Smoke tests for `<repo>/scripts/bin/ckbranch` covering
+- **test_lsbranch.sh**: Smoke tests for `<repo>/scripts/bin/lsbranch` covering
   help output, local/remote inclusion flags, report marker formatting,
   remote-only branch visibility, and pattern matching behavior.
   
@@ -38,7 +38,7 @@ From repository root:
 ```sh
 make test-lsbranch
 make test-gendocs
-make test-ckbranch
+make test-lsbranch
 ```
 
 Or run directly:
@@ -46,5 +46,5 @@ Or run directly:
 ```sh
 bash ./scripts/tests/test_lsbranch.sh
 bash ./scripts/tests/test_gendocs.sh
-bash ./scripts/tests/test_ckbranch.sh
+bash ./scripts/tests/test_lsbranch.sh
 ```

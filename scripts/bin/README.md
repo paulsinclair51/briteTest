@@ -25,7 +25,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ### Branch and Workflow Management
 
-- **ckbranch**: Check branch and repository status.
+- **lsbranch**: Check branch and repository status.
 - **ckbranch_history**: Query branch history log entries.
 - **ckversions**: Validate version consistency across `<repo>/docs/include/src.`
 - **mkbranch**: Create branches with policy validation.
@@ -75,7 +75,7 @@ bash `<repo>/scripts/bin/installscripts` -h
 For a script's usage information, execute the script using the `-h` option. For example,
 
 ```sh
-ckbranch -h
+lsbranch -h
 ```
 
 ## Troubleshooting
