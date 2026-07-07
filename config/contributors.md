@@ -8,7 +8,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Overview
 
-This file lists the allowed contributors to briteTest sith their role and email
+This file lists the allowed contributors to briteTest with their role and email
 address.
 
 An approver may modify the list below to add/remove a contributor or change a
