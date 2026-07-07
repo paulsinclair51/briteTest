@@ -21,7 +21,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 - None.
 
-## `markdownlint.json` Settings
+## Settings for Markdown (`markdownlint.json`)
 
 Modifying or adding settings in this file should be avoided.
 
