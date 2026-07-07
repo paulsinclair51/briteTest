@@ -28,7 +28,7 @@ respectively.
 Report includes:
   Branch:  Indicates the branch name. `*` indicates this is
            the current branch. '!' indicates the branch name
-           violates naming rules. 
+           violates naming rules.
   Type:    Indicates branch is `local` or `remote`.
   Base:    Base branch reference for the row when applicable.
            For example, 'remote main' or 'local v1.0.0'.
@@ -38,7 +38,7 @@ Report includes:
   Staged/Unstaged: Counts of staged and unstaged files.
   Unpushed Commits: Count of local commits pending sync
            for this branch.
-  Ahead/Behind: Counts of commits this branch is 
+  Ahead/Behind: Counts of commits this branch is
            ahead of / behind its tracked branch.
   PR:      Count of pending (not closed) pull requests.
   Created: Date the branch was created.
@@ -75,7 +75,7 @@ Examples:
   ckbranch -a -l -r
   ckbranch "*"
   ckbranch "*" -l -r
-  
+
   # Check local branches
   ckbranch -a -l
   ckbranch "*" -l
