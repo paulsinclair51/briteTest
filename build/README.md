@@ -15,6 +15,8 @@ optionally manually removed if leftover after an unsuccessful build.
 
 - **.o files**: Object files.
 
+- other temporary files.
+
 - **README.md**: This directory guide.
 
 ## Subdirectories
