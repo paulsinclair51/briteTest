@@ -12,17 +12,17 @@ new report is successfully generated. Reports are not tracked by GitHub.
 
 ## Files
 
-- **style-<datetime>.md**: Validation report from `<repo>/scripts/bin/ckstyle`.
+- **style-\<datetime\>.md**: Validation report from `<repo>/scripts/bin/ckstyle`.
 
 - **branch-\<datetime\>.md**: Status report from `<repo>/scripts/bin/ckbranch`.
 
-- **branch-history-_<datetime\>.md**: Report from `<repo>/scripts/bin/ckbranch_history`.
+- **branch-history-\<datetime\>.md**: Report from `<repo>/scripts/bin/ckbranch_history`.
 
 - **repository-\<datetime\>.md**: Report from `<repo>/scripts/bin/fixrepository`.
 
 - **updatebrand[-dry-run]-\<datetime\>.md**: Report from `<repo>/scripts/bin/updatebrand`.
 
-- **test_report.txt-\<datetime>**: Report file for a test run without the `-I` option.
+- **test_report.txt-\<datetim\e>**: Report file for a test run without the `-I` option.
 
 - **README.md**: This directory guide.
 
