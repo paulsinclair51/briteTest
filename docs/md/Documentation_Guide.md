@@ -80,7 +80,7 @@ The  documentation consists of documents for:
 Document types:
 
 - **README**: 
-  - In root, link to the /docs/md/briteTest_Guide,md file.
+  - In root, link to the `<repo>/docs/md/Guide.md` file.
   - In a subdirectory of root, a directory guide.
 
 - **Guide**: Usage information.
@@ -161,7 +161,7 @@ The following shows the layout of the GitHub repository
 build_test_runner.ps1
 LICENSE
 Makefile
-README.md.              # Link to /docs/md/Guide.md,
+README.md.              # Link to `<repo>/docs/md/Guide.md`,
 build/                  # Build outputs and related artifacts.
 config/                 # Repository configuration files.
     contributors.md     # List of authorized contributors.
@@ -178,7 +178,7 @@ include/                # Public API `.h` headers.
 reports/                # Generated report files.
 scripts/                # Automation script assets.
     bin/                # Scripts (e.g., gendocs, mkbranch).
-    helpers/            # Helper scripts for bin/scripts/*.
+    helpers/            # Helper scripts for bin/scripts/`*.
     tests/              # Test scripts for testing bin/scripts.
 src/                    # API `.c` sources.
     runnerapi.c         # Definition of Runner API.

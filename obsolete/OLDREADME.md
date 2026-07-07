@@ -909,10 +909,10 @@ Use this as a reference when adapting briteTest into your own project structure.
 
 ## Further Reading
 
-- [include/README.md](include/README.md)
-- [src/README.md](src/README.md)
-- [tests/README.md](tests/README.md)
-- [reports/README.md](reports/README.md)
+- [include/README.md`](include/README.md`)
+- [src/README.md`](src/README.md`)
+- [tests/README.md`](tests/README.md`)
+- [reports/README.md`](reports/README.md`)
 
 ## Glossary
 

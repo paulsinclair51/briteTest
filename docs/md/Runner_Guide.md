@@ -377,7 +377,7 @@ RA_DECLARE_ORCHESTRATOR(main)
                   "Note: Larger projects can place files in a more conventional\n"
                   "      layout (e.g., `include/` and `src/`, but this example keeps\n"
                   "      everything in your current directory for simplification.\n"
-                   "Note: See /README.md for briteTest for additional API features.\n");
+                   "Note: See `<repo>/README.md` for briteTest for additional API features.\n");
   RA_EXIT;
 }
 ```
@@ -500,14 +500,14 @@ briteTest is a lightweight C/C++ testing framework built around a simple executi
 
 The briteTest Runner API files:
 
-- [`/include/runnerapi.h`](/include/runnerapi.h) -- public API (typedefs, enums, constants, macros,
+- [`<repo>/include/runnerapi.h`](/include/runnerapi.h) -- public API (typedefs, enums, constants, macros,
    function declarations, and static inline function definitions).
-- [`/src/runnerapi.c`](/src/runnerapi.c) -- function definitions for the briteTest framework.
+- [`<repo>/src/runnerapi.c`](/src/runnerapi.c) -- function definitions for the briteTest framework.
 
 The briteTest Test API files:
 
-- [`/include/testapi.h`](/include/testapi.h) -- test support/helper function declarations.
-- [`/src/testapi.c`](/src/testapi.c) -- test support/helper function definitions.
+- [`<repo>/include/testapi.h`](/include/testapi.h) -- test support/helper function declarations.
+- [`<repo>/src/testapi.c`](/src/testapi.c) -- test support/helper function definitions.
 
 A typical test executable includes:
 
@@ -1153,12 +1153,12 @@ briteTest Report
 </details>
 
 <details>
-<summary><strong>Example Test Report for -i Option</strong></summary>
+<summary><strong>Example Test Report for -I Option</strong></summary>
 
-## Example Test Report for -i Option
+## Example Test Report for -I Option
 
 ```text
-briteTest Report (-i)
+briteTest Report (-I)
 
                              Pass   Fail     Fault
 --------------------------------------------------
@@ -1173,10 +1173,10 @@ briteTest Report (-i)
 
 ## Further Reading
 
-- [/include/README.md](/include/README.md)
-- [/src/README.md](/src/README.md)
-- [/tests/README.md](/tests/README.md)
-- [/reports/README.md](/reports/README.md)
+- [`<repo>/include/README.md`](/include/README.md)
+- [`<repo>/src/README.md`](/src/README.md)
+- [`<repo>/tests/README.md`](/tests/README.md)
+- [`<repo>/reports/README.md`](/reports/README.md)
 
 
 **

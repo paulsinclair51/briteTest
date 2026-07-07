@@ -86,10 +86,16 @@ current_branch=$(git rev-parse --abbrev-ref HEAD)
 grep -F "| ${current_branch}* | local |" "$report_path" >/dev/null || fail "current branch should be marked with trailing * in local report row"
 pass "current branch report marker"
 
-# 5) Literal dots in pattern should be treated literally, not as regex wildcard
-rc=$(run_capture "$TMPDIR/literal.out" "$CKBRANCH" "v1.0.0" -l)
-[[ "$rc" -eq 0 ]] || fail "ckbranch 'v1.0.0' -l should exit 0"
-grep -q '^v1.0.0 ' "$TMPDIR/literal.out" || fail "literal pattern should match branch v1.0.0"
+# 5) BRANCH mode allows only -v; local/remote filters are invalid in BRANCH mode
+rc=$(run_capture "$TMPDIR/branch_mode_invalid.out" "$CKBRANCH" "v1.0.0" -l)
+[[ "$rc" -eq 1 ]] || fail "ckbranch 'v1.0.0' -l should exit 1"
+grep -q 'only -v is allowed' "$TMPDIR/branch_mode_invalid.out" || fail "BRANCH mode should reject -l/-r/-i/-x"
+pass "BRANCH mode option restrictions"
+
+# 6) Literal dots in PATTERN should be treated literally, not as regex wildcard
+rc=$(run_capture "$TMPDIR/literal.out" "$CKBRANCH" "v1.0.0*" -l)
+[[ "$rc" -eq 0 ]] || fail "ckbranch 'v1.0.0*' -l should exit 0"
+grep -q '^v1.0.0 ' "$TMPDIR/literal.out" || fail "literal dots in pattern should match branch v1.0.0"
 pass "literal glob pattern behavior"
 
 echo "All ckbranch smoke tests passed."

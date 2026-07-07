@@ -1,12 +1,12 @@
-# /tests/src/
+# `<repo>/tests/src/`
 
 Directory containing test source files (`*.c`) used to build a test executable.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `/LICENSE`.
+For license details, see `<repo>/LICENSE`.
 
-See `/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 

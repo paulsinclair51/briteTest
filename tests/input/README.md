@@ -1,12 +1,12 @@
-# /tests/input/
+# `<repo>/tests/input/`
 
 Directory containing static source input files used by tests.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `/LICENSE`.
+For license details, see `<repo>/LICENSE`.
 
-See `/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to briteTest.
 
 - Source input data is consumed by test code to produce
   results or exercise file-processing behavior.

@@ -1,15 +1,15 @@
-# /tests/output/
+# `<repo>/tests/output/`
 
 Directory containing copies of generated test outputs.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `/LICENSE`.
+For license details, see `<repo>/LICENSE`.
 
-See `/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to briteTest.
 
 - Output files in this directory are compared against corresponding
-  golden files and metadata files in `/tests/golden/`.
+  golden files and metadata files in `<repo>/tests/golden/`.
 
 ## Files/
 
@@ -27,8 +27,8 @@ See `/README.md` for an introduction to briteTest.
 
 ## Output and Golden Files
 
-Output files in `/tests/output/` provide captured copies for review. Golden
-files in `/tests/golden/` provide the expected results used for validation.
+Output files in `<repo>/tests/output/` provide captured copies for review. Golden
+files in `<repo>/tests/golden/` provide the expected results used for validation.
 
 - Named output files are captured using a unique suffix to avoid collisions:
 
@@ -40,17 +40,17 @@ files in `/tests/golden/` provide the expected results used for validation.
 
 - `stdout` and `stderr` are captured as `stdout-<uid>` and `stderr-<uid>`.
 
-- Temporary files are not captured in `/tests/output/`.
+- Temporary files are not captured in `<repo>/tests/output/`.
 
 For each captured output file, a metadata file is also written:
 
 - For `<name>-<uid>.ext`, metadata is `<name>-<uid>.ext.md`.
 - For `<name>-<uid>`, metadata is `<name>-<uid>.md`.
 
-Captured output files may be promoted to `/tests/golden/` for future
+Captured output files may be promoted to `<repo>/tests/golden/` for future
 comparisons.
 
 For full details, including customization options for comparison and promotion,
 see the Test User Guide.
 
-See also `/tests/golden/README.md`.
+See also `<repo>/tests/golden/README.md`.

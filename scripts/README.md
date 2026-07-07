@@ -1,12 +1,11 @@
-# /scripts/
-
+# `<repo>/scripts/`
 Directory containing script assets.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `/LICENSE`.
+For license details, see `<repo>/LICENSE`.
 
-See `/README.md` for a guide to briteTest.
+See `<repo>/README.md` for a guide to briteTest.
 
 ## Files
 
@@ -16,7 +15,7 @@ See `/README.md` for a guide to briteTest.
 
 - **bin/**: Contributor command scripts.
 
-- **helpers/**: Shared shell helper modules used by scripts in the `/scripts/bin/`
+- **helpers/**: Shared shell helper modules used by scripts in the `<repo>/scripts/bin/`
   subdirectory.
 
 - **tests/**: Script tests.
