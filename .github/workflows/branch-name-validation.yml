@@ -1,4 +1,4 @@
-name: Branch Name Validation
+name: Defines Branch Names Validation and Branch Workflow
 
 # Define the GitHub workflow for branch name validation.
 
@@ -12,22 +12,28 @@ name: Branch Name Validation
 #
 # The 'main' branch (protected).
 #
-# A 'version' branch (protected, based on the main branch) with
-# branch name in the form:
+# A 'version' branch (protected, based on the main branch, created by
+# an approver) with branch name in the form:
+#
 #   vM.m.0
+#
 # where:
+#
 #   M is 1-2 digits starting with 1-9.
 #   m is either 0 or 1-2 digits starting with 1-9.
 #
 # A 'targeted' branch (not protected, based on a version branch) with
 # a branch name in one of the forms:
+#
 #   dev/<short-name-<target-version>
 #   fix/<short-name>-<target-version>
+#
 # where <short-name> is ... and <target-version> is the name of the
 # verson branch 
 #
 # A 'contributor' branch (not protected, not based on main or a version
 # branch) with a branch name in the form:
+#
 #   dev/<short-name>
 #   fix/<short-name>
 #
