@@ -28,11 +28,14 @@ name: Defines Branch Names Validation and Branch Workflow
 #   dev/<short-name-<target-version>
 #   fix/<short-name>-<target-version>
 #
-# where <short-name> is ... and <target-version> is the name of the
-# verson branch 
+# where:
+#   <short-name> is is a brief lowercase descriptor using letters,
+#   numbers, and hyphens.
 #
-# A 'contributor' branch (not protected, not based on main or a version
-# branch) with a branch name in the form:
+#   <target-version> is the name of the 'version' branch.
+#
+# A 'contributor' branch (not protected, not base d on 'main' or a
+# 'version' branch) with a branch name in the form:
 #
 #   dev/<short-name>
 #   fix/<short-name>
