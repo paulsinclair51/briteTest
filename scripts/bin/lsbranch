@@ -142,6 +142,8 @@ source "$SCRIPT_DIR/../helpers/github_helpers.sh"
 
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+ORIGINAL_ARGS=("$@")
+REPORT_COMMAND=""
 
 # Default options
 OUTPUT_FILE=""
@@ -376,11 +378,90 @@ get_branch_type() {
   fi
 }
 
+build_report_command() {
+  local args_rendered=""
+  local arg rendered
+
+  for arg in "${ORIGINAL_ARGS[@]}"; do
+    printf -v rendered '%q' "$arg"
+    if [[ -z "$args_rendered" ]]; then
+      args_rendered="$rendered"
+    else
+      args_rendered+=" $rendered"
+    fi
+  done
+
+  if [[ -n "$args_rendered" ]]; then
+    REPORT_COMMAND="lsbranch $args_rendered"
+  else
+    REPORT_COMMAND="lsbranch"
+  fi
+}
+
+get_branch_base_reference() {
+  local branch="$1"
+  local branch_ref="$branch"
+
+  if [[ "$branch" == "main" ]]; then
+    echo ""
+    return 0
+  fi
+
+  if ! has_local_branch "$branch"; then
+    echo ""
+    return 0
+  fi
+
+  local best_base=""
+  local best_distance=""
+  local ref
+
+  while IFS= read -r ref; do
+    [[ -n "$ref" ]] || continue
+    [[ "$ref" == "origin/HEAD" ]] && continue
+    [[ "$ref" == "$branch" ]] && continue
+    [[ "$ref" == "origin/$branch" ]] && continue
+
+    local candidate_ref="$ref"
+    local candidate_display
+    if [[ "$ref" == origin/* ]]; then
+      candidate_display="remote $ref"
+    else
+      candidate_display="local $ref"
+    fi
+
+    if ! git merge-base --is-ancestor "$candidate_ref" "$branch_ref" >/dev/null 2>&1; then
+      continue
+    fi
+
+    local distance
+    distance=$(git rev-list --count "$candidate_ref..$branch_ref" 2>/dev/null || echo "")
+    [[ "$distance" =~ ^[0-9]+$ ]] || continue
+
+    if [[ -z "$best_distance" || "$distance" -lt "$best_distance" ]]; then
+      best_distance="$distance"
+      best_base="$candidate_display"
+    elif [[ "$distance" -eq "$best_distance" ]]; then
+      # Keep ties stable and meaningful: prefer remote candidates over local.
+      if [[ "$candidate_display" == remote* && "$best_base" == local* ]]; then
+        best_base="$candidate_display"
+      fi
+    fi
+  done < <(
+    {
+      git for-each-ref --format='%(refname:short)' refs/heads
+      git for-each-ref --format='%(refname:short)' refs/remotes/origin
+    } | sort -u
+  )
+
+  echo "$best_base"
+}
+
 generate_report_header() {
   cat > "$OUTPUT_FILE" << EOF
-# lsbranch Report
+# Branch Report ${RUN_TS_DISPLAY}
 
-**Timestamp:** ${RUN_TS_DISPLAY}
+**Command:** \`${REPORT_COMMAND}\`
 
 | **Branch** | **Type** | **Base** | **Status** | **Staged/<br>Unstaged** | **Unpushed<br>Commits** | **Ahead/<br>Behind** | **PR** | **Created** | **Last Commit** |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -486,8 +567,10 @@ EOF
   branch_type=$(get_branch_type      "$branch") || branch_type="unknown"
   local behind_count="0"
   local created_date last_commit_date
+  local base_reference=""
   created_date=$(get_branch_created_date "$branch" "local")
   last_commit_date=$(get_branch_last_commit_date "$branch" "local")
+  base_reference=$(get_branch_base_reference "$branch")
   [[ -z "$created_date" ]] && created_date="unknown"
   [[ -z "$last_commit_date" ]] && last_commit_date="unknown"
   [[ "$branch_type" == "local (tracking origin)" ]] && \
@@ -561,7 +644,7 @@ EOF
         local staged_unstaged_display
         local_ahead_behind=$(format_ratio_or_blank "$unpushed_count" "$behind_count")
         staged_unstaged_display=$(format_ratio_or_blank "$staged_count" "$unstaged_count")
-        append_report_row "$branch_local_display" "local" "remote origin/$branch" "$local_status" "$staged_unstaged_display" "$unpushed_display" "$local_ahead_behind" "$pr_count_display" "$created_date" "$last_commit_date"
+        append_report_row "$branch_local_display" "local" "$base_reference" "$local_status" "$staged_unstaged_display" "$unpushed_display" "$local_ahead_behind" "$pr_count_display" "$created_date" "$last_commit_date"
       fi
 
       local remote_status="synced"
@@ -571,7 +654,7 @@ EOF
       if [[ "$include_remote_rows" == true ]]; then
         local remote_ahead_behind
         remote_ahead_behind=$(format_ratio_or_blank "$behind_count" "$unpushed_count")
-        append_report_row "$branch_display" "remote" "local $branch" "$remote_status" "" "" "$remote_ahead_behind" "$pr_count_display" "$created_date" "$last_commit_date"
+        append_report_row "$branch_display" "remote" "$base_reference" "$remote_status" "" "" "$remote_ahead_behind" "$pr_count_display" "$created_date" "$last_commit_date"
       fi
     elif [[ "$branch_type" == "local" ]]; then
       local pr_count_display
@@ -731,6 +814,9 @@ else
   INCLUDE_LOCAL=$INCLUDE_LOCAL_FLAG
   INCLUDE_REMOTE=$INCLUDE_REMOTE_FLAG
 fi
+
+# Build the exact command string used to generate this report.
+build_report_command
 
 # Validate reports directory and set output path
 if [[ ! -d "$repo_root/reports" ]]; then
