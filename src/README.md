@@ -10,15 +10,11 @@ See `/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **runnerapi-old.c**: Legacy Runner API implementation source.
-
 - **runnerapi.c**: Defines the Runner API implementation.
-  See `../include/runnerapi.h` for the declarations for the Runner API.
-
-- **test.api-old.c**: Legacy Test API implementation source.
+  See `/include/runnerapi.h` for the declarations for the Runner API.
 
 - **testapi.c**: Defines the Test API implementation.
-  See `../include/testapi.h` for declarations for the Test API.
+  See `/include/testapi.h` for declarations for the Test API.
 
 - **README.md**: This directory guide.
 
