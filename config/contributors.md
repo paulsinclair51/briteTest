@@ -15,6 +15,8 @@ contributor's role. If there are no approvers, a reviewer may modify the list.
 If these are neither approvers nor reviewers, a contributor may modify the list.
 Otherwise, any user may modify the list.
 
+See the Contributor Guide for additional information.
+
 ## Contributor Role and Responsibilities
 
 Contributors are categorized by their role and permissions:
