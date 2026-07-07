@@ -23,7 +23,7 @@ See `/README.md` for an introduction to briteTest.
 
 - **history_log.sh**: Shared branch-history markdown logging helpers.
 
-- **replace_phrases.sh**: Shared Bash helper used by
+- **replace_phrases.sh**: Bash helper used by
   `scripts/bin/replacephrases` to apply configured phrase replacements
   in markdown files.
 
