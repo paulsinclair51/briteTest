@@ -10,9 +10,9 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 This file lists the allowed contributors to briteTest.
 
-An approver may modify this list to add/remove a contributor or change a
+An approver may modify the list below to add/remove a contributor or change a
 contributor's role. If there are no approvers, a reviewer may modify the list.
-If these are neither approvers nor reviewers, a contributor may modify the list.
+If their are neither approvers nor reviewers, a contributor may modify the list.
 Otherwise, any user may modify the list.
 
 See the Contributor Guide for additional information.
