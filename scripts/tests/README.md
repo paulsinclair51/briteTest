@@ -16,14 +16,10 @@ and high-signal output contracts.
 
 - **test_lsbranch.sh**: Smoke tests for `<repo>/scripts/bin/lsbranch` covering
   help output, local/remote inclusion flags, report marker formatting,
-  remote-only branch visibility, and pattern matching behavior.
+  remote branch visibility, and pattern matching behavior.
   
 - **test_gendocs.sh**: Validation tests for `<repo>/scripts/bin/gendocs` and its
   helper scripts `<repo>/scripts/helpers/genpdf.sh` and `<repo>/scripts/helpers/gendocx.sh`.
-
-- **test_lsbranch.sh**: Smoke tests for `<repo>/obsolete/lsbranch` covering
-  help output, local/remote listing, invalid-only behavior, and selected
-  error paths.
 
 - **README.md**: This directory guide.
 
