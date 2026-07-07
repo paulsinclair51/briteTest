@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# test_lsbranch.sh - basic smoke tests for scripts/bin/lsbranch
+# test_lsbranch.sh - basic smoke tests for obsolete/lsbranch
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -9,7 +9,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LSBRANCH="$SCRIPT_DIR/../bin/lsbranch"
+LSBRANCH="$SCRIPT_DIR/lsbranch"
 
 pass() {
   echo "PASS: $1"
