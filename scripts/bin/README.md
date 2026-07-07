@@ -12,13 +12,13 @@ See `/README.md` for an introduction to briteTest.
 
 ### Setup and Installation
 
-- **installscripts**: Make all scripts executable and add /scripts/bin/ to PATH.
+- **installscripts**: Make all scripts executable and add `/scripts/bin/` to PATH.
 
 ### Document and Brand Management
 
-- **ckdocs**: Validate canonical documentation links and structure.
+- **ckstyle**: Check style quidelines for documention, code, scripts, directory
+  guides, versions etc. for the current branch. See Contributor Guide for guidelines.
 - **gendocs**: Generate PDF and DOCX documentation.
-- **genpdf**: Generate PDF documentation from Markdown sources.
 - **genpngs**: Generate branding PNG images from SVG files.
 - **replacephrases**: Apply configured phrase replacements in markdown files.
 - **updatebrand**: Update branding text and regenerate related assets.
@@ -27,7 +27,7 @@ See `/README.md` for an introduction to briteTest.
 
 - **ckbranch**: Check branch and repository status.
 - **ckbranch_history**: Query branch history log entries.
-- **ckversions**: Validate version consistency across docs/include/src.
+- **ckversions**: Validate version consistency across /docs/include/src.
 - **lsbranch**: List branches with filtering and formatting options.
 - **mkbranch**: Create branches with policy validation.
 - **mkclone**: Clone the repository with optional target naming.
@@ -86,11 +86,13 @@ ckbranch -h
 If a script is not executable in your environment, you can:
 
 1. **Run the setup script** to fix all scripts at once:
+
    ```sh
    bash /scripts/bin/installscripts
    ```
 
-2. **Manually fix individual scripts**:
+3. **Manually fix individual scripts**:
+
    ```sh
    chmod +x /scripts/bin/<script_name>
    ```
