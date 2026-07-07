@@ -3,7 +3,7 @@
 #### Version: v1.0.0
 
 This guide explains how to use the Runner Framework and API
-covering concepts, workflow, execution model, examples, and practical,usage
+covering concepts, workflow, execution model, examples, and practical usage
 patterns. It complements the Runner Reference, which documents
 the Runner API in detail.
 
@@ -76,7 +76,7 @@ A printer-friendly PDF file for this document is available.
 
 briteTest is built around three ideas:
 
-1. **Test expressions**:C expressions wrapped with `RA_TEST`.
+1. **Test expressions**: C expressions wrapped with `RA_TEST`.
 2. **Test group functions**:Functions that contain related tests.
 3. **The orchestrator**: A `main` function that runs test groups and writes the
    report.
@@ -161,7 +161,7 @@ RA_DECLARE_ORCHESTRATOR(main)
   RA_WRITE_RESULT(RA_GROUP(test_math), "Math Tests");
 
   RA_CLOSE_REPORT(NULL);
-  RA_EXIT;2222222e
+  RA_EXIT;
 }
 ```
 </details>
@@ -794,7 +794,7 @@ Typedefs, struct, enums, variables, and Functions are provided to support
 writing tests.
 
 <details>
-<summary>Click here to viewt</summary>
+<summary>Click here to view</summary>
 
 Examples of Process and runtime helpers include:
 
@@ -939,8 +939,8 @@ Forward declaration:
 Specify `static` if the above definition of the function specifies `static`.
 
 Optional typedefs, variables, functions, and code may be added to customize
-or support testing.  Added code may use test support functions (see
-[Test Support API](#test-support-api)) and customization suport functions
+or support testing. Added code may use test support functions (see
+[Test Support API](#test-support-api)) and customization support functions
 (see [Customization Support API](#customization-support-api)).
 
 **Recommended**: do not intermix code with the tests; such code is
@@ -1401,7 +1401,7 @@ Defaults:
  * Use the RA_TEST, RA_ASSERT_FAIL, and RA_ASSERT_FAULT macros in
  * the test function to execute tests.
  *
- * @note Other veriations are possible in the test orchestrator and test functions.
+ * @note Other variations are possible in the test orchestrator and test functions.
  */
 
 /**
@@ -1417,7 +1417,7 @@ Defaults:
 /**
  * @section NameConventions Naming Conventions
  *
- * briteTest - Repository name (case-jnsensitive.
+ * briteTest - Repository name (case-insensitive).
  *
  * runnerapi.h and runnerapi.c - filenames.
  * 
