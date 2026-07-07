@@ -99,10 +99,10 @@ refer to the Runner or Test API Reference document for information.
   structs, enums, macros, and functions that provide a well-defined
   service. For example, the briteTest Runner API and the briteTest Test
   API.
-- **approver***: A person listed in `/config/contributors.md` as an approver.
+- **approver***: A person listed in `<repo>/config/contributors.md` as an approver.
   Note that an approver is also a contributor and a reviewer.
   An approver may review and approve changes to briteTest. An approver
-  must follow the guidelines in `/docs/Contributor_Guide.md`.
+  must follow the guidelines in `<repo>/docs/Contributor_Guide.md`.
 - **artifact**: A file or bundle of files produced by a GitHub Actions
   workflow and stored for later download (e.g., build outputs, logs,
   reports). See also test artifact.
@@ -150,11 +150,11 @@ refer to the Runner or Test API Reference document for information.
   command-line when used as an adjective.
 - **concurrent block***: A set of tests bracketed by
   `RA_BEGIN_CONCURRENT` and `RA_END_CONCURRENT` macros.
-- **contributor***: A person listed in `/config/contributors.md`.
+- **contributor***: A person listed in `<repo>/config/contributors.md`.
   Note that a reviewer or approver, is also a contrubutor.
   A contributor may provide changes to briteTest that are subject
   to review and approval before includding in a release. A contributor
-  must follow the guidelines in `/docs/Contributor_Guide.md`.
+  must follow the guidelines in `<repo>/docs/Contributor_Guide.md`.
 - **control file**: See golden file.
 - **customization function***: A Runner API function that
   can be used to help customize the orchestrator (main) function and
@@ -379,10 +379,16 @@ _No terms currently defined._
 - **report**: See test report.
 - **report header***: Lines of text written at the beginning
   of a test report that include the report title, a timestamp, etc.
-- **reviewer***: A person listed in `/config/contributors.md` as a reviewer.
+- **`<repo>`**: Repository root directory. In docs and usage examples,
+  `<repo>` denotes a placeholder for the absolute path to the briteTest
+  repository root, i.e., `/workspaces/briteTest`.
+- **`<repo_url>`**: Repository URL. In docs and usage examples,
+  `<repo_url>` denotes a placeholder for the briteTest repository URL,
+  i.e., `https://github.com/paulsinclair51/briteTest`.
+- **reviewer***: A person listed in `<repo>/config/contributors.md` as a reviewer.
   Note that an reviewer is also a contributor and an approver is also a
   contributor and a reviewer. A reviewer may review changes to briteTest.
-  A reviewer must follow the guidelines in `/docs/Contributor_Guide.md`.
+  A reviewer must follow the guidelines in `<repo>/docs/Contributor_Guide.md`.
 - **runner***: See test runner.
 - **runner**: (GitHub) A machine or environment that executes the jobs
   defined in a GitHub Actions workflow. A runner provides the

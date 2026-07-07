@@ -1,12 +1,11 @@
-# /docs/
-
+# `<repo>/docs/`
 Directory containing user and contributor documentation assets.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `/LICENSE`.
+For license details, see `<repo>/LICENSE`.
 
-See `/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
@@ -17,8 +16,8 @@ See `/README.md` for an introduction to briteTest.
 - **branding/**: Monograms, logos, and document logos as `*.svg` files and `*.png*`
   files generated from the '*.svg' files.
 
-- **docx/**: Microsoft Word `*.docx` files generated from the `/docs/pdf/*.pdf` files.
+- **docx/**: Microsoft Word `*.docx` files generated from the `<repo>/docs/pdf/*.pdf` files.
 
 - **md/**: Markdown `*.md` files (base/master documentation).
 
-- **pdf/**: PDF formatted `.pdf` files generated from the `/docs/md/*.md` files.
+- **pdf/**: PDF formatted `.pdf` files generated from the `<repo>/docs/md/*.md` files.

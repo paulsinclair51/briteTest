@@ -1,12 +1,11 @@
-# /.vscode/
-
+# `<repo>/.vscode/`
 Directory containing VS Code workspace configuration files.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `/LICENSE`.
+For license details, see `<repo>/LICENSE`.
 
-See `/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
@@ -41,5 +40,5 @@ Additional configuration files may be added here as needed:
 
 - **extensions.json**: Recommended VS Code extensions for this project.
 
-See the [VS Code Documentation](https://code.visualstudio.com/docs/getstarted/settings)
+See the [VS Code Documentation](https://code.visualstudio.com/docs/getstarted/settings`)
 for more information on workspace settings.

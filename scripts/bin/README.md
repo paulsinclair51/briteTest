@@ -1,18 +1,18 @@
-# /scripts/bin/
+# `<repo>/scripts/bin/`
 
 Directory containing contributor scripts.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `/LICENSE`.
+For license details, see `<repo>/LICENSE`.
 
-See `/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
 ### Setup and Installation
 
-- **installscripts**: Make all scripts executable and add `/scripts/bin/` to PATH.
+- **installscripts**: Make all scripts executable and add `<repo>/scripts/bin/` to PATH.
 
 ### Document and Brand Management
 
@@ -27,7 +27,7 @@ See `/README.md` for an introduction to briteTest.
 
 - **ckbranch**: Check branch and repository status.
 - **ckbranch_history**: Query branch history log entries.
-- **ckversions**: Validate version consistency across /docs/include/src.
+- **ckversions**: Validate version consistency across `<repo>/docs/include/src.`
 - **lsbranch**: List branches with filtering and formatting options.
 - **mkbranch**: Create branches with policy validation.
 - **mkclone**: Clone the repository with optional target naming.
@@ -57,18 +57,18 @@ See `/README.md` for an introduction to briteTest.
 To make all scripts executable and add them to your PATH, run:
 
 ```sh
-bash /scripts/bin/installscripts
+bash `<repo>/scripts/bin/installscripts`
 ```
 
 This script will:
 - Make all scripts executable (chmod +x)
-- Add /scripts/bin/ to PATH in ~/.bashrc
+- Add `<repo>/scripts/bin/` to PATH in ~/.bashrc
 - Load the updated configuration so scripts are available immediately
 
 For more information, run:
 
 ```sh
-bash /scripts/bin/installscripts -h
+bash `<repo>/scripts/bin/installscripts` -h
 ```
 
 ## Script Usage
@@ -88,13 +88,13 @@ If a script is not executable in your environment, you can:
 1. **Run the setup script** to fix all scripts at once:
 
    ```sh
-   bash /scripts/bin/installscripts
+   bash `<repo>/scripts/bin/installscripts`
    ```
 
 3. **Manually fix individual scripts**:
 
    ```sh
-   chmod +x /scripts/bin/<script_name>
+   chmod +x `<repo>/scripts/bin/<script_name>`
    ```
 
 ### Scripts not in PATH
@@ -102,7 +102,7 @@ If a script is not executable in your environment, you can:
 If scripts are not available by name in your shell, ensure you've run:
 
 ```sh
-bash /scripts/bin/installscripts
+bash `<repo>/scripts/bin/installscripts`
 ```
 
 This adds the necessary PATH configuration to ~/.bashrc. You may need to start a new terminal session for changes to take effect.
@@ -112,7 +112,7 @@ This adds the necessary PATH configuration to ~/.bashrc. You may need to start a
 If you prefer to configure PATH manually instead of using `installscripts`, add this line to ~/.bashrc:
 
 ```sh
-export PATH="/scripts/bin:$PATH"
+export PATH="`<repo>/scripts/bin`:$PATH"
 ```
 
 Then reload your shell configuration:

@@ -38,8 +38,8 @@ SOFTWARE.
 
 ## Preface
 
-This document is for contributors, reviewers, and approvers who need guidance
-on enhancing and maintaining briteTest.
+This document is for contributors, reviewers, and approvers who
+need guidance on enhancing and maintaining briteTest.
 
 For a list of other documents and the repository layout, see
 the Documentation Guide.
@@ -47,6 +47,12 @@ the Documentation Guide.
 For a glossary of terms, see the Glossary Reference.
 
 A printer-friendly PDF file for this document is available.
+
+`<repo>` in a path is a placeholder for the absolute path to the
+briteTest repository root, i.e., `/workspaces/briteTest`.
+
+`<repo_url>` is a placeholder for the briteTest repository URL,
+i.e., `https://github.com/paulsinclair51/briteTest`.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>

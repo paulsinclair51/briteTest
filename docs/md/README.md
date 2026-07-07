@@ -1,15 +1,15 @@
-# /docs/md/
+# `<repo>/docs/md/`
 
 Directory containing user and contributor Markdown (`.md`) documentation.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `/LICENSE`.
+For license details, see `<repo>/LICENSE`.
 
 These are the base/master documents. Generated PDF and DOCX documents are in
- `/docs/pdf` and `/docs/docx/`, respectively.
+ `<repo>/docs/pdf` and `<repo>/docs/docx/`, respectively.
 
-See `/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
@@ -19,7 +19,7 @@ See `/README.md` for an introduction to briteTest.
 
 - **Glossary_Reference.md**: Glossary of project terms and testing terms.
 
-- **Guide.md**: briteTest concepts and quick start example. `/README.md` is
+- **Guide.md**: briteTest concepts and quick start example. `<repo>/README.md` is
   a link to this file.
 
 - **Runner_Guide.md**: Runner API concepts, usage, and examples.

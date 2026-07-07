@@ -1,12 +1,12 @@
-# /.github/workflows/
+# `<repo>/.github/workflows/`
 
 Directory containing GitHub workflows.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `/LICENSE`.
+For license details, see `<repo>/LICENSE`.
 
-See `/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 

@@ -1,27 +1,27 @@
-# /scripts/tests/
+# `<repo>/scripts/tests/`
 
 Directory containing script tests.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `/LICENSE`.
+For license details, see `<repo>/LICENSE`.
 
-See `/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to briteTest.
 
-This directory stores tests for user-facing commands in `/scripts/bin/`.
+This directory stores tests for user-facing commands in `<repo>/scripts/bin/`.
 These tests are intended to quickly verify key CLI behavior, exit codes,
 and high-signal output contracts.
 
 ## Files
 
-- **test_ckbranch.sh**: Smoke tests for `/scripts/bin/ckbranch` covering
+- **test_ckbranch.sh**: Smoke tests for `<repo>/scripts/bin/ckbranch` covering
   help output, local/remote inclusion flags, report marker formatting,
   remote-only branch visibility, and pattern matching behavior.
   
-- **test_gendocs.sh**: Validation tests for `/scripts/bin/gendocs` and its
-  helper scripts `/scripts/helpers/genpdf.sh` and `/scripts/helpers/gendocx.sh`.
+- **test_gendocs.sh**: Validation tests for `<repo>/scripts/bin/gendocs` and its
+  helper scripts `<repo>/scripts/helpers/genpdf.sh` and `<repo>/scripts/helpers/gendocx.sh`.
 
-- **test_lsbranch.sh**: Smoke tests for `/scripts/bin/lsbranch` covering
+- **test_lsbranch.sh**: Smoke tests for `<repo>/scripts/bin/lsbranch` covering
   help output, local/remote listing, invalid-only behavior, and selected
   error paths.
 

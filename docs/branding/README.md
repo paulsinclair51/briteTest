@@ -1,12 +1,12 @@
-# /docs/branding/
+# `<repo>/docs/branding/`
 
 Directory containing assets for the brand name and monogram.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `/LICENSE`.
+For license details, see `<repo>/LICENSE`.
 
-See `/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
