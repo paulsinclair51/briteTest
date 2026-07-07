@@ -2,8 +2,8 @@
 
 ## Branching model
 
-This repository uses a release-oriented branching model with protected `main` and `version` branches with unprotected 'targeted' and
-'contributor` branches.
+This repository uses a release-oriented branching model with protected `main` and `version` branches with unprotected `targeted` and
+`contributor` branches.
 
 ### Protected Branches
 
