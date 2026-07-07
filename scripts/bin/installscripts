@@ -23,7 +23,7 @@ This script:
 
 After running, scripts in /scripts/bin/ will be:
   - Executable by the user.
-  - Available by name in the shell (e.g., ckbranch -h, installscripts -h).
+  - Available by name in the shell (e.g., lsbranch -h, installscripts -h).
   - Persistent across new shell sessions.
 
 Options:
@@ -122,4 +122,4 @@ echo "Scripts in $scripts_bin are now:"
 echo "  - Executable"
 echo "  - Available in PATH for current and future sessions"
 echo ""
-echo "You can now run scripts by name, e.g.: ckbranch -h"
+echo "You can now run scripts by name, e.g.: lsbranch -h"

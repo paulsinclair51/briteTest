@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# ckbranch - Check branch and repository status.
+# lsbranch - lisf branch(sj and status.
 #
-# See usage below for details, or run: ckbranch -h
+# See usage below for details, or run: lsbranch -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,19 +11,17 @@
 usage() {
   cat <<'EOF'
 Usage:
-  ckbranch [-v]
-  ckbranch BRANCH [-v]
-  ckbranch {-a | PATTERN} [-i] [-l] [-r] [-v] [-x "PATTERN"]
-  ckbranch {-h | --help}
+  lsbranch [-v]
+  lsbranch BRANCH [-v]
+  lsbranch {-a | PATTERN} [-i] [-l] [-r] [-v] [-x "PATTERN"]
+  lsbranch {-h | --help}
 
-List branch and repository status, generate report.
+For first usage, list status of the current branch.
 
-For first usage, checks current branch.
+Use BRANCH to list status of the branch with the name BRANCH.
 
-Use BRANCH to check a specific branch by name BRANCH.
-
-Use -a or PATTERN to check branches matching "*" or PATTERN,
-respectively.
+Use -a or PATTERN to list the status of branches matching "*"
+or PATTERN, respectively.
 
 Report includes:
   Branch:  Indicates the branch name. `*` indicates this is
@@ -68,30 +66,30 @@ Options (see above for the options allowed for each form of usage):
 
 Examples:
   # Check current branch
-  ckbranch
+  lsbranch
 
   # Check all branches (local and remote)
-  ckbranch -a
-  ckbranch -a -l -r
-  ckbranch "*"
-  ckbranch "*" -l -r
+  lsbranch -a
+  lsbranch -a -l -r
+  lsbranch "*"
+  lsbranch "*" -l -r
 
   # Check local branches
-  ckbranch -a -l
-  ckbranch "*" -l
+  lsbranch -a -l
+  lsbranch "*" -l
 
   # Check remote branches
-  ckbranch -a -r
-  ckbranch "*" -r
+  lsbranch -a -r
+  lsbranch "*" -r
 
   # Check feature branches (both local and remote)
-  ckbranch "feature/*"
+  lsbranch "feature/*"
 
   # Check branches matching pattern (both local and remote)
-  ckbranch "*auth*"
+  lsbranch "*auth*"
 
   # Verbose output for current branch
-  ckbranch -v
+  lsbranch -v
 
 Outputs:
   - Writes help (usage) text or status messages for the
@@ -380,7 +378,7 @@ get_branch_type() {
 
 generate_report_header() {
   cat > "$OUTPUT_FILE" << EOF
-# ckbranch Report
+# lsbranch Report
 
 **Timestamp:** ${RUN_TS_DISPLAY}
 
@@ -689,7 +687,7 @@ while [[ $# -gt 0 ]]; do
       if [[ -n "$TARGET_BRANCH" || -n "$BRANCH_PATTERN" ]]; then
         printf 'Error: Unexpected argument: %q\n' "$1" >&2
         printf 'Multiple positional arguments received — pattern was likely expanded by the shell.\n' >&2
-        printf 'Quote the pattern to prevent expansion, e.g.: ckbranch "*"\n' >&2
+        printf 'Quote the pattern to prevent expansion, e.g.: lsbranch "*"\n' >&2
         exit 1
       fi
       if [[ "$1" =~ [\*\?\[] ]]; then
