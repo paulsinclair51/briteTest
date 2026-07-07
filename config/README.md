@@ -10,7 +10,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 ## Files
 
 - **contributors.md**: Specifies the current contributors and whether they
-  are also a reviewer or approver. See this file for details.
+  are also a reviewer or approver. See the file for details.
 
 - **markdownlint.json**: Markdown lint configuration for this repository.
   Used by `make lint-md` in the project `Makefile`. See below for details.
