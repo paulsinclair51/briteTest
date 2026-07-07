@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-# lsbranch - lisf branch(sj and status.
+# lsbranch - list branches and their status.
 #
 # See usage below for details, or run: lsbranch -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
-# For license details, see LICENSE in the repository root.
+# For license details, see '<repo>/LICENSE'.
 
 usage() {
   cat <<'EOF'
