@@ -81,7 +81,7 @@ test-gendocs:
 	bash ./scripts/tests/test_gendocs.sh
 
 test-lsbranch:
-	bash ./scripts/tests/test_lsbranch.sh
+	bash ./obsolete/test_lsbranch.sh
 
 test-ckbranch:
 	bash ./scripts/tests/test_ckbranch.sh
