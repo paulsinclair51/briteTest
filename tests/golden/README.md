@@ -10,7 +10,7 @@ See `/README.md` for an introduction to briteTest.
 
 ## Files
 
-- Golden files that contain the expected contents of each corresponding
+- **Golden files**: Files that contain the expected contents of each corresponding
   output file.
 
 - **Metadata files**: Markdown Document (`.md`) metadata files associated with
