@@ -10,8 +10,8 @@ See `/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **`*.docx`**: `.docx` files generated from the `docs/pdf/*.pdf` files
-  using `scripts/bin/gendocx`.
+- **`*.docx`**: `.docx` files generated from the `/docs/pdf/*.pdf` files
+  using `/scripts/bin/gendocs`.
 
 - **README.md**: This directory guide.
 

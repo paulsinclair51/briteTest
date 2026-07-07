@@ -9,14 +9,14 @@ For license details, see `/LICENSE`.
 See `/README.md` for an introduction to briteTest.
 
 - Output files in this directory are compared against corresponding
-  golden files and metadata files in `../golden/`.
+  golden files and metadata files in `/tests/golden/`.
 
-## Files
+## Files/
 
 - **Output files**: Captured copies of `stdout`, `stderr`, and named output files
   produced during test runs.
 
-- **Metadata files**: Markdown Document (`.md`) sidecar files associated with
+- **Metadata files**: Markdown Document (`.md`) metadata files associated with
   captured output files and related file groups.
 
 - **README.md**: This directory guide.
@@ -27,8 +27,8 @@ See `/README.md` for an introduction to briteTest.
 
 ## Output and Golden Files
 
-Output files in `tests/output/` provide captured copies for review, and golden
-files in `tests/golden/` provide the expected results used for validation.
+Output files in `/tests/output/` provide captured copies for review. Golden
+files in `/tests/golden/` provide the expected results used for validation.
 
 - Named output files are captured using a unique suffix to avoid collisions:
 
@@ -40,17 +40,17 @@ files in `tests/golden/` provide the expected results used for validation.
 
 - `stdout` and `stderr` are captured as `stdout-<uid>` and `stderr-<uid>`.
 
-- Temporary files are not captured in `tests/output/`.
+- Temporary files are not captured in `/tests/output/`.
 
 For each captured output file, a metadata file is also written:
 
 - For `<name>-<uid>.ext`, metadata is `<name>-<uid>.ext.md`.
 - For `<name>-<uid>`, metadata is `<name>-<uid>.md`.
 
-Captured output files may be promoted to `tests/golden/` for future
+Captured output files may be promoted to `/tests/golden/` for future
 comparisons.
 
 For full details, including customization options for comparison and promotion,
-see the Runner User Guide.
+see the Test User Guide.
 
-See also `../golden/README.md`.
+See also `/tests/golden/README.md`.

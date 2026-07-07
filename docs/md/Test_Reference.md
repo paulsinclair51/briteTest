@@ -1,5 +1,7 @@
 ![Test Reference](/docs/branding/Test_Reference.png)
 
+#### Version: v1.0.0
+
 This document summarizes the public Test API declared in `include/testapi.h`.
 It focuses on the helper-specific return conventions and the option structs used by the
 comparison helpers.
@@ -45,29 +47,17 @@ the Documentation Guide.
 
 For a glossary of terms, see the Glossary Reference.
 
-A printer-friendly PDF file for this document is available in `docs/pdf/`.
+A printer-friendly PDF file for this document is available.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
 
 ### Document Version History
 
-| Document | Runner | Test | Date | Comment | Author/Editor |
-|----------|------|--------|------|---------|---------------|
-| 1.0.0 | 1.0.0 | 1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
-
-- The **Document** column records the document's version.
-- The **Runner** column records the Runner API version
-  current at the time this version of the document was published.
-- The **Test** column records the Test API version current at
-  the time this version of the document was published.
-
-A version has the format `M.m.p` (Major, minor, patch) where `M` is the
-major version, `m` is the minor version, and `p` is the patch version.
-`p` increments when the document is updated without a change to `M` or `m`,
-and resets to 0 when `M` or `m` increases. The first table entry is the most
-recent version for this document at the time this document was published.
-</details><br>
+| Version | Date | Comment | Author/Editor |
+|----------|------|---------|---------------|
+| v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+</details>
 </details>
 
 <details>
@@ -98,7 +88,6 @@ recent version for this document at the time this document was published.
 <summary><strong>1. Return Conventions</strong></summary>
 
 ## 1. Return Conventions
-</details>
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;1.1. Return Styles</summary>
@@ -123,6 +112,7 @@ Use the helper family to decide what to check:
 - Existence, string, wildcard, and regex predicates should usually be checked against `1` or `0`.
 - Command-execution helpers should usually be checked against `0` or `1`.
 </details>
+</details>
 
 <details>
 <summary><strong>2. Comparison Option Structs</strong></summary>
@@ -130,7 +120,6 @@ Use the helper family to decide what to check:
 ## 2. Comparison Option Structs
 
 The comparison helpers use small option structs instead of mixed boolean and flag parameter lists.
-</details>
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1. `ra_path_compare_options_t`</summary>
@@ -233,12 +222,12 @@ Default initializer:
 #define RA_TEXT_COMPARE_OPTIONS_INIT {0, 0}
 ```
 </details>
+</details>
 
 <details>
 <summary><strong>3. Common Usage Patterns</strong></summary>
 
 ## 3. Common Usage Patterns
-</details>
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Compare Two Paths While Ignoring Timestamps</summary>
@@ -296,6 +285,7 @@ const ra_text_compare_options_t options = {
 
 RA_ASSERT(ta_compare_text_normalized(left_text, right_text, &options) == RA_OK, 0);
 ```
+</details>
 </details>
 
 <details>

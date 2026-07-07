@@ -8,22 +8,22 @@ For license details, see `/LICENSE`.
 
 See `/README.md` for an introduction to briteTest.
 
-This directory stores tests for user-facing commands in `scripts/bin/`.
+This directory stores tests for user-facing commands in `/scripts/bin/`.
 These tests are intended to quickly verify key CLI behavior, exit codes,
 and high-signal output contracts.
 
 ## Files
 
-- **test_gendocs.sh**: Validation tests for `scripts/bin/gendocs` and its
-  helper scripts `scripts/helpers/genpdf.sh` and `scripts/helpers/gendocx.sh`.
-
-- **test_lsbranch.sh**: Smoke tests for `scripts/bin/lsbranch` covering
-  help output, local/remote listing, invalid-only behavior, and selected
-  error paths.
-
-- **test_ckbranch.sh**: Smoke tests for `scripts/bin/ckbranch` covering
+- **test_ckbranch.sh**: Smoke tests for `/scripts/bin/ckbranch` covering
   help output, local/remote inclusion flags, report marker formatting,
   remote-only branch visibility, and pattern matching behavior.
+  
+- **test_gendocs.sh**: Validation tests for `/scripts/bin/gendocs` and its
+  helper scripts `/scripts/helpers/genpdf.sh` and `/scripts/helpers/gendocx.sh`.
+
+- **test_lsbranch.sh**: Smoke tests for `/scripts/bin/lsbranch` covering
+  help output, local/remote listing, invalid-only behavior, and selected
+  error paths.
 
 - **README.md**: This directory guide.
 

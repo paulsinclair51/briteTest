@@ -16,7 +16,7 @@ See `/README.md` for a guide to briteTest.
 
 - **bin/**: Contributor command scripts.
 
-- **helpers/**: Shared shell helper modules used by scripts in the `/scriots/bin`
+- **helpers/**: Shared shell helper modules used by scripts in the `/scripts/bin/`
   subdirectory.
 
 - **tests/**: Script tests.
