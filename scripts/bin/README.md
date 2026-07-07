@@ -25,9 +25,8 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ### Branch and Workflow Management
 
-- **lsbranch**: Check branch and repository status.
 - **ckbranch_history**: Query branch history log entries.
-- **ckversions**: Validate version consistency across `<repo>/docs/include/src.`
+- **lsbranch**: List a branch or branches and their status.
 - **mkbranch**: Create branches with policy validation.
 - **mkclone**: Clone the repository with optional target naming.
 - **mkcommit**: Commit and optionally push changes.
@@ -51,13 +50,13 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 - None.
 
-## Getting Started with Scripts
+## Getting Started
 
 To make all scripts executable and add them to your PATH, run:
 
-```sh
-bash `<repo>/scripts/bin/installscripts`
-```
+   ```sh
+   bash `<repo>/scripts/bin/installscripts`
+   ```
 
 This script will:
 - Make all scripts executable (chmod +x)
@@ -66,17 +65,17 @@ This script will:
 
 For more information, run:
 
-```sh
-bash `<repo>/scripts/bin/installscripts` -h
-```
+  ```sh
+  bash `<repo>/scripts/bin/installscripts` -h
+  ```
 
-## Script Usage
+## Usage
 
 For a script's usage information, execute the script using the `-h` option. For example,
 
-```sh
-lsbranch -h
-```
+  ```sh
+  lsbranch -h
+  ```
 
 ## Troubleshooting
 
@@ -84,13 +83,10 @@ lsbranch -h
 
 If a script is not executable in your environment, you can:
 
-1. **Run the setup script** to fix all scripts at once:
+1. Run or rerun `<repo>/scripts/bin/installscripts` (see Getting
+   Started above).
 
-   ```sh
-   bash `<repo>/scripts/bin/installscripts`
-   ```
-
-3. **Manually fix individual scripts**:
+3. Manually fix individual scripts:
 
    ```sh
    chmod +x `<repo>/scripts/bin/<script_name>`
@@ -98,24 +94,19 @@ If a script is not executable in your environment, you can:
 
 ### Scripts not in PATH
 
-If scripts are not available by name in your shell, ensure you've run:
+1. Run or rerun `<repo>/scripts/bin/installscripts` (see Getting
+   Started above).
 
-```sh
-bash `<repo>/scripts/bin/installscripts`
-```
+3. Manually update the PATH configuration:
 
-This adds the necessary PATH configuration to ~/.bashrc. You may need to start a new terminal session for changes to take effect.
+   - Add this line to ~/.bashrc:
 
-### Manual PATH configuration
+      ```sh
+      export PATH="`<repo>/scripts/bin`:$PATH"
+      ```
 
-If you prefer to configure PATH manually instead of using `installscripts`, add this line to ~/.bashrc:
+   - Then reload your shell configuration:
 
-```sh
-export PATH="`<repo>/scripts/bin`:$PATH"
-```
-
-Then reload your shell configuration:
-
-```sh
-source ~/.bashrc
-```
+     ```sh
+     source ~/.bashrc
+     ```
