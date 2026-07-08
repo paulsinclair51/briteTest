@@ -83,7 +83,7 @@ jobs:
           set -euo pipefail
 
           version_regex='^v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$'
-          
+          desc='[a-z0-9]+(-[a-z0-9]+)*'
           targeted_regex="^(dev|fix)/${desc}-v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$"
           contributor_regex="^([a-z]+/)?${desc}$"
 
