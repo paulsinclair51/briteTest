@@ -8,7 +8,7 @@ name: Defines Branch Names Validation and Branch Workflow
 
 #-----------------------------------------------------------------------------
 # Validate pull request branch names against repository branch rules
-# for the following four types of branches:
+# for the following four kinds of branches:
 #
 # The 'main' branch (protected).
 #
@@ -37,8 +37,11 @@ name: Defines Branch Names Validation and Branch Workflow
 # A 'contributor' branch (not protected, not base d on 'main' or a
 # 'version' branch) with a branch name in the form:
 #
-#   dev/<short-name>
-#   fix/<short-name>
+#   [<type>/]><short-name>
+#
+#  where <type> is a single lowercase type name using only letters, for
+#  example, 'dev' or 'fix'.
+#  
 #
 # Protected branches:
 # - Require pull request before merging
