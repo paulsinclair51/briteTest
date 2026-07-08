@@ -64,7 +64,6 @@ name: Defines Branch Names Validation and Branch Workflow
 on:
   pull_request:
     branches:
-      - main
       - '**'
 
 permissions:
@@ -87,46 +86,46 @@ jobs:
           targeted_regex='^(dev|fix)/[a-z0-9-]+-v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$'
           contributor_regex='^([a-z]+/)?[a-z0-9-]+$'
 
-          # 1. '=main' branch'?
-          if [[ "$HEAD_REF" == "main" ]]; then
-            echo "Invalid pull request: pulling to main is not allowed."
+          # 1. 'main' branch'?
+          if [[ "$BASE_REF" == "main" ]]; then
+            echo "Invalid pull request: pulling from main is not allowed."
             exit 1
             
-          # 2. '=ersion' branch'?
-          elif [[ "$HEAD_REF" =~ $version_regex ]]; then
-            if [[ "$BASE_REF" != "main" ]]; then
-              echo "Invalid pull request: version branch $HEAD_REF must only pull"
-              echo "from main and not from $BASE_REF."
+          # 2. 'version' branch'?
+          elif [[ "$BASE_REF" =~ $version_regex ]]; then
+            if [[ "$HEAD_REF" != "main" ]]; then
+              echo "Invalid pull request: version branch $BASE_REF must only pull"
+              echo "from main and not from $HEAD_REF."
               exit 1
             fi
             # TODO: verify user is an approver.
 
-          # 3, 'targeted' branch'?
-          elif [[ "$HEAD_REF" =~ $targeted_regex ]]; then
-            if [[ ! "$BASE_REF" =~ $version_regex ]]; then
-              echo "Invalid pull request: targeted branch $HEAD_REF"
-              echo "must only pull from a version branch and not $BASE_REF."
+          # 3. 'targeted' branch'?
+          elif [[ "$BASE_REF" =~ $targeted_regex ]]; then
+            if [[ ! "$HEAD_REF" =~ $version_regex ]]; then
+              echo "Invalid pull request: targeted branch $BASE_REF"
+              echo "must only pull from a version branch and not $HEAD_REF."
               exit 1
-            elif [[ "${HEAD_REF##*-}" != "$BASE_REF" ]]; then
-              echo "Invalid pull request: targeted branch $HEAD_REF"
+            elif [[ "${BASE_REF##*-}" != "$HEAD_REF" ]]; then
+              echo "Invalid pull request: targeted branch $BASE_REF"
               echo "must only pull from the version branch named in its suffix"
-              echo "${HEAD_REF##*-} and not from $BASE_REF."
+              echo "${BASE_REF##*-} and not from $HEAD_REF."
               exit 1
             fi
-            # TODO: verify user is a approver.
+            # TODO: verify user is an approver.
 
           # 4. 'contributor' branch'?
-          elif [[ "$HEAD_REF" =~ $contributor_regex ]]; then
-            if [[ ! "$BASE_REF" =~ $targeted_regex ]] &&
-               [[ ! "$BASE_REF" =~ $contributor_regex ]]; then
-              echo "Invalid pull request: contributor branch $HEAD_REF."
+          elif [[ "$BASE_REF" =~ $contributor_regex ]]; then
+            if [[ ! "$HEAD" =~ $targeted_regex ]] &&
+               [[ ! "$HEAD_REF" =~ $contributor_regex ]]; then
+              echo "Invalid pull request: contributor branch $BASE_REF."
               echo "must only pull from a targeted or contributor branch and not"
-              echo "from $BASE_REF."
+              echo "from $HEAD_REF."
               exit 1
             # TODO: verify user is a contributor.
 
           else
-            echo "Invalid pull request: $HEAD_REF"
+            echo "Invalid pull request: $BASE_REF"
             echo "is an unexpected name for a pulling branch."
             exit 1
           fi
