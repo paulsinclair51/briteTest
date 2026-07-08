@@ -12,7 +12,7 @@ name: Defines Branch Names Validation and Branch Workflow
 #
 # 1. The 'main' branch (protected).
 #
-# 2, A 'version' branch (protected, based on the main branch, created by
+# 2. A 'version' branch (protected, based on the main branch, created by
 #    an approver) with branch name in the form:
 #
 #      v<M>.<m>.0
@@ -22,7 +22,7 @@ name: Defines Branch Names Validation and Branch Workflow
 #      <M> is 1-2 digits starting with 1-9.
 #      <m> is either 0 or 1-2 digits starting with 1-9.
 #
-# 3, A 'targeted' branch (not protected, based on a version branch) with
+# 3. A 'targeted' branch (not protected, based on a version branch) with
 #    a branch name in one of the forms:
 #
 #      dev/<description>-<target-version>
@@ -38,7 +38,7 @@ name: Defines Branch Names Validation and Branch Workflow
 #
 #       [<type>/]<description>
 #
-#     where <type> consists of lowercase letters )for example, 'dev', 'fix',
+#     where <type> consists of lowercase letters (for example, 'dev', 'fix',
 #     or 'mywork') and <description> is as defined above.
 #
 # Protected branches:
@@ -86,12 +86,12 @@ jobs:
           targeted_regex='^(dev|fix)/[a-z0-9-]+-v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$'
           contributor_regex='^([a-z]+/)?[a-z0-9-]+$'
 
-          # 1. 'main' branch'?
+          # 1. 'main' branch
           if [[ "$HEAD_REF" == "main" ]]; then
             echo "Invalid pull request: pulling from main is not allowed."
             exit 1
             
-          # 2. 'version' branch'?
+          # 2. 'version' branch?
           elif [[ "$HEAD_REF" =~ $version_regex ]]; then
             if [[ "$BASE_REF" != "main" ]]; then
               echo "Invalid pull request: version branch $HEAD_REF must only pull"
@@ -100,7 +100,7 @@ jobs:
             fi
             # TODO: verify user is an approver.
 
-          # 3. 'targeted' branch'?
+          # 3. 'targeted' branch?
           elif [[ "$HEAD_REF" =~ $targeted_regex ]]; then
             if [[ ! "$BASE_REF" =~ $version_regex ]]; then
               echo "Invalid pull request: targeted branch $HEAD_REF"
@@ -114,7 +114,7 @@ jobs:
             fi
             # TODO: verify user is an approver.
 
-          # 4. 'contributor' branch'?
+          # 4. 'contributor' branch?
           elif [[ "$HEAD_REF" =~ $contributor_regex ]]; then
             if [[ ! "$BASE_REF" =~ $targeted_regex ]] &&
                [[ ! "$BASE_REF" =~ $contributor_regex ]]; then
