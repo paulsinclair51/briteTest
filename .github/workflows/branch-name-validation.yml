@@ -88,24 +88,49 @@ jobs:
 
           if [[ "$BASE_REF" == "main" ]]; then
             if [[ ! "$HEAD_REF" =~ $version_regex ]]; then
-              echo "ERROR: Branches targeting main must match: vM.m.0"
-              echo "Examples: v1.2.0, v12.3.0, v2.0.0"
-              echo "Rejected: $HEAD_REF"
+              echo "Invalid branch name: $HEAD_REF."
+              echo "Branch targets main but does not have a name with the required"
+              echo "form vM.m.0. Example valid names are v1.2.0, v12.3.0, and v2.0.0,"
               exit 1
             fi
           else
-            if [[ "$HEAD_REF" == "main" ]]; then
-              echo "ERROR: Branches not targeting main cannot be named main."
-              echo "Rejected: $HEAD_REF"
+          if [[ "$BASE_REF" == $version_regex" ]]; then
+            if [[ ! "$HEAD_REF" =~ $targeted_regex ]]; then
+              echo "Invalid branch name: $HEAD_REF."
+              echo "Branch targets a version branch but does not have a valid targeted"
+              echo "branch name. Example valid naes are fix/seg-fault-v12.3.0"
+              echo "and dev/memory-managment-v1.2.0."
+              exit 1
+            fi 
+          else
+          if [[ "$HEAD_REF" == "main" ]]; then
+            echo "Invalid branch name: main. A contributor branch cannot be main."
+          if [[ ! "$HEAD_REF" =~ $contributor_regex ]]; then
+            if [[ "$HEAD_REF" == $version_regex ]]; then
+              echo "Invalid branch name: $HEAD_REF."
+              echo "Name is a version branch name but branch doesn't target main."
+              exit 1
+            else
+            if [[ "$HEAD_REF" == $targeted_regex ]]; then
+              echo "Invalid branch name: $HEAD_REF."
+              echo "Name is a targeted branch name but branch doesn't target a version"
+              echo "branch."
+              exit 1
+            else
+              echo "Invalid branch name: $HEAD_REF."
+              echo "Name must be a version, targeted, or contributor branch nane,"
+              echo "branch."
               exit 1
             fi
-
-            if [[ ! "$HEAD_REF" =~ $targeted_regex ]] && [[ ! "$HEAD_REF" =~ $contributor_regex ]]; then
-              echo "ERROR: Branch name does not match any allowed pattern."
-              echo "Allowed forms: dev/<name>-<version>, fix/<name>-<version>, [<type>/]<name>"
-              echo "Rejected: $HEAD_REF"
+          else
+            if [[ ! "$BASE_REF" =~ $targeted_regex ]] &&
+               [[ ! "$HEAD_REF" =~ $contributor_regex ]]; then
+              echo "Invalid branch: $HEAD_REF."
+              echo "A contributor branch must target a targeted branch or "
+              echo "a contributor branch,"
+              echo "branch."
               exit 1
             fi
           fi
 
-          echo "Branch name OK: $HEAD_REF (target: $BASE_REF)."
+          echo "Valid branch name: $HEAD_REF (target: $BASE_REF)."
