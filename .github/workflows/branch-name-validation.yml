@@ -33,7 +33,7 @@ name: Defines Branch Names Validation and Branch Workflow
 #      <description> consists of lowercase letters, digits, and hyphens.
 #      <target-version> is the name of the 'version' branch.
 #
-# 4, A 'contributor' branch (not protected, not based on 'main' or a
+# 4. A 'contributor' branch (not protected, not based on 'main' or a
 #    'version' branch) with a branch name (other than 'main') in the form:
 #
 #       [<type>/]<description>
