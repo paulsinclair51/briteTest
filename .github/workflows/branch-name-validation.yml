@@ -87,7 +87,7 @@ jobs:
           contributor_regex='^([a-z]+/)?[a-z0-9-]+$'
 
           if [[ "$HEAD_REF" =~ $version_regex ]]; then
-            if [[ ! "$BASE_REF" == "main" ]]; then
+            if [[ "$BASE_REF" != "main" ]]; then
               echo "Invalid branch: $HEAD_REF."
               echo "The base branch for a version branch must be main"
               echo "and not $BASE_REF."
@@ -101,7 +101,7 @@ jobs:
               echo "The base branch for a targeted branch must be a version branch"
               echo "and not $BASE_REF."
               exit 1
-            else [[ ! <version-suffix of $HEAD_REF> == $VASE_REF ]]; then
+            elif [[ "${HEAD_REF##*-}" != "$BASE_REF" ]]; then
               echo "Invalid branch: $HEAD_REF."
               echo "The base branch for a targeted branch must have the same version,"
               echo "but base branch name is $BASE_REF."
