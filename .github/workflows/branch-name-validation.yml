@@ -103,29 +103,28 @@ jobs:
               exit 1
             elif [[ "${HEAD_REF##*-}" != "$BASE_REF" ]]; then
               echo "Invalid branch: $HEAD_REF."
-              echo "A targeted branch must target the version branch named in its suffix."
+             echo "A targeted branch must target the version branch named in its suffix."
               echo "Expected base branch: ${HEAD_REF##*-}; actual base branch: $BASE_REF."
               exit 1
             fi
-            
-          elif [[ "$HEAD_REF" == "main" ]]; then
-            echo "Invalid branch name: main. A contributor branch cannot be main."
-            exit 1
-          elif [[ ! "$HEAD_REF" =~ $contributor_regex ]]; then
-            if [[ "$HEAD_REF" =~ $version_regex ]]; then
-              echo "Invalid branch name: $HEAD_REF."
-              echo "Name is a version branch name but branch doesn't target main."
+
+          elif [[ "$HEAD_REF" =~ $contributor_regex ]]; then
+            if [[ ! "$BASE_REF" =~ $targeted_regex ]] &&
+               [[ ! "$BASE_REF" =~ $contributor_regex ]]; then
+              echo "Invalid branch: $HEAD_REF."
+              echo "A contributor branch must target a targeted branch or a"
+              echo "contributor branch."
               exit 1
-            elif [[ "$HEAD_REF" =~ $targeted_regex ]]; then
-              echo "Invalid branch name: $HEAD_REF."
-              echo "Name is a targeted branch name but branch doesn't target a version"
-              echo "branch."
+
+            elif [[ "$HEAD_REF" == "main" ]]; then
+              echo "Invalid branch name: main. A contributor branch cannot be main."
               exit 1
             else
               echo "Invalid branch name: $HEAD_REF."
               echo "Name must be a contributor branch name."
               exit 1
             fi
+
           else
             if [[ ! "$BASE_REF" =~ $targeted_regex ]] &&
                [[ ! "$BASE_REF" =~ $contributor_regex ]]; then
