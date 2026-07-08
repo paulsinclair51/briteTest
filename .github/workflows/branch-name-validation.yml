@@ -116,6 +116,7 @@ jobs:
 
           # 4. 'contributor' branch?
           elif [[ "$HEAD_REF" =~ $contributor_regex ]]; then
+            # Note #1 checks for 'main' so no need to disallow here.
             if [[ ! "$BASE_REF" =~ $targeted_regex ]] &&
                [[ ! "$BASE_REF" =~ $contributor_regex ]]; then
               echo "Invalid pull request: contributor branch $HEAD_REF."
