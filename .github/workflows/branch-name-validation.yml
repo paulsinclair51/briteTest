@@ -87,7 +87,7 @@ jobs:
           targeted_regex="^(dev|fix)/${desc}-v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$"
           contributor_regex="^([a-z]+/)?${desc}$"
 
-          # 1. 'main' branch
+          # 1. 'main' branch?
           if [[ "$HEAD_REF" == "main" ]]; then
             echo "Invalid pull request: pulling from main is not allowed."
             exit 1
