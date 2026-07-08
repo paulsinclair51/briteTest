@@ -29,7 +29,7 @@ name: Defines Branch Names Validation and Branch Workflow
 #   fix/<short-name>-<target-version>
 #
 # where:
-#   <short-name> is is a brief lowercase descriptor using letters,
+#   <short-name> is a brief lowercase descriptor using letters,
 #   numbers, and hyphens.
 #
 #   <target-version> is the name of the 'version' branch.
