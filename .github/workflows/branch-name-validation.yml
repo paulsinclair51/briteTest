@@ -25,7 +25,7 @@ name: Defines Branch Names Validation and Branch Workflow
 # A 'targeted' branch (not protected, based on a version branch) with
 # a branch name in one of the forms:
 #
-#   dev/<short-name-<target-version>
+#   dev/<short-name>-<target-version>
 #   fix/<short-name>-<target-version>
 #
 # where:
@@ -34,14 +34,13 @@ name: Defines Branch Names Validation and Branch Workflow
 #
 #   <target-version> is the name of the 'version' branch.
 #
-# A 'contributor' branch (not protected, not base d on 'main' or a
+# A 'contributor' branch (not protected, not based on 'main' or a
 # 'version' branch) with a branch name in the form:
 #
-#   [<type>/]><short-name>
+#   [<type>/]<short-name>
 #
-#  where <type> is a single lowercase type name using only letters, for
-#  example, 'dev' or 'fix'.
-#  
+#  where <type> is a lowercase word using only letters, for example,
+#  'dev', 'fix', or 'mywork'.
 #
 # Protected branches:
 # - Require pull request before merging
