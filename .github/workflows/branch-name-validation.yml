@@ -88,7 +88,7 @@ jobs:
 
           # 1. 'main' branch'?
           if [[ "$BASE_REF" == "main" ]]; then
-            echo "Invalid pull request: pulling from main is not allowed."
+            echo "Invalid pull request: pulling to main is not allowed."
             exit 1
             
           # 2. 'version' branch'?
@@ -130,4 +130,4 @@ jobs:
             exit 1
           fi
 
-          echo "Valid pull request from $BASE_REF to $HEAD_REF)."
+          echo "Valid pull request from $HEAD_REF to $BASE_REF."
