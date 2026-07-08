@@ -103,8 +103,8 @@ jobs:
               exit 1
             elif [[ "${HEAD_REF##*-}" != "$BASE_REF" ]]; then
               echo "Invalid branch: $HEAD_REF."
-              echo "The base branch for a targeted branch must have the same version,"
-              echo "but base branch name is $BASE_REF."
+              echo "A targeted branch must target the version branch named in its suffix."
+              echo "Expected base branch: ${HEAD_REF##*-}; actual base branch: $BASE_REF."
               exit 1
             fi
             
