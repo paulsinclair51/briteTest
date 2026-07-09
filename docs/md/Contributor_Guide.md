@@ -89,18 +89,19 @@ i.e., `https://github.com/paulsinclair51/briteTest`.
 
 6. [**Testing Requirements**](#6-testing-requirements)
 
-7. [**Making Modifications in a Branch**](#7-making-modifications-in-a-branch)
+7. [**CODEOWNERS and Review Routing**](#7-codeowners-and-review-routing)
 
-8. [**Pull Request (PR)**](#8-pull-request-pr)
+8. [**Making Modifications in a Branch**](#8-making-modifications-in-a-branch)
 
-9. [**Release**](#9-release)
+9. [**Pull Request (PR)**](#9-pull-request-pr)
 
-10. [**Protected Branches**](#10-protected-branches)
+10. [**Release**](#10-release)
 
-11. [**Repository Ownership, Rulesets, and Recovery**](#11-repository-onership-rulesets-and-recovery)
+11. [**Protected Branches**](#11-protected-branches)
 
-12. [**Glossary**](#11-glossary)
+12. [**Repository Ownership, Rulesets, and Recovery**](#12-repository-onership-rulesets-and-recovery)
 
+13. [**Glossary**](#13-glossary)
 </details>
 
 <details>
@@ -609,13 +610,46 @@ make run
 - Ensure report formatting changes are reflected in documentation examples.
 - Keep test code aligned with the current version of `runnerapi.h` and
   `testapi.h`.
-
 </details>
 
 <details>
-<summary><strong>7. Making Modifications in a Branch</strong></summary>
+<summary><strong>7. CODEOWNERS and Review Routing</strong></summary>
 
-## 7. Making Modifications in a Branch
+## 7. CODEOWNERS and Review Routing
+
+This repository uses `/.github/CODEOWNERS` to request review from code owners when pull
+requests (PRs) change matching files.
+
+### Current ownership model
+
+- Default owner for the repository: `@paulsinclair51`
+- No subset ownership rules are currently active.
+- Future subset rules may be added for specific paths (for example, `/docs/`,
+  `/.github/workflows/`, etc.).
+
+### How matching works
+
+- CODEOWNERS entries follow wildcard path matching.
+- If multiple rules match a file, **the last matching rule wins**.
+- If one winning rule has multiple owners, all owners on that line are requested.
+
+### Important notes
+
+- CODEOWNERS affects **who is requested for review**.
+- CODEOWNERS alone does **not** block merges.
+- Merge blocking depends on active branch protection/rulesets requiring approvals
+  and/or code owner review.
+
+### Related repository controls
+
+- Branch name validation workflow: `/.github/workflows/branch-name-validation.yml`
+- Ruleset setup script: `/scripts/setup-rulesets.sh`
+</details>
+
+<details>
+<summary><strong>8. Making Modifications in a Branch</strong></summary>
+
+## 8. Making Modifications in a Branch
 
 - Define modifications that are focused (not mixing unrelated changes),
   logically grouped, and well-scoped.
@@ -638,9 +672,9 @@ make run
 </details>
 
 <details>
-<summary><strong>8. Pull Request (PR)</strong></summary>
+<summary><strong>9. Pull Request (PR)</strong></summary>
 
-## 8. Pull Request (PR)
+## 9. Pull Request (PR)
 
 A **Pull Request (PR)** is a formal proposal to merge your code changes
 into the `main` branch of the repository. It's the mechanism that
@@ -739,9 +773,9 @@ Use this checklist to ensure version numbers are correct before opening a PR:
 </details>
 
 <details>
-<summary><strong>9. Release</strong></summary>
+<summary><strong>10. Release</strong></summary>
 
-## 9. Release
+## 10. Release
 
 A **Release** is the act of publishing a specific version for public use.
 It packages approved and merged changes into a versioned, immutable
@@ -791,9 +825,9 @@ Before releasing:
 </details>
 
 <details>
-<summary><strong>10. Protected Branches</strong></summary>
+<summary><strong>11. Protected Branches</strong></summary>
 
-## 10. Protected Branches
+## 11. Protected Branches
 
 This section explains how to set up a pre-commit hook to prevent accidental commits
 to protected branches.
@@ -974,11 +1008,11 @@ someone bypasses the local hook.
 </details>
 
 <details>
-<summary><strong>11. Repository Ownership, Rulesets, and Recovery/strong></summary>
+<summary><strong>12. Repository Ownership, Rulesets, and Recovery/strong></summary>
 
-##11. Repository Ownership, Rulesets, and Recovery
+##12. Repository Ownership, Rulesets, and Recovery
 
-### 11.1. can run `setup-rulesets.sh`?
+### 12.1. can run `setup-rulesets.sh`?
 
 The script at  
 `https://github.com/paulsinclair51/briteTest/blob/main/scripts/setup-rulesets.sh`  
@@ -1012,7 +1046,7 @@ Status-check note:
 - The rulesets require a status check context named `Validate branch`.
 - If the workflow/job check name differs, update the script or ruleset context.
 
-### 11.3. CODEOWNERS and number of owners
+### 12.3. CODEOWNERS and number of owners
 
 `CODEOWNERS` supports multiple owners per path pattern (users and/or teams).
 
@@ -1025,7 +1059,7 @@ Example:
 When code-owner review is required by rulesets, an eligible code owner review
 must be provided according to repository settings.
 
-### 11.4. If the last owner is unavailable
+### 12.4. If the last owner is unavailable
 
 There is no normal self-promotion path for non-owners.
 
@@ -1034,7 +1068,7 @@ There is no normal self-promotion path for non-owners.
 - If no accessible owner remains, use GitHub account/org recovery and contact
   GitHub Support as needed.
 
-### 11.5. Recovery fallback: migrate to a new repository
+### 12.5. Recovery fallback: migrate to a new repository
 
 If ownership cannot be recovered, create a new repository and migrate:
 
@@ -1049,7 +1083,7 @@ If ownership cannot be recovered, create a new repository and migrate:
 5. If possible, archive old repo and add a “moved” notice linking to the new
    repository.
 
-### 11.6. Harden Ownership Risk
+### 12.6. Harden Ownership Risk
 
 - Use an organization (not single personal account) for critical repos.
 - Maintain at least 2 org owners.
@@ -1058,9 +1092,9 @@ If ownership cannot be recovered, create a new repository and migrate:
 </details>
 
 <details>
-<summary><strong>12. Glossary</strong></summary>
+<summary><strong>13. Glossary</strong></summary>
 
-## 12. Glossary
+## 13. Glossary
 
 For a glossary of terms generally used in the documentation, see
 the Glossary Reference.
