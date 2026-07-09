@@ -1,4 +1,4 @@
-name: Defines Branch Names Validation and Branch Workflow
+name: Defines Branch Name Validation and Branch Workflow
 
 # Define the GitHub workflow for branch name validation.
 
