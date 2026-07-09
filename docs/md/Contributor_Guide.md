@@ -1048,6 +1048,13 @@ If ownership cannot be recovered, create a new repository and migrate:
 4. Validate workflows, required checks, CODEOWNERS behavior, and release flow.
 5. If possible, archive old repo and add a “moved” notice linking to the new
    repository.
+
+### Harden Ownership Risk
+
+- Use an organization (not single personal account) for critical repos.
+- Maintain at least 2 org owners.
+- Keep a break-glass admin account with secure 2FA.
+- Periodically export settings/check access.
 </details>
 
 <details>
