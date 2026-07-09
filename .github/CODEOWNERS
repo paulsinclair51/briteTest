@@ -47,10 +47,21 @@
 #     bottlenecks.
 #   - Team owners must be visible and have write access to the repository,
 #     or review requests may not work as expected.
-#   - Owners are requested for changed files in pull requests; ownership does not
-#     by itself block merges unless branch protection/rulesets require approvals
+#   - Use comments to clarify ownership intent, but keep active rules minimal
+#     and unambiguous.
+#   - Owners are requested for changed files in pull requests (PRs); ownership does
+#     not by itself block merges unless branch protection/rulesets require approvals
 #     and code-owner review. Branch protection/rulesets are in effect for this
 #     repository.
-#   - Use comments to clarify, but keep active rules minimal and unambiguous.
 #
-#   See '<repo>/docs/md/Contributors_Guide.md'.
+# References:
+#
+#   1. '<repo>/.github/workflows/branch-name-validation.yml' for the GitHub
+#      branch name validation workflow.
+#   
+#   2. '<repo>/scripts/setup-rulesets.sh' for the script used to set up or
+#      redefine briteTest rulesets.
+#
+#   3. '<repo>/docs/md/Contributors_Guide.md' for more information about
+#      contributors, reviewers, approvers, and guidance of source control
+#      management (SCM) for briteTest.
