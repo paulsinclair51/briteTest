@@ -1,6 +1,6 @@
 ![Contributor Guide](/docs/branding/Contributor_Guide.png)
 
-#### Version: v1.2.0
+#### Version: v1.0.0
 
 This document defines the contribution process, coding standards, documentation
 rules, versioning guidelines, branch management, and validation workflows for 
@@ -25,9 +25,7 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
-| v1.2.0 | 2026-07-09 | Added troubleshooting FAQ, GPG setup guide, and team onboarding checklist | Paul Sinclair |
-| v1.1.0 | 2026-07-09 | Added validation workflows section and git operations guide | Paul Sinclair |
-| v1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
+| v1.0.0 | 2026-07-09 | Current v1.0.0 development guide; includes initial content plus PR #10 consolidation (`Access Control & Roles`, `Public Repository Security`). | Paul Sinclair |
 
 ---
 
@@ -37,19 +35,21 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
 2. [Branching Model Overview](#branching-model-overview)
 3. [Validation Workflows](#validation-workflows)
 4. [Git Operations and Branch Management](#git-operations-and-branch-management)
-5. [GPG Signing Setup](#gpg-signing-setup)
-6. [Versioning Guidelines](#versioning-guidelines)
-7. [Branding](#branding)
-8. [Documentation Guidelines](#documentation-guidelines)
-9. [Code Guidelines](#code-guidelines)
-10. [Testing Requirements](#testing-requirements)
-11. [CODEOWNERS and Review Routing](#codeowners-and-review-routing)
-12. [Making Modifications in a Branch](#making-modifications-in-a-branch)
-13. [Pull Request (PR)](#pull-request-pr)
-14. [Release](#release)
-15. [Protected Branches](#protected-branches)
-16. [Troubleshooting FAQ](#troubleshooting-faq)
-17. [Team Onboarding Checklist](#team-onboarding-checklist)
+5. [Access Control & Roles](#access-control--roles)
+6. [Public Repository Security](#public-repository-security)
+7. [GPG Signing Setup](#gpg-signing-setup)
+8. [Versioning Guidelines](#versioning-guidelines)
+9. [Branding](#branding)
+10. [Documentation Guidelines](#documentation-guidelines)
+11. [Code Guidelines](#code-guidelines)
+12. [Testing Requirements](#testing-requirements)
+13. [CODEOWNERS and Review Routing](#codeowners-and-review-routing)
+14. [Making Modifications in a Branch](#making-modifications-in-a-branch)
+15. [Pull Request (PR)](#pull-request-pr)
+16. [Release](#release)
+17. [Protected Branches](#protected-branches)
+18. [Troubleshooting FAQ](#troubleshooting-faq)
+19. [Team Onboarding Checklist](#team-onboarding-checklist)
 
 ---
 
@@ -213,6 +213,38 @@ fi
 EOF
 chmod +x .git/hooks/pre-commit
 ```
+
+---
+
+## Access Control & Roles
+
+briteTest uses a six-tier access model for public repository safety:
+
+| Tier | Core Capabilities | Restrictions |
+|------|-------------------|--------------| 
+| **PUBLIC** | Read, clone, fork | No write access |
+| **USERS** (read-only collaborator) | Read all repository content | No push, PR, or script execution |
+| **CONTRIBUTOR (C)** | Create branches, commit, open PRs, run contributor scripts | Cannot merge/release/protected-script operations |
+| **REVIEWER (R)** | All contributor actions plus review/rebase workflows | Cannot run approver-only scripts |
+| **APPROVER (A)** | Merge, release, run protected scripts with override confirmation | Must follow audit and override controls |
+| **MAINTAINER** | Repository admin and access management | Responsible for governance and audits |
+
+**Write access is script-controlled** (`mkbranch`, `mkcommit`, `mkpullrequest`, `mkrebase`, `mkmerge`, `mkrelease`) rather than direct protected-branch git operations.
+
+---
+
+## Public Repository Security
+
+Security controls expected for contributor workflows:
+
+- **Branch protection:** `main` and `v*.0` require PRs, reviews, and status checks.
+- **Secret prevention:** never commit credentials, tokens, or keys; use repository secret scanning and validation workflows.
+- **Critical file protection:** avoid direct changes to protected areas (`.github/workflows/`, policy/security files) unless explicitly required and approved.
+- **Signed provenance:** use GPG signing for protected-branch commits.
+- **Vulnerability reporting:** report security concerns via the repository security policy (`.github/SECURITY.md`) rather than public issue disclosure.
+- **Auditability:** approver-level actions and protected operations must remain traceable through workflow/script logs.
+
+Keep this section aligned with repository policy whenever workflows or branch protections change.
 
 ---
 
