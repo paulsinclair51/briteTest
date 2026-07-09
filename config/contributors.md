@@ -8,8 +8,8 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Overview
 
-This file lists the allowed contributors to briteTest with their roles and email
-addresses.
+This file lists the allowed contributors to briteTest with their GitHub login,
+role, and email address.
 
 An approver may modify the list below to add or remove a contributor or change a
 contributor's role. If there are no approvers, a reviewer may modify the list.
@@ -33,4 +33,8 @@ Contributors are categorized by their roles and permissions:
 
 ## Contributors
 
-- Paul Sinclair, A, paulsinclair@verizon.net
+Each entry uses this form:
+
+- `<github-login>, <role>, <email>`
+
+- paulsinclair51, A, paulsinclair@verizon.net

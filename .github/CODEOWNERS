@@ -62,6 +62,6 @@
 #   2. '<repo>/scripts/setup-rulesets.sh' for the script used to set up or
 #      redefine briteTest rulesets.
 #
-#   3. '<repo>/docs/md/Contributors_Guide.md' for more information about
+#   3. '<repo>/docs/md/Contributor_Guide.md' for more information about
 #      contributors, reviewers, approvers, and guidance of source control
 #      management (SCM) for briteTest.

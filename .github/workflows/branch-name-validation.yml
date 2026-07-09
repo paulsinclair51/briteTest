@@ -39,7 +39,7 @@ name: Defines Branch Names Validation and Branch Workflow
 #       [<type>/]<description>
 #
 #     where <type> consists of between 1 and 30 lowercase letters (for example,
-@     'dev', 'fix', or 'mywork') and <description> is as defined above.
+#     'dev', 'fix', or 'mywork') and <description> is as defined above.
 #
 # Protected branches:
 #
@@ -74,19 +74,25 @@ jobs:
     name: Validate branch
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Check branch rules
         shell: bash
         env:
           BASE_REF: ${{ github.base_ref }}
           HEAD_REF: ${{ github.head_ref }}
+          # Optional comma-separated actor allowlist for internal/bot PRs.
+          # Example: dependabot[bot],github-actions[bot]
+          CKROLE_TRUSTED_ACTORS: ${{ vars.CKROLE_TRUSTED_ACTORS }}
         run: |
           set -euo pipefail
 
           desc='[a-z0-9]+(-[a-z0-9]+)*'
-          type='[a-z](?:[a-z]{0,29})?'
+          type='[a-z][a-z]{0,29}'
           version_regex='^v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$'
           targeted_regex="^(dev|fix)/${desc}-v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$"
-          contributor_regex="^((?!main$)(${type}/)?${desc})$"
+          contributor_regex="^((${type}/)?${desc})$"
 
           # 1. 'main' branch?
           if [[ "$HEAD_REF" == "main" ]]; then
@@ -100,7 +106,11 @@ jobs:
               echo "to main and not to $BASE_REF."
               exit 1
             fi
-            # TODO: verify user is an approver.
+            if ! bash scripts/helpers/ckrole.sh approver; then
+              echo "Invalid pull request: $GITHUB_ACTOR must be an approver"
+              echo "to pull from version branch $HEAD_REF to $BASE_REF."
+              exit 1
+            fi
 
           # 3. 'targeted' branch?
           elif [[ "$HEAD_REF" =~ $targeted_regex ]]; then
@@ -114,18 +124,29 @@ jobs:
               echo "${HEAD_REF##*-} and not to $BASE_REF."
               exit 1
             fi
-            # TODO: verify user is an approver.
+            if ! bash scripts/helpers/ckrole.sh approver; then
+              echo "Invalid pull request: $GITHUB_ACTOR must be an approver"
+              echo "to pull from targeted branch $HEAD_REF to $BASE_REF."
+              exit 1
+            fi
 
           # 4. 'contributor' branch?
           elif [[ "$HEAD_REF" =~ $contributor_regex ]]; then
-            # Note #1 checks for 'main' so no need to disallow here.
+            # Checking if BASE_REF is a contributor branch name requires checking
+            # the contributor_regex and excluding 'main' separately since BASH ERE
+            # cannot encode contributor_regex with the not-main constraint.
             if [[ ! "$BASE_REF" =~ $targeted_regex ]] &&
-               [[ ! "$BASE_REF" =~ $contributor_regex ]]; then
+                  ! [[ "$BASE_REF" =~ $contributor_regex && "$BASE_REF" != "main" ]]; then
               echo "Invalid pull request: contributor branch $HEAD_REF."
               echo "must only pull to a targeted or contributor branch and not"
               echo "to $BASE_REF."
               exit 1
-            # TODO: verify user is a contributor.
+            fi
+            if ! bash scripts/helpers/ckrole.sh contributor; then
+              echo "Invalid pull request: $GITHUB_ACTOR must be a contributor"
+              echo "to pull from contributor branch $HEAD_REF to $BASE_REF."
+              exit 1
+            fi
 
           else
             echo "Invalid pull request: $HEAD_REF"
