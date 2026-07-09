@@ -12,13 +12,23 @@ SPDX-License-Identifier: MIT
 
 ---
 
+## Document Version History
+
+| Version | Date | Comment | Author/Editor |
+|----------|------|---------|---------------|
+| v1.0.0 | 2026-07-09 | Consolidated script RBAC guidance into `Script-Based Access Control` from PR #10 while remaining in v1.0.0 development. | Paul Sinclair |
+| v1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
+
+---
+
 ## Table of Contents
 
 1. [Helper Scripts](#helper-scripts)
 2. [Binary Scripts](#binary-scripts)
-3. [Environment Variables](#environment-variables)
-4. [Exit Codes](#exit-codes)
-5. [Troubleshooting](#troubleshooting)
+3. [Script-Based Access Control](#script-based-access-control)
+4. [Environment Variables](#environment-variables)
+5. [Exit Codes](#exit-codes)
+6. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -363,6 +373,32 @@ scripts/bin/genpngs docs/branding/logo.svg
 # Generate from directory
 scripts/bin/genpngs docs/branding/
 ```
+
+---
+
+## Script-Based Access Control
+
+Role-based script permissions are enforced by helper checks and protected script wrappers.
+
+### Role Permissions Matrix
+
+| Script Capability | Contributor (C) | Reviewer (R) | Approver (A) |
+|------------------|-----------------|--------------|--------------|
+| Branch and commit operations (`mkbranch`, `mkcommit`, `mkpullrequest`) | ✅ | ✅ | ✅ |
+| Review operations (`mkfeedback`, `mkrebase`) | ❌ | ✅ | ✅ |
+| Protected operations (`mkmerge`, `mkrelease`, `fixrepository`) | ❌ | ❌ | ✅ (override required) |
+
+### Protected Script Rule
+
+Approver-only scripts require explicit override confirmation:
+
+```bash
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkmerge <source_branch> <target_branch>
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.0
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepository
+```
+
+If override confirmation is missing, execution must fail by design.
 
 ---
 
