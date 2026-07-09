@@ -49,6 +49,12 @@ name: Validate Branch Names on Pull Request
 # - Block force pushes
 # - Block deletions
 #
+# This workflow validates:
+#   1. Branch names conform to naming conventions
+#   2. Branch relationships are valid (correct merge paths)
+#   3. User roles have permission to perform the merge
+#   4. Merge is allowed (pre-merge validation for safety)
+#
 # This workflow mirrors the branch-naming policy used by
 # <repo>/scripts/bin/mkbranch.
 # 
@@ -77,7 +83,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check branch rules
+      - name: Check branch rules and merge validity
         shell: bash
         env:
           BASE_REF: ${{ github.base_ref }}
@@ -109,6 +115,11 @@ jobs:
           head_type_name=$(get_type_name "$head_result")
           base_type_name=$(get_type_name "$base_result")
 
+          #---------------------------------------------------------------------------
+          # SECTION 1: Validate branch names
+          #---------------------------------------------------------------------------
+          echo "=== SECTION 1: Validating branch names ==="
+
           # Validate branch type of HEAD_REF
           if [[ $head_result -eq 5 ]]; then
             echo "Invalid pull request: pulling source $HEAD_REF"
@@ -126,6 +137,16 @@ jobs:
             exit 1
           fi
 
+          echo "✓ Branch names are valid"
+          echo "  Source: $HEAD_REF (type: $head_type_name)"
+          echo "  Target: $BASE_REF (type: $base_type_name)"
+
+          #---------------------------------------------------------------------------
+          # SECTION 2: Validate branch relationships and merge paths
+          #---------------------------------------------------------------------------
+          echo ""
+          echo "=== SECTION 2: Validating branch relationships ==="
+
           # Validate BASE_REF based on HEAD_REF type
           case $head_result in
             # 2. 'version' branch (HEAD_REF is version)
@@ -135,11 +156,7 @@ jobs:
                 echo "to main and not to $BASE_REF (type: $base_type_name)."
                 exit 1
               fi
-              if ! bash scripts/helpers/ckrole.sh approver; then
-                echo "Invalid pull request: $GITHUB_ACTOR must be an approver"
-                echo "to pull from version branch $HEAD_REF to $BASE_REF."
-                exit 1
-              fi
+              echo "✓ Version branch can merge to main"
               ;;
 
             # 3. 'targeted' branch (HEAD_REF is targeted)
@@ -158,11 +175,8 @@ jobs:
                 echo "($target_version) and not to $BASE_REF."
                 exit 1
               fi
-              if ! bash scripts/helpers/ckrole.sh approver; then
-                echo "Invalid pull request: $GITHUB_ACTOR must be an approver"
-                echo "to pull from targeted branch $HEAD_REF to $BASE_REF."
-                exit 1
-              fi
+              echo "✓ Targeted branch can merge to correct version branch"
+              echo "  Target version: $target_version"
               ;;
 
             # 4. 'contributor' branch (HEAD_REF is contributor)
@@ -173,11 +187,7 @@ jobs:
                 echo "to $BASE_REF (type: $base_type_name)."
                 exit 1
               fi
-              if ! bash scripts/helpers/ckrole.sh contributor; then
-                echo "Invalid pull request: $GITHUB_ACTOR must be a contributor"
-                echo "to pull from contributor branch $HEAD_REF to $BASE_REF."
-                exit 1
-              fi
+              echo "✓ Contributor branch can merge to targeted or contributor branch"
               ;;
 
             *)
@@ -186,4 +196,98 @@ jobs:
               ;;
           esac
 
+          #---------------------------------------------------------------------------
+          # SECTION 3: Validate user roles and permissions
+          #---------------------------------------------------------------------------
+          echo ""
+          echo "=== SECTION 3: Validating user roles and permissions ==="
+
+          case $head_result in
+            # 2. 'version' branch requires approver role
+            2)
+              if ! bash scripts/helpers/ckrole.sh approver; then
+                echo "Invalid pull request: $GITHUB_ACTOR must be an approver"
+                echo "to pull from version branch $HEAD_REF to $BASE_REF."
+                exit 1
+              fi
+              echo "✓ $GITHUB_ACTOR has approver role"
+              ;;
+
+            # 3. 'targeted' branch requires approver role
+            3)
+              if ! bash scripts/helpers/ckrole.sh approver; then
+                echo "Invalid pull request: $GITHUB_ACTOR must be an approver"
+                echo "to pull from targeted branch $HEAD_REF to $BASE_REF."
+                exit 1
+              fi
+              echo "✓ $GITHUB_ACTOR has approver role"
+              ;;
+
+            # 4. 'contributor' branch requires contributor role
+            4)
+              if ! bash scripts/helpers/ckrole.sh contributor; then
+                echo "Invalid pull request: $GITHUB_ACTOR must be a contributor"
+                echo "to pull from contributor branch $HEAD_REF to $BASE_REF."
+                exit 1
+              fi
+              echo "✓ $GITHUB_ACTOR has contributor role"
+              ;;
+          esac
+
+          #---------------------------------------------------------------------------
+          # SECTION 4: Pre-merge validation (safety check)
+          #---------------------------------------------------------------------------
+          echo ""
+          echo "=== SECTION 4: Pre-merge validation ==="
+
+          # This section performs additional validation to ensure merge is safe
+          # even if done independently (outside normal PR flow)
+          echo "✓ Merge safety check:"
+          case $base_result in
+            1)
+              echo "  Target is main: Only version branches allowed"
+              if [[ $head_result -eq 2 ]]; then
+                echo "  ✓ Source is version branch - merge is allowed"
+              else
+                echo "  ✗ Source is not version branch - merge would be blocked"
+                exit 1
+              fi
+              ;;
+            2)
+              echo "  Target is version: Only targeted branches allowed"
+              if [[ $head_result -eq 3 ]]; then
+                echo "  ✓ Source is targeted branch - merge is allowed"
+              else
+                echo "  ✗ Source is not targeted branch - merge would be blocked"
+                exit 1
+              fi
+              ;;
+            3)
+              echo "  Target is targeted: Only contributor branches allowed"
+              if [[ $head_result -eq 4 ]]; then
+                echo "  ✓ Source is contributor branch - merge is allowed"
+              else
+                echo "  ✗ Source is not contributor branch - merge would be blocked"
+                exit 1
+              fi
+              ;;
+            4)
+              echo "  Target is contributor: Only contributor branches allowed"
+              if [[ $head_result -eq 4 ]]; then
+                echo "  ✓ Source is contributor branch - merge is allowed"
+              else
+                echo "  ✗ Source is not contributor branch - merge would be blocked"
+                exit 1
+              fi
+              ;;
+          esac
+
+          #---------------------------------------------------------------------------
+          # FINAL RESULT
+          #---------------------------------------------------------------------------
+          echo ""
+          echo "=========================================="
+          echo "✓ ALL VALIDATIONS PASSED"
+          echo "=========================================="
           echo "Valid pull request from $HEAD_REF to $BASE_REF."
+          echo "This merge is safe to proceed."
