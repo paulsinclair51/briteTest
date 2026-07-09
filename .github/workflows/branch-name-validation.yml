@@ -119,6 +119,13 @@ jobs:
             exit 1
           fi
 
+          # Validate branch type of BASE_REF before checking rules
+          if [[ $base_result -eq 5 ]]; then
+            echo "Invalid pull request: base branch $BASE_REF"
+            echo "has an invalid branch name."
+            exit 1
+          fi
+
           # Validate BASE_REF based on HEAD_REF type
           case $head_result in
             # 2. 'version' branch (HEAD_REF is version)
