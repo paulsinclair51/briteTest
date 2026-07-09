@@ -633,6 +633,8 @@ code owners when pull requests (PRs) change matching files.
 - If multiple rules match a file, **the last matching rule wins**.
 - If one winning rule has multiple owners, all owners on that line are requested.
 
+See `<repo>/.github/CODEOWNERS` for more details.
+
 ### 7.3. Important Notes
 
 - CODEOWNERS affects **who is requested for review**.
