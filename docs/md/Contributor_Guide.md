@@ -653,6 +653,44 @@ See `<repo>/.github/CODEOWNERS` for more details.
 
 ## 8. Making Modifications in a Branch
 
+### 8.1. Branching Model
+
+This repository uses a release-oriented branching model with these branch
+classes:
+
+- **Protected branches**:
+  - `main`
+  - `version` branches in the form `v<M>.<m>.0`
+- **Unprotected branches**:
+  - `targeted` branches
+  - `contributor` branches
+
+Protected branches require pull requests and must not be force-pushed or
+deleted.
+
+### 8.2. Branch Naming Rules
+
+- `version` branch format: `v<M>.<m>.0`
+- `targeted` branch formats:
+  - `dev/<short_name>-<target_version>`
+  - `fix/<short_name>-<target_version>`
+- `contributor` branch format:
+  - `[<type>/]<description>` where `<type>` and `<description>` follow
+    repository branch-name policy
+
+For `targeted` branches, `<target_version>` must match the version branch name
+the PR is targeting.
+
+### 8.3. Base/Target Rules
+
+- `version` branches are created from `main`.
+- `targeted` branches are created from a `version` branch and must only target
+  that same version branch in pull requests.
+- `contributor` branches must not target protected branches directly.
+- `main` should not be used as the source branch for pull requests.
+
+### 8.4. Implementation Workflow
+
 - Define modifications that are focused (not mixing unrelated changes),
   logically grouped, and well-scoped.
 - Define an appropriate name for your changes to use as the branch name.
