@@ -7,6 +7,47 @@ name: Validate Branch Merge
 # For license details, see '<repo>/LICENSE'.
 
 #-----------------------------------------------------------------------------
+# SAFETY AUDIT WORKFLOW - Post-Merge Validation and Compliance Logging
+#
+# PURPOSE: This is a SAFETY AUDIT workflow that runs AFTER a merge is completed.
+# It provides defense-in-depth validation and compliance logging for cases where
+# merges might bypass the primary PR workflow (e.g., admin bypasses, direct git
+# commands, CI/CD automation, or edge cases).
+#
+# WHEN THIS RUNS:
+#   - After a merge is pushed to main, version, targeted, or dev/fix branches
+#   - Post-merge (cannot prevent merge, but validates and logs)
+#
+# WHAT IT VALIDATES:
+#   1. Verifies merged branches follow repository branch rules
+#   2. Checks that only valid branch types were merged
+#   3. Validates merge followed correct rules
+#   4. Provides audit trail for compliance logging
+#
+# EXPECTED OUTCOME:
+#   ✓ Valid merges: Logged for compliance/audit
+#   ✗ Invalid merges: Detected and flagged (but merge already completed)
+#
+# IMPORTANT NOTES:
+#   - This workflow runs AFTER merge (not before)
+#   - It CANNOT prevent a merge from happening
+#   - This is why primary validation in branch-validation-pull-request.yml is critical
+#   - Use this workflow for:
+#     * Audit/compliance logging
+#     * Monitoring for policy violations
+#     * Detecting bypasses
+#     * Post-mortem analysis
+#
+# PRIMARY WORKFLOW:
+#   The primary prevention layer is branch-validation-pull-request.yml which runs
+#   BEFORE merge and should prevent most invalid merges from happening.
+#
+# RELATION TO PRIMARY WORKFLOW:
+#   Both workflows together provide defense-in-depth:
+#   1. branch-validation-pull-request.yml - Prevents invalid merges (primary)
+#   2. branch-validation-merge.yml - Audits merges after they happen (safety net)
+#
+#-----------------------------------------------------------------------------
 # Validate that merged branches follow repository branch rules.
 #
 # This workflow runs after a merge is completed and verifies that only
@@ -21,9 +62,6 @@ name: Validate Branch Merge
 # 3. A 'targeted' branch - Merges from contributor branches allowed.
 #
 # 4. A 'contributor' branch - Merges from other contributor branches allowed.
-#
-# This workflow provides an additional safety check after merge to ensure
-# branch policies were followed, useful for audit and compliance logging.
 #
 # For more information, see '<repo>/docs/md/Contributor_Guide.md'.
 #
@@ -81,6 +119,10 @@ jobs:
 
           branch_type_name=$(get_type_name "$branch_result")
 
+          echo "=== POST-MERGE SAFETY AUDIT ==="
+          echo "Validating merge to branch: $REF_NAME (type: $branch_type_name)"
+          echo ""
+
           # Check if this is a merge commit (has parent commits)
           # If not a merge, skip validation (could be a direct push)
           if git rev-parse HEAD^2 >/dev/null 2>&1; then
@@ -101,57 +143,73 @@ jobs:
               echo "Merge detected:"
               echo "  Source branch: $merge_source (type: $source_type_name)"
               echo "  Target branch: $REF_NAME (type: $branch_type_name)"
+              echo ""
 
               # Validate merge rules
               case $branch_result in
                 # 1. 'main' branch - only version branches can merge to it
                 1)
+                  echo "Validating merge to main branch:"
                   if [[ $source_result -ne 2 ]]; then
-                    echo "ERROR: Invalid merge to main from $merge_source (type: $source_type_name)"
-                    echo "Only version branches can merge to main."
+                    echo "✗ ERROR: Invalid merge to main from $merge_source (type: $source_type_name)"
+                    echo "✗ Only version branches can merge to main."
                     exit 1
                   fi
+                  echo "✓ Valid merge: version branch merged to main"
                   ;;
 
                 # 2. 'version' branch - only targeted branches can merge to it
                 2)
+                  echo "Validating merge to version branch:"
                   if [[ $source_result -ne 3 ]]; then
-                    echo "ERROR: Invalid merge to version branch $REF_NAME from $merge_source (type: $source_type_name)"
-                    echo "Only targeted branches can merge to version branches."
+                    echo "✗ ERROR: Invalid merge to version branch $REF_NAME from $merge_source (type: $source_type_name)"
+                    echo "✗ Only targeted branches can merge to version branches."
                     exit 1
                   fi
+                  echo "✓ Valid merge: targeted branch merged to version branch"
                   ;;
 
                 # 3. 'targeted' branch - contributor branches can merge
                 3)
+                  echo "Validating merge to targeted branch:"
                   if [[ $source_result -ne 4 ]]; then
-                    echo "ERROR: Invalid merge to targeted branch $REF_NAME from $merge_source (type: $source_type_name)"
-                    echo "Only contributor branches can merge to targeted branches."
+                    echo "✗ ERROR: Invalid merge to targeted branch $REF_NAME from $merge_source (type: $source_type_name)"
+                    echo "✗ Only contributor branches can merge to targeted branches."
                     exit 1
                   fi
+                  echo "✓ Valid merge: contributor branch merged to targeted branch"
                   ;;
 
                 # 4. 'contributor' branch - contributor branches can merge
                 4)
+                  echo "Validating merge to contributor branch:"
                   if [[ $source_result -ne 4 ]]; then
-                    echo "ERROR: Invalid merge to contributor branch $REF_NAME from $merge_source (type: $source_type_name)"
-                    echo "Only contributor branches can merge to contributor branches."
+                    echo "✗ ERROR: Invalid merge to contributor branch $REF_NAME from $merge_source (type: $source_type_name)"
+                    echo "✗ Only contributor branches can merge to contributor branches."
                     exit 1
                   fi
+                  echo "✓ Valid merge: contributor branch merged to contributor branch"
                   ;;
 
                 *)
-                  echo "ERROR: Unknown branch type for $REF_NAME"
+                  echo "✗ ERROR: Unknown branch type for $REF_NAME"
                   exit 1
                   ;;
               esac
 
+              echo ""
+              echo "=========================================="
+              echo "✓ AUDIT PASSED: Merge is valid"
+              echo "=========================================="
               echo "Valid merge: $merge_source merged into $REF_NAME"
             else
               echo "WARNING: Could not determine source branch from merge commit. Skipping detailed validation."
               echo "Merge target: $REF_NAME (type: $branch_type_name)"
+              echo "⚠ Note: Manual review recommended"
             fi
           else
             # Direct push (not a merge) - just log it
-            echo "Direct push to $REF_NAME (type: $branch_type_name) - not a merge commit."
+            echo "ℹ Direct push detected (not a merge)"
+            echo "Direct push to $REF_NAME (type: $branch_type_name)"
+            echo "This is typically a rebase or force push."
           fi
