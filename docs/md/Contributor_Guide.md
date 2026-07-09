@@ -25,8 +25,7 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
-| v1.0.0 | 2026-07-09 | Consolidated access control guidance from PR #10 into this guide (`Access Control & Roles`, `Public Repository Security`) while remaining in v1.0.0 development. | Paul Sinclair |
-| v1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
+| v1.0.0 | 2026-07-09 | Current v1.0.0 development guide; includes initial content plus PR #10 consolidation (`Access Control & Roles`, `Public Repository Security`). | Paul Sinclair |
 
 ---
 

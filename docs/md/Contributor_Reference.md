@@ -16,8 +16,7 @@ SPDX-License-Identifier: MIT
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
-| v1.0.0 | 2026-07-09 | Consolidated script RBAC guidance into `Script-Based Access Control` from PR #10 while remaining in v1.0.0 development. | Paul Sinclair |
-| v1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
+| v1.0.0 | 2026-07-09 | Current v1.0.0 development reference; includes initial content plus PR #10 consolidation in `Script-Based Access Control`. | Paul Sinclair |
 
 ---
 
