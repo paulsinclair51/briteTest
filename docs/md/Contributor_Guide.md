@@ -1,6 +1,6 @@
 ![Contributor Guide](/docs/branding/Contributor_Guide.png)
 
-#### Version: v1.2.0
+#### Version: v1.3.0
 
 This document defines the contribution process, coding standards, documentation
 rules, versioning guidelines, branch management, and validation workflows for 
@@ -25,6 +25,7 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
+| v1.3.0 | 2026-07-09 | Consolidated access control and public security guidance into contributor docs | Paul Sinclair |
 | v1.2.0 | 2026-07-09 | Added troubleshooting FAQ, GPG setup guide, and team onboarding checklist | Paul Sinclair |
 | v1.1.0 | 2026-07-09 | Added validation workflows section and git operations guide | Paul Sinclair |
 | v1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
@@ -34,22 +35,24 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
 ## Table of Contents
 
 1. [Introduction](#introduction)
-2. [Branching Model Overview](#branching-model-overview)
-3. [Validation Workflows](#validation-workflows)
-4. [Git Operations and Branch Management](#git-operations-and-branch-management)
-5. [GPG Signing Setup](#gpg-signing-setup)
-6. [Versioning Guidelines](#versioning-guidelines)
-7. [Branding](#branding)
-8. [Documentation Guidelines](#documentation-guidelines)
-9. [Code Guidelines](#code-guidelines)
-10. [Testing Requirements](#testing-requirements)
-11. [CODEOWNERS and Review Routing](#codeowners-and-review-routing)
-12. [Making Modifications in a Branch](#making-modifications-in-a-branch)
-13. [Pull Request (PR)](#pull-request-pr)
-14. [Release](#release)
-15. [Protected Branches](#protected-branches)
-16. [Troubleshooting FAQ](#troubleshooting-faq)
-17. [Team Onboarding Checklist](#team-onboarding-checklist)
+2. [Access Control & Roles](#access-control--roles)
+3. [Public Repository Security](#public-repository-security)
+4. [Branching Model Overview](#branching-model-overview)
+5. [Validation Workflows](#validation-workflows)
+6. [Git Operations and Branch Management](#git-operations-and-branch-management)
+7. [GPG Signing Setup](#gpg-signing-setup)
+8. [Versioning Guidelines](#versioning-guidelines)
+9. [Branding](#branding)
+10. [Documentation Guidelines](#documentation-guidelines)
+11. [Code Guidelines](#code-guidelines)
+12. [Testing Requirements](#testing-requirements)
+13. [CODEOWNERS and Review Routing](#codeowners-and-review-routing)
+14. [Making Modifications in a Branch](#making-modifications-in-a-branch)
+15. [Pull Request (PR)](#pull-request-pr)
+16. [Release](#release)
+17. [Protected Branches](#protected-branches)
+18. [Troubleshooting FAQ](#troubleshooting-faq)
+19. [Team Onboarding Checklist](#team-onboarding-checklist)
 
 ---
 
@@ -58,6 +61,114 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
 This Contributor Guide defines the expectations and rules for contributing to briteTest. It covers branching, versioning, testing, documentation, code style, validation workflows, pull requests, and release requirements.
 
 Contributors should read this document before submitting changes, reviewing, or approving to ensure consistency across the code and documentation.
+
+---
+
+## Access Control & Roles
+
+briteTest uses a six-tier access model so contributors can work in a public repository
+without giving every collaborator the same GitHub or script privileges. Repository-tier
+access is documented here, and script-level RBAC details are maintained in
+[Contributor_Reference.md](./Contributor_Reference.md#script-based-access-control).
+
+### Tier Summary
+
+| Tier | Who | Typical GitHub Permission | Core Capabilities | Key Restrictions |
+|------|-----|---------------------------|-------------------|------------------|
+| `PUBLIC` | Anyone who can view the public project | None | Read public docs/source, clone, fork, download | No collaborator access, no branch creation, no script execution |
+| `USERS` | Invited read-only collaborators | `Pull` | Read repository content, follow issues/discussions, fork for external PRs | No direct push, no branch creation, no local RBAC privileges |
+| `C` | Contributors | `Push` | Create branches, commit, push to work branches, open PRs | No protected-branch pushes, no reviewer/approver scripts |
+| `R` | Reviewers | `Maintain` | All contributor actions plus reviews, rebases, PR updates | No protected-branch pushes, no protected scripts |
+| `A` | Approvers | `Maintain` or `Admin` | All reviewer actions plus merge/release/recovery operations | Protected scripts require explicit override confirmation |
+| `MAINTAINER` | Repository owner/administrators | `Admin` | All repository, security, and settings administration | Expected to use branch protection and audit controls consistently |
+
+### File Access Matrix
+
+Use the following shorthand: `R` = readable, `RW` = editable through the normal
+workflow, `RW*` = editable only through protected approver workflow, `-` = not part
+of the assigned access path.
+
+| File or Path | PUBLIC | USERS | C | R | A | MAINTAINER |
+|--------------|--------|-------|---|---|---|------------|
+| `README.md`, `LICENSE`, `CODE_OF_CONDUCT.md`, `.github/SECURITY.md` | R | R | R | R | R | RW |
+| `docs/md/`, `docs/branding/`, `src/`, `include/`, `examples/` | R | R | RW | RW | RW | RW |
+| `scripts/bin/`, `scripts/helpers/` | - | - | R/execute allowed by role | R/execute allowed by role | RW/execute | RW/execute |
+| `.github/workflows/` | - | - | R | R | RW | RW |
+| `config/markdownlint.json` | - | - | R | R | RW | RW |
+| `config/contributors.md` | - | - | R | R | RW* | RW |
+| `logs/` audit artifacts | - | - | - | - | RW* | RW |
+| `build/`, generated reports | - | - | RW | RW | RW | RW |
+| Protected branches `main`, `v*.0` | - | - | - | - | RW* | RW |
+
+### GitHub Setup by Tier
+
+| Tier | How to Set Up on GitHub | Repository Configuration |
+|------|--------------------------|--------------------------|
+| `PUBLIC` | No invitation needed | Keep contributor guides, code, and security policy public-facing and current |
+| `USERS` | Invite with `Pull` permission when read-only visibility is needed | No `config/contributors.md` entry required unless the user later receives script privileges |
+| `C` | Invite with `Push` permission | Add the collaborator to `config/contributors.md` with role `C`; direct them to this guide and the reference |
+| `R` | Invite with `Maintain` permission | Add a role `R` entry in `config/contributors.md`; reviewers inherit contributor scripts plus review tools |
+| `A` | Invite with `Maintain` or `Admin` permission depending on trust level | Add a role `A` entry in `config/contributors.md`; require `SCRIPT_OVERRIDE_CONFIRMED=true` for protected scripts |
+| `MAINTAINER` | Limit to repository owner or delegated admins | Maintain branch protection, CODEOWNERS, collaborators, secrets, and security contacts |
+
+### Working Expectations by Tier
+
+- **PUBLIC and USERS** consume documentation and submit ideas or fork-based changes
+  without direct repository write access.
+- **Contributors (`C`)** work on feature or fix branches and send pull requests for review.
+- **Reviewers (`R`)** perform code review, update branches when necessary, and help keep
+  validation checks green.
+- **Approvers (`A`)** handle protected operations such as merges, releases, and repository
+  recovery after completing the documented override confirmation.
+- **Maintainers** manage GitHub settings, branch protection, secrets, and collaborator
+  lifecycle in addition to any approver tasks.
+
+---
+
+## Public Repository Security
+
+Public collaboration only works when branch rules, secret handling, validation, and
+vulnerability reporting are all enforced consistently. This section summarizes the
+security expectations contributors should know before they open or review a change.
+
+### Branch Protection
+
+- `main` and every `v*.0` release branch are protected.
+- Protected branches require pull requests, at least one approval, and passing status
+  checks before merge.
+- Force pushes and branch deletions stay disabled on protected branches.
+- Push access to protected branches is limited to approvers and maintainers operating
+  through the approved merge/release workflow.
+
+See [Protected Branches](#protected-branches) and [Validation Workflows](#validation-workflows)
+for the detailed workflow list.
+
+### Secrets and Sensitive Data
+
+- Never commit tokens, passwords, private keys, or embedded credentials.
+- The `branch-validation-secrets.yml` workflow scans pull requests for common secret
+  patterns before merge.
+- If a secret is exposed, stop the merge, rotate the credential, remove it from history,
+  and follow the private vulnerability reporting process below.
+- Keep operational secrets in GitHub Secrets or local environment variables, not in the
+  repository.
+
+### Code Quality and Protected Configuration
+
+- Contributors are expected to run the relevant local checks before opening a PR.
+- GitHub Actions provides defense-in-depth validation for branch rules, commit messages,
+  secrets, workflow syntax, file protection, code quality, and release/tag safety.
+- Workflow files, CODEOWNERS, security policy files, and contributor configuration are
+  protected changes that require approver or maintainer oversight.
+- Reviewers and approvers should treat validation failures as blockers until resolved or
+  explicitly triaged.
+
+### Vulnerability Reporting
+
+- Follow `.github/SECURITY.md` for private vulnerability disclosure instructions.
+- Do **not** open a public issue for a security vulnerability.
+- Include reproduction steps, impact, and any suggested mitigation when reporting.
+- Coordinate fixes privately until the maintainer confirms disclosure timing.
 
 ---
 

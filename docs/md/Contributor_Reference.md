@@ -2,7 +2,7 @@
 
 ## Scripts and Tools Reference
 
-#### Version: v1.0.0
+#### Version: v1.1.0
 
 Comprehensive reference for all scripts and helper tools used in briteTest development.
 
@@ -16,9 +16,10 @@ SPDX-License-Identifier: MIT
 
 1. [Helper Scripts](#helper-scripts)
 2. [Binary Scripts](#binary-scripts)
-3. [Environment Variables](#environment-variables)
-4. [Exit Codes](#exit-codes)
-5. [Troubleshooting](#troubleshooting)
+3. [Script-Based Access Control](#script-based-access-control)
+4. [Environment Variables](#environment-variables)
+5. [Exit Codes](#exit-codes)
+6. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -363,6 +364,63 @@ scripts/bin/genpngs docs/branding/logo.svg
 # Generate from directory
 scripts/bin/genpngs docs/branding/
 ```
+
+---
+
+## Script-Based Access Control
+
+briteTest enforces script permissions in `scripts/helpers/rbac.sh`. Script access is
+role-based, hierarchical, and separate from GitHub branch protection:
+
+- `A` (Approver) inherits reviewer and contributor permissions.
+- `R` (Reviewer) inherits contributor permissions.
+- `C` (Contributor) receives the base contributor toolset.
+- Protected scripts additionally require `SCRIPT_OVERRIDE_CONFIRMED=true`.
+
+### Role Lookup and Enforcement
+
+- Script role assignments come from `config/contributors.md`.
+- If a username is not listed, the helper falls back to contributor-level access.
+- Scripts opt in to enforcement by sourcing `scripts/helpers/rbac.sh` and calling
+  `enforce_script_access`.
+- Protected approver actions are recorded in `logs/approver-audit.log`.
+
+### Role-Based Script Permissions
+
+| Script Group | `C` | `R` | `A` | Notes |
+|--------------|-----|-----|-----|-------|
+| `mkbranch`, `mkclone`, `mkcommit`, `mkcopy`, `mksync`, `mksyncup`, `mktest`, `mkundo`, `ckbranch_history`, `lsbranch` | ✅ | ✅ | ✅ | Base contributor workflow scripts |
+| `mkfeedback`, `mkrebase`, `mkpullrequest`, `ckstyle` | - | ✅ | ✅ | Reviewer-only additions |
+| `mkmerge`, `mkrelease`, `fixrepository`, `updatebrand`, `replacephrases` | - | - | ✅ | Approver-only scripts |
+| `gendocs`, `genpngs`, `installscripts` | ✅ | ✅ | ✅ | Shared utility scripts |
+
+### Protected Scripts Requiring Override Confirmation
+
+The following scripts are reserved for approvers and must be run with
+`SCRIPT_OVERRIDE_CONFIRMED=true`:
+
+| Script | Purpose | Extra Safeguard |
+|--------|---------|-----------------|
+| `mkmerge` | Merge into protected branches or perform controlled branch merges | Requires approver role and explicit override confirmation |
+| `mkrelease` | Create release tags and release commits | Requires approver role and explicit override confirmation |
+| `fixrepository` | Perform repository repair or recovery operations | Requires approver role and explicit override confirmation |
+
+Example protected execution:
+
+```bash
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkmerge feature main
+```
+
+### When to Use Which Role
+
+- **Contributors (`C`)** handle normal branch creation, editing, syncing, testing, and
+  cleanup tasks.
+- **Reviewers (`R`)** add code-review, PR-management, and rebase responsibilities.
+- **Approvers (`A`)** perform merges, releases, branding-wide changes, and emergency
+  recovery tasks after confirming the higher-risk operation.
+
+For repository-level access tiers and public security expectations, see
+[Contributor_Guide.md](./Contributor_Guide.md#access-control--roles).
 
 ---
 
