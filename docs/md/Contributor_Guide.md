@@ -976,7 +976,7 @@ someone bypasses the local hook.
 <details>
 <summary><strong>11. Repository Ownership, Rulesets, and Recovery/strong></summary>
 
-## Repository Ownership, Rulesets, and Recovery
+##11. Repository Ownership, Rulesets, and Recovery
 
 ### Who can run `setup-rulesets.sh`?
 
