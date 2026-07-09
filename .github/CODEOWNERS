@@ -1,19 +1,29 @@
-#  CODEOWNERS
+# CODEOWNERS
+
+# Copyright (c) 2026 Paul Sinclair  
+# SPDX-License-Identifier: MIT  
+# For license details, see `<repo>/LICENSE`.
 
 # Owners for the entire repository:
 * @paulsinclair51
 
-# Owners for subsets of repository:
+# Owners for subsets of the repository:
 # Currently, none.
 
 # Entries:
 #   <owns> @<owner> [ @<owner>]...
 #
-# <owns>: pattern defining a wildcard path. For example:
-#   * = everything in the repo (all files, all directories, recursively)
-#   /docs/ = just that repo directory and its subdirectories (and files within)
-#   /docs/*.md = only .md files directly in repo /docs/ (not nested subdirs)
-#   /docs/**/*.md = all .md files in /docs/ and all nested subdirectories
+# <owns>: pattern defining a wildcard path. Pattern quick reference:
+#   *            = any chars except '/' (single path segment).
+#   **           = any chars including '/' (cross-directory).
+#   ?            = exactly one char except '/'.
+#   /foo/bar     = path anchored at repository root.
+#   docs/*.md    = .md files directly under a docs directory relative
+#                  to where matched (not recursive).
+#   /docs/*.md   = .md files directly under root /docs/.
+#   /docs/**     = everything under /docs/, recursively.
+#
+#   Note: character classes like [a-z] are not supported in patterns.
 #
 # <owner>: GitHub username (account handle/login) or team <org>/<team>.
 #
@@ -42,4 +52,5 @@
 #     and code-owner review. Branch protection/rulesets are in effect for this
 #     repository.
 #   - Use comments to clarify, but keep active rules minimal and unambiguous.
-
+#
+#   See '<repo>/docs/md/Contributors_Guide.md'.
