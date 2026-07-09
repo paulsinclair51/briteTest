@@ -25,6 +25,44 @@
 
 set -euo pipefail
 
-# TODO: implement.
+# TODO: get arguments name [type]
+#.      if type argument, default to 0.
 
-exit 6
+desc='[a-z0-9]+(-[a-z0-9]+)*'
+type='[a-z][a-z]{0,29}'
+version_regex='^v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$'
+targeted_regex="^(dev|fix)/${desc}-v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$"
+contributor_regex="^((${type}/)?${desc})$"
+
+# 1. 'main' branch?
+if [[ name == "main" ]]; then
+  nametype = 1
+            
+# 2. 'version' branch?
+elif [[ name =~ $version_regex ]]; then
+  nametype. = 3
+
+# 3. 'targeted' branch?
+elif [[ name =~ $targeted_regex ]]; then
+  nametype = 3
+
+# 4. 'contributor' branch?
+elif [[ name =~ $contributor_regex ]]; then
+  # Note: check 1 above effectively disallows 'main'
+  # even though contributor_regex allows it.
+  nametype = 4
+
+else
+  nametype = 5
+
+fi
+
+if [[ type == 0 ]]; then
+  exit type
+fi
+
+if [[ nametype == type ]]; then
+  exit 0
+fi
+
+exit 7
