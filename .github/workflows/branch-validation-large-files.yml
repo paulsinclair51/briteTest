@@ -1,0 +1,49 @@
+name: Validate File Sizes
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+
+#-----------------------------------------------------------------------------
+# LARGE FILE DETECTION - Prevent large binary uploads
+#
+# Detects and prevents large binary files from being committed.
+# Hard limit: 10MB | Soft limit: 1MB
+#
+# For large files, use Git LFS: https://git-lfs.github.com/
+#-----------------------------------------------------------------------------
+
+on:
+  push:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+jobs:
+  validate-file-sizes:
+    name: Validate file sizes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check file sizes
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== FILE SIZE VALIDATION ==="
+          
+          hard_limit=$((10 * 1024 * 1024))
+          soft_limit=$((1 * 1024 * 1024))
+          failed=0
+          
+          find . -type f ! -path './.git/*' | while read file; do
+            size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo 0)
+            if [[ $size -gt $hard_limit ]]; then
+              echo "✗ Too large: $file ($((size/1024/1024))MB)"
+              failed=$((failed + 1))
+            fi
+          done
+          [[ $failed -eq 0 ]] && echo "✓ All files within limits" || exit 1

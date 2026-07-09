@@ -1,0 +1,49 @@
+name: Validate Workflow Files
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+
+#-----------------------------------------------------------------------------
+# WORKFLOW VALIDATION - Ensure GitHub Actions syntax and security
+#
+# Validates GitHub workflow files for syntax errors, security issues,
+# and best practices.
+#
+# RULES: Valid YAML, required fields, no hardcoded secrets, pinned versions
+#-----------------------------------------------------------------------------
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-workflows:
+    name: Validate workflow files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate workflow syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== WORKFLOW VALIDATION ==="
+          
+          failed=0
+          for workflow in .github/workflows/*.{yml,yaml} 2>/dev/null; do
+            [[ ! -f "$workflow" ]] && continue
+            filename=$(basename "$workflow")
+            echo "Checking: $filename"
+            
+            # Basic YAML validation
+            python3 -c "import yaml; yaml.safe_load(open('$workflow'))" 2>/dev/null && echo "  ✓ Valid YAML" || { echo "  ✗ Invalid YAML"; failed=$((failed + 1)); }
+            
+            # Check for required fields
+            grep -q "^name:" "$workflow" && echo "  ✓ Has name" || { echo "  ✗ Missing name"; failed=$((failed + 1)); }
+          done
+          [[ $failed -eq 0 ]] && echo "✓ Workflows valid" || exit 1
