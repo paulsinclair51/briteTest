@@ -58,12 +58,14 @@ name: Defines Branch Name Validation and Branch Workflow
 # structure. Files (with the extension .yml) contain YAML text and are
 # used by GitHub Actions.
 #
-# OBSOLETE: This file has been superseded by:
+# =============== OBSOLETE ===============
+# This file has been superseded by:
 #   - branch-validation-pull-request.yml (for pull request validation)
 #   - branch-validation-push.yml (for push validation)
 #   - branch-validation-delete.yml (for branch deletion protection)
 #
 # This file is kept for historical reference only.
+# =======================================
 #
 #-----------------------------------------------------------------------------
 
