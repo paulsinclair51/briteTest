@@ -97,7 +97,9 @@ i.e., `https://github.com/paulsinclair51/briteTest`.
 
 10. [**Protected Branches**](#10-protected-branches)
 
-11. [**Glossary**](#11-glossary)
+11. [**Repository Ownership, Rulesets, and Recovery**](#11-repository-onership-rulesets-and-recovery)
+
+12. [**Glossary**](#11-glossary)
 
 </details>
 
@@ -972,9 +974,86 @@ someone bypasses the local hook.
 </details>
 
 <details>
-<summary><strong>11. Glossary</strong></summary>
+<summary><strong>11. Repository Ownership, Rulesets, and Recovery/strong></summary>
 
-## 11. Glossary
+## Repository Ownership, Rulesets, and Recovery
+
+### Who can run `setup-rulesets.sh`?
+
+The script at  
+`https://github.com/paulsinclair51/briteTest/blob/main/scripts/setup-rulesets.sh`  
+can be run by anyone with local shell access, but it will only succeed if the
+authenticated GitHub identity has sufficient repository permissions.
+
+In practice, this means a repository owner/admin (or an organization role with
+equivalent ruleset-management permission).
+
+### Rules and prerequisites for running the script
+
+Before running:
+
+- Install GitHub CLI (`gh`) and `jq`.
+- Authenticate GitHub CLI (`gh auth status`).
+- Ensure token/account has permission to manage repository rulesets.
+
+What the script does on each run:
+
+- Creates missing rulesets.
+- Updates existing rulesets by name.
+- Cleans up duplicate rulesets with the same name.
+- Applies protections for:
+  - `main`
+  - `v*.*.0`
+  - `dev/*-v*.*.0`
+  - `fix/*-v*.*.0`
+
+Status-check note:
+
+- The rulesets require a status check context named `Validate branch`.
+- If the workflow/job check name differs, update the script or ruleset context.
+
+### CODEOWNERS and number of owners
+
+`CODEOWNERS` supports multiple owners per path pattern (users and/or teams).
+
+Example:
+
+```text
+* @paulsinclair51 @example-org/maintainers
+```
+
+When code-owner review is required by rulesets, an eligible code owner review
+must be provided according to repository settings.
+
+### If the last owner is unavailable
+
+There is no normal self-promotion path for non-owners.
+
+- Personal repository: only the account owner controls ownership/admin access.
+- Organization repository: another org owner can grant owner/admin rights.
+- If no accessible owner remains, use GitHub account/org recovery and contact
+  GitHub Support as needed.
+
+### Recovery fallback: migrate to a new repository
+
+If ownership cannot be recovered, create a new repository and migrate:
+
+1. Create a new target repository under an accessible account/org.
+2. Mirror-push full history (branches/tags/commits) if source is readable.
+3. Recreate settings:
+   - collaborators/teams/roles
+   - rulesets and branch protections
+   - secrets/variables/environments
+   - webhooks and app/deploy integrations
+4. Validate workflows, required checks, CODEOWNERS behavior, and release flow.
+5. If possible, archive old repo and add a “moved” notice linking to the new
+   repository.
+</details>
+
+<details>
+<summary><strong>12. Glossary</strong></summary>
+
+## 12. Glossary
 
 For a glossary of terms generally used in the documentation, see
 the Glossary Reference.
