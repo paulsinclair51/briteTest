@@ -1,6 +1,13 @@
 # Default owners for the entire repository.
 * @paulsinclair51
 
-# Optional future examples:
-# /docs/ @paulsinclair51
+# Optional future examples of owners for :
+# /docs/ @<github-
 # /.github/workflows/ @paulsinclair51
+
+# Entries:
+# <owns> <owrner>
+# * = everything in the repo (all files, all directories, recursively)
+# /docs/ = just that directory and its subdirectories (and files within)
+# /docs/*.md = only .md files directly in /docs/ (not nested subdirs)
+# /docs/**/*.md = all .md files in /docs/ and all nested subdirectories
