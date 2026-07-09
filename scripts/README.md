@@ -9,7 +9,8 @@ See `<repo>/README.md` for a guide to briteTest.
 
 ## Files
 
-- **setup-rulesets.sh**: .
+- **setup-rulesets.sh**: Setup result sets for approvers, reviewers, and contributors.
+- 
 - **README.md**: This directory guide.
 
 ## Subdirectories
