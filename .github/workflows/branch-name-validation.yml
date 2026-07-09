@@ -111,8 +111,8 @@ jobs:
 
           # Validate branch type of HEAD_REF
           if [[ $head_result -eq 5 ]]; then
-            echo "Invalid pull request: $HEAD_REF"
-            echo "is an unexpected name for a pulling source branch."
+            echo "Invalid pull request: pulling source $HEAD_REF"
+            echo "has an invalid branch name."
             exit 1
           elif [[ $head_result -eq 1 ]]; then
             echo "Invalid pull request: pulling from main is not allowed."
