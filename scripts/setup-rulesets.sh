@@ -37,6 +37,10 @@ need_cmd jq
 
 echo "Configuring rulesets for ${REPO} ..."
 
+list_rulesets() {
+  gh api --paginate -H "Accept: application/vnd.github+json" "${API_ROOT}"
+}
+
 # -------------------------------
 # Helper: cleanup duplicates by name
 # -------------------------------
@@ -47,7 +51,7 @@ cleanup_duplicates() {
   # Find all rulesets with this name
   local all_ids
   all_ids="$(
-    gh api -H "Accept: application/vnd.github+json" "${API_ROOT}" \
+    list_rulesets \
       | jq -r --arg NAME "$name" '.[] | select(.name == $NAME) | .id'
   )"
 
@@ -74,7 +78,7 @@ upsert_ruleset() {
   # Find existing ruleset id by exact name (prefer first match)
   local existing_id
   existing_id="$(
-    gh api -H "Accept: application/vnd.github+json" "${API_ROOT}" \
+    list_rulesets \
       | jq -r --arg NAME "$name" '.[] | select(.name == $NAME) | .id' \
       | head -n1
   )"

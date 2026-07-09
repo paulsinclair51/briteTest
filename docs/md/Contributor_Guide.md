@@ -99,7 +99,7 @@ i.e., `https://github.com/paulsinclair51/briteTest`.
 
 11. [**Protected Branches**](#11-protected-branches)
 
-12. [**Repository Ownership, Rulesets, and Recovery**](#12-repository-onership-rulesets-and-recovery)
+12. [**Repository Ownership, Rulesets, and Recovery**](#12-repository-ownership-rulesets-and-recovery)
 
 13. [**Glossary**](#13-glossary)
 </details>
@@ -1010,9 +1010,9 @@ someone bypasses the local hook.
 </details>
 
 <details>
-<summary><strong>12. Repository Ownership, Rulesets, and Recovery/strong></summary>
+<summary><strong>12. Repository Ownership, Rulesets, and Recovery</strong></summary>
 
-##12. Repository Ownership, Rulesets, and Recovery
+## 12. Repository Ownership, Rulesets, and Recovery
 
 ### 12.1. can run `setup-rulesets.sh`?
 
@@ -1024,7 +1024,7 @@ authenticated GitHub identity has sufficient repository permissions.
 In practice, this means a repository owner/admin (or an organization role with
 equivalent ruleset-management permission).
 
-### 11.2.Rules and prerequisites for running the script
+### 12.2. Rules and prerequisites for running the script
 
 Before running:
 
@@ -1047,6 +1047,14 @@ Status-check note:
 
 - The rulesets require a status check context named `Validate branch`.
 - If the workflow/job check name differs, update the script or ruleset context.
+
+Pagination note:
+
+- `setup-rulesets.sh` uses paginated GitHub API listing for rulesets to keep
+  create/update/cleanup idempotent as rule counts grow.
+- This usually does not matter for very small repositories, but it prevents
+  missed matches once rulesets span more than one API page (typically >30
+  items with default API paging).
 
 ### 12.3. CODEOWNERS and number of owners
 
