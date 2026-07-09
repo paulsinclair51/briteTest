@@ -1,6 +1,6 @@
 ![Contributor Guide](/docs/branding/Contributor_Guide.png)
 
-#### Version: v1.1.0
+#### Version: v1.2.0
 
 This document defines the contribution process, coding standards, documentation
 rules, versioning guidelines, branch management, and validation workflows for 
@@ -19,10 +19,13 @@ on enhancing and maintaining briteTest.
 
 For detailed script reference information, see the [Contributor_Reference.md](./Contributor_Reference.md).
 
+For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md).
+
 ### Document Version History
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
+| v1.2.0 | 2026-07-09 | Added troubleshooting FAQ, GPG setup guide, and team onboarding checklist | Paul Sinclair |
 | v1.1.0 | 2026-07-09 | Added validation workflows section and git operations guide | Paul Sinclair |
 | v1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
 
@@ -34,16 +37,19 @@ For detailed script reference information, see the [Contributor_Reference.md](./
 2. [Branching Model Overview](#branching-model-overview)
 3. [Validation Workflows](#validation-workflows)
 4. [Git Operations and Branch Management](#git-operations-and-branch-management)
-5. [Versioning Guidelines](#versioning-guidelines)
-6. [Branding](#branding)
-7. [Documentation Guidelines](#documentation-guidelines)
-8. [Code Guidelines](#code-guidelines)
-9. [Testing Requirements](#testing-requirements)
-10. [CODEOWNERS and Review Routing](#codeowners-and-review-routing)
-11. [Making Modifications in a Branch](#making-modifications-in-a-branch)
-12. [Pull Request (PR)](#pull-request-pr)
-13. [Release](#release)
-14. [Protected Branches](#protected-branches)
+5. [GPG Signing Setup](#gpg-signing-setup)
+6. [Versioning Guidelines](#versioning-guidelines)
+7. [Branding](#branding)
+8. [Documentation Guidelines](#documentation-guidelines)
+9. [Code Guidelines](#code-guidelines)
+10. [Testing Requirements](#testing-requirements)
+11. [CODEOWNERS and Review Routing](#codeowners-and-review-routing)
+12. [Making Modifications in a Branch](#making-modifications-in-a-branch)
+13. [Pull Request (PR)](#pull-request-pr)
+14. [Release](#release)
+15. [Protected Branches](#protected-branches)
+16. [Troubleshooting FAQ](#troubleshooting-faq)
+17. [Team Onboarding Checklist](#team-onboarding-checklist)
 
 ---
 
@@ -78,7 +84,7 @@ This repository uses a release-oriented branching model with four branch types:
 
 ## Validation Workflows
 
-briteTest uses 12+ automated GitHub Actions workflows providing defense-in-depth validation across all git operations.
+briteTest uses 15 automated GitHub Actions workflows providing defense-in-depth validation across all git operations.
 
 ### Workflow Summary Dashboard
 
@@ -189,6 +195,149 @@ scripts/bin/rmbranch <branch_name>
 ```
 
 Protected branches (main, v*.0) cannot be deleted.
+
+### Setting Up Pre-commit Hooks
+
+Prevent accidental commits to protected branches:
+
+```bash
+mkdir -p .git/hooks
+cat > .git/hooks/pre-commit << 'EOF'
+#!/bin/bash
+CURRENT=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$CURRENT" == "main" ]] || [[ "$CURRENT" == v*.0 ]]; then
+  echo "❌ Error: Cannot commit directly to protected branch '$CURRENT'"
+  echo "Create a feature branch: scripts/bin/mkbranch -r <name> $CURRENT"
+  exit 1
+fi
+EOF
+chmod +x .git/hooks/pre-commit
+```
+
+---
+
+## GPG Signing Setup
+
+For commits to protected branches (main and version branches), GPG signatures are required.
+
+### Linux/Mac Setup
+
+**1. Generate GPG Key**
+
+```bash
+gpg --gen-key
+```
+
+Respond to prompts:
+- Kind: RSA and RSA (default)
+- Size: 4096 bits (recommended)
+- Valid for: 2y (or as desired)
+- Name: Your name
+- Email: Your GitHub email
+- Comment: (optional)
+
+**2. List Your Keys**
+
+```bash
+gpg --list-secret-keys --keyid-format=long
+```
+
+Output looks like:
+```
+sec   rsa4096/3AA5C34371567BD2 2016-03-10 [SC] [expires: 2017-03-10]
+      27D6D3E4F2B0D16F
+uid                 [ultimate] Hubot <hubot@example.com>
+ssb   rsa4096/42B6315D7637C87E 2016-03-10 [E] [expires: 2017-03-10]
+```
+
+Your key ID is after `rsa4096/` - in this example: `3AA5C34371567BD2`
+
+**3. Configure Git**
+
+```bash
+# Set key ID for all commits
+git config --global user.signingkey 3AA5C34371567BD2
+
+# Sign commits by default
+git config --global commit.gpgsign true
+```
+
+**4. Add to GitHub**
+
+```bash
+# Export public key
+gpg --armor --export 3AA5C34371567BD2
+```
+
+Copy the output and add to GitHub:
+- Go to Settings → SSH and GPG keys
+- Click "New GPG key"
+- Paste the key
+- Confirm
+
+### Windows Setup
+
+**1. Install GPG**
+
+Download from https://www.gnupg.org/download/
+
+**2. Generate Key**
+
+Use Windows PowerShell:
+```powershell
+gpg --gen-key
+```
+
+Follow same steps as Linux/Mac (above)
+
+**3. Configure Git**
+
+Tell Git to use gpg.exe:
+```powershell
+git config --global gpg.program "C:\Program Files (x86)\GNU\GnuPG\bin\gpg.exe"
+git config --global user.signingkey <YOUR_KEY_ID>
+git config --global commit.gpgsign true
+```
+
+### Signing Commits
+
+Once configured, commits are automatically signed:
+
+```bash
+git commit -m "feat: add feature"  # Automatically signed
+```
+
+Or sign manually:
+
+```bash
+git commit -S -m "feat: add feature"
+```
+
+### Troubleshooting GPG
+
+**Error: "gpg failed to sign"
+
+Try:
+```bash
+# Reload GPG agent
+gpg-connect-agent updatestartuptty /bye
+
+# Or restart agent
+killall gpg-agent
+```
+
+**Key not found**
+
+Verify key exists:
+```bash
+gpg --list-secret-keys
+```
+
+**GitHub doesn't show verified badge**
+
+- Verify public key is added to GitHub
+- Verify commit email matches GitHub account email
+- Wait a few seconds (GitHub takes time to verify)
 
 ---
 
@@ -317,26 +466,240 @@ Protected branches require:
 - ✗ No direct commits
 - ✗ No deletions
 
-### Pre-commit Hook
+---
 
-Prevent accidental commits to protected branches:
+## Troubleshooting FAQ
 
+### Validation Failures
+
+**Q: "Commit message format is invalid"
+
+**A:** Use conventional format: `<type>: <description>`
 ```bash
-mkdir -p .git/hooks
-cat > .git/hooks/pre-commit << 'EOF'
-#!/bin/bash
-CURRENT=$(git rev-parse --abbrev-ref HEAD)
-if [[ "$CURRENT" == "main" ]] || [[ "$CURRENT" == v*.0 ]]; then
-  echo "Error: Cannot commit to protected branch '$CURRENT'"
-  exit 1
-fi
-EOF
-chmod +x .git/hooks/pre-commit
+# ❌ Wrong
+git commit -m "Add new feature"
+
+# ✅ Correct
+git commit -m "feat: add new feature"
 ```
+
+Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+
+**Q: "File size exceeds 10MB"
+
+**A:** Don't commit large binary files. Use Git LFS instead:
+```bash
+# Install Git LFS
+git lfs install
+
+# Track large files
+git lfs track "*.bin"
+git add .gitattributes
+```
+
+**Q: "Protected file cannot be modified"
+
+**A:** Don't modify LICENSE, SECURITY.md, or .github/workflows/ unless approved.
+For legitimate changes, contact the repository owner.
+
+**Q: "Secrets detected in code"
+
+**A:** Remove credentials immediately:
+```bash
+# Remove the file from history
+git filter-repo --path <file> --invert-paths
+
+# Rotate/regenerate the credential
+# (password, API key, token, etc.)
+```
+
+**Q: "License headers missing"
+
+**A:** Add MIT license header to new source files:
+```c
+// Copyright (c) 2026 Paul Sinclair
+// SPDX-License-Identifier: MIT
+```
+
+### Git Operations
+
+**Q: "I accidentally committed to main"
+
+**A:** Don't panic. Contact repository owner. Main is protected so direct commits should fail.
+
+**Q: "How do I undo the last commit?"
+
+**A:** If not pushed:
+```bash
+git reset --soft HEAD~1  # Keep changes
+git reset --hard HEAD~1  # Discard changes
+```
+
+**Q: "How do I update my branch with latest main?"
+
+**A:**
+```bash
+git fetch origin
+git rebase origin/main
+git push --force-with-lease origin <branch>
+```
+
+**Q: "Can I delete a branch?"
+
+**A:** Use the safe deletion script:
+```bash
+scripts/bin/rmbranch <branch_name>
+```
+
+Protected branches (main, v*.0) cannot be deleted.
+
+### Merge and Reviews
+
+**Q: "PR is blocked by validation checks"
+
+**A:** Look at the failing check:
+1. Click on the red X next to the workflow
+2. Read the error message
+3. Fix locally
+4. Re-push (validation runs automatically)
+
+**Q: "Reviewer requested changes, what do I do?"
+
+**A:**
+1. Read the review comments
+2. Make the requested changes
+3. Commit and push
+4. Comment: "Updated. Ready for re-review."
+5. Re-request review
+
+**Q: "My PR has been merged, how do I get local changes?"
+
+**A:**
+```bash
+git fetch origin
+git pull origin main  # or version branch
+```
+
+---
+
+## Team Onboarding Checklist
+
+For new contributors to briteTest:
+
+### Before First Commit
+
+- [ ] **Read the Contributor Guide** (this document)
+- [ ] **Read Contributor Reference** for script details
+- [ ] **Clone the repository**
+  ```bash
+  git clone https://github.com/paulsinclair51/briteTest.git
+  cd briteTest
+  ```
+- [ ] **Set up Git configuration**
+  ```bash
+  git config user.name "Your Name"
+  git config user.email "your.email@example.com"
+  ```
+- [ ] **Set up GPG signing** (see [GPG Signing Setup](#gpg-signing-setup) section)
+- [ ] **Set up pre-commit hook** (see [Setting Up Pre-commit Hooks](#setting-up-pre-commit-hooks) section)
+- [ ] **Verify Git configuration**
+  ```bash
+  git config --global --list
+  ```
+
+### First Contribution
+
+- [ ] **Pick a task** (start with something small)
+- [ ] **Create a branch**
+  ```bash
+  scripts/bin/mkbranch -r mywork/description main
+  ```
+- [ ] **Make changes**
+  ```bash
+  git checkout mywork/description
+  # Edit files...
+  ```
+- [ ] **Test locally**
+  ```bash
+  make run  # Ensure all tests pass
+  ```
+- [ ] **Check branch naming**
+  ```bash
+  bash scripts/helpers/ckbranchname.sh mywork/description
+  # Should return exit code 4 (contributor branch)
+  ```
+- [ ] **Commit with conventional format**
+  ```bash
+  git add .
+  git commit -m "feat: add new feature"
+  # Will be GPG signed automatically
+  ```
+- [ ] **Push your branch**
+  ```bash
+  git push origin mywork/description
+  ```
+- [ ] **Open a Pull Request on GitHub**
+  - Go to https://github.com/paulsinclair51/briteTest
+  - Click "New Pull Request"
+  - Select your branch as source
+  - Select main (or appropriate base branch) as target
+  - Fill in title and description
+  - Submit
+- [ ] **Wait for validation**
+  - GitHub runs 15+ workflows automatically
+  - All should pass with green checkmarks
+  - If any fail, fix locally and re-push
+- [ ] **Request review**
+  - Assign reviewer if applicable
+  - Request review from `@paulsinclair51`
+- [ ] **Respond to feedback**
+  - Read review comments
+  - Make requested changes
+  - Re-push
+  - Re-request review
+- [ ] **Celebrate merge**
+  - Once approved and checks pass, approver merges
+  - Your contribution is now in the codebase!
+
+### Quick Reference
+
+Common commands:
+```bash
+# Create branch
+scripts/bin/mkbranch -r mywork/feature main
+
+# Switch to branch
+git checkout mywork/feature
+
+# Make changes and commit
+git add .
+git commit -m "feat: description"
+
+# Push to GitHub
+git push origin mywork/feature
+
+# Validate branch name
+bash scripts/helpers/ckbranchname.sh mywork/feature
+
+# Run tests
+make run
+
+# Delete branch
+scripts/bin/rmbranch mywork/feature
+```
+
+### Getting Help
+
+- **This guide:** `docs/md/Contributor_Guide.md`
+- **Script reference:** `docs/md/Contributor_Reference.md`
+- **SCM deep dive:** `docs/SCM_REVIEW.md`
+- **Issue:** Open an issue on GitHub
+- **Question:** Start a discussion on GitHub Discussions
 
 ---
 
 ## Related Documents
 
 - [Contributor_Reference.md](./Contributor_Reference.md) - Script reference and tools
+- [SCM_REVIEW.md](../SCM_REVIEW.md) - Detailed SCM system analysis
 - [README.md](../../README.md) - Project overview
