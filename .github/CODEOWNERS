@@ -1,13 +1,45 @@
-# Default owners for the entire repository.
+#  CODEOWNERS
+
+# Owners for the entire repository:
 * @paulsinclair51
 
-# Optional future examples of owners for :
-# /docs/ @<github-
-# /.github/workflows/ @paulsinclair51
+# Owners for subsets of repository:
+# Currently, none.
 
 # Entries:
-# <owns> <owrner>
-# * = everything in the repo (all files, all directories, recursively)
-# /docs/ = just that directory and its subdirectories (and files within)
-# /docs/*.md = only .md files directly in /docs/ (not nested subdirs)
-# /docs/**/*.md = all .md files in /docs/ and all nested subdirectories
+#   <owns> @<owner> [ @<owner>]...
+#
+# <owns>: pattern defining a wildcard path. For example:
+#   * = everything in the repo (all files, all directories, recursively)
+#   /docs/ = just that repo directory and its subdirectories (and files within)
+#   /docs/*.md = only .md files directly in repo /docs/ (not nested subdirs)
+#   /docs/**/*.md = all .md files in /docs/ and all nested subdirectories
+#
+# <owner>: GitHub username (account handle/login) or team <org>/<team>.
+#
+# If patterns overlap (or are duplicated) in CODEOWNERS, the last matching
+# pattern wins. So,
+#   - Overlap: multiple patterns match same file: GitHub uses the owner(s)
+#     from the bottom-most matching rule.
+#   - Duplicate same pattern: later duplicate overrides earlier one.
+#   - Multiple owners on one line: all owners on that winning line are
+#     requested.
+#
+# Examples:
+#   /docs/ @marcusjones
+#   /.github/workflows/ @maryjames @britetest/docs-team
+#
+# Best practices:
+#   - CODEOWNERS for this repository is kept at <repo>/.github/CODEOWNERS.
+#   - Paths are case-sensitive. Match actual file/directory casing exactly.
+#   - Place broad rules first and more specific rules later (last match wins).
+#   - Prefer teams for shared ownership (e.g., @org/team) to avoid single-person
+#     bottlenecks.
+#   - Team owners must be visible and have write access to the repository,
+#     or review requests may not work as expected.
+#   - Owners are requested for changed files in pull requests; ownership does not
+#     by itself block merges unless branch protection/rulesets require approvals
+#     and code-owner review. Branch protection/rulesets are in effect for this
+#     repository.
+#   - Use comments to clarify, but keep active rules minimal and unambiguous.
+
