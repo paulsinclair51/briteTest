@@ -1,41 +1,111 @@
 #!/usr/bin/env bash
-set -euo pipefail
+
+# setup-rulesets.sh - Setup result sets for approvers, reviewers, and contributors.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
 
 # Usage:
+#
 #   ./scripts/setup-rulesets.sh [owner/repo]
+#
+# Idempotent GitHub ruleset setup with auto-cleanup (create-or-update by ruleset name)
+#
 # Example:
 #   ./scripts/setup-rulesets.sh paulsinclair51/briteTest
 #
 # Requirements:
-#   - gh CLI installed and authenticated: gh auth status
-#   - token has repo administration permission (repo + admin:repo_hook / rulesets access)
+#   - gh CLI authenticated (gh auth status)
+#   - jq installed
+#   - repo admin permissions
+
+set -euo pipefail
 
 REPO="${1:-paulsinclair51/briteTest}"
 API_ROOT="/repos/${REPO}/rulesets"
 
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "Error: required command not found: $1" >&2
+    exit 1
+  }
+}
+
+need_cmd gh
+need_cmd jq
+
 echo "Configuring rulesets for ${REPO} ..."
 
 # -------------------------------
-# Helper: create ruleset from JSON
+# Helper: cleanup duplicates by name
 # -------------------------------
-create_ruleset() {
+cleanup_duplicates() {
+  local name="$1"
+  local keep_id="$2"
+
+  # Find all rulesets with this name
+  local all_ids
+  all_ids="$(
+    gh api -H "Accept: application/vnd.github+json" "${API_ROOT}" \
+      | jq -r --arg NAME "$name" '.[] | select(.name == $NAME) | .id'
+  )"
+
+  # Delete all except the one we want to keep
+  while IFS= read -r id; do
+    if [[ "${id}" != "${keep_id}" ]]; then
+      echo "  Removing duplicate: ${name} (id=${id})"
+      gh api \
+        --method DELETE \
+        -H "Accept: application/vnd.github+json" \
+        "${API_ROOT}/${id}" >/dev/null
+    fi
+  done <<< "$all_ids"
+}
+
+# -------------------------------
+# Helper: upsert ruleset by name
+# -------------------------------
+upsert_ruleset() {
   local json_file="$1"
   local name
   name="$(jq -r '.name' "$json_file")"
 
-  echo "Creating ruleset: ${name}"
-  gh api \
-    --method POST \
-    -H "Accept: application/vnd.github+json" \
-    "${API_ROOT}" \
-    --input "$json_file" >/dev/null
+  # Find existing ruleset id by exact name (prefer first match)
+  local existing_id
+  existing_id="$(
+    gh api -H "Accept: application/vnd.github+json" "${API_ROOT}" \
+      | jq -r --arg NAME "$name" '.[] | select(.name == $NAME) | .id' \
+      | head -n1
+  )"
 
-  echo "✔ Created: ${name}"
+  if [[ -n "${existing_id:-}" && "${existing_id}" != "null" ]]; then
+    echo "Updating ruleset: ${name} (id=${existing_id})"
+    
+    # Cleanup any other duplicates with same name
+    cleanup_duplicates "$name" "$existing_id"
+    
+    gh api \
+      --method PUT \
+      -H "Accept: application/vnd.github+json" \
+      "${API_ROOT}/${existing_id}" \
+      --input "$json_file" >/dev/null
+    echo "✔ Updated: ${name}"
+  else
+    echo "Creating ruleset: ${name}"
+    gh api \
+      --method POST \
+      -H "Accept: application/vnd.github+json" \
+      "${API_ROOT}" \
+      --input "$json_file" >/dev/null
+    echo "✔ Created: ${name}"
+  fi
 }
 
 # -------------------------------
-# main protection
+# JSON payloads
 # -------------------------------
+
 cat > /tmp/ruleset-main.json <<'JSON'
 {
   "name": "main protection",
@@ -75,9 +145,6 @@ cat > /tmp/ruleset-main.json <<'JSON'
 }
 JSON
 
-# -------------------------------
-# version branch protection
-# -------------------------------
 cat > /tmp/ruleset-version.json <<'JSON'
 {
   "name": "version branch protection",
@@ -117,9 +184,6 @@ cat > /tmp/ruleset-version.json <<'JSON'
 }
 JSON
 
-# -------------------------------
-# targeted branch protection
-# -------------------------------
 cat > /tmp/ruleset-targeted.json <<'JSON'
 {
   "name": "targeted branch protection",
@@ -160,15 +224,15 @@ cat > /tmp/ruleset-targeted.json <<'JSON'
 }
 JSON
 
-# Validate jq is installed (used only to print name)
-command -v jq >/dev/null 2>&1 || {
-  echo "Error: jq is required (brew install jq / apt install jq)."
-  exit 1
-}
+# -------------------------------
+# Apply
+# -------------------------------
+upsert_ruleset /tmp/ruleset-main.json
+upsert_ruleset /tmp/ruleset-version.json
+upsert_ruleset /tmp/ruleset-targeted.json
 
-create_ruleset /tmp/ruleset-main.json
-create_ruleset /tmp/ruleset-version.json
-create_ruleset /tmp/ruleset-targeted.json
+echo
+echo "Done. Verify at: https://github.com/${REPO}/settings/rules"
 
 echo
 echo "Done."
