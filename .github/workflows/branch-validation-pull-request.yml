@@ -7,6 +7,35 @@ name: Validate Branch Names on Pull Request
 # For license details, see '<repo>/LICENSE'.
 
 #-----------------------------------------------------------------------------
+# PRIMARY VALIDATION WORKFLOW - Branch Name Validation on Pull Request
+#
+# PURPOSE: This is the PRIMARY validation workflow that should prevent most
+# invalid merges. It runs when a pull request is created and validates all
+# branch naming rules, relationships, and user permissions BEFORE merge is
+# allowed.
+#
+# WHEN THIS RUNS:
+#   - When a pull request is opened
+#   - When a pull request is updated
+#   - When commits are pushed to a PR branch
+#
+# WHAT IT VALIDATES:
+#   1. Branch names conform to naming conventions
+#   2. Branch relationships are valid (correct merge paths)
+#   3. User roles have permission to perform the merge
+#   4. Merge is allowed (pre-merge safety validation)
+#
+# EXPECTED OUTCOME:
+#   ✓ In most cases, this workflow should be sufficient to prevent invalid merges
+#   ✓ If all checks pass, the merge is safe to proceed
+#   ✗ If any check fails, the PR cannot be merged (GitHub blocks merge)
+#
+# COMPLEMENT WORKFLOW:
+#   This workflow works together with branch-validation-merge.yml which provides
+#   post-merge audit logging for cases where merges might bypass the PR workflow
+#   (e.g., admin bypasses, direct git commands, CI/CD automation).
+#
+#-----------------------------------------------------------------------------
 # Validate pull request branch names against repository branch rules
 # for the following four kinds of branches:
 #
@@ -48,12 +77,6 @@ name: Validate Branch Names on Pull Request
 # - Require status checks
 # - Block force pushes
 # - Block deletions
-#
-# This workflow validates:
-#   1. Branch names conform to naming conventions
-#   2. Branch relationships are valid (correct merge paths)
-#   3. User roles have permission to perform the merge
-#   4. Merge is allowed (pre-merge validation for safety)
 #
 # This workflow mirrors the branch-naming policy used by
 # <repo>/scripts/bin/mkbranch.
