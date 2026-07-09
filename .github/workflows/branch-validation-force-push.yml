@@ -1,0 +1,114 @@
+name: Validate Force Push Protection
+
+# Define the GitHub workflow for validating force push attempts.
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+#-----------------------------------------------------------------------------
+# FORCE PUSH PROTECTION WORKFLOW - Audit force push attempts
+#
+# PURPOSE: Audits force push attempts to protected branches and logs
+# potential violations for compliance.
+#
+# WHEN THIS RUNS:
+#   - After any push event
+#   - Monitors for force push patterns
+#
+# WHAT IT VALIDATES:
+#   1. Detects force push operations
+#   2. Flags force pushes to protected branches
+#   3. Provides audit logging for compliance
+#   4. Reports who performed the force push
+#
+# EXPECTED OUTCOME:
+#   ✓ Force push blocked by GitHub branch protection (primary defense)
+#   ✗ Force push detected on non-protected: Logged for audit
+#
+# IMPORTANT NOTES:
+#   - GitHub branch protection "Block force pushes" setting is PRIMARY defense
+#   - This workflow provides audit trail for monitoring
+#   - Force pushes to protected branches should be blocked by GitHub settings
+#
+# For more information, see '<repo>/docs/md/Contributor_Guide.md'.
+#
+# YAML is a plain‑text, human‑readable format where indentation defines
+# structure. Files (with the extension .yml) contain YAML text and are
+# used by GitHub Actions.
+#-----------------------------------------------------------------------------
+
+on:
+  push:
+    branches:
+      - '**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-force-push:
+    name: Validate force push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check force push patterns
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.event.after }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+
+          # Get branch type
+          branch_result=$(bash scripts/helpers/ckbranchname.sh "$REF_NAME" 2>/dev/null; echo $?)
+
+          get_type_name() {
+            local type_code=$1
+            case $type_code in
+              1) echo "main" ;;
+              2) echo "version" ;;
+              3) echo "targeted" ;;
+              4) echo "contributor" ;;
+              5) echo "invalid" ;;
+              *) echo "unknown" ;;
+            esac
+          }
+
+          branch_type_name=$(get_type_name "$branch_result")
+
+          echo "=== FORCE PUSH AUDIT ==="
+          echo "Branch: $REF_NAME (type: $branch_type_name)"
+          echo "Actor: $GITHUB_ACTOR"
+
+          # Check if this looks like a force push
+          # Force push typically shows as rewriting history
+          if [[ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            echo "ℹ Checking for force push pattern..."
+            
+            # If AFTER is not descendant of BEFORE, it's likely a rebase/force push
+            if ! git merge-base --is-ancestor "$BEFORE_SHA" "$AFTER_SHA" 2>/dev/null; then
+              echo "⚠ WARNING: Potential force push detected"
+              echo "  Actor: $GITHUB_ACTOR"
+              echo "  Branch: $REF_NAME"
+              echo "  Previous commit: $BEFORE_SHA"
+              echo "  New commit: $AFTER_SHA"
+              
+              # Protected branches should be blocked by GitHub
+              if [[ $branch_result -eq 1 || $branch_result -eq 2 ]]; then
+                echo "✗ ERROR: Force push to protected branch $REF_NAME ($branch_type_name)"
+                echo "✗ This should have been blocked by branch protection rules"
+                exit 1
+              else
+                echo "ℹ Force push to non-protected branch (allowed but logged)"
+              fi
+            else
+              echo "✓ Normal push (not a force push)"
+            fi
+          fi

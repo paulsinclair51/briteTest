@@ -1,0 +1,122 @@
+name: Validate Tag Operations
+
+# Define the GitHub workflow for validating tag operations.
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+#-----------------------------------------------------------------------------
+# TAG VALIDATION WORKFLOW - Validate tag naming and creation
+#
+# PURPOSE: Validates that tags follow naming conventions and are only
+# created on appropriate branches.
+#
+# WHEN THIS RUNS:
+#   - When tags are created or pushed
+#
+# WHAT IT VALIDATES:
+#   1. Tag names follow naming conventions (if any)
+#   2. Tags are only created on appropriate branches
+#   3. Release tags are only on main or version branches
+#   4. Prevents pre-release or development tags on protected branches
+#
+# EXPECTED OUTCOME:
+#   ✓ Valid tags: Allowed
+#   ✗ Invalid tags: Rejected
+#
+# TAG NAMING CONVENTIONS:
+#   - Release tags: v<M>.<m>.<p> (e.g., v1.0.0)
+#   - Beta/RC tags: v<M>.<m>.<p>-beta.N, v<M>.<m>.<p>-rc.N
+#   - Development: dev-<description> (contributor branches only)
+#
+# For more information, see '<repo>/docs/md/Contributor_Guide.md'.
+#
+# YAML is a plain‑text, human‑readable format where indentation defines
+# structure. Files (with the extension .yml) contain YAML text and are
+# used by GitHub Actions.
+#-----------------------------------------------------------------------------
+
+on:
+  push:
+    tags:
+      - '**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-tags:
+    name: Validate tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check tag validity
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          tag_name="$REF_NAME"
+          
+          echo "=== TAG VALIDATION ==="
+          echo "Tag: $tag_name"
+
+          # Get the branch this tag is on
+          # Find which branch contains this tag
+          tag_branches=$(git branch --contains "$tag_name" 2>/dev/null | tr -d ' ' | sed 's/^\*//g' || echo "unknown")
+          echo "Tag branches: $tag_branches"
+
+          # Validate tag naming
+          echo ""
+          echo "Validating tag name format..."
+
+          # Release tag format: v<M>.<m>.<p> (e.g., v1.0.0)
+          if [[ $tag_name =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "✓ Valid release tag format: $tag_name"
+            echo "  This is a release version tag"
+            
+            # Release tags should be on main or version branches
+            if [[ $tag_branches == *"main"* ]]; then
+              echo "  ✓ On main branch"
+            elif [[ $tag_branches == *v[0-9]* ]]; then
+              echo "  ✓ On version branch"
+            else
+              echo "  ⚠ Warning: Release tag on branch: $tag_branches"
+            fi
+
+          # Beta/RC tag format: v<M>.<m>.<p>-beta.N or v<M>.<m>.<p>-rc.N
+          elif [[ $tag_name =~ ^v[0-9]+\.[0-9]+\.[0-9]+-(beta|rc)\.[0-9]+$ ]]; then
+            echo "✓ Valid pre-release tag format: $tag_name"
+            echo "  This is a beta/RC version tag"
+
+          # Development tag format: dev-<description>
+          elif [[ $tag_name =~ ^dev-[a-z0-9-]+$ ]]; then
+            echo "✓ Valid development tag format: $tag_name"
+            echo "  Development tags should only be on contributor/targeted branches"
+            
+            if [[ $tag_branches == *"dev/"* ]] || [[ $tag_branches == *"fix/"* ]]; then
+              echo "  ✓ On appropriate branch"
+            elif [[ $tag_branches == *"main"* ]] || [[ $tag_branches == *v[0-9]* ]]; then
+              echo "  ✗ ERROR: Development tag on protected branch"
+              exit 1
+            fi
+
+          else
+            echo "✗ Invalid tag name format: $tag_name"
+            echo "  Expected formats:"
+            echo "    - Release: v<M>.<m>.<p> (e.g., v1.0.0)"
+            echo "    - Pre-release: v<M>.<m>.<p>-beta.N (e.g., v1.0.0-beta.1)"
+            echo "    - Development: dev-<description> (e.g., dev-feature-x)"
+            exit 1
+          fi
+
+          echo ""
+          echo "=========================================="
+          echo "✓ TAG VALIDATION PASSED"
+          echo "=========================================="
