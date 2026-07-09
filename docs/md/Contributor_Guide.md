@@ -617,30 +617,30 @@ make run
 
 ## 7. CODEOWNERS and Review Routing
 
-This repository uses `/.github/CODEOWNERS` to request review from code owners when pull
-requests (PRs) change matching files.
+This repository uses `<repo>/.github/CODEOWNERS` to request review from
+code owners when pull requests (PRs) change matching files.
 
-### Current ownership model
+### 7.1. Ownership Model
 
-- Default owner for the repository: `@paulsinclair51`
+- Default owner for the repository: `paulsinclair51`
 - No subset ownership rules are currently active.
 - Future subset rules may be added for specific paths (for example, `/docs/`,
   `/.github/workflows/`, etc.).
 
-### How matching works
+### 7.2. How Matching Works
 
 - CODEOWNERS entries follow wildcard path matching.
 - If multiple rules match a file, **the last matching rule wins**.
 - If one winning rule has multiple owners, all owners on that line are requested.
 
-### Important notes
+### 7.3. Important Notes
 
 - CODEOWNERS affects **who is requested for review**.
 - CODEOWNERS alone does **not** block merges.
 - Merge blocking depends on active branch protection/rulesets requiring approvals
   and/or code owner review.
 
-### Related repository controls
+### 7.4. Related Repository Controls
 
 - Branch name validation workflow: `/.github/workflows/branch-name-validation.yml`
 - Ruleset setup script: `/scripts/setup-rulesets.sh`
