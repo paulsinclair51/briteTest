@@ -38,6 +38,7 @@ extract_report_path() {
 
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
+REAL_GIT="$(command -v git)"
 
 # 1) Help output
 rc=$(run_capture "$TMPDIR/help.out" "$LSBRANCH" -h)
@@ -83,13 +84,13 @@ report_path="$SCRIPT_DIR/../../$report_rel"
 [[ -f "$report_path" ]] || fail "generated report file should exist"
 
 current_branch=$(git rev-parse --abbrev-ref HEAD)
-grep -F "| ${current_branch}* | local |" "$report_path" >/dev/null || fail "current branch should be marked with trailing * in local report row"
+grep -Eq "\\| ${current_branch}(\\*|<span[^>]*>\\*</span>) \\| local \\|" "$report_path" || fail "current branch should be marked with trailing * in local report row"
 pass "current branch report marker"
 
 # 5) BRANCH mode allows only -v; local/remote filters are invalid in BRANCH mode
 rc=$(run_capture "$TMPDIR/branch_mode_invalid.out" "$LSBRANCH" "v1.0.0" -l)
 [[ "$rc" -eq 1 ]] || fail "lsbranch 'v1.0.0' -l should exit 1"
-grep -q 'only -v is allowed' "$TMPDIR/branch_mode_invalid.out" || fail "BRANCH mode should reject -l/-r/-i/-x"
+grep -q 'only -v and -b are allowed' "$TMPDIR/branch_mode_invalid.out" || fail "BRANCH mode should reject -l/-r/-i/-x"
 pass "BRANCH mode option restrictions"
 
 # 6) Literal dots in PATTERN should be treated literally, not as regex wildcard
@@ -97,5 +98,60 @@ rc=$(run_capture "$TMPDIR/literal.out" "$LSBRANCH" "v1.0.0*" -l)
 [[ "$rc" -eq 0 ]] || fail "lsbranch 'v1.0.0*' -l should exit 0"
 grep -q '^v1.0.0 ' "$TMPDIR/literal.out" || fail "literal dots in pattern should match branch v1.0.0"
 pass "literal glob pattern behavior"
+
+# 7) Dirty worktree should not cause non-current local branches to fail inspection
+backup_file="$TMPDIR/lsbranch-dirty-backup"
+scratch_file=$(git ls-files | while IFS= read -r path; do
+  [[ -n "$path" ]] || continue
+  [[ "$path" == reports/* ]] && continue
+  if ! git diff --quiet -- "$path"; then
+    continue
+  fi
+  echo "$path"
+  break
+done)
+[[ -n "$scratch_file" ]] || fail "need one clean tracked file for dirty-worktree smoke test"
+cp "$scratch_file" "$backup_file"
+trap 'rm -rf "$TMPDIR"; if [[ -f "$backup_file" && -n "${scratch_file:-}" ]]; then cp "$backup_file" "$scratch_file"; fi' EXIT
+printf '\nlsbranch dirty smoke test\n' >> "$scratch_file"
+rc=$(run_capture "$TMPDIR/dirty.out" "$LSBRANCH" -a -l)
+[[ "$rc" -eq 0 ]] || fail "lsbranch -a -l should exit 0 with a dirty worktree"
+if grep -q '\[check failed\]' "$TMPDIR/dirty.out"; then
+  fail "lsbranch -a -l should not emit [check failed] for local branches when the worktree is dirty"
+fi
+grep -q '^v1.0.0 \[local\] \[not checked out\]' "$TMPDIR/dirty.out" || fail "non-current local branches should be marked [not checked out]"
+cp "$backup_file" "$scratch_file"
+pass "dirty worktree local branch inspection"
+
+# 8) Verbose mode and the report should surface degraded fetch/PR lookups
+FAKEBIN="$TMPDIR/fakebin"
+mkdir -p "$FAKEBIN"
+cat > "$FAKEBIN/git" <<EOF
+#!/usr/bin/env bash
+if [[ "\$1" == "fetch" && "\${2:-}" == "origin" ]]; then
+  echo "simulated fetch failure" >&2
+  exit 1
+fi
+exec "$REAL_GIT" "\$@"
+EOF
+chmod +x "$FAKEBIN/git"
+cat > "$FAKEBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+echo "simulated gh failure" >&2
+exit 1
+EOF
+chmod +x "$FAKEBIN/gh"
+
+rc=$(run_capture "$TMPDIR/degraded.out" env PATH="$FAKEBIN:$PATH" "$LSBRANCH" -a -r -v)
+[[ "$rc" -eq 0 ]] || fail "lsbranch -a -r -v should tolerate degraded fetch/PR helpers"
+grep -q "Warning: Failed to fetch 'origin'; remote status may be stale in this report." "$TMPDIR/degraded.out" || fail "verbose output should include fetch diagnostics"
+grep -q "Warning: Failed to query pull requests for 'main'; PR column shown as N/A." "$TMPDIR/degraded.out" || fail "verbose output should include PR diagnostics"
+degraded_report_rel=$(extract_report_path "$TMPDIR/degraded.out")
+[[ -n "$degraded_report_rel" ]] || fail "degraded run should still generate a report"
+degraded_report_path="$SCRIPT_DIR/../../$degraded_report_rel"
+grep -q '^## Warnings$' "$degraded_report_path" || fail "report should include a warnings section when helpers degrade"
+grep -q "Failed to fetch 'origin'; remote status may be stale in this report." "$degraded_report_path" || fail "report should include fetch warning"
+grep -q "Failed to query pull requests for 'main'; PR column shown as N/A." "$degraded_report_path" || fail "report should include PR warning"
+pass "degraded helper diagnostics"
 
 echo "All lsbranch smoke tests passed."
