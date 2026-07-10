@@ -129,6 +129,8 @@ extract_history_first_two_rows() {
             got_header = 0
             got_separator = 0
             rows = 0
+            sep_pat = "^\\|[[:space:]-]+\\|[[:space:]-]+" \
+                      "\\|[[:space:]-]+\\|[[:space:]-]+\\|[[:space:]]*$"
         }
 
         /^\|[[:space:]]*Completed[[:space:]]*\|/ && !got_header {
@@ -137,7 +139,7 @@ extract_history_first_two_rows() {
             next
         }
 
-        got_header && !got_separator && /^\|[[:space:]-]+\|[[:space:]-]+\|[[:space:]-]+\|[[:space:]-]+\|[[:space:]]*$/ {
+        got_header && !got_separator && $0 ~ sep_pat {
             print
             got_separator = 1
             next
@@ -213,9 +215,15 @@ write_run_log_on_exit() {
             echo "| --- | --- | --- | --- |"
         fi
         echo
-        printf '%s  \n' "$(format_change_line "Brand Name" "$previous_brand_value" "$pending_brand_value")"
-        printf '%s  \n' "$(format_change_line "Initials" "$previous_initials_value" "$pending_initials_value")"
-        printf '%s  \n' "$(format_change_line "Tagline" "$previous_tagline_value" "$pending_tagline_value")"
+        _fmt_br=$(format_change_line "Brand Name" \
+          "$previous_brand_value" "$pending_brand_value")
+        printf '%s  \n' "$_fmt_br"
+        _fmt_in=$(format_change_line "Initials" \
+          "$previous_initials_value" "$pending_initials_value")
+        printf '%s  \n' "$_fmt_in"
+        _fmt_tg=$(format_change_line "Tagline" \
+          "$previous_tagline_value" "$pending_tagline_value")
+        printf '%s  \n' "$_fmt_tg"
         echo
         echo "## Output"
         echo '```text'
@@ -264,13 +272,15 @@ extract_brand_rows() {
         BEGIN {
             pending_found = 0
             completed_found = 0
+            sep_pat = "^\\|[[:space:]-]+\\|[[:space:]-]+" \
+                      "\\|[[:space:]-]+\\|[[:space:]-]+\\|[[:space:]]*$"
         }
 
         $0 ~ /^\|/ {
             row = $0
             gsub(/\r$/, "", row)
 
-            if (row ~ /^\|[[:space:]-]+\|[[:space:]-]+\|[[:space:]-]+\|[[:space:]-]+\|[[:space:]]*$/) {
+            if (row ~ sep_pat) {
                 next
             }
 
@@ -335,7 +345,9 @@ update_completion_timestamp() {
                 brand = trim(parts[3])
                 initials = trim(parts[4])
                 tagline = trim(parts[5])
-                print "| " timestamp " | " brand " | " initials " | " tagline " |"
+                line_out = "| " timestamp " | " brand " | " \
+                           initials " | " tagline " |"
+                print line_out
                 next
             }
         }
@@ -372,7 +384,8 @@ process_text_brand_replacement() {
             total_replacements=$((total_replacements + count))
 
             echo "${file#${REPO_ROOT}/}:"
-            echo "  - Replaced '${old_brand}' -> '${new_brand}' (${count} occurrence(s))"
+            _msg="(${count} occurrence(s))"
+            echo "  - Replaced '${old_brand}' -> '${new_brand}' $_msg"
             echo
 
             if [[ "$dry_run" -eq 0 ]]; then
@@ -395,7 +408,9 @@ process_text_brand_replacement() {
 cleanup_dry_run_reports() {
     local -a dry_run_reports=()
 
-    mapfile -t dry_run_reports < <(find "${REPORTS_DIR}" -maxdepth 1 -type f -name 'updatebrand-dry-run-*.md' | sort)
+    mapfile -t dry_run_reports < <(find "${REPORTS_DIR}" \
+        -maxdepth 1 -type f -name 'updatebrand-dry-run-*.md' \
+        | sort)
 
     if [[ "${#dry_run_reports[@]}" -eq 0 ]]; then
         return
@@ -418,7 +433,8 @@ normalize_doc_title_svg_if_same_as_brand() {
 
     file_name="$(basename "$svg_file")"
     case "$file_name" in
-        canary-live.svg|canary.svg|Monogram.svg|Logo_with_BrandName.svg|Logo_with_Tagline.svg)
+        canary-live.svg|canary.svg|Monogram.svg|\
+        Logo_with_BrandName.svg|Logo_with_Tagline.svg)
             return
             ;;
     esac
@@ -453,17 +469,19 @@ normalize_doc_title_svg_if_same_as_brand() {
     echo
 
     if [[ "$dry_run" -eq 0 ]]; then
+                _p1='s/\n?[ \t]*<text\b(?=[^>]*font-size="43")'\
+'[^>]*>\Q$ENV{BRAND_NAME}\E<\/text>//g'
+                _p2='s/(<title id="title">\Q$ENV{BRAND_NAME}\E)'\
+'\s+\Q$ENV{BRAND_NAME}\E( Logo<\/title>)/$1$2/g'
                 BRAND_NAME="$brand_name" perl -0777 -i -pe \
-                    's/\n?[ \t]*<text\b(?=[^>]*font-size="43")'\
-'[^>]*>\Q$ENV{BRAND_NAME}\E<\/text>//g; s/(<title id="title">\Q$ENV{BRAND_NAME}\E)'\
-'\s+\Q$ENV{BRAND_NAME}\E( Logo<\/title>)/$1$2/g;' \
-                    "$svg_file"
+                    "$_p1; $_p2;" "$svg_file"
     fi
 
     normalize_changed=1
 }
 
-# Check for help first — if specified, show usage and exit, ignoring all other arguments
+# Check for help first — if specified, show usage and exit,
+# ignoring all other arguments
 for arg in "$@"; do
   if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
     usage
@@ -487,7 +505,8 @@ done
 
 # Validate reports directory exists
 if [[ ! -d "$REPORTS_DIR" ]]; then
-    error_exit "Reports directory not found: $REPORTS_DIR" "$EXIT_COMMAND_FAILED"
+    error_exit "Reports directory not found: $REPORTS_DIR" \
+        "$EXIT_COMMAND_FAILED"
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -499,9 +518,15 @@ fi
 trap write_run_log_on_exit EXIT
 setup_output_capture
 
-[[ -f "$CONFIG_FILE" ]] || error_exit "Brand history file not found: logs/brand_history.md" "$EXIT_CONFIG_NOT_FOUND"
-[[ -s "$CONFIG_FILE" ]] || error_exit "Brand history file is empty: logs/brand_history.md" "$EXIT_CONFIG_EMPTY"
-[[ -d "$BRANDING_DIR" ]] || error_exit "Branding directory not found: docs/branding" "$EXIT_BRANDING_DIR_MISSING"
+[[ -f "$CONFIG_FILE" ]] || error_exit \
+    "Brand history file not found: logs/brand_history.md" \
+    "$EXIT_CONFIG_NOT_FOUND"
+[[ -s "$CONFIG_FILE" ]] || error_exit \
+    "Brand history file is empty: logs/brand_history.md" \
+    "$EXIT_CONFIG_EMPTY"
+[[ -d "$BRANDING_DIR" ]] || error_exit \
+    "Branding directory not found: docs/branding" \
+    "$EXIT_BRANDING_DIR_MISSING"
 
 pending_brand=""
 pending_initials=""
@@ -531,15 +556,17 @@ if [[ -z "$pending_line" ]]; then
     exit "$EXIT_NO_PENDING_ROW"
 fi
 
-if [[ -z "$previous_brand" && -z "$previous_initials" && -z "$previous_tagline" ]]; then
-    error_exit "Could not find a completed Brand History row to compare against" "$EXIT_MISSING_COMPLETED_ROW"
+if [[ -z "$previous_brand" && -z "$previous_initials" && \
+    -z "$previous_tagline" ]]; then
+    error_exit "Could not find a completed Brand History row" \
+        "to compare against" "$EXIT_MISSING_COMPLETED_ROW"
 fi
 
 if [[ "$pending_brand" == "$previous_brand" &&
     "$pending_initials" == "$previous_initials" &&
     "$pending_tagline" == "$previous_tagline" ]]; then
         error_exit \
-            "Pending Brand History row matches the following completed row; nothing to apply" \
+            "Pending Brand History row matches completed row" \
             "$EXIT_PENDING_MATCHES_COMPLETED"
 fi
 
@@ -556,45 +583,67 @@ if [[ "$previous_brand" != "$pending_brand" && -n "$previous_brand" ]]; then
     brand_changed=1
 fi
 
-if [[ "$previous_initials" != "$pending_initials" && -n "$previous_initials" ]]; then
+if [[ "$previous_initials" != "$pending_initials" && \
+    -n "$previous_initials" ]]; then
     old_values+=("$previous_initials")
     new_values+=("$pending_initials")
     initials_changed=1
 fi
 
-if [[ "$previous_tagline" != "$pending_tagline" && -n "$previous_tagline" ]]; then
+if [[ "$previous_tagline" != "$pending_tagline" && \
+    -n "$previous_tagline" ]]; then
     old_values+=("$previous_tagline")
     new_values+=("$pending_tagline")
     tagline_changed=1
 fi
 
-if [[ "$brand_changed" -eq 1 && "$initials_changed" -eq 1 && "$pending_brand" == "$previous_initials" ]]; then
-    error_exit "Conflict: new Brand Name matches previous Initials" "$EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_INITIALS"
+if [[ "$brand_changed" -eq 1 && "$initials_changed" -eq 1 && \
+    "$pending_brand" == "$previous_initials" ]]; then
+    error_exit "Conflict: new Brand Name matches" \
+        "previous Initials" \
+        "$EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_INITIALS"
 fi
 
-if [[ "$initials_changed" -eq 1 && "$brand_changed" -eq 1 && "$pending_initials" == "$previous_brand" ]]; then
-    error_exit "Conflict: new Initials matches previous Brand Name" "$EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_BRAND"
+if [[ "$initials_changed" -eq 1 && "$brand_changed" -eq 1 && \
+    "$pending_initials" == "$previous_brand" ]]; then
+    error_exit "Conflict: new Initials matches" \
+        "previous Brand Name" \
+        "$EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_BRAND"
 fi
 
-if [[ "$brand_changed" -eq 1 && "$tagline_changed" -eq 1 && "$pending_brand" == "$previous_tagline" ]]; then
-    error_exit "Conflict: new Brand Name matches previous Tagline" "$EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_TAGLINE"
+if [[ "$brand_changed" -eq 1 && "$tagline_changed" -eq 1 && \
+    "$pending_brand" == "$previous_tagline" ]]; then
+    error_exit "Conflict: new Brand Name matches" \
+        "previous Tagline" \
+        "$EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_TAGLINE"
 fi
 
-if [[ "$tagline_changed" -eq 1 && "$brand_changed" -eq 1 && "$pending_tagline" == "$previous_brand" ]]; then
-    error_exit "Conflict: new Tagline matches previous Brand Name" "$EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_BRAND"
+if [[ "$tagline_changed" -eq 1 && "$brand_changed" -eq 1 && \
+    "$pending_tagline" == "$previous_brand" ]]; then
+    error_exit "Conflict: new Tagline matches" \
+        "previous Brand Name" \
+        "$EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_BRAND"
 fi
 
-if [[ "$initials_changed" -eq 1 && "$tagline_changed" -eq 1 && "$pending_initials" == "$previous_tagline" ]]; then
-    error_exit "Conflict: new Initials matches previous Tagline" "$EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_TAGLINE"
+if [[ "$initials_changed" -eq 1 && "$tagline_changed" -eq 1 && \
+    "$pending_initials" == "$previous_tagline" ]]; then
+    error_exit "Conflict: new Initials matches" \
+        "previous Tagline" \
+        "$EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_TAGLINE"
 fi
 
-if [[ "$tagline_changed" -eq 1 && "$initials_changed" -eq 1 && "$pending_tagline" == "$previous_initials" ]]; then
-    error_exit "Conflict: new Tagline matches previous Initials" "$EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_INITIALS"
+if [[ "$tagline_changed" -eq 1 && "$initials_changed" -eq 1 && \
+    "$pending_tagline" == "$previous_initials" ]]; then
+    error_exit "Conflict: new Tagline matches" \
+        "previous Initials" \
+        "$EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_INITIALS"
 fi
 
 echo "Loaded pending brand change from logs/brand_history.md"
-echo "  Previous: brand='${previous_brand}', initials='${previous_initials}', tagline='${previous_tagline}'"
-echo "  Pending:  brand='${pending_brand}', initials='${pending_initials}', tagline='${pending_tagline}'"
+echo "  Previous: brand='${previous_brand}'," \
+  "initials='${previous_initials}', tagline='${previous_tagline}'"
+echo "  Pending:  brand='${pending_brand}'," \
+  "initials='${pending_initials}', tagline='${pending_tagline}'"
 echo
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -602,7 +651,8 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
     echo
 fi
 
-mapfile -t svg_files < <(find "$BRANDING_DIR" -maxdepth 1 -type f -name '*.svg' | sort)
+mapfile -t svg_files < <(find "$BRANDING_DIR" -maxdepth 1 \
+    -type f -name '*.svg' | sort)
 
 svg_files_modified=0
 svg_total_replacements=0
@@ -622,7 +672,9 @@ for svg_file in "${svg_files[@]}"; do
         for i in "${!old_values[@]}"; do
             count="${replacement_counts[$i]}"
             if [[ "$count" -gt 0 ]]; then
-                echo "  - Replaced '${old_values[$i]}' -> '${new_values[$i]}' (${count} occurrence(s))"
+                _cnt="(${count} occurrence(s))"
+                echo "  - Replaced '${old_values[$i]}'" \
+                  "-> '${new_values[$i]}' $_cnt"
             fi
         done
         echo
@@ -632,12 +684,14 @@ for svg_file in "${svg_files[@]}"; do
 
         if [[ "$DRY_RUN" -eq 0 ]]; then
             for i in "${!old_values[@]}"; do
-                replace_text_file "$svg_file" "${old_values[$i]}" "${new_values[$i]}"
+                replace_text_file "$svg_file" \
+                    "${old_values[$i]}" "${new_values[$i]}"
             done
         fi
     fi
 
-    normalize_doc_title_svg_if_same_as_brand "$svg_file" "$pending_brand" "$DRY_RUN"
+    normalize_doc_title_svg_if_same_as_brand "$svg_file" \
+        "$pending_brand" "$DRY_RUN"
     if [[ "$normalize_changed" -eq 1 ]]; then
         if [[ "$file_replacements" -eq 0 ]]; then
             svg_files_modified=$((svg_files_modified + 1))
@@ -658,7 +712,8 @@ echo "  Total replacements: ${svg_total_replacements}"
 
 if [[ "$svg_total_replacements" -gt 0 ]]; then
     if [[ ! -x "$GENPNGS_SCRIPT" ]]; then
-        error_exit "Missing executable: scripts/bin/genpngs" "$EXIT_MISSING_GENPNGS"
+        error_exit "Missing executable: scripts/bin/genpngs" \
+            "$EXIT_MISSING_GENPNGS"
     fi
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
