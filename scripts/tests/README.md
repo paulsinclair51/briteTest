@@ -21,6 +21,10 @@ and high-signal output contracts.
 - **test_gendocs.sh**: Validation tests for `<repo>/scripts/bin/gendocs` and its
   helper scripts `<repo>/scripts/helpers/genpdf.sh` and `<repo>/scripts/helpers/gendocx.sh`.
 
+- **test_mkbranch.sh**: Smoke tests for `<repo>/scripts/bin/mkbranch` covering
+  help output, mode-specific parent checks, split exit codes, and graceful
+  failures for missing helper/remote interfaces.
+
 - **README.md**: This directory guide.
 
 ## Subdirectories
@@ -34,7 +38,7 @@ From repository root:
 ```sh
 make test-lsbranch
 make test-gendocs
-make test-lsbranch
+make test-mkbranch
 ```
 
 Or run directly:
@@ -42,5 +46,5 @@ Or run directly:
 ```sh
 bash ./scripts/tests/test_lsbranch.sh
 bash ./scripts/tests/test_gendocs.sh
-bash ./scripts/tests/test_lsbranch.sh
+bash ./scripts/tests/test_mkbranch.sh
 ```
