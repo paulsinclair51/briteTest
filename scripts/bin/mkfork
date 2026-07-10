@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# mkfork - Create a fork of the repository and optionally configure it.
+# mkfork - Create a fork of the repository and configure it via API.
 #
 # See usage below for details, or run: mkfork -h
 #
@@ -14,7 +14,7 @@ Usage:
   mkfork [OPTIONS]
   mkfork -h | --help
 
-Create a fork of the repository, clone it locally, and configure it.
+Create a fork of the repository and configure it via GitHub API.
 
 A fork is a personal copy of the repository that you control. Use forks to:
   - Contribute to the project via pull requests
@@ -22,20 +22,18 @@ A fork is a personal copy of the repository that you control. Use forks to:
   - Create your own variations of the project
   - Maintain a personal backup
 
-Before forking:
+Forking process:
   - Verifies GitHub authentication is configured
   - Checks if a fork already exists
   - Creates fork on your GitHub account via API
-  - Clones fork locally
-  - Configures contributors.md with forking user as sole approver
-  - Pushes updated contributors.md to remote
+  - Configures contributors.md via API (no local clone needed)
+  - Optionally clones fork locally with upstream remote
 
 Features:
   - Creates fork on your GitHub account via API
-  - Automatically clones fork to local directory
-  - Adds/updates upstream remote reference
-  - Automatically configures fork contributors (replaces all with forking user)
-  - Pushes updated contributors.md to remote
+  - Automatically configures fork contributors via API
+  - Optionally clones fork to local directory
+  - Adds/updates upstream remote reference (if cloning)
   - Validates fork configuration after creation
   - Supports dry-run mode for planning
   - No role restrictions: any user can fork the repository
@@ -43,28 +41,30 @@ Features:
 Options:
   -h, --help           Output this help to stdout and exit (other options
                        and arguments are ignored).
-  -d, --directory DIR  Directory to clone fork into.
+  -c, --clone          Clone your fork to local directory after configuring.
                        Default location: ./<fork-name>
-                       Usage: mkfork --directory ~/my-projects
-  -u, --add-upstream   Add/update upstream remote to track original repository.
+  -d, --directory DIR  Directory to clone fork into (requires -c/--clone).
+                       Usage: mkfork -c --directory ~/my-projects
+  -u, --add-upstream   Add upstream remote to track original repository.
                        Useful for keeping fork in sync with original.
+                       Only applicable with -c/--clone.
   -v, --verbose        Show detailed information during fork operations.
   --dry-run            Show what would be done without creating fork.
 
 Examples:
-  # Create fork, clone locally, and configure
+  # Create and configure fork (no local clone)
   mkfork
 
+  # Create fork, configure, and clone locally
+  mkfork -c
+
   # Clone to custom directory
-  mkfork --directory ~/work
+  mkfork -c --directory ~/work
 
   # Clone and add upstream remote
-  mkfork -u
+  mkfork -c -u
 
-  # Clone to custom directory with upstream
-  mkfork --directory ~/work -u
-
-  # Verbose output with dry-run to see planned operations
+  # Verbose output with dry-run
   mkfork -v --dry-run
 
 
@@ -82,16 +82,14 @@ Exit codes:
   5   Clone operation failed
   6   Configuration error
   7   Repository update failed
-  8   Git push failed
 EOF
 }
 
 # High-Level Flow:
 # - Validates GitHub authentication and repository context.
 # - Creates fork via GitHub API if it doesn't already exist.
-# - Clones fork locally and configures remote references (upstream).
-# - Automatically configures fork's contributors.md with only the forking user.
-# - Pushes updated contributors.md to remote.
+# - Configures fork's contributors.md via GitHub API (no local clone needed).
+# - Optionally clones fork locally and configures upstream remote.
 # - Reports fork status and next-step guidance.
 
 set -euo pipefail
@@ -107,6 +105,7 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 source "$SCRIPT_DIR/../helpers/github_helpers.sh"
 
 # Default options
+CLONE_FORK=false
 CLONE_DIR=""
 ADD_UPSTREAM=false
 VERBOSE=false
@@ -118,6 +117,10 @@ while [[ $# -gt 0 ]]; do
     -h | --help)
       usage
       exit 0
+      ;;
+    -c | --clone)
+      CLONE_FORK=true
+      shift
       ;;
     -d | --directory)
       if [[ $# -lt 2 ]]; then
@@ -147,11 +150,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Helper functions
-get_current_user() {
-  git config user.name 2>/dev/null || bt_error_exit 4 "Failed to determine current user from git config"
-}
+# Validate option combinations
+if [[ "$ADD_UPSTREAM" == "true" && "$CLONE_FORK" == "false" ]]; then
+  bt_error_exit 1 "Option --add-upstream requires --clone to be specified"
+fi
 
+if [[ -n "$CLONE_DIR" && "$CLONE_FORK" == "false" ]]; then
+  bt_error_exit 1 "Option --directory requires --clone to be specified"
+fi
+
+# Helper functions
 get_github_username() {
   gh auth whoami 2>/dev/null || bt_error_exit 4 "GitHub authentication not configured. Run 'gh auth login' first."
 }
@@ -202,6 +210,125 @@ create_fork() {
   fi
   
   echo "Fork created successfully"
+}
+
+wait_for_fork() {
+  local gh_user="$1"
+  local max_attempts=30
+  local attempt=0
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[dry-run] Would wait for fork to be ready"
+    return 0
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Waiting for fork to be ready on GitHub..." >&2
+  fi
+  
+  while [[ $attempt -lt $max_attempts ]]; do
+    if gh repo view "$gh_user/$REPO_NAME" >/dev/null 2>&1; then
+      if [[ "$VERBOSE" == "true" ]]; then
+        echo "[verbose] Fork is ready" >&2
+      fi
+      return 0
+    fi
+    ((attempt++))
+    sleep 1
+  done
+  
+  bt_error_exit 2 "Fork did not become available in time (waited $((max_attempts)) seconds)"
+}
+
+configure_fork_contributors_via_api() {
+  local gh_user="$1"
+  local file_path="config/contributors.md"
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[dry-run] Would configure $file_path in fork via API"
+    return 0
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Retrieving current $file_path from fork..." >&2
+  fi
+  
+  # Get current file to extract the SHA
+  local file_response
+  if ! file_response=$(gh api "repos/$gh_user/$REPO_NAME/contents/$file_path" 2>&1); then
+    bt_error_exit 7 "Failed to retrieve $file_path from fork"
+  fi
+  
+  local current_sha
+  current_sha=$(echo "$file_response" | jq -r '.sha')
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Current file SHA: $current_sha" >&2
+  fi
+  
+  # Generate new contributors.md content
+  local new_content
+  new_content=$(cat <<CONTRIBUTORS_EOF
+# Contributors
+
+Copyright (c) 2026 Paul Sinclair  
+SPDX-License-Identifier: MIT  
+For license details, see \`<repo>/LICENSE\`.
+
+See \`<repo>/README.md\` for an introduction to briteTest.
+
+## Overview
+
+This file lists the allowed contributors to briteTest with their GitHub login,
+role, and email address.
+
+An approver may modify the list below to add or remove a contributor or change a
+contributor's role. If there are no approvers, a reviewer may modify the list.
+If there are neither approvers nor reviewers, a contributor may modify the list.
+Otherwise, any user may modify the list.
+
+See \`<repo>/docs/md/Contributor_Guide.md\` for additional information.
+
+## Contributor Roles and Responsibilities
+
+Contributors are categorized by their roles and permissions:
+
+- **C** (Contributor-only): Can contribute code and documentation changes.
+
+- **R** (Reviewer): Can contribute and review pull requests (PRs).
+  Reviewers help maintain code and documentation quality through peer review.
+
+- **A** (Approver): Can contribute, review pull requests (PRs), approve PRs for
+  merging, and modify permissions. Approvers have final authority on code and
+  documentation changes.
+
+## Contributors
+
+Each entry uses this form:
+
+- \`<github-login>, <role>, <email>\`
+
+- $gh_user, A, $gh_user@github.local
+CONTRIBUTORS_EOF
+)
+  
+  # Base64 encode the new content
+  local encoded_content
+  encoded_content=$(echo -n "$new_content" | base64 -w 0)
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Updating $file_path in fork via API..." >&2
+  fi
+  
+  # Update the file via API
+  if ! gh api --method PUT "repos/$gh_user/$REPO_NAME/contents/$file_path" \
+    -f message="Configure contributors.md for fork: $gh_user as sole approver" \
+    -f content="$encoded_content" \
+    -f sha="$current_sha" 2>&1 > /dev/null; then
+    bt_error_exit 7 "Failed to update $file_path in fork"
+  fi
+  
+  echo "Contributors configured via API: $gh_user is the sole approver"
 }
 
 clone_fork() {
@@ -256,111 +383,6 @@ configure_upstream() {
   echo "Upstream remote configured"
 }
 
-configure_fork_contributors() {
-  local fork_dir="$1"
-  local gh_user="$2"
-  local contributors_file="$fork_dir/config/contributors.md"
-  
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo "[dry-run] Would configure $contributors_file with $gh_user as sole approver"
-    return 0
-  fi
-  
-  if [[ ! -f "$contributors_file" ]]; then
-    bt_error_exit 7 "Contributors file not found: $contributors_file"
-  fi
-  
-  if [[ "$VERBOSE" == "true" ]]; then
-    echo "[verbose] Configuring contributors.md for fork..." >&2
-  fi
-  
-  # Read the file to preserve header and structure
-  local temp_file
-  temp_file=$(mktemp)
-  trap "rm -f '$temp_file'" RETURN
-  
-  # Extract header (everything up to and including "## Contributors")
-  local in_contributors_section=0
-  local contributors_start_line=0
-  local line_num=0
-  
-  while IFS= read -r line; do
-    ((line_num++))
-    if [[ "$line" == "## Contributors" ]]; then
-      in_contributors_section=1
-      contributors_start_line=$line_num
-      break
-    fi
-    echo "$line" >> "$temp_file"
-  done < "$contributors_file"
-  
-  if [[ $in_contributors_section -eq 0 ]]; then
-    bt_error_exit 7 "Cannot find '## Contributors' section in $contributors_file"
-  fi
-  
-  # Append the static header for contributors section
-  cat >> "$temp_file" << 'CONTRIBUTORS_HEADER'
-
-Each entry uses this form:
-
-- `<github-login>, <role>, <email>`
-
-CONTRIBUTORS_HEADER
-  
-  # Add the forking user as sole approver
-  echo "- $gh_user, A, $gh_user@github.local" >> "$temp_file"
-  
-  # Replace the original file
-  if ! mv "$temp_file" "$contributors_file" 2>&1; then
-    bt_error_exit 7 "Failed to update contributors file"
-  fi
-  
-  if [[ "$VERBOSE" == "true" ]]; then
-    echo "[verbose] Configured $contributors_file with $gh_user as sole approver" >&2
-  fi
-  
-  echo "Contributors configured: $gh_user is the sole approver"
-}
-
-push_contributors_to_remote() {
-  local fork_dir="$1"
-  local gh_user="$2"
-  
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo "[dry-run] Would push updated contributors.md to remote"
-    return 0
-  fi
-  
-  if [[ "$VERBOSE" == "true" ]]; then
-    echo "[verbose] Pushing updated contributors.md to remote..." >&2
-  fi
-  
-  (
-    cd "$fork_dir" || bt_error_exit 6 "Cannot access fork directory: $fork_dir"
-    
-    # Stage the contributors file
-    if ! git add config/contributors.md 2>&1; then
-      bt_error_exit 7 "Failed to stage contributors.md"
-    fi
-    
-    # Commit the change
-    if ! git commit -m "Configure contributors.md for fork: $gh_user as sole approver" 2>&1; then
-      # If there are no changes to commit, that's fine (already committed)
-      if [[ "$VERBOSE" == "true" ]]; then
-        echo "[verbose] No changes to commit for contributors.md" >&2
-      fi
-      return 0
-    fi
-    
-    # Push to remote
-    if ! git push origin main 2>&1; then
-      bt_error_exit 8 "Failed to push contributors.md to remote"
-    fi
-  )
-  
-  echo "Updated contributors.md pushed to remote"
-}
-
 # Main flow
 echo "Preparing to create fork of $REPO_OWNER/$REPO_NAME..."
 
@@ -374,22 +396,24 @@ if fork_exists "$GH_USER"; then
 else
   # Create fork
   create_fork "$REPO_OWNER/$REPO_NAME"
+  
+  # Wait for fork to be ready on GitHub
+  wait_for_fork "$GH_USER"
 fi
 
-# Always clone the fork
-FORK_DIR="${CLONE_DIR:-./$REPO_NAME}"
-clone_fork "$GH_USER"
+# Always configure contributors via API
+configure_fork_contributors_via_api "$GH_USER"
 
-# Configure upstream if requested
-if [[ "$ADD_UPSTREAM" == "true" ]]; then
-  configure_upstream "$FORK_DIR"
+# Clone if requested
+if [[ "$CLONE_FORK" == "true" ]]; then
+  FORK_DIR="${CLONE_DIR:-./$REPO_NAME}"
+  clone_fork "$GH_USER"
+  
+  # Configure upstream if requested
+  if [[ "$ADD_UPSTREAM" == "true" ]]; then
+    configure_upstream "$FORK_DIR"
+  fi
 fi
-
-# Always configure contributors
-configure_fork_contributors "$FORK_DIR" "$GH_USER"
-
-# Always push updated contributors to remote
-push_contributors_to_remote "$FORK_DIR" "$GH_USER"
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo ""
@@ -397,14 +421,20 @@ if [[ "$DRY_RUN" == "true" ]]; then
 else
   echo ""
   echo "Fork setup completed successfully!"
-  echo "Fork location: $FORK_DIR"
-  echo "Next steps:"
-  echo "  cd $FORK_DIR"
-  echo "  git remote -v  # View all remotes"
-  if [[ "$ADD_UPSTREAM" != "true" ]]; then
-    echo "  git remote add upstream git@github.com:$REPO_OWNER/$REPO_NAME.git  # Add upstream"
+  echo "Fork URL: https://github.com/$GH_USER/$REPO_NAME"
+  if [[ "$CLONE_FORK" == "true" ]]; then
+    echo "Fork location: $FORK_DIR"
+    echo "Next steps:"
+    echo "  cd $FORK_DIR"
+    echo "  git remote -v  # View all remotes"
+    if [[ "$ADD_UPSTREAM" != "true" ]]; then
+      echo "  git remote add upstream git@github.com:$REPO_OWNER/$REPO_NAME.git  # Add upstream"
+    fi
+    echo "  git fetch upstream  # Sync with original repository"
+  else
+    echo "Next steps:"
+    echo "  mkfork -c  # Clone the fork locally"
   fi
-  echo "  git fetch upstream  # Sync with original repository"
 fi
 
 exit 0
