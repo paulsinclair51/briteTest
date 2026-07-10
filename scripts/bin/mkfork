@@ -45,11 +45,11 @@ Features:
 Options:
   -h, --help           Output this help to stdout and exit (other options
                        and arguments are ignored).
-  -v, --verbose        Show detailed information during fork operations.
-  --dry-run            Show what would be done without creating fork.
-  --cleanup            If fork exists but is incomplete/misconfigured, delete it
+  -c                   If fork exists but is incomplete/misconfigured, delete it
                        instead of completing configuration. Useful after crashes
                        or if manual changes broke the fork state.
+  -v, --verbose        Show detailed information during fork operations.
+  --dry-run            Show what would be done without creating fork.
 
 Examples:
   # Create and configure fork
@@ -62,7 +62,7 @@ Examples:
   mkfork --dry-run
 
   # If fork exists but is broken, delete it
-  mkfork --cleanup
+  mkfork -c
 
   # Re-run to complete configuration (e.g., after crash)
   mkfork
@@ -85,15 +85,15 @@ Exit codes:
   4   Authentication failed
   5   Configuration validation failed
   6   Repository configuration error
-  7   Fork incomplete or misconfigured - use --cleanup to delete
-  8   Fork cleanup completed (--cleanup used)
+  7   Fork incomplete or misconfigured - use -c to delete
+  8   Fork cleanup completed (-c used)
 EOF
 }
 
 # High-Level Flow:
 # - Validates GitHub authentication and repository context.
 # - Checks if fork exists and its configuration state.
-# - If fork incomplete: optionally delete (--cleanup), or complete configuration.
+# - If fork incomplete: optionally delete (-c), or complete configuration.
 # - If fork doesn't exist: create and configure.
 # - Verifies configuration was applied correctly.
 # - Reports fork status and next-step guidance.
@@ -122,16 +122,16 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
+    -c)
+      CLEANUP_MODE=true
+      shift
+      ;;
     -v | --verbose)
       VERBOSE=true
       shift
       ;;
     --dry-run)
       DRY_RUN=true
-      shift
-      ;;
-    --cleanup)
-      CLEANUP_MODE=true
       shift
       ;;
     -*)
