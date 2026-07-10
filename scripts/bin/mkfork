@@ -49,7 +49,7 @@ Options:
                        instead of completing configuration. Useful after crashes
                        or if manual changes broke the fork state.
   -v, --verbose        Show detailed information during fork operations.
-  --dry-run            Show what would be done without creating fork.
+  -d                   Dry-run (show what would be done without creating fork).
 
 Examples:
   # Create and configure fork
@@ -59,7 +59,7 @@ Examples:
   mkfork -v
 
   # Dry-run to preview operations
-  mkfork --dry-run
+  mkfork -d
 
   # If fork exists but is broken, delete it
   mkfork -c
@@ -130,7 +130,7 @@ while [[ $# -gt 0 ]]; do
       VERBOSE=true
       shift
       ;;
-    --dry-run)
+    -d)
       DRY_RUN=true
       shift
       ;;
@@ -157,7 +157,7 @@ get_repo_info() {
   fi
   
   # Extract owner and repo from URL (supports both HTTPS and SSH)
-  if [[ "$origin_url" =~ github\.com[:/]([^/]+)/([^/]+?)(\.git)?$ ]]; then
+  if [[ "$origin_url" =~ github\.com[:/]([^/]+)/([^/]+?)(\.(git))?$ ]]; then
     REPO_OWNER="${BASH_REMATCH[1]}"
     REPO_NAME="${BASH_REMATCH[2]}"
   else
