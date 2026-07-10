@@ -147,7 +147,8 @@ get_pr_status_check() {
   local pr_number="$1"
   
   # Get PR status check state
-  gh pr view "$pr_number" --json statusCheckRollup --jq '.statusCheckRollup[].state' 2>/dev/null | sort | uniq || echo "UNKNOWN"
+  gh pr view "$pr_number" --json statusCheckRollup \
+    --jq '.statusCheckRollup[].state' 2>/dev/null | sort | uniq || echo "UNKNOWN"
 }
 
 check_status_checks() {
@@ -157,7 +158,8 @@ check_status_checks() {
   
   # Get the status check state
   local status_state
-  status_state=$(gh pr view "$pr_number" --json statusCheckRollup --jq '.statusCheckRollup[].state' 2>/dev/null | sort | uniq | head -1)
+  status_state=$(gh pr view "$pr_number" --json statusCheckRollup \
+    --jq '.statusCheckRollup[].state' 2>/dev/null | sort | uniq | head -1)
   
   if [[ -z "$status_state" ]]; then
     # No checks found

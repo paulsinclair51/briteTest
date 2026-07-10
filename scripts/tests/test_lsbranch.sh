@@ -87,10 +87,10 @@ current_branch=$(git rev-parse --abbrev-ref HEAD)
 grep -Eq "\\| ${current_branch}(\\*|<span[^>]*>\\*</span>) \\| local \\|" "$report_path" || fail "current branch should be marked with trailing * in local report row"
 pass "current branch report marker"
 
-# 5) BRANCH mode allows only -v; local/remote filters are invalid in BRANCH mode
+# 5) BRANCH mode allows only -v/-b/-n; local/remote filters are invalid in BRANCH mode
 rc=$(run_capture "$TMPDIR/branch_mode_invalid.out" "$LSBRANCH" "v1.0.0" -l)
 [[ "$rc" -eq 1 ]] || fail "lsbranch 'v1.0.0' -l should exit 1"
-grep -q 'only -v and -b are allowed' "$TMPDIR/branch_mode_invalid.out" || fail "BRANCH mode should reject -l/-r/-i/-x"
+grep -q 'only -v, -b, and -n are allowed' "$TMPDIR/branch_mode_invalid.out" || fail "BRANCH mode should reject -l/-r/-i/-x"
 pass "BRANCH mode option restrictions"
 
 # 6) Literal dots in PATTERN should be treated literally, not as regex wildcard
@@ -153,5 +153,24 @@ grep -q '^## Warnings$' "$degraded_report_path" || fail "report should include a
 grep -q "Failed to fetch 'origin'; remote status may be stale in this report." "$degraded_report_path" || fail "report should include fetch warning"
 grep -q "Failed to query pull requests for 'main'; PR column shown as N/A." "$degraded_report_path" || fail "report should include PR warning"
 pass "degraded helper diagnostics"
+
+# 9) -n should skip fetch attempts and suppress fetch-failure warnings
+cat > "$FAKEBIN/git" <<EOF
+#!/usr/bin/env bash
+if [[ "\$1" == "fetch" && "\${2:-}" == "origin" ]]; then
+  echo "fetch should not be called under -n" >&2
+  exit 99
+fi
+exec "$REAL_GIT" "\$@"
+EOF
+chmod +x "$FAKEBIN/git"
+rm -f "$FAKEBIN/gh"
+
+rc=$(run_capture "$TMPDIR/nofetch.out" env PATH="$FAKEBIN:$PATH" "$LSBRANCH" -a -r -n -v)
+[[ "$rc" -eq 0 ]] || fail "lsbranch -a -r -n -v should succeed without attempting fetch"
+if grep -q "Failed to fetch 'origin'" "$TMPDIR/nofetch.out"; then
+  fail "-n should suppress fetch-failure warnings"
+fi
+pass "no-fetch mode"
 
 echo "All lsbranch smoke tests passed."

@@ -190,7 +190,9 @@ bt_info "Current branch: $CURRENT_BRANCH"
 
 # Check if branch is protected
 if is_protected_branch "$CURRENT_BRANCH"; then
-  bt_error_exit 1 "Cannot commit directly to protected branch '$CURRENT_BRANCH'. Use 'mkmerge' to merge changes to this branch."
+  bt_error_exit 1 \
+    "Cannot commit directly to protected branch '$CURRENT_BRANCH'. "\
+"Use 'mkmerge' to merge changes to this branch."
 fi
 
 # Stage changes

@@ -185,7 +185,9 @@ if [[ "$SYNC_ALL" == false ]]; then
   
   # Check for divergence before pulling
   if check_diverged "$CURRENT_BRANCH"; then
-    bt_error_exit 3 "Branch '$CURRENT_BRANCH' has diverged from remote. Manual resolution needed. Use 'git rebase' or 'mkmerge' to resolve."
+    bt_error_exit 3 \
+      "Branch '$CURRENT_BRANCH' has diverged from remote. Manual resolution "\
+"needed. Use 'git rebase' or 'mkmerge' to resolve."
   fi
   
   # Pull changes

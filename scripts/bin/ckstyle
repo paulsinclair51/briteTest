@@ -211,7 +211,8 @@ doc_check_details_structure() {
       { lines[NR] = $0 }
       END {
         for (i = 1; i < NR; i++) {
-          if (lines[i] ~ /^[[:space:]]*<\/details>[[:space:]]*$/ && lines[i + 1] ~ /^[[:space:]]*<\/details>[[:space:]]*$/) {
+          if (lines[i] ~ /^[[:space:]]*<\/details>[[:space:]]*$/ && \
+              lines[i + 1] ~ /^[[:space:]]*<\/details>[[:space:]]*$/) {
             print "adjacent </details> blocks require first closing tag to be </details><br>"
           }
         }
@@ -337,7 +338,9 @@ doc_check_summary_alignment() {
       /^<summary>/ {
         raw_summary=$0
         summary=normalize_summary($0)
-        if (summary == "License" || summary == "Preface" || summary == "Document Version History" || summary == "Table of Contents") {
+        if (summary == "License" || summary == "Preface" || \
+            summary == "Document Version History" || \
+            summary == "Table of Contents") {
           pending=""
           pending_raw=""
           next
@@ -801,9 +804,12 @@ run_directory_guides_checks() {
     line7="$(sed -n '7p' "$readme")"
     line8="$(sed -n '8p' "$readme")"
 
-    [[ "$heading_line" == "$expected_heading" ]] || add_issue "$readme" "heading mismatch (expected '$expected_heading', found '$heading_line')"
+    [[ "$heading_line" == "$expected_heading" ]] || \
+      add_issue "$readme" \
+      "heading mismatch (expected '$expected_heading', found '$heading_line')"
     [[ -z "$second_line" ]] || add_issue "$readme" "second line must be blank"
-    [[ "$description_line" == 'Directory containing '* ]] || add_issue "$readme" "third line must start with 'Directory containing '"
+    [[ "$description_line" == 'Directory containing '* ]] || \
+      add_issue "$readme" "third line must start with 'Directory containing '"
 
     if sed -n '2,$p' "$readme" | grep -q '^# '; then
       add_issue "$readme" "contains unexpected H1 heading after line 1"
@@ -811,7 +817,8 @@ run_directory_guides_checks() {
 
     [[ -z "$line4" ]] || add_issue "$readme" "line 4 must be blank"
     [[ "$line5" =~ ^Copyright\ \(c\)\ [0-9]{4}\ .+ ]] || add_issue "$readme" "line 5 must be a valid copyright line"
-    [[ "$line6" == 'SPDX-License-Identifier: MIT  ' ]] || add_issue "$readme" "line 6 must be 'SPDX-License-Identifier: MIT  '"
+    [[ "$line6" == 'SPDX-License-Identifier: MIT  ' ]] || \
+      add_issue "$readme" "line 6 must be 'SPDX-License-Identifier: MIT  '"
     [[ "$line7" == "$expected_license_line" ]] || add_issue "$readme" "line 7 must match expected license reference"
     [[ -z "$line8" ]] || add_issue "$readme" "line 8 must be blank"
 
@@ -891,7 +898,8 @@ header_semver() {
   local file="$1"
   local semver
 
-  semver="$(grep -Ei '^#[[:space:]]*define[[:space:]]+RA_[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' "$file" \
+  semver="$(grep -Ei '^#[[:space:]]*define[[:space:]]+RA_[A-Za-z_]*VERSION'\
+'[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' "$file" \
     | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' \
     | head -n 1 || true)"
 
@@ -906,7 +914,8 @@ source_semver() {
   local file="$1"
   local semver include_line
 
-  semver="$(grep -Ei '^#[[:space:]]*define[[:space:]]+[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' "$file" \
+  semver="$(grep -Ei '^#[[:space:]]*define[[:space:]]+[A-Za-z_]*VERSION'\
+'[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' "$file" \
     | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' \
     | head -n 1 || true)"
 
@@ -915,7 +924,9 @@ source_semver() {
     return
   fi
 
-  include_line="$(grep -E '^#[[:space:]]*include[[:space:]]+"(britetest_(runner|test)|runnerapi|testapi)\.h"' "$file" | head -n 1 || true)"
+  include_line="$(grep -E \
+    '^#[[:space:]]*include[[:space:]]+"(britetest_(runner|test)|runnerapi|testapi)\.h"' \
+    "$file" | head -n 1 || true)"
   if [[ "$include_line" == *'"runnerapi.h"'* ]]; then
     semver="$(header_semver "include/runnerapi.h")"
   elif [[ "$include_line" == *'"testapi.h"'* ]]; then
@@ -993,17 +1004,24 @@ run_versions_checks() {
 
   while IFS= read -r file; do
     [[ "$(basename "$file")" == "README.md" ]] && continue
-    semver="$(git show main:"$file" 2>/dev/null | head -n 220 | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
+    semver="$(git show main:"$file" 2>/dev/null | head -n 220 | \
+      grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
     [[ -n "$semver" ]] && main_versions+=("$file:$semver")
   done < <(find docs/md -maxdepth 1 -type f -name '*.md' | sort)
 
   while IFS= read -r file; do
-    semver="$(git show main:"$file" 2>/dev/null | grep -Ei '^#[[:space:]]*define[[:space:]]+RA_[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
+    semver="$(git show main:"$file" 2>/dev/null | grep -Ei \
+      '^#[[:space:]]*define[[:space:]]+RA_[A-Za-z_]*VERSION'\
+    '[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' | \
+      grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
     [[ -n "$semver" ]] && main_versions+=("$file:$semver")
   done < <(find include -maxdepth 1 -type f -name '*.h' | sort)
 
   while IFS= read -r file; do
-    semver="$(git show main:"$file" 2>/dev/null | grep -Ei '^#[[:space:]]*define[[:space:]]+[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' | grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
+    semver="$(git show main:"$file" 2>/dev/null | grep -Ei \
+      '^#[[:space:]]*define[[:space:]]+[A-Za-z_]*VERSION'\
+    '[A-Za-z_]*[[:space:]]+"[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}"' | \
+      grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
     [[ -n "$semver" ]] && main_versions+=("$file:$semver")
   done < <(find src -maxdepth 1 -type f -name '*.c' | sort)
 
@@ -1018,22 +1036,30 @@ run_versions_checks() {
       patch)
         current_major_minor="$(extract_major_minor "$current_semver")"
         if [[ "$current_major_minor" != "$(extract_major_minor "$main_semver")" ]]; then
-          add_issue "$file" "patch branch policy violation: major.minor changed from main ($main_semver -> $current_semver)"
+          add_issue "$file" \
+            "patch branch policy violation: major.minor changed from main ($main_semver -> $current_semver)"
         fi
         ;;
       minor)
         current_patch="$(extract_patch "$current_semver")"
         current_major_minor="$(extract_major_minor "$current_semver")"
-        [[ "$current_patch" == "0" ]] || add_issue "$file" "minor branch policy violation: patch must be 0 (found $current_semver)"
-        [[ "$current_major_minor" == "$expected_major_minor" ]] || add_issue "$file" "minor branch policy violation: major.minor mismatch (found $current_major_minor, expected $expected_major_minor)"
+        [[ "$current_patch" == "0" ]] || add_issue "$file" \
+          "minor branch policy violation: patch must be 0 (found $current_semver)"
+        [[ "$current_major_minor" == "$expected_major_minor" ]] || \
+          add_issue "$file" \
+          "minor branch policy violation: major.minor mismatch "\
+"(found $current_major_minor, expected $expected_major_minor)"
         ;;
       major)
         current_major="$(extract_major "$current_semver")"
         current_minor="$(extract_minor "$current_semver")"
         current_patch="$(extract_patch "$current_semver")"
-        [[ "$current_major" == "$expected_major" ]] || add_issue "$file" "major branch policy violation: major mismatch (found $current_semver, expected major $expected_major)"
-        [[ "$current_minor" == "0" ]] || add_issue "$file" "major branch policy violation: minor must be 0 (found $current_semver)"
-        [[ "$current_patch" == "0" ]] || add_issue "$file" "major branch policy violation: patch must be 0 (found $current_semver)"
+        [[ "$current_major" == "$expected_major" ]] || add_issue "$file" \
+          "major branch policy violation: major mismatch (found $current_semver, expected major $expected_major)"
+        [[ "$current_minor" == "0" ]] || add_issue "$file" \
+          "major branch policy violation: minor must be 0 (found $current_semver)"
+        [[ "$current_patch" == "0" ]] || add_issue "$file" \
+          "major branch policy violation: patch must be 0 (found $current_semver)"
         ;;
     esac
   done

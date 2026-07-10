@@ -27,7 +27,8 @@ bt_resolve_target_branch_from_fork_point() {
   fi
 
   local target_branch
-  target_branch=$(git branch -r --contains "$merge_base" | grep -v HEAD | grep -v "origin/$current_branch" | head -1 | sed 's|origin/||' | xargs)
+  target_branch=$(git branch -r --contains "$merge_base" | grep -v HEAD | \
+    grep -v "origin/$current_branch" | head -1 | sed 's|origin/||' | xargs)
 
   if [[ -z "$target_branch" ]]; then
     target_branch="$fallback_branch"

@@ -165,7 +165,9 @@ extract_reviewers_from_config() {
   # Extract all R/ and A/ entries, format: [R/]name or [A/]name
   # Pattern: - [R/]name, email or - [A/]name, email
   local reviewers
-  reviewers=$(grep -E '^\s*-\s+[RA]/' "$config_file" | sed -E 's/^\s*-\s+[RA]\/([^,]+).*/\1/' | tr '\n' ',' | sed 's/,$//')
+  reviewers=$(grep -E '^\s*-\s+[RA]/' "$config_file" | \
+    sed -E 's/^\s*-\s+[RA]\/([^,]+).*/\1/' | \
+    tr '\n' ',' | sed 's/,$//')
   
   if [[ -z "$reviewers" ]]; then
     bt_error_exit 5 "No reviewers or approvers found in $config_file (need at least one A/ entry)"
@@ -350,7 +352,9 @@ fi
 # Show PR details if verbose
 if [[ "$VERBOSE" == true ]]; then
   bt_info "PR details:"
-  gh pr view "$EXISTING_PR" --json number,title,state,isDraft,url --jq '{number:.number, title:.title, state:.state, draft:.isDraft, url:.url}' | sed 's/^/  /'
+  gh pr view "$EXISTING_PR" --json number,title,state,isDraft,url \
+    --jq '{number:.number, title:.title, state:.state, draft:.isDraft, url:.url}' | \
+    sed 's/^/  /'
 fi
 
 # Prompt to open in browser if not already decided

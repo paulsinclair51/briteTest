@@ -301,7 +301,9 @@ error_exit() {
   echo "Error: $message" >&2
 
   if [[ -n "$branchname" ]]; then
-    log_operation "FAILED" "$branchname" "$parentbranchname" "Branch \`$branchname\` creation from parent \`$parentbranchname\` failed - $message" "$comment"
+    log_operation "FAILED" "$branchname" "$parentbranchname" \
+      "Branch \`$branchname\` creation from parent \`$parentbranchname\` failed - $message" \
+      "$comment"
   fi
 
   exit "$code"
@@ -399,14 +401,16 @@ branch_exists_remote() {
 resolve_parent_reference_for_mode() {
   if [[ "$MODE" == "local" ]]; then
     if ! branch_exists_local "$PARENTBRANCHNAME"; then
-      error_exit 6 "Local parent branch '$PARENTBRANCHNAME' does not exist" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+      error_exit 6 "Local parent branch '$PARENTBRANCHNAME' does not exist" \
+        "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
     fi
     return 0
   fi
 
   if [[ "$MODE" == "remote" ]]; then
     if ! branch_exists_remote "$PARENTBRANCHNAME"; then
-      error_exit 7 "Remote parent branch '$PARENTBRANCHNAME' does not exist" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+      error_exit 7 "Remote parent branch '$PARENTBRANCHNAME' does not exist" \
+        "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
     fi
     PARENTBRANCHNAME="origin/$PARENTBRANCHNAME"
     return 0
@@ -507,7 +511,8 @@ if is_valid_version "$BRANCHNAME"; then
   if [[ -z "$PARENTBRANCHNAME" ]]; then
     PARENTBRANCHNAME="main"
   elif [[ "$PARENTBRANCHNAME" != "main" ]]; then
-    error_exit 1 "When newbranch is a version branch, parentbranch must be 'main'" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+    error_exit 1 "When newbranch is a version branch, parentbranch must be 'main'" \
+      "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
   if [[ "$MODE" == "local" ]]; then
     MODE="remote"
@@ -518,18 +523,26 @@ elif is_targeted_branch_name "$BRANCHNAME"; then
   if [[ -z "$PARENTBRANCHNAME" ]]; then
     PARENTBRANCHNAME="$TARGET_VERSION"
   elif [[ "$PARENTBRANCHNAME" != "$TARGET_VERSION" ]]; then
-    error_exit 1 "When newbranch is a targeted branch, parentbranch must match its target version '$TARGET_VERSION'" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+    error_exit 1 \
+      "When newbranch is a targeted branch, parentbranch must match its target version '$TARGET_VERSION'" \
+      "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
 elif is_contributor_branch_name "$BRANCHNAME"; then
   BRANCH_TYPE="contributor"
   if [[ -z "$PARENTBRANCHNAME" ]]; then
-    error_exit 1 "When newbranch is a contributor branch, parentbranch is required" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+    error_exit 1 \
+      "When newbranch is a contributor branch, parentbranch is required" \
+      "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
   if ! is_targeted_branch_name "$PARENTBRANCHNAME" && ! is_contributor_branch_name "$PARENTBRANCHNAME"; then
-    error_exit 1 "For contributor branches, parentbranch must be a targeted or contributor branch" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+    error_exit 1 \
+      "For contributor branches, parentbranch must be a targeted or contributor branch" \
+      "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
 else
-  error_exit 2 "Invalid branch name '$BRANCHNAME'. Must be version, targeted, or contributor format" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+  error_exit 2 \
+    "Invalid branch name '$BRANCHNAME'. Must be version, targeted, or contributor format" \
+    "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 
 log_verbose "Mode: $MODE"
@@ -557,7 +570,8 @@ fi
 
 CURRENT_USER="$(git config user.name 2>/dev/null || true)"
 if [[ -z "$CURRENT_USER" ]]; then
-  error_exit 1 "Failed to determine current user from git config user.name" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+  error_exit 1 "Failed to determine current user from git config user.name" \
+    "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 
 log_verbose "Current user from git config: $CURRENT_USER"
@@ -566,11 +580,16 @@ log_verbose "Current user from git config: $CURRENT_USER"
 # Approver is required for version branches; contributor-or-higher otherwise.
 if [[ "$REQUIRED_ROLE" == "approver" ]]; then
   if ! is_approver "$CURRENT_USER"; then
-    error_exit 2 "User '$CURRENT_USER' is not an approver. Only approvers can create version branches." "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+    error_exit 2 \
+      "User '$CURRENT_USER' is not an approver. Only approvers can create version branches." \
+      "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
 else
   if ! is_contributor_or_higher "$CURRENT_USER"; then
-    error_exit 2 "User '$CURRENT_USER' is not a contributor. Only contributors, reviewers, and approvers can create targeted or contributor branches." "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+    error_exit 2 \
+      "User '$CURRENT_USER' is not a contributor. Only contributors, "\
+"reviewers, and approvers can create targeted or contributor branches." \
+      "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
 fi
 
@@ -627,7 +646,9 @@ if [[ "$MODE" == "local" ]]; then
     error_exit 5 "Failed to create branch '$BRANCHNAME'" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
   echo "Local branch '$BRANCHNAME' created"
-  log_operation "SUCCESS" "$BRANCHNAME" "$PARENTBRANCHNAME" "Branch \`$BRANCHNAME\` created from parent \`$PARENTBRANCHNAME\`." "$COMMENT"
+  log_operation "SUCCESS" "$BRANCHNAME" "$PARENTBRANCHNAME" \
+    "Branch \`$BRANCHNAME\` created from parent \`$PARENTBRANCHNAME\`." \
+    "$COMMENT"
   exit 0
 fi
 
@@ -660,9 +681,13 @@ if [[ "$MODE" == "remote" ]]; then
     error_exit 5 "Failed to push branch to remote" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
   echo "Branch '$BRANCHNAME' pushed to remote"
-  log_operation "SUCCESS" "$BRANCHNAME" "$PARENTBRANCHNAME" "Branch \`$BRANCHNAME\` created from parent \`$PARENTBRANCHNAME\` and pushed to remote." "$COMMENT"
+  log_operation "SUCCESS" "$BRANCHNAME" "$PARENTBRANCHNAME" \
+    "Branch \`$BRANCHNAME\` created from parent \`$PARENTBRANCHNAME\` and pushed to remote." \
+    "$COMMENT"
 else
-  log_operation "SUCCESS" "$BRANCHNAME" "$PARENTBRANCHNAME" "Branch \`$BRANCHNAME\` created from parent \`$PARENTBRANCHNAME\`." "$COMMENT"
+  log_operation "SUCCESS" "$BRANCHNAME" "$PARENTBRANCHNAME" \
+    "Branch \`$BRANCHNAME\` created from parent \`$PARENTBRANCHNAME\`." \
+    "$COMMENT"
 fi
 
 exit 0

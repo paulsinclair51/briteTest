@@ -341,7 +341,9 @@ _genpdf_logo_png() {
   elif command -v convert >/dev/null 2>&1; then
     convert -background none "$svg" -resize "${LOGO_WIDTH}x${LOGO_HEIGHT}" "$png" 2>/dev/null || return 1
   elif python3 -c "import cairosvg" 2>/dev/null; then
-    python3 -c "import cairosvg; cairosvg.svg2png(url='$svg', write_to='$png', output_width=$LOGO_WIDTH)" 2>/dev/null || return 1
+    python3 -c \
+      "import cairosvg; cairosvg.svg2png(url='$svg', write_to='$png', output_width=$LOGO_WIDTH)" \
+      2>/dev/null || return 1
   else
     return 1
   fi
@@ -711,9 +713,18 @@ convert_to_pdf() {
   pdfborder={0 0 0}
 }
 \makeatletter
-\renewcommand\section{\@startsection{section}{1}{\z@}{-3.5ex \@plus -1ex \@minus -.2ex}{2.3ex \@plus .2ex}{\normalfont\fontsize{17}{21}\selectfont\bfseries}}
-\renewcommand\subsection{\@startsection{subsection}{2}{\z@}{-3.25ex\@plus -1ex \@minus -.2ex}{1.5ex \@plus .2ex}{\normalfont\fontsize{15}{19}\selectfont\bfseries}}
-\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}{-3.0ex\@plus -1ex \@minus -.2ex}{1.0ex \@plus .2ex}{\normalfont\fontsize{13}{16}\selectfont\bfseries}}
+\renewcommand\section{%
+  \@startsection{section}{1}{\z@}{-3.5ex \@plus -1ex \@minus -.2ex}%
+  {2.3ex \@plus .2ex}{\normalfont\fontsize{17}{21}\selectfont\bfseries}%
+}
+\renewcommand\subsection{%
+  \@startsection{subsection}{2}{\z@}{-3.25ex\@plus -1ex \@minus -.2ex}%
+  {1.5ex \@plus .2ex}{\normalfont\fontsize{15}{19}\selectfont\bfseries}%
+}
+\renewcommand\subsubsection{%
+  \@startsection{subsubsection}{3}{\z@}{-3.0ex\@plus -1ex \@minus -.2ex}%
+  {1.0ex \@plus .2ex}{\normalfont\fontsize{13}{16}\selectfont\bfseries}%
+}
 \makeatother
 \\usepackage{fancyhdr}
 \\newif\\ifltaftertoc
@@ -745,7 +756,9 @@ EOF
     if command -v pandoc >/dev/null 2>&1; then
       if [[ -n "${pandoc_engine:-}" ]]; then
         rm -f "$target_file"
-        if pandoc "${common_args[@]}" --pdf-engine "$pandoc_engine" "${latex_header_args[@]}" "${title_args[@]}" "$markdown_file" -o "$target_file"; then
+        if pandoc "${common_args[@]}" --pdf-engine "$pandoc_engine" \
+          "${latex_header_args[@]}" "${title_args[@]}" \
+          "$markdown_file" -o "$target_file"; then
           rm -f "$header_file" 2>/dev/null || true
           log_debug "converted using pandoc with engine '$pandoc_engine'"
           return 0
@@ -792,7 +805,8 @@ EOF
 
   if ! render_html "$markdown_file" "$html_file" "$doc_title"; then
     rm -f "$html_file"
-    log_error "no supported Markdown-to-PDF toolchain found. Install pandoc, or install python3 with wkhtmltopdf or weasyprint."
+    log_error "no supported Markdown-to-PDF toolchain found. Install pandoc,"
+    log_error "or install python3 with wkhtmltopdf or weasyprint."
     return 1
   fi
 
@@ -868,8 +882,10 @@ generate_awk_convert_details() {
 
     function badge_png_url(image_url, link_url,    base, query) {
       if (image_url ~ /^https:\/\/github\.com\/[^\/]+\/[^\/]+\/actions\/workflows\/[^\/]+\/badge\.svg$/) {
-        if (match(image_url, /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/actions\/workflows\/([^\/]+)\/badge\.svg$/, m)) {
-          return "https://img.shields.io/github/actions/workflow/status/" m[1] "/" m[2] "/" m[3] ".png?branch=main&label=CI"
+        if (match(image_url, /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/actions\/workflows\/([^\/]+)\/badge\.svg$/, \
+            m)) {
+          return "https://img.shields.io/github/actions/workflow/status/" \
+            m[1] "/" m[2] "/" m[3] ".png?branch=main" "&label=CI"
         }
       }
 
@@ -931,7 +947,9 @@ generate_awk_convert_details() {
         }
         next
       }
-      if (match(line, /^[[:space:]]*\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*[[:space:]]*$/)) {
+      if (match(line, /^[[:space:]]*\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*\
+    [[:space:]]*$/ \
+      )) {
         next
       }
 
@@ -1111,7 +1129,10 @@ generate_awk_convert_details() {
 
           if (length(toc_anchor) > 0) {
             print "```{=latex}"
-            print "\\noindent\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" tex_escape(toc_text) "}}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{\\pageref*{" toc_anchor "}}}\\par"
+            print "\\noindent\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" \
+              tex_escape(toc_text) "}}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}" \
+              "\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" \
+              "\\pageref*{" toc_anchor "}}}\\par"
             print "```"
           } else {
             print line
@@ -1190,8 +1211,10 @@ generate_awk_remove_details() {
 
     function badge_png_url(image_url, link_url,    base, query) {
       if (image_url ~ /^https:\/\/github\.com\/[^\/]+\/[^\/]+\/actions\/workflows\/[^\/]+\/badge\.svg$/) {
-        if (match(image_url, /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/actions\/workflows\/([^\/]+)\/badge\.svg$/, m)) {
-          return "https://img.shields.io/github/actions/workflow/status/" m[1] "/" m[2] "/" m[3] ".png?branch=main&label=CI"
+        if (match(image_url, /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/actions\/workflows\/([^\/]+)\/badge\.svg$/, \
+            m)) {
+          return "https://img.shields.io/github/actions/workflow/status/" \
+            m[1] "/" m[2] "/" m[3] ".png?branch=main" "&label=CI"
         }
       }
 
@@ -1253,7 +1276,9 @@ generate_awk_remove_details() {
         }
         next
       }
-      if (match(line, /^[[:space:]]*\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*[[:space:]]*$/)) {
+      if (match(line, /^[[:space:]]*\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*\
+    [[:space:]]*$/ \
+      )) {
         next
       }
 
@@ -1401,7 +1426,10 @@ generate_awk_remove_details() {
 
           if (length(toc_anchor) > 0) {
             print "```{=latex}"
-            print "\\noindent\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" tex_escape(toc_text) "}}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{\\pageref*{" toc_anchor "}}}\\par"
+            print "\\noindent\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" \
+              tex_escape(toc_text) "}}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}" \
+              "\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" \
+              "\\pageref*{" toc_anchor "}}}\\par"
             print "```"
           } else {
             print line
@@ -1696,7 +1724,13 @@ if [[ $check_only -eq 1 ]]; then
   fi
 
   if command -v pandoc >/dev/null 2>&1; then
-    if command -v pdflatex >/dev/null 2>&1 || command -v lualatex >/dev/null 2>&1 || command -v xelatex >/dev/null 2>&1 || command -v tectonic >/dev/null 2>&1 || command -v wkhtmltopdf >/dev/null 2>&1 || command -v weasyprint >/dev/null 2>&1 || command -v prince >/dev/null 2>&1; then
+    if command -v pdflatex >/dev/null 2>&1 ||
+      command -v lualatex >/dev/null 2>&1 ||
+      command -v xelatex >/dev/null 2>&1 ||
+      command -v tectonic >/dev/null 2>&1 ||
+      command -v wkhtmltopdf >/dev/null 2>&1 ||
+      command -v weasyprint >/dev/null 2>&1 ||
+      command -v prince >/dev/null 2>&1; then
       log_info "Toolchain: pandoc with PDF engine available"
       exit 0
     fi
@@ -1704,7 +1738,9 @@ if [[ $check_only -eq 1 ]]; then
     exit 0
   fi
 
-  if command -v python3 >/dev/null 2>&1 && (command -v wkhtmltopdf >/dev/null 2>&1 || command -v weasyprint >/dev/null 2>&1); then
+  if command -v python3 >/dev/null 2>&1 &&
+    (command -v wkhtmltopdf >/dev/null 2>&1 ||
+      command -v weasyprint >/dev/null 2>&1); then
     log_info "Toolchain: python3 + HTML-to-PDF backend available"
     exit 0
   fi
@@ -1873,7 +1909,9 @@ fi
 # SINGLE DOCUMENT MODE PROCESSING
 # ============================================================================
 
-if [[ $recursive -eq 1 || $keep_structure -eq 1 || $segment_glob -eq 1 || ${#include_patterns[@]} -gt 0 || ${#exclude_patterns[@]} -gt 0 ]]; then
+if [[ $recursive -eq 1 || $keep_structure -eq 1 ||
+  $segment_glob -eq 1 || ${#include_patterns[@]} -gt 0 ||
+  ${#exclude_patterns[@]} -gt 0 ]]; then
   log_error "-g, -k, -r, -i, and -x are only allowed in directory mode."
   exit 1
 fi

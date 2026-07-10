@@ -310,7 +310,9 @@ replace_text_file() {
     local tmp_file
     tmp_file="$(mktemp)"
 
-    OLD_TEXT="$old_text" NEW_TEXT="$new_text" perl -0777 -pe 's/\Q$ENV{OLD_TEXT}\E/$ENV{NEW_TEXT}/g' "$file" > "$tmp_file"
+        OLD_TEXT="$old_text" NEW_TEXT="$new_text" \
+            perl -0777 -pe 's/\Q$ENV{OLD_TEXT}\E/$ENV{NEW_TEXT}/g' "$file" \
+            > "$tmp_file"
     mv "$tmp_file" "$file"
 }
 
@@ -428,8 +430,14 @@ normalize_doc_title_svg_if_same_as_brand() {
         return
     fi
 
-    doctitle_matches="$(BRAND_NAME="$brand_name" perl -0777 -ne 'my $count = () = $_ =~ /<text\b(?=[^>]*font-size="43")[^>]*>\Q$ENV{BRAND_NAME}\E<\/text>/g; print $count;' "$svg_file")"
-    title_matches="$(BRAND_NAME="$brand_name" perl -0777 -ne 'my $count = () = $_ =~ /<title id="title">\Q$ENV{BRAND_NAME}\E\s+\Q$ENV{BRAND_NAME}\E Logo<\/title>/g; print $count;' "$svg_file")"
+        doctitle_matches="$(BRAND_NAME="$brand_name" perl -0777 -ne \
+            'my $count = () = $_ =~ /<text\b(?=[^>]*font-size="43")'\
+'[^>]*>\Q$ENV{BRAND_NAME}\E<\/text>/g; print $count;' \
+            "$svg_file")"
+        title_matches="$(BRAND_NAME="$brand_name" perl -0777 -ne \
+            'my $count = () = $_ =~ /<title id="title">\Q$ENV{BRAND_NAME}\E'\
+'\s+\Q$ENV{BRAND_NAME}\E Logo<\/title>/g; print $count;' \
+            "$svg_file")"
 
     if [[ "$doctitle_matches" -eq 0 && "$title_matches" -eq 0 ]]; then
         return
@@ -445,7 +453,11 @@ normalize_doc_title_svg_if_same_as_brand() {
     echo
 
     if [[ "$dry_run" -eq 0 ]]; then
-        BRAND_NAME="$brand_name" perl -0777 -i -pe 's/\n?[ \t]*<text\b(?=[^>]*font-size="43")[^>]*>\Q$ENV{BRAND_NAME}\E<\/text>//g; s/(<title id="title">\Q$ENV{BRAND_NAME}\E)\s+\Q$ENV{BRAND_NAME}\E( Logo<\/title>)/$1$2/g;' "$svg_file"
+                BRAND_NAME="$brand_name" perl -0777 -i -pe \
+                    's/\n?[ \t]*<text\b(?=[^>]*font-size="43")'\
+'[^>]*>\Q$ENV{BRAND_NAME}\E<\/text>//g; s/(<title id="title">\Q$ENV{BRAND_NAME}\E)'\
+'\s+\Q$ENV{BRAND_NAME}\E( Logo<\/title>)/$1$2/g;' \
+                    "$svg_file"
     fi
 
     normalize_changed=1
@@ -523,8 +535,12 @@ if [[ -z "$previous_brand" && -z "$previous_initials" && -z "$previous_tagline" 
     error_exit "Could not find a completed Brand History row to compare against" "$EXIT_MISSING_COMPLETED_ROW"
 fi
 
-if [[ "$pending_brand" == "$previous_brand" && "$pending_initials" == "$previous_initials" && "$pending_tagline" == "$previous_tagline" ]]; then
-    error_exit "Pending Brand History row matches the following completed row; nothing to apply" "$EXIT_PENDING_MATCHES_COMPLETED"
+if [[ "$pending_brand" == "$previous_brand" &&
+    "$pending_initials" == "$previous_initials" &&
+    "$pending_tagline" == "$previous_tagline" ]]; then
+        error_exit \
+            "Pending Brand History row matches the following completed row; nothing to apply" \
+            "$EXIT_PENDING_MATCHES_COMPLETED"
 fi
 
 declare -a old_values=()

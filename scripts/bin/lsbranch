@@ -11,9 +11,9 @@
 usage() {
   cat <<'EOF'
 Usage:
-  lsbranch [-b] [-v]
-  lsbranch BRANCH [-b] [-v]
-  lsbranch {-a | PATTERN} [-i] [-l] [-r] [-v] [-x "PATTERN"]
+  lsbranch [-b] [-n] [-v]
+  lsbranch BRANCH [-b] [-n] [-v]
+  lsbranch {-a | PATTERN} [-b] [-n] [-i] [-l] [-r] [-v] [-x "PATTERN"]
   lsbranch {-h | --help}
 
 For first usage, list status of the current branch.
@@ -54,6 +54,7 @@ Options (see above for the options allowed for each form of usage):
               if invalid arguments or options are provided.
   -a          Same as specifying "*" as PATTERN.
   -b          Black text (disable color) in stdout and report output.
+  -n          Do not run git fetch. Use existing local refs only.
   -i          List branches that violate naming rules (see
               Contributor Guide for rules).
   -l          List local branches.
@@ -92,6 +93,9 @@ Examples:
   # Verbose output for current branch
   lsbranch -v
 
+  # Offline/no-network mode
+  lsbranch -a -r -n
+
 Outputs:
   - Writes help (usage) text or status messages for the
     selected branches to stdout.
@@ -122,11 +126,13 @@ usage_error() {
 }
 
 # High-Level Flow:
-# - Resolves branch context, base-branch relationship, and remote
-#   synchronization status.
-# - Collects ahead/behind, dirty-worktree, and optional PR metadata details.
-# - Writes a branch-status report and optionally appends status snapshots to
-#   history logs.
+# - Parses query scope (current branch, exact branch, or glob pattern) and
+#   resolves local/remote branch candidates.
+# - Collects branch status, sync deltas, parent inference, and optional PR
+#   metadata with per-field fallbacks so report generation continues on
+#   errors.
+# - Writes a markdown branch report, including diagnostics warnings when
+#   metadata collection degrades.
 
 set -euo pipefail
 
@@ -161,6 +167,7 @@ INVALID_ONLY=false
 COLOR_OUTPUT=true
 NO_ARG_MODE=false
 FETCH_ATTEMPTED=false
+REMOTE_FETCH_ENABLED=true
 WARNINGS_FILE="$(mktemp)"
 
 COLOR_RESET=$'\033[0m'
@@ -181,12 +188,12 @@ matches_glob() {
 
 has_local_branch() {
   local branch="$1"
-  [[ -n "$(git branch --list "$branch")" ]]
+  git show-ref --verify --quiet "refs/heads/$branch"
 }
 
 has_remote_branch() {
   local branch="$1"
-  [[ -n "$(git branch -r --list "origin/$branch")" ]]
+  git show-ref --verify --quiet "refs/remotes/origin/$branch"
 }
 
 is_version_branch() {
@@ -351,8 +358,12 @@ get_branch_created_date() {
     ref="origin/$branch"
   fi
 
-  if ! capture_command_output log_output log_error git log "$ref" --reverse --date=short --format='%ad'; then
-    record_diagnostic "Failed to read first commit date for '$ref'; First Commit column left blank." "$log_error"
+  if ! capture_command_output \
+    log_output log_error \
+    git log "$ref" --reverse --date=short --format='%ad'; then
+    record_diagnostic \
+      "Failed to read first commit date for '$ref'; First Commit column left blank." \
+      "$log_error"
     echo ""
     return 0
   fi
@@ -371,8 +382,12 @@ get_branch_last_commit_date() {
     ref="origin/$branch"
   fi
 
-  if ! capture_command_output log_output log_error git log -1 --date=short --format='%ad' "$ref"; then
-    record_diagnostic "Failed to read last commit date for '$ref'; Last Commit column left blank." "$log_error"
+  if ! capture_command_output \
+    log_output log_error \
+    git log -1 --date=short --format='%ad' "$ref"; then
+    record_diagnostic \
+      "Failed to read last commit date for '$ref'; Last Commit column left blank." \
+      "$log_error"
     echo ""
     return 0
   fi
@@ -382,22 +397,50 @@ get_branch_last_commit_date() {
 
 get_remote_branches() {
   local pattern="$1"
-  git branch -r | sed 's|origin/||' | sed 's/^[[:space:]]*//' | grep -v HEAD | while IFS= read -r branch; do
+  local refs_output=""
+  local refs_error=""
+
+  if ! capture_command_output \
+    refs_output refs_error \
+    git for-each-ref --format='%(refname:short)' refs/remotes/origin; then
+    record_diagnostic \
+      "Failed to enumerate remote branches; remote rows may be incomplete." \
+      "$refs_error"
+    echo ""
+    return 0
+  fi
+
+  while IFS= read -r branch; do
     [[ -n "$branch" ]] || continue
+    [[ "$branch" == "origin/HEAD" ]] && continue
+    branch="${branch#origin/}"
     if matches_glob "$branch" "$pattern"; then
       echo "$branch"
     fi
-  done | sort || echo ""
+  done <<< "$refs_output" | sort
 }
 
 get_local_branches() {
   local pattern="$1"
-  git branch --list | sed 's/^[[:space:]]*//' | sed 's/^\* //' | while IFS= read -r branch; do
+  local refs_output=""
+  local refs_error=""
+
+  if ! capture_command_output \
+    refs_output refs_error \
+    git for-each-ref --format='%(refname:short)' refs/heads; then
+    record_diagnostic \
+      "Failed to enumerate local branches; local rows may be incomplete." \
+      "$refs_error"
+    echo ""
+    return 0
+  fi
+
+  while IFS= read -r branch; do
     [[ -n "$branch" ]] || continue
     if matches_glob "$branch" "$pattern"; then
       echo "$branch"
     fi
-  done | sort || echo ""
+  done <<< "$refs_output" | sort
 }
 
 get_remote_only_branches() {
@@ -415,7 +458,8 @@ check_repo_status() {
   local branch="$1"
   local tracked_changes
 
-  tracked_changes=$(git status --porcelain --untracked-files=no 2>/dev/null || true)
+  tracked_changes=$(git status --porcelain --untracked-files=no \
+    2>/dev/null || true)
   if [[ -z "$tracked_changes" ]]; then
     echo "clean"
   else
@@ -451,8 +495,12 @@ get_unpushed_commits() {
     return 0
   fi
 
-  if ! capture_command_output rev_list_output rev_list_error git rev-list --count "origin/$branch..$branch"; then
-    record_diagnostic "Failed to compare '$branch' against 'origin/$branch'; Unpushed Commits may be blank." "$rev_list_error"
+  if ! capture_command_output \
+    rev_list_output rev_list_error \
+    git rev-list --count "origin/$branch..$branch"; then
+    record_diagnostic \
+      "Failed to compare '$branch' against 'origin/$branch'; Unpushed Commits may be blank." \
+      "$rev_list_error"
     echo ""
     return 0
   fi
@@ -470,8 +518,12 @@ get_behind_count() {
     return 0
   fi
 
-  if ! capture_command_output rev_list_output rev_list_error git rev-list --count "$branch..origin/$branch"; then
-    record_diagnostic "Failed to compare 'origin/$branch' against '$branch'; Ahead/Behind may be blank." "$rev_list_error"
+  if ! capture_command_output \
+    rev_list_output rev_list_error \
+    git rev-list --count "$branch..origin/$branch"; then
+    record_diagnostic \
+      "Failed to compare 'origin/$branch' against '$branch'; Ahead/Behind may be blank." \
+      "$rev_list_error"
     echo ""
     return 0
   fi
@@ -486,13 +538,19 @@ get_pending_pr_count() {
   local pr_count
 
   if ! command -v gh >/dev/null 2>&1; then
-    record_diagnostic "PR lookup unavailable for '$branch'; PR column shown as N/A." "gh CLI not found"
+    record_diagnostic \
+      "PR lookup unavailable for '$branch'; PR column shown as N/A." \
+      "gh CLI not found"
     echo "N/A"
     return 0
   fi
 
-  if ! capture_command_output pr_output pr_error gh pr list --head "$branch" --state open --json number --jq 'length'; then
-    record_diagnostic "Failed to query pull requests for '$branch'; PR column shown as N/A." "$pr_error"
+  if ! capture_command_output \
+    pr_output pr_error \
+    gh pr list --head "$branch" --state open --json number --jq 'length'; then
+    record_diagnostic \
+      "Failed to query pull requests for '$branch'; PR column shown as N/A." \
+      "$pr_error"
     echo "N/A"
     return 0
   fi
@@ -502,7 +560,9 @@ get_pending_pr_count() {
   if [[ "$pr_count" =~ ^[0-9]+$ ]]; then
     echo "$pr_count"
   else
-    record_diagnostic "Unexpected PR lookup output for '$branch'; PR column shown as N/A." "$pr_count"
+    record_diagnostic \
+      "Unexpected PR lookup output for '$branch'; PR column shown as N/A." \
+      "$pr_count"
     echo "N/A"
   fi
 }
@@ -511,13 +571,20 @@ ensure_remote_refs_fetched() {
   local fetch_output=""
   local fetch_error=""
 
+  if [[ "$REMOTE_FETCH_ENABLED" == false ]]; then
+    FETCH_ATTEMPTED=true
+    return 0
+  fi
+
   if [[ "$FETCH_ATTEMPTED" == true ]]; then
     return 0
   fi
 
   FETCH_ATTEMPTED=true
   if ! capture_command_output fetch_output fetch_error git fetch origin; then
-    record_diagnostic "Failed to fetch 'origin'; remote status may be stale in this report." "$fetch_error"
+    record_diagnostic \
+      "Failed to fetch 'origin'; remote status may be stale in this report." \
+      "$fetch_error"
   fi
 }
 
@@ -603,7 +670,8 @@ get_branch_base_reference() {
   fi
 
   # Directed dev/fix branches explicitly target the version suffix.
-  if [[ "$branch" =~ ^(dev|fix)/.+-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]; then
+  if [[ "$branch" =~ \
+    ^(dev|fix)/.+-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]; then
     target_version="${BASH_REMATCH[2]}"
     echo "$target_version"
     return 0
@@ -619,8 +687,12 @@ get_branch_base_reference() {
     fi
   fi
 
-  if ! capture_command_output branch_tip tip_error git rev-parse "$branch_ref"; then
-    record_diagnostic "Failed to resolve branch tip for '$branch'; Parent column left blank." "$tip_error"
+  if ! capture_command_output \
+    branch_tip tip_error \
+    git rev-parse "$branch_ref"; then
+    record_diagnostic \
+      "Failed to resolve branch tip for '$branch'; Parent column left blank." \
+      "$tip_error"
     echo ""
     return 0
   fi
@@ -646,16 +718,19 @@ get_branch_base_reference() {
     # If two branches point to the same tip commit, neither should be treated
     # as the other's parent.
     candidate_tip=$(git rev-parse "$candidate_ref" 2>/dev/null || true)
-    if [[ -n "$branch_tip" && -n "$candidate_tip" && "$candidate_tip" == "$branch_tip" ]]; then
+    if [[ -n "$branch_tip" && -n "$candidate_tip" &&
+      "$candidate_tip" == "$branch_tip" ]]; then
       continue
     fi
 
-    if ! git merge-base --is-ancestor "$candidate_ref" "$branch_ref" >/dev/null 2>&1; then
+    if ! git merge-base --is-ancestor \
+      "$candidate_ref" "$branch_ref" >/dev/null 2>&1; then
       continue
     fi
 
     local distance
-    distance=$(git rev-list --count "$candidate_ref..$branch_ref" 2>/dev/null || echo "")
+    distance=$(git rev-list --count "$candidate_ref..$branch_ref" \
+      2>/dev/null || echo "")
     [[ "$distance" =~ ^[0-9]+$ ]] || continue
 
     if [[ -z "$best_distance" || "$distance" -lt "$best_distance" ]]; then
@@ -670,19 +745,27 @@ get_branch_base_reference() {
   )
 
   if [[ -z "$best_base" ]]; then
-    record_diagnostic "Could not infer parent branch for '$branch'; Parent column left blank."
+    record_diagnostic \
+      "Could not infer parent branch for '$branch'; Parent column left blank."
   fi
 
   echo "$best_base"
 }
 
 generate_report_header() {
+  local report_header_cols
+
+  report_header_cols='| **Branch** | **Type** | **Parent** | **Status** | '
+  report_header_cols+='**Staged/<br>Unstaged** | **Unpushed<br>Commits** | '
+  report_header_cols+='**Ahead/<br>Behind** | **PR** | **First Commit** | '
+  report_header_cols+='**Last Commit** |'
+
   cat > "$OUTPUT_FILE" << EOF
 # Branch Report ${RUN_TS_DISPLAY}
 
 **Command:** \`${REPORT_COMMAND}\`
 
-| **Branch** | **Type** | **Parent** | **Status** | **Staged/<br>Unstaged** | **Unpushed<br>Commits** | **Ahead/<br>Behind** | **PR** | **First Commit** | **Last Commit** |
+$report_header_cols
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 EOF
 }
@@ -715,7 +798,7 @@ append_report_row() {
   local created="$9"
   local last_commit="${10}"
 
-  # Escape markdown-table delimiters in cell values so row column counts stay stable.
+  # Escape markdown-table delimiters so table column counts stay stable.
   branch="${branch//|/\\|}"
   type="${type//|/\\|}"
   base="${base//|/\\|}"
@@ -728,7 +811,9 @@ append_report_row() {
   last_commit="${last_commit//|/\\|}"
 
   printf '| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n' \
-    "$branch" "$type" "$base" "$status" "$staged_unstaged" "$unpushed_commits" "$ahead_behind" "$pr" "$created" "$last_commit" >> "$OUTPUT_FILE"
+    "$branch" "$type" "$base" "$status" "$staged_unstaged" \
+    "$unpushed_commits" "$ahead_behind" "$pr" "$created" \
+    "$last_commit" >> "$OUTPUT_FILE"
 }
 
 format_ratio_or_blank() {
@@ -763,7 +848,8 @@ check_branch_status() {
   local include_local_rows="${4:-true}"
   local include_remote_rows="${5:-true}"
 
-  if [[ "$INVALID_ONLY" == true ]] && ! branch_violates_naming_rules "$branch"; then
+  if [[ "$INVALID_ONLY" == true ]] &&
+    ! branch_violates_naming_rules "$branch"; then
     return 0
   fi
 
@@ -785,7 +871,8 @@ check_branch_status() {
   ensure_remote_refs_fetched
 
   # Gather status information — use fallback values if any step fails
-  local repo_status staged_count unstaged_count unpushed_count pr_count branch_type
+  local repo_status staged_count unstaged_count
+  local unpushed_count pr_count branch_type
   if [[ "$is_current" == true ]]; then
     repo_status=$(check_repo_status "$branch") || repo_status="unknown"
     staged_count=$(get_staged_changes "$branch") || staged_count="N/A"
@@ -798,7 +885,8 @@ check_branch_status() {
   unpushed_count=$(get_unpushed_commits "$branch") || unpushed_count="N/A"
   pr_count=$(get_pending_pr_count    "$branch") || pr_count="N/A"
   branch_type=$(get_branch_type      "$branch") || branch_type="unknown"
-  if [[ "$NO_ARG_MODE" == true && "$branch_type" == "local (tracking origin)" ]]; then
+  if [[ "$NO_ARG_MODE" == true &&
+    "$branch_type" == "local (tracking origin)" ]]; then
     include_remote_rows=false
   fi
   local behind_count="0"
@@ -813,7 +901,8 @@ check_branch_status() {
     behind_count=$(get_behind_count "$branch") || behind_count="0"
 
   # Build and print compact status line(s)
-  if [[ "$branch_type" == "local (tracking origin)" && "$include_local_rows" == true && "$include_remote_rows" == true ]]; then
+  if [[ "$branch_type" == "local (tracking origin)" &&
+    "$include_local_rows" == true && "$include_remote_rows" == true ]]; then
     local local_tags=("[local]")
     local remote_tags=("[remote]")
     local split_rows=false
@@ -822,19 +911,25 @@ check_branch_status() {
     [[ "$is_current" == true ]] && local_tags+=("[current]")
     if [[ "$is_current" == true ]]; then
       [[ "$repo_status" == "dirty" ]] && local_tags+=("[dirty]")
-      [[ "$staged_count" =~ ^[0-9]+$ && "$staged_count" -gt 0 ]] && local_tags+=("[staged]")
-      [[ "$unstaged_count" =~ ^[0-9]+$ && "$unstaged_count" -gt 0 ]] && local_tags+=("[unstaged]")
+      [[ "$staged_count" =~ ^[0-9]+$ && "$staged_count" -gt 0 ]] && \
+        local_tags+=("[staged]")
+      [[ "$unstaged_count" =~ ^[0-9]+$ && "$unstaged_count" -gt 0 ]] && \
+        local_tags+=("[unstaged]")
     else
       local_tags+=("[not checked out]")
     fi
-    [[ "$unpushed_count" =~ ^[0-9]+$ && "$unpushed_count" -gt 0 ]] && local_tags+=("[ahead $unpushed_count]")
+    [[ "$unpushed_count" =~ ^[0-9]+$ && "$unpushed_count" -gt 0 ]] && \
+      local_tags+=("[ahead $unpushed_count]")
 
-    [[ "$behind_count" =~ ^[0-9]+$ && "$behind_count" -gt 0 ]] && remote_tags+=("[ahead $behind_count of local]")
-    [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 ]] && remote_tags+=("[PRs: $pr_count]")
+    [[ "$behind_count" =~ ^[0-9]+$ && "$behind_count" -gt 0 ]] && \
+      remote_tags+=("[ahead $behind_count of local]")
+    [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 ]] && \
+      remote_tags+=("[PRs: $pr_count]")
 
     local_status_sig="${local_tags[*]}"
     remote_status_sig="${remote_tags[*]}"
-    if [[ "$local_status_sig" != "[local]" || "$remote_status_sig" != "[remote]" ]]; then
+    if [[ "$local_status_sig" != "[local]" ||
+      "$remote_status_sig" != "[remote]" ]]; then
       split_rows=true
     fi
 
@@ -844,14 +939,18 @@ check_branch_status() {
     else
       printf '%s [local] [remote]\n' "$branch_status_display"
     fi
-  elif [[ "$branch_type" == "local (tracking origin)" && "$include_remote_rows" == true ]]; then
+  elif [[ "$branch_type" == "local (tracking origin)" &&
+    "$include_remote_rows" == true ]]; then
     local tags=("[remote]")
-    [[ "$behind_count" =~ ^[0-9]+$ && "$behind_count" -gt 0 ]] && tags+=("[ahead $behind_count of local]")
-    [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 ]] && tags+=("[PRs: $pr_count]")
+    [[ "$behind_count" =~ ^[0-9]+$ && "$behind_count" -gt 0 ]] && \
+      tags+=("[ahead $behind_count of local]")
+    [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 ]] && \
+      tags+=("[PRs: $pr_count]")
     printf '%s %s\n' "$branch_status_display_remote" "${tags[*]}"
   else
     local tags=()
-    if [[ "$include_remote_rows" == true && "$include_local_rows" == false ]]; then
+    if [[ "$include_remote_rows" == true &&
+      "$include_local_rows" == false ]]; then
       tags+=("[remote]")
     elif [[ "$branch_type" == "remote" ]]; then
       tags+=("[remote]")
@@ -862,14 +961,18 @@ check_branch_status() {
       [[ "$is_current" == true ]] && tags+=("[current]")
       if [[ "$is_current" == true ]]; then
         [[ "$repo_status" == "dirty" ]] && tags+=("[dirty]")
-        [[ "$staged_count" =~ ^[0-9]+$ && "$staged_count" -gt 0 ]] && tags+=("[staged]")
-        [[ "$unstaged_count" =~ ^[0-9]+$ && "$unstaged_count" -gt 0 ]] && tags+=("[unstaged]")
+        [[ "$staged_count" =~ ^[0-9]+$ && "$staged_count" -gt 0 ]] && \
+          tags+=("[staged]")
+        [[ "$unstaged_count" =~ ^[0-9]+$ && "$unstaged_count" -gt 0 ]] && \
+          tags+=("[unstaged]")
       else
         tags+=("[not checked out]")
       fi
     fi
-    [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 ]] && tags+=("[PRs: $pr_count]")
-    if [[ "$include_remote_rows" == true && "$include_local_rows" == false ]]; then
+    [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 ]] && \
+      tags+=("[PRs: $pr_count]")
+    if [[ "$include_remote_rows" == true &&
+      "$include_local_rows" == false ]]; then
       printf '%s %s\n' "$branch_status_display_remote" "${tags[*]}"
     else
       printf '%s %s\n' "$branch_status_display_local" "${tags[*]}"
@@ -891,37 +994,57 @@ check_branch_status() {
       if [[ "$include_local_rows" == true ]]; then
         local local_ahead_behind
         local staged_unstaged_display
-        local_ahead_behind=$(format_ratio_or_blank "$unpushed_count" "$behind_count")
-        staged_unstaged_display=$(format_ratio_or_blank "$staged_count" "$unstaged_count")
-        append_report_row "$branch_local_display" "local" "$base_reference" "$local_status" "$staged_unstaged_display" "$unpushed_display" "$local_ahead_behind" "$pr_count_display" "$created_date" "$last_commit_date"
+        local_ahead_behind=$(format_ratio_or_blank \
+          "$unpushed_count" "$behind_count")
+        staged_unstaged_display=$(format_ratio_or_blank \
+          "$staged_count" "$unstaged_count")
+        append_report_row \
+          "$branch_local_display" "local" "$base_reference" \
+          "$local_status" "$staged_unstaged_display" \
+          "$unpushed_display" "$local_ahead_behind" \
+          "$pr_count_display" "$created_date" "$last_commit_date"
       fi
 
       local remote_status="synced"
-      if [[ "$behind_count" =~ ^[0-9]+$ && "$behind_count" -gt 0 ]] || [[ "$unpushed_count" =~ ^[0-9]+$ && "$unpushed_count" -gt 0 ]]; then
+      if [[ "$behind_count" =~ ^[0-9]+$ && "$behind_count" -gt 0 ]] ||
+        [[ "$unpushed_count" =~ ^[0-9]+$ && "$unpushed_count" -gt 0 ]]; then
         remote_status="diverged"
       fi
       if [[ "$include_remote_rows" == true ]]; then
         local remote_ahead_behind
-        remote_ahead_behind=$(format_ratio_or_blank "$behind_count" "$unpushed_count")
-        append_report_row "$branch_remote_display" "remote" "$base_reference" "$remote_status" "" "" "$remote_ahead_behind" "$pr_count_display" "$created_date" "$last_commit_date"
+        remote_ahead_behind=$(format_ratio_or_blank \
+          "$behind_count" "$unpushed_count")
+        append_report_row \
+          "$branch_remote_display" "remote" "$base_reference" \
+          "$remote_status" "" "" "$remote_ahead_behind" \
+          "$pr_count_display" "$created_date" "$last_commit_date"
       fi
     elif [[ "$branch_type" == "local" ]]; then
       local pr_count_display
       local staged_unstaged_display
       local unpushed_display
       pr_count_display=$(format_zero_as_blank "$pr_count")
-      staged_unstaged_display=$(format_ratio_or_blank "$staged_count" "$unstaged_count")
+      staged_unstaged_display=$(format_ratio_or_blank \
+        "$staged_count" "$unstaged_count")
       unpushed_display=$(format_zero_as_blank "$unpushed_count")
       if [[ "$include_local_rows" == true ]]; then
-        append_report_row "$branch_local_display" "local" "" "$local_status" "$staged_unstaged_display" "$unpushed_display" "" "$pr_count_display" "$created_date" "$last_commit_date"
+        append_report_row \
+          "$branch_local_display" "local" "" "$local_status" \
+          "$staged_unstaged_display" "$unpushed_display" "" \
+          "$pr_count_display" "$created_date" "$last_commit_date"
       elif [[ "$include_remote_rows" == true ]]; then
-        append_report_row "$branch_remote_display" "remote" "" "not tracking origin" "" "" "" "$pr_count_display" "$created_date" "$last_commit_date"
+        append_report_row \
+          "$branch_remote_display" "remote" "" "not tracking origin" \
+          "" "" "" "$pr_count_display" "$created_date" \
+          "$last_commit_date"
       fi
     else
       local pr_count_display
       pr_count_display=$(format_zero_as_blank "$pr_count")
       if [[ "$include_remote_rows" == true ]]; then
-        append_report_row "$branch_display" "remote" "" "$repo_status" "" "" "" "$pr_count_display" "$created_date" "$last_commit_date"
+        append_report_row \
+          "$branch_display" "remote" "" "$repo_status" "" "" "" \
+          "$pr_count_display" "$created_date" "$last_commit_date"
       fi
     fi
 
@@ -939,7 +1062,8 @@ check_remote_branch_status() {
   local branch="$1"
   local report_file="$2"
 
-  if [[ "$INVALID_ONLY" == true ]] && ! branch_violates_naming_rules "$branch"; then
+  if [[ "$INVALID_ONLY" == true ]] &&
+    ! branch_violates_naming_rules "$branch"; then
     return 0
   fi
 
@@ -966,12 +1090,15 @@ check_remote_branch_status() {
 
   # Build and print compact status line
   local tags=("[remote]")
-  [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 ]] && tags+=("[PRs: $pr_count]")
+  [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 ]] && \
+    tags+=("[PRs: $pr_count]")
   printf '%s %s\n' "$branch_status_display" "${tags[*]}"
 
   local pr_count_display
   pr_count_display=$(format_zero_as_blank "$pr_count")
-  append_report_row "$branch_report_display" "remote" "$base_reference" "synced" "" "" "" "$pr_count_display" "$created_date" "$last_commit_date"
+  append_report_row \
+    "$branch_report_display" "remote" "$base_reference" "synced" "" \
+    "" "" "$pr_count_display" "$created_date" "$last_commit_date"
 
   if [[ "$VERBOSE" == true ]]; then
     echo "  Last Commit: $last_commit_date"
@@ -997,6 +1124,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -b)
       COLOR_OUTPUT=false
+      shift
+      ;;
+    -n)
+      REMOTE_FETCH_ENABLED=false
       shift
       ;;
     -v)
@@ -1051,8 +1182,10 @@ if $ALL_BRANCHES; then
   BRANCH_PATTERN="*"
 fi
 
-if [[ -n "$TARGET_BRANCH" && ( "$INVALID_ONLY" == true || -n "$EXCLUDE_PATTERN" || "$INCLUDE_LOCAL_FLAG" == true || "$INCLUDE_REMOTE_FLAG" == true ) ]]; then
-  usage_error "When BRANCH is specified, only -v and -b are allowed"
+if [[ -n "$TARGET_BRANCH" &&
+  ( "$INVALID_ONLY" == true || -n "$EXCLUDE_PATTERN" ||
+    "$INCLUDE_LOCAL_FLAG" == true || "$INCLUDE_REMOTE_FLAG" == true ) ]]; then
+  usage_error "When BRANCH is specified, only -v, -b, and -n are allowed"
 fi
 
 if [[ -n "$EXCLUDE_PATTERN" && -z "$BRANCH_PATTERN" ]]; then
@@ -1092,11 +1225,13 @@ fi
 OUTPUT_FILE="$repo_root/reports/branch-${RUN_TS_FILE}.md"
 
 # Get current branch to restore later
-ORIGINAL_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+ORIGINAL_BRANCH=$(bt_get_current_branch ||
+  bt_error_exit 2 "Failed to determine current branch")
 
 # Determine branches to check
 if [[ -n "$TARGET_BRANCH" ]]; then
-  if ! has_local_branch "$TARGET_BRANCH" && ! has_remote_branch "$TARGET_BRANCH"; then
+  if ! has_local_branch "$TARGET_BRANCH" &&
+    ! has_remote_branch "$TARGET_BRANCH"; then
     bt_error_exit 5 "Branch does not exist: $TARGET_BRANCH"
   fi
 
@@ -1114,7 +1249,8 @@ if [[ -n "$TARGET_BRANCH" ]]; then
     fi
   fi
 elif [[ -z "$BRANCH_PATTERN" ]]; then
-  # Default scope is current branch; remote scope is current tracked branch, if any.
+  # Default scope is current branch; remote scope is current tracked branch,
+  # if any.
   if ! has_local_branch "$ORIGINAL_BRANCH"; then
     bt_error_exit 5 "Current branch does not exist: $ORIGINAL_BRANCH"
   fi
@@ -1134,17 +1270,21 @@ else
 
   local_branches=$(apply_exclude_filter "$local_branches" "$EXCLUDE_PATTERN")
   remote_branches=$(apply_exclude_filter "$remote_branches" "$EXCLUDE_PATTERN")
-  remote_only_branches=$(apply_exclude_filter "$remote_only_branches" "$EXCLUDE_PATTERN")
+  remote_only_branches=$(apply_exclude_filter \
+    "$remote_only_branches" "$EXCLUDE_PATTERN")
 
   BRANCHES_TO_CHECK="$local_branches"
   REMOTE_BRANCHES_TO_CHECK="$remote_branches"
   REMOTE_ONLY="$remote_only_branches"
 
-  if [[ "$INCLUDE_LOCAL" == true && "$INCLUDE_REMOTE" == false && -z "$BRANCHES_TO_CHECK" ]]; then
+  if [[ "$INCLUDE_LOCAL" == true && "$INCLUDE_REMOTE" == false &&
+    -z "$BRANCHES_TO_CHECK" ]]; then
     bt_warn "No branches found matching pattern: $BRANCH_PATTERN"
-  elif [[ "$INCLUDE_REMOTE" == true && "$INCLUDE_LOCAL" == false && -z "$REMOTE_BRANCHES_TO_CHECK" ]]; then
+  elif [[ "$INCLUDE_REMOTE" == true && "$INCLUDE_LOCAL" == false &&
+    -z "$REMOTE_BRANCHES_TO_CHECK" ]]; then
     bt_warn "No branches found matching pattern: $BRANCH_PATTERN"
-  elif [[ "$INCLUDE_REMOTE" == true && "$INCLUDE_LOCAL" == true && -z "$BRANCHES_TO_CHECK" && -z "$REMOTE_BRANCHES_TO_CHECK" ]]; then
+  elif [[ "$INCLUDE_REMOTE" == true && "$INCLUDE_LOCAL" == true &&
+    -z "$BRANCHES_TO_CHECK" && -z "$REMOTE_BRANCHES_TO_CHECK" ]]; then
     bt_warn "No branches found matching pattern: $BRANCH_PATTERN"
   fi
 fi
@@ -1156,7 +1296,8 @@ generate_report_header
 # the current branch's actual ref type if it only exists remotely.
 if [[ "$NO_ARG_MODE" == true ]]; then
   if has_local_branch "$ORIGINAL_BRANCH"; then
-    check_branch_status "$ORIGINAL_BRANCH" "$OUTPUT_FILE" true true false || true
+    check_branch_status \
+      "$ORIGINAL_BRANCH" "$OUTPUT_FILE" true true false || true
   elif has_remote_branch "$ORIGINAL_BRANCH"; then
     check_remote_branch_status "$ORIGINAL_BRANCH" "$OUTPUT_FILE" || true
   fi
@@ -1175,7 +1316,9 @@ else
         if [[ -n "$branch" ]]; then
           _is_current=false
           [[ "$branch" == "$ORIGINAL_BRANCH" ]] && _is_current=true
-          check_branch_status "$branch" "$OUTPUT_FILE" "$_is_current" "$INCLUDE_LOCAL" "$INCLUDE_REMOTE" || true
+          check_branch_status \
+            "$branch" "$OUTPUT_FILE" "$_is_current" \
+            "$INCLUDE_LOCAL" "$INCLUDE_REMOTE" || true
         fi
       done <<< "$local_to_check"
     fi
@@ -1201,8 +1344,12 @@ else
 fi
 
 if supports_report_color_output; then
-  FOOTER_BRANCH_LINE='**Branch**: Indicates the branch name. <span style="color:#66bb6a;font-weight:700">*</span> indicates this is the current branch.'
-  FOOTER_INVALID_LINE='<span style="color:#c62828;font-weight:700">!</span> after branch name indicates the name violates naming rules.'
+  FOOTER_BRANCH_LINE='**Branch**: Indicates the branch name. '
+  FOOTER_BRANCH_LINE+='<span style="color:#66bb6a;font-weight:700">*</span> '
+  FOOTER_BRANCH_LINE+='indicates this is the current branch.'
+  FOOTER_INVALID_LINE='<span style="color:#c62828;font-weight:700">!</span> '
+  FOOTER_INVALID_LINE+='after branch name indicates the name violates naming '
+  FOOTER_INVALID_LINE+='rules.'
 else
   FOOTER_BRANCH_LINE='**Branch**: Indicates the branch name. * indicates this is the current branch.'
   FOOTER_INVALID_LINE='! after branch name indicates the name violates naming rules.'
@@ -1219,7 +1366,8 @@ $FOOTER_INVALID_LINE
 **Parent**: Parent branch reference for the row when applicable (for example,
 \`main\` or \`v1.0.0\`).
 
-**Status**: \`clean\`, \`dirty\`, or \`not checked out\` for local worktree state, \`synced\` or \`diverged\` for tracked-branch state, or \`unknown\`.
+**Status**: \`clean\`, \`dirty\`, or \`not checked out\` for local worktree
+state, \`synced\` or \`diverged\` for tracked-branch state, or \`unknown\`.
 
 **Staged/Unstaged**: Counts of staged and unstaged files.
 
