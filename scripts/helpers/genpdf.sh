@@ -74,7 +74,8 @@ Examples:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 EOF
 }
@@ -99,7 +100,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # ============================================================================
 
 # Pandoc conversion engines (priority order: LaTeX native -> HTML fallback)
-declare -a PANDOC_ENGINES=(pdflatex lualatex xelatex tectonic wkhtmltopdf weasyprint prince)
+declare -a PANDOC_ENGINES=(
+  pdflatex lualatex xelatex tectonic wkhtmltopdf weasyprint prince
+)
 
 # Logo dimensions (pixels)
 readonly LOGO_WIDTH=200
@@ -165,7 +168,8 @@ trim_trailing_slashes() {
   printf '%s\n' "$path"
 }
 
-# Check if target file can be written (exists and writable, or parent dir writable).
+# Check if target file can be written.
+# Either target exists and is writable, or parent directory is writable.
 can_write_target() {
   local target_file=$1
   local target_dir
@@ -199,7 +203,8 @@ validate_backend() {
 # PATTERN MATCHING FUNCTIONS (Bash)
 # ============================================================================
 
-# Check if text matches any of the given patterns (standard or segment-style glob).
+# Check if text matches any of the given patterns.
+# Supports standard globs and segment-style glob matching.
 match_any_pattern() {
   local text=$1
   shift
@@ -221,7 +226,9 @@ match_any_pattern() {
 }
 
 # Convert a glob pattern to a POSIX ERE regex with segment-style matching.
-# In segment style: * and ? do NOT match '/', and ** matches across '/' segments.
+# In segment style:
+# - * and ? do NOT match '/'
+# - ** matches across '/' segments
 glob_to_regex_segment() {
   local pattern=$1
   local regex='^'
@@ -316,7 +323,8 @@ find_pandoc_engine() {
 # ============================================================================
 
 # Search for a logo file with given extension in docs/branding/.
-# Searches relative to repo root (parent of SCRIPT_DIR) and current working directory.
+# Searches relative to repo root (parent of SCRIPT_DIR) and current working
+# directory.
 _genpdf_find_logo() {
   local ext=$1 root f
   for root in "$(dirname "$SCRIPT_DIR")" "$PWD"; do
@@ -327,7 +335,8 @@ _genpdf_find_logo() {
 }
 
 # Return path to logo PNG, auto-converting from SVG if needed.
-# Tries multiple SVG->PNG conversion tools (rsvg-convert, inkscape, convert, cairosvg).
+# Tries multiple SVG->PNG conversion tools:
+# rsvg-convert, inkscape, convert, and cairosvg.
 _genpdf_logo_png() {
   local png svg
   png=$(_genpdf_find_logo ".png") && echo "$png" && return 0
@@ -335,14 +344,18 @@ _genpdf_logo_png() {
   png="${svg%.svg}.png"
   
   if command -v rsvg-convert >/dev/null 2>&1; then
-    rsvg-convert -w "$LOGO_WIDTH" -h "$LOGO_HEIGHT" "$svg" > "$png" 2>/dev/null || return 1
+    rsvg-convert -w "$LOGO_WIDTH" -h "$LOGO_HEIGHT" "$svg" > "$png" \
+      2>/dev/null || return 1
   elif command -v inkscape >/dev/null 2>&1; then
-    inkscape --export-type=png --export-width="$LOGO_WIDTH" "$svg" -o "$png" 2>/dev/null || return 1
+    inkscape --export-type=png --export-width="$LOGO_WIDTH" "$svg" \
+      -o "$png" 2>/dev/null || return 1
   elif command -v convert >/dev/null 2>&1; then
-    convert -background none "$svg" -resize "${LOGO_WIDTH}x${LOGO_HEIGHT}" "$png" 2>/dev/null || return 1
+    convert -background none "$svg" -resize "${LOGO_WIDTH}x${LOGO_HEIGHT}" \
+      "$png" 2>/dev/null || return 1
   elif python3 -c "import cairosvg" 2>/dev/null; then
     python3 -c \
-      "import cairosvg; cairosvg.svg2png(url='$svg', write_to='$png', output_width=$LOGO_WIDTH)" \
+      "import cairosvg; cairosvg.svg2png(url='$svg', write_to='$png', "\
+"output_width=$LOGO_WIDTH)" \
       2>/dev/null || return 1
   else
     return 1
@@ -354,7 +367,8 @@ _genpdf_logo_png() {
 # DOCUMENT TITLE EXTRACTION
 # ============================================================================
 
-# Extract document title from first non-badge line (priority: heading > image alt > filename).
+# Extract document title from first non-badge line.
+# Priority order: heading > image alt > filename.
 # Used for PDF metadata and page headers.
 _genpdf_title_from_first_line() {
   local markdown_file=$1
@@ -371,7 +385,10 @@ _genpdf_title_from_first_line() {
 
     function is_badge_line(line,    t) {
       t = trim(line)
-      return (t ~ /^\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*[[:space:]]*$/)
+      badge_re = "^\\[!\\[[^]]*\\]\\([^)]*\\)\\]\\([^)]*\\)"
+      badge_re = badge_re "([[:space:]]+\\[!\\[[^]]*\\]\\([^)]*\\)"
+      badge_re = badge_re "\\]\\([^)]*\\))*[[:space:]]*$"
+      return (t ~ badge_re)
     }
 
     function image_alt(line,   alt) {
@@ -462,16 +479,17 @@ _genpdf_title_from_first_line() {
 # AWK HELPER FUNCTIONS - DEFINED FOR SINGLE-PASS METADATA SCAN
 # ============================================================================
 
-# Note: These AWK inline functions are used in the single-pass scan_markdown_metadata
-# to extract only document/runner/test version numbers with early exit once found.
-# Logo extraction (PNG ref) is handled on second pass during markdown conversion,
+# Note: These AWK inline functions are used in single-pass
+# scan_markdown_metadata to extract only document/runner/test versions with
+# early exit once found. Logo extraction (PNG ref) is handled on second pass,
 # when we encounter the first line after badges.
 
 # ============================================================================
 # METADATA SCANNING - SINGLE PASS WITH EARLY EXIT
 # ============================================================================
 
-# Single-pass scan for version information. Exits early once all three versions found.
+# Single-pass scan for version information.
+# Exits early once all three versions are found.
 # Returns TSV output: DOC<tab>version, RUNNER<tab>version, TEST<tab>version
 # Does NOT extract PNG reference (deferred to second pass).
 # Does NOT extract has_toc (never used).
@@ -548,7 +566,8 @@ scan_markdown_metadata() {
         next
       }
 
-      if (saw_separator && (length(doc_ver) == 0 || length(runner_ver) == 0 || length(test_ver) == 0)) {
+        if (saw_separator && (length(doc_ver) == 0 ||
+          length(runner_ver) == 0 || length(test_ver) == 0)) {
         row_versions = parse_history_row($0)
         if (length(row_versions) > 0) {
           split(row_versions, rows, /\t/)
@@ -629,7 +648,9 @@ doc = f"""<!doctype html>
   <meta charset=\"utf-8\">
   <title>{html.escape(html_title if html_title else markdown_path.stem)}</title>
   <style>
-    body {{ font-family: serif; margin: 1in; line-height: 1.5; position: relative; }}
+    body {{
+      font-family: serif; margin: 1in; line-height: 1.5; position: relative;
+    }}
     pre {{ white-space: pre-wrap; }}
     code {{ font-family: monospace; }}
   </style>
@@ -649,9 +670,10 @@ PY
 # PDF CONVERSION - BACKEND LOGIC
 # ============================================================================
 
-# Convert markdown file to PDF using available backends (pandoc preferred, HTML fallback).
-# Attempts pandoc first (with LaTeX styling), then falls back to wkhtmltopdf/weasyprint.
-# Args: $1=markdown_file, $2=target_pdf, $3=source_dir (for resource resolution), $4=doc_title (metadata)
+# Convert markdown file to PDF using available backends.
+# Pandoc is preferred, with HTML fallback backends.
+# Args: $1=markdown_file, $2=target_pdf, $3=source_dir
+#       $4=doc_title (metadata)
 #       $5=copyright_text (optional, centered in running footer)
 convert_to_pdf() {
   local markdown_file=$1
@@ -676,7 +698,11 @@ convert_to_pdf() {
   display_title=$(basename "${target_file%.pdf}")
   display_title=${display_title//_/ }
   header_title=$(latex_escape "$display_title")
-  common_args=(-f markdown-implicit_figures --resource-path "$source_dir:." -V geometry:margin=1in)
+  common_args=(
+    -f markdown-implicit_figures
+    --resource-path "$source_dir:."
+    -V geometry:margin=1in
+  )
 
   if [[ "$backend" == "pandoc" || "$backend" == "auto" ]]; then
     if command -v pandoc >/dev/null 2>&1; then
@@ -764,7 +790,8 @@ EOF
           return 0
         else
           status=$?
-          log_warn "pandoc with engine '$pandoc_engine' failed with exit code $status for: $target_file"
+          log_warn "pandoc with engine '$pandoc_engine' failed with exit code "\
+"$status for: $target_file"
           if [[ "$backend" == "pandoc" ]]; then
             rm -f "$header_file" 2>/dev/null || true
             return 1
@@ -772,13 +799,15 @@ EOF
         fi
       else
         rm -f "$target_file"
-        if pandoc "${common_args[@]}" "${title_args[@]}" "$markdown_file" -o "$target_file"; then
+        if pandoc "${common_args[@]}" "${title_args[@]}" "$markdown_file" \
+          -o "$target_file"; then
           rm -f "$header_file" 2>/dev/null || true
           log_debug "converted using pandoc default engine"
           return 0
         else
           status=$?
-          log_warn "pandoc default conversion failed with exit code $status for: $target_file"
+          log_warn "pandoc default conversion failed with exit code $status "\
+"for: $target_file"
           if [[ "$backend" == "pandoc" ]]; then
             rm -f "$header_file" 2>/dev/null || true
             return 1
@@ -796,7 +825,8 @@ EOF
 
   rm -f "$header_file" 2>/dev/null || true
 
-  if [[ "$backend" != "auto" && "$backend" != "wkhtmltopdf" && "$backend" != "weasyprint" ]]; then
+  if [[ "$backend" != "auto" && "$backend" != "wkhtmltopdf" && \
+    "$backend" != "weasyprint" ]]; then
     log_error "unsupported backend selection: $backend"
     return 1
   fi
@@ -810,7 +840,8 @@ EOF
     return 1
   fi
 
-  if [[ "$backend" == "auto" || "$backend" == "wkhtmltopdf" ]] && command -v wkhtmltopdf >/dev/null 2>&1; then
+  if [[ "$backend" == "auto" || "$backend" == "wkhtmltopdf" ]] && \
+    command -v wkhtmltopdf >/dev/null 2>&1; then
     rm -f "$target_file"
     if wkhtmltopdf "$html_file" "$target_file"; then
       rm -f "$html_file"
@@ -822,7 +853,8 @@ EOF
     fi
   fi
 
-  if [[ "$backend" == "auto" || "$backend" == "weasyprint" ]] && command -v weasyprint >/dev/null 2>&1; then
+  if [[ "$backend" == "auto" || "$backend" == "weasyprint" ]] && \
+    command -v weasyprint >/dev/null 2>&1; then
     rm -f "$target_file"
     if weasyprint "$html_file" "$target_file"; then
       rm -f "$html_file"
@@ -836,7 +868,8 @@ EOF
 
   rm -f "$html_file"
   if [[ "$backend" == "wkhtmltopdf" || "$backend" == "weasyprint" ]]; then
-    log_error "requested backend '$backend' failed or is not available for: $target_file"
+    log_error "requested backend '$backend' failed or is not available for: "\
+  "$target_file"
     return 1
   fi
   log_error "all available conversion backends failed for: $target_file"
@@ -848,7 +881,8 @@ EOF
 # ============================================================================
 
 # AWK program to convert <details>/<summary> HTML tags to PDF-friendly Markdown.
-# Also handles logo embedding, version display, and section formatting for LaTeX.
+# Also handles logo embedding, version display, and section formatting for
+# LaTeX.
 # Called when convert_details=1 to transform details blocks into subsections.
 generate_awk_convert_details() {
   cat <<'AWKPROGRAM'
@@ -865,7 +899,7 @@ generate_awk_convert_details() {
     }
 
     function png_path_from_line(line,    value, parts) {
-      if (match(line, /!\[[^]]*\]\(([^)]+\.[Pp][Nn][Gg]([[:space:]][^)]+)?)\)/)) {
+      if (match(line, re_png_ref)) {
         value = substr(line, RSTART, RLENGTH)
         sub(/^!\[[^]]*\]\(/, "", value)
         sub(/\)$/, "", value)
@@ -881,9 +915,8 @@ generate_awk_convert_details() {
     }
 
     function badge_png_url(image_url, link_url,    base, query) {
-      if (image_url ~ /^https:\/\/github\.com\/[^\/]+\/[^\/]+\/actions\/workflows\/[^\/]+\/badge\.svg$/) {
-        if (match(image_url, /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/actions\/workflows\/([^\/]+)\/badge\.svg$/, \
-            m)) {
+      if (image_url ~ re_gh_badge) {
+        if (match(image_url, re_gh_badge_cap, m)) {
           return "https://img.shields.io/github/actions/workflow/status/" \
             m[1] "/" m[2] "/" m[3] ".png?branch=main" "&label=CI"
         }
@@ -936,20 +969,41 @@ generate_awk_convert_details() {
       return t
     }
 
+    BEGIN {
+      re_png_ref = "!\\[[^]]*\\]\\(([^)]+\\.[Pp][Nn][Gg]"
+      re_png_ref = re_png_ref "([[:space:]][^)]+)?)\\)"
+      re_gh_badge = "^https://github\\.com/[^/]+/[^/]+/actions/"
+      re_gh_badge = re_gh_badge "workflows/[^/]+/badge\\.svg$"
+      re_gh_badge_cap = "^https://github\\.com/([^/]+)/([^/]+)/actions/"
+      re_gh_badge_cap = re_gh_badge_cap "workflows/([^/]+)/badge\\.svg$"
+      re_badge_single = "^[[:space:]]*\\[!\\[([^]]*)\\]\\(([^)]*)\\)"
+      re_badge_single = re_badge_single "\\]\\(([^)]*)\\)[[:space:]]*$"
+      re_badge_multi = "^[[:space:]]*\\[!\\[[^]]*\\]\\([^)]*\\)\\]\\([^)]*\\)"
+      re_badge_multi = re_badge_multi "([[:space:]]+\\[!\\[[^]]*\\]\\([^)]*\\)"
+      re_badge_multi = re_badge_multi "\\]\\([^)]*\\))*[[:space:]]*$"
+      re_details_open = "^[[:space:]]*<[[:space:]]*details"
+      re_details_open = re_details_open "([[:space:]][^>]*)?>[[:space:]]*$"
+      re_details_close = "^[[:space:]]*<[[:space:]]*/[[:space:]]*details"
+      re_details_close = re_details_close "([[:space:]][^>]*)?>[[:space:]]*$"
+      re_summary_close = "<[[:space:]]*/[[:space:]]*summary([[:space:]][^>]*)?>"
+      re_png_line = "^[[:space:]]*!\\[[^]]*\\]\\([^)]*\\.[Pp][Nn][Gg]"
+      re_png_line = re_png_line "([[:space:]][^)]+)?\\)[[:space:]]*$"
+      re_h2 = "^##[[:space:]]+"
+      re_toc_h2 = "^##[[:space:]]*table of contents[[:space:]]*$"
+    }
+
     {
       line = $0
       lower = tolower(line)
 
-      if (match(line, /^[[:space:]]*\[!\[([^]]*)\]\(([^)]*)\)\]\(([^)]*)\)[[:space:]]*$/, badge_parts)) {
+      if (match(line, re_badge_single, badge_parts)) {
         if (title_done != 1) {
           badge_img = badge_png_url(badge_parts[2], badge_parts[3])
           print "[![" badge_parts[1] "](" badge_img ")](" badge_parts[3] ")"
         }
         next
       }
-      if (match(line, /^[[:space:]]*\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*\
-    [[:space:]]*$/ \
-      )) {
+      if (match(line, re_badge_multi)) {
         next
       }
 
@@ -966,14 +1020,13 @@ generate_awk_convert_details() {
         next
       }
 
-      if (match(lower, /^[[:space:]]*<[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/) ||
-          match(lower, /^[[:space:]]*<[[:space:]]*\/[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/)) {
+      if (match(lower, re_details_open) || match(lower, re_details_close)) {
         next
       }
 
       if (in_summary == 1) {
         text = line
-        if (match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+        if (match(lower, re_summary_close)) {
           gsub(/<[^>]+>/, "", text)
           gsub(/^[[:space:]]+|[[:space:]]+$/, "", text)
           if (length(text) > 0) {
@@ -1006,7 +1059,7 @@ generate_awk_convert_details() {
         text = line
         gsub(/<[^>]+>/, "", text)
         gsub(/^[[:space:]]+|[[:space:]]+$/, "", text)
-        if (match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+        if (match(lower, re_summary_close)) {
           if (length(text) > 0) {
             print "### " text
           }
@@ -1017,7 +1070,7 @@ generate_awk_convert_details() {
         next
       }
 
-      if (match(line, /^[[:space:]]*!\[[^]]*\]\([^)]*\.[Pp][Nn][Gg]([[:space:]][^)]+)?\)[[:space:]]*$/)) {
+      if (match(line, re_png_line)) {
         if (title_done != 1) {
           png_path = logo_png
           if (length(png_path) == 0) {
@@ -1026,14 +1079,17 @@ generate_awk_convert_details() {
           title_done = 1
           print "```{=latex}"
           print "\\vspace*{\\baselineskip}"
-          print "\\noindent\\includegraphics[width=\\textwidth]{\\detokenize{" png_path "}}"
+          print "\\noindent\\includegraphics[width=\\textwidth]{" \
+            "\\detokenize{" png_path "}}"
           print "```"
           if (have_versions == 1) {
             print "```{=latex}"
             print "\\vspace{\\baselineskip}"
             print "\\vspace{\\baselineskip}"
-            print "\\noindent Document Version: " tex_escape(document_version) "\\\\"
-            print "\\noindent Runner Version: " tex_escape(runner_version) "\\\\"
+            print "\\noindent Document Version: " \
+              tex_escape(document_version) "\\\\"
+            print "\\noindent Runner Version: " \
+              tex_escape(runner_version) "\\\\"
             print "\\noindent Test Version: " tex_escape(test_version) "\\\\"
             print "```"
           }
@@ -1073,7 +1129,7 @@ generate_awk_convert_details() {
         title_footer_pushed = 1
       }
 
-      if (match(line, /^##[[:space:]]+/)) {
+      if (match(line, re_h2)) {
         section_title = line
         sub(/^##[[:space:]]+/, "", section_title)
         if (tolower(section_title) != "license") {
@@ -1099,7 +1155,7 @@ generate_awk_convert_details() {
         }
       }
 
-      if (match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
+      if (match(lower, re_toc_h2)) {
         in_toc_md = 1
         print line
         print ""
@@ -1107,7 +1163,7 @@ generate_awk_convert_details() {
       }
 
       if (in_toc_md == 1) {
-        if (match(line, /^##[[:space:]]+/) && !match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
+        if (match(line, re_h2) && !match(lower, re_toc_h2)) {
           in_toc_md = 0
         } else if (match(line, /\[[^]]+\]\([^)]*\)/)) {
           toc_item = substr(line, RSTART, RLENGTH)
@@ -1129,10 +1185,11 @@ generate_awk_convert_details() {
 
           if (length(toc_anchor) > 0) {
             print "```{=latex}"
-            print "\\noindent\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" \
-              tex_escape(toc_text) "}}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}" \
-              "\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" \
-              "\\pageref*{" toc_anchor "}}}\\par"
+            print "\\noindent\\hyperref[" toc_anchor "]{" \
+              "\\textcolor{ltlinkblue}{" tex_escape(toc_text) "}}" \
+              "\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}" \
+              "\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{" \
+              "\\textcolor{ltlinkblue}{\\pageref*{" toc_anchor "}}}\\par"
             print "```"
           } else {
             print line
@@ -1178,7 +1235,8 @@ AWKPROGRAM
 # ============================================================================
 
 # AWK program to remove <details>/<summary> HTML tags (default behavior).
-# Still handles logo embedding and version display, but strips collapsible sections.
+# Still handles logo embedding and version display, but strips collapsible
+# sections.
 generate_awk_remove_details() {
   cat <<'AWKPROGRAM'
     function tex_escape(text) {
@@ -1194,7 +1252,7 @@ generate_awk_remove_details() {
     }
 
     function png_path_from_line(line,    value, parts) {
-      if (match(line, /!\[[^]]*\]\(([^)]+\.[Pp][Nn][Gg]([[:space:]][^)]+)?)\)/)) {
+      if (match(line, re_png_ref)) {
         value = substr(line, RSTART, RLENGTH)
         sub(/^!\[[^]]*\]\(/, "", value)
         sub(/\)$/, "", value)
@@ -1210,8 +1268,8 @@ generate_awk_remove_details() {
     }
 
     function badge_png_url(image_url, link_url,    base, query) {
-      if (image_url ~ /^https:\/\/github\.com\/[^\/]+\/[^\/]+\/actions\/workflows\/[^\/]+\/badge\.svg$/) {
-        if (match(image_url, /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/actions\/workflows\/([^\/]+)\/badge\.svg$/, \
+      if (image_url ~ re_gh_badge) {
+        if (match(image_url, re_gh_badge_cap, \
             m)) {
           return "https://img.shields.io/github/actions/workflow/status/" \
             m[1] "/" m[2] "/" m[3] ".png?branch=main" "&label=CI"
@@ -1265,20 +1323,41 @@ generate_awk_remove_details() {
       return t
     }
 
+    BEGIN {
+      re_png_ref = "!\\[[^]]*\\]\\(([^)]+\\.[Pp][Nn][Gg]"
+      re_png_ref = re_png_ref "([[:space:]][^)]+)?)\\)"
+      re_gh_badge = "^https://github\\.com/[^/]+/[^/]+/actions/"
+      re_gh_badge = re_gh_badge "workflows/[^/]+/badge\\.svg$"
+      re_gh_badge_cap = "^https://github\\.com/([^/]+)/([^/]+)/actions/"
+      re_gh_badge_cap = re_gh_badge_cap "workflows/([^/]+)/badge\\.svg$"
+      re_badge_single = "^[[:space:]]*\\[!\\[([^]]*)\\]\\(([^)]*)\\)"
+      re_badge_single = re_badge_single "\\]\\(([^)]*)\\)[[:space:]]*$"
+      re_badge_multi = "^[[:space:]]*\\[!\\[[^]]*\\]\\([^)]*\\)\\]\\([^)]*\\)"
+      re_badge_multi = re_badge_multi "([[:space:]]+\\[!\\[[^]]*\\]\\([^)]*\\)"
+      re_badge_multi = re_badge_multi "\\]\\([^)]*\\))*[[:space:]]*$"
+      re_details_open = "^[[:space:]]*<[[:space:]]*details"
+      re_details_open = re_details_open "([[:space:]][^>]*)?>[[:space:]]*$"
+      re_details_close = "^[[:space:]]*<[[:space:]]*/[[:space:]]*details"
+      re_details_close = re_details_close "([[:space:]][^>]*)?>[[:space:]]*$"
+      re_summary_close = "<[[:space:]]*/[[:space:]]*summary([[:space:]][^>]*)?>"
+      re_png_line = "^[[:space:]]*!\\[[^]]*\\]\\([^)]*\\.[Pp][Nn][Gg]"
+      re_png_line = re_png_line "([[:space:]][^)]+)?\\)[[:space:]]*$"
+      re_h2 = "^##[[:space:]]+"
+      re_toc_h2 = "^##[[:space:]]*table of contents[[:space:]]*$"
+    }
+
     {
       line = $0
       lower = tolower(line)
 
-      if (match(line, /^[[:space:]]*\[!\[([^]]*)\]\(([^)]*)\)\]\(([^)]*)\)[[:space:]]*$/, badge_parts)) {
+      if (match(line, re_badge_single, badge_parts)) {
         if (title_done != 1) {
           badge_img = badge_png_url(badge_parts[2], badge_parts[3])
           print "[![" badge_parts[1] "](" badge_img ")](" badge_parts[3] ")"
         }
         next
       }
-      if (match(line, /^[[:space:]]*\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)([[:space:]]+\[!\[[^]]*\]\([^)]*\)\]\([^)]*\))*\
-    [[:space:]]*$/ \
-      )) {
+      if (match(line, re_badge_multi)) {
         next
       }
 
@@ -1295,26 +1374,25 @@ generate_awk_remove_details() {
         next
       }
 
-      if (match(lower, /^[[:space:]]*<[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/) ||
-          match(lower, /^[[:space:]]*<[[:space:]]*\/[[:space:]]*details([[:space:]][^>]*)?>[[:space:]]*$/)) {
+      if (match(lower, re_details_open) || match(lower, re_details_close)) {
         next
       }
 
       if (in_summary == 1) {
-        if (match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+        if (match(lower, re_summary_close)) {
           in_summary = 0
         }
         next
       }
 
       if (match(lower, /<[[:space:]]*summary([[:space:]][^>]*)?>/)) {
-        if (!match(lower, /<[[:space:]]*\/[[:space:]]*summary([[:space:]][^>]*)?>/)) {
+        if (!match(lower, re_summary_close)) {
           in_summary = 1
         }
         next
       }
 
-      if (match(line, /^[[:space:]]*!\[[^]]*\]\([^)]*\.[Pp][Nn][Gg]([[:space:]][^)]+)?\)[[:space:]]*$/)) {
+      if (match(line, re_png_line)) {
         if (title_done != 1) {
           png_path = logo_png
           if (length(png_path) == 0) {
@@ -1323,14 +1401,17 @@ generate_awk_remove_details() {
           title_done = 1
           print "```{=latex}"
           print "\\vspace*{\\baselineskip}"
-          print "\\noindent\\includegraphics[width=\\textwidth]{\\detokenize{" png_path "}}"
+          print "\\noindent\\includegraphics[width=\\textwidth]{" \
+            "\\detokenize{" png_path "}}"
           print "```"
           if (have_versions == 1) {
             print "```{=latex}"
             print "\\vspace{\\baselineskip}"
             print "\\vspace{\\baselineskip}"
-            print "\\noindent Document Version: " tex_escape(document_version) "\\\\"
-            print "\\noindent Runner Version: " tex_escape(runner_version) "\\\\"
+            print "\\noindent Document Version: " \
+              tex_escape(document_version) "\\\\"
+            print "\\noindent Runner Version: " \
+              tex_escape(runner_version) "\\\\"
             print "\\noindent Test Version: " tex_escape(test_version) "\\\\"
             print "```"
           }
@@ -1370,7 +1451,7 @@ generate_awk_remove_details() {
         title_footer_pushed = 1
       }
 
-      if (match(line, /^##[[:space:]]+/)) {
+      if (match(line, re_h2)) {
         section_title = line
         sub(/^##[[:space:]]+/, "", section_title)
         if (tolower(section_title) != "license") {
@@ -1396,7 +1477,7 @@ generate_awk_remove_details() {
         }
       }
 
-      if (match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
+      if (match(lower, re_toc_h2)) {
         in_toc_md = 1
         print line
         print ""
@@ -1404,7 +1485,7 @@ generate_awk_remove_details() {
       }
 
       if (in_toc_md == 1) {
-        if (match(line, /^##[[:space:]]+/) && !match(lower, /^##[[:space:]]*table of contents[[:space:]]*$/)) {
+        if (match(line, re_h2) && !match(lower, re_toc_h2)) {
           in_toc_md = 0
         } else if (match(line, /\[[^]]+\]\([^)]*\)/)) {
           toc_item = substr(line, RSTART, RLENGTH)
@@ -1426,10 +1507,11 @@ generate_awk_remove_details() {
 
           if (length(toc_anchor) > 0) {
             print "```{=latex}"
-            print "\\noindent\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" \
-              tex_escape(toc_text) "}}\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}" \
-              "\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{\\textcolor{ltlinkblue}{" \
-              "\\pageref*{" toc_anchor "}}}\\par"
+            print "\\noindent\\hyperref[" toc_anchor "]{" \
+              "\\textcolor{ltlinkblue}{" tex_escape(toc_text) "}}" \
+              "\\nobreak\\hspace{0.5em}\\leaders\\hbox{.}" \
+              "\\hfill\\hspace{0.5em}\\hyperref[" toc_anchor "]{" \
+              "\\textcolor{ltlinkblue}{\\pageref*{" toc_anchor "}}}\\par"
             print "```"
           } else {
             print line
@@ -1474,8 +1556,10 @@ AWKPROGRAM
 # FILE PROCESSING - SINGLE DOCUMENT
 # ============================================================================
 
-# Process a single markdown file: extract metadata, preprocess, and convert to PDF.
-# Handles logo extraction on second pass (during markdown conversion, not metadata scan).
+# Process a single markdown file: extract metadata, preprocess, and convert
+# to PDF.
+# Handles logo extraction on second pass (during markdown conversion,
+# not metadata scan).
 # Args: $1=source_file, $2=target_pdf_file
 process_file() {
   local source_file=$1
@@ -1493,7 +1577,8 @@ process_file() {
 
   doc_title=$(_genpdf_title_from_first_line "$source_file" 2>/dev/null || true)
 
-  # Single-pass metadata scan: extract only version numbers (not logo, not unused TOC flag)
+  # Single-pass metadata scan: extract only version numbers
+  # (not logo, not unused TOC flag).
   while IFS=$'\t' read -r scan_key scan_value; do
     case "$scan_key" in
       DOC)
@@ -1508,7 +1593,8 @@ process_file() {
     esac
   done < <(scan_markdown_metadata "$source_file")
 
-  if [[ -n "$document_version" && -n "$runner_version" && -n "$test_version" ]]; then
+  if [[ -n "$document_version" && -n "$runner_version" && \
+    -n "$test_version" ]]; then
     have_versions=1
   fi
 
@@ -1519,7 +1605,11 @@ process_file() {
   # The AWK programs need an absolute-or-cwd-relative path for \includegraphics.
   logo_png=""
   first_png_line=$(awk '
-    /^[[:space:]]*![[][^]]*[]][[:space:]]*\([^)]*\.[Pp][Nn][Gg]([[:space:]][^)]+)?\)[[:space:]]*$/ {
+    BEGIN {
+      re_png = "^[[:space:]]*![[][^]]*[]][[:space:]]*\\([^)]*\\.[Pp][Nn][Gg]"
+      re_png = re_png "([[:space:]][^)]+)?\\)[[:space:]]*$"
+    }
+    $0 ~ re_png {
       print
       exit
     }
@@ -1544,10 +1634,12 @@ PY
     fi
   fi
 
-  log_debug "scan metadata: logo=${logo_png} versions=${have_versions} source=$source_file"
+  log_debug "scan metadata: logo=${logo_png} versions=${have_versions} "\
+"source=$source_file"
 
   # Extract copyright line for centered running footer (strip heading markup)
-  copyright_text=$(grep -im1 '^[[:space:]#*]*copyright' "$source_file" | sed 's/^[[:space:]#*]*//' || true)
+  copyright_text=$(grep -im1 '^[[:space:]#*]*copyright' "$source_file" | \
+    sed 's/^[[:space:]#*]*//' || true)
 
   # Apply markdown preprocessing (convert or remove details/summary tags)
   if [[ $convert_details -eq 1 ]]; then
@@ -1579,7 +1671,8 @@ PY
     fi
   fi
 
-  if ! convert_to_pdf "$temp_file" "$target_file" "$source_dir" "$doc_title" "$copyright_text"; then
+  if ! convert_to_pdf "$temp_file" "$target_file" "$source_dir" \
+    "$doc_title" "$copyright_text"; then
     rm -f "$temp_file"
     return 1
   fi
@@ -1674,7 +1767,8 @@ while [[ $# -gt 0 ]]; do
       ;;
     -b)
       if [[ $# -lt 2 ]]; then
-        log_error "$1 requires a backend argument: auto, pandoc, wkhtmltopdf, weasyprint"
+        log_error "$1 requires a backend argument: auto, pandoc, "\
+      "wkhtmltopdf, weasyprint"
         exit 1
       fi
       if ! validate_backend "$2"; then
@@ -1734,7 +1828,8 @@ if [[ $check_only -eq 1 ]]; then
       log_info "Toolchain: pandoc with PDF engine available"
       exit 0
     fi
-    log_info "Toolchain: pandoc available (no explicit engine detected; pandoc default may still work)"
+    log_info "Toolchain: pandoc available (no explicit engine detected; "\
+  "pandoc default may still work)"
     exit 0
   fi
 
@@ -1746,7 +1841,8 @@ if [[ $check_only -eq 1 ]]; then
   fi
 
   log_error "no supported Markdown-to-PDF toolchain found"
-  log_info "Install pandoc (recommended), or install python3 with wkhtmltopdf or weasyprint."
+  log_info "Install pandoc (recommended), or install python3 with "\
+"wkhtmltopdf or weasyprint."
   exit 1
 fi
 
@@ -1810,11 +1906,13 @@ if [[ -d "$infile" ]]; then
   for source_file in "${md_files[@]}"; do
     rel_path=${source_file#"$infile"/}
 
-    if [[ ${#include_patterns[@]} -gt 0 ]] && ! match_any_pattern "$rel_path" "${include_patterns[@]}"; then
+    if [[ ${#include_patterns[@]} -gt 0 ]] && \
+      ! match_any_pattern "$rel_path" "${include_patterns[@]}"; then
       continue
     fi
 
-    if [[ ${#exclude_patterns[@]} -gt 0 ]] && match_any_pattern "$rel_path" "${exclude_patterns[@]}"; then
+    if [[ ${#exclude_patterns[@]} -gt 0 ]] && \
+      match_any_pattern "$rel_path" "${exclude_patterns[@]}"; then
       continue
     fi
 
@@ -1834,8 +1932,10 @@ if [[ -d "$infile" ]]; then
       target_file=$(target_file_for_source "$source_file")
 
       if [[ -n "${output_to_source[$target_file]:-}" ]]; then
-        log_error "multiple input files map to the same output file: $target_file"
-        log_error "conflicting inputs: ${output_to_source[$target_file]} and $source_file"
+        log_error "multiple input files map to the same output file: "\
+      "$target_file"
+        log_error "conflicting inputs: ${output_to_source[$target_file]} "\
+      "and $source_file"
         log_error "use -k to preserve directory structure"
         exit 1
       fi
