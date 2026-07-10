@@ -31,7 +31,7 @@ Features:
   - Creates fork on your GitHub account via API
   - Adds/updates upstream remote reference
   - Optionally clones your fork locally
-  - Optionally configures fork contributors (replaces all with forking user)
+  - Automatically configures fork contributors (replaces all with forking user)
   - Validates fork configuration after creation
   - Supports dry-run mode for planning
   - No role restrictions: any user can fork the repository
@@ -45,11 +45,6 @@ Options:
                        Usage: mkfork -c --directory ~/my-projects
   -u, --add-upstream   Add/update upstream remote to track original repository.
                        Useful for keeping fork in sync with original.
-  -a, --configure-contributors
-                       Configure fork's config/contributors.md by:
-                       - Removing all existing contributors/reviewers/approvers
-                       - Adding current user as sole approver
-                       Only applicable with -c/--clone.
   -v, --verbose        Show detailed information during fork operations.
   --dry-run            Show what would be done without creating fork.
 
@@ -63,8 +58,8 @@ Examples:
   # Create fork, clone to custom directory, and configure upstream
   mkfork -c --directory ~/work --add-upstream
 
-  # Create fork, clone, add upstream, and configure contributors
-  mkfork -c -u -a
+  # Create fork, clone, and add upstream
+  mkfork -c -u
 
   # Verbose output with dry-run to see planned operations
   mkfork -v --dry-run
@@ -94,7 +89,7 @@ EOF
 # - Validates GitHub authentication and repository context.
 # - Creates fork via GitHub API if it doesn't already exist.
 # - Optionally clones fork and configures remote references (upstream).
-# - Optionally configures fork's contributors.md with only the forking user.
+# - Automatically configures fork's contributors.md with only the forking user.
 # - Reports fork status and next-step guidance.
 
 set -euo pipefail
@@ -113,7 +108,6 @@ source "$SCRIPT_DIR/../helpers/github_helpers.sh"
 CLONE_FORK=false
 CLONE_DIR=""
 ADD_UPSTREAM=false
-CONFIGURE_CONTRIBUTORS=false
 VERBOSE=false
 DRY_RUN=false
 
@@ -139,10 +133,6 @@ while [[ $# -gt 0 ]]; do
       ADD_UPSTREAM=true
       shift
       ;;
-    -a | --configure-contributors)
-      CONFIGURE_CONTRIBUTORS=true
-      shift
-      ;;
     -v | --verbose)
       VERBOSE=true
       shift
@@ -161,10 +151,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate option combinations
-if [[ "$CONFIGURE_CONTRIBUTORS" == "true" && "$CLONE_FORK" == "false" ]]; then
-  bt_error_exit 1 "Option --configure-contributors requires --clone to be specified"
-fi
-
 if [[ -n "$CLONE_DIR" && "$CLONE_FORK" == "false" ]]; then
   bt_error_exit 1 "Option --directory requires --clone to be specified"
 fi
@@ -292,7 +278,8 @@ configure_fork_contributors() {
     bt_error_exit 7 "Contributors file not found: $contributors_file"
   fi
   
-  if [[ "$VERBOSE" == "true" ]]; then    echo "[verbose] Configuring contributors.md for fork..." >&2
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Configuring contributors.md for fork..." >&2
   fi
   
   # Read the file to preserve header and structure
@@ -353,7 +340,7 @@ echo "Authenticated as: $GH_USER"
 # Check if fork already exists
 if fork_exists "$GH_USER"; then
   echo "Fork already exists at $GH_USER/$REPO_NAME"
-  if [[ "$CLONE_FORK" == "false" && "$ADD_UPSTREAM" == "false" && "$CONFIGURE_CONTRIBUTORS" == "false" ]]; then
+  if [[ "$CLONE_FORK" == "false" && "$ADD_UPSTREAM" == "false" ]]; then
     exit 0
   fi
 else
@@ -372,10 +359,8 @@ if [[ "$CLONE_FORK" == "true" ]]; then
     configure_upstream "$FORK_DIR"
   fi
   
-  # Configure contributors if requested
-  if [[ "$CONFIGURE_CONTRIBUTORS" == "true" ]]; then
-    configure_fork_contributors "$FORK_DIR" "$GH_USER"
-  fi
+  # Always configure contributors
+  configure_fork_contributors "$FORK_DIR" "$GH_USER"
 fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
