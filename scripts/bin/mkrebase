@@ -27,14 +27,15 @@ Arguments:
   that version instead.
 
 Options:
+  -d                Validate only without performing rebase (dry-run).
+  -f                Force rebase with --force-with-lease push to remote.
   -h, --help        Output this help to stdout and exit (other options
                     and arguments are ignored).
-  -v                Validate only without performing rebase (dry-run).
-  -f, --force       Force rebase with --force-with-lease push to remote.
   -m "MSG"          Attach a comment/reason to the operation
                     Usage: mkrebase v2.2.0 -m "Retarget to latest minor release."
   --message "MSG"   Attach a comment/reason to the operation
                     Usage: mkrebase v2.2.0 --message "Retarget to latest minor release."
+  -v                Verbose output.
   -- MSG            Attach comment/reason (everything after -- is the comment)
                     Usage: mkrebase v2.2.0 -- Retarget to latest minor release
                     Note: No quotes needed, captures all remaining arguments.
@@ -49,12 +50,15 @@ Modes:
     - Log the operation to 'logs/remote_branch_history.md'.
     - Show instructions for force pushing if needed.
 
-  Validate (-v):
+  Validate (-d):
     - Verify the current branch can be rebased.
     - Verify the new base branch exists.
     - Check if rebase would succeed without actually performing it.
     - Report validity without making changes.
     - Exit with status code indicating validity.
+
+  Verbose (-v):
+    - Print additional progress and decision details.
 
 Examples: Basic usage.
   mkrebase v2.2.0
@@ -65,8 +69,12 @@ Examples: With comment.
   mkrebase main -- Retarget feature to main
 
 Examples: Validation mode.
+  mkrebase -d v2.2.0
+  mkrebase -d main
+
+Examples: Verbose mode.
   mkrebase -v v2.2.0
-  mkrebase -v main
+  mkrebase -v -f main
 
 Examples: With force push.
   mkrebase -f v2.2.0
@@ -108,7 +116,14 @@ source "$SCRIPT_DIR/../helpers/history_log.sh"
 # Default options
 MODE="rebase"  # rebase or validate
 FORCE=false
+VERBOSE=0
 COMMENT=""
+
+log_verbose() {
+  if [[ "$VERBOSE" -eq 1 ]]; then
+    echo "[verbose] $*"
+  fi
+}
 
 
 log_operation() {
@@ -143,17 +158,17 @@ error_exit() {
 POSITIONAL_ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -h | --help)
-      usage
-      exit 0
-      ;;
-    -v)
+    -d)
       MODE="validate"
       shift
       ;;
-    -f | --force)
+    -f)
       FORCE=true
       shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
@@ -164,6 +179,10 @@ while [[ $# -gt 0 ]]; do
       fi
       COMMENT="$2"
       shift 2
+      ;;
+    -v)
+      VERBOSE=1
+      shift
       ;;
     --)
       # Unix-style comment: everything after -- is the comment
@@ -195,6 +214,10 @@ fi
 
 NEWBASE="$1"
 
+log_verbose "Mode: $MODE"
+log_verbose "New base argument: $NEWBASE"
+log_verbose "Force push enabled: $FORCE"
+
 # Validate arguments
 if [[ -z "$NEWBASE" ]]; then
   error_exit 1 "New base branch name cannot be empty" "" "" "" "$COMMENT"
@@ -205,6 +228,7 @@ cd "$REPO_ROOT"
 
 # Get current branch
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+log_verbose "Current branch: $CURRENT_BRANCH"
 
 # Validate current branch state
 if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
@@ -229,6 +253,7 @@ echo "Fetching latest refs from remote..."
 if ! git fetch origin >/dev/null 2>&1; then
   error_exit 5 "Failed to fetch from remote" "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
 fi
+log_verbose "Fetched origin successfully"
 
 # Check if new base branch exists (check both local and remote)
 if ! git rev-parse --verify "$NEWBASE" >/dev/null 2>&1; then
@@ -242,6 +267,7 @@ if ! git rev-parse --verify "$NEWBASE" >/dev/null 2>&1; then
   fi
   NEWBASE="origin/$NEWBASE"
 fi
+log_verbose "Resolved new base reference: $NEWBASE"
 
 # If validate mode, we're done (all checks passed)
 if [[ "$MODE" == "validate" ]]; then

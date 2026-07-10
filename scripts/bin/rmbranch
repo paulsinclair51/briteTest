@@ -28,9 +28,9 @@ Protected branches):
 Options:
   -h, --help         Output this help to stdout and exit (other options
                      and arguments are ignored).
-  -l                 Remove local branch only (default).
-  -r                 Remove branch from remote only.
-  -a                 Remove from both local and remote.
+  -l                 Remove local branch.
+  -r                 Remove branch from remote.
+  -a                 Remove from both local and remote (alias for -l -r).
   -f                 Force removal (no confirmation prompt).
   -m "MSG"           Attach a commit message/comment to the operation.
                      Usage: rmbranch patch/old-fix -m "Reverted in favor of better approach.".
@@ -41,7 +41,7 @@ Options:
                      Note: No quotes needed, captures all remaining text.
 
 Modes:
-  Local (-l, default):
+  Local (-l):
     - Delete the local branch.
     - Log the operation to 'logs/local_branch_history.md'.
 
@@ -49,14 +49,16 @@ Modes:
     - Delete the branch from remote only.
     - Log the operation to 'logs/remote_branch_history.md'.
 
-  Both (-a):
+  Both (-l -r, default):
     - Delete the local branch.
     - Delete the branch from remote.
     - Log the operation to 'logs/remote_branch_history.md' and 'logs/local_branch_history.md'
 
 Examples: Basic usage.
   rmbranch old-fix
+  rmbranch -l old-fix
   rmbranch -r experiment
+  rmbranch -l -r -f temp-feature
   rmbranch -a -f temp-feature
 
 Examples: With GitHub-style comment.
@@ -107,9 +109,11 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 # Default options
-MODE="local"  # local, remote, or both
+MODE="both"  # local, remote, or both
 FORCE=false
 COMMENT=""
+INCLUDE_LOCAL_FLAG=false
+INCLUDE_REMOTE_FLAG=false
 
 # Protected branches that cannot be deleted
 PROTECTED_BRANCHES=("main")
@@ -219,15 +223,16 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     -l)
-      MODE="local"
+      INCLUDE_LOCAL_FLAG=true
       shift
       ;;
     -r)
-      MODE="remote"
+      INCLUDE_REMOTE_FLAG=true
       shift
       ;;
     -a)
-      MODE="both"
+      INCLUDE_LOCAL_FLAG=true
+      INCLUDE_REMOTE_FLAG=true
       shift
       ;;
     -f)
@@ -263,6 +268,23 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Resolve deletion scope: if neither -l nor -r is provided, default to both.
+if [[ "$INCLUDE_LOCAL_FLAG" == false && "$INCLUDE_REMOTE_FLAG" == false ]]; then
+  INCLUDE_LOCAL=true
+  INCLUDE_REMOTE=true
+else
+  INCLUDE_LOCAL="$INCLUDE_LOCAL_FLAG"
+  INCLUDE_REMOTE="$INCLUDE_REMOTE_FLAG"
+fi
+
+if [[ "$INCLUDE_LOCAL" == true && "$INCLUDE_REMOTE" == true ]]; then
+  MODE="both"
+elif [[ "$INCLUDE_LOCAL" == true ]]; then
+  MODE="local"
+else
+  MODE="remote"
+fi
 
 # Restore positional arguments
 set -- "${POSITIONAL_ARGS[@]}"
