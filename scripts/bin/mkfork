@@ -27,7 +27,7 @@ Forking process:
   - Checks if a fork already exists
   - Creates fork on your GitHub account via API
   - Configures contributors.md via API (fork becomes immediately usable)
-  - Atomically validates entire operation or cleans up on failure
+  - Idempotent: safe to re-run if previous attempt crashed or failed
 
 After forking:
   - Use mkclone to clone the repository locally
@@ -37,8 +37,8 @@ Features:
   - Creates fork on your GitHub account via API
   - Automatically configures fork contributors via API
   - Validates fork configuration after creation
-  - Atomic operation: fork either exists with correct config or doesn't exist
-  - Automatic cleanup on configuration failure
+  - Idempotent: re-running completes or fixes partial configurations
+  - Optional cleanup of incomplete forks
   - Supports dry-run mode for planning
   - No role restrictions: any user can fork the repository
 
@@ -47,6 +47,9 @@ Options:
                        and arguments are ignored).
   -v, --verbose        Show detailed information during fork operations.
   --dry-run            Show what would be done without creating fork.
+  --cleanup            If fork exists but is incomplete/misconfigured, delete it
+                       instead of completing configuration. Useful after crashes
+                       or if manual changes broke the fork state.
 
 Examples:
   # Create and configure fork
@@ -57,6 +60,12 @@ Examples:
 
   # Dry-run to preview operations
   mkfork --dry-run
+
+  # If fork exists but is broken, delete it
+  mkfork --cleanup
+
+  # Re-run to complete configuration (e.g., after crash)
+  mkfork
 
   # After forking, clone locally
   mkfork
@@ -69,24 +78,24 @@ Outputs:
   - May generate files, reports, or other artifacts in the documented output locations.
 
 Exit codes:
-  0   Success - fork created and configured
+  0   Success - fork exists and is properly configured
   1   Argument or validation error
   2   GitHub API error
-  3   Fork already exists and is properly configured (not an error)
+  3   Fork already exists and is complete (not an error)
   4   Authentication failed
   5   Configuration validation failed
   6   Repository configuration error
-  7   Fork creation/configuration failed - fork cleaned up
+  7   Fork incomplete or misconfigured - use --cleanup to delete
+  8   Fork cleanup completed (--cleanup used)
 EOF
 }
 
 # High-Level Flow:
 # - Validates GitHub authentication and repository context.
-# - Creates fork via GitHub API if it doesn't already exist.
-# - Validates fork was successfully created.
-# - Configures fork's contributors.md via GitHub API.
+# - Checks if fork exists and its configuration state.
+# - If fork incomplete: optionally delete (--cleanup), or complete configuration.
+# - If fork doesn't exist: create and configure.
 # - Verifies configuration was applied correctly.
-# - On configuration failure: deletes fork and exits with error
 # - Reports fork status and next-step guidance.
 
 set -euo pipefail
@@ -104,10 +113,7 @@ source "$SCRIPT_DIR/../helpers/github_helpers.sh"
 # Default options
 VERBOSE=false
 DRY_RUN=false
-
-# Track state for cleanup
-FORK_WAS_CREATED=false
-FORK_EXISTS_PRE_SCRIPT=false
+CLEANUP_MODE=false
 
 # Parse options
 while [[ $# -gt 0 ]]; do
@@ -124,6 +130,10 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
+    --cleanup)
+      CLEANUP_MODE=true
+      shift
+      ;;
     -*)
       bt_error_exit 1 "Unknown option: $1"
       ;;
@@ -132,24 +142,6 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
-
-# Cleanup function - called on script exit if fork creation failed
-cleanup_on_failure() {
-  local exit_code=$?
-  
-  # Only clean up if:
-  # 1. Script is exiting with error
-  # 2. Fork was created during this script (not pre-existing)
-  # 3. We're not in dry-run mode
-  if [[ $exit_code -ne 0 ]] && [[ "$FORK_WAS_CREATED" == "true" ]] && [[ "$DRY_RUN" != "true" ]]; then
-    echo "Configuration failed. Cleaning up fork..." >&2
-    delete_fork "$GH_USER" || true
-    echo "Fork deleted due to configuration failure" >&2
-  fi
-}
-
-# Register cleanup trap
-trap cleanup_on_failure EXIT
 
 # Helper functions
 get_github_username() {
@@ -185,12 +177,86 @@ fork_exists() {
   return 1
 }
 
+fork_is_complete() {
+  local gh_user="$1"
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    return 0
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Checking if fork configuration is complete..." >&2
+  fi
+  
+  # Try to retrieve and validate contributors.md
+  local file_response
+  file_response=$(gh api "repos/$gh_user/$REPO_NAME/contents/config/contributors.md" 2>&1) || {
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete: contributors.md not accessible" >&2
+    fi
+    return 1
+  }
+  
+  # Extract SHA and content
+  local sha
+  sha=$(echo "$file_response" | jq -r '.sha' 2>/dev/null) || {
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete: cannot parse SHA" >&2
+    fi
+    return 1
+  }
+  
+  local encoded_content
+  encoded_content=$(echo "$file_response" | jq -r '.content' 2>/dev/null) || {
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete: cannot extract content" >&2
+    fi
+    return 1
+  }
+  
+  # Decode and validate content
+  local decoded_content
+  decoded_content=$(echo "$encoded_content" | base64 -d 2>/dev/null) || {
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete: cannot decode content" >&2
+    fi
+    return 1
+  fi
+  
+  # Check for required content markers
+  if ! echo "$decoded_content" | grep -q "# Contributors"; then
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete: missing Contributors header" >&2
+    fi
+    return 1
+  fi
+  
+  if ! echo "$decoded_content" | grep -q "$gh_user"; then
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete: missing user entry" >&2
+    fi
+    return 1
+  fi
+  
+  if ! echo "$decoded_content" | grep -q ", A, "; then
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete: missing approver role" >&2
+    fi
+    return 1
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Fork configuration is complete" >&2
+  fi
+  
+  return 0
+}
+
 create_fork() {
   local source_repo="$1"
   
   if [[ "$DRY_RUN" == "true" ]]; then
     echo "[dry-run] Would create fork of $source_repo"
-    FORK_WAS_CREATED=true
     return 0
   fi
   
@@ -202,7 +268,6 @@ create_fork() {
     bt_error_exit 2 "Failed to create fork via GitHub API"
   fi
   
-  FORK_WAS_CREATED=true
   echo "Fork created successfully"
 }
 
@@ -274,7 +339,7 @@ delete_fork() {
   
   # Delete the fork via API
   if ! gh api --method DELETE "repos/$gh_user/$REPO_NAME" 2>&1 > /dev/null; then
-    echo "Warning: Failed to delete fork during cleanup. Manual cleanup may be required." >&2
+    echo "Warning: Failed to delete fork. Manual cleanup may be required." >&2
     return 1
   fi
   
@@ -514,10 +579,48 @@ echo "Preparing to create fork of $REPO_OWNER/$REPO_NAME..."
 GH_USER=$(get_github_username)
 echo "Authenticated as: $GH_USER"
 
-# Check if fork already exists before we start
+# Check if fork already exists
 if fork_exists "$GH_USER"; then
   echo "Fork already exists at $GH_USER/$REPO_NAME"
-  FORK_EXISTS_PRE_SCRIPT=true
+  
+  # Validate fork ownership and integrity
+  validate_fork_ownership "$GH_USER"
+  
+  # Check if fork configuration is complete
+  if fork_is_complete "$GH_USER"; then
+    if [[ "$DRY_RUN" == "true" ]]; then
+      echo ""
+      echo "Dry-run completed. Fork is already complete, no changes needed."
+    else
+      echo ""
+      echo "Fork setup already complete!"
+      echo "Fork URL: https://github.com/$GH_USER/$REPO_NAME"
+      echo ""
+      echo "Next steps:"
+      echo "  mkclone  # Clone the repository locally"
+    fi
+    exit 3
+  else
+    # Fork exists but is incomplete
+    if [[ "$CLEANUP_MODE" == "true" ]]; then
+      # Delete incomplete fork
+      echo "Fork is incomplete. Deleting..."
+      delete_fork "$GH_USER"
+      
+      if [[ "$DRY_RUN" == "true" ]]; then
+        echo ""
+        echo "Dry-run completed. Would have deleted incomplete fork."
+      else
+        echo ""
+        echo "Incomplete fork deleted."
+        echo "Run mkfork again to create a fresh fork."
+      fi
+      exit 8
+    else
+      # Complete the fork configuration
+      echo "Fork configuration incomplete. Completing configuration..."
+    fi
+  fi
 else
   # Create fork
   create_fork "$REPO_OWNER/$REPO_NAME"
@@ -526,14 +629,8 @@ else
   wait_for_fork "$GH_USER"
 fi
 
-# Validate fork ownership and integrity
-validate_fork_ownership "$GH_USER"
-
-# Configure contributors via API
+# Configure contributors via API (either new fork or completing incomplete one)
 configure_fork_contributors_via_api "$GH_USER"
-
-# Mark that fork was successfully configured
-FORK_WAS_CREATED=false
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo ""
