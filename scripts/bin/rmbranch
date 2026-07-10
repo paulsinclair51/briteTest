@@ -18,12 +18,12 @@ Remove a branch locally and/or from remote.
 
 Arguments:
   <branchname>       Name of the branch to remove.
-                     Examples: fix-bug, add-feature, refactor.
+                     Examples: fix/bug, add-feature, refactor.
 
-Protected branches):
+Protected branches:
   - main cannot be deleted.
-  - Branches where name includes one or more periods can only be deleted
-    by an approver (see docs/Contributor_Guide_md)
+  - No branch-name policy validation is applied by this script. If a branch
+    ref exists (local and/or remote) and is not protected, it can be removed.
 
 Options:
   -h, --help         Output this help to stdout and exit (other options
@@ -101,12 +101,29 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 REMOTE_LOG_FILE="$REPO_ROOT/logs/remote_branch_history.md"
 LOCAL_LOG_FILE="$REPO_ROOT/logs/local_branch_history.md"
+COMMON_HELPER="$SCRIPT_DIR/../helpers/common.sh"
+HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
 
 # Shared helpers
+if [[ ! -f "$COMMON_HELPER" ]]; then
+  echo "Error: Required helper not found: $COMMON_HELPER" >&2
+  exit 2
+fi
+if [[ ! -f "$HISTORY_HELPER" ]]; then
+  echo "Error: Required helper not found: $HISTORY_HELPER" >&2
+  exit 2
+fi
+
 # shellcheck source=helpers/common.sh
-source "$SCRIPT_DIR/../helpers/common.sh"
+if ! source "$COMMON_HELPER"; then
+  echo "Error: Failed to load helper: $COMMON_HELPER" >&2
+  exit 2
+fi
 # shellcheck source=helpers/history_log.sh
-source "$SCRIPT_DIR/../helpers/history_log.sh"
+if ! source "$HISTORY_HELPER"; then
+  echo "Error: Failed to load helper: $HISTORY_HELPER" >&2
+  exit 2
+fi
 
 # Default options
 MODE="both"  # local, remote, or both
@@ -128,7 +145,9 @@ append_log_entry() {
 
   # status/branchname are retained for compatibility with existing callers.
   : "$status" "$branchname"
-  bt_append_history_log "$log_file" "$message" "$comment"
+  if ! bt_append_history_log "$log_file" "$message" "$comment"; then
+    echo "Warning: Failed to append history log: $log_file" >&2
+  fi
 }
 
 log_operation() {
@@ -189,6 +208,18 @@ is_protected_branch() {
     fi
   done
   return 1
+}
+
+# Use exact ref lookups rather than generic revision parsing so branch-like
+# names that are invalid by local policy can still be removed when refs exist.
+local_branch_exists() {
+  local branch="$1"
+  git show-ref --verify --quiet "refs/heads/$branch"
+}
+
+remote_branch_exists() {
+  local branch="$1"
+  git show-ref --verify --quiet "refs/remotes/origin/$branch"
 }
 
 confirm_deletion() {
@@ -309,6 +340,16 @@ fi
 # Change to repo root
 cd "$REPO_ROOT"
 
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  error_exit 2 "Repository root '$REPO_ROOT' is not a Git working tree" "$BRANCHNAME" "$COMMENT"
+fi
+
+if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
+  if ! git remote get-url origin >/dev/null 2>&1; then
+    error_exit 2 "Remote 'origin' is not configured" "$BRANCHNAME" "$COMMENT"
+  fi
+fi
+
 # Determine operation description
 case "$MODE" in
   local)
@@ -337,11 +378,11 @@ fi
 LOCAL_EXISTS=false
 REMOTE_EXISTS=false
 
-if git rev-parse --verify "$BRANCHNAME" >/dev/null 2>&1; then
+if local_branch_exists "$BRANCHNAME"; then
   LOCAL_EXISTS=true
 fi
 
-if git rev-parse --verify "origin/$BRANCHNAME" >/dev/null 2>&1; then
+if remote_branch_exists "$BRANCHNAME"; then
   REMOTE_EXISTS=true
 fi
 
