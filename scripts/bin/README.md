@@ -23,6 +23,11 @@ See `<repo>/README.md` for an introduction to briteTest.
 - **replacephrases**: Apply configured phrase replacements in markdown files.
 - **updatebrand**: Update branding text and regenerate related assets.
 
+### Repository and Fork Management
+
+- **mkfork**: Create a fork of the repository and optionally configure it with
+  upstream remote and user as approver.
+
 ### Branch and Workflow Management
 
 - **ckbranch_history**: Query branch history log entries.
