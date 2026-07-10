@@ -31,9 +31,10 @@ Features:
   - Creates fork on your GitHub account via API
   - Adds/updates upstream remote reference
   - Optionally clones your fork locally
-  - Optionally adds current user as approver in fork
+  - Optionally configures fork contributors (replaces all with forking user)
   - Validates fork configuration after creation
   - Supports dry-run mode for planning
+  - No role restrictions: any user can fork the repository
 
 Options:
   -h, --help           Output this help to stdout and exit (other options
@@ -44,11 +45,13 @@ Options:
                        Usage: mkfork -c --directory ~/my-projects
   -u, --add-upstream   Add/update upstream remote to track original repository.
                        Useful for keeping fork in sync with original.
-  -a, --add-approver   Add current user as approver in fork's
-                       config/contributors.md.
+  -a, --configure-contributors
+                       Configure fork's config/contributors.md by:
+                       - Removing all existing contributors/reviewers/approvers
+                       - Adding current user as sole approver
                        Only applicable with -c/--clone.
   -v, --verbose        Show detailed information during fork operations.
-  -d, --dry-run        Show what would be done without creating fork.
+  --dry-run            Show what would be done without creating fork.
 
 Examples:
   # Create fork only (no local clone)
@@ -60,7 +63,7 @@ Examples:
   # Create fork, clone to custom directory, and configure upstream
   mkfork -c --directory ~/work --add-upstream
 
-  # Create fork, clone, add upstream, and add yourself as approver
+  # Create fork, clone, add upstream, and configure contributors
   mkfork -c -u -a
 
   # Verbose output with dry-run to see planned operations
@@ -91,7 +94,7 @@ EOF
 # - Validates GitHub authentication and repository context.
 # - Creates fork via GitHub API if it doesn't already exist.
 # - Optionally clones fork and configures remote references (upstream).
-# - Optionally adds current user as approver to fork's contributors.md.
+# - Optionally configures fork's contributors.md with only the forking user.
 # - Reports fork status and next-step guidance.
 
 set -euo pipefail
@@ -110,7 +113,7 @@ source "$SCRIPT_DIR/../helpers/github_helpers.sh"
 CLONE_FORK=false
 CLONE_DIR=""
 ADD_UPSTREAM=false
-ADD_APPROVER=false
+CONFIGURE_CONTRIBUTORS=false
 VERBOSE=false
 DRY_RUN=false
 
@@ -136,8 +139,8 @@ while [[ $# -gt 0 ]]; do
       ADD_UPSTREAM=true
       shift
       ;;
-    -a | --add-approver)
-      ADD_APPROVER=true
+    -a | --configure-contributors)
+      CONFIGURE_CONTRIBUTORS=true
       shift
       ;;
     -v | --verbose)
@@ -158,8 +161,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate option combinations
-if [[ "$ADD_APPROVER" == "true" && "$CLONE_FORK" == "false" ]]; then
-  bt_error_exit 1 "Option --add-approver requires --clone to be specified"
+if [[ "$CONFIGURE_CONTRIBUTORS" == "true" && "$CLONE_FORK" == "false" ]]; then
+  bt_error_exit 1 "Option --configure-contributors requires --clone to be specified"
 fi
 
 if [[ -n "$CLONE_DIR" && "$CLONE_FORK" == "false" ]]; then
@@ -275,13 +278,13 @@ configure_upstream() {
   echo "Upstream remote configured"
 }
 
-add_user_as_approver() {
+configure_fork_contributors() {
   local fork_dir="$1"
   local gh_user="$2"
   local contributors_file="$fork_dir/config/contributors.md"
   
   if [[ "$DRY_RUN" == "true" ]]; then
-    echo "[dry-run] Would add $gh_user as approver to $contributors_file"
+    echo "[dry-run] Would configure $contributors_file with $gh_user as sole approver"
     return 0
   fi
   
@@ -289,35 +292,55 @@ add_user_as_approver() {
     bt_error_exit 7 "Contributors file not found: $contributors_file"
   fi
   
-  if [[ "$VERBOSE" == "true" ]]; then
-    echo "[verbose] Adding $gh_user as approver to contributors.md..." >&2
+  if [[ "$VERBOSE" == "true" ]]; then    echo "[verbose] Configuring contributors.md for fork..." >&2
   fi
   
-  # Check if user already exists as an approver
-  if grep -E "^\s*-\s+$gh_user,\s*A," "$contributors_file" >/dev/null 2>&1; then
-    if [[ "$VERBOSE" == "true" ]]; then
-      echo "[verbose] User $gh_user is already an approver" >&2
+  # Read the file to preserve header and structure
+  local temp_file
+  temp_file=$(mktemp)
+  trap "rm -f '$temp_file'" RETURN
+  
+  # Extract header (everything up to and including "## Contributors")
+  local in_contributors_section=0
+  local contributors_start_line=0
+  local line_num=0
+  
+  while IFS= read -r line; do
+    ((line_num++))
+    if [[ "$line" == "## Contributors" ]]; then
+      in_contributors_section=1
+      contributors_start_line=$line_num
+      break
     fi
-    return 0
+    echo "$line" >> "$temp_file"
+  done < "$contributors_file"
+  
+  if [[ $in_contributors_section -eq 0 ]]; then
+    bt_error_exit 7 "Cannot find '## Contributors' section in $contributors_file"
   fi
   
-  # Add user as approver before the closing marker if present
-  # Format: - <github-login>, A, <email>
-  # We'll add with placeholder email since we don't have it
-  local entry="- $gh_user, A, $gh_user@github.local"
+  # Append the static header for contributors section
+  cat >> "$temp_file" << 'CONTRIBUTORS_HEADER'
+
+Each entry uses this form:
+
+- `<github-login>, <role>, <email>`
+
+CONTRIBUTORS_HEADER
   
-  # Try to append to the contributors list (after the header)
-  if ! sed -i.bak "/^- paulsinclair51, A,/a\\
-$entry" "$contributors_file" 2>/dev/null; then
-    # Fallback: append to end of file
-    echo "" >> "$contributors_file"
-    echo "$entry" >> "$contributors_file"
+  # Add the forking user as sole approver
+  echo "- $gh_user, A, $gh_user@github.local" >> "$temp_file"
+  
+  # Replace the original file
+  if ! mv "$temp_file" "$contributors_file" 2>&1; then
+    bt_error_exit 7 "Failed to update contributors file"
   fi
   
-  # Clean up backup file
-  rm -f "$contributors_file.bak" 2>/dev/null || true
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Configured $contributors_file with $gh_user as sole approver" >&2
+  fi
   
-  echo "User $gh_user added as approver"
+  echo "Contributors configured: $gh_user is the sole approver"
 }
 
 # Main flow
@@ -330,7 +353,7 @@ echo "Authenticated as: $GH_USER"
 # Check if fork already exists
 if fork_exists "$GH_USER"; then
   echo "Fork already exists at $GH_USER/$REPO_NAME"
-  if [[ "$CLONE_FORK" == "false" && "$ADD_UPSTREAM" == "false" && "$ADD_APPROVER" == "false" ]]; then
+  if [[ "$CLONE_FORK" == "false" && "$ADD_UPSTREAM" == "false" && "$CONFIGURE_CONTRIBUTORS" == "false" ]]; then
     exit 0
   fi
 else
@@ -349,9 +372,9 @@ if [[ "$CLONE_FORK" == "true" ]]; then
     configure_upstream "$FORK_DIR"
   fi
   
-  # Add user as approver if requested
-  if [[ "$ADD_APPROVER" == "true" ]]; then
-    add_user_as_approver "$FORK_DIR" "$GH_USER"
+  # Configure contributors if requested
+  if [[ "$CONFIGURE_CONTRIBUTORS" == "true" ]]; then
+    configure_fork_contributors "$FORK_DIR" "$GH_USER"
   fi
 fi
 
