@@ -27,6 +27,7 @@ Forking process:
   - Checks if a fork already exists
   - Creates fork on your GitHub account via API
   - Configures contributors.md via API (fork becomes immediately usable)
+  - Atomically validates entire operation or cleans up on failure
 
 After forking:
   - Use mkclone to clone the repository locally
@@ -36,6 +37,8 @@ Features:
   - Creates fork on your GitHub account via API
   - Automatically configures fork contributors via API
   - Validates fork configuration after creation
+  - Atomic operation: fork either exists with correct config or doesn't exist
+  - Automatic cleanup on configuration failure
   - Supports dry-run mode for planning
   - No role restrictions: any user can fork the repository
 
@@ -66,14 +69,14 @@ Outputs:
   - May generate files, reports, or other artifacts in the documented output locations.
 
 Exit codes:
-  0   Success
+  0   Success - fork created and configured
   1   Argument or validation error
   2   GitHub API error
-  3   Fork already exists (not an error, fork is ready)
+  3   Fork already exists and is properly configured (not an error)
   4   Authentication failed
   5   Configuration validation failed
   6   Repository configuration error
-  7   Repository update or verification failed
+  7   Fork creation/configuration failed - fork cleaned up
 EOF
 }
 
@@ -83,6 +86,7 @@ EOF
 # - Validates fork was successfully created.
 # - Configures fork's contributors.md via GitHub API.
 # - Verifies configuration was applied correctly.
+# - On configuration failure: deletes fork and exits with error
 # - Reports fork status and next-step guidance.
 
 set -euo pipefail
@@ -100,6 +104,10 @@ source "$SCRIPT_DIR/../helpers/github_helpers.sh"
 # Default options
 VERBOSE=false
 DRY_RUN=false
+
+# Track state for cleanup
+FORK_WAS_CREATED=false
+FORK_EXISTS_PRE_SCRIPT=false
 
 # Parse options
 while [[ $# -gt 0 ]]; do
@@ -124,6 +132,24 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Cleanup function - called on script exit if fork creation failed
+cleanup_on_failure() {
+  local exit_code=$?
+  
+  # Only clean up if:
+  # 1. Script is exiting with error
+  # 2. Fork was created during this script (not pre-existing)
+  # 3. We're not in dry-run mode
+  if [[ $exit_code -ne 0 ]] && [[ "$FORK_WAS_CREATED" == "true" ]] && [[ "$DRY_RUN" != "true" ]]; then
+    echo "Configuration failed. Cleaning up fork..." >&2
+    delete_fork "$GH_USER" || true
+    echo "Fork deleted due to configuration failure" >&2
+  fi
+}
+
+# Register cleanup trap
+trap cleanup_on_failure EXIT
 
 # Helper functions
 get_github_username() {
@@ -164,6 +190,7 @@ create_fork() {
   
   if [[ "$DRY_RUN" == "true" ]]; then
     echo "[dry-run] Would create fork of $source_repo"
+    FORK_WAS_CREATED=true
     return 0
   fi
   
@@ -175,6 +202,7 @@ create_fork() {
     bt_error_exit 2 "Failed to create fork via GitHub API"
   fi
   
+  FORK_WAS_CREATED=true
   echo "Fork created successfully"
 }
 
@@ -230,6 +258,31 @@ validate_fork_ownership() {
   if [[ "$VERBOSE" == "true" ]]; then
     echo "[verbose] Fork ownership validated" >&2
   fi
+}
+
+delete_fork() {
+  local gh_user="$1"
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[dry-run] Would delete fork"
+    return 0
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Deleting fork $gh_user/$REPO_NAME..." >&2
+  fi
+  
+  # Delete the fork via API
+  if ! gh api --method DELETE "repos/$gh_user/$REPO_NAME" 2>&1 > /dev/null; then
+    echo "Warning: Failed to delete fork during cleanup. Manual cleanup may be required." >&2
+    return 1
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Fork deleted successfully" >&2
+  fi
+  
+  return 0
 }
 
 get_file_sha() {
@@ -461,19 +514,16 @@ echo "Preparing to create fork of $REPO_OWNER/$REPO_NAME..."
 GH_USER=$(get_github_username)
 echo "Authenticated as: $GH_USER"
 
-# Check if fork already exists
-FORK_EXISTS=false
+# Check if fork already exists before we start
 if fork_exists "$GH_USER"; then
   echo "Fork already exists at $GH_USER/$REPO_NAME"
-  FORK_EXISTS=true
+  FORK_EXISTS_PRE_SCRIPT=true
 else
   # Create fork
   create_fork "$REPO_OWNER/$REPO_NAME"
   
   # Wait for fork to be ready on GitHub
   wait_for_fork "$GH_USER"
-  
-  FORK_EXISTS=true
 fi
 
 # Validate fork ownership and integrity
@@ -481,6 +531,9 @@ validate_fork_ownership "$GH_USER"
 
 # Configure contributors via API
 configure_fork_contributors_via_api "$GH_USER"
+
+# Mark that fork was successfully configured
+FORK_WAS_CREATED=false
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo ""
