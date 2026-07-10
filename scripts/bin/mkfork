@@ -29,7 +29,7 @@ Forking process:
   - Configures contributors.md via API (fork becomes immediately usable)
 
 After forking:
-  - Use mkclone to clone the fork locally
+  - Use mkclone to clone the repository locally
   - Use other scripts to manage branches, commits, and pull requests
 
 Features:
@@ -57,7 +57,7 @@ Examples:
 
   # After forking, clone locally
   mkfork
-  mkclone --fork
+  mkclone
 
 
 Outputs:
@@ -325,7 +325,7 @@ else
   echo "Fork URL: https://github.com/$GH_USER/$REPO_NAME"
   echo ""
   echo "Next steps:"
-  echo "  mkclone --fork  # Clone the fork locally"
+  echo "  mkclone  # Clone the repository locally"
 fi
 
 exit 0
