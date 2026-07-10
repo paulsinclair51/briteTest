@@ -157,7 +157,8 @@ Examples:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 EOF
 }
@@ -226,25 +227,32 @@ EXIT_SYSTEM_RUNTIME_ERROR=249
 
 declare -a VALID_MD_BACKENDS=(auto all pandoc wkhtmltopdf weasyprint)
 declare -a VALID_DOCX_BACKENDS=(auto all python libreoffice)
-declare -a VALID_TOOLCHECK_BACKENDS=(auto all pandoc wkhtmltopdf weasyprint python libreoffice)
+declare -a VALID_TOOLCHECK_BACKENDS=(auto all pandoc \
+    wkhtmltopdf weasyprint python libreoffice)
 
 status_message_for_code() {
   local code=$1
   case "$code" in
     $EXIT_SUCCESS) echo "STATUS[0]: success" ;;
     $EXIT_USAGE_GENERAL) echo "STATUS[1]: usage error (general)" ;;
-    $EXIT_USAGE_OPTION) echo "STATUS[2]: usage error (invalid or incomplete option)" ;;
+    $EXIT_USAGE_OPTION) echo "STATUS[2]: usage error" \
+      "(invalid or incomplete option)" ;;
     $EXIT_USAGE_ARGUMENT) echo "STATUS[3]: usage error (invalid argument)" ;;
-    $EXIT_USAGE_MODE) echo "STATUS[4]: usage error (invalid option combination or mode)" ;;
+    $EXIT_USAGE_MODE) echo "STATUS[4]: usage error (invalid option" \
+      "combination or mode)" ;;
     $EXIT_INPUT_NOT_FOUND) echo "STATUS[5]: input not found" ;;
     $EXIT_INPUT_EMPTY) echo "STATUS[6]: no source files to process" ;;
     $EXIT_INTERNAL_HELPER_MISSING)
       echo "STATUS[100]: internal setup error (helper script missing)"
       ;;
-    $EXIT_INTERNAL_TOOLCHECK_FAILED) echo "STATUS[110]: internal helper/toolchain check failed" ;;
-    $EXIT_INTERNAL_GENPDF_FAILED) echo "STATUS[111]: internal helper failure (genpdf)" ;;
-    $EXIT_INTERNAL_GENDOCX_FAILED) echo "STATUS[112]: internal helper failure (gendocx)" ;;
-    $EXIT_SYSTEM_RUNTIME_ERROR) echo "STATUS[249]: system/runtime call failure" ;;
+    $EXIT_INTERNAL_TOOLCHECK_FAILED) echo "STATUS[110]: " \
+      "internal helper/toolchain check failed" ;;
+    $EXIT_INTERNAL_GENPDF_FAILED) echo "STATUS[111]: " \
+      "internal helper failure (genpdf)" ;;
+    $EXIT_INTERNAL_GENDOCX_FAILED) echo "STATUS[112]: " \
+      "internal helper failure (gendocx)" ;;
+    $EXIT_SYSTEM_RUNTIME_ERROR) echo "STATUS[249]: " \
+      "system/runtime call failure" ;;
     *) echo "STATUS[$code]: unclassified exit" ;;
   esac
 }
@@ -260,7 +268,8 @@ exit_with() {
 on_unexpected_error() {
   local rc=$1
   local line=$2
-  exit_with "$EXIT_SYSTEM_RUNTIME_ERROR" "Unexpected failure at line $line (rc=$rc)."
+  exit_with "$EXIT_SYSTEM_RUNTIME_ERROR" \
+    "Unexpected failure at line $line (rc=$rc)."
 }
 
 trap 'on_unexpected_error $? $LINENO' ERR
@@ -331,7 +340,9 @@ run_toolcheck() {
   local docx_backends=("$backend_pdf_docx")
   local b
 
-  [[ "$backend_md_pdf" == "all" ]] && md_backends=(pandoc wkhtmltopdf weasyprint)
+  [[ "$backend_md_pdf" == "all" ]] && md_backends=(\
+    pandoc wkhtmltopdf weasyprint
+  )
   [[ "$backend_pdf_docx" == "all" ]] && docx_backends=(python libreoffice)
 
   if [[ "$backend_md_pdf" == "all" ]]; then
@@ -473,7 +484,8 @@ line_count_file() { wc -l < "$1" | tr -d ' '; }
 char_count_file() { wc -m < "$1" | tr -d ' '; }
 fingerprint_triplet() {
   local f=$1
-  printf '%s %s %s\n' "$(line_count_file "$f")" "$(char_count_file "$f")" "$(sha256_file "$f")"
+  printf '%s %s %s\n' "$(line_count_file "$f")" \
+    "$(char_count_file "$f")" "$(sha256_file "$f")"
 }
 
 convert_markdown_to_docx() {
@@ -485,7 +497,8 @@ convert_markdown_to_docx() {
   local doc_title
 
   source_dir=$(cd "$(dirname "$3")" && pwd)
-  branding_dir=$(cd "$(dirname "$source_dir")/branding" && pwd 2>/dev/null || true)
+  branding_dir=$(cd "$(dirname "$source_dir")/branding" && \
+    pwd 2>/dev/null || true)
   resource_path="$source_dir"
   if [[ -n "$branding_dir" ]]; then
     resource_path="$resource_path:$branding_dir"
@@ -518,17 +531,20 @@ while [[ $# -gt 0 ]]; do
     -t) tool_check=1 ;;
     -i)
       shift
-      [[ $# -gt 0 ]] || exit_with "$EXIT_USAGE_OPTION" "-i requires a pattern value."
+      [[ $# -gt 0 ]] || exit_with "$EXIT_USAGE_OPTION" \
+        "-i requires a pattern value."
       include_patterns+=("$1")
       ;;
     -x)
       shift
-      [[ $# -gt 0 ]] || exit_with "$EXIT_USAGE_OPTION" "-x requires a pattern value."
+      [[ $# -gt 0 ]] || exit_with "$EXIT_USAGE_OPTION" \
+        "-x requires a pattern value."
       exclude_patterns+=("$1")
       ;;
     -b)
       shift
-      [[ $# -gt 0 ]] || exit_with "$EXIT_USAGE_OPTION" "-b requires a backend value."
+      [[ $# -gt 0 ]] || exit_with "$EXIT_USAGE_OPTION" \
+        "-b requires a backend value."
       if [[ "$1" == */* ]]; then
         backend_md_pdf="${1%%/*}"
         backend_pdf_docx="${1##*/}"
@@ -564,9 +580,11 @@ else
 fi
 
 [[ -f "$genpdf_script" ]] || \
-  exit_with "$EXIT_INTERNAL_HELPER_MISSING" "Missing helper script: $genpdf_script"
+  exit_with "$EXIT_INTERNAL_HELPER_MISSING" \
+    "Missing helper script: $genpdf_script"
 [[ -f "$gendocx_script" ]] || \
-  exit_with "$EXIT_INTERNAL_HELPER_MISSING" "Missing helper script: $gendocx_script"
+  exit_with "$EXIT_INTERNAL_HELPER_MISSING" \
+    "Missing helper script: $gendocx_script"
 
 if [[ $tool_check -eq 1 ]]; then
   run_toolcheck
@@ -579,7 +597,8 @@ declare -A curr_meta=()
 
 if [[ -f "$meta_file" ]]; then
   while read -r rel lc cc hash; do
-    [[ -z "${rel:-}" || -z "${lc:-}" || -z "${cc:-}" || -z "${hash:-}" ]] && continue
+    [[ -z "${rel:-}" || -z "${lc:-}" || -z "${cc:-}" || \
+        -z "${hash:-}" ]] && continue
     prev_meta["$rel"]="$lc $cc $hash"
   done < "$meta_file"
 fi
@@ -630,7 +649,8 @@ else
     sources=("$doc_arg")
   elif [[ -d "$doc_arg" ]]; then
     collect_sources_from_dir "$doc_arg"
-  elif [[ "$doc_arg" == *"*"* || "$doc_arg" == *"?"* || "$doc_arg" == *"["* ]]; then
+  elif [[ "$doc_arg" == *"*"* || "$doc_arg" == *"?"* || \
+          "$doc_arg" == *"["* ]]; then
     while IFS= read -r matched; do
       [[ -n "$matched" ]] || continue
       [[ -f "$matched" ]] || continue
@@ -650,7 +670,8 @@ else
   fi
 fi
 
-[[ ${#sources[@]} -gt 0 ]] || exit_with "$EXIT_INPUT_EMPTY" "No source files found."
+[[ ${#sources[@]} -gt 0 ]] || exit_with "$EXIT_INPUT_EMPTY" \
+  "No source files found."
 
 filtered_sources=()
 for src in "${sources[@]}"; do
@@ -714,31 +735,39 @@ for src in "${sources[@]}"; do
 
     if [[ $docx_only -eq 1 ]]; then
       if command -v pandoc >/dev/null 2>&1; then
-        if ! bash "$genpdf_script" "${pdf_opts[@]}" -e "$tmp_md" "$src" "$tmp_pdf"; then
+        if ! bash "$genpdf_script" "${pdf_opts[@]}" -e "$tmp_md" \
+            "$src" "$tmp_pdf"; then
           exit_with "$EXIT_INTERNAL_GENPDF_FAILED" \
-            "genpdf helper failed while generating transformed markdown for source: $src"
+            "genpdf helper failed while generating " \
+            "transformed markdown for source: $src"
         fi
-        if ! convert_markdown_to_docx "$tmp_md" "$target_docx" "$src"; then
+        if ! convert_markdown_to_docx "$tmp_md" "$target_docx" \
+            "$src"; then
           exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
-            "pandoc failed while generating DOCX from transformed markdown for source: $src"
+            "pandoc failed while generating DOCX from " \
+            "transformed markdown for source: $src"
         fi
       else
         if ! bash "$genpdf_script" "${pdf_opts[@]}" "$src" "$tmp_pdf"; then
           exit_with "$EXIT_INTERNAL_GENPDF_FAILED" \
             "genpdf helper failed while generating PDF from source: $src"
         fi
-        if ! bash "$gendocx_script" "${docx_opts[@]}" "$tmp_pdf" "$target_docx"; then
+        if ! bash "$gendocx_script" "${docx_opts[@]}" "$tmp_pdf" \
+            "$target_docx"; then
           exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
-            "gendocx helper failed while generating DOCX from temporary PDF for source: $src"
+            "gendocx helper failed while generating DOCX from " \
+            "temporary PDF for source: $src"
         fi
       fi
       continue
     fi
 
     if command -v pandoc >/dev/null 2>&1 && [[ $pdf_only -eq 0 ]]; then
-      if ! bash "$genpdf_script" "${pdf_opts[@]}" -e "$tmp_md" "$src" "$target_pdf"; then
+      if ! bash "$genpdf_script" "${pdf_opts[@]}" -e "$tmp_md" \
+          "$src" "$target_pdf"; then
         exit_with "$EXIT_INTERNAL_GENPDF_FAILED" \
-          "genpdf helper failed while generating PDF/transformed markdown from source: $src"
+          "genpdf helper failed while generating " \
+          "PDF/transformed markdown from source: $src"
       fi
     else
       if ! bash "$genpdf_script" "${pdf_opts[@]}" "$src" "$target_pdf"; then
@@ -748,9 +777,11 @@ for src in "${sources[@]}"; do
     fi
 
     if [[ $pdf_only -eq 1 ]]; then
-      if ! bash "$gendocx_script" "${docx_opts[@]}" "$target_pdf" "$tmp_docx"; then
+      if ! bash "$gendocx_script" "${docx_opts[@]}" "$target_pdf" \
+          "$tmp_docx"; then
         exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
-          "gendocx helper failed while validating DOCX generation from PDF: $target_pdf"
+          "gendocx helper failed while validating DOCX " \
+          "generation from PDF: $target_pdf"
       fi
       rm -f "$tmp_docx"
       continue
@@ -759,10 +790,12 @@ for src in "${sources[@]}"; do
     if command -v pandoc >/dev/null 2>&1; then
       if ! convert_markdown_to_docx "$tmp_md" "$target_docx" "$src"; then
         exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
-          "pandoc failed while generating DOCX from transformed markdown for source: $src"
+          "pandoc failed while generating DOCX from " \
+          "transformed markdown for source: $src"
       fi
     else
-      if ! bash "$gendocx_script" "${docx_opts[@]}" "$target_pdf" "$target_docx"; then
+      if ! bash "$gendocx_script" "${docx_opts[@]}" "$target_pdf" \
+          "$target_docx"; then
         exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
           "gendocx helper failed while generating DOCX from PDF: $target_pdf"
       fi
@@ -770,7 +803,8 @@ for src in "${sources[@]}"; do
 
   elif [[ "$src" == *.pdf ]]; then
     # Only valid in -d mode per usage
-    [[ $docx_only -eq 1 ]] || exit_with "$EXIT_USAGE_MODE" ".pdf input requires -d mode."
+    [[ $docx_only -eq 1 ]] || exit_with "$EXIT_USAGE_MODE" \
+      ".pdf input requires -d mode."
     base="${b%.pdf}"
     target_docx="$docx_base/${base}.docx"
     if ! bash "$gendocx_script" "${docx_opts[@]}" "$src" "$target_docx"; then
@@ -791,7 +825,8 @@ mv -f "$tmp_meta_file" "$meta_file"
 if [[ $docx_only -eq 1 ]]; then
   log_info "Generated DOCX files."
 elif [[ $pdf_only -eq 1 ]]; then
-  log_info "Generated PDF files and validated DOCX conversion via temporary outputs."
+  log_info "Generated PDF files and validated DOCX conversion " \
+    "via temporary outputs."
 else
   log_info "Generated PDF and DOCX files."
 fi
