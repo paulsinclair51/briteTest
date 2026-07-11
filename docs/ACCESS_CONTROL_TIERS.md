@@ -33,7 +33,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 │ • Read: All files                                       │
 │ • Create: Branches, commits, PRs (from forks or branches)
 │ • Cannot: Merge, Release, Direct push to main/v*.0     │
-│ • Scripts: mkbranch, mkcommit, mktest, etc.            │
+│ • Scripts: mkbranch, commit, testscripts, etc.            │
 └─────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -41,7 +41,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 │ • Read: All files                                       │
 │ • Review: PRs, approve changes                          │
 │ • Cannot: Merge to main/v*.0, Release                   │
-│ • Scripts: mkfeedback, mkrebase (in addition to C)      │
+│ • Scripts: mkfeedback (in addition to C)                │
 └─────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -150,23 +150,23 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 
 **Write Access (Controlled by Scripts):**
 - ✅ Create feature branches (via `mkbranch`)
-- ✅ Create commits (via `mkcommit`)
+- ✅ Create commits (via `commit`)
 - ✅ Push to own branches
 - ✅ Create pull requests
 
 **Cannot:**
 - ❌ Push directly to `main` (protected)
 - ❌ Push directly to `v*.0` (protected)
-- ❌ Execute `mkmerge`, `mkrelease`, `fixrepository`
+- ❌ Execute `merge`, `mkrelease`, `fixrepository`
 - ❌ Modify .github/workflows/
 - ❌ Modify config/
 
 **Scripts Available:**
 - `mkbranch` - Create branches
-- `mkcommit` - Create commits
+- `commit` - Create commits
 - `mkpullrequest` - Create PRs
-- `mktest` - Run tests
-- `mksync` - Sync with remote
+- `testscripts` - Run tests
+- `synceremote` - Sync with remote
 - All utility scripts
 
 **Use Case:** Active contributors writing code and documentation
@@ -183,21 +183,19 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 
 **Write Access (Controlled by Scripts):**
 - ✅ All Contributor capabilities
-- ✅ Rebase branches (via `mkrebase`)
 - ✅ Provide review feedback (via `mkfeedback`)
 - ✅ Create/update pull requests
 
 **Cannot:**
 - ❌ Merge to `main` (protected)
 - ❌ Merge to `v*.0` (protected)
-- ❌ Execute `mkmerge`, `mkrelease`, `fixrepository`
+- ❌ Execute `merge`, `mkrelease`, `fixrepository`
 - ❌ Modify .github/workflows/
 - ❌ Create releases
 - ❌ Direct push to protected branches
 
 **Scripts Available:**
 - All Contributor scripts
-- `mkrebase` - Rebase branches
 - `mkfeedback` - Review feedback
 - `ckstyle` - Check code style
 
@@ -229,7 +227,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 
 **Scripts Available:**
 - All Reviewer scripts
-- `mkmerge` (protected - requires override)
+- `merge` (protected - requires override)
 - `mkrelease` (protected - requires override)
 - `fixrepository` (protected - requires override)
 
@@ -314,16 +312,16 @@ All write operations go through scripts, not direct git commands:
 ```bash
 # Contributors can execute:
 scripts/bin/mkbranch -r feature main          # ✅ Allowed
-scripts/bin/mkcommit -m "feat: add feature"   # ✅ Allowed
+scripts/bin/commit -m "feat: add feature"   # ✅ Allowed
 scripts/bin/mkpullrequest                      # ✅ Allowed
-scripts/bin/mktest                             # ✅ Allowed
+scripts/bin/testscripts                             # ✅ Allowed
 
 # Reviewers can additionally execute:
-scripts/bin/mkrebase                           # ✅ Allowed
 scripts/bin/mkfeedback                         # ✅ Allowed
 
 # Approvers can execute (with override):
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkmerge feature main    # ✅ Allowed
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/merge feature main    # ✅ Allowed
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/chtarget dev/parser-v1.0.0 v1.1.0 # ✅ Allowed
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.0        # ✅ Allowed
 
 # Direct git commands to protected branches blocked:
@@ -408,7 +406,7 @@ User can:
 
 Contributor can:
 - ✅ Create branches (via `mkbranch`)
-- ✅ Push commits (via `mkcommit`)
+- ✅ Push commits (via `commit`)
 - ✅ Create PRs
 - ❌ Cannot merge to main
 

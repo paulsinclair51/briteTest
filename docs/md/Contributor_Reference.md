@@ -383,16 +383,17 @@ Role-based script permissions are enforced by helper checks and protected script
 
 | Script Capability | Contributor (C) | Reviewer (R) | Approver (A) |
 |------------------|-----------------|--------------|--------------| 
-| Branch and commit operations (`mkbranch`, `mkcommit`, `mkpullrequest`) | ✅ | ✅ | ✅ |
-| Review operations (`mkfeedback`, `mkrebase`) | ❌ | ✅ | ✅ |
-| Protected operations (`mkmerge`, `mkrelease`, `fixrepository`) | ❌ | ❌ | ✅ (override required) |
+| Branch and commit operations (`mkbranch`, `commit`, `mkpullrequest`) | ✅ | ✅ | ✅ |
+| Review operations (`mkfeedback`) | ❌ | ✅ | ✅ |
+| Retarget operations (`chtarget`) | ❌ | ❌ | ✅ |
+| Protected operations (`merge`, `mkrelease`, `fixrepository`) | ❌ | ❌ | ✅ (override required) |
 
 ### Protected Script Rule
 
 Approver-only scripts require explicit override confirmation:
 
 ```bash
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkmerge <source_branch> <target_branch>
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/merge <source_branch> <target_branch>
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.0
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepository
 ```

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# mkmerge - Merge current branch to its base branch with approval tracking.
+# merge - Merge current branch to its parent branch with approval tracking.
 #
-# See usage below for details, or run: mkmerge -h
+# See usage below for details, or run: merge -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,12 +11,13 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mkmerge [OPTIONS]
-  mkmerge -h | --help
+  merge [OPTIONS]
+  merge -h | --help
 
-Merge the current branch to its base branch using squash merge.
+Merge the current branch to its parent branch using squash merge.
 
-Merging to a protected branch (base is main) requires the current user to be
+Merging to a protected branch (main or a version branch) requires the current
+user to be
 an approver (A/ entry in config/contributors.md).
 
 Before merging:
@@ -41,13 +42,13 @@ Options:
 
 Examples:
   # Merge current branch with PR title as message
-  mkmerge
+  merge
 
   # Merge with custom message
-  mkmerge -m "Custom commit message"
+  merge -m "Custom commit message"
 
   # Merge with verbose output
-  mkmerge -v
+  merge -v
 
 
 Outputs:
@@ -69,7 +70,7 @@ EOF
 }
 
 # High-Level Flow:
-# - Merges the current branch into its base branch with pre-merge safety
+# - Merges the current branch into its parent branch with pre-merge safety
 #   validations.
 # - Applies workflow policy checks and optional history logging around the merge
 #   action.
@@ -97,26 +98,16 @@ get_current_user() {
     bt_error_exit 2 "Failed to determine current user"
 }
 
-get_target_branch() {
+get_parent_branch() {
   local current_branch="$1"
 
-  local target_branch
-  target_branch=$(bt_resolve_target_branch_from_fork_point \
+  local parent_branch
+  parent_branch=$(bt_resolve_parent_branch \
     "$current_branch" "main") || {
-    bt_error_exit 2 "Failed to determine target branch"
+    bt_error_exit 2 "Failed to determine parent branch"
   }
 
-  echo "$target_branch"
-}
-
-is_protected_branch() {
-  local target_branch="$1"
-  
-  # A protected branch is one whose base branch is main
-  if [[ "$target_branch" == "main" ]]; then
-    return 0
-  fi
-  return 1
+  echo "$parent_branch"
 }
 
 is_approver() {
@@ -162,31 +153,35 @@ check_status_checks() {
   bt_info "Checking status checks and CI/CD..."
   
   # Get the status check state
-  local status_state
-  status_state=$(gh pr view "$pr_number" --json statusCheckRollup \
-    --jq '.statusCheckRollup[].state' 2>/dev/null | sort | uniq | head -1)
-  
-  if [[ -z "$status_state" ]]; then
+  local status_states
+  status_states=$(gh pr view "$pr_number" --json statusCheckRollup \
+    --jq '.statusCheckRollup[].state' 2>/dev/null || true)
+
+  if [[ -z "$status_states" ]]; then
     # No checks found
     bt_info "No status checks found"
     return 0
   fi
-  
-  case "$status_state" in
-    SUCCESS)
-      bt_success "All status checks passed"
-      return 0
-      ;;
-    PENDING)
-      bt_error_exit 6 "Status checks still pending"
-      ;;
-    FAILURE)
-      bt_error_exit 6 "Status checks failed"
-      ;;
-    *)
-      bt_error_exit 6 "Unknown status check state: $status_state"
-      ;;
-  esac
+
+  if echo "$status_states" | grep -Eq '^(PENDING|EXPECTED|ACTION_REQUIRED)$'; then
+    bt_error_exit 6 "Status checks still pending"
+  fi
+
+  if echo "$status_states" | grep -Eq '^(FAILURE|ERROR|CANCELLED|TIMED_OUT)$'; then
+    bt_error_exit 6 "Status checks failed"
+  fi
+
+  if echo "$status_states" | grep -Ev '^(SUCCESS|SKIPPED|NEUTRAL)$' >/dev/null 2>&1; then
+    bt_error_exit 6 "Unknown status check state detected"
+  fi
+
+  bt_success "All status checks passed"
+}
+
+ensure_clean_worktree() {
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    bt_error_exit 2 "Working tree must be clean before running merge"
+  fi
 }
 
 log_merge_to_history() {
@@ -261,14 +256,16 @@ bt_info "Current branch: $CURRENT_BRANCH"
 CURRENT_USER=$(get_current_user)
 bt_info "Current user: $CURRENT_USER"
 
-# Determine target branch
-bt_info "Determining target branch..."
-TARGET_BRANCH=$(get_target_branch "$CURRENT_BRANCH")
-bt_info "Target branch: $TARGET_BRANCH"
+# Determine parent branch
+bt_info "Determining parent branch..."
+PARENT_BRANCH=$(get_parent_branch "$CURRENT_BRANCH")
+bt_info "Parent branch: $PARENT_BRANCH"
 
-# Check if target branch is protected (base is main)
-if is_protected_branch "$TARGET_BRANCH"; then
-  bt_info "Target branch is protected (base is main)"
+ensure_clean_worktree
+
+# Check if parent branch is protected
+if bt_is_protected_branch "$PARENT_BRANCH"; then
+  bt_info "Parent branch is protected"
   
   # Verify current user is an approver
   if ! is_approver "$CURRENT_USER"; then
@@ -277,7 +274,7 @@ if is_protected_branch "$TARGET_BRANCH"; then
   fi
   bt_success "User '$CURRENT_USER' is an approver"
 else
-  bt_info "Target branch is not protected"
+  bt_info "Parent branch is not protected"
 fi
 
 # Find associated PR
@@ -306,10 +303,28 @@ fi
 bt_info "Performing squash merge..."
 git fetch origin 2>/dev/null || bt_warn "Failed to fetch from origin"
 
-merge_cmd="git merge --squash --no-commit origin/$TARGET_BRANCH"
-if ! eval "$merge_cmd" 2>&1; then
-  bt_error_exit 2 "Failed to squash merge"
+if git show-ref --verify --quiet "refs/heads/$PARENT_BRANCH"; then
+  if ! git checkout "$PARENT_BRANCH" >/dev/null 2>&1; then
+    bt_error_exit 2 "Failed to check out parent branch '$PARENT_BRANCH'"
+  fi
+else
+  if ! git checkout -b "$PARENT_BRANCH" "origin/$PARENT_BRANCH" >/dev/null 2>&1; then
+    bt_error_exit 2 "Failed to create local parent branch '$PARENT_BRANCH'"
+  fi
 fi
+
+if ! git pull --ff-only origin "$PARENT_BRANCH" 2>&1; then
+  bt_error_exit 2 "Failed to fast-forward parent branch '$PARENT_BRANCH'"
+fi
+
+if ! git merge --squash --no-commit "$CURRENT_BRANCH" 2>&1; then
+  bt_error_exit 2 "Failed to squash merge '$CURRENT_BRANCH' into '$PARENT_BRANCH'"
+fi
+
+# Log merge to history before committing so the audit record is preserved.
+log_merge_to_history "$CURRENT_BRANCH" "$PARENT_BRANCH" \
+  "$CURRENT_USER" "$COMMIT_MESSAGE"
+git add logs/remote_branch_history.md 2>/dev/null || true
 
 # Create commit with message
 if ! git commit -m "$COMMIT_MESSAGE" 2>&1; then
@@ -317,25 +332,25 @@ if ! git commit -m "$COMMIT_MESSAGE" 2>&1; then
 fi
 
 # Push to remote
-bt_info "Pushing merged branch..."
-if ! git push -f origin "$CURRENT_BRANCH" 2>&1; then
-  bt_error_exit 2 "Failed to push branch"
+bt_info "Pushing parent branch..."
+if ! git push origin "$PARENT_BRANCH" 2>&1; then
+  bt_error_exit 2 "Failed to push parent branch"
 fi
 
-# Log merge to history
-log_merge_to_history "$CURRENT_BRANCH" "$TARGET_BRANCH" \
-  "$CURRENT_USER" "$COMMIT_MESSAGE"
+if ! git checkout "$CURRENT_BRANCH" >/dev/null 2>&1; then
+  bt_warn "Merged successfully, but failed to switch back to '$CURRENT_BRANCH'"
+fi
 
 # Show verbose output if requested
 if [[ "$VERBOSE" == true ]]; then
   bt_info "Merge details:"
   echo "  Branch: $CURRENT_BRANCH"
-  echo "  Target: $TARGET_BRANCH"
+  echo "  Parent: $PARENT_BRANCH"
   echo "  Approver: $CURRENT_USER"
   echo "  PR: #$PR_NUMBER"
   echo "  Message: $COMMIT_MESSAGE"
 fi
 
-bt_success "Branch '$CURRENT_BRANCH' merged to '$TARGET_BRANCH'"
+bt_success "Branch '$CURRENT_BRANCH' merged to '$PARENT_BRANCH'"
 bt_success "Done"
 exit 0

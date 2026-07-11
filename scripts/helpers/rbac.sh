@@ -14,7 +14,7 @@
 #   Contributor (C) = Access to contributor scripts only
 #
 # Protected Scripts (require approver override):
-#   - mkmerge       - Merge branches to protected branches
+#   - merge       - Merge branches to protected branches
 #   - mkrelease     - Create releases and tags
 #   - fixrepository - Repair repository state
 
@@ -33,12 +33,12 @@ source "${script_dir}/common-utils.sh"
 readonly CONTRIBUTOR_SCRIPTS=(
   "mkbranch"           # Create branches
   "mkclone"            # Clone repository
-  "mkcommit"           # Create commits
-  "mkcopy"             # Copy files
-  "mksync"             # Sync with remote
-  "mksyncup"           # Sync up with main
-  "mktest"             # Run tests
-  "mkundo"             # Undo changes
+  "commit"           # Create commits
+  "copyfix"            # Cherry-pick fixes between branches
+  "synceremote"       # Sync with remote
+  "syncparent"           # Sync current branch with parent branch
+  "testscripts"             # Run tests
+  "undo"             # Undo changes
   "ckbranch_history"   # Check branch history
   "lsbranch"           # List branches
 )
@@ -46,14 +46,14 @@ readonly CONTRIBUTOR_SCRIPTS=(
 # Reviewer scripts (available to R, A - in addition to contributor scripts)
 readonly REVIEWER_SCRIPTS=(
   "mkfeedback"         # Provide code review feedback
-  "mkrebase"           # Rebase branches
   "mkpullrequest"      # Create/update pull requests
   "ckstyle"            # Check code style
 )
 
 # Approver scripts (available to A only - in addition to all scripts)
 readonly APPROVER_SCRIPTS=(
-  "mkmerge"            # Merge branches (protected)
+  "merge"            # Merge branches (protected)
+  "chtarget"           # Retarget targeted branch to another version parent
   "mkrelease"          # Create releases (protected)
   "fixrepository"      # Fix repository issues (protected)
   "updatebrand"        # Update branding
@@ -70,7 +70,8 @@ readonly UTILITY_SCRIPTS=(
 
 # Protected scripts (require approver override confirmation)
 readonly PROTECTED_SCRIPTS=(
-  "mkmerge"
+  "merge"
+  "chtarget"
   "mkrelease"
   "fixrepository"
 )
@@ -110,7 +111,7 @@ get_user_role() {
 # Args: $1 = username, $2 = script name
 # Returns: 0 if allowed, 1 if not allowed
 #
-# Example: can_execute_script "paulsinclair51" "mkmerge"
+# Example: can_execute_script "paulsinclair51" "merge"
 can_execute_script() {
   local username="$1"
   local script="$2"
@@ -146,7 +147,7 @@ can_execute_script() {
 # Args: $1 = script name
 # Returns: 0 if protected, 1 if not protected
 #
-# Example: is_protected_script "mkmerge"
+# Example: is_protected_script "merge"
 is_protected_script() {
   local script="$1"
   array_contains "$script" "${PROTECTED_SCRIPTS[@]}"
@@ -159,7 +160,7 @@ is_protected_script() {
 # Args: $1 = script name, $2 = username
 # Returns: 0 if requires override, 1 if not required
 #
-# Example: requires_approver_override "mkmerge" "paulsinclair51"
+# Example: requires_approver_override "merge" "paulsinclair51"
 requires_approver_override() {
   local script="$1"
   local username="$2"
@@ -193,7 +194,7 @@ requires_approver_override() {
 # Args: $1 = script name
 # Returns: 0 if allowed, exits with error if not allowed
 #
-# Example: enforce_script_access "mkmerge"
+# Example: enforce_script_access "merge"
 enforce_script_access() {
   local script="$1"
   local username="${GITHUB_ACTOR:-$(git config user.name)}"
@@ -223,7 +224,7 @@ enforce_script_access() {
 # Args: $1 = script name, $2 = operation description
 # Returns: 0 if confirmed, exits if not confirmed
 #
-# Example: request_approver_override "mkmerge" "merge feature to main"
+# Example: request_approver_override "merge" "merge feature to main"
 request_approver_override() {
   local script="$1"
   local operation="${2:-execute this script}"

@@ -36,17 +36,17 @@ See `<repo>/README.md` for an introduction to briteTest.
 - **lsbranch**: List a branch or branches and their status.
 - **mkbranch**: Create branches with policy validation.
 - **mkclone**: Clone the repository with optional target naming.
-- **mkcommit**: Commit and optionally push changes.
-- **mkcopy**: Cherry-pick/copy commits from another branch.
+- **commit**: Commit and optionally push changes.
+- **copyfix**: Cherry-pick/copy fix commits from another branch.
 - **mkfeedback**: View/respond to PR feedback workflows.
-- **mkmerge**: Merge current branch to its base branch.
+- **merge**: Merge current branch to its parent branch.
 - **mkpullrequest**: Create or update a pull request.
-- **mkrebase**: Rebase current branch to a new base branch.
+- **chtarget**: Retarget a targeted branch to a different version parent.
 - **mkrelease**: Create and publish releases.
-- **mksync**: Fetch and pull latest changes.
-- **mksyncup**: Merge base branch into current branch.
-- **mktest**: Run tests and optional documentation checks.
-- **mkundo**: Undo recent merge/release/commit operations.
+- **synceremote**: Fetch and pull latest changes.
+- **syncparent**: Merge parent branch into current branch.
+- **testscripts**: Run tests and optional documentation checks.
+- **undo**: Undo recent merge/release/commit operations.
 - **rmbranch**: Remove local and/or remote branches.
 
 ### README Directory Guide

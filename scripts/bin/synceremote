@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# mksync - Fetch and pull latest changes from remote.
+# synceremote - Fetch and pull latest changes from remote.
 #
-# See usage below for details, or run: mksync -h
+# See usage below for details, or run: synceremote -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,24 +11,27 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mksync [OPTIONS]
-  mksync -h | --help
+  synceremote [OPTIONS]
+  synceremote -h | --help
 
 Fetch latest changes from remote and update the current branch.
-Shows summary of changes and warns if behind main or if diverged from remote.
+Shows summary of changes and warns if behind its parent branch or if diverged
+from remote.
 
 Features:
   - Fetches from remote
   - Pulls latest changes into current branch
+  - Fast-forwards other local branches safely when -a is used
   - Shows summary of what changed
-  - Warns if current branch is behind main (suggests mksyncup)
+  - Warns if current branch is behind its parent branch
   - Warns if local commits exist that aren't pushed
   - Detects diverged branches and suggests resolution
 
 Options:
   -h, --help         Output this help to stdout and exit (other options
                      and arguments are ignored).
-  -a, --all          Fetch all branches (default: current branch only)
+  -a, --all          Fetch all branches and fast-forward local branches when
+                     it is safe to do so
   -v, --verbose      Show detailed change information
   -m, --message MSG  Add comment message (GitHub style,
                      requires quotes if spaces)
@@ -42,19 +45,19 @@ Comment Options (mutually exclusive):
 
 Examples:
   # Sync current branch only
-  mksync
+  synceremote
 
   # Sync with verbose output
-  mksync -v
+  synceremote -v
 
   # Sync all branches
-  mksync -a
+  synceremote -a
 
   # Sync with comment
-  mksync -m "Getting latest before starting feature work"
+  synceremote -m "Getting latest before starting feature work"
 
   # Unix-style comment
-  mksync -- Getting latest changes
+  synceremote -- Getting latest changes
 
 
 Outputs:
@@ -123,11 +126,47 @@ count_unpushed_commits() {
   git rev-list --count "origin/$branch..$branch" 2>/dev/null || echo "0"
 }
 
-count_commits_behind_main() {
+count_commits_behind_parent() {
   local branch="$1"
-  
-  # Count commits that are in main but not in current branch
-  git rev-list --count "$branch..origin/main" 2>/dev/null || echo "0"
+
+  local parent_branch
+  parent_branch=$(bt_resolve_parent_branch "$branch" "")
+
+  if [[ -z "$parent_branch" ]]; then
+    echo "0"
+    return 0
+  fi
+
+  git rev-list --count "$branch..origin/$parent_branch" 2>/dev/null || echo "0"
+}
+
+fast_forward_branch_ref() {
+  local branch="$1"
+
+  if ! git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+    return 1
+  fi
+
+  local local_commit
+  local remote_commit
+  local merge_base
+  local_commit=$(git rev-parse "$branch" 2>/dev/null || echo "")
+  remote_commit=$(git rev-parse "origin/$branch" 2>/dev/null || echo "")
+  merge_base=$(git merge-base "$branch" "origin/$branch" 2>/dev/null || echo "")
+
+  if [[ -z "$local_commit" || -z "$remote_commit" ]]; then
+    return 1
+  fi
+
+  if [[ "$local_commit" == "$remote_commit" ]]; then
+    return 2
+  fi
+
+  if [[ "$merge_base" != "$local_commit" ]]; then
+    return 1
+  fi
+
+  git branch -f "$branch" "origin/$branch" >/dev/null 2>&1
 }
 
 # Parse options and arguments
@@ -178,6 +217,10 @@ CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit 2 "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
 
+if [[ -n "$COMMENT" ]]; then
+  bt_info "Note: $COMMENT"
+fi
+
 # Fetch from remote
 bt_info "Fetching from remote..."
 if ! git fetch origin 2>&1; then
@@ -193,7 +236,7 @@ if [[ "$SYNC_ALL" == false ]]; then
   if check_diverged "$CURRENT_BRANCH"; then
     bt_error_exit 3 \
       "Branch '$CURRENT_BRANCH' has diverged from remote. Manual resolution "\
-"needed. Use 'git rebase' or 'mkmerge' to resolve."
+"needed. Use 'git rebase' or 'merge' to resolve."
   fi
   
   # Pull changes
@@ -211,19 +254,35 @@ if [[ "$SYNC_ALL" == false ]]; then
     fi
   fi
 else
-  # Sync all branches
-  bt_info "Pulling latest changes for all branches..."
-  
-  branches=$(git branch -r | grep -v HEAD | sed 's/origin\///')
+  # Sync all local branches safely.
+  bt_info "Fast-forwarding local branches where safe..."
+
+  local_branches=$(git for-each-ref --format='%(refname:short)' refs/heads)
   updated_count=0
-  
-  for branch in $branches; do
-    if git pull origin "$branch" 2>&1 >/dev/null; then
-      ((updated_count++))
+  skipped_count=0
+
+  while IFS= read -r branch; do
+    [[ -n "$branch" ]] || continue
+    [[ "$branch" == "$CURRENT_BRANCH" ]] && continue
+
+    if fast_forward_branch_ref "$branch"; then
+      updated_count=$((updated_count + 1))
+    else
+      rc=$?
+      if [[ "$rc" -eq 2 ]]; then
+        continue
+      fi
+      skipped_count=$((skipped_count + 1))
+      if [[ "$VERBOSE" == true ]]; then
+        bt_warn "Skipped local branch '$branch' (ahead, diverged, or no remote)"
+      fi
     fi
-  done
-  
-  bt_success "Updated $updated_count branches"
+  done <<< "$local_branches"
+
+  bt_success "Updated $updated_count additional local branch(es)"
+  if [[ "$skipped_count" -gt 0 ]]; then
+    bt_warn "Skipped $skipped_count branch(es) that could not be fast-forwarded safely"
+  fi
 fi
 
 # Check for unpushed commits in current branch
@@ -236,11 +295,16 @@ if [[ "$unpushed" -gt 0 ]]; then
   fi
 fi
 
-# Check if behind main
-behind_main=$(count_commits_behind_main "$CURRENT_BRANCH")
-if [[ "$behind_main" -gt 0 ]] && [[ "$CURRENT_BRANCH" != "main" ]]; then
-  bt_warn "Your branch is $behind_main commit(s) behind main"
-  bt_info "Run: mksyncup"
+# Check if behind parent branch
+PARENT_BRANCH=$(bt_resolve_parent_branch "$CURRENT_BRANCH" "")
+behind_parent=$(count_commits_behind_parent "$CURRENT_BRANCH")
+if [[ "$behind_parent" -gt 0 ]] && [[ -n "$PARENT_BRANCH" ]]; then
+  bt_warn "Your branch is $behind_parent commit(s) behind parent '$PARENT_BRANCH'"
+  if bt_is_protected_branch "$CURRENT_BRANCH"; then
+    bt_info "Protected branches require an approver-managed merge workflow"
+  else
+    bt_info "Run: syncparent"
+  fi
 fi
 
 bt_success "Sync complete"

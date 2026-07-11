@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# mkcopy - Cherry-pick commits from one branch to another.
+# copyfix - Cherry-pick fix commits from one branch to another.
 #
-# See usage below for details, or run: mkcopy -h
+# See usage below for details, or run: copyfix -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,9 +11,9 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mkcopy SOURCE_BRANCH [OPTIONS]
-  mkcopy --continue [OPTIONS]
-  mkcopy -h | --help
+  copyfix SOURCE_BRANCH [OPTIONS]
+  copyfix --continue [OPTIONS]
+  copyfix -h | --help
 
 Cherry-pick all commits from a source branch to the current branch.
 
@@ -24,7 +24,7 @@ Before cherry-picking:
 
 If conflicts occur:
   - Script pauses and prompts to resolve conflicts manually
-  - Run `mkcopy --continue` after resolving to complete the cherry-pick
+  - Run `copyfix --continue` after resolving to complete the cherry-pick
 
 Features:
   - Cherry-picks all commits from source branch
@@ -43,21 +43,21 @@ Options:
 
 Examples:
   # Cherry-pick from feature branch to current branch
-  mkcopy feature-auth
+  copyfix fix/auth-v1.0.0
 
   # Cherry-pick with custom message
-  mkcopy feature-auth -m "Backport: Auth improvements"
+  copyfix fix/auth-v1.0.0 -m "Backport: Auth improvements"
 
   # Continue after resolving conflicts
-  mkcopy --continue
+  copyfix --continue
 
   # Verbose output
-  mkcopy feature-auth -v
+  copyfix fix/auth-v1.0.0 -v
 
 Workflow:
-  1. Cherry-pick commits: mkcopy source-branch
+  1. Cherry-pick commits: copyfix source-branch
   2. If conflicts occur, resolve them manually
-  3. Continue: mkcopy --continue
+  3. Continue: copyfix --continue
   4. Repeat steps 2-3 if more conflicts
 
 
@@ -144,7 +144,7 @@ cherry_pick_commits() {
     if ! git cherry-pick "$commit" 2>&1; then
       bt_warn "Conflict detected during cherry-pick of $commit"
       echo "WARN: Please resolve conflicts manually, then run:"
-      echo "  mkcopy --continue"
+      echo "  copyfix --continue"
       exit 5
     fi
   done
@@ -196,7 +196,7 @@ if [[ "$CONTINUE_MODE" == true ]]; then
   else
     bt_warn "Conflict still present after continue"
     echo -e "${YELLOW}Please resolve remaining conflicts, then run:${NC}"
-    echo "  mkcopy --continue"
+    echo "  copyfix --continue"
     exit 5
   fi
 fi

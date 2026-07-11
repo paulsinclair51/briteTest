@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# mkcommit - Commit and optionally push changes to the repository.
+# commit - Commit and optionally push changes to the repository.
 #
-# See usage below for details, or run: mkcommit -h
+# See usage below for details, or run: commit -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,35 +11,32 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mkcommit [OPTIONS] [files...]
-  mkcommit -h | --help
+  commit [OPTIONS] [files...]
+  commit -h | --help
 
 Commit changes to the current branch in BriteTest.
 Stages all changes by default and commits them with a message.
 Optionally pushes to remote.
 
-Protected branches (require mkmerge for changes):
+Protected branches (require merge for changes):
   - main
-  - major/* (direct branches off main)
-  - minor/* (direct branches off main)
-  - patch/* (direct branches off main)
-  - docs/* (direct branches off main)
+  - v<M>.<m>.<p> version branches created from main
 
-Allowed branches (can use mkcommit):
-  - Any sub-branches: major/*/*, minor/*/*, patch/*/* , docs/*/*
-  - Any other custom branches
+Allowed branches (can use commit):
+  - dev/<desc>-<version> and fix/<desc>-<version> targeted branches
+  - [<type>/]<description> contributor branches
 
 Arguments:
   [files...]         Optional list of files to stage and commit
                      If not specified, stages all changes (git add .)
-                     Examples: mkcommit file1.js file2.js
-                               mkcommit src/index.js
+                     Examples: commit file1.js file2.js
+                               commit src/index.js
 
 Commit Message Options (mutually exclusive):
   -m, --message MSG  Commit message (GitHub style, requires quotes if spaces)
-                     Usage: mkcommit -m "Fix authentication bug"
+                     Usage: commit -m "Fix authentication bug"
   -- TEXT            Unix-style message (everything after -- is the message)
-                     Usage: mkcommit -- Fix authentication bug
+                     Usage: commit -- Fix authentication bug
                      Note: No quotes needed, captures all remaining arguments
 
 Push Options:
@@ -54,22 +51,22 @@ Options:
 
 Examples:
   # Commit all changes locally only
-  mkcommit -m "Fix authentication bug in login module"
+  commit -m "Fix authentication bug in login module"
 
   # Commit specific files locally
-  mkcommit src/auth.js src/login.js -m "Update authentication logic"
+  commit src/auth.js src/login.js -m "Update authentication logic"
 
   # Commit all changes and push (with confirmation)
-  mkcommit -m "Add new feature" -p
+  commit -m "Add new feature" -p
 
   # Commit and force push (skip confirmation)
-  mkcommit -m "Rebase and force push" -p -f
+  commit -m "Rebase and force push" -p -f
 
   # Unix-style message
-  mkcommit -- Fix critical memory leak
+  commit -- Fix critical memory leak
 
   # Commit specific files with Unix-style message
-  mkcommit file1.js file2.js -- Update parser logic
+  commit file1.js file2.js -- Update parser logic
 
 
 Outputs:
@@ -108,25 +105,6 @@ COMMIT_MESSAGE=""
 PUSH=false
 FORCE=false
 FILES=()
-
-
-is_protected_branch() {
-  local branch="$1"
-  
-  # Check if branch is main
-  if [[ "$branch" == "main" ]]; then
-    return 0
-  fi
-  
-  # Check if branch matches direct branch patterns (one level off main)
-  # major/*, minor/*, patch/*, docs/*
-  if [[ "$branch" =~ ^(major|minor|patch|docs)/[^/]+$ ]]; then
-    return 0
-  fi
-  
-  # Not protected
-  return 1
-}
 
 # Parse options and arguments
 POSITIONAL_ARGS=()
@@ -185,23 +163,27 @@ if [[ -z "$COMMIT_MESSAGE" ]]; then
   bt_error_exit 1 "Commit message is required (-m or -- followed by message)"
 fi
 
+if [[ "$FORCE" == true && "$PUSH" == false ]]; then
+  bt_error_exit 1 "Option -f/--force requires -p/--push"
+fi
+
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit 2 "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
 
 # Check if branch is protected
-if is_protected_branch "$CURRENT_BRANCH"; then
+if bt_is_protected_branch "$CURRENT_BRANCH"; then
   bt_error_exit 1 \
     "Cannot commit directly to protected branch '$CURRENT_BRANCH'. "\
-"Use 'mkmerge' to merge changes to this branch."
+"Use 'merge' to merge changes to this branch."
 fi
 
 # Stage changes
 bt_info "Staging changes..."
 if [[ ${#FILES[@]} -eq 0 ]]; then
   # Stage all changes
-  if ! git add . 2>&1; then
+  if ! git add --all 2>&1; then
     bt_error_exit 2 "Failed to stage changes"
   fi
   bt_info "Staged all changes"

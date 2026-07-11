@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# mkundo - Undo last merge, release, or commit.
+# undo - Undo last merge, release, or commit.
 #
-# See usage below for details, or run: mkundo -h
+# See usage below for details, or run: undo -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,8 +11,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mkundo [TYPE] [OPTIONS]
-  mkundo -h | --help
+  undo [TYPE] [OPTIONS]
+  undo -h | --help
 
 Undo recent operations: merge, release, or commit.
 
@@ -45,16 +45,16 @@ Undo Types:
 
 Examples:
   # Undo last merge (with confirmation)
-  mkundo merge
+  undo merge
 
   # Undo last release (force mode)
-  mkundo release -f
+  undo release -f
 
   # Undo last commit with custom message
-  mkundo commit -m "Undo incorrect change"
+  undo commit -m "Undo incorrect change"
 
   # Undo merge with verbose output
-  mkundo merge -v
+  undo merge -v
 
 
 Outputs:

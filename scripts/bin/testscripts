@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# mktest - Run tests and validate code/documentation changes.
+# testscripts - Run tests and validate code/documentation changes.
 #
-# See usage below for details, or run: mktest -h
+# See usage below for details, or run: testscripts -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,8 +11,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mktest [OPTIONS]
-  mktest -h | --help
+  testscripts [OPTIONS]
+  testscripts -h | --help
 
 Run all tests and validate code/documentation changes for BriteTest.
 
@@ -43,19 +43,19 @@ Options:
 
 Examples:
   # Run basic test suite
-  mktest
+  testscripts
 
   # Run tests with verbose output
-  mktest -v
+  testscripts -v
 
   # Run all tests even if some fail
-  mktest -c
+  testscripts -c
 
   # Run tests and regenerate documentation
-  mktest -d
+  testscripts -d
 
   # Run all checks (tests, docs, coverage)
-  mktest -a
+  testscripts -a
 
 
 Outputs:

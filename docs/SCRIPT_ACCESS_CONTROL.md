@@ -26,12 +26,12 @@ The system is hierarchical:
 **Can Execute:**
 - `mkbranch` - Create new feature branches
 - `mkclone` - Clone the repository
-- `mkcommit` - Create and sign commits
-- `mkcopy` - Copy files within repository
-- `mksync` - Sync with remote repository
-- `mksyncup` - Sync up with main branch
-- `mktest` - Run test suite locally
-- `mkundo` - Undo uncommitted changes
+- `commit` - Create and sign commits
+- `copyfix` - Cherry-pick fix commits between branches
+- `synceremote` - Sync with remote repository
+- `syncparent` - Sync up with main branch
+- `testscripts` - Run test suite locally
+- `undo` - Undo uncommitted changes
 - `ckbranch_history` - Check branch history
 - `lsbranch` - List branches
 - Utility scripts: `gendocs`, `genpngs`, `installscripts`
@@ -39,7 +39,7 @@ The system is hierarchical:
 **Cannot Execute:**
 - Reviewer scripts (require R role)
 - Approver scripts (require A role)
-- Protected scripts: `mkmerge`, `mkrelease`, `fixrepository`
+- Protected scripts: `merge`, `mkrelease`, `fixrepository`
 
 **Use Cases:**
 - Writing code and documentation
@@ -57,13 +57,12 @@ The system is hierarchical:
 
 **Additional Scripts:**
 - `mkfeedback` - Provide code review feedback
-- `mkrebase` - Rebase branches safely
 - `mkpullrequest` - Create/update pull requests
 - `ckstyle` - Check code style compliance
 
 **Cannot Execute:**
 - Approver scripts (require A role)
-- Protected scripts: `mkmerge`, `mkrelease`, `fixrepository`
+- Protected scripts: `merge`, `mkrelease`, `fixrepository`
 
 **Use Cases:**
 - Reviewing pull requests
@@ -81,7 +80,7 @@ The system is hierarchical:
 **Inherits:** All Reviewer + Contributor scripts
 
 **Additional Scripts (Protected):**
-- `mkmerge` - Merge branches to protected branches (requires override)
+- `merge` - Merge branches to protected branches (requires override)
 - `mkrelease` - Create releases and tags (requires override)
 - `fixrepository` - Repair repository state (requires override)
 - `updatebrand` - Update branding across repository
@@ -102,7 +101,7 @@ The system is hierarchical:
 
 Protected scripts are dangerous operations that can affect the entire repository. Even approvers must explicitly confirm execution of these scripts.
 
-### mkmerge - Branch Merge Operation
+### merge - Branch Merge Operation
 
 **What it does:** Merges one branch into another (especially to protected branches)
 
@@ -116,12 +115,12 @@ Protected scripts are dangerous operations that can affect the entire repository
 **Example Usage:**
 ```bash
 # Local execution (no override needed)
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkmerge feature main
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/merge feature main
 
 # GitHub Actions (set via environment variable)
 env:
   SCRIPT_OVERRIDE_CONFIRMED: 'true'
-run: scripts/bin/mkmerge feature main
+run: scripts/bin/merge feature main
 ```
 
 ### mkrelease - Create Release
@@ -268,7 +267,6 @@ Edit `scripts/helpers/rbac.sh`:
 ```bash
 readonly REVIEWER_SCRIPTS=(
   "mkfeedback"
-  "mkrebase"
   "mkpullrequest"
   "ckstyle"
   "mynewscript"    # ← Add here
@@ -289,21 +287,21 @@ readonly REVIEWER_SCRIPTS=(
 scripts/bin/mkbranch -r alice/feature main
 cd alice/feature
 # ... make changes ...
-scripts/bin/mkcommit -m "feat: add new feature"
-scripts/bin/mksync
+scripts/bin/commit -m "feat: add new feature"
+scripts/bin/synceremote
 
 # ✗ Not allowed (requires Reviewer role)
 scripts/bin/mkfeedback  # Error: Permission denied
 
 # ✗ Not allowed (requires Approver role)
-scripts/bin/mkmerge alice/feature main  # Error: Permission denied
+scripts/bin/merge alice/feature main  # Error: Permission denied
 ```
 
 ### Example 2: Reviewer Checking Code
 
 ```bash
 # Bob is a Reviewer (R)
-# He can review and rebase, but not merge to main
+# He can review and manage PR workflows, but not merge to main
 
 # ✅ Allowed (inherited from Contributor)
 scripts/bin/mkbranch -r bob/fix main
@@ -312,10 +310,10 @@ scripts/bin/mkbranch -r bob/fix main
 scripts/bin/mkfeedback
 
 # ✅ Allowed (Reviewer script)
-scripts/bin/mkrebase
+scripts/bin/mkpullrequest
 
 # ✗ Not allowed (requires Approver role)
-scripts/bin/mkmerge v1.0.0 main  # Error: Permission denied
+scripts/bin/merge v1.0.0 main  # Error: Permission denied
 ```
 
 ### Example 3: Approver Merging and Releasing
@@ -328,13 +326,16 @@ scripts/bin/mkmerge v1.0.0 main  # Error: Permission denied
 scripts/bin/mkbranch -r paul/hotfix v1.0.0
 
 # ✅ Allowed (protected script with override)
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkmerge paul/hotfix v1.0.0
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/merge paul/hotfix v1.0.0
+
+# ✅ Allowed (protected script with override)
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/chtarget dev/parser-v1.0.0 v1.1.0
 
 # ✅ Allowed (protected script with override)
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.1
 
 # ✗ Not allowed (no override confirmation)
-scripts/bin/mkmerge main v1.0.0  # Error: Protected script requires override
+scripts/bin/merge main v1.0.0  # Error: Protected script requires override
 ```
 
 ---
@@ -344,7 +345,7 @@ scripts/bin/mkmerge main v1.0.0  # Error: Protected script requires override
 All approver actions on protected scripts are logged to `logs/approver-audit.log`:
 
 ```
-[AUDIT] 2026-07-09 15:23:45 Approver paulsinclair51 approved: mkmerge (merge feature to main)
+[AUDIT] 2026-07-09 15:23:45 Approver paulsinclair51 approved: merge (merge feature to main)
 [AUDIT] 2026-07-09 15:25:12 Approver paulsinclair51 approved: mkrelease (create release v1.0.1)
 [AUDIT] 2026-07-09 15:30:00 Approver paulsinclair51 approved: fixrepository (emergency repair)
 ```
@@ -387,10 +388,10 @@ echo "Role: $role"  # Output: Role: A
 Check if user can execute a script
 
 ```bash
-if can_execute_script "alice" "mkmerge"; then
-  echo "Alice can execute mkmerge"
+if can_execute_script "alice" "merge"; then
+  echo "Alice can execute merge"
 else
-  echo "Alice cannot execute mkmerge"
+  echo "Alice cannot execute merge"
 fi
 ```
 
@@ -399,7 +400,7 @@ fi
 Check if a script is protected
 
 ```bash
-if is_protected_script "mkmerge"; then
+if is_protected_script "merge"; then
   echo "This script requires override"
 fi
 ```
@@ -417,7 +418,7 @@ enforce_script_access "mkbranch"  # Exits if user not authorized
 Request approver confirmation for protected script
 
 ```bash
-request_approver_override "mkmerge" "merge hotfix to main"
+request_approver_override "merge" "merge hotfix to main"
 # Exits unless SCRIPT_OVERRIDE_CONFIRMED=true
 ```
 
@@ -461,8 +462,8 @@ print_role_capabilities "C"  # View Contributor permissions
 **Example:**
 ```bash
 # Alice (Contributor) tries to merge:
-alice$ scripts/bin/mkmerge feature main
-✗ Permission denied: alice (C) cannot execute mkmerge
+alice$ scripts/bin/merge feature main
+✗ Permission denied: alice (C) cannot execute merge
 
 # Solution: Only Approvers can merge
 # Alice needs to ask an Approver to merge for her
@@ -476,12 +477,12 @@ alice$ scripts/bin/mkmerge feature main
 
 ```bash
 # Local execution:
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkmerge feature main
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/merge feature main
 
 # GitHub Actions workflow:
 env:
   SCRIPT_OVERRIDE_CONFIRMED: 'true'
-run: scripts/bin/mkmerge feature main
+run: scripts/bin/merge feature main
 ```
 
 ### "User not in contributors list"
@@ -505,7 +506,7 @@ run: scripts/bin/mkmerge feature main
 
 ✅ **Good:**
 ```bash
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkmerge feature main
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/merge feature main
 # Audit logged, validated, reversible
 ```
 
@@ -542,7 +543,7 @@ scripts/bin/mkrelease v1.0.0
 
 ```bash
 # Weekly approver action review
-grep "mkmerge\|mkrelease" logs/approver-audit.log | tail -20
+grep "merge\|mkrelease" logs/approver-audit.log | tail -20
 ```
 
 ### 5. Document Role Changes

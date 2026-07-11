@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# mksyncup - Merge base branch into current branch.
+# syncparent - Merge parent branch into current branch.
 #
-# See usage below for details, or run: mksyncup -h
+# See usage below for details, or run: syncparent -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,29 +11,29 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mksyncup [OPTIONS]
-  mksyncup -h | --help
+  syncparent [OPTIONS]
+  syncparent -h | --help
 
-Merge the base branch of the current branch into current branch
+Merge the parent branch of the current branch into current branch
 to sync up with latest changes.
 
-Automatically determines the base branch based on Git history
+Automatically determines the parent branch based on branch naming
+and Git history
 (the branch that the current
 branch was created from). Handles simple conflicts automatically
 and provides instructions
 for complex ones.
 
-Protected branches (cannot run mksyncup):
+Protected branches (cannot run syncparent):
   - main
   - v<M>.<m>.<p> release branches created from main
 
-Allowed branches (can use mksyncup):
-  - Branches created from non-main base branches (no period in branch name)
+Allowed branches (can use syncparent):
+  - Unprotected branches with an identified parent branch
 
 Features:
-  - Automatically determines base branch
-  - Merges base branch into current branch
-  - Auto-resolves simple (non-overlapping) conflicts
+  - Automatically determines parent branch
+  - Merges parent branch into current branch
   - Shows instructions for complex conflicts
   - Prompts for confirmation before merge and push
   - Optional force mode to skip confirmations
@@ -50,23 +50,23 @@ Options:
 Merge Message Options (mutually exclusive):
   -m, --message MSG  Set custom merge message (requires quotes if spaces)
   -- TEXT            Unix-style message (everything after -- is the message)
-  (default)          "Merge <base-branch> into <current-branch>"
+  (default)          "Merge <parent-branch> into <current-branch>"
 
 Examples:
   # Sync up with confirmations
-  mksyncup
+  syncparent
 
   # Force merge and push (no confirmations)
-  mksyncup -f
+  syncparent -f
 
   # Custom merge message
-  mksyncup -m "Sync with latest base branch for bug fix"
+  syncparent -m "Sync with latest parent branch for bug fix"
 
   # Verbose output
-  mksyncup -v
+  syncparent -v
 
   # Unix-style message with force
-  mksyncup -f -- Sync up with latest changes
+  syncparent -f -- Sync up with latest changes
 
 
 Outputs:
@@ -81,12 +81,12 @@ Exit codes:
   2   Git merge or push failed
   3   Conflicts detected (user must resolve)
   4   Branch is protected (cannot sync up)
-  5   Failed to determine base branch
+  5   Failed to determine parent branch
 EOF
 }
 
 # High-Level Flow:
-# - Brings base-branch changes into the current branch using project sync-up
+# - Brings parent-branch changes into the current branch using project sync-up
 #   workflow.
 # - Validates branch relationships and merge/rebase preconditions.
 # - Reports integration outcomes and required follow-up actions.
@@ -105,49 +105,6 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 FORCE=false
 VERBOSE=false
 CUSTOM_MESSAGE=""
-
-
-get_base_branch() {
-  local current_branch="$1"
-
-  local target_branch
-  target_branch=$(bt_resolve_target_branch_from_fork_point \
-    "$current_branch" "main") || {
-    bt_error_exit 5 "Failed to determine base branch"
-  }
-
-  echo "$target_branch"
-}
-
-is_protected_branch() {
-  local branch="$1"
-  
-  # Check if branch is main
-  if [[ "$branch" == "main" ]]; then
-    return 0
-  fi
-  
-  # Branches created from main follow release version format v<M>.<m>.<p>
-  if [[ "$branch" =~ ^v([1-9][0-9]?)\.([0-9]|[1-9][0-9]?)\
-\.([0-9]|[1-9][0-9]?)$ ]]; then
-    return 0
-  fi
-  
-  # Not protected
-  return 1
-}
-
-resolve_simple_conflicts() {
-  local status
-  status=$(git status --porcelain) || return 1
-  
-  # Check for unresolved conflicts (marked with <<<<<<)
-  if echo "$status" | grep -q "^UU\|^AA\|^DD"; then
-    return 1  # Has conflicts that need manual resolution
-  fi
-  
-  return 0  # No conflicts or all resolved
-}
 
 # Parse options and arguments
 while [[ $# -gt 0 ]]; do
@@ -198,29 +155,32 @@ CURRENT_BRANCH=$(bt_get_current_branch || \
 bt_info "Current branch: $CURRENT_BRANCH"
 
 # Check if branch is protected
-if is_protected_branch "$CURRENT_BRANCH"; then
+if bt_is_protected_branch "$CURRENT_BRANCH"; then
   bt_error_exit 4 "Cannot sync up on protected branch '$CURRENT_BRANCH'." \
-    "Use 'mkmerge' to merge changes to this branch."
+    "Use 'merge' to merge changes to this branch."
 fi
 
-# Determine base branch
-bt_info "Determining base branch..."
-BASE_BRANCH=$(get_base_branch "$CURRENT_BRANCH")
-bt_info "Base branch: $BASE_BRANCH"
+# Determine parent branch
+bt_info "Determining parent branch..."
+PARENT_BRANCH=$(bt_resolve_parent_branch "$CURRENT_BRANCH" "main")
+if [[ -z "$PARENT_BRANCH" ]]; then
+  bt_error_exit 5 "Failed to determine parent branch"
+fi
+bt_info "Parent branch: $PARENT_BRANCH"
 
-# Ensure base branch exists and is up to date
+# Ensure parent branch exists and is up to date
 bt_info "Fetching latest from remote..."
-if ! git fetch origin "$BASE_BRANCH" 2>&1 >/dev/null; then
-  bt_error_exit 2 "Failed to fetch base branch '$BASE_BRANCH' from remote"
+if ! git fetch origin "$PARENT_BRANCH" 2>&1 >/dev/null; then
+  bt_error_exit 2 "Failed to fetch parent branch '$PARENT_BRANCH' from remote"
 fi
 
-# Count commits from base branch to current branch
+# Count commits from parent branch to current branch
 commits_to_merge=""
-commits_to_merge=$(git rev-list --count "HEAD..origin/$BASE_BRANCH" \
+commits_to_merge=$(git rev-list --count "HEAD..origin/$PARENT_BRANCH" \
   2>/dev/null || echo "0")
 
 if [[ "$commits_to_merge" == "0" ]]; then
-  bt_success "Already up to date with $BASE_BRANCH"
+  bt_success "Already up to date with $PARENT_BRANCH"
   exit 0
 fi
 
@@ -228,7 +188,7 @@ bt_info "Commits to merge: $commits_to_merge"
 
 # Determine merge message
 if [[ -z "$CUSTOM_MESSAGE" ]]; then
-  MERGE_MESSAGE="Merge $BASE_BRANCH into $CURRENT_BRANCH"
+  MERGE_MESSAGE="Merge $PARENT_BRANCH into $CURRENT_BRANCH"
 else
   MERGE_MESSAGE="$CUSTOM_MESSAGE"
 fi
@@ -244,14 +204,17 @@ if [[ "$FORCE" == false ]]; then
 fi
 
 # Perform merge
-bt_info "Merging $BASE_BRANCH into $CURRENT_BRANCH..."
-if ! git merge "origin/$BASE_BRANCH" -m "$MERGE_MESSAGE" 2>&1; then
+  bt_info "Merging $PARENT_BRANCH into $CURRENT_BRANCH..."
+  if ! git merge "origin/$PARENT_BRANCH" -m "$MERGE_MESSAGE" 2>&1; then
   # Check if merge failed due to conflicts
-  if git status | grep -q "both"; then
+  conflicted_files=$(git diff --name-only --diff-filter=U)
+  if [[ -n "$conflicted_files" ]]; then
     bt_warn "Merge conflicts detected"
     bt_info "Complex conflicts require manual resolution"
     bt_info "Conflicted files:"
-    git status --porcelain | grep "^UU" | awk '{print "  " $2}'
+    while IFS= read -r file; do
+      [[ -n "$file" ]] && echo "  $file"
+    done <<< "$conflicted_files"
     bt_info "Steps to resolve:"
     echo "  1. Edit conflicted files to resolve conflicts"
     echo "  2. Stage resolved files: git add <files>"
