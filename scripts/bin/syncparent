@@ -157,7 +157,7 @@ bt_info "Current branch: $CURRENT_BRANCH"
 # Check if branch is protected
 if bt_is_protected_branch "$CURRENT_BRANCH"; then
   bt_error_exit 4 "Cannot sync up on protected branch '$CURRENT_BRANCH'." \
-    "Use 'merge' to merge changes to this branch."
+    "Use 'mergetoparent' to merge changes to this branch."
 fi
 
 # Determine parent branch

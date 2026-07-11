@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# merge - Merge current branch to its parent branch with approval tracking.
+# mergetoparent - Merge current branch to its parent branch with approval tracking.
 #
-# See usage below for details, or run: merge -h
+# See usage below for details, or run: mergetoparent -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,8 +11,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  merge [OPTIONS]
-  merge -h | --help
+  mergetoparent [OPTIONS]
+  mergetoparent -h | --help
 
 Merge the current branch to its parent branch using squash merge.
 
@@ -42,13 +42,13 @@ Options:
 
 Examples:
   # Merge current branch with PR title as message
-  merge
+  mergetoparent
 
   # Merge with custom message
-  merge -m "Custom commit message"
+  mergetoparent -m "Custom commit message"
 
   # Merge with verbose output
-  merge -v
+  mergetoparent -v
 
 
 Outputs:
@@ -180,7 +180,7 @@ check_status_checks() {
 
 ensure_clean_worktree() {
   if ! git diff --quiet || ! git diff --cached --quiet; then
-    bt_error_exit 2 "Working tree must be clean before running merge"
+    bt_error_exit 2 "Working tree must be clean before running mergetoparent"
   fi
 }
 

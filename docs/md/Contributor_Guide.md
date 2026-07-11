@@ -229,7 +229,7 @@ briteTest uses a six-tier access model for public repository safety:
 | **APPROVER (A)** | Merge, release, run protected scripts with override confirmation | Must follow audit and override controls |
 | **MAINTAINER** | Repository admin and access management | Responsible for governance and audits |
 
-**Write access is script-controlled** (`mkbranch`, `commit`, `mkpullrequest`, `merge`, `chtarget`, `mkrelease`) rather than direct protected-branch git operations.
+**Write access is script-controlled** (`mkbranch`, `commit`, `mkpullrequest`, `mergetoparent`, `chtarget`, `mkrelease`) rather than direct protected-branch git operations.
 
 ---
 

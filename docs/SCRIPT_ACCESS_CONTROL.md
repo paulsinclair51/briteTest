@@ -39,7 +39,7 @@ The system is hierarchical:
 **Cannot Execute:**
 - Reviewer scripts (require R role)
 - Approver scripts (require A role)
-- Protected scripts: `merge`, `mkrelease`, `fixrepository`
+- Protected scripts: `mergetoparent`, `mkrelease`, `fixrepository`
 
 **Use Cases:**
 - Writing code and documentation
@@ -62,7 +62,7 @@ The system is hierarchical:
 
 **Cannot Execute:**
 - Approver scripts (require A role)
-- Protected scripts: `merge`, `mkrelease`, `fixrepository`
+- Protected scripts: `mergetoparent`, `mkrelease`, `fixrepository`
 
 **Use Cases:**
 - Reviewing pull requests
@@ -80,7 +80,7 @@ The system is hierarchical:
 **Inherits:** All Reviewer + Contributor scripts
 
 **Additional Scripts (Protected):**
-- `merge` - Merge branches to protected branches (requires override)
+- `mergetoparent` - Merge branches to protected branches (requires override)
 - `mkrelease` - Create releases and tags (requires override)
 - `fixrepository` - Repair repository state (requires override)
 - `updatebrand` - Update branding across repository
@@ -101,7 +101,7 @@ The system is hierarchical:
 
 Protected scripts are dangerous operations that can affect the entire repository. Even approvers must explicitly confirm execution of these scripts.
 
-### merge - Branch Merge Operation
+### mergetoparent - Branch Merge Operation
 
 **What it does:** Merges one branch into another (especially to protected branches)
 
@@ -115,12 +115,12 @@ Protected scripts are dangerous operations that can affect the entire repository
 **Example Usage:**
 ```bash
 # Local execution (no override needed)
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/merge feature main
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent feature main
 
 # GitHub Actions (set via environment variable)
 env:
   SCRIPT_OVERRIDE_CONFIRMED: 'true'
-run: scripts/bin/merge feature main
+run: scripts/bin/mergetoparent feature main
 ```
 
 ### mkrelease - Create Release
@@ -294,7 +294,7 @@ scripts/bin/synceremote
 scripts/bin/mkfeedback  # Error: Permission denied
 
 # ✗ Not allowed (requires Approver role)
-scripts/bin/merge alice/feature main  # Error: Permission denied
+scripts/bin/mergetoparent alice/feature main  # Error: Permission denied
 ```
 
 ### Example 2: Reviewer Checking Code
@@ -313,7 +313,7 @@ scripts/bin/mkfeedback
 scripts/bin/mkpullrequest
 
 # ✗ Not allowed (requires Approver role)
-scripts/bin/merge v1.0.0 main  # Error: Permission denied
+scripts/bin/mergetoparent v1.0.0 main  # Error: Permission denied
 ```
 
 ### Example 3: Approver Merging and Releasing
@@ -326,7 +326,7 @@ scripts/bin/merge v1.0.0 main  # Error: Permission denied
 scripts/bin/mkbranch -r paul/hotfix v1.0.0
 
 # ✅ Allowed (protected script with override)
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/merge paul/hotfix v1.0.0
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent paul/hotfix v1.0.0
 
 # ✅ Allowed (protected script with override)
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/chtarget dev/parser-v1.0.0 v1.1.0
@@ -335,7 +335,7 @@ SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/chtarget dev/parser-v1.0.0 v1.1.0
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.1
 
 # ✗ Not allowed (no override confirmation)
-scripts/bin/merge main v1.0.0  # Error: Protected script requires override
+scripts/bin/mergetoparent main v1.0.0  # Error: Protected script requires override
 ```
 
 ---
@@ -388,10 +388,10 @@ echo "Role: $role"  # Output: Role: A
 Check if user can execute a script
 
 ```bash
-if can_execute_script "alice" "merge"; then
-  echo "Alice can execute merge"
+if can_execute_script "alice" "mergetoparent"; then
+  echo "Alice can execute mergetoparent"
 else
-  echo "Alice cannot execute merge"
+  echo "Alice cannot execute mergetoparent"
 fi
 ```
 
@@ -400,7 +400,7 @@ fi
 Check if a script is protected
 
 ```bash
-if is_protected_script "merge"; then
+if is_protected_script "mergetoparent"; then
   echo "This script requires override"
 fi
 ```
@@ -418,7 +418,7 @@ enforce_script_access "mkbranch"  # Exits if user not authorized
 Request approver confirmation for protected script
 
 ```bash
-request_approver_override "merge" "merge hotfix to main"
+request_approver_override "mergetoparent" "merge hotfix to main"
 # Exits unless SCRIPT_OVERRIDE_CONFIRMED=true
 ```
 
@@ -462,8 +462,8 @@ print_role_capabilities "C"  # View Contributor permissions
 **Example:**
 ```bash
 # Alice (Contributor) tries to merge:
-alice$ scripts/bin/merge feature main
-✗ Permission denied: alice (C) cannot execute merge
+alice$ scripts/bin/mergetoparent feature main
+✗ Permission denied: alice (C) cannot execute mergetoparent
 
 # Solution: Only Approvers can merge
 # Alice needs to ask an Approver to merge for her
@@ -477,12 +477,12 @@ alice$ scripts/bin/merge feature main
 
 ```bash
 # Local execution:
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/merge feature main
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent feature main
 
 # GitHub Actions workflow:
 env:
   SCRIPT_OVERRIDE_CONFIRMED: 'true'
-run: scripts/bin/merge feature main
+run: scripts/bin/mergetoparent feature main
 ```
 
 ### "User not in contributors list"
@@ -506,7 +506,7 @@ run: scripts/bin/merge feature main
 
 ✅ **Good:**
 ```bash
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/merge feature main
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent feature main
 # Audit logged, validated, reversible
 ```
 

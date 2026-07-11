@@ -386,14 +386,14 @@ Role-based script permissions are enforced by helper checks and protected script
 | Branch and commit operations (`mkbranch`, `commit`, `mkpullrequest`) | ✅ | ✅ | ✅ |
 | Review operations (`mkfeedback`) | ❌ | ✅ | ✅ |
 | Retarget operations (`chtarget`) | ❌ | ❌ | ✅ |
-| Protected operations (`merge`, `mkrelease`, `fixrepository`) | ❌ | ❌ | ✅ (override required) |
+| Protected operations (`mergetoparent`, `mkrelease`, `fixrepository`) | ❌ | ❌ | ✅ (override required) |
 
 ### Protected Script Rule
 
 Approver-only scripts require explicit override confirmation:
 
 ```bash
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/merge <source_branch> <target_branch>
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent <source_branch> <target_branch>
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.0
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepository
 ```

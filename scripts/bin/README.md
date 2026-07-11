@@ -39,7 +39,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 - **commit**: Commit and optionally push changes.
 - **copyfix**: Cherry-pick/copy fix commits from another branch.
 - **mkfeedback**: View/respond to PR feedback workflows.
-- **merge**: Merge current branch to its parent branch.
+- **mergetoparent**: Merge current branch to its parent branch.
 - **mkpullrequest**: Create or update a pull request.
 - **chtarget**: Retarget a targeted branch to a different version parent.
 - **mkrelease**: Create and publish releases.
