@@ -143,10 +143,12 @@ Arguments:
     mkbranch v2.0.0
 
   Example: Create a feature branch targeted to a major version.
-    mkbranch dev/redesign-authentication-v2.0.0 v2.0.0
+    mkbranch dev/redesign-authentication-v2.0.0 \
+      v2.0.0
 
   Example: Create a performance improvement branch targeted to a minor version.
-    mkbranch dev/improve-performance-v1.1.0 v1.1.0
+    mkbranch dev/improve-performance-v1.1.0 \
+      v1.1.0
 
   Example: Create a branch for a patch targeted for a major version.
     mkbranch fix/login-bug-v1.0.0 v1.0.0
@@ -156,14 +158,20 @@ Options:
   -h, --help        Output this help to stdout and exit (other options
                     and arguments are ignored).
   -m "MSG"          Attach a commit message/comment to the operation
-                    Usage: mkbranch dev/feature-a-v2.0.0 v2.0.0 -m "Implement new feature a."
+                    Usage: mkbranch dev/feature-a-v2.0.0 v2.0.0 -m \
+                      "Implement new feature a."
   --message "MSG"   Attach a commit message/comment to the operation
-                    Usage: mkbranch fix/memory-leak-v1.0.0 v1.0.0 --message "Fix critical memory leak."
-  -r                Push to remote (default if the new branch is a 'version' branch).
+                    Usage: mkbranch fix/memory-leak-v1.0.0 v1.0.0 \
+                      --message "Fix critical memory leak."
+  -r                Push to remote (default if the new branch is a
+                    'version' branch).
   -v                Verbose output.
-  -- MSG            Attach commit message/comment (everything after -- is the comment)
-                    Usage: mkbranch fix/login-bug-v1.0.0 v1.0.0 -- Fix critical memory leak
-                    Note: No quotes needed, captures all remaining arguments.
+  -- MSG            Attach commit message/comment (everything after
+                    -- is the comment)
+                    Usage: mkbranch fix/login-bug-v1.0.0 v1.0.0 --
+                      Fix critical memory leak
+                    Note: No quotes needed, captures all remaining
+                      arguments.
 
    Note: -m "MSG", --message "MSG", -- MSG are mutually exclusive.
 
@@ -217,9 +225,11 @@ Examples: Verbose mode.
   mkbranch -v -r dev/feature-a-v2.0.0 v2.0.0
 
 Outputs:
-  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes help text, status messages, and results or summaries to
+    stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 Exit codes:
    0   Success (or validation passed).
@@ -238,13 +248,14 @@ EOF
 
 # High-Level Flow:
 # - Parse options, arguments, and optional free-form message/comment.
-# - Classify the new branch (version/targeted/contributor) and infer/validate
-#   parent-branch rules for that type.
-# - Validate caller role against branch type (approver for version; contributor+
-#   for targeted and contributor).
-# - Resolve parent reference and branch-existence checks according to selected
-#   mode (local/remote/validate).
-# - Create and optionally push the branch, then log success/failure with context.
+# - Classify the new branch (version/targeted/contributor) and
+#   infer/validate parent-branch rules for that type.
+# - Validate caller role against branch type (approver for version;
+#   contributor+ for targeted and contributor).
+# - Resolve parent reference and branch-existence checks according to
+#   selected mode (local/remote/validate).
+# - Create and optionally push the branch, then log success/failure with
+#   context.
 
 set -euo pipefail
 
@@ -283,7 +294,8 @@ log_operation() {
   local message="$4"
   local comment="${5:-}"
 
-  # status/parentbranchname are retained for compatibility with existing callers.
+  # status/parentbranchname are retained for compatibility with
+  # existing callers.
   : "$status" "$parentbranchname"
   if ! bt_append_history_log "$LOG_FILE" "$message" "$comment"; then
     # Logging failures should not hide the primary command result.
@@ -302,7 +314,8 @@ error_exit() {
 
   if [[ -n "$branchname" ]]; then
     log_operation "FAILED" "$branchname" "$parentbranchname" \
-      "Branch \`$branchname\` creation from parent \`$parentbranchname\` failed - $message" \
+      "Branch \`$branchname\` creation from parent " \
+      "\`$parentbranchname\` failed - $message" \
       "$comment"
   fi
 
@@ -351,7 +364,8 @@ is_valid_version() {
 is_targeted_branch_name() {
   local name="$1"
 
-  if [[ "$name" =~ ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]; then
+  if [[ "$name" =~ ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\
+  \.(0|[1-9][0-9]?))$ ]]; then
     return 0
   fi
   return 1
@@ -377,7 +391,8 @@ is_contributor_branch_name() {
 get_target_version_from_targeted_branch() {
   local name="$1"
 
-  if [[ "$name" =~ ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]; then
+  if [[ "$name" =~ ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\
+  \.(0|[1-9][0-9]?))$ ]]; then
     echo "${BASH_REMATCH[2]}"
     return 0
   fi
@@ -495,7 +510,9 @@ set -- "${POSITIONAL_ARGS[@]}"
 
 # Check that we have 1-2 positional arguments
 if [[ $# -lt 1 || $# -gt 2 ]]; then
-  error_exit 1 "Expected 1 or 2 arguments (newbranch [parentbranch]), got $#" "" "" ""
+  error_exit 1 \
+    "Expected 1 or 2 arguments (newbranch [parentbranch]), got $#" \
+    "" "" ""
 fi
 
 BRANCHNAME="$1"
@@ -511,7 +528,8 @@ if is_valid_version "$BRANCHNAME"; then
   if [[ -z "$PARENTBRANCHNAME" ]]; then
     PARENTBRANCHNAME="main"
   elif [[ "$PARENTBRANCHNAME" != "main" ]]; then
-    error_exit 1 "When newbranch is a version branch, parentbranch must be 'main'" \
+    error_exit 1 \
+      "When newbranch is a version branch, parentbranch must be 'main'" \
       "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
   if [[ "$MODE" == "local" ]]; then
@@ -524,24 +542,29 @@ elif is_targeted_branch_name "$BRANCHNAME"; then
     PARENTBRANCHNAME="$TARGET_VERSION"
   elif [[ "$PARENTBRANCHNAME" != "$TARGET_VERSION" ]]; then
     error_exit 1 \
-      "When newbranch is a targeted branch, parentbranch must match its target version '$TARGET_VERSION'" \
+      "When newbranch is a targeted branch, parentbranch must match " \
+      "its target version '$TARGET_VERSION'" \
       "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
 elif is_contributor_branch_name "$BRANCHNAME"; then
   BRANCH_TYPE="contributor"
   if [[ -z "$PARENTBRANCHNAME" ]]; then
     error_exit 1 \
-      "When newbranch is a contributor branch, parentbranch is required" \
+      "When newbranch is a contributor branch, parentbranch is " \
+      "required" \
       "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
-  if ! is_targeted_branch_name "$PARENTBRANCHNAME" && ! is_contributor_branch_name "$PARENTBRANCHNAME"; then
+  if ! is_targeted_branch_name "$PARENTBRANCHNAME" && \
+      ! is_contributor_branch_name "$PARENTBRANCHNAME"; then
     error_exit 1 \
-      "For contributor branches, parentbranch must be a targeted or contributor branch" \
+      "For contributor branches, parentbranch must be a targeted " \
+      "or contributor branch" \
       "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
 else
   error_exit 2 \
-    "Invalid branch name '$BRANCHNAME'. Must be version, targeted, or contributor format" \
+    "Invalid branch name '$BRANCHNAME'. Must be version, targeted, " \
+    "or contributor format" \
     "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 
@@ -552,7 +575,8 @@ log_verbose "Branch type: $BRANCH_TYPE"
 
 # Validate branch name format (basic validation)
 if [[ -z "$BRANCHNAME" ]]; then
-  error_exit 1 "Branch name cannot be empty" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+  error_exit 1 "Branch name cannot be empty" "$BRANCHNAME" \
+    "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 
 log_verbose "Branch name and parent-branch rule validation passed"
@@ -561,17 +585,19 @@ log_verbose "Branch name and parent-branch rule validation passed"
 cd "$REPO_ROOT"
 
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  error_exit 5 "Repository root '$REPO_ROOT' is not a Git working tree" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+  error_exit 5 "Repository root '$REPO_ROOT' is not a Git working " \
+    "tree" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 
 if ! git remote get-url origin >/dev/null 2>&1; then
-  error_exit 5 "Remote 'origin' is not configured" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+  error_exit 5 "Remote 'origin' is not configured" "$BRANCHNAME" \
+    "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 
 CURRENT_USER="$(git config user.name 2>/dev/null || true)"
 if [[ -z "$CURRENT_USER" ]]; then
-  error_exit 1 "Failed to determine current user from git config user.name" \
-    "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+  error_exit 1 "Failed to determine current user from git config " \
+    "user.name" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 
 log_verbose "Current user from git config: $CURRENT_USER"
@@ -581,14 +607,16 @@ log_verbose "Current user from git config: $CURRENT_USER"
 if [[ "$REQUIRED_ROLE" == "approver" ]]; then
   if ! is_approver "$CURRENT_USER"; then
     error_exit 2 \
-      "User '$CURRENT_USER' is not an approver. Only approvers can create version branches." \
+      "User '$CURRENT_USER' is not an approver. Only approvers can " \
+      "create version branches." \
       "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
 else
   if ! is_contributor_or_higher "$CURRENT_USER"; then
     error_exit 2 \
-      "User '$CURRENT_USER' is not a contributor. Only contributors, "\
-"reviewers, and approvers can create targeted or contributor branches." \
+      "User '$CURRENT_USER' is not a contributor. Only " \
+      "contributors, reviewers, and approvers can create targeted or " \
+      "contributor branches." \
       "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
 fi
@@ -598,20 +626,24 @@ log_verbose "Role/permission checks passed"
 # Determine operation description
 case "$MODE" in
   local)
-    echo "Creating local branch '$BRANCHNAME' from parent '$PARENTBRANCHNAME'..."
+    echo "Creating local branch '$BRANCHNAME' from parent " \
+      "'$PARENTBRANCHNAME'..."
     ;;
   remote)
-    echo "Creating branch '$BRANCHNAME' from parent '$PARENTBRANCHNAME' and pushing to remote..."
+    echo "Creating branch '$BRANCHNAME' from parent " \
+      "'$PARENTBRANCHNAME' and pushing to remote..."
     ;;
   validate)
-    echo "Validating branch '$BRANCHNAME' from parent '$PARENTBRANCHNAME'..."
+    echo "Validating branch '$BRANCHNAME' from parent " \
+      "'$PARENTBRANCHNAME'..."
     ;;
 esac
 
 # Fetch latest refs from remote
 echo "Fetching latest refs from remote..."
 if ! git fetch origin >/dev/null 2>&1; then
-  error_exit 5 "Failed to fetch from remote" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+  error_exit 5 "Failed to fetch from remote" "$BRANCHNAME" \
+    "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 log_verbose "Fetched origin successfully"
 
@@ -620,7 +652,8 @@ resolve_parent_reference_for_mode
 log_verbose "Resolved parent branch reference: $PARENTBRANCHNAME"
 
 set_branch_existence_flags
-log_verbose "Branch existence - local: $LOCAL_EXISTS, remote: $REMOTE_EXISTS"
+log_verbose "Branch existence - local: $LOCAL_EXISTS, remote: " \
+  "$REMOTE_EXISTS"
 
 # If validate mode, we're done (all checks passed)
 if [[ "$MODE" == "validate" ]]; then
@@ -632,42 +665,48 @@ if [[ "$MODE" == "validate" ]]; then
     echo "Branch '$BRANCHNAME' already exists on remote"
     exit 9
   fi
-  echo "Branch '$BRANCHNAME' can be created from parent '$PARENTBRANCHNAME'"
+  echo "Branch '$BRANCHNAME' can be created from parent " \
+    "'$PARENTBRANCHNAME'"
   exit 0
 fi
 
 # Local mode: local branch must not already exist.
 if [[ "$MODE" == "local" ]]; then
   if [[ "$LOCAL_EXISTS" -eq 1 ]]; then
-    error_exit 8 "Branch '$BRANCHNAME' already exists locally" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+    error_exit 8 "Branch '$BRANCHNAME' already exists locally" \
+      "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
   echo "Creating local branch from '$PARENTBRANCHNAME'..."
   if ! git checkout -b "$BRANCHNAME" "$PARENTBRANCHNAME" >/dev/null 2>&1; then
-    error_exit 5 "Failed to create branch '$BRANCHNAME'" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+    error_exit 5 "Failed to create branch '$BRANCHNAME'" \
+      "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
   echo "Local branch '$BRANCHNAME' created"
   log_operation "SUCCESS" "$BRANCHNAME" "$PARENTBRANCHNAME" \
-    "Branch \`$BRANCHNAME\` created from parent \`$PARENTBRANCHNAME\`." \
-    "$COMMENT"
+    "Branch \`$BRANCHNAME\` created from parent " \
+    "\`$PARENTBRANCHNAME\`." "$COMMENT"
   exit 0
 fi
 
-# Remote mode: remote branch must not already exist. Use existing local if present,
-# otherwise create from parent and then push.
+# Remote mode: remote branch must not already exist. Use existing
+# local if present, otherwise create from parent and then push.
 if [[ "$REMOTE_EXISTS" -eq 1 ]]; then
-  error_exit 9 "Branch '$BRANCHNAME' already exists on remote" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+  error_exit 9 "Branch '$BRANCHNAME' already exists on remote" \
+    "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 
 CREATED_LOCAL=0
 if [[ "$LOCAL_EXISTS" -eq 0 ]]; then
   echo "Creating local branch from '$PARENTBRANCHNAME'..."
   if ! git checkout -b "$BRANCHNAME" "$PARENTBRANCHNAME" >/dev/null 2>&1; then
-    error_exit 5 "Failed to create branch '$BRANCHNAME'" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+    error_exit 5 "Failed to create branch '$BRANCHNAME'" \
+      "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
   CREATED_LOCAL=1
   echo "Local branch '$BRANCHNAME' created"
 else
-  echo "Using existing local branch '$BRANCHNAME' for remote push..."
+  echo "Using existing local branch '$BRANCHNAME' for remote " \
+    "push..."
 fi
 
 if [[ "$MODE" == "remote" ]]; then
@@ -678,16 +717,17 @@ if [[ "$MODE" == "remote" ]]; then
       git checkout - >/dev/null 2>&1 || true
       git branch -D "$BRANCHNAME" >/dev/null 2>&1 || true
     fi
-    error_exit 5 "Failed to push branch to remote" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+    error_exit 5 "Failed to push branch to remote" "$BRANCHNAME" \
+      "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
   echo "Branch '$BRANCHNAME' pushed to remote"
   log_operation "SUCCESS" "$BRANCHNAME" "$PARENTBRANCHNAME" \
-    "Branch \`$BRANCHNAME\` created from parent \`$PARENTBRANCHNAME\` and pushed to remote." \
-    "$COMMENT"
+    "Branch \`$BRANCHNAME\` created from parent " \
+    "\`$PARENTBRANCHNAME\` and pushed to remote." "$COMMENT"
 else
   log_operation "SUCCESS" "$BRANCHNAME" "$PARENTBRANCHNAME" \
-    "Branch \`$BRANCHNAME\` created from parent \`$PARENTBRANCHNAME\`." \
-    "$COMMENT"
+    "Branch \`$BRANCHNAME\` created from parent " \
+    "\`$PARENTBRANCHNAME\`." "$COMMENT"
 fi
 
 exit 0
