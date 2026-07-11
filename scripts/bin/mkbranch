@@ -324,30 +324,62 @@ error_exit() {
 
 is_contributor_or_higher() {
   local user_name="$1"
+  local user_email
+  user_email="$(git config user.email 2>/dev/null || true)"
 
   if [[ ! -f "$CONFIG_FILE" ]]; then
     error_exit 5 "Configuration file not found: $CONFIG_FILE"
   fi
 
-  if grep -E "^\s*-\s+[CRA]/${user_name}," "$CONFIG_FILE" > /dev/null 2>&1; then
-    return 0
-  fi
+  awk -F',' -v user_name="$user_name" -v user_email="$user_email" '
+    function trim(s) {
+      gsub(/^[[:space:]-]+|[[:space:]]+$/, "", s)
+      return s
+    }
+    {
+      login = trim($1)
+      role = trim($2)
+      email = trim($3)
 
-  return 1
+      if ((login == user_name || (user_email != "" && email == user_email)) &&
+          (role == "C" || role == "R" || role == "A")) {
+        found = 1
+      }
+    }
+    END {
+      exit(found ? 0 : 1)
+    }
+  ' "$CONFIG_FILE"
 }
 
 is_approver() {
   local user_name="$1"
+  local user_email
+  user_email="$(git config user.email 2>/dev/null || true)"
 
   if [[ ! -f "$CONFIG_FILE" ]]; then
     error_exit 5 "Configuration file not found: $CONFIG_FILE"
   fi
 
-  if grep -E "^\s*-\s+A/${user_name}," "$CONFIG_FILE" > /dev/null 2>&1; then
-    return 0
-  fi
+  awk -F',' -v user_name="$user_name" -v user_email="$user_email" '
+    function trim(s) {
+      gsub(/^[[:space:]-]+|[[:space:]]+$/, "", s)
+      return s
+    }
+    {
+      login = trim($1)
+      role = trim($2)
+      email = trim($3)
 
-  return 1
+      if ((login == user_name || (user_email != "" && email == user_email)) &&
+          role == "A") {
+        found = 1
+      }
+    }
+    END {
+      exit(found ? 0 : 1)
+    }
+  ' "$CONFIG_FILE"
 }
 
 is_valid_version() {
@@ -364,8 +396,7 @@ is_valid_version() {
 is_targeted_branch_name() {
   local name="$1"
 
-  if [[ "$name" =~ ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\
-  \.(0|[1-9][0-9]?))$ ]]; then
+  if [[ "$name" =~ ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]; then
     return 0
   fi
   return 1
@@ -391,8 +422,7 @@ is_contributor_branch_name() {
 get_target_version_from_targeted_branch() {
   local name="$1"
 
-  if [[ "$name" =~ ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\
-  \.(0|[1-9][0-9]?))$ ]]; then
+  if [[ "$name" =~ ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]; then
     echo "${BASH_REMATCH[2]}"
     return 0
   fi
