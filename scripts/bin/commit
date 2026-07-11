@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-# commit - Commit for current branch and optionally push
+# commit - Commit changes to the local current branch and optionally push
 # changes to the corresponding remote (origin) branch.
-# .
 #
 # See usage below for details, or run: commit -h
 #
@@ -18,9 +17,9 @@ Usage:
 
 Commit changes to the current branch in briteTest.
 Stages all changes by default and commits them with a message.
-Optionally pushes to remote.
+Optionally pushes to remote if remote is connected.
 
-Protected branches (require mergeintoparent for changes):
+Protected branches (require mergetoparent for changes):
   - main
   - v<M>.<m>.<p> version branches created from main
 
@@ -42,10 +41,12 @@ Commit Message Options (mutually exclusive):
                      Note: No quotes needed, captures all remaining arguments
 
 Push Options:
+  -d                 Dry run (do not actually commit or push, just show what
+                     would be done).
   -p                 Push changes to remote after commit to branch.
                      Shows confirmation prompt before pushing
   -f                 Force push (skip confirmation, use with caution)
-                     Only applies with -p/--push
+                     Only applies with -p
 
 Options:
   -h, --help         Output this help to stdout and exit (other options
@@ -74,15 +75,16 @@ Examples:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented
-    output locations.
 
 Exit codes:
-  0   Success
-  1   Argument or validation error
-  2   Git staging or commit failed
-  3   Git push failed
-  4   Conflict handling failed
+  0   Success.
+  1   Argument or validation error.
+  2   Current branch is protected.
+  3   Current branch is not local.
+  4   Skipped push to remote since remote is not connected.
+  5   Git staging or commit failed.
+  6   Git push failed.
+  7   Conflict handling failed.
 EOF
 }
 
@@ -106,7 +108,29 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 COMMIT_MESSAGE=""
 PUSH=false
 FORCE=false
+DRY_RUN=false
 FILES=()
+COMMIT_CREATED=false
+COMMITTED_FILES=0
+PUSHED_COMMITS=0
+
+is_remote_connected() {
+  git remote get-url origin >/dev/null 2>&1
+}
+
+get_unpushed_commit_count() {
+  local branch="$1"
+
+  if git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+    git rev-list --count "origin/$branch..$branch" 2>/dev/null || echo 0
+  else
+    git rev-list --count "$branch" 2>/dev/null || echo 0
+  fi
+}
+
+print_summary() {
+  bt_info "Summary: committed files=$COMMITTED_FILES, pushed commits=$PUSHED_COMMITS"
+}
 
 # Parse options and arguments
 POSITIONAL_ARGS=()
@@ -125,6 +149,10 @@ while [[ $# -gt 0 ]]; do
       fi
       COMMIT_MESSAGE="$2"
       shift 2
+      ;;
+    -d)
+      DRY_RUN=true
+      shift
       ;;
     -p)
       PUSH=true
@@ -171,7 +199,7 @@ fi
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
-  bt_error_exit 2 "Failed to determine current branch")
+  bt_error_exit 1 "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
 
 # Disallow commits from detached HEAD (for example, origin/main or origin/v*).
@@ -180,9 +208,14 @@ if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
     "Cannot commit from detached HEAD. Switch to a local non-protected branch first."
 fi
 
+# Commit script operates on a local branch only.
+if ! git show-ref --verify --quiet "refs/heads/$CURRENT_BRANCH"; then
+  bt_error_exit 3 "Current branch '$CURRENT_BRANCH' is not a local branch"
+fi
+
 # Check if branch is protected
 if bt_is_protected_branch "$CURRENT_BRANCH"; then
-  bt_error_exit 1 \
+  bt_error_exit 2 \
     "Cannot commit directly to protected branch '$CURRENT_BRANCH'. "\
 "Use 'mergetoparent' to merge changes to this branch."
 fi
@@ -192,60 +225,94 @@ bt_info "Staging changes..."
 if [[ ${#FILES[@]} -eq 0 ]]; then
   # Stage all changes
   if ! git add --all 2>&1; then
-    bt_error_exit 2 "Failed to stage changes"
+    bt_error_exit 5 "Failed to stage changes"
   fi
   bt_info "Staged all changes"
 else
   # Stage specific files
   if ! git add "${FILES[@]}" 2>&1; then
-    bt_error_exit 2 "Failed to stage files: ${FILES[*]}"
+    bt_error_exit 5 "Failed to stage files: ${FILES[*]}"
   fi
   bt_info "Staged files: ${FILES[*]}"
 fi
 
+# Count staged files before commit.
+COMMITTED_FILES=$(git diff --cached --name-only | sed '/^$/d' | wc -l | tr -d ' ')
+
 # Check if there are staged changes
 if ! git diff --cached --quiet; then
   # Create commit
-  bt_info "Creating commit..."
-  if ! git commit -m "$COMMIT_MESSAGE" 2>&1; then
-    bt_error_exit 2 "Failed to create commit"
+  if [[ "$DRY_RUN" == true ]]; then
+    bt_info "Dry run: would create commit with $COMMITTED_FILES file(s)"
+    COMMIT_CREATED=true
+  else
+    bt_info "Creating commit..."
+    if ! git commit -m "$COMMIT_MESSAGE" 2>&1; then
+      bt_error_exit 5 "Failed to create commit"
+    fi
+    COMMIT_CREATED=true
+    bt_success "Commit created: $COMMIT_MESSAGE"
   fi
-  bt_success "Commit created: $COMMIT_MESSAGE"
 else
-  bt_warn "No changes staged to commit"
-  exit 0
+  COMMITTED_FILES=0
+  bt_info "No changes staged to commit"
 fi
 
 # Push if requested
 if [[ "$PUSH" == true ]]; then
-  bt_info "Ready to push to remote"
-  
-  # Show what will be pushed
-  bt_info "Pushing branch '$CURRENT_BRANCH' to remote..."
-  
-  if [[ "$FORCE" == false ]]; then
-    # Ask for confirmation
-    echo -n "Push to remote? (y/n): "
-    read -r response
-    if [[ ! "$response" =~ ^[Yy]$ ]]; then
-      bt_warn "Push cancelled"
-      exit 0
-    fi
+  if ! is_remote_connected; then
+    bt_warn "Remote 'origin' is not connected; skipping push"
+    PUSHED_COMMITS=0
+    print_summary
+    exit 4
   fi
-  
-  # Push changes
-  if [[ "$FORCE" == true ]]; then
-    if ! git push --force origin "$CURRENT_BRANCH" 2>&1; then
-      bt_error_exit 3 "Failed to force push to remote"
-    fi
-    bt_success "Force pushed to remote"
+
+  local_unpushed="$(get_unpushed_commit_count "$CURRENT_BRANCH")"
+  if [[ ! "$local_unpushed" =~ ^[0-9]+$ ]]; then
+    local_unpushed=0
+  fi
+
+  if [[ "$local_unpushed" -eq 0 ]]; then
+    bt_info "Nothing to push"
   else
-    if ! git push origin "$CURRENT_BRANCH" 2>&1; then
-      bt_error_exit 3 "Failed to push to remote"
+    bt_info "Ready to push $local_unpushed commit(s) to remote"
+    bt_info "Pushing branch '$CURRENT_BRANCH' to remote..."
+
+    if [[ "$FORCE" == false && "$DRY_RUN" == false ]]; then
+      # Ask for confirmation
+      echo -n "Push to remote? (y/n): "
+      read -r response
+      if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        bt_warn "Push cancelled"
+        print_summary
+        exit 0
+      fi
     fi
-    bt_success "Pushed to remote"
+
+    # Push changes
+    if [[ "$DRY_RUN" == true ]]; then
+      bt_info "Dry run: would push $local_unpushed commit(s)"
+      PUSHED_COMMITS="$local_unpushed"
+    elif [[ "$FORCE" == true ]]; then
+      if ! git push --force origin "$CURRENT_BRANCH" 2>&1; then
+        bt_error_exit 6 "Failed to force push to remote"
+      fi
+      PUSHED_COMMITS="$local_unpushed"
+      bt_success "Force pushed to remote"
+    else
+      if ! git push origin "$CURRENT_BRANCH" 2>&1; then
+        bt_error_exit 6 "Failed to push to remote"
+      fi
+      PUSHED_COMMITS="$local_unpushed"
+      bt_success "Pushed to remote"
+    fi
   fi
 fi
 
+if [[ "$COMMITTED_FILES" -eq 0 && "$PUSHED_COMMITS" -eq 0 ]]; then
+  bt_info "Nothing to commit, nothing to push"
+fi
+
+print_summary
 bt_success "Commit complete"
 exit 0
