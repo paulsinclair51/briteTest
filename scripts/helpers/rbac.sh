@@ -35,8 +35,8 @@ readonly CONTRIBUTOR_SCRIPTS=(
   "mkclone"            # Clone repository
   "commit"           # Create commits
   "copyfix"            # Cherry-pick fixes between branches
-  "synceremote"       # Sync with remote
-  "syncparent"           # Sync current branch with parent branch
+  "syncfromremote"       # Sync with remote
+  "syncfromparent"           # Sync current branch with parent branch
   "testscripts"             # Run tests
   "undo"             # Undo changes
   "ckbranch_history"   # Check branch history

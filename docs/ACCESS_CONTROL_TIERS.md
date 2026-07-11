@@ -166,7 +166,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 - `commit` - Create commits
 - `mkpullrequest` - Create PRs
 - `testscripts` - Run tests
-- `synceremote` - Sync with remote
+- `syncfromremote` - Sync with remote
 - All utility scripts
 
 **Use Case:** Active contributors writing code and documentation

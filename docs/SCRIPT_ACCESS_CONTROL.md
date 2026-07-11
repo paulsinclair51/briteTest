@@ -28,8 +28,8 @@ The system is hierarchical:
 - `mkclone` - Clone the repository
 - `commit` - Create and sign commits
 - `copyfix` - Cherry-pick fix commits between branches
-- `synceremote` - Sync with remote repository
-- `syncparent` - Sync up with main branch
+- `syncfromremote` - Sync with remote repository
+- `syncfromparent` - Sync up with main branch
 - `testscripts` - Run test suite locally
 - `undo` - Undo uncommitted changes
 - `ckbranch_history` - Check branch history
@@ -288,7 +288,7 @@ scripts/bin/mkbranch -r alice/feature main
 cd alice/feature
 # ... make changes ...
 scripts/bin/commit -m "feat: add new feature"
-scripts/bin/synceremote
+scripts/bin/syncfromremote
 
 # ✗ Not allowed (requires Reviewer role)
 scripts/bin/mkfeedback  # Error: Permission denied

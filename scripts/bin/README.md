@@ -43,8 +43,8 @@ See `<repo>/README.md` for an introduction to briteTest.
 - **mkpullrequest**: Create or update a pull request.
 - **chtarget**: Retarget a targeted branch to a different version parent.
 - **mkrelease**: Create and publish releases.
-- **synceremote**: Fetch and pull latest changes.
-- **syncparent**: Merge parent branch into current branch.
+- **syncfromremote**: Fetch and pull latest changes.
+- **syncfromparent**: Merge parent branch into current branch.
 - **testscripts**: Run tests and optional documentation checks.
 - **undo**: Undo recent merge/release/commit operations.
 - **rmbranch**: Remove local and/or remote branches.

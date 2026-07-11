@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# synceremote - Fetch and pull latest changes from remote.
+# syncfromremote - Fetch and pull latest changes from remote.
 #
-# See usage below for details, or run: synceremote -h
+# See usage below for details, or run: syncfromremote -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,8 +11,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  synceremote [OPTIONS]
-  synceremote -h | --help
+  syncfromremote [OPTIONS]
+  syncfromremote -h | --help
 
 Fetch latest changes from remote and update the current branch.
 Shows summary of changes and warns if behind its parent branch or if diverged
@@ -45,19 +45,19 @@ Comment Options (mutually exclusive):
 
 Examples:
   # Sync current branch only
-  synceremote
+  syncfromremote
 
   # Sync with verbose output
-  synceremote -v
+  syncfromremote -v
 
   # Sync all branches
-  synceremote -a
+  syncfromremote -a
 
   # Sync with comment
-  synceremote -m "Getting latest before starting feature work"
+  syncfromremote -m "Getting latest before starting feature work"
 
   # Unix-style comment
-  synceremote -- Getting latest changes
+  syncfromremote -- Getting latest changes
 
 
 Outputs:
@@ -303,7 +303,7 @@ if [[ "$behind_parent" -gt 0 ]] && [[ -n "$PARENT_BRANCH" ]]; then
   if bt_is_protected_branch "$CURRENT_BRANCH"; then
     bt_info "Protected branches require an approver-managed merge workflow"
   else
-    bt_info "Run: syncparent"
+    bt_info "Run: syncfromparent"
   fi
 fi
 
