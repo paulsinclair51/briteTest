@@ -1,0 +1,660 @@
+#!/usr/bin/env bash
+
+# mkfork - Create a fork of the repository and configure it via API.
+#
+# See usage below for details, or run: mkfork -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  mkfork [OPTIONS]
+  mkfork -h | --help
+
+Create a fork of the repository and configure it via GitHub API.
+
+A fork is a personal copy of the repository that you control. Use forks to:
+  - Contribute to the project via pull requests
+  - Experiment with changes safely
+  - Create your own variations of the project
+  - Maintain a personal backup
+
+Forking process:
+  - Verifies GitHub authentication is configured
+  - Checks if a fork already exists
+  - Creates fork on your GitHub account via API
+  - Configures contributors.md via API (fork becomes immediately usable)
+  - Idempotent: safe to re-run if previous attempt crashed or failed
+
+After forking:
+  - Use mkclone to clone the repository locally
+  - Use other scripts to manage branches, commits, and pull requests
+
+Features:
+  - Creates fork on your GitHub account via API
+  - Automatically configures fork contributors via API
+  - Validates fork configuration after creation
+  - Idempotent: re-running completes or fixes partial configurations
+  - Optional cleanup of incomplete forks
+  - Supports dry-run mode for planning
+  - No role restrictions: any user can fork the repository
+
+Options:
+  -h, --help           Output this help to stdout and exit (other options
+                       and arguments are ignored).
+  -c                   If fork exists but is incomplete/misconfigured, delete it
+                       instead of completing configuration. Useful after crashes
+                       or if manual changes broke the fork state.
+  -v, --verbose        Show detailed information during fork operations.
+  -d                   Dry-run (show what would be done without creating fork).
+
+Examples:
+  # Create and configure fork
+  mkfork
+
+  # Verbose output
+  mkfork -v
+
+  # Dry-run to preview operations
+  mkfork -d
+
+  # If fork exists but is broken, delete it
+  mkfork -c
+
+  # Re-run to complete configuration (e.g., after crash)
+  mkfork
+
+  # After forking, clone locally
+  mkfork
+  mkclone
+
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
+
+Exit codes:
+  0   Success - fork exists and is properly configured
+  1   Argument or validation error
+  2   GitHub API error
+  3   Fork already exists and is complete (not an error)
+  4   Authentication failed
+  5   Configuration validation failed
+  6   Repository configuration error
+  7   Fork incomplete or misconfigured - use -c to delete
+  8   Fork cleanup completed (-c used)
+EOF
+}
+
+# High-Level Flow:
+# - Validates GitHub authentication and repository context.
+# - Checks if fork exists and its configuration state.
+# - If fork incomplete: optionally delete (-c), or complete configuration.
+# - If fork doesn't exist: create and configure.
+# - Verifies configuration was applied correctly.
+# - Reports fork status and next-step guidance.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/github_helpers.sh
+source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+
+# Default options
+VERBOSE=false
+DRY_RUN=false
+CLEANUP_MODE=false
+
+# Parse options
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -c)
+      CLEANUP_MODE=true
+      shift
+      ;;
+    -v | --verbose)
+      VERBOSE=true
+      shift
+      ;;
+    -d)
+      DRY_RUN=true
+      shift
+      ;;
+    -*)
+      bt_error_exit 1 "Unknown option: $1"
+      ;;
+    *)
+      bt_error_exit 1 "Unexpected argument: $1"
+      ;;
+  esac
+done
+
+# Helper functions
+get_github_username() {
+  gh auth whoami 2>/dev/null || bt_error_exit 4 \
+    "GitHub authentication not configured. Run 'gh auth login' first."
+}
+
+get_repo_info() {
+  local origin_url
+  origin_url=$(git config --get remote.origin.url 2>/dev/null || true)
+  
+  if [[ -z "$origin_url" ]]; then
+    bt_error_exit 6 "Cannot determine repository URL from git config"
+  fi
+  
+  # Extract owner and repo from URL (supports both HTTPS and SSH)
+  if [[ "$origin_url" =~ github\.com[:/]([^/]+)/([^/]+?)(\.(git))?$ ]]; then
+    REPO_OWNER="${BASH_REMATCH[1]}"
+    REPO_NAME="${BASH_REMATCH[2]}"
+  else
+    bt_error_exit 6 "Cannot parse repository URL: $origin_url"
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Detected repo: $REPO_OWNER/$REPO_NAME" >&2
+  fi
+}
+
+fork_exists() {
+  local gh_user="$1"
+  if gh repo view "$gh_user/$REPO_NAME" >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
+fork_is_complete() {
+  local gh_user="$1"
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    return 0
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Checking if fork configuration is complete..." >&2
+  fi
+  
+  # Try to retrieve and validate contributors.md
+  local file_response
+  file_response=$(gh api \
+    "repos/$gh_user/$REPO_NAME/contents/config/contributors.md" 2>&1) || {
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete:" \
+        "contributors.md not accessible" >&2
+    fi
+    return 1
+  }
+  
+  # Extract SHA and content
+  local sha
+  sha=$(echo "$file_response" | jq -r '.sha' 2>/dev/null) || {
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete: cannot parse SHA" >&2
+    fi
+    return 1
+  }
+  
+  local encoded_content
+  encoded_content=$(echo "$file_response" | jq -r '.content' 2>/dev/null) || {
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete: cannot extract content" >&2
+    fi
+    return 1
+  }
+  
+  # Decode and validate content
+  local decoded_content
+  decoded_content=$(echo "$encoded_content" | base64 -d 2>/dev/null) || {
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete: cannot decode content" >&2
+    fi
+    return 1
+  }
+  
+  # Check for required content markers
+  if ! echo "$decoded_content" | grep -q "# Contributors"; then
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete:" \
+        "missing Contributors header" >&2
+    fi
+    return 1
+  fi
+  
+  if ! echo "$decoded_content" | grep -q "$gh_user"; then
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete: missing user entry" >&2
+    fi
+    return 1
+  fi
+  
+  if ! echo "$decoded_content" | grep -q ", A, "; then
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "[verbose] Fork configuration incomplete: missing approver role" >&2
+    fi
+    return 1
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Fork configuration is complete" >&2
+  fi
+  
+  return 0
+}
+
+create_fork() {
+  local source_repo="$1"
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[dry-run] Would create fork of $source_repo"
+    return 0
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Creating fork of $source_repo..." >&2
+  fi
+  
+  if ! gh repo fork "$source_repo" --clone=false 2>&1; then
+    bt_error_exit 2 "Failed to create fork via GitHub API"
+  fi
+  
+  echo "Fork created successfully"
+}
+
+wait_for_fork() {
+  local gh_user="$1"
+  local max_attempts=30
+  local attempt=0
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[dry-run] Would wait for fork to be ready"
+    return 0
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Waiting for fork to be ready on GitHub..." >&2
+  fi
+  
+  while [[ $attempt -lt $max_attempts ]]; do
+    if gh repo view "$gh_user/$REPO_NAME" >/dev/null 2>&1; then
+      if [[ "$VERBOSE" == "true" ]]; then
+        echo "[verbose] Fork is ready" >&2
+      fi
+      return 0
+    fi
+    ((attempt++))
+    sleep 1
+  done
+  
+  bt_error_exit 2 "Fork did not become available in time" \
+    "(waited $((max_attempts)) seconds)"
+}
+
+validate_fork_ownership() {
+  local gh_user="$1"
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[dry-run] Would validate fork ownership"
+    return 0
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Validating fork ownership..." >&2
+  fi
+  
+  # Check that the fork is actually owned by the current user
+  local owner
+  owner=$(gh api "repos/$gh_user/$REPO_NAME" --jq '.owner.login' 2>&1) || \
+    bt_error_exit 2 "Failed to retrieve fork information"
+  
+  if [[ "$owner" != "$gh_user" ]]; then
+    bt_error_exit 7 "Fork does not belong to authenticated user" \
+      "(owner: $owner, user: $gh_user)"
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Fork ownership validated" >&2
+  fi
+}
+
+delete_fork() {
+  local gh_user="$1"
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[dry-run] Would delete fork"
+    return 0
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Deleting fork $gh_user/$REPO_NAME..." >&2
+  fi
+  
+  # Delete the fork via API
+  if ! gh api --method DELETE "repos/$gh_user/$REPO_NAME" 2>&1 > /dev/null; then
+    echo "Warning: Failed to delete fork. Manual cleanup may be required." >&2
+    return 1
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Fork deleted successfully" >&2
+  fi
+  
+  return 0
+}
+
+get_file_sha() {
+  local gh_user="$1"
+  local file_path="$2"
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "abc123def456"
+    return 0
+  fi
+  
+  # Get file info and extract SHA
+  local file_response
+  file_response=$(gh api \
+    "repos/$gh_user/$REPO_NAME/contents/$file_path" 2>&1) || \
+    bt_error_exit 2 "Failed to retrieve $file_path from fork"
+  
+  local sha
+  sha=$(echo "$file_response" | jq -r '.sha' 2>/dev/null) || \
+    bt_error_exit 5 "Failed to parse API response for $file_path"
+  
+  # Validate SHA is not null/empty
+  if [[ -z "$sha" ]] || [[ "$sha" == "null" ]]; then
+    bt_error_exit 5 "Invalid SHA returned from API for $file_path: $sha"
+  fi
+  
+  echo "$sha"
+}
+
+validate_content() {
+  local content="$1"
+  local gh_user="$2"
+  
+  # Validate content is not empty
+  if [[ -z "$content" ]]; then
+    bt_error_exit 5 "Generated content is empty"
+  fi
+  
+  # Validate content contains expected markers
+  if ! echo "$content" | grep -q "# Contributors"; then
+    bt_error_exit 5 "Generated content missing '# Contributors' header"
+  fi
+  
+  if ! echo "$content" | grep -q "## Contributors"; then
+    bt_error_exit 5 "Generated content missing '## Contributors' section"
+  fi
+  
+  if ! echo "$content" | grep -q "$gh_user"; then
+    bt_error_exit 5 "Generated content does not include user: $gh_user"
+  fi
+  
+  if ! echo "$content" | grep -q ", A, "; then
+    bt_error_exit 5 "Generated content missing approver role marker"
+  fi
+}
+
+configure_fork_contributors_via_api() {
+  local gh_user="$1"
+  local file_path="config/contributors.md"
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[dry-run] Would configure $file_path in fork via API"
+    return 0
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Retrieving current $file_path from fork..." >&2
+  fi
+  
+  # Get current file SHA
+  local current_sha
+  current_sha=$(get_file_sha "$gh_user" "$file_path")
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Current file SHA: $current_sha" >&2
+  fi
+  
+  # Generate new contributors.md content
+  local new_content
+  new_content=$(cat <<CONTRIBUTORS_EOF
+# Contributors
+
+Copyright (c) 2026 Paul Sinclair  
+SPDX-License-Identifier: MIT  
+For license details, see \`<repo>/LICENSE\`.
+
+See \`<repo>/README.md\` for an introduction to briteTest.
+
+## Overview
+
+This file lists the allowed contributors to briteTest with their GitHub login,
+role, and email address.
+
+An approver may modify the list below to add or remove a contributor or change a
+contributor's role. If there are no approvers, a reviewer may modify the list.
+If there are neither approvers nor reviewers, a contributor may modify the list.
+Otherwise, any user may modify the list.
+
+See \`<repo>/docs/md/Contributor_Guide.md\` for additional information.
+
+## Contributor Roles and Responsibilities
+
+Contributors are categorized by their roles and permissions:
+
+- **C** (Contributor-only): Can contribute code and documentation changes.
+
+- **R** (Reviewer): Can contribute and review pull requests (PRs).
+  Reviewers help maintain code and documentation quality through peer review.
+
+- **A** (Approver): Can contribute, review pull requests (PRs), approve PRs for
+  merging, and modify permissions. Approvers have final authority on code and
+  documentation changes.
+
+## Contributors
+
+Each entry uses this form:
+
+- \`<github-login>, <role>, <email>\`
+
+- $gh_user, A, $gh_user@github.local
+CONTRIBUTORS_EOF
+)
+
+  # Validate generated content
+  validate_content "$new_content" "$gh_user"
+  
+  # Base64 encode the new content
+  local encoded_content
+  encoded_content=$(echo -n "$new_content" | base64 -w 0) || \
+    bt_error_exit 5 "Failed to base64 encode content"
+  
+  # Validate base64 encoding produced output
+  if [[ -z "$encoded_content" ]]; then
+    bt_error_exit 5 "Base64 encoding produced empty result"
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Updating $file_path in fork via API..." >&2
+  fi
+  
+  # Update the file via API and capture response
+  local update_response
+  update_response=$(gh api --method PUT \
+    "repos/$gh_user/$REPO_NAME/contents/$file_path" \
+    -f message="Configure contributors.md for fork: $gh_user as sole approver" \
+    -f content="$encoded_content" \
+    -f sha="$current_sha" 2>&1) || \
+    bt_error_exit 2 "Failed to update $file_path in fork via API"
+  
+  # Validate API response contains commit information
+  if ! echo "$update_response" | jq -e '.commit.sha' >/dev/null 2>&1; then
+    bt_error_exit 7 "API response missing commit information"
+  fi
+  
+  # Extract and validate the new file SHA from response
+  local new_sha
+  new_sha=$(echo "$update_response" | jq -r '.content.sha' 2>/dev/null) || \
+    bt_error_exit 5 "Failed to extract new SHA from API response"
+  
+  if [[ -z "$new_sha" ]] || [[ "$new_sha" == "null" ]]; then
+    bt_error_exit 7 "Invalid new SHA in API response: $new_sha"
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] File updated. New SHA: $new_sha" >&2
+  fi
+  
+  # Verify the file was actually updated by retrieving it
+  verify_file_update "$gh_user" "$file_path" "$new_sha" "$gh_user"
+  
+  echo "Contributors configured via API: $gh_user is the sole approver"
+}
+
+verify_file_update() {
+  local gh_user="$1"
+  local file_path="$2"
+  local expected_sha="$3"
+  local expected_user="$4"
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[dry-run] Would verify file update"
+    return 0
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] Verifying $file_path was updated correctly..." >&2
+  fi
+  
+  # Retrieve the file and verify
+  local verify_response
+  verify_response=$(gh api \
+    "repos/$gh_user/$REPO_NAME/contents/$file_path" 2>&1) || \
+    bt_error_exit 2 "Failed to verify $file_path after update"
+  
+  # Check SHA matches
+  local actual_sha
+  actual_sha=$(echo "$verify_response" | jq -r '.sha' 2>/dev/null) || \
+    bt_error_exit 5 "Failed to extract SHA from verification response"
+  
+  if [[ "$actual_sha" != "$expected_sha" ]]; then
+    bt_error_exit 7 "File SHA mismatch after update" \
+      "(expected: $expected_sha, actual: $actual_sha)"
+  fi
+  
+  # Decode and verify content
+  local encoded_file_content
+  encoded_file_content=$(echo "$verify_response" | jq -r '.content' \
+    2>/dev/null) || \
+    bt_error_exit 5 "Failed to extract content from verification response"
+  
+  local decoded_content
+  decoded_content=$(echo "$encoded_file_content" | base64 -d 2>/dev/null) || \
+    bt_error_exit 5 "Failed to decode file content"
+  
+  # Verify content contains expected user
+  if ! echo "$decoded_content" | grep -q "$expected_user"; then
+    bt_error_exit 7 "Verification failed: file content does not" \
+      "contain user $expected_user"
+  fi
+  
+  # Verify content has approver entry
+  if ! echo "$decoded_content" | grep -q ", A, "; then
+    bt_error_exit 7 "Verification failed: file content missing approver entry"
+  fi
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[verbose] File update verified successfully" >&2
+  fi
+}
+
+# Main flow
+echo "Preparing to create fork of $REPO_OWNER/$REPO_NAME..."
+
+# Get authenticated user
+GH_USER=$(get_github_username)
+echo "Authenticated as: $GH_USER"
+
+# Check if fork already exists
+if fork_exists "$GH_USER"; then
+  echo "Fork already exists at $GH_USER/$REPO_NAME"
+  
+  # Validate fork ownership and integrity
+  validate_fork_ownership "$GH_USER"
+  
+  # Check if fork configuration is complete
+  if fork_is_complete "$GH_USER"; then
+    if [[ "$DRY_RUN" == "true" ]]; then
+      echo ""
+      echo "Dry-run completed. Fork is already complete, no changes needed."
+    else
+      echo ""
+      echo "Fork setup already complete!"
+      echo "Fork URL: https://github.com/$GH_USER/$REPO_NAME"
+      echo ""
+      echo "Next steps:"
+      echo "  mkclone  # Clone the repository locally"
+    fi
+    exit 3
+  else
+    # Fork exists but is incomplete
+    if [[ "$CLEANUP_MODE" == "true" ]]; then
+      # Delete incomplete fork
+      echo "Fork is incomplete. Deleting..."
+      delete_fork "$GH_USER"
+      
+      if [[ "$DRY_RUN" == "true" ]]; then
+        echo ""
+        echo "Dry-run completed. Would have deleted incomplete fork."
+      else
+        echo ""
+        echo "Incomplete fork deleted."
+        echo "Run mkfork again to create a fresh fork."
+      fi
+      exit 8
+    else
+      # Complete the fork configuration
+      echo "Fork configuration incomplete. Completing configuration..."
+    fi
+  fi
+else
+  # Create fork
+  create_fork "$REPO_OWNER/$REPO_NAME"
+  
+  # Wait for fork to be ready on GitHub
+  wait_for_fork "$GH_USER"
+fi
+
+# Configure contributors via API (either new fork or completing incomplete one)
+configure_fork_contributors_via_api "$GH_USER"
+
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo ""
+  echo "Dry-run completed. No changes were made."
+else
+  echo ""
+  echo "Fork setup completed successfully!"
+  echo "Fork URL: https://github.com/$GH_USER/$REPO_NAME"
+  echo ""
+  echo "Next steps:"
+  echo "  mkclone  # Clone the repository locally"
+fi
+
+exit 0

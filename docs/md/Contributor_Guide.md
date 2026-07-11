@@ -3,1131 +3,735 @@
 #### Version: v1.0.0
 
 This document defines the contribution process, coding standards, documentation
-rules, and versioning guidelines for contributors, reviewers, and approvers.
+rules, versioning guidelines, branch management, and validation workflows for 
+contributors, reviewers, and approvers.
 
 #### Copyright (c) 2026 Paul Sinclair
 
-<details>
-<summary><strong>License</strong></summary>
-
-### License
-
 SPDX-License-Identifier: MIT
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-</details>
-
-<details>
-<summary><strong>Preface</strong></summary>
+---
 
 ## Preface
 
-This document is for contributors, reviewers, and approvers who
-need guidance on enhancing and maintaining briteTest.
+This document is for contributors, reviewers, and approvers who need guidance 
+on enhancing and maintaining briteTest.
 
-For a list of other documents and the repository layout, see
-the Documentation Guide.
+For detailed script reference information, see the [Contributor_Reference.md](./Contributor_Reference.md).
 
-For a glossary of terms, see the Glossary Reference.
-
-A printer-friendly PDF file for this document is available.
-
-`<repo>` in a path is a placeholder for the absolute path to the
-briteTest repository root, i.e., `/workspaces/briteTest`.
-
-`<repo_url>` is a placeholder for the briteTest repository URL,
-i.e., `https://github.com/paulsinclair51/briteTest`.
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
+For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md).
 
 ### Document Version History
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
-| v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
-</details>
-</details>
+| v1.0.0 | 2026-07-09 | Current v1.0.0 development guide; includes initial content plus PR #10 consolidation (`Access Control & Roles`, `Public Repository Security`). | Paul Sinclair |
 
-<details>
-<summary><strong>Table of Contents</strong></summary>
+---
 
 ## Table of Contents
 
-1. [**Introduction**](#1-introduction)
+1. [Introduction](#introduction)
+2. [Branching Model Overview](#branching-model-overview)
+3. [Validation Workflows](#validation-workflows)
+4. [Git Operations and Branch Management](#git-operations-and-branch-management)
+5. [Access Control & Roles](#access-control--roles)
+6. [Public Repository Security](#public-repository-security)
+7. [GPG Signing Setup](#gpg-signing-setup)
+8. [Versioning Guidelines](#versioning-guidelines)
+9. [Branding](#branding)
+10. [Documentation Guidelines](#documentation-guidelines)
+11. [Code Guidelines](#code-guidelines)
+12. [Testing Requirements](#testing-requirements)
+13. [CODEOWNERS and Review Routing](#codeowners-and-review-routing)
+14. [Making Modifications in a Branch](#making-modifications-in-a-branch)
+15. [Pull Request (PR)](#pull-request-pr)
+16. [Release](#release)
+17. [Protected Branches](#protected-branches)
+18. [Troubleshooting FAQ](#troubleshooting-faq)
+19. [Team Onboarding Checklist](#team-onboarding-checklist)
 
-2. [**Versioning Guidelines**](#2-versioning-guidelines)<br>
-   2.1. [When to Change Version](#21-when-to-change-version)<br>
-   2.2. [Continuous Integration (CI) Version Checks](#22-continuous-integration-ci-version-checks)<br>
-   2.3. [Incompatible Change](#23-incompatible-change)<br>
-   2.4. [Examples](#24-examples)<br>
+---
 
-3. [**Branding**](#3-branding)<br>
-   3.1. [Current Branding](#31-current-branding)<br>
-   3.2. [Alternative Brand Names](#32-alternative-brand-names)<br>
-   3.3. [How to Update Branding](#33-how-to-update-branding)<br>
+## Introduction
 
-4. [**Documentation Guidelines**](#4-documentation-guidelines)
+This Contributor Guide defines the expectations and rules for contributing to briteTest. It covers branching, versioning, testing, documentation, code style, validation workflows, pull requests, and release requirements.
 
-5. [**Code Guidelines**](#5-code-guidelines)
+Contributors should read this document before submitting changes, reviewing, or approving to ensure consistency across the code and documentation.
 
-6. [**Testing Requirements**](#6-testing-requirements)
+---
 
-7. [**CODEOWNERS and Review Routing**](#7-codeowners-and-review-routing)
+## Branching Model Overview
 
-8. [**Making Modifications in a Branch**](#8-making-modifications-in-a-branch)
+This repository uses a release-oriented branching model with four branch types:
 
-9. [**Pull Request (PR)**](#9-pull-request-pr)
+**Protected Branches** (Require PR, no force-push, no deletion):
+- `main` - Production-ready code
+- `v<M>.<m>.0` - Version/release branches (e.g., v1.0.0, v2.1.0)
 
-10. [**Release**](#10-release)
+**Unprotected Branches** (Direct commits allowed, PRs encouraged):
+- `dev/<desc>-<version>` or `fix/<desc>-<version>` - Targeted branches
+- `[<type>/]<description>` - Contributor branches
 
-11. [**Protected Branches**](#11-protected-branches)
+**Valid Merge Paths:**
+- contributor → contributor ✓
+- contributor → targeted ✓
+- targeted → version ✓ (with approver)
+- version → main ✓ (with approver)
+- main → any ✗ (create FROM main only)
 
-12. [**Repository Ownership, Rulesets, and Recovery**](#12-repository-onership-rulesets-and-recovery)
+---
 
-13. [**Glossary**](#13-glossary)
-</details>
+## Validation Workflows
 
-<details>
-<summary><strong>1. Introduction</strong></summary>
+briteTest uses 15 automated GitHub Actions workflows providing defense-in-depth validation across all git operations.
 
-## 1. Introduction
+### Workflow Summary Dashboard
 
-This Contributor Guide defines the expectations and rules for contributing to
-briteTest. It covers versioning, testing, documentation, code style, pull
-request, and release requirements.
+| Workflow | Purpose | Trigger | When Blocks |
+|----------|---------|---------|------------|
+| branch-validation-pull-request.yml | Validates branch relationships, naming, roles | PR events | Invalid merge path |
+| branch-validation-merge.yml | Post-merge compliance audit logging | Push to protected | Audit trail only |
+| branch-validation-commit-message.yml | Enforces conventional commit format | PR events | Invalid format |
+| branch-validation-author.yml | Verifies approved commit authors | PR events | Unknown author |
+| branch-validation-gpg-signature.yml | Requires GPG signatures on protected branches | PR to main/version | Unsigned commits |
+| branch-validation-rebase.yml | Monitors rebase operations | Push events | Audit trail only |
+| branch-validation-force-push.yml | Audits force push attempts | Push events | Blocked by GitHub |
+| branch-validation-cherry-pick.yml | Detects cherry-pick operations | Push events | Cherry-pick to protected |
+| branch-validation-file-changes.yml | Prevents critical file modifications | PR events | LICENSE, workflows modified |
+| branch-validation-large-files.yml | Detects and blocks files > 10MB | Push events | File exceeds limit |
+| branch-validation-secrets.yml | Prevents API keys and credentials | PR events | Secrets detected |
+| branch-validation-workflow.yml | Validates GitHub workflow syntax | PR modifying workflows | Invalid syntax |
+| branch-validation-license-headers.yml | Ensures MIT license headers | PR events | Missing headers |
+| branch-validation-code-quality.yml | Runs linting and format checks | PR events | Formatting issues |
+| branch-validation-tags.yml | Validates tag naming conventions | Tag creation | Invalid tag format |
 
-The config/contributors.md file defines the contributors and which contributors
-are also reviewers or approvers. Contributors should read this document before
-submitting changes, reviewing, or approving to ensure consistency across the
-code and documentation.
-</details>
+### Primary Prevention Layer
 
-<details>
-<summary><strong>2. Versioning Guidelines</strong></summary>
+These workflows run **BEFORE merge** to prevent problems:
 
-## 2. Versioning Guidelines
+✓ **Valid commits:** Allowed to proceed
+✗ **Invalid commits:** PR blocked until fixed
 
-Versioning is used for API `.h` and `.c` files, and documentation (`.md`,
-`.pdf`, and `.docx`) files and has the format:
+**Examples of blocked commits:**
+- Merge with wrong branch path (contributor→main)
+- Commit message format: "Add feature" (missing type: prefix)
+- File modification: LICENSE
+- Secret detected: AWS API key in code
+- Large file: 15MB binary uploaded
 
-  `M.m.p` (major, minor, patch).
+### Secondary Audit Layer
 
-<details>
-<summary>2.1. When to Change Version</summary>
+These workflows run **AFTER merge** for compliance logging:
 
-### 2.1. When to Change Version
+✓ **Purpose:** Audit trail, monitoring, compliance
+⚠ **Note:** Cannot prevent already-merged changes, but logs violations
 
-- Patch:
-  - Bug fixes, implementation improvements, documentation corrections.
-  - No changes to the APIs (e.g., new API function or macro).
-  - No changes to the Runner Framework.
+**Examples of audited operations:**
+- Rebase on version branch
+- Force push attempt (blocked by GitHub anyway)
+- Cherry-pick to non-protected branch
+- Invalid tag creation
 
-- Minor:
-  - Minor additions to the APIs (e.g., new function or macro).
-  - Minor additions to the Runner Framework.
-  - Minor refactoring of implementation.
-  - The changes must not introduce an incompatible change.
-    See the **Incompatible Change** section.
-  - If incremented or reset to 0, it must be updated for all versioned files
-    (`.h`, `.c`, `.md`, `.pdf`, and `.docx`) to the same minor value
-    (even if the file was not otherwise modified) with patch reset to 0.
+### Handling Validation Failures
 
-- Major:
-  - Major additions to the APIs.
-  - Major additions to the Runner Framework.
-  - Significant refactoring of the implementation.
-  - Changes introducing incompatibilities with previously
-    released versions. See the **Incompatible Change** section.
-  - If incremented, it must be updated for all versioned files (`.h`,
-    `.c`, `.md`, `.pdf`, and `.docx`) to the same major value (even if
-    the file was not otherwise modified) with minor and patch reset to 0.
+**When a validation fails:**
 
-When changing the version for a file:
+1. **Read error message** - Explains what's wrong and how to fix
+2. **Fix locally** - Make the required changes
+3. **Re-push** - GitHub automatically re-runs validations
+4. **Verify passing** - Green checkmark on PR before requesting review
 
-- Increment `p` if the major and minor versions are not changed.
-- Reset `p` to `0` when the major or minor version is changed.
-- For the `include/runnerapi.h` file, update the `RA_VERSION` macro.
-- For the `src/runnerapi.c` file, update the `ra_internal_version` function.
-- For the `include/testapi.h` file, update the `TA_VERSION` macro.
-- For the `src/testapi.c` file, update the `ta_internal_version` function.
-- For a document, add a new entry to the top of the `Document Version History` table.
+---
 
-Note: A major or minor release includes all the versioned files. A patch
-release is for an individual versioned file.
-</details>
+## Git Operations and Branch Management
 
-<details>
-<summary>2.2. Continuous Integration (CI) Version Checks</summary>
-
-### 2.2. Continuous Integration (CI) Version Checks
-
-Version consistency is enforced by the CI
-pipeline on all pull requests (PR) and commits to the `main` branch:
-
-- The `ckversions` script validates that major and minor versions are
-  consistent across all versioned files:
-  - API headers: `include/runnerapi.h`, `include/testapi.h`
-  - API implementations: `src/runnerapi.c`, `src/testapi.c`
-  - Documentation: `docs/md/*.md` (excluding `README.md`)
-
-- For branches with patch-only changes, `ckversions` confirms that only the
-  patch version differs across files.
-
-- For branches with minor or major version changes, `ckversions` confirms
-  that all versioned files have been updated to the same major.minor values.
-
-- If version consistency fails, the CI workflow blocks the PR merge.
-  Contributors must update version numbers to match the policy and
-  re-push their changes.
-
-See the `scripts/bin/ckversions` script for details on version validation logic.
-</details>
-
-<details>
-<summary>2.3. Incompatible Change</summary>
-
-### 2.3. Incompatible Change
-
-An incompatible change is a change to the APIs or the Runner Framework
-that requires a user to modify their code such as changes to:
-
-- API signatures including removal of a signature.
-- API or Runner Framework behavior.
-- Exit and return code meanings.
-
-Preferably, an incompatible change should be avoided by having opt-in or other
-mechanism to maintain compatibility.
-
-An actual incompatible change is expected to be rare. Before requesting
-such a change, consult with reviewers and approvers to confirm the change
-is truly required and cannot be avoided.
-
-A request for an incompatible change requires special handling:
-
-- **Contributor:** Provide written justification in the PR description for the
-  change and why it cannot be avoided. State whether it was documented as
-  deprecated (if the change removes an API declaration) or as an upcoming change
-  in a previous major or minor release. Provide migration guidance for the change.
-
-- **Reviewers:** Examine the justification and the change together.
-  Reviewers verify that:
-  - The justification is clear.
-  - The change is needed and technically sound.
-  - The change is documented or communicated appropriately to users.
-
-- **Approver:** After reviewer feedback is addressed, the approver makes the final
-  decision whether to approve the PR. If not approved, approver provides guidance
-  on whether the change is rejected or is deferred to a later major release
-  (e.g., to allow for a deprecation or upcoming change notice in the next major
-  or minor release).
-
-</details>
-
-<details>
-<summary>2.4. Examples</summary>
-
-### 2.4. Examples
-
-The following examples illustrate common scenarios and the appropriate version
-change:
-
-#### Example 1: Bug Fix to runnerapi.c
-
-**Change**:
-
-- Fix a segmentation fault in `ra_internal_runner_run_test` when a
-  callback returns an error code.
-
-**Files Modified**:
-
-- `src/runnerapi.c`
-
-**Versioning:**
-
-- Current version: 1.0.2
-- New version: 1.0.3
-- Reason: Bug fix with no API signature or behavior changes.
-- Action: Increment patch version in `src/runnerapi.c` only.
-- CI Check: `ckversions` confirms runnerapi.h remains 1.0.0 (no change),
-  runnerapi.c becomes 1.0.3 (patch bump).
-
-#### Example 2: Documentation Update for testapi.h
-
-**Change**:
-
-- Clarify docstring for `ta_read_file` function and update the Test
-  API Reference document with additional usage examples.
-
-**Files Modified**:
-
-- `include/testapi.h`, `docs/md/Test_API_Reference.md`
-
-**Versioning**:
-
-- Current version: 1.0.0
-- New version: 1.0.1
-- Reason: Documentation corrections only; no API changes.
-- Action: Increment patch version in both files and add entry to Document
-  Version History table.
-- CI Check: `ckversions` confirms both testapi.h and the document have
-  patch 1.0.1.
-
-#### Example 3: New Test Helper Function
-
-**Change**:
-
-- Add a new public function `ta_compare_xml` to the Test API for
-  comparing XML documents.
-
-**Files Modified**:
-
-- `include/testapi.h`, `src/testapi.c`,
-  `docs/md/Test_API_Reference.md`
-
-**Versioning**:
-
-- Current version: 1.0.1
-- New version: 1.1.0
-- Reason: New function is a backward-compatible minor addition to the API.
-- Action:
-  - Update `TA_VERSION` macro in `include/testapi.h` to 1.1.0.
-  - Update `ta_internal_version` function in `src/testapi.c` to 1.1.0.
-  - Update document to 1.1.0 and add entry to Document Version History table.
-  - Because minor version changed, all versioned files must sync. For example,
-    increment `docs/md/Contributor_Guide.md` to 1.1.0 even though it was not
-    modified.
-- CI Check: `ckversions` confirms all files have major.minor 1.1 with patch 0.
-
-#### Example 4: Incompatible API Change (Requires Special Handling)
-
-**Change**:
-
-- Modify the signature of `ta_execute_command` to accept a timeout
-  structure instead of milliseconds. This is a breaking change needed
-  to support microsecond precision in a future integration.
-
-**Files Modified**:
-
-- `include/testapi.h`, `src/testapi.c`,
-  `docs/md/briteTest.md` (aka root README.md), `docs/md/Test_API_Guide.md`,
-  `docs/md/Test_API_Reference.md`, `docs/md/Test_Internal_Guide.md`,
-  `docs/md/Test_Internal_Reference.md`
-
-**Versioning**:
-
-- Current version: 1.1.0
-- Proposed version: 2.0.0
-- Reason: Breaking change requires major version bump per guidelines.
-- Justification (in PR): The `ta_execute_command` signature change is
-  necessary to support sub-millisecond precision required by the upcoming
-  real-time test harness feature. Migration path: user code using
-  `ta_execute_command(cmd, 1000, ...)` should be updated to use the new
-  struct-based timeout. A migration guide is included in
-  docs/Migration_Guide_1.1_to_2.0.md detailing the transition steps and
-  providing helper macros for compatibility. A notice of this change
-  and migration guide was included in docs/briteTest.md (aka root README.md)
-  version 1.1.0.
-- Action:
-  - Update major version to 2.0.0 in all versioned files (resetting minor
-    and patch to 0).
-  - Include migration documentation.
-  - Reference the PR justification in release notes.
-- CI Check: `ckversions` confirms all files have major 2.0.0.
-
-</details>
-</details>
-
-<details>
-<summary><strong>3. Branding</strong></summary>
-
-## 3. Branding
-
-This chapter discusses the choices for the brand name and description
-plus how to update the branding.
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Current Branding</summary>
-
-### 3.1. Current Branding
-
-- Brand name: briteTest
-
-- Description (GitHub limit: 350 characters or less):
-
-```text
-briteTest is a lightweight, easy-to-use C/C++ framework for running unit and
-command-line tests focused on clarity and reliability. It provides a simple
-macro-based Runner API with customization macros and functions, a function-based Test API, fault-tolerant execution, clear reporting, comprehensive documentation,
-and no external dependencies.
-```
-
-Why this brand name:
-
-- The name is a relatively low-risk branding choice because its distinctive
-  camelCase form and specific presentation reduce the chance of a brand name
-  conflict.
-- The `briteTest` camelCase form is distinctive and aligns with the `bT`
-  branding monogram used in project visuals.
-- The uppercase `T` is intentional: it represents the canary theme, with the
-  canary perched on the `T` in the `bT` monogram, echoing the
-  canary-in-a-coal-mine analogy as an early warning signal in testing.
-- The name is easy to recognize, pronounce, and remember while still
-  signaling software testing intent.
-- The lowercase/uppercase contrast in `briteTest` helps the name stand out
-  from other test-framework names.
-- Generic `Runner` and `Test` API names reduce coupling to the project
-  brand and make a future brand rename less disruptive.
-
-Why this description:
-
-- It states scope and usage clearly: lightweight C/C++ unit and command-line
-  testing.
-- It names the two core interfaces used throughout the docs: Runner API and
-  Test API.
-- It emphasizes practical value for adopters: fault-tolerant execution, clear
-  reporting, comprehensive documentation, and no external dependencies.
-
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.2. Alternative Brand Names</summary>
-
-### 3.2. Alternative Brand Names
-
-These names are options if a naming conflict requires a brand/project rename.
-
-These notes are an informal naming screen only. They are based on how generic,
-descriptive, or commonly used the terms appear in software and testing. They
-are not a trademark search or legal clearance.
-
-The preferred naming style is camelCase; however, PascalCase
-(UpperCamelCase) may be an acceptable alternative.
-
-#### Fallback
-
-Brand names that are acceptable if the brand name briteTest cannot be used.
-
-| Name | Initial | Reason |
-| ------ | --------- | -------- |
-| BriteTest | BT | Strong fit for the project brand and clear connection to the canary monogram. |
-| liteTest | lT | Clear fit for the lightweight positioning, though still somewhat generic. |
-| compactTest | cT | Good match for the lightweight position and slightly more distinctive than other descriptive alternatives. |
-| tinyTest | tT | Good thematic fit for a small, lightweight framework, though still descriptive. |
-
-#### Deprioritized
-
-Brand names usable in theory but weaker than the current preferred/fallback
-options.
-
-| Name | Initial | Reason |
-| ------ | --------- | -------- |
-| openTest | oT | Readable, but built from broad software terms that are more likely to overlap with existing names. |
-| canaryRunner | cR | Strong theme match, but `canary` is already common software terminology and reduces distinctiveness. |
-| CanaryTestRunner | CTR | Explicit and descriptive, but long and composed of highly generic testing terms. |
-| canaryTestRunner | cTR | Similar to `CanaryTestRunner`, with camelCase branding potential, but still fairly generic. |
-| canaryTestrunner | cTr | Slightly more distinctive in presentation, but still closely tied to common `canary` and `test runner` terminology. |
-| clearTest | cT | Readable and descriptive, but broad enough to risk overlap with existing testing or QA branding. |
-| fastTest | fT | Strong performance signal, but both `fast` and `test` are generic software terms. |
-
-#### Rejected
-
-Brand names with strong likely confusion or established association.
-
-| Name | Initial | Reason |
-| ------ | --------- | -------- |
-| canaryTest | cT | Too close to common `canary testing` terminology to be distinctive. |
-| swiftTest | sT | Likely to be confused with Apple's Swift ecosystem. |
-| quickTest | qT | Already strongly associated with established testing and QA tooling. |
-
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.3. How to Update Branding</summary>
-
-### 3.3. How to Update Branding
-
-This workflow describes how to update the brand name, initials, and/or tagline
-using `scripts/bin/updatebrand`.
-
-#### Workflow Steps
-
-1. Add a pending row in `logs/brand_history.md`:
-
-   - The first row with an empty **Completed** value is treated as the pending
-     brand change.
-   - The next row below it with a non-empty **Completed** value is treated as
-     the previous (current) brand values.
-   - Fill in **Brand Name**, **Initials**, and **Tagline** in the pending row.
-
-2. Run a dry run first:
+### Creating Branches
 
 ```bash
-scripts/bin/updatebrand -d
+scripts/bin/mkbranch -r <branch_name> [<base_branch>]
 ```
 
-- This shows planned replacements without modifying files.
-- A dry-run log is written to:
-     `logs/updatebrand-log-dry-run-YYYYMMDD-HHMMSS.md`.
+**Examples:**
+```bash
+scripts/bin/mkbranch -r mywork/feature main
+scripts/bin/mkbranch -r dev/parser-fix-v1.0.0 v1.0.0
+scripts/bin/mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
+```
 
-3. Apply the change:
+**Branch Naming Rules:**
+- **Contributor:** `[<type>/]<description>` (e.g., `dev/json-parser`)
+- **Targeted:** `dev/<desc>-<version>` or `fix/<desc>-<version>`
+- **Version:** `v<M>.<m>.0` (created by approvers only)
+
+### Making Changes
 
 ```bash
-scripts/bin/updatebrand
+git checkout mywork/feature
+# Edit files...
+git add .
+git commit -m "feat: add new capability"
+git push origin mywork/feature
 ```
 
-- The script updates matching `docs/branding/*.svg` values.
-- The script regenerates PNG files using `scripts/bin/genpngs` when SVG
-     files changed.
-- The script updates matching `*.md`, `*.c`, and `*.h` files for brand-name
-     replacement.
-- The script marks the pending Brand History row completed with the current
-     date/time.
-- A run log is written to:
-     `logs/updatebrand-log-YYYYMMDD-HHMMSS.md`.
-- `logs/updatebrand-log-dry-run-YYYYMMDD-HHMMSS.md` files are deleted if
-     `updatebrand` is successful.
+**Commit Best Practices:**
+- Keep commits focused and logical
+- Use conventional commit format: `<type>: <description>`
+- Valid types: feat, fix, docs, style, refactor, test, chore
 
-4. Review and validate:
+### Rebasing Your Branch
 
-   - Review `git diff` and the generated update log.
-   - Run the project validation steps required for your change (for example,
-     `make run` and documentation generation checks).
-   - Review `docs/md/*.md` files (valid logo and use of brand name).
+```bash
+git rebase main
+git push --force-with-lease origin mywork/feature
+```
 
-5. Commit and open a PR:
+⚠ **Never rebase protected branches** - GitHub blocks force pushes anyway
 
-   - Commit branding updates (SVG, PNG, docs, source/header updates, and
-     `logs/brand_history.md`) with a clear message.
-   - Open a PR with a short summary of the brand transition.
+### Deleting Branches
 
-</details>
-</details>
+```bash
+scripts/bin/rmbranch <branch_name>
+```
 
-<details>
-<summary><strong>4. Documentation Guidelines</strong></summary>
+Protected branches (main, v*.0) cannot be deleted.
 
-## 4. Documentation Guidelines
+### Setting Up Pre-commit Hooks
 
-This section exists here to ensure contributors do not overlook the requirement
-for parallel structure and consistent writing patterns across all documentation
-in all types of files (e.g., `.md`, `.h`, `.c`, `.yml`, `.dh`, `Makefile`, etc.).
+Prevent accidental commits to protected branches:
 
-#### 1. General
+```bash
+mkdir -p .git/hooks
+cat > .git/hooks/pre-commit << 'EOF'
+#!/bin/bash
+CURRENT=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$CURRENT" == "main" ]] || [[ "$CURRENT" == v*.0 ]]; then
+  echo "❌ Error: Cannot commit directly to protected branch '$CURRENT'"
+  echo "Create a feature branch: scripts/bin/mkbranch -r <name> $CURRENT"
+  exit 1
+fi
+EOF
+chmod +x .git/hooks/pre-commit
+```
 
-- Root `README.md` must remain short and onboarding-focused.
-- A User Guide contains conceptual explanations and examples.
-- An API Reference contains public API definitions only.
-- An internal guide or reference must not leak into public docs.
-- Update documentation when enhancing macros, behavior, or report format.
-- For branding assets in `docs/branding/`: `*.svg` files are the source of
-     truth and `*.png` files are generated from SVG using `scripts/bin/genpngs`.
+---
 
-#### 2. Tone
+## Access Control & Roles
 
-- Technical, precise, and neutral.
-- Minimal marketing language.
-- Prefer clarity over cleverness.
+briteTest uses a six-tier access model for public repository safety:
 
-#### 3. Formatting
+| Tier | Core Capabilities | Restrictions |
+|------|-------------------|--------------| 
+| **PUBLIC** | Read, clone, fork | No write access |
+| **USERS** (read-only collaborator) | Read all repository content | No push, PR, or script execution |
+| **CONTRIBUTOR (C)** | Create branches, commit, open PRs, run contributor scripts | Cannot merge/release/protected-script operations |
+| **REVIEWER (R)** | All contributor actions plus review/rebase workflows | Cannot run approver-only scripts |
+| **APPROVER (A)** | Merge, release, run protected scripts with override confirmation | Must follow audit and override controls |
+| **MAINTAINER** | Repository admin and access management | Responsible for governance and audits |
 
-- Use backticks for code identifiers.
-- Use fenced code blocks for file trees, examples, and commands.
-- Keep line lengths reasonable for GitHub rendering.
-- Use boldface for a term or phrase when defining it.
-- Conform to formatting styles existing in the documentation.
+**Write access is script-controlled** (`mkbranch`, `mkcommit`, `mkpullrequest`, `mkrebase`, `mkmerge`, `mkrelease`) rather than direct protected-branch git operations.
 
-#### 4. Writing Guidelines
+---
 
-- Define terms once, and then use them consistently.
-- Avoid synonyms for technical concepts (e.g., always "update version,"
-     never "revision").
-- Keep paragraphs short.
-- Use lists for enumerations.
+## Public Repository Security
 
-#### 5. Collapsible Sections in `.md` Files
+Security controls expected for contributor workflows:
 
-- Use collapsible chapters, sections and subsections to keep the document
-  readable while still accommodating large amounts of technical detail.
-- Collapsing sections allows readers to scan the structure and expand
-  only what they need.
-- This keeps the document manageable, avoids overwhelming readers with
-  unrelated detail, and makes the document easier to navigate.
+- **Branch protection:** `main` and `v*.0` require PRs, reviews, and status checks.
+- **Secret prevention:** never commit credentials, tokens, or keys; use repository secret scanning and validation workflows.
+- **Critical file protection:** avoid direct changes to protected areas (`.github/workflows/`, policy/security files) unless explicitly required and approved.
+- **Signed provenance:** use GPG signing for protected-branch commits.
+- **Vulnerability reporting:** report security concerns via the repository security policy (`.github/SECURITY.md`) rather than public issue disclosure.
+- **Auditability:** approver-level actions and protected operations must remain traceable through workflow/script logs.
 
-#### 6. Style Consistency
+Keep this section aligned with repository policy whenever workflows or branch protections change.
 
-To keep documentation clear and easy to read, maintain **parallel
-structure** within lists and related sentences:
+---
 
-- Start list items with the same part of speech (typically a verb).
-- Keep grammatical patterns consistent across bullets.
-- Avoid mixing styles such as "Keep paragraphs short" with "Using lists
-  for enumerations."
-- Rewrite items as needed so the list reads smoothly and uniformly.
+## GPG Signing Setup
 
-This guideline applies to all documentation (`.md` files).
-</details>
+For commits to protected branches (main and version branches), GPG signatures are required.
 
-<details>
-<summary><strong>5. Code Guidelines</strong></summary>
+### Linux/Mac Setup
 
-## 5. Code Guidelines
+**1. Generate GPG Key**
 
-- C99.
-- POSIX.1-2001 APIs only.
-- Keep `runnerapi.h` and `testapi.h` each self-contained.
-- Keep `runnerapi.c` and `testapi.c` implementation-only.
+```bash
+gpg --gen-key
+```
 
-</details>
+Respond to prompts:
+- Kind: RSA and RSA (default)
+- Size: 4096 bits (recommended)
+- Valid for: 2y (or as desired)
+- Name: Your name
+- Email: Your GitHub email
+- Comment: (optional)
 
-<details>
-<summary><strong>6. Testing Requirements</strong></summary>
+**2. List Your Keys**
 
-## 6. Testing Requirements
+```bash
+gpg --list-secret-keys --keyid-format=long
+```
 
-- Build and run tests from the repository root:
+Output looks like:
+```
+sec   rsa4096/3AA5C34371567BD2 2016-03-10 [SC] [expires: 2017-03-10]
+      27D6D3E4F2B0D16F
+uid                 [ultimate] Hubot <hubot@example.com>
+ssb   rsa4096/42B6315D7637C87E 2016-03-10 [E] [expires: 2017-03-10]
+```
 
-```sh
+Your key ID is after `rsa4096/` - in this example: `3AA5C34371567BD2`
+
+**3. Configure Git**
+
+```bash
+# Set key ID for all commits
+git config --global user.signingkey 3AA5C34371567BD2
+
+# Sign commits by default
+git config --global commit.gpgsign true
+```
+
+**4. Add to GitHub**
+
+```bash
+# Export public key
+gpg --armor --export 3AA5C34371567BD2
+```
+
+Copy the output and add to GitHub:
+- Go to Settings → SSH and GPG keys
+- Click "New GPG key"
+- Paste the key
+- Confirm
+
+### Windows Setup
+
+**1. Install GPG**
+
+Download from https://www.gnupg.org/download/
+
+**2. Generate Key**
+
+Use Windows PowerShell:
+```powershell
+gpg --gen-key
+```
+
+Follow same steps as Linux/Mac (above)
+
+**3. Configure Git**
+
+Tell Git to use gpg.exe:
+```powershell
+git config --global gpg.program "C:\Program Files (x86)\GNU\GnuPG\bin\gpg.exe"
+git config --global user.signingkey <YOUR_KEY_ID>
+git config --global commit.gpgsign true
+```
+
+### Signing Commits
+
+Once configured, commits are automatically signed:
+
+```bash
+git commit -m "feat: add feature"  # Automatically signed
+```
+
+Or sign manually:
+
+```bash
+git commit -S -m "feat: add feature"
+```
+
+### Troubleshooting GPG
+
+**Error: "gpg failed to sign"
+
+Try:
+```bash
+# Reload GPG agent
+gpg-connect-agent updatestartuptty /bye
+
+# Or restart agent
+killall gpg-agent
+```
+
+**Key not found**
+
+Verify key exists:
+```bash
+gpg --list-secret-keys
+```
+
+**GitHub doesn't show verified badge**
+
+- Verify public key is added to GitHub
+- Verify commit email matches GitHub account email
+- Wait a few seconds (GitHub takes time to verify)
+
+---
+
+## Versioning Guidelines
+
+Versioning format: `M.m.p` (major, minor, patch)
+
+- **Patch (e.g., 1.0.1):** Bug fixes, improvements, doc corrections
+- **Minor (e.g., 1.1.0):** New features, backward compatible
+- **Major (e.g., 2.0.0):** Breaking changes, incompatibilities
+
+**Versioned files:**
+- `include/runnerapi.h`, `src/runnerapi.c`
+- `include/testapi.h`, `src/testapi.c`
+- `docs/md/*.md` (except README.md)
+
+Run `scripts/bin/ckversions` to validate consistency.
+
+---
+
+## Branding
+
+- **Brand name:** briteTest
+- **Distinctive camelCase** aligns with `bT` monogram
+- Update branding with: `scripts/bin/updatebrand`
+
+---
+
+## Documentation Guidelines
+
+- Root `README.md` remains short and onboarding-focused
+- Technical tone: precise, neutral, clear
+- Use backticks for code identifiers
+- Use fenced code blocks for examples
+- Maintain parallel structure in lists
+- Define terms once, use consistently
+
+---
+
+## Code Guidelines
+
+- C99 standard
+- POSIX.1-2001 APIs only
+- Keep headers self-contained
+- Add MIT license header to new files
+
+---
+
+## Testing Requirements
+
+```bash
 make run
 ```
 
-- Ensure report formatting changes are reflected in documentation examples.
-- Keep test code aligned with the current version of `runnerapi.h` and
-  `testapi.h`.
-</details>
+- Ensure all tests pass before opening PR
+- Update tests when code changes
+- Include test coverage for new features
 
-<details>
-<summary><strong>7. CODEOWNERS and Review Routing</strong></summary>
+---
 
-## 7. CODEOWNERS and Review Routing
-
-This repository uses `<repo>/.github/CODEOWNERS` to request review from
-code owners when pull requests (PRs) change matching files.
-
-### 7.1. Ownership Model
-
-- Default owner for the repository: `paulsinclair51`
-- No subset ownership rules are currently active.
-- Future subset rules may be added for specific paths (for example, `/docs/`,
-  `/.github/workflows/`, etc.).
+## CODEOWNERS and Review Routing
 
-### 7.2. How Matching Works
+- **Default owner:** `paulsinclair51`
+- CODEOWNERS affects who is **requested** for review
+- CODEOWNERS does **not** block merges alone
+- Blocking depends on branch protection rules
 
-- CODEOWNERS entries follow wildcard path matching.
-- If multiple rules match a file, **the last matching rule wins**.
-- If one winning rule has multiple owners, all owners on that line are requested.
+See `.github/CODEOWNERS` for details.
 
-See `<repo>/.github/CODEOWNERS` for more details.
+---
 
-### 7.3. Important Notes
+## Making Modifications in a Branch
 
-- CODEOWNERS affects **who is requested for review**.
-- CODEOWNERS alone does **not** block merges.
-- Merge blocking depends on active branch protection/rulesets requiring approvals
-  and/or code owner review.
-
-### 7.4. Related Repository Controls
-
-- Branch name validation workflow: `/.github/workflows/branch-name-validation.yml`
-- Ruleset setup script: `/scripts/setup-rulesets.sh`
-</details>
-
-<details>
-<summary><strong>8. Making Modifications in a Branch</strong></summary>
-
-## 8. Making Modifications in a Branch
-
-- Define modifications that are focused (not mixing unrelated changes),
-  logically grouped, and well-scoped.
-- Define an appropriate name for your changes to use as the branch name.
-- Obtain preliminary approval and target release for the modifications
-  and branch name.
-- Create a branch using your branch name.
-- Modify the code in the branch as needed.
-- Modify the documentation in the branch as needed in parallel with any
-  code changes.
-- Ensure the modifications in the branch are still focused (not mixing
-  unrelated changes), logically grouped, and well-scoped.
-- Ensure modifications follow the Documentation Guidelines and the Code
-  Guidelines.
-- Ensure version numbers are updated for modified versioned files as
-  needed per the Versioning Guidelines.
-- Include test coverage for new behavior and modifications.
-- Ensure tests pass: run `make run` from the repository root.
-
-</details>
-
-<details>
-<summary><strong>9. Pull Request (PR)</strong></summary>
-
-## 9. Pull Request (PR)
-
-A **Pull Request (PR)** is a formal proposal to merge your code changes
-into the `main` branch of the repository. It's the mechanism that
-enables code review, quality assurance, and collaborative development
-before changes become part of the official codebase.
-
-### Pull Request Workflow
-
-#### Step 1: Prepare Your Changes
+1. Create focused, logically grouped changes
+2. Update documentation in parallel with code
+3. Update version numbers in versioned files
+4. Follow code and documentation guidelines
+5. Include test coverage
+6. Verify tests pass: `make run`
 
-Before submitting a PR:
+---
 
-- Ensure changes for the PR are focused (not mixing unrelated changes),
-  logically grouped, and well-scoped.
-- Update documentation as needed in parallel with code changes.
-- Ensure changes follow the Documentation Guidelines and Code Guidelines.
-- Update version numbers of modified versioned files as needed per the
-  Versioning Guidelines.
-- Include test coverage for new behavior and modifications.
-- Ensure tests pass: run `make run` from the repository root.
-
-#### Step 2: Create the Pull Request
+## Pull Request (PR)
 
-- Push your branch to the repository
-- Open a PR on GitHub with a clear title and description
-- Reference any related issues or discussions
-- Ensure the PR scope is minimal and logically grouped
-
-#### Step 3: Code Review and Approval
-
-- An **approver** (contributor with commit access) and, optionally, other
-  contributors review the PR to verify:
-  - Tests pass and there are no regressions,
-  - Versioning rules are enforced,
-  - Documentation consistency is maintained,
-  - Changes align with code and contribution guidelines,
-  - An approver or a reviewer may request changes.
-- The approver does one of the following:
-  - Approves the PR for the next release - continue with Step 4.
-  - Rejects the PR.
-  - Defers the PR for a subsequent release. The contributor may resubmit the PR
-    after the next release is committed or when advised by the approver.
-
-#### Step 4: Merge into Main
-
-- Once approved, the PR is merged into the `main` branch.
-- Changes are now part of the official codebase but not yet released.
-- The branch can be deleted after merging.
-
-### Versioning Checklists
-
-Use this checklist to ensure version numbers are correct before opening a PR:
-
-**Before Opening the PR:**
-
-- [ ] I have identified which versioned files I modified (API headers `.h`, API
-      implementations `.c`, documentation `.md`).
-- [ ] I have determined the appropriate version change (patch, minor, or major)
-      per the Versioning Guidelines.
-- [ ] I have updated the version numbers in all affected files:
-  - [ ] For patch changes: incremented patch only in the modified file(s).
-  - [ ] For minor changes: updated all versioned files to the same major.minor
-        with patch reset to 0.
-  - [ ] For major changes: updated all versioned files to the same major
-        value with minor and patch reset to 0.
-- [ ] I have verified version consistency locally by running:
-      `scripts/bin/ckversions`
-- [ ] For documentation files, I have added a new entry to the top of the
-      Document Version History table with today's date and a brief comment.
-- [ ] If I am making an exception to the versioning guidelines, I have
-      included written justification in my PR description.
+### Pre-PR Checklist
 
-**In the PR Description:**
+- [ ] Changes are focused and logically grouped
+- [ ] Documentation updated
+- [ ] Version numbers updated (if needed)
+- [ ] License headers on new files
+- [ ] Tests pass: `make run`
+- [ ] Commits follow conventional format
+- [ ] No secrets or credentials
+- [ ] No files > 10MB
+- [ ] No protected file modifications
 
-- [ ] PR title and description clearly describe the change.
-- [ ] If versioning is non-standard or requires an exception, I have
-      explained why and which guideline is being deviated from.
-- [ ] If this is a minor or major release, I have summarized the impact
-      on users and any migration requirements.
+### Opening and Reviewing
 
-**During Review:**
+1. Push your branch to repository
+2. Open PR on GitHub with clear title and description
+3. Verify base branch is correct (PR should target version or contributor branch, NOT main)
+4. GitHub runs validation workflows automatically
+5. Reviewers examine for quality, correctness, standards
+6. Address feedback and re-push
+7. Once approved and checks pass, approver merges
 
-- [ ] Reviewers will verify version changes align with the guidelines
-      during code review.
-- [ ] CI will automatically run `ckversions` and report consistency
-      errors.
-- [ ] If CI or reviewers request version updates, I will make the
-      corrections and re-push.
+---
 
-**Approver Verification:**
+## Release
 
-- [ ] Approver confirms CI version check passed.
-- [ ] Approver confirms version numbers align with the Versioning
-      Guidelines and PR justification (if any).
+1. **Prepare:** Summary of changes, verify versions, ensure compatibility
+2. **Validate:** `make run`, check for stale references
+3. **Commit:** Clear message with version updates and release notes
+4. **Tag:** `git tag v1.2.3` and push
+5. **Publish:** Create GitHub release with notes
 
-</details>
+---
 
-<details>
-<summary><strong>10. Release</strong></summary>
+## Protected Branches
 
-## 10. Release
+Protected branches require:
+- ✓ Pull request before merging
+- ✓ Status checks pass
+- ✓ Approvals from code owners
+- ✗ No force pushes
+- ✗ No direct commits
+- ✗ No deletions
 
-A **Release** is the act of publishing a specific version for public use.
-It packages approved and merged changes into a versioned, immutable
-snapshot that users can download and depend on.
+---
 
-### Release Workflow
+## Troubleshooting FAQ
 
-#### Step 1: Prepare the Release
+### Validation Failures
 
-Before releasing:
+**Q: "Commit message format is invalid"
 
-- Prepare a preliminary release note for users that summarizes the changes.
-- Verify if release qualifies as a major, minor, or patch.
-- Verify modified versioned files have the correct versions consistently
-  across all files per the Versioning Guidelines.
-- Ensure API compatibility guidelines are followed.
-- Document all breaking changes with migration guidance.
-- Test thoroughly.
-- Finalize a clear and concise release note.
-
-#### Step 2: Validate Changes
-
-- Run `make run` to ensure all tests pass
-- Run `make pdf` to verify branding updates in generated documents
-- Perform repository-wide text search for stale old-version references
-- Ensure all changes align with API compatibility guidelines:
-  - Do not change API signatures.
-  - Do not change API behavior.
-  - Do not change exit and return code meanings.
-  - Deprecate before removing.
-  - Provide migration guidance for major changes.
-
-#### Step 3: Create Release Commit
-
-- Create a commit with clear message documenting the release.
-- Include version updates for all files.
-- Include updated documentation and version history tables.
-- Optionally, update `README.md` with release notes.
-
-#### Step 4: Tag and Publish
-
-- Tag the commit with the new version (e.g., `v1.2.3`).
-- Push the tag to the repository.
-- Create a GitHub release with the release note.
-- Make the release publicly available for download.
-
-</details>
-
-<details>
-<summary><strong>11. Protected Branches</strong></summary>
-
-## 11. Protected Branches
-
-This section explains how to set up a pre-commit hook to prevent accidental commits
-to protected branches.
-
-### What are Protected Branches?
-
-Protected branches are critical branches that should not receive
-direct commits. The branch management scripts (`mkbranch` and
-`rmbranch`) prevent deletion of:
-
-- `main`
-
-### Setting Up a Pre-commit Hook
-
-A pre-commit hook prevents commits to these protected branches
-before they're pushed to the remote.
-
-#### 1. Create the hook file
-
-Create `.git/hooks/pre-commit` in your repository:
-
+**A:** Use conventional format: `<type>: <description>`
 ```bash
-touch .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
+# ❌ Wrong
+git commit -m "Add new feature"
+
+# ✅ Correct
+git commit -m "feat: add new feature"
 ```
 
-#### 2. Add the hook script
+Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
-Edit `.git/hooks/pre-commit` and add:
+**Q: "File size exceeds 10MB"
 
+**A:** Don't commit large binary files. Use Git LFS instead:
 ```bash
-#!/usr/bin/env bash
+# Install Git LFS
+git lfs install
 
-# Pre-commit hook to prevent commits to protected branches
-# This hook runs before every commit to check the current branch
-
-PROTECTED_BRANCHES=("main" "master" "develop" "development")
-
-# Get current branch
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-
-# Check if current branch is protected
-for protected in "${PROTECTED_BRANCHES[@]}"; do
-  if [[ "$CURRENT_BRANCH" == "$protected" ]]; then
-    echo "Error: You are trying to commit to the protected branch '$CURRENT_BRANCH'"
-    echo "Please create a feature branch using: scripts/bin/mkbranch -r <branchname> $CURRENT_BRANCH"
-    exit 1
-  fi
-done
-
-exit 0
+# Track large files
+git lfs track "*.bin"
+git add .gitattributes
 ```
 
-#### 3. Make it executable
+**Q: "Protected file cannot be modified"
 
+**A:** Don't modify LICENSE, SECURITY.md, or .github/workflows/ unless approved.
+For legitimate changes, contact the repository owner.
+
+**Q: "Secrets detected in code"
+
+**A:** Remove credentials immediately:
 ```bash
-chmod +x .git/hooks/pre-commit
+# Remove the file from history
+git filter-repo --path <file> --invert-paths
+
+# Rotate/regenerate the credential
+# (password, API key, token, etc.)
 ```
 
-### Alternative: Shared Hook Setup
+**Q: "License headers missing"
 
-For teams, you can store hooks in version control and set them up automatically:
+**A:** Add MIT license header to new source files:
+```c
+// Copyright (c) 2026 Paul Sinclair
+// SPDX-License-Identifier: MIT
+```
 
-#### 1. Create a hooks directory in your repository
+### Git Operations
 
+**Q: "I accidentally committed to main"
+
+**A:** Don't panic. Contact repository owner. Main is protected so direct commits should fail.
+
+**Q: "How do I undo the last commit?"
+
+**A:** If not pushed:
 ```bash
-mkdir -p .githooks
+git reset --soft HEAD~1  # Keep changes
+git reset --hard HEAD~1  # Discard changes
 ```
 
-#### 2. Create the pre-commit hook
+**Q: "How do I update my branch with latest main?"
 
-Save the script above to `.githooks/pre-commit` and make it executable:
-
+**A:**
 ```bash
-chmod +x .githooks/pre-commit
+git fetch origin
+git rebase origin/main
+git push --force-with-lease origin <branch>
 ```
 
-#### 3. Configure Git to use this directory
+**Q: "Can I delete a branch?"
 
+**A:** Use the safe deletion script:
 ```bash
-git config core.hooksPath .githooks
+scripts/bin/rmbranch <branch_name>
 ```
 
-Or configure it globally for your user:
+Protected branches (main, v*.0) cannot be deleted.
 
+### Merge and Reviews
+
+**Q: "PR is blocked by validation checks"
+
+**A:** Look at the failing check:
+1. Click on the red X next to the workflow
+2. Read the error message
+3. Fix locally
+4. Re-push (validation runs automatically)
+
+**Q: "Reviewer requested changes, what do I do?"
+
+**A:**
+1. Read the review comments
+2. Make the requested changes
+3. Commit and push
+4. Comment: "Updated. Ready for re-review."
+5. Re-request review
+
+**Q: "My PR has been merged, how do I get local changes?"
+
+**A:**
 ```bash
-git config --global core.hooksPath ~/.githooks
+git fetch origin
+git pull origin main  # or version branch
 ```
 
-#### 4. Commit the hooks directory
+---
 
+## Team Onboarding Checklist
+
+For new contributors to briteTest:
+
+### Before First Commit
+
+- [ ] **Read the Contributor Guide** (this document)
+- [ ] **Read Contributor Reference** for script details
+- [ ] **Clone the repository**
+  ```bash
+  git clone https://github.com/paulsinclair51/briteTest.git
+  cd briteTest
+  ```
+- [ ] **Set up Git configuration**
+  ```bash
+  git config user.name "Your Name"
+  git config user.email "your.email@example.com"
+  ```
+- [ ] **Set up GPG signing** (see [GPG Signing Setup](#gpg-signing-setup) section)
+- [ ] **Set up pre-commit hook** (see [Setting Up Pre-commit Hooks](#setting-up-pre-commit-hooks) section)
+- [ ] **Verify Git configuration**
+  ```bash
+  git config --global --list
+  ```
+
+### First Contribution
+
+- [ ] **Pick a task** (start with something small)
+- [ ] **Create a branch**
+  ```bash
+  scripts/bin/mkbranch -r mywork/description main
+  ```
+- [ ] **Make changes**
+  ```bash
+  git checkout mywork/description
+  # Edit files...
+  ```
+- [ ] **Test locally**
+  ```bash
+  make run  # Ensure all tests pass
+  ```
+- [ ] **Check branch naming**
+  ```bash
+  bash scripts/helpers/ckbranchname.sh mywork/description
+  # Should return exit code 4 (contributor branch)
+  ```
+- [ ] **Commit with conventional format**
+  ```bash
+  git add .
+  git commit -m "feat: add new feature"
+  # Will be GPG signed automatically
+  ```
+- [ ] **Push your branch**
+  ```bash
+  git push origin mywork/description
+  ```
+- [ ] **Open a Pull Request on GitHub**
+  - Go to https://github.com/paulsinclair51/briteTest
+  - Click "New Pull Request"
+  - Select your branch as source
+  - Select main (or appropriate base branch) as target
+  - Fill in title and description
+  - Submit
+- [ ] **Wait for validation**
+  - GitHub runs 15+ workflows automatically
+  - All should pass with green checkmarks
+  - If any fail, fix locally and re-push
+- [ ] **Request review**
+  - Assign reviewer if applicable
+  - Request review from `@paulsinclair51`
+- [ ] **Respond to feedback**
+  - Read review comments
+  - Make requested changes
+  - Re-push
+  - Re-request review
+- [ ] **Celebrate merge**
+  - Once approved and checks pass, approver merges
+  - Your contribution is now in the codebase!
+
+### Quick Reference
+
+Common commands:
 ```bash
-git add .githooks/
-git commit -m "Add pre-commit hooks for protected branches"
+# Create branch
+scripts/bin/mkbranch -r mywork/feature main
+
+# Switch to branch
+git checkout mywork/feature
+
+# Make changes and commit
+git add .
+git commit -m "feat: description"
+
+# Push to GitHub
+git push origin mywork/feature
+
+# Validate branch name
+bash scripts/helpers/ckbranchname.sh mywork/feature
+
+# Run tests
+make run
+
+# Delete branch
+scripts/bin/rmbranch mywork/feature
 ```
 
-### How It Works
+### Getting Help
 
-When you try to commit on a protected branch:
+- **This guide:** `docs/md/Contributor_Guide.md`
+- **Script reference:** `docs/md/Contributor_Reference.md`
+- **SCM deep dive:** `docs/SCM_REVIEW.md`
+- **Issue:** Open an issue on GitHub
+- **Question:** Start a discussion on GitHub Discussions
 
-```bash
-$ git commit -m "some change"
-Error: You are trying to commit to the protected branch 'main'
-Please create a feature branch using: scripts/bin/mkbranch -r <branchname> main
-```
+---
 
-The commit is rejected, and you must:
+## Related Documents
 
-1. Switch to or create a feature branch.
-2. Make your changes on that branch.
-3. Create a pull request for review.
-
-### Recommended Workflow
-
-1. **Create a feature branch:**
-
-   ```bash
-   scripts/bin/mkbranch -r my-feature main
-   ```
-
-2. **Make your changes:**
-
-   ```bash
-   git add .
-   git commit -m "Add my feature"
-   ```
-
-3. **Push to remote:**
-
-   ```bash
-   git push origin patch/my-feature
-   ```
-
-4. **Create a pull request** on GitHub/GitLab
-
-5. **After approval, merge and clean up:**
-
-   ```bash
-   scripts/bin/rmbranch -a patch/my-feature
-   ```
-
-### Troubleshooting
-
-#### Hook is not running
-
-Check that:
-
-- The hook file is executable: `ls -la .git/hooks/pre-commit`
-- The shebang line is correct: `#!/usr/bin/env bash`
-- Git hooks are enabled in your repository
-
-### Need to bypass the hook (not recommended)
-
-Use the `--no-verify` flag to skip hooks:
-
-```bash
-git commit --no-verify -m "message"
-```
-
-**Note:** This should only be used in emergencies and is not
-recommended for shared repositories.
-
-### Additional Server-Side Protection
-
-For maximum protection, configure branch protection rules in
-your repository settings:
-
-1. Go to Repository Settings -> Branches
-2. Add a branch protection rule for `main`, `master`, `develop`, etc.
-3. Enable:
-   - Require pull request reviews
-   - Require status checks to pass
-   - Dismiss stale pull request approvals
-   - Require branches to be up to date before merging
-
-This prevents any direct pushes to protected branches, even if
-someone bypasses the local hook.
-</details>
-
-<details>
-<summary><strong>12. Repository Ownership, Rulesets, and Recovery/strong></summary>
-
-##12. Repository Ownership, Rulesets, and Recovery
-
-### 12.1. can run `setup-rulesets.sh`?
-
-The script at  
-`https://github.com/paulsinclair51/briteTest/blob/main/scripts/setup-rulesets.sh`  
-can be run by anyone with local shell access, but it will only succeed if the
-authenticated GitHub identity has sufficient repository permissions.
-
-In practice, this means a repository owner/admin (or an organization role with
-equivalent ruleset-management permission).
-
-### 11.2.Rules and prerequisites for running the script
-
-Before running:
-
-- Install GitHub CLI (`gh`) and `jq`.
-- Authenticate GitHub CLI (`gh auth status`).
-- Ensure token/account has permission to manage repository rulesets.
-
-What the script does on each run:
-
-- Creates missing rulesets.
-- Updates existing rulesets by name.
-- Cleans up duplicate rulesets with the same name.
-- Applies protections for:
-  - `main`
-  - `v*.*.0`
-  - `dev/*-v*.*.0`
-  - `fix/*-v*.*.0`
-
-Status-check note:
-
-- The rulesets require a status check context named `Validate branch`.
-- If the workflow/job check name differs, update the script or ruleset context.
-
-### 12.3. CODEOWNERS and number of owners
-
-`CODEOWNERS` supports multiple owners per path pattern (users and/or teams).
-
-Example:
-
-```text
-* @paulsinclair51 @example-org/maintainers
-```
-
-When code-owner review is required by rulesets, an eligible code owner review
-must be provided according to repository settings.
-
-### 12.4. If the last owner is unavailable
-
-There is no normal self-promotion path for non-owners.
-
-- Personal repository: only the account owner controls ownership/admin access.
-- Organization repository: another org owner can grant owner/admin rights.
-- If no accessible owner remains, use GitHub account/org recovery and contact
-  GitHub Support as needed.
-
-### 12.5. Recovery fallback: migrate to a new repository
-
-If ownership cannot be recovered, create a new repository and migrate:
-
-1. Create a new target repository under an accessible account/org.
-2. Mirror-push full history (branches/tags/commits) if source is readable.
-3. Recreate settings:
-   - collaborators/teams/roles
-   - rulesets and branch protections
-   - secrets/variables/environments
-   - webhooks and app/deploy integrations
-4. Validate workflows, required checks, CODEOWNERS behavior, and release flow.
-5. If possible, archive old repo and add a “moved” notice linking to the new
-   repository.
-
-### 12.6. Harden Ownership Risk
-
-- Use an organization (not single personal account) for critical repos.
-- Maintain at least 2 org owners.
-- Keep a break-glass admin account with secure 2FA.
-- Periodically export settings/check access.
-</details>
-
-<details>
-<summary><strong>13. Glossary</strong></summary>
-
-## 13. Glossary
-
-For a glossary of terms generally used in the documentation, see
-the Glossary Reference.
-
-Contributor-Specific Terms:
-
-- **Approver**: A contributor with commit access who reviews pull requests,
-  enforces versioning rules, and ensures documentation consistency.
-- **Breaking Change**: A change that alters public API behavior, removes or
-  renames macros, changes return semantics, or requires a major version bump.
-- **Contributor**: A person submitting code, documentation, fixes, or
-  improvements.
-- **Deprecated**: A public API element marked for removal in a future major
-  version, requiring documentation updates and migration guidance.
-- **Documentation Update**: Any modification to versioned documentation requires
-  incrementing the update version or, if an API major version is incremented,
-  incrementing the major version per the Versioning Guidelines.
-- **Internal API Change**: A change to an API's internals that does not affect
-  public API users but may require updates to an Internal Guide or Internal
-  Reference.
-- **Major Increment**: A structural or conceptual overhaul that causes a
-  breaking change.
-- **Public API Change**: Any modification to the Runner Framework/API or the
-  Test API that requires a major version bump.
-- **Pull Request**: A formal proposal to merge changes into a target branch
-  for review and approval.
-- **Release**: A published, versioned snapshot of the project made available
-  to users.
-- **Test Coverage Requirement**: The expectation that all code changes include
-  new tests (if adding behavior), updated tests (if modifying behavior), and no
-  regressions.
-- **Versioned Files**: Files that include a version and version history.
-
-</details>
+- [Contributor_Reference.md](./Contributor_Reference.md) - Script reference and tools
+- [SCM_REVIEW.md](../SCM_REVIEW.md) - Detailed SCM system analysis
+- [README.md](../../README.md) - Project overview

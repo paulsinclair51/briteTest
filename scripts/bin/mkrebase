@@ -27,14 +27,17 @@ Arguments:
   that version instead.
 
 Options:
+  -d                Validate only without performing rebase (dry-run).
+  -f                Force rebase with --force-with-lease push to remote.
   -h, --help        Output this help to stdout and exit (other options
                     and arguments are ignored).
-  -v                Validate only without performing rebase (dry-run).
-  -f, --force       Force rebase with --force-with-lease push to remote.
   -m "MSG"          Attach a comment/reason to the operation
-                    Usage: mkrebase v2.2.0 -m "Retarget to latest minor release."
+                    Usage: mkrebase v2.2.0 -m
+                    "Retarget to latest minor release."
   --message "MSG"   Attach a comment/reason to the operation
-                    Usage: mkrebase v2.2.0 --message "Retarget to latest minor release."
+                    Usage: mkrebase v2.2.0 --message
+                    "Retarget to latest minor release."
+  -v                Verbose output.
   -- MSG            Attach comment/reason (everything after -- is the comment)
                     Usage: mkrebase v2.2.0 -- Retarget to latest minor release
                     Note: No quotes needed, captures all remaining arguments.
@@ -49,12 +52,15 @@ Modes:
     - Log the operation to 'logs/remote_branch_history.md'.
     - Show instructions for force pushing if needed.
 
-  Validate (-v):
+  Validate (-d):
     - Verify the current branch can be rebased.
     - Verify the new base branch exists.
     - Check if rebase would succeed without actually performing it.
     - Report validity without making changes.
     - Exit with status code indicating validity.
+
+  Verbose (-v):
+    - Print additional progress and decision details.
 
 Examples: Basic usage.
   mkrebase v2.2.0
@@ -65,8 +71,12 @@ Examples: With comment.
   mkrebase main -- Retarget feature to main
 
 Examples: Validation mode.
+  mkrebase -d v2.2.0
+  mkrebase -d main
+
+Examples: Verbose mode.
   mkrebase -v v2.2.0
-  mkrebase -v main
+  mkrebase -v -f main
 
 Examples: With force push.
   mkrebase -f v2.2.0
@@ -76,7 +86,8 @@ Examples: With force push.
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 Exit codes:
   0   Success (or validation passed).
@@ -108,7 +119,14 @@ source "$SCRIPT_DIR/../helpers/history_log.sh"
 # Default options
 MODE="rebase"  # rebase or validate
 FORCE=false
+VERBOSE=0
 COMMENT=""
+
+log_verbose() {
+  if [[ "$VERBOSE" -eq 1 ]]; then
+    echo "[verbose] $*"
+  fi
+}
 
 
 log_operation() {
@@ -133,7 +151,9 @@ error_exit() {
   echo "Error: $message" >&2
 
   if [[ -n "$branch" && -n "$newbase" ]]; then
-    log_operation "FAILED" "$branch" "$newbase" "Rebase of \`$branch\` onto \`$newbase\` failed - $message" "$comment"
+    log_operation "FAILED" "$branch" "$newbase" \
+      "Rebase of \`$branch\` onto \`$newbase\` failed - $message" \
+      "$comment"
   fi
 
   exit "$code"
@@ -143,17 +163,17 @@ error_exit() {
 POSITIONAL_ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -h | --help)
-      usage
-      exit 0
-      ;;
-    -v)
+    -d)
       MODE="validate"
       shift
       ;;
-    -f | --force)
+    -f)
       FORCE=true
       shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
@@ -164,6 +184,10 @@ while [[ $# -gt 0 ]]; do
       fi
       COMMENT="$2"
       shift 2
+      ;;
+    -v)
+      VERBOSE=1
+      shift
       ;;
     --)
       # Unix-style comment: everything after -- is the comment
@@ -195,6 +219,10 @@ fi
 
 NEWBASE="$1"
 
+log_verbose "Mode: $MODE"
+log_verbose "New base argument: $NEWBASE"
+log_verbose "Force push enabled: $FORCE"
+
 # Validate arguments
 if [[ -z "$NEWBASE" ]]; then
   error_exit 1 "New base branch name cannot be empty" "" "" "" "$COMMENT"
@@ -205,10 +233,13 @@ cd "$REPO_ROOT"
 
 # Get current branch
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+log_verbose "Current branch: $CURRENT_BRANCH"
 
 # Validate current branch state
 if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
-  error_exit 2 "You are in a detached HEAD state. Please checkout a branch first." "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
+  error_exit 2 "You are in a detached HEAD state." \
+    "Please checkout a branch first." \
+    "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
 fi
 
 if [[ -z "$CURRENT_BRANCH" ]]; then
@@ -216,19 +247,26 @@ if [[ -z "$CURRENT_BRANCH" ]]; then
 fi
 
 if [[ "$CURRENT_BRANCH" == "main" ]]; then
-  error_exit 2 "Cannot rebase the main branch. Please checkout a feature branch first." "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
+  error_exit 2 "Cannot rebase the main branch." \
+    "Please checkout a feature branch first." \
+    "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
 fi
 
 # Check if current branch contains a period (version branch like v2.1.3)
 if [[ "$CURRENT_BRANCH" == *"."* ]]; then
-  error_exit 2 "Cannot rebase release/version branches (branches with version numbers like v2.1.3). Use 'mkmerge' to integrate version branches." "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
+  error_exit 2 \
+    "Cannot rebase release/version branches (branches with version "\
+"numbers like v2.1.3). Use 'mkmerge' to integrate version branches." \
+    "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
 fi
 
 # Fetch latest refs from remote
 echo "Fetching latest refs from remote..."
 if ! git fetch origin >/dev/null 2>&1; then
-  error_exit 5 "Failed to fetch from remote" "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
+  error_exit 5 "Failed to fetch from remote" \
+    "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
 fi
+log_verbose "Fetched origin successfully"
 
 # Check if new base branch exists (check both local and remote)
 if ! git rev-parse --verify "$NEWBASE" >/dev/null 2>&1; then
@@ -237,11 +275,13 @@ if ! git rev-parse --verify "$NEWBASE" >/dev/null 2>&1; then
       echo "Base branch '$NEWBASE' does not exist"
       exit 9
     else
-      error_exit 7 "Base branch '$NEWBASE' does not exist" "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
+      error_exit 7 "Base branch '$NEWBASE' does not exist" \
+        "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
     fi
   fi
   NEWBASE="origin/$NEWBASE"
 fi
+log_verbose "Resolved new base reference: $NEWBASE"
 
 # If validate mode, we're done (all checks passed)
 if [[ "$MODE" == "validate" ]]; then
@@ -252,25 +292,34 @@ fi
 # Perform the rebase
 echo "Rebasing '$CURRENT_BRANCH' onto '$NEWBASE'..."
 if ! git rebase "$NEWBASE"; then
-  error_exit 5 "Failed to rebase branch '$CURRENT_BRANCH' onto '$NEWBASE'. Resolve conflicts and run 'git rebase --continue' or 'git rebase --abort'." "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
+  error_exit 5 \
+    "Failed to rebase branch '$CURRENT_BRANCH' onto '$NEWBASE'. "\
+"Resolve conflicts and run 'git rebase --continue' or 'git rebase --abort'." \
+    "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
 fi
 
 echo "Successfully rebased '$CURRENT_BRANCH' onto '$NEWBASE'"
 
 # Log the operation
-log_operation "SUCCESS" "$CURRENT_BRANCH" "$NEWBASE" "Branch \`$CURRENT_BRANCH\` rebased onto \`$NEWBASE\`." "$COMMENT"
+log_operation "SUCCESS" "$CURRENT_BRANCH" "$NEWBASE" \
+  "Branch \`$CURRENT_BRANCH\` rebased onto \`$NEWBASE\`." "$COMMENT"
 
 # Show instructions for pushing
 echo ""
 if [[ "$FORCE" == true ]]; then
   echo "Force pushing to remote with --force-with-lease..."
   if ! git push origin "$CURRENT_BRANCH" --force-with-lease; then
-    error_exit 5 "Failed to force push branch to remote" "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
+    error_exit 5 "Failed to force push branch to remote" \
+      "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
   fi
   echo "Branch successfully force pushed to remote"
-  log_operation "SUCCESS" "$CURRENT_BRANCH" "$NEWBASE" "Branch \`$CURRENT_BRANCH\` force pushed to remote after rebase onto \`$NEWBASE\`." "$COMMENT"
+  log_operation "SUCCESS" "$CURRENT_BRANCH" "$NEWBASE" \
+    "Branch \`$CURRENT_BRANCH\` force pushed to remote after rebase" \
+    "onto \`$NEWBASE\`." \
+    "$COMMENT"
 else
-  echo "To push the rebased branch to remote (use with caution, as history is rewritten):"
+  echo "To push the rebased branch to remote" \
+    "(use with caution, as history is rewritten):"
   echo "  git push origin $CURRENT_BRANCH --force-with-lease"
 fi
 

@@ -1,4 +1,4 @@
-name: Defines Branch Names Validation and Branch Workflow
+name: Defines Branch Name Validation and Branch Workflow
 
 # Define the GitHub workflow for branch name validation.
 
@@ -39,7 +39,7 @@ name: Defines Branch Names Validation and Branch Workflow
 #       [<type>/]<description>
 #
 #     where <type> consists of between 1 and 30 lowercase letters (for example,
-@     'dev', 'fix', or 'mywork') and <description> is as defined above.
+#     'dev', 'fix', or 'mywork') and <description> is as defined above.
 #
 # Protected branches:
 #
@@ -74,63 +74,116 @@ jobs:
     name: Validate branch
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Check branch rules
         shell: bash
         env:
           BASE_REF: ${{ github.base_ref }}
           HEAD_REF: ${{ github.head_ref }}
+          # Optional comma-separated actor allowlist for internal/bot PRs.
+          # Example: dependabot[bot],github-actions[bot]
+          CKROLE_TRUSTED_ACTORS: ${{ vars.CKROLE_TRUSTED_ACTORS }}
         run: |
           set -euo pipefail
 
-          desc='[a-z0-9]+(-[a-z0-9]+)*'
-          type='[a-z](?:[a-z]{0,29})?'
-          version_regex='^v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$'
-          targeted_regex="^(dev|fix)/${desc}-v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$"
-          contributor_regex="^((?!main$)(${type}/)?${desc})$"
+          # Get branch types using ckbranchname.sh helper
+          # Exit codes: 1=main, 2=version, 3=targeted, 4=contributor, 5=invalid
+          head_result=$(bash scripts/helpers/ckbranchname.sh "$HEAD_REF" 2>/dev/null; echo $?)
+          base_result=$(bash scripts/helpers/ckbranchname.sh "$BASE_REF" 2>/dev/null; echo $?)
 
-          # 1. 'main' branch?
-          if [[ "$HEAD_REF" == "main" ]]; then
+          # Helper function to get branch type name
+          get_type_name() {
+            local type_code=$1
+            case $type_code in
+              1) echo "main" ;;
+              2) echo "version" ;;
+              3) echo "targeted" ;;
+              4) echo "contributor" ;;
+              5) echo "invalid" ;;
+              *) echo "unknown" ;;
+            esac
+          }
+
+          head_type_name=$(get_type_name "$head_result")
+          base_type_name=$(get_type_name "$base_result")
+
+          # Validate branch type of HEAD_REF
+          if [[ $head_result -eq 5 ]]; then
+            echo "Invalid pull request: pulling source $HEAD_REF"
+            echo "has an invalid branch name."
+            exit 1
+          elif [[ $head_result -eq 1 ]]; then
             echo "Invalid pull request: pulling from main is not allowed."
             exit 1
-            
-          # 2. 'version' branch?
-          elif [[ "$HEAD_REF" =~ $version_regex ]]; then
-            if [[ "$BASE_REF" != "main" ]]; then
-              echo "Invalid pull request: version branch $HEAD_REF must only pull"
-              echo "to main and not to $BASE_REF."
-              exit 1
-            fi
-            # TODO: verify user is an approver.
+          fi
 
-          # 3. 'targeted' branch?
-          elif [[ "$HEAD_REF" =~ $targeted_regex ]]; then
-            if [[ ! "$BASE_REF" =~ $version_regex ]]; then
-              echo "Invalid pull request: targeted branch $HEAD_REF"
-              echo "must only pull to a version branch and not $BASE_REF."
-              exit 1
-            elif [[ "${HEAD_REF##*-}" != "$BASE_REF" ]]; then
-              echo "Invalid pull request: targeted branch $HEAD_REF"
-              echo "must only pull to the version branch named in its suffix"
-              echo "${HEAD_REF##*-} and not to $BASE_REF."
-              exit 1
-            fi
-            # TODO: verify user is an approver.
-
-          # 4. 'contributor' branch?
-          elif [[ "$HEAD_REF" =~ $contributor_regex ]]; then
-            # Note #1 checks for 'main' so no need to disallow here.
-            if [[ ! "$BASE_REF" =~ $targeted_regex ]] &&
-               [[ ! "$BASE_REF" =~ $contributor_regex ]]; then
-              echo "Invalid pull request: contributor branch $HEAD_REF."
-              echo "must only pull to a targeted or contributor branch and not"
-              echo "to $BASE_REF."
-              exit 1
-            # TODO: verify user is a contributor.
-
-          else
-            echo "Invalid pull request: $HEAD_REF"
-            echo "is an unexpected name for a pulling source branch."
+          # Validate branch type of BASE_REF before checking rules
+          if [[ $base_result -eq 5 ]]; then
+            echo "Invalid pull request: base branch $BASE_REF"
+            echo "has an invalid branch name."
             exit 1
           fi
+
+          # Validate BASE_REF based on HEAD_REF type
+          case $head_result in
+            # 2. 'version' branch (HEAD_REF is version)
+            2)
+              if [[ $base_result -ne 1 ]]; then
+                echo "Invalid pull request: version branch $HEAD_REF must only pull"
+                echo "to main and not to $BASE_REF (type: $base_type_name)."
+                exit 1
+              fi
+              if ! bash scripts/helpers/ckrole.sh approver; then
+                echo "Invalid pull request: $GITHUB_ACTOR must be an approver"
+                echo "to pull from version branch $HEAD_REF to $BASE_REF."
+                exit 1
+              fi
+              ;;
+
+            # 3. 'targeted' branch (HEAD_REF is targeted)
+            3)
+              if [[ $base_result -ne 2 ]]; then
+                echo "Invalid pull request: targeted branch $HEAD_REF"
+                echo "must only pull to a version branch and not to $BASE_REF"
+                echo "(type: $base_type_name)."
+                exit 1
+              fi
+              # Extract target version from HEAD_REF (everything after the last hyphen)
+              target_version="${HEAD_REF##*-}"
+              if [[ "$target_version" != "$BASE_REF" ]]; then
+                echo "Invalid pull request: targeted branch $HEAD_REF"
+                echo "must only pull to the version branch named in its suffix"
+                echo "($target_version) and not to $BASE_REF."
+                exit 1
+              fi
+              if ! bash scripts/helpers/ckrole.sh approver; then
+                echo "Invalid pull request: $GITHUB_ACTOR must be an approver"
+                echo "to pull from targeted branch $HEAD_REF to $BASE_REF."
+                exit 1
+              fi
+              ;;
+
+            # 4. 'contributor' branch (HEAD_REF is contributor)
+            4)
+              if [[ $base_result -ne 3 && $base_result -ne 4 ]]; then
+                echo "Invalid pull request: contributor branch $HEAD_REF"
+                echo "must only pull to a targeted or contributor branch and not"
+                echo "to $BASE_REF (type: $base_type_name)."
+                exit 1
+              fi
+              if ! bash scripts/helpers/ckrole.sh contributor; then
+                echo "Invalid pull request: $GITHUB_ACTOR must be a contributor"
+                echo "to pull from contributor branch $HEAD_REF to $BASE_REF."
+                exit 1
+              fi
+              ;;
+
+            *)
+              echo "Unexpected error: unable to determine branch type for $HEAD_REF"
+              exit 1
+              ;;
+          esac
 
           echo "Valid pull request from $HEAD_REF to $BASE_REF."

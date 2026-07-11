@@ -34,14 +34,16 @@ History File Format:
 Options:
   -h, --help           Output this help to stdout and exit (other options
                        and arguments are ignored).
-  -t, --type TYPE      Filter by operation type (merged, deleted, created, released, undo, etc.)
+  -t, --type TYPE      Filter by operation type
+                       (merged, deleted, created, released, undo, etc.)
   -b, --branch BRANCH  Filter by branch name (substring match)
   -u, --user USER      Filter by user (substring match)
   -l, --limit N        Limit results to N entries (0 = no limit, default: 0)
   -r, --reverse        Sort descending (oldest first, default: newest first)
   -o, --output FILE    Write results to file instead of stdout
   -v, --verbose        Show detailed formatting with full timestamps
-  -f, --file FILE      Use custom history file (default: logs/remote_branch_history.md)
+  -f, --file FILE      Use custom history file
+                       (default: logs/remote_branch_history.md)
 
 Examples:
   # Show all history entries
@@ -75,7 +77,8 @@ Examples:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 Exit codes:
   0   Success

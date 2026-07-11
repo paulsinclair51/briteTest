@@ -1,0 +1,58 @@
+name: Validate License Headers
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+
+#-----------------------------------------------------------------------------
+# LICENSE HEADER VALIDATION - Ensure MIT license attribution
+#
+# Validates that all source files have proper MIT license headers
+# and copyright attribution.
+#
+# REQUIRED HEADER:
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+#-----------------------------------------------------------------------------
+
+on:
+  pull_request:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+jobs:
+  validate-license-headers:
+    name: Validate license headers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check license headers
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          echo "=== LICENSE HEADER VALIDATION ==="
+          changed_files=$(git diff origin/$BASE_REF...origin/$HEAD_REF --name-only --diff-filter=A 2>/dev/null || echo "")
+          [[ -z "$changed_files" ]] && exit 0
+          
+          patterns="*.c *.cc *.cpp *.h *.hpp *.sh *.py *.yml *.yaml"
+          failed=0
+          
+          for file in $changed_files; do
+            [[ ! -f "$file" ]] && continue
+            # Check for source files
+            if [[ "$file" =~ \.(c|cc|cpp|h|hpp|sh|py|yml|yaml)$ ]] || [[ "$file" == "Makefile" ]]; then
+              if ! head -20 "$file" | grep -q "SPDX-License-Identifier: MIT"; then
+                echo "✗ Missing header: $file"
+                failed=$((failed + 1))
+              fi
+            fi
+          done
+          [[ $failed -eq 0 ]] && echo "✓ All files have headers" || exit 1

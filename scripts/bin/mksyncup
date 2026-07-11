@@ -14,10 +14,13 @@ Usage:
   mksyncup [OPTIONS]
   mksyncup -h | --help
 
-Merge the base branch of the current branch into current branch to sync up with latest changes.
+Merge the base branch of the current branch into current branch
+to sync up with latest changes.
 
-Automatically determines the base branch based on Git history (the branch that the current
-branch was created from). Handles simple conflicts automatically and provides instructions
+Automatically determines the base branch based on Git history
+(the branch that the current
+branch was created from). Handles simple conflicts automatically
+and provides instructions
 for complex ones.
 
 Protected branches (cannot run mksyncup):
@@ -69,7 +72,8 @@ Examples:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 Exit codes:
   0   Success
@@ -107,7 +111,8 @@ get_base_branch() {
   local current_branch="$1"
 
   local target_branch
-  target_branch=$(bt_resolve_target_branch_from_fork_point "$current_branch" "main") || {
+  target_branch=$(bt_resolve_target_branch_from_fork_point \
+    "$current_branch" "main") || {
     bt_error_exit 5 "Failed to determine base branch"
   }
 
@@ -123,7 +128,8 @@ is_protected_branch() {
   fi
   
   # Branches created from main follow release version format v<M>.<m>.<p>
-  if [[ "$branch" =~ ^v([1-9][0-9]?)\.([0-9]|[1-9][0-9]?)\.([0-9]|[1-9][0-9]?)$ ]]; then
+  if [[ "$branch" =~ ^v([1-9][0-9]?)\.([0-9]|[1-9][0-9]?)\
+\.([0-9]|[1-9][0-9]?)$ ]]; then
     return 0
   fi
   
@@ -187,12 +193,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Get current branch
-CURRENT_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+CURRENT_BRANCH=$(bt_get_current_branch || \
+  bt_error_exit 2 "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
 
 # Check if branch is protected
 if is_protected_branch "$CURRENT_BRANCH"; then
-  bt_error_exit 4 "Cannot sync up on protected branch '$CURRENT_BRANCH'. Use 'mkmerge' to merge changes to this branch."
+  bt_error_exit 4 "Cannot sync up on protected branch '$CURRENT_BRANCH'." \
+    "Use 'mkmerge' to merge changes to this branch."
 fi
 
 # Determine base branch
@@ -208,7 +216,8 @@ fi
 
 # Count commits from base branch to current branch
 commits_to_merge=""
-commits_to_merge=$(git rev-list --count "HEAD..origin/$BASE_BRANCH" 2>/dev/null || echo "0")
+commits_to_merge=$(git rev-list --count "HEAD..origin/$BASE_BRANCH" \
+  2>/dev/null || echo "0")
 
 if [[ "$commits_to_merge" == "0" ]]; then
   bt_success "Already up to date with $BASE_BRANCH"

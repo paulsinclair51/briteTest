@@ -1,0 +1,107 @@
+name: Validate Cherry Pick Operations
+
+# Define the GitHub workflow for validating cherry-pick operations.
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+#-----------------------------------------------------------------------------
+# CHERRY-PICK VALIDATION WORKFLOW - Prevent cherry-picking onto protected
+#
+# PURPOSE: Validates cherry-pick operations to ensure commits are only
+# cherry-picked to appropriate branches (not directly to protected branches).
+#
+# WHEN THIS RUNS:
+#   - After push events
+#   - Detects cherry-pick commit patterns
+#
+# WHAT IT VALIDATES:
+#   1. Detects cherry-pick operations
+#   2. Prevents cherry-picking to protected branches
+#   3. Enforces use of pull requests for all cherry-picks
+#   4. Logs cherry-pick attempts for audit
+#
+# EXPECTED OUTCOME:
+#   ✓ Cherry-picks via PR: Allowed (goes through validation)
+#   ✗ Direct cherry-picks to protected: Detected and logged
+#
+# IMPORTANT NOTES:
+#   - Cherry-picks should go through pull requests like normal commits
+#   - Direct cherry-picks to protected branches bypass PR validation
+#   - This workflow detects and audits such attempts
+#
+# For more information, see '<repo>/docs/md/Contributor_Guide.md'.
+#
+# YAML is a plain‑text, human‑readable format where indentation defines
+# structure. Files (with the extension .yml) contain YAML text and are
+# used by GitHub Actions.
+#-----------------------------------------------------------------------------
+
+on:
+  push:
+    branches:
+      - '**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-cherry-pick:
+    name: Validate cherry-pick
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 10
+
+      - name: Check cherry-pick patterns
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          # Get branch type
+          branch_result=$(bash scripts/helpers/ckbranchname.sh "$REF_NAME" 2>/dev/null; echo $?)
+
+          get_type_name() {
+            local type_code=$1
+            case $type_code in
+              1) echo "main" ;;
+              2) echo "version" ;;
+              3) echo "targeted" ;;
+              4) echo "contributor" ;;
+              5) echo "invalid" ;;
+              *) echo "unknown" ;;
+            esac
+          }
+
+          branch_type_name=$(get_type_name "$branch_result")
+
+          echo "=== CHERRY-PICK VALIDATION ==="
+          echo "Branch: $REF_NAME (type: $branch_type_name)"
+
+          # Get the latest commit message
+          latest_message=$(git log -1 --pretty=%B HEAD || echo "")
+
+          # Check if this looks like a cherry-pick
+          # Cherry-pick commits typically have "(cherry picked from commit ...)" in message
+          if echo "$latest_message" | grep -q "(cherry picked from commit"; then
+            echo "ℹ Cherry-pick operation detected"
+            echo "  Commit message: $(git log -1 --pretty=%s HEAD)"
+            
+            # Cherry-picks should not go directly to protected branches
+            if [[ $branch_result -eq 1 || $branch_result -eq 2 ]]; then
+              echo "✗ WARNING: Cherry-pick to protected branch $REF_NAME ($branch_type_name)"
+              echo "✗ Cherry-picks should go through pull requests for validation"
+              echo "✗ This bypasses normal PR validation workflow"
+              exit 1
+            else
+              echo "✓ Cherry-pick to non-protected branch (allowed)"
+              echo "ℹ Ensure cherry-picked changes are appropriate for this branch"
+            fi
+          else
+            echo "✓ No cherry-pick pattern detected"
+          fi

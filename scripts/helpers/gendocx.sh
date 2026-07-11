@@ -65,7 +65,8 @@ Examples:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 EOF
 }

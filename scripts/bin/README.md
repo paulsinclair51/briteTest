@@ -12,16 +12,23 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ### Setup and Installation
 
-- **installscripts**: Make all scripts executable and add `<repo>/scripts/bin/` to PATH.
+- **installscripts**: Make all scripts executable and add
+   `<repo>/scripts/bin/` to PATH.
 
 ### Document and Brand Management
 
-- **ckstyle**: Check style quidelines for documention, code, scripts, directory
-  guides, versions etc. for the current branch. See Contributor Guide for guidelines.
+- **ckstyle**: Check style quidelines for documention, code, scripts,
+   directory guides, versions etc. for the current branch.
+   See Contributor Guide for guidelines.
 - **gendocs**: Generate PDF and DOCX documentation.
 - **genpngs**: Generate branding PNG images from SVG files.
 - **replacephrases**: Apply configured phrase replacements in markdown files.
 - **updatebrand**: Update branding text and regenerate related assets.
+
+### Repository and Fork Management
+
+- **mkfork**: Create a fork of the repository and optionally configure it with
+  upstream remote and user as approver.
 
 ### Branch and Workflow Management
 
@@ -71,7 +78,8 @@ For more information, run:
 
 ## Usage
 
-For a script's usage information, execute the script using the `-h` option. For example,
+For a script's usage information, execute the script using the
+`-h` option. For example,
 
   ```sh
   lsbranch -h

@@ -67,7 +67,8 @@ assert_line_count() {
   local file=$3
   local actual
   actual=$(grep -Ec -- "$regex" "$file" || true)
-  [[ "$actual" -eq "$expected" ]] || fail "expected $expected matches for '$regex' in $file, found $actual"
+  [["$actual" -eq "$expected" ]] || fail "expected $expected matches for "\
+    "'$regex' in $file, found $actual"
 }
 
 run_capture() {
@@ -123,7 +124,8 @@ make_gendocs_repo() {
   local name=$1
   local repo="$tmpdir/$name"
 
-  mkdir -p "$repo/scripts/bin" "$repo/scripts/helpers" "$repo/docs/md" "$repo/docs/pdf" "$repo/docs/docx" "$repo/logs"
+  mkdir -p "$repo/scripts/bin" "$repo/scripts/helpers" \
+    "$repo/docs/md" "$repo/docs/pdf" "$repo/docs/docx" "$repo/logs"
   cp "$gendocs_script" "$repo/scripts/bin/gendocs"
 
   cat > "$repo/scripts/helpers/genpdf.sh" <<'EOF'
@@ -241,7 +243,9 @@ printf 'docx generated from %s\n' "$in" > "$out"
 printf 'gendocx %s -> %s\n' "$in" "$out" >> "$log_file"
 EOF
 
-  chmod +x "$repo/scripts/bin/gendocs" "$repo/scripts/helpers/genpdf.sh" "$repo/scripts/helpers/gendocx.sh"
+  chmod +x "$repo/scripts/bin/gendocs" \
+    "$repo/scripts/helpers/genpdf.sh" \
+    "$repo/scripts/helpers/gendocx.sh"
   printf '%s\n' "$repo"
 }
 
@@ -249,15 +253,18 @@ make_genpdf_helper_repo() {
   local name=$1
   local repo="$tmpdir/$name"
 
-  mkdir -p "$repo/scripts/helpers" "$repo/docs/branding" "$repo/in/docs/branding" "$repo/in" "$repo/out" "$repo/bin"
+  mkdir -p "$repo/scripts/helpers" "$repo/docs/branding" \
+    "$repo/in/docs/branding" "$repo/in" "$repo/out" "$repo/bin"
   cp "$genpdf_helper" "$repo/scripts/helpers/genpdf.sh"
 
-  python3 - <<'PY' "$repo/docs/branding/Logo_with_BrandName.png" "$repo/in/docs/branding/Logo_with_BrandName.png"
+  python3 - <<'PY' "$repo/docs/branding/Logo_with_BrandName.png" \
+    "$repo/in/docs/branding/Logo_with_BrandName.png"
 import base64
 import sys
 
 png = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2n8AAAAASUVORK5CYII="
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/"
+    "x8AAwMCAO+X2n8AAAAASUVORK5CYII="
 )
 for path in sys.argv[1:]:
     with open(path, "wb") as f:
@@ -384,7 +391,9 @@ EOF
   assert_file_not_exists "$repo/docs/pdf/README.pdf"
   assert_contains "Generated PDF and DOCX files." "$tmpdir/gendocs_default.out"
   assert_contains "alpha.md" "$repo/docs/md/.md_metadata"
-  assert_contains "genpdf $repo/docs/md/alpha.md -> $repo/docs/pdf/alpha.pdf" "$repo/logs/helpers.log"
+  assert_contains \
+    "genpdf $repo/docs/md/alpha.md -> $repo/docs/pdf/alpha.pdf" \
+    "$repo/logs/helpers.log"
 }
 
 test_gendocs_toolcheck() {
@@ -407,12 +416,18 @@ test_gendocs_docx_only_pdf_source() {
 
   printf 'pdf bytes\n' > "$repo/docs/pdf/existing.pdf"
 
-  bash "$repo/scripts/bin/gendocs" -d "$repo/docs/pdf/existing.pdf" "$repo/docs/docx" > "$tmpdir/gendocs_docx_only.out"
+  bash "$repo/scripts/bin/gendocs" -d \
+    "$repo/docs/pdf/existing.pdf" "$repo/docs/docx" \
+    > "$tmpdir/gendocs_docx_only.out"
 
   assert_file_exists "$repo/docs/docx/existing.docx"
-  assert_contains "gendocx $repo/docs/pdf/existing.pdf -> $repo/docs/docx/existing.docx" "$repo/logs/helpers.log"
+  assert_contains \
+    "gendocx $repo/docs/pdf/existing.pdf -> $repo/docs/docx/existing.docx" \
+    "$repo/logs/helpers.log"
   if grep -Fq "genpdf" "$repo/logs/helpers.log"; then
-    fail "did not expect genpdf helper to be used for direct pdf -> docx conversion"
+    fail \
+      "did not expect genpdf helper to be used for direct pdf -> "
+      "docx conversion"
   fi
 }
 
@@ -423,7 +438,8 @@ test_gendocs_missing_helper() {
   repo=$(make_gendocs_repo repo_missing_helper)
   rm -f "$repo/scripts/helpers/gendocx.sh"
 
-  rc=$(run_capture "$tmpdir/gendocs_missing_helper.out" bash "$repo/scripts/bin/gendocs")
+  rc=$(run_capture "$tmpdir/gendocs_missing_helper.out" \
+    bash "$repo/scripts/bin/gendocs")
   [[ "$rc" -eq 100 ]] || fail "expected missing-helper exit 100, got $rc"
   assert_contains "Missing helper script" "$tmpdir/gendocs_missing_helper.out"
 }
@@ -444,15 +460,20 @@ test_gendocs_genpdf_helper_reorders_first_png() {
 Body line.
 EOF
 
-  PATH="$repo/bin:$PATH" bash "$repo/scripts/helpers/genpdf.sh" -e "$emitted" "$input" "$output"
+  PATH="$repo/bin:$PATH" bash "$repo/scripts/helpers/genpdf.sh" -e \
+    "$emitted" "$input" "$output"
 
   assert_file_exists "$output"
   assert_file_exists "$emitted"
-  assert_line_count 1 'includegraphics\[width=\\textwidth\]\{\\detokenize\{[^}]*Logo_with_BrandName\.png\}\}' "$emitted"
+  assert_line_count 1 \
+    'includegraphics\[width=\\textwidth\]\{\\detokenize\{' \
+    '[^}]*Logo_with_BrandName\.png\}\}' \
+    "$emitted"
   assert_contains "# Title" "$emitted"
   assert_contains "Body line." "$emitted"
   if grep -Fq '![BriteTest Logo](' "$emitted"; then
-    fail "expected transformed markdown to replace markdown logo image with LaTeX includegraphics"
+    fail "expected transformed markdown to replace markdown logo \
+image with LaTeX includegraphics"
   fi
 }
 
@@ -472,14 +493,19 @@ test_gendocs_genpdf_helper_passthrough_when_png_is_first_line() {
 Body line.
 EOF
 
-  PATH="$repo/bin:$PATH" bash "$repo/scripts/helpers/genpdf.sh" -e "$emitted" "$input" "$output"
+  PATH="$repo/bin:$PATH" bash "$repo/scripts/helpers/genpdf.sh" -e \
+    "$emitted" "$input" "$output"
 
   assert_file_exists "$emitted"
-  assert_line_count 1 'includegraphics\[width=\\textwidth\]\{\\detokenize\{[^}]*Logo_with_BrandName\.png\}\}' "$emitted"
+  assert_line_count 1 \
+    'includegraphics\[width=\\textwidth\]\{\\detokenize\{' \
+    '[^}]*Logo_with_BrandName\.png\}\}' \
+    "$emitted"
   assert_contains "# Title" "$emitted"
   assert_contains "Body line." "$emitted"
   if grep -Fq '![BriteTest Logo](' "$emitted"; then
-    fail "expected transformed markdown to replace markdown logo image with LaTeX includegraphics"
+    fail "expected transformed markdown to replace markdown logo \
+image with LaTeX includegraphics"
   fi
 }
 
@@ -490,9 +516,12 @@ test_gendocx_helper_invalid_backend() {
   repo=$(make_gendocx_helper_repo repo_gendocx_invalid)
   printf 'pdf\n' > "$repo/in/input.pdf"
 
-  rc=$(run_capture "$tmpdir/gendocx_invalid.out" bash "$repo/scripts/helpers/gendocx.sh" -b invalid "$repo/in/input.pdf" "$repo/out/out.docx")
+  rc=$(run_capture "$tmpdir/gendocx_invalid.out" bash \
+    "$repo/scripts/helpers/gendocx.sh" -b invalid \
+    "$repo/in/input.pdf" "$repo/out/out.docx")
   [[ "$rc" -eq 2 ]] || fail "expected invalid-backend exit 2, got $rc"
-  assert_contains "Error: invalid backend 'invalid' (expected: auto|python|libreoffice)" "$tmpdir/gendocx_invalid.out"
+  assert_contains "Error: invalid backend 'invalid' \
+    (expected: auto|python|libreoffice)" "$tmpdir/gendocx_invalid.out"
 }
 
 test_gendocx_helper_libreoffice_backend() {
@@ -502,10 +531,13 @@ test_gendocx_helper_libreoffice_backend() {
   repo=$(make_gendocx_helper_repo repo_gendocx_libreoffice)
   printf 'pdf\n' > "$repo/in/input.pdf"
 
-  PATH="$repo/bin:$PATH" bash "$repo/scripts/helpers/gendocx.sh" -b libreoffice "$repo/in/input.pdf" "$repo/out/output.docx" > "$tmpdir/gendocx_libreoffice.out"
+  PATH="$repo/bin:$PATH" bash "$repo/scripts/helpers/gendocx.sh" -b \
+    libreoffice "$repo/in/input.pdf" "$repo/out/output.docx" > \
+    "$tmpdir/gendocx_libreoffice.out"
 
   assert_file_exists "$repo/out/output.docx"
-  assert_contains "$repo/in/input.pdf -> $repo/out/output.docx" "$tmpdir/gendocx_libreoffice.out"
+  assert_contains "$repo/in/input.pdf -> $repo/out/output.docx" \
+    "$tmpdir/gendocx_libreoffice.out"
 }
 
 run_all_tests() {
