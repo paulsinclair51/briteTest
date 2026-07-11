@@ -107,40 +107,50 @@ assert_contains "Usage:" "$TMPDIR/help.out"
 pass "help output"
 
 # 2) Local parent missing -> exit 6
-rc=$(run_capture "$TMPDIR/local-parent-missing.out" bash "$WORK/scripts/bin/mkbranch" dev/new-v3.0.0 v3.0.0)
+rc=$(run_capture "$TMPDIR/local-parent-missing.out" \
+  bash "$WORK/scripts/bin/mkbranch" dev/new-v3.0.0 v3.0.0)
 [[ "$rc" -eq 6 ]] || fail "local parent missing should exit 6 (got $rc)"
-assert_contains "Local parent branch 'v3.0.0' does not exist" "$TMPDIR/local-parent-missing.out"
+assert_contains "Local parent branch 'v3.0.0' does not exist" \
+  "$TMPDIR/local-parent-missing.out"
 pass "local parent missing exit code"
 
 # 3) Remote parent missing -> exit 7
-rc=$(run_capture "$TMPDIR/remote-parent-missing.out" bash "$WORK/scripts/bin/mkbranch" -r dev/new-v3.0.0 v3.0.0)
+rc=$(run_capture "$TMPDIR/remote-parent-missing.out" \
+  bash "$WORK/scripts/bin/mkbranch" -r dev/new-v3.0.0 v3.0.0)
 [[ "$rc" -eq 7 ]] || fail "remote parent missing should exit 7 (got $rc)"
-assert_contains "Remote parent branch 'v3.0.0' does not exist" "$TMPDIR/remote-parent-missing.out"
+assert_contains "Remote parent branch 'v3.0.0' does not exist" \
+  "$TMPDIR/remote-parent-missing.out"
 pass "remote parent missing exit code"
 
 # 4) Local branch exists -> exit 8
-rc=$(run_capture "$TMPDIR/local-exists.out" bash "$WORK/scripts/bin/mkbranch" dev/local-exists-v1.0.0 v1.0.0)
+rc=$(run_capture "$TMPDIR/local-exists.out" \
+  bash "$WORK/scripts/bin/mkbranch" dev/local-exists-v1.0.0 v1.0.0)
 [[ "$rc" -eq 8 ]] || fail "local branch exists should exit 8 (got $rc)"
 assert_contains "already exists locally" "$TMPDIR/local-exists.out"
 pass "local branch exists exit code"
 
 # 5) Remote branch exists -> exit 9
-rc=$(run_capture "$TMPDIR/remote-exists.out" bash "$WORK/scripts/bin/mkbranch" -r dev/remote-exists-v1.0.0 v1.0.0)
+rc=$(run_capture "$TMPDIR/remote-exists.out" \
+  bash "$WORK/scripts/bin/mkbranch" -r dev/remote-exists-v1.0.0 v1.0.0)
 [[ "$rc" -eq 9 ]] || fail "remote branch exists should exit 9 (got $rc)"
 assert_contains "already exists on remote" "$TMPDIR/remote-exists.out"
 pass "remote branch exists exit code"
 
 # 6) Validate mode reports specific existence exit code (not generic 10)
-rc=$(run_capture "$TMPDIR/validate-specific.out" bash "$WORK/scripts/bin/mkbranch" -d dev/local-exists-v1.0.0 v1.0.0)
+rc=$(run_capture "$TMPDIR/validate-specific.out" \
+  bash "$WORK/scripts/bin/mkbranch" -d dev/local-exists-v1.0.0 v1.0.0)
 [[ "$rc" -eq 8 ]] || fail "validate local-exists should exit 8 (got $rc)"
 pass "validate specific exit code"
 
 # 7) Missing helper fails gracefully with exit 5
-mv "$WORK/scripts/helpers/history_log.sh" "$WORK/scripts/helpers/history_log.sh.bak"
-rc=$(run_capture "$TMPDIR/missing-helper.out" bash "$WORK/scripts/bin/mkbranch" -h)
+mv "$WORK/scripts/helpers/history_log.sh" \
+  "$WORK/scripts/helpers/history_log.sh.bak"
+rc=$(run_capture "$TMPDIR/missing-helper.out" \
+  bash "$WORK/scripts/bin/mkbranch" -h)
 [[ "$rc" -eq 5 ]] || fail "missing helper should exit 5 (got $rc)"
 assert_contains "Required helper not found" "$TMPDIR/missing-helper.out"
-mv "$WORK/scripts/helpers/history_log.sh.bak" "$WORK/scripts/helpers/history_log.sh"
+mv "$WORK/scripts/helpers/history_log.sh.bak" \
+  "$WORK/scripts/helpers/history_log.sh"
 pass "missing helper graceful failure"
 
 # 8) Missing origin fails gracefully with exit 5
@@ -148,7 +158,8 @@ pass "missing helper graceful failure"
   cd "$WORK"
   git remote remove origin
 )
-rc=$(run_capture "$TMPDIR/missing-origin.out" bash "$WORK/scripts/bin/mkbranch" dev/new-v2.0.0 v2.0.0)
+rc=$(run_capture "$TMPDIR/missing-origin.out" \
+  bash "$WORK/scripts/bin/mkbranch" dev/new-v2.0.0 v2.0.0)
 [[ "$rc" -eq 5 ]] || fail "missing origin should exit 5 (got $rc)"
 assert_contains "Remote 'origin' is not configured" "$TMPDIR/missing-origin.out"
 pass "missing origin graceful failure"

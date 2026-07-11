@@ -362,7 +362,8 @@ get_branch_created_date() {
     log_output log_error \
     git log "$ref" --reverse --date=short --format='%ad'; then
     record_diagnostic \
-      "Failed to read first commit date for '$ref'; First Commit column left blank." \
+      "Failed to read first commit date for '$ref';" \
+      "First Commit column left blank." \
       "$log_error"
     echo ""
     return 0
@@ -386,7 +387,8 @@ get_branch_last_commit_date() {
     log_output log_error \
     git log -1 --date=short --format='%ad' "$ref"; then
     record_diagnostic \
-      "Failed to read last commit date for '$ref'; Last Commit column left blank." \
+      "Failed to read last commit date for '$ref';" \
+      "Last Commit column left blank." \
       "$log_error"
     echo ""
     return 0
@@ -499,7 +501,8 @@ get_unpushed_commits() {
     rev_list_output rev_list_error \
     git rev-list --count "origin/$branch..$branch"; then
     record_diagnostic \
-      "Failed to compare '$branch' against 'origin/$branch'; Unpushed Commits may be blank." \
+      "Failed to compare '$branch' against 'origin/$branch';" \
+      "Unpushed Commits may be blank." \
       "$rev_list_error"
     echo ""
     return 0
@@ -522,7 +525,8 @@ get_behind_count() {
     rev_list_output rev_list_error \
     git rev-list --count "$branch..origin/$branch"; then
     record_diagnostic \
-      "Failed to compare 'origin/$branch' against '$branch'; Ahead/Behind may be blank." \
+      "Failed to compare 'origin/$branch' against '$branch';" \
+      "Ahead/Behind may be blank." \
       "$rev_list_error"
     echo ""
     return 0
@@ -1160,8 +1164,10 @@ while [[ $# -gt 0 ]]; do
     *)
       if [[ -n "$TARGET_BRANCH" || -n "$BRANCH_PATTERN" ]]; then
         printf 'Error: Unexpected argument: %q\n' "$1" >&2
-        printf 'Multiple positional arguments received — pattern was likely expanded by the shell.\n' >&2
-        printf 'Quote the pattern to prevent expansion, e.g.: lsbranch "*"\n' >&2
+        printf 'Multiple positional arguments received — pattern '
+        printf 'was likely expanded by the shell.\n' >&2
+        printf 'Quote the pattern to prevent expansion, '
+        printf 'e.g.: lsbranch "*"\n' >&2
         exit 1
       fi
       if [[ "$1" =~ [\*\?\[] ]]; then
@@ -1351,8 +1357,10 @@ if supports_report_color_output; then
   FOOTER_INVALID_LINE+='after branch name indicates the name violates naming '
   FOOTER_INVALID_LINE+='rules.'
 else
-  FOOTER_BRANCH_LINE='**Branch**: Indicates the branch name. * indicates this is the current branch.'
-  FOOTER_INVALID_LINE='! after branch name indicates the name violates naming rules.'
+  FOOTER_BRANCH_LINE='**Branch**: Indicates the branch name. '
+  FOOTER_BRANCH_LINE+='* indicates this is the current branch.'
+  FOOTER_INVALID_LINE='! after branch name indicates the name '
+  FOOTER_INVALID_LINE+='violates naming rules.'
 fi
 
 cat >> "$OUTPUT_FILE" << EOF
@@ -1373,11 +1381,13 @@ state, \`synced\` or \`diverged\` for tracked-branch state, or \`unknown\`.
 
 **Unpushed Commits**: Count of local commits pending sync for this branch.
 
-**Ahead/Behind**: Counts of commits this branch is ahead of / behind its tracked branch.
+**Ahead/Behind**: Counts of commits this branch is ahead of / behind
+its tracked branch.
 
 **PR**: Count of pending (not closed) pull requests.
 
-**First Commit**: Approximate branch creation date, derived from the first commit on the branch.
+**First Commit**: Approximate branch creation date, derived from the
+first commit on the branch.
 
 **Last Commit**: Date of the last commit on the branch.
 EOF

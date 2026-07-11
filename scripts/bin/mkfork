@@ -75,7 +75,8 @@ Examples:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 Exit codes:
   0   Success - fork exists and is properly configured
@@ -145,7 +146,8 @@ done
 
 # Helper functions
 get_github_username() {
-  gh auth whoami 2>/dev/null || bt_error_exit 4 "GitHub authentication not configured. Run 'gh auth login' first."
+  gh auth whoami 2>/dev/null || bt_error_exit 4 \
+    "GitHub authentication not configured. Run 'gh auth login' first."
 }
 
 get_repo_info() {
@@ -190,9 +192,11 @@ fork_is_complete() {
   
   # Try to retrieve and validate contributors.md
   local file_response
-  file_response=$(gh api "repos/$gh_user/$REPO_NAME/contents/config/contributors.md" 2>&1) || {
+  file_response=$(gh api \
+    "repos/$gh_user/$REPO_NAME/contents/config/contributors.md" 2>&1) || {
     if [[ "$VERBOSE" == "true" ]]; then
-      echo "[verbose] Fork configuration incomplete: contributors.md not accessible" >&2
+      echo "[verbose] Fork configuration incomplete:" \
+        "contributors.md not accessible" >&2
     fi
     return 1
   }
@@ -221,12 +225,13 @@ fork_is_complete() {
       echo "[verbose] Fork configuration incomplete: cannot decode content" >&2
     fi
     return 1
-  fi
+  }
   
   # Check for required content markers
   if ! echo "$decoded_content" | grep -q "# Contributors"; then
     if [[ "$VERBOSE" == "true" ]]; then
-      echo "[verbose] Fork configuration incomplete: missing Contributors header" >&2
+      echo "[verbose] Fork configuration incomplete:" \
+        "missing Contributors header" >&2
     fi
     return 1
   fi
@@ -296,7 +301,8 @@ wait_for_fork() {
     sleep 1
   done
   
-  bt_error_exit 2 "Fork did not become available in time (waited $((max_attempts)) seconds)"
+  bt_error_exit 2 "Fork did not become available in time" \
+    "(waited $((max_attempts)) seconds)"
 }
 
 validate_fork_ownership() {
@@ -317,7 +323,8 @@ validate_fork_ownership() {
     bt_error_exit 2 "Failed to retrieve fork information"
   
   if [[ "$owner" != "$gh_user" ]]; then
-    bt_error_exit 7 "Fork does not belong to authenticated user (owner: $owner, user: $gh_user)"
+    bt_error_exit 7 "Fork does not belong to authenticated user" \
+      "(owner: $owner, user: $gh_user)"
   fi
   
   if [[ "$VERBOSE" == "true" ]]; then
@@ -361,7 +368,8 @@ get_file_sha() {
   
   # Get file info and extract SHA
   local file_response
-  file_response=$(gh api "repos/$gh_user/$REPO_NAME/contents/$file_path" 2>&1) || \
+  file_response=$(gh api \
+    "repos/$gh_user/$REPO_NAME/contents/$file_path" 2>&1) || \
     bt_error_exit 2 "Failed to retrieve $file_path from fork"
   
   local sha
@@ -489,7 +497,8 @@ CONTRIBUTORS_EOF
   
   # Update the file via API and capture response
   local update_response
-  update_response=$(gh api --method PUT "repos/$gh_user/$REPO_NAME/contents/$file_path" \
+  update_response=$(gh api --method PUT \
+    "repos/$gh_user/$REPO_NAME/contents/$file_path" \
     -f message="Configure contributors.md for fork: $gh_user as sole approver" \
     -f content="$encoded_content" \
     -f sha="$current_sha" 2>&1) || \
@@ -536,7 +545,8 @@ verify_file_update() {
   
   # Retrieve the file and verify
   local verify_response
-  verify_response=$(gh api "repos/$gh_user/$REPO_NAME/contents/$file_path" 2>&1) || \
+  verify_response=$(gh api \
+    "repos/$gh_user/$REPO_NAME/contents/$file_path" 2>&1) || \
     bt_error_exit 2 "Failed to verify $file_path after update"
   
   # Check SHA matches
@@ -545,12 +555,14 @@ verify_file_update() {
     bt_error_exit 5 "Failed to extract SHA from verification response"
   
   if [[ "$actual_sha" != "$expected_sha" ]]; then
-    bt_error_exit 7 "File SHA mismatch after update (expected: $expected_sha, actual: $actual_sha)"
+    bt_error_exit 7 "File SHA mismatch after update" \
+      "(expected: $expected_sha, actual: $actual_sha)"
   fi
   
   # Decode and verify content
   local encoded_file_content
-  encoded_file_content=$(echo "$verify_response" | jq -r '.content' 2>/dev/null) || \
+  encoded_file_content=$(echo "$verify_response" | jq -r '.content' \
+    2>/dev/null) || \
     bt_error_exit 5 "Failed to extract content from verification response"
   
   local decoded_content
@@ -559,7 +571,8 @@ verify_file_update() {
   
   # Verify content contains expected user
   if ! echo "$decoded_content" | grep -q "$expected_user"; then
-    bt_error_exit 7 "Verification failed: file content does not contain user $expected_user"
+    bt_error_exit 7 "Verification failed: file content does not" \
+      "contain user $expected_user"
   fi
   
   # Verify content has approver entry

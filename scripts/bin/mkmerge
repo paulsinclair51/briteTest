@@ -35,7 +35,8 @@ Features:
 Options:
   -h, --help           Output this help to stdout and exit (other options
                        and arguments are ignored).
-  -m, --message MSG    Custom squash commit message (uses PR title if not specified)
+  -m, --message MSG    Custom squash commit message
+                       (uses PR title if not specified)
   -v, --verbose        Show detailed information
 
 Examples:
@@ -52,7 +53,8 @@ Examples:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 Exit codes:
   0   Success
@@ -91,14 +93,16 @@ VERBOSE=false
 
 
 get_current_user() {
-  git config user.name 2>/dev/null || bt_error_exit 2 "Failed to determine current user"
+  git config user.name 2>/dev/null || \
+    bt_error_exit 2 "Failed to determine current user"
 }
 
 get_target_branch() {
   local current_branch="$1"
 
   local target_branch
-  target_branch=$(bt_resolve_target_branch_from_fork_point "$current_branch" "main") || {
+  target_branch=$(bt_resolve_target_branch_from_fork_point \
+    "$current_branch" "main") || {
     bt_error_exit 2 "Failed to determine target branch"
   }
 
@@ -148,7 +152,8 @@ get_pr_status_check() {
   
   # Get PR status check state
   gh pr view "$pr_number" --json statusCheckRollup \
-    --jq '.statusCheckRollup[].state' 2>/dev/null | sort | uniq || echo "UNKNOWN"
+    --jq '.statusCheckRollup[].state' 2>/dev/null | sort | uniq \
+    || echo "UNKNOWN"
 }
 
 check_status_checks() {
@@ -248,7 +253,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Get current branch
-CURRENT_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+CURRENT_BRANCH=$(bt_get_current_branch || \
+  bt_error_exit 2 "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
 
 # Get current user
@@ -266,7 +272,8 @@ if is_protected_branch "$TARGET_BRANCH"; then
   
   # Verify current user is an approver
   if ! is_approver "$CURRENT_USER"; then
-    bt_error_exit 3 "User '$CURRENT_USER' is not an approver. Only approvers can merge to protected branches."
+    bt_error_exit 3 "User '$CURRENT_USER' is not an approver." \
+      "Only approvers can merge to protected branches."
   fi
   bt_success "User '$CURRENT_USER' is an approver"
 else
@@ -316,7 +323,8 @@ if ! git push -f origin "$CURRENT_BRANCH" 2>&1; then
 fi
 
 # Log merge to history
-log_merge_to_history "$CURRENT_BRANCH" "$TARGET_BRANCH" "$CURRENT_USER" "$COMMIT_MESSAGE"
+log_merge_to_history "$CURRENT_BRANCH" "$TARGET_BRANCH" \
+  "$CURRENT_USER" "$COMMIT_MESSAGE"
 
 # Show verbose output if requested
 if [[ "$VERBOSE" == true ]]; then

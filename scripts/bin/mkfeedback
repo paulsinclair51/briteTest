@@ -59,7 +59,8 @@ Workflow:
      mkfeedback sync
 
   5. Respond to reviewer:
-     mkfeedback respond -m "Fixed as requested, auth now validates tokens properly"
+    mkfeedback respond -m "Fixed as requested, auth now validates"
+    "tokens properly"
 
 Examples:
 
@@ -112,7 +113,8 @@ Workflow Scenarios:
   Scenario 4: Disagreement with feedback
   ----------------------------------------
   mkfeedback view              # See feedback
-  mkfeedback respond -m "This approach is intentional because X. Alternative would be Y."
+  mkfeedback respond -m "This approach is intentional because X."
+  "Alternative would be Y."
   # If reviewer agrees, continue
   # If reviewer insists, make the change
   mkfeedback update -m "Changed approach per reviewer request"
@@ -130,7 +132,8 @@ Remote Workflow (Codespaces, SSH, etc.):
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 Exit codes:
   0   Success
@@ -181,14 +184,16 @@ view_feedback() {
   local branch
   local pr_number
   
-  branch=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+  branch=$(bt_get_current_branch || \
+    bt_error_exit 2 "Failed to determine current branch")
   bt_info "Current branch: $branch"
   
   if command -v gh &> /dev/null; then
     pr_number=$(get_pr_number "$branch")
     
     if [[ -z "$pr_number" ]]; then
-      bt_error_exit 3 "No PR found for branch '$branch'. Create a PR first using mkpr."
+      bt_error_exit 3 "No PR found for branch '$branch'." \
+        "Create a PR first using mkpr."
     fi
     
     bt_info "Fetching reviews for PR #$pr_number..."
@@ -201,14 +206,16 @@ view_feedback() {
     
     bt_success "Done"
   else
-    bt_error_exit 4 "GitHub CLI (gh) not installed. Install gh to use mkfeedback."
+    bt_error_exit 4 "GitHub CLI (gh) not installed." \
+      "Install gh to use mkfeedback."
   fi
 }
 
 update_for_feedback() {
   local branch
   
-  branch=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+  branch=$(bt_get_current_branch || \
+    bt_error_exit 2 "Failed to determine current branch")
   bt_info "Current branch: $branch"
   
   if [[ -z "$COMMENT" ]]; then
@@ -235,7 +242,8 @@ update_for_feedback() {
 sync_to_pr() {
   local branch
   
-  branch=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+  branch=$(bt_get_current_branch || \
+    bt_error_exit 2 "Failed to determine current branch")
   bt_info "Current branch: $branch"
   
   bt_info "Pushing changes to remote..."
@@ -254,7 +262,8 @@ respond_to_feedback() {
   local branch
   local pr_number
   
-  branch=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+  branch=$(bt_get_current_branch || \
+    bt_error_exit 2 "Failed to determine current branch")
   
   if command -v gh &> /dev/null; then
     pr_number=$(get_pr_number "$branch")
@@ -351,7 +360,8 @@ case "$ACTION" in
     bt_success "Feedback resolved (manual action needed in GitHub)"
     ;;
   *)
-    bt_error_exit 1 "Unknown action: $ACTION (valid: view, update, respond, sync, resolve)"
+    bt_error_exit 1 "Unknown action: $ACTION" \
+      "(valid: view, update, respond, sync, resolve)"
     ;;
 esac
 

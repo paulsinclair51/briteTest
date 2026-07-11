@@ -1,25 +1,25 @@
 # remote_branch_history.md
 
-**2026-06-26 14:45:30**: Branch `fix-bug` removed.
+This file contains a history of log of remote branch operations.
 
-**2026-06-26 14:40:10**: Branch `existing-branch` creation from `v1.3.2` failed - branch already exists.
+Copyright (c) 2026 Paul Sinclair  
+SPDX-License-Identifier: MIT  
+For license details, see `<repo>/LICENSE`.
 
-**2026-06-26 14:35:22**: Branch `api-guide` created from `v1.1.0` and pushed to remote.
+This file is comitted to local `main` and pushed to `main` when updated.
 
-**2026-06-26 14:30:15**: Branch `fix-bug` created from `v1.2.1`.
+See `<repo>/docs/md/Contributor_Guide.md` for details on logging
+local branh history.
 
-**2026-06-29 01:09:42**: Branch `paulsinclair51-patch-1` deleted.
+## Local Branch History
 
-**2026-07-10 04:23:46**: Branch `v1.1.0` creation from `main` failed - User 'Paul Sinclair' is not an approver. Only approvers can create branches based on 'main'.
-
-**2026-07-10 04:23:49**: Branch `dev/test-v1.0.0` creation from `v1.0.0` failed - User 'Paul Sinclair' is not a contributor. Only contributors, reviewers, and approvers can create branches not based on 'main'.
-
-**2026-07-10 04:23:52**: Branch `mywork/test` creation from `` failed - When newbranch is a contributor branch, basebranch is required
-
-**2026-07-10 04:38:27**: Branch `mywork/test` creation from parent `` failed - When newbranch is a contributor branch, parentbranch is required
-
-**2026-07-10 04:38:38**: Branch `dev/test-v1.0.0` creation from parent `v1.0.0` failed - User 'Paul Sinclair' is not a contributor. Only contributors, reviewers, and approvers can create targeted or contributor branches.
-
-**2026-07-10 05:21:11**: Branch `mywork/test` creation from parent `` failed - When newbranch is a contributor branch, parentbranch is required
-
-**2026-07-10 05:21:11**: Branch `dev/test-v1.0.0` creation from parent `v1.0.0` failed - User 'Paul Sinclair' is not a contributor. Only contributors, reviewers, and approvers can create targeted or contributor branches.
+| **Date Time** | **Comment** |
+|---------------|-------------|
+| 2026-06-26 14:45:30 | Branch `fix-bug` removed. |
+| 2026-06-26 14:40:10 | Branch `existing-branch` creation from `v1.3.2` failed - branch already exists. |
+| 2026-06-26 14:35:22 | Branch `api-guide` created from `v1.1.0` and pushed to remote. |
+| 2026-06-261 4:30:15 | Branch `fix-bug` created from `v1.2.1`. |
+| 2026-06-29 01:09:42 | Branch `paulsinclair51-patch-1` deleted. |
+| 2026-07-07 01:40:48 | Branch `copilot*` deletion failed - Local branch 'copilot*' does not exist
+| 2026-07-09 22:55:20 | Branch `copilot/consolidate-access-control-docs` deletion failed - Local branch 'copilot/consolidate-access-control-docs' does not exist. |
+| 2026-07-10 06:17:01 | Branch `zz.invalid-policy-test` deleted. |

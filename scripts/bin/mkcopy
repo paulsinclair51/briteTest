@@ -36,7 +36,8 @@ Options:
   -h, --help           Output this help to stdout and exit (other options
                        and arguments are ignored).
   -m, --message MSG    Custom commit message for squashed result
-                       Default: "Copy from source-branch to target-branch: message"
+                       Default:
+                       "Copy from source-branch to target-branch: message"
   -v, --verbose        Show detailed information
   --continue           Continue after resolving conflicts manually
 
@@ -63,7 +64,8 @@ Workflow:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 Exit codes:
   0   Success
@@ -99,13 +101,15 @@ SOURCE_BRANCH=""
 
 check_working_directory_clean() {
   if ! git diff-index --quiet HEAD --; then
-    bt_error_exit 3 "Working directory has uncommitted changes. Commit or stash them first."
+    bt_error_exit 3 "Working directory has uncommitted changes." \
+      "Commit or stash them first."
   fi
 }
 
 branch_exists() {
   local branch="$1"
-  git show-ref --verify --quiet "refs/remotes/origin/$branch" 2>/dev/null || return 1
+  git show-ref --verify --quiet "refs/remotes/origin/$branch" \
+    2>/dev/null || return 1
 }
 
 get_commits_from_branch() {
@@ -113,7 +117,8 @@ get_commits_from_branch() {
   local current_branch="$2"
   
   # Get commits in source branch that are not in current branch
-  git log "$current_branch..origin/$source_branch" --oneline 2>/dev/null | awk '{print $1}' || echo ""
+  git log "$current_branch..origin/$source_branch" --oneline \
+    2>/dev/null | awk '{print $1}' || echo ""
 }
 
 cherry_pick_commits() {
@@ -202,7 +207,8 @@ if [[ -z "$SOURCE_BRANCH" ]]; then
 fi
 
 # Get current branch
-CURRENT_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+CURRENT_BRANCH=$(bt_get_current_branch || \
+  bt_error_exit 2 "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
 
 # Check working directory is clean

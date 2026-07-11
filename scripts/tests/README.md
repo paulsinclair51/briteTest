@@ -18,8 +18,9 @@ and high-signal output contracts.
   help output, local/remote inclusion flags, report marker formatting,
   remote branch visibility, and pattern matching behavior.
   
-- **test_gendocs.sh**: Validation tests for `<repo>/scripts/bin/gendocs` and its
-  helper scripts `<repo>/scripts/helpers/genpdf.sh` and `<repo>/scripts/helpers/gendocx.sh`.
+- **test_gendocs.sh**: Validation tests for `<repo>/scripts/bin/gendocs`
+  and its helper scripts `<repo>/scripts/helpers/genpdf.sh` and
+  `<repo>/scripts/helpers/gendocx.sh`.
 
 - **test_mkbranch.sh**: Smoke tests for `<repo>/scripts/bin/mkbranch` covering
   help output, mode-specific parent checks, split exit codes, and graceful

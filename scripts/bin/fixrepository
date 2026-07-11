@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# fixrepository - Check repository for corruption/issues and fix what can be safely fixed.
+# fixrepository - Check repository for corruption/issues and fix what
+# can be safely fixed.
 #
 # See usage below for details, or run: fixrepository -h
 #
@@ -67,7 +68,8 @@ if [[ ! -f "$SCRIPT_DIR/../helpers/common.sh" ]]; then
 fi
 
 if [[ ! -f "$SCRIPT_DIR/../helpers/git_helpers.sh" ]]; then
-  echo "Error: Required helper not found: $SCRIPT_DIR/../helpers/git_helpers.sh" >&2
+  echo "Error: Required helper not found: \
+    $SCRIPT_DIR/../helpers/git_helpers.sh" >&2
   echo "This script must be run from within the briteTest repository." >&2
   exit 1
 fi
@@ -141,7 +143,8 @@ check_git_validity() {
   append_section "Git Repository Validity"
   
   if ! git -C "$repo_root" rev-parse --git-dir >/dev/null 2>&1; then
-    append_check "Git Directory" "ERROR" "Repository is not a valid git repository"
+    append_check "Git Directory" "ERROR" \
+      "Repository is not a valid git repository"
     return 1
   fi
   
@@ -166,7 +169,8 @@ check_object_database() {
     append_check "Object Database" "ISSUE" "Dangling objects detected"
     local dangling_count
     dangling_count=$(echo "$fsck_output" | grep -c "dangling" || echo "0")
-    append_check "Dangling Objects" "ISSUE" "Found $dangling_count dangling objects"
+    append_check "Dangling Objects" "ISSUE" \
+      "Found $dangling_count dangling objects"
   else
     append_check "Object Database" "PASS" "No corruption detected"
   fi
@@ -179,22 +183,26 @@ check_loose_objects() {
   local loose_count=0
   if [[ -d "$repo_root/.git/objects" ]]; then
     # Count loose object files (not in pack directory)
-    loose_count=$(find "$repo_root/.git/objects" -type f ! -path "*pack*" 2>/dev/null | wc -l)
+    loose_count=$(find "$repo_root/.git/objects" -type f ! -path "*pack*" \
+      2>/dev/null | wc -l)
   fi
   
   if [[ $loose_count -gt 100 ]]; then
-    append_check "Loose Objects" "ISSUE" "Found $loose_count loose objects (exceeds threshold of 100)"
+    append_check "Loose Objects" "ISSUE" \
+      "Found $loose_count loose objects (exceeds threshold of 100)"
     
     if [[ "$NO_FIX" == false ]]; then
       bt_info "Running git gc to optimize repository..."
       if cd "$repo_root" && git gc --aggressive 2>&1 >/dev/null; then
         append_check "Repository Optimization" "FIXED" "Ran git gc --aggressive"
       else
-        append_check "Repository Optimization" "ISSUE" "git gc encountered an error"
+        append_check "Repository Optimization" "ISSUE" \
+          "git gc encountered an error"
       fi
     fi
   else
-    append_check "Loose Objects" "PASS" "Repository has $loose_count loose objects (below threshold)"
+    append_check "Loose Objects" "PASS" \
+      "Repository has $loose_count loose objects (below threshold)"
   fi
 }
 
@@ -203,15 +211,18 @@ check_disconnected_history() {
   append_section "Repository History"
   
   local dangling_commits
-  dangling_commits=$(cd "$repo_root" && git rev-list --all --reflog 2>/dev/null | wc -l)
+  dangling_commits=$(cd "$repo_root" && \
+    git rev-list --all --reflog 2>/dev/null | wc -l)
   
-  append_check "Referenced Commits" "PASS" "Found $dangling_commits commits in history"
+  append_check "Referenced Commits" "PASS" \
+    "Found $dangling_commits commits in history"
   
   # Check for branches
   local branch_count
   branch_count=$(cd "$repo_root" && git branch | wc -l)
   
-  append_check "Local Branches" "PASS" "Repository has $branch_count local branches"
+  append_check "Local Branches" "PASS" \
+    "Repository has $branch_count local branches"
 }
 
 # Check for large objects
@@ -219,12 +230,14 @@ check_large_objects() {
   append_section "Object Size Analysis"
   
   local large_objects
-  large_objects=$(cd "$repo_root" && git rev-list --all --objects 2>/dev/null | \
+  large_objects=$(cd "$repo_root" && \
+    git rev-list --all --objects 2>/dev/null | \
     awk '{print $2}' | sort -u | xargs -r ls -lS 2>/dev/null | \
     awk '{if ($5 > 10485760) print}' | wc -l || echo "0")
   
   if [[ $large_objects -gt 0 ]]; then
-    append_check "Large Objects (>10MB)" "ISSUE" "Found $large_objects objects larger than 10MB"
+    append_check "Large Objects (>10MB)" "ISSUE" \
+      "Found $large_objects objects larger than 10MB"
   else
     append_check "Large Objects" "PASS" "No objects larger than 10MB detected"
   fi
@@ -240,12 +253,14 @@ check_working_directory() {
   
   # Check for uncommitted changes
   local status_output
-  status_output=$(cd "$repo_root" && git status --porcelain 2>/dev/null || echo "")
+  status_output=$(cd "$repo_root" && \
+    git status --porcelain 2>/dev/null || echo "")
   
   if [[ -n "$status_output" ]]; then
     local file_count
     file_count=$(echo "$status_output" | wc -l)
-    append_check "Uncommitted Changes" "ISSUE" "Working directory has $file_count uncommitted files"
+    append_check "Uncommitted Changes" "ISSUE" \
+      "Working directory has $file_count uncommitted files"
   else
     append_check "Uncommitted Changes" "PASS" "Working directory is clean"
   fi
@@ -279,7 +294,8 @@ check_repository_structure() {
   done
   
   if [[ $missing_items -gt 0 ]]; then
-    append_check "Repository Structure" "ISSUE" "Missing $missing_items required items"
+    append_check "Repository Structure" "ISSUE" \
+      "Missing $missing_items required items"
   fi
 }
 
@@ -327,13 +343,15 @@ EOF
   elif [[ $ISSUES_FIXED -gt 0 ]]; then
     cat >> "$OUTPUT_FILE" << 'EOF'
 
-⚠ **Status**: Some issues were fixed, but some issues remain. Manual intervention may be required.
+⚠ **Status**: Some issues were fixed, but some issues remain.
+Manual intervention may be required.
 
 EOF
   else
     cat >> "$OUTPUT_FILE" << 'EOF'
 
-✗ **Status**: Issues detected but repairs were not attempted (--no-fix flag used).
+✗ **Status**: Issues detected but repairs were not attempted
+(--no-fix flag used).
 
 EOF
   fi
@@ -351,7 +369,8 @@ EOF
 
 ---
 
-**Report Generated:** This is a non-tracked file. It will not be committed to the repository.
+**Report Generated:** This is a non-tracked file. It will not be
+committed to the repository.
 
 EOF
 }
@@ -438,7 +457,8 @@ fi
 # Determine exit code
 if [[ "$CRITICAL_ERROR" == true ]]; then
   exit 4
-elif [[ $ISSUES_FOUND -gt 0 && $ISSUES_FIXED -lt $ISSUES_FOUND && "$NO_FIX" == false ]]; then
+elif [[ $ISSUES_FOUND -gt 0 && $ISSUES_FIXED -lt $ISSUES_FOUND && \
+        "$NO_FIX" == false ]]; then
   exit 2
 elif [[ $ISSUES_FOUND -gt 0 ]]; then
   exit 2

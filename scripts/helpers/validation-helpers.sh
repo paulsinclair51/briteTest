@@ -77,7 +77,8 @@ validate_all_commit_messages() {
 
   # Get all commits in range
   local commits
-  commits=$(git log "origin/${base_ref}..origin/${head_ref}" --format=%H 2>/dev/null || echo "")
+  commits=$(git log "origin/${base_ref}..origin/${head_ref}" --format=%H \
+    2>/dev/null || echo "")
 
   # No commits to check
   if [[ -z "$commits" ]]; then
@@ -207,7 +208,8 @@ check_file_size() {
   [[ ! -f "$file" ]] && return 0
 
   local size_bytes
-  size_bytes=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo "0")
+  size_bytes=$(stat -f%z "$file" 2>/dev/null || \
+    stat -c%s "$file" 2>/dev/null || echo "0")
 
   local hard_limit=$((10 * 1024 * 1024))  # 10 MB
   local soft_limit=$((1 * 1024 * 1024))   # 1 MB
@@ -218,7 +220,8 @@ check_file_size() {
   fi
 
   if [[ $size_bytes -gt $soft_limit ]]; then
-    log_warning "File exceeds 1MB soft limit: $file ($((size_bytes / 1024 / 1024))MB)"
+    log_warning "File exceeds 1MB soft limit: $file" \
+      "($((size_bytes / 1024 / 1024))MB)"
   fi
 
   return 0
@@ -303,7 +306,8 @@ validate_c_format() {
   [[ ! -f "$file" ]] && return 0
 
   # Only check C/C++ files
-  if [[ "$file" != *.c ]] && [[ "$file" != *.h ]] && [[ "$file" != *.cpp ]]; then
+  if [[ "$file" != *.c ]] && [[ "$file" != *.h ]] && \
+    [[ "$file" != *.cpp ]]; then
     return 0
   fi
 

@@ -23,7 +23,8 @@ Options:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 EOF
 }
@@ -41,7 +42,9 @@ count_occurrences() {
   local file="$1"
   local old_text="$2"
 
-  OLD_TEXT="$old_text" perl -0777 -ne 'my $count = () = $_ =~ /\Q$ENV{OLD_TEXT}\E/g; print $count;' "$file"
+  OLD_TEXT="$old_text" perl -0777 -ne \
+    'my $count = () = $_ =~ /\Q$ENV{OLD_TEXT}\E/g; print $count;' \
+    "$file"
 }
 
 apply_replacement() {
@@ -121,7 +124,8 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   fi
 
   if [[ "$line" != *"="* ]]; then
-    echo "Error: Line $line_num: Missing '=' separator. Expected format: old_phrase = new_phrase" >&2
+    echo "Error: Line $line_num: Missing '=' separator." \
+      "Expected format: old_phrase = new_phrase" >&2
     exit 1
   fi
 
@@ -152,7 +156,8 @@ if [[ "$dry_run" -eq 1 ]]; then
   echo
 fi
 
-mapfile -t md_files < <(find . -type f -name '*.md' ! -path './.git/*' ! -path './.github/*' | sort)
+mapfile -t md_files < <(find . -type f -name '*.md' \
+  ! -path './.git/*' ! -path './.github/*' | sort)
 
 if [[ ${#md_files[@]} -eq 0 ]]; then
   echo "No .md files found"
@@ -173,7 +178,8 @@ for file in "${md_files[@]}"; do
     count="$(count_occurrences "$file" "$old_phrase")"
     if [[ "$count" -gt 0 ]]; then
       file_replacements=$((file_replacements + count))
-      changes+=("  - Replaced '$old_phrase' -> '$new_phrase' (${count} occurrence(s))")
+      changes+=("  - Replaced '$old_phrase' -> '$new_phrase'" \
+        "(${count} occurrence(s))")
       if [[ "$dry_run" -eq 0 ]]; then
         apply_replacement "$file" "$old_phrase" "$new_phrase"
       fi

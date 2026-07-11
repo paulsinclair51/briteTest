@@ -48,7 +48,8 @@ Examples:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 Exit codes:
   0   Success
@@ -86,12 +87,14 @@ VERSION=""
 
 
 get_current_user() {
-  git config user.name 2>/dev/null || bt_error_exit 2 "Failed to determine current user"
+  git config user.name 2>/dev/null || \
+    bt_error_exit 2 "Failed to determine current user"
 }
 
 check_working_directory_clean() {
   if ! git diff-index --quiet HEAD --; then
-    bt_error_exit 3 "Working directory has uncommitted changes. Commit or stash them first."
+    bt_error_exit 3 "Working directory has uncommitted changes." \
+      "Commit or stash them first."
   fi
 }
 
@@ -105,7 +108,8 @@ get_base_branch() {
 
   # Determine whether this branch ultimately forks from origin/main.
   local merge_base
-  merge_base=$(git merge-base --fork-point origin/main "$branch" 2>/dev/null || true)
+  merge_base=$(git merge-base --fork-point origin/main "$branch" \
+    2>/dev/null || true)
 
   if [[ -z "$merge_base" ]]; then
     return 1
@@ -183,7 +187,8 @@ validate_version() {
   
   # Check version format (v1.2.3 or 1.2.3)
   if ! [[ "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    bt_error_exit 1 "Invalid version format: $version (expected: v1.2.3 or 1.2.3)"
+    bt_error_exit 1 "Invalid version format: $version" \
+      "(expected: v1.2.3 or 1.2.3)"
   fi
 }
 
@@ -310,7 +315,8 @@ fi
 bt_info "Release version: $VERSION"
 
 # Get current branch
-CURRENT_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
+CURRENT_BRANCH=$(bt_get_current_branch || \
+  bt_error_exit 2 "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
 
 # Get current user
@@ -319,7 +325,8 @@ bt_info "Current user: $CURRENT_USER"
 
 # Check if on main or protected branch
 if ! is_protected_branch "$CURRENT_BRANCH"; then
-  bt_error_exit 4 "Can only release from main or a protected branch (base is main). Current branch: $CURRENT_BRANCH"
+  bt_error_exit 4 "Can only release from main or a protected branch" \
+    "(base is main). Current branch: $CURRENT_BRANCH"
 fi
 bt_success "On valid release branch"
 

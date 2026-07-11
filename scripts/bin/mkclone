@@ -34,8 +34,10 @@ Comment Options (mutually exclusive):
 Options:
   -h, --help         Output this help to stdout and exit (other options
                      and arguments are ignored).
-  -m, --message MSG  Add comment message (GitHub style, requires quotes if spaces)
-  -- TEXT            Add comment (Unix style, everything after -- is the comment)
+  -m, --message MSG  Add comment message (GitHub style,
+                     requires quotes if spaces)
+  -- TEXT            Add comment (Unix style,
+                     everything after -- is the comment)
 
 Examples:
   # Basic clone with default directory name
@@ -56,7 +58,8 @@ Examples:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 Exit codes:
   0   Success

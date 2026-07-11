@@ -12,10 +12,12 @@ Usage:
 	replacephrases [config_file] [-d]
 	replacephrases -h | --help
 
-Run phrase replacement across markdown files using scripts/helpers/replace_phrases.sh.
+Run phrase replacement across markdown files
+using scripts/helpers/replace_phrases.sh.
 
 Arguments:
-	config_file  Optional replacement config path. Default: config/phrase_replacements.txt
+	config_file  Optional replacement config path.
+	             Default: config/phrase_replacements.txt
 
 Options:
 	-d           Show planned changes without modifying files.
@@ -25,7 +27,8 @@ Options:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+	- May generate files, reports, or other artifacts in the documented
+		output locations.
 
 EOF
 }

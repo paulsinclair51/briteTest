@@ -32,9 +32,11 @@ Options:
   -h, --help        Output this help to stdout and exit (other options
                     and arguments are ignored).
   -m "MSG"          Attach a comment/reason to the operation
-                    Usage: mkrebase v2.2.0 -m "Retarget to latest minor release."
+                    Usage: mkrebase v2.2.0 -m
+                    "Retarget to latest minor release."
   --message "MSG"   Attach a comment/reason to the operation
-                    Usage: mkrebase v2.2.0 --message "Retarget to latest minor release."
+                    Usage: mkrebase v2.2.0 --message
+                    "Retarget to latest minor release."
   -v                Verbose output.
   -- MSG            Attach comment/reason (everything after -- is the comment)
                     Usage: mkrebase v2.2.0 -- Retarget to latest minor release
@@ -84,7 +86,8 @@ Examples: With force push.
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in the documented
+    output locations.
 
 Exit codes:
   0   Success (or validation passed).
@@ -148,7 +151,9 @@ error_exit() {
   echo "Error: $message" >&2
 
   if [[ -n "$branch" && -n "$newbase" ]]; then
-    log_operation "FAILED" "$branch" "$newbase" "Rebase of \`$branch\` onto \`$newbase\` failed - $message" "$comment"
+    log_operation "FAILED" "$branch" "$newbase" \
+      "Rebase of \`$branch\` onto \`$newbase\` failed - $message" \
+      "$comment"
   fi
 
   exit "$code"
@@ -232,7 +237,8 @@ log_verbose "Current branch: $CURRENT_BRANCH"
 
 # Validate current branch state
 if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
-  error_exit 2 "You are in a detached HEAD state. Please checkout a branch first." \
+  error_exit 2 "You are in a detached HEAD state." \
+    "Please checkout a branch first." \
     "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
 fi
 
@@ -241,7 +247,8 @@ if [[ -z "$CURRENT_BRANCH" ]]; then
 fi
 
 if [[ "$CURRENT_BRANCH" == "main" ]]; then
-  error_exit 2 "Cannot rebase the main branch. Please checkout a feature branch first." \
+  error_exit 2 "Cannot rebase the main branch." \
+    "Please checkout a feature branch first." \
     "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
 fi
 
@@ -256,7 +263,8 @@ fi
 # Fetch latest refs from remote
 echo "Fetching latest refs from remote..."
 if ! git fetch origin >/dev/null 2>&1; then
-  error_exit 5 "Failed to fetch from remote" "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
+  error_exit 5 "Failed to fetch from remote" \
+    "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
 fi
 log_verbose "Fetched origin successfully"
 
@@ -267,7 +275,8 @@ if ! git rev-parse --verify "$NEWBASE" >/dev/null 2>&1; then
       echo "Base branch '$NEWBASE' does not exist"
       exit 9
     else
-      error_exit 7 "Base branch '$NEWBASE' does not exist" "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
+      error_exit 7 "Base branch '$NEWBASE' does not exist" \
+        "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
     fi
   fi
   NEWBASE="origin/$NEWBASE"
@@ -292,21 +301,25 @@ fi
 echo "Successfully rebased '$CURRENT_BRANCH' onto '$NEWBASE'"
 
 # Log the operation
-log_operation "SUCCESS" "$CURRENT_BRANCH" "$NEWBASE" "Branch \`$CURRENT_BRANCH\` rebased onto \`$NEWBASE\`." "$COMMENT"
+log_operation "SUCCESS" "$CURRENT_BRANCH" "$NEWBASE" \
+  "Branch \`$CURRENT_BRANCH\` rebased onto \`$NEWBASE\`." "$COMMENT"
 
 # Show instructions for pushing
 echo ""
 if [[ "$FORCE" == true ]]; then
   echo "Force pushing to remote with --force-with-lease..."
   if ! git push origin "$CURRENT_BRANCH" --force-with-lease; then
-    error_exit 5 "Failed to force push branch to remote" "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
+    error_exit 5 "Failed to force push branch to remote" \
+      "$CURRENT_BRANCH" "$NEWBASE" "" "$COMMENT"
   fi
   echo "Branch successfully force pushed to remote"
   log_operation "SUCCESS" "$CURRENT_BRANCH" "$NEWBASE" \
-    "Branch \`$CURRENT_BRANCH\` force pushed to remote after rebase onto \`$NEWBASE\`." \
+    "Branch \`$CURRENT_BRANCH\` force pushed to remote after rebase" \
+    "onto \`$NEWBASE\`." \
     "$COMMENT"
 else
-  echo "To push the rebased branch to remote (use with caution, as history is rewritten):"
+  echo "To push the rebased branch to remote" \
+    "(use with caution, as history is rewritten):"
   echo "  git push origin $CURRENT_BRANCH --force-with-lease"
 fi
 
