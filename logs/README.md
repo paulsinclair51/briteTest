@@ -9,7 +9,10 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **brand_history.md**: log of the current and previous brands and taglines.
+- **brand_history.md**: log of a new brand and current and previous brands and taglines.
+
+- **fork_history.md**: log of the forks of this repository using
+  `<repo>/scripts/bin/mkfork`.
 
 - **local_branch_history.md**: log of local branch operations.
 

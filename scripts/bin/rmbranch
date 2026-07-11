@@ -32,13 +32,16 @@ Options:
   -r                 Remove branch from remote.
   -a                 Remove from both local and remote (alias for -l -r).
   -f                 Force removal (no confirmation prompt).
-  -m "MSG"           Attach a commit message/comment to the operation.
-                     Usage: rmbranch patch/old-fix -m "Reverted in favor of better approach.".
-  --message "MSG"    Attach a commit message/comment to the operation.
-                     Usage: rmbranch old-fix --message "Reverted in favor of better approach."
-  -- MSG             Attach a commit message/comment (everything after -- is the comment)
-                     Usage: rmbranch old-fix -- Reverted in favor of better approach.
-                     Note: No quotes needed, captures all remaining text.
+  -m "MSG"           Attach a commit message/comment to the
+                     operation. Usage: rmbranch patch/old-fix -m
+                     "Reverted in favor of better approach.".
+  --message "MSG"    Attach a commit message/comment to the
+                     operation. Usage: rmbranch old-fix --message
+                     "Reverted in favor of better approach."
+  -- MSG             Attach a commit message/comment (everything
+                     after -- is the comment). Usage: rmbranch
+                     old-fix -- Reverted in favor of better approach.
+                     Note: No quotes needed, captures all remaining.
 
 Modes:
   Local (-l):
@@ -52,7 +55,8 @@ Modes:
   Both (-l -r, default):
     - Delete the local branch.
     - Delete the branch from remote.
-    - Log the operation to 'logs/remote_branch_history.md' and 'logs/local_branch_history.md'
+    - Log the operation to 'logs/remote_branch_history.md' and
+      'logs/local_branch_history.md'
 
 Examples: Basic usage.
   rmbranch old-fix
@@ -62,11 +66,13 @@ Examples: Basic usage.
   rmbranch -a -f temp-feature
 
 Examples: With GitHub-style comment.
-  rmbranch old-fix -m "Reverted in favor of better approach."
+  rmbranch old-fix -m "Reverted in favor of better
+    approach."
   rmbranch -r experiment -m "Experiment failed."
 
 Exanples: With Unix-style comment.
-  rmbranch old-fix -- Reverted in favor of better approach.
+  rmbranch old-fix -- Reverted in favor of better
+    approach.
   rmbranch -r experiment -- Experiment failed.
 
 Examples: Force removal with comment.
@@ -77,7 +83,8 @@ Examples: Force removal with comment.
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented output locations.
+  - May generate files, reports, or other artifacts in
+    the documented output locations.
 
 Exit codes:
   0   Success
@@ -90,8 +97,8 @@ EOF
 }
 
 # High-Level Flow:
-# - Deletes branches locally and optionally on remote with protected-branch
-#   safeguards.
+# - Deletes branches locally and optionally on remote with
+#   protected-branch safeguards.
 # - Validates branch existence, current-branch constraints, and deletion scope.
 # - Reports deletion results and skipped/protected targets.
 
@@ -110,18 +117,21 @@ if [[ ! -f "$COMMON_HELPER" ]]; then
   exit 2
 fi
 if [[ ! -f "$HISTORY_HELPER" ]]; then
-  echo "Error: Required helper not found: $HISTORY_HELPER" >&2
+  _msg="Error: Required helper not found: $HISTORY_HELPER"
+  echo "$_msg" >&2
   exit 2
 fi
 
 # shellcheck source=helpers/common.sh
 if ! source "$COMMON_HELPER"; then
-  echo "Error: Failed to load helper: $COMMON_HELPER" >&2
+  _msg="Error: Failed to load helper: $COMMON_HELPER"
+  echo "$_msg" >&2
   exit 2
 fi
 # shellcheck source=helpers/history_log.sh
 if ! source "$HISTORY_HELPER"; then
-  echo "Error: Failed to load helper: $HISTORY_HELPER" >&2
+  _msg="Error: Failed to load helper: $HISTORY_HELPER"
+  echo "$_msg" >&2
   exit 2
 fi
 
@@ -143,9 +153,11 @@ append_log_entry() {
   local message="$4"
   local comment="${5:-}"
 
-  # status/branchname are retained for compatibility with existing callers.
+  # status/branchname retained for compatibility with
+  # existing callers.
   : "$status" "$branchname"
-  if ! bt_append_history_log "$log_file" "$message" "$comment"; then
+  if ! bt_append_history_log "$log_file" "$message" \
+      "$comment"; then
     echo "Warning: Failed to append history log: $log_file" >&2
   fi
 }
@@ -159,14 +171,18 @@ log_operation() {
 
   case "$mode" in
     local)
-      append_log_entry "$LOCAL_LOG_FILE" "$status" "$branchname" "$message" "$comment"
+      append_log_entry "$LOCAL_LOG_FILE" "$status" \
+          "$branchname" "$message" "$comment"
       ;;
     remote)
-      append_log_entry "$REMOTE_LOG_FILE" "$status" "$branchname" "$message" "$comment"
+      append_log_entry "$REMOTE_LOG_FILE" "$status" \
+          "$branchname" "$message" "$comment"
       ;;
     both)
-      append_log_entry "$LOCAL_LOG_FILE" "$status" "$branchname" "$message" "$comment"
-      append_log_entry "$REMOTE_LOG_FILE" "$status" "$branchname" "$message" "$comment"
+      append_log_entry "$LOCAL_LOG_FILE" "$status" \
+          "$branchname" "$message" "$comment"
+      append_log_entry "$REMOTE_LOG_FILE" "$status" \
+          "$branchname" "$message" "$comment"
       ;;
   esac
 }
@@ -180,7 +196,9 @@ error_exit() {
   echo "Error: $message" >&2
 
   if [[ -n "$branchname" ]]; then
-    log_operation "FAILED" "$branchname" "Branch \`$branchname\` deletion failed - $message" "$comment"
+    _log_msg="Branch \`$branchname\` deletion failed" 
+    log_operation "FAILED" "$branchname" \
+        "$_log_msg - $message" "$comment"
   fi
 
   exit "$code"
@@ -230,7 +248,8 @@ confirm_deletion() {
     return 0
   fi
 
-  local prompt_msg="Are you sure you want to delete branch '$branch' ($mode)? (y/N) "
+  local prompt_msg="Are you sure you want to delete" 
+  prompt_msg="$prompt_msg branch '$branch' ($mode)? (y/N) "
   local response
   
   read -p "$prompt_msg" response
@@ -275,7 +294,8 @@ while [[ $# -gt 0 ]]; do
         error_exit 1 "Option -m requires a message argument" "" ""
       fi
       if [[ -n "$COMMENT" ]]; then
-        error_exit 1 "Cannot use both -m and -- for comment" "" ""
+      _msg="Cannot use both -m and -- for comment"
+      error_exit 1 "$_msg" "" ""
       fi
       COMMENT="$2"
       shift 2
@@ -334,14 +354,18 @@ fi
 
 # Check if branch is protected
 if is_protected_branch "$BRANCHNAME"; then
-  error_exit 4 "Branch '$BRANCHNAME' is protected and cannot be deleted" "$BRANCHNAME" "$COMMENT"
+  _msg="Branch '$BRANCHNAME' is protected and cannot"
+  error_exit 4 "$_msg be deleted" "$BRANCHNAME" \
+      "$COMMENT"
 fi
 
 # Change to repo root
 cd "$REPO_ROOT"
 
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  error_exit 2 "Repository root '$REPO_ROOT' is not a Git working tree" "$BRANCHNAME" "$COMMENT"
+  _msg="Repository root '$REPO_ROOT' is not a Git"
+  error_exit 2 "$_msg working tree" "$BRANCHNAME" \
+      "$COMMENT"
 fi
 
 if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
@@ -388,11 +412,16 @@ fi
 
 # Verify branch exists in the requested mode
 if [[ "$MODE" == "local" && "$LOCAL_EXISTS" == false ]]; then
-  error_exit 3 "Local branch '$BRANCHNAME' does not exist" "$BRANCHNAME" "$COMMENT"
+  _msg="Local branch '$BRANCHNAME' does not exist"
+  error_exit 3 "$_msg" "$BRANCHNAME" "$COMMENT"
 elif [[ "$MODE" == "remote" && "$REMOTE_EXISTS" == false ]]; then
-  error_exit 3 "Remote branch '$BRANCHNAME' does not exist" "$BRANCHNAME" "$COMMENT"
-elif [[ "$MODE" == "both" && "$LOCAL_EXISTS" == false && "$REMOTE_EXISTS" == false ]]; then
-  error_exit 3 "Branch '$BRANCHNAME' does not exist locally or remotely" "$BRANCHNAME" "$COMMENT"
+  _msg="Remote branch '$BRANCHNAME' does not exist"
+  error_exit 3 "$_msg" "$BRANCHNAME" "$COMMENT"
+elif [[ "$MODE" == "both" && "$LOCAL_EXISTS" == false && \
+    "$REMOTE_EXISTS" == false ]]; then
+  _msg="Branch '$BRANCHNAME' does not exist locally" 
+  error_exit 3 "$_msg or remotely" "$BRANCHNAME" \
+      "$COMMENT"
 fi
 
 # Get confirmation from user
@@ -413,16 +442,21 @@ if [[ "$MODE" == "local" || "$MODE" == "both" ]]; then
       if ! git checkout main >/dev/null 2>&1; then
         # Try master if main doesn't exist
         if ! git checkout master >/dev/null 2>&1; then
-          error_exit 2 "Failed to switch away from branch '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
+          _msg="Failed to switch away from branch" 
+      error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" \
+          "$COMMENT"
         fi
       fi
     fi
     
     if ! git branch -d "$BRANCHNAME" >/dev/null 2>&1; then
       # Try force delete with -D
-      warn "Local branch has unmerged commits, forcing deletion..."
+      _msg="Local branch has unmerged commits, forcing"
+      warn "$_msg deletion..."
       if ! git branch -D "$BRANCHNAME" >/dev/null 2>&1; then
-        error_exit 2 "Failed to delete local branch '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
+        _msg="Failed to delete local branch" 
+        error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" \
+            "$COMMENT"
       fi
     fi
     
@@ -435,7 +469,9 @@ if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
   if [[ "$REMOTE_EXISTS" == true ]]; then
     info "Deleting remote branch..."
     if ! git push origin --delete "$BRANCHNAME" >/dev/null 2>&1; then
-      error_exit 2 "Failed to delete remote branch '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
+    _msg="Failed to delete remote branch" 
+    error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" \
+        "$COMMENT"
     fi
     
     success "Remote branch '$BRANCHNAME' deleted"
@@ -443,7 +479,9 @@ if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
 fi
 
 # Log successful operation
-log_operation "SUCCESS" "$BRANCHNAME" "Branch \`$BRANCHNAME\` deleted." "$COMMENT"
+_log_msg="Branch \`$BRANCHNAME\` deleted."
+log_operation "SUCCESS" "$BRANCHNAME" "$_log_msg" \
+    "$COMMENT"
 
 success "Branch '$BRANCHNAME' successfully removed"
 

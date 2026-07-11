@@ -6,7 +6,7 @@ provides a history of changes.
  
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
-For license details, see `LICENSE` in the root directory.
+For license details, see `<repo>/LICENSE`.
 
 See `<repo>/docs/md/Contributor_Guide.md` for details on changing the
 brand name, brand initials, and tagline.
