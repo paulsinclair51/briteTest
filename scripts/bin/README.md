@@ -33,6 +33,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 ### Branch and Workflow Management
 
 - **ckbranch_history**: Query branch history log entries.
+- **chcurrent**: Switch to a specified current branch.
 - **lsbranch**: List a branch or branches and their status.
 - **mkbranch**: Create branches with policy validation.
 - **mkclone**: Clone the repository with optional target naming.

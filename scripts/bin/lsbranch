@@ -201,15 +201,31 @@ is_version_branch() {
   [[ "$branch" =~ ^v([1-9][0-9]?)\.([0-9]|[1-9][0-9]?)\.([0-9]|[1-9][0-9]?)$ ]]
 }
 
-is_nonversion_branch() {
+is_main_branch() {
   local branch="$1"
-  [[ "$branch" != *.* ]]
+  [[ "$branch" == "main" ]]
+}
+
+is_targeted_branch() {
+  local branch="$1"
+  local desc='[a-z0-9]+(-[a-z0-9]+)*'
+
+  [[ "$branch" =~ ^(dev|fix)/${desc}-v([1-9][0-9]?)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$ ]]
+}
+
+is_contributor_branch() {
+  local branch="$1"
+  local desc='[a-z0-9]+(-[a-z0-9]+)*'
+  local type='[a-z][a-z]{0,29}'
+
+  [[ "$branch" =~ ^((${type}/)?${desc})$ && "$branch" != "main" ]]
 }
 
 branch_violates_naming_rules() {
   local branch="$1"
 
-  if is_version_branch "$branch" || is_nonversion_branch "$branch"; then
+  if is_main_branch "$branch" || is_version_branch "$branch" ||
+    is_targeted_branch "$branch" || is_contributor_branch "$branch"; then
     return 1
   fi
   return 0
@@ -414,8 +430,10 @@ get_remote_branches() {
 
   while IFS= read -r branch; do
     [[ -n "$branch" ]] || continue
+    [[ "$branch" == "origin" ]] && continue
     [[ "$branch" == "origin/HEAD" ]] && continue
     branch="${branch#origin/}"
+    [[ -z "$branch" ]] && continue
     if matches_glob "$branch" "$pattern"; then
       echo "$branch"
     fi
@@ -707,6 +725,7 @@ get_branch_base_reference() {
 
   while IFS= read -r ref; do
     [[ -n "$ref" ]] || continue
+    [[ "$ref" == "origin" ]] && continue
     [[ "$ref" == "origin/HEAD" ]] && continue
     [[ "$ref" == "$branch" ]] && continue
     [[ "$ref" == "origin/$branch" ]] && continue

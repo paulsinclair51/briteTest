@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-# commit - Commit and optionally push changes to the repository.
+# commit - Commit for current branch and optionally push
+# changes to the corresponding remote (origin) branch.
+# .
 #
 # See usage below for details, or run: commit -h
 #
@@ -14,17 +16,17 @@ Usage:
   commit [OPTIONS] [files...]
   commit -h | --help
 
-Commit changes to the current branch in BriteTest.
+Commit changes to the current branch in briteTest.
 Stages all changes by default and commits them with a message.
 Optionally pushes to remote.
 
-Protected branches (require merge for changes):
+Protected branches (require mergeintoparent for changes):
   - main
   - v<M>.<m>.<p> version branches created from main
 
 Allowed branches (can use commit):
-  - dev/<desc>-<version> and fix/<desc>-<version> targeted branches
-  - [<type>/]<description> contributor branches
+  - dev/<desc>-<version> and fix/<desc>-<version> targeted branches.
+  - [<type>/]<description> contributor branches.
 
 Arguments:
   [files...]         Optional list of files to stage and commit
@@ -40,9 +42,9 @@ Commit Message Options (mutually exclusive):
                      Note: No quotes needed, captures all remaining arguments
 
 Push Options:
-  -p, --push         Push changes to remote after commit
+  -p                 Push changes to remote after commit to branch.
                      Shows confirmation prompt before pushing
-  -f, --force        Force push (skip confirmation, use with caution)
+  -f                 Force push (skip confirmation, use with caution)
                      Only applies with -p/--push
 
 Options:
@@ -124,11 +126,11 @@ while [[ $# -gt 0 ]]; do
       COMMIT_MESSAGE="$2"
       shift 2
       ;;
-    -p | --push)
+    -p)
       PUSH=true
       shift
       ;;
-    -f | --force)
+    -f)
       FORCE=true
       shift
       ;;
@@ -164,13 +166,19 @@ if [[ -z "$COMMIT_MESSAGE" ]]; then
 fi
 
 if [[ "$FORCE" == true && "$PUSH" == false ]]; then
-  bt_error_exit 1 "Option -f/--force requires -p/--push"
+  bt_error_exit 1 "Option -f requires -p"
 fi
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit 2 "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
+
+# Disallow commits from detached HEAD (for example, origin/main or origin/v*).
+if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
+  bt_error_exit 1 \
+    "Cannot commit from detached HEAD. Switch to a local non-protected branch first."
+fi
 
 # Check if branch is protected
 if bt_is_protected_branch "$CURRENT_BRANCH"; then

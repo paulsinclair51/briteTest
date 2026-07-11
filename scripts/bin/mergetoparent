@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
-# For license details, see '<repo>/LICENSE't.
+# For license details, see '<repo>/LICENSE'.
 
 usage() {
   cat <<'EOF'
@@ -18,7 +18,7 @@ Merge the current branch to its parent branch using squash merge.
 
 Merging to a protected branch (main or a version branch) requires the current
 user to be
-an approver (A/ entry in config/contributors.md).
+an approver (A entry in config/contributors.md).
 
 Before merging:
   - Verifies current user is an approver (if merging to protected branch)
@@ -94,8 +94,13 @@ VERBOSE=false
 
 
 get_current_user() {
-  git config user.name 2>/dev/null || \
-    bt_error_exit 2 "Failed to determine current user"
+  local user_name
+
+  if ! user_name="$(bt_require_login)"; then
+    bt_error_exit 2 "Unable to determine GitHub login identity for role checks"
+  fi
+
+  echo "$user_name"
 }
 
 get_parent_branch() {
@@ -111,18 +116,11 @@ get_parent_branch() {
 }
 
 is_approver() {
-  local config_file="config/contributors.md"
   local user_name="$1"
-  
-  if [[ ! -f "$config_file" ]]; then
-    bt_error_exit 5 "Configuration file not found: $config_file"
-  fi
-  
-  # Check if user is in A/ (Approver) entries
-  if grep -E "^\s*-\s+A/${user_name}," "$config_file" > /dev/null 2>&1; then
-    return 0
-  fi
-  return 1
+
+  # Reuse shared role-check helper for consistent contributors.md parsing.
+  GITHUB_ACTOR="$user_name" \
+    bash "$SCRIPT_DIR/../helpers/ckrole.sh" approver >/dev/null 2>&1
 }
 
 get_existing_pr_number() {
@@ -252,6 +250,15 @@ CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit 2 "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
 
+if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
+  bt_error_exit 1 "Cannot run mergetoparent from detached HEAD"
+fi
+
+if bt_is_protected_branch "$CURRENT_BRANCH"; then
+  bt_error_exit 1 \
+    "Current branch '$CURRENT_BRANCH' is protected. Run mergetoparent from a non-protected branch."
+fi
+
 # Get current user
 CURRENT_USER=$(get_current_user)
 bt_info "Current user: $CURRENT_USER"
@@ -269,8 +276,7 @@ if bt_is_protected_branch "$PARENT_BRANCH"; then
   
   # Verify current user is an approver
   if ! is_approver "$CURRENT_USER"; then
-    bt_error_exit 3 "User '$CURRENT_USER' is not an approver." \
-      "Only approvers can merge to protected branches."
+    bt_error_exit 3 "User '$CURRENT_USER' is not an approver. Only approvers can merge to protected branches."
   fi
   bt_success "User '$CURRENT_USER' is an approver"
 else
@@ -304,11 +310,11 @@ bt_info "Performing squash merge..."
 git fetch origin 2>/dev/null || bt_warn "Failed to fetch from origin"
 
 if git show-ref --verify --quiet "refs/heads/$PARENT_BRANCH"; then
-  if ! git checkout "$PARENT_BRANCH" >/dev/null 2>&1; then
-    bt_error_exit 2 "Failed to check out parent branch '$PARENT_BRANCH'"
+  if ! git switch "$PARENT_BRANCH" >/dev/null 2>&1; then
+    bt_error_exit 2 "Failed to switch to parent branch '$PARENT_BRANCH'"
   fi
 else
-  if ! git checkout -b "$PARENT_BRANCH" "origin/$PARENT_BRANCH" >/dev/null 2>&1; then
+  if ! git switch -c "$PARENT_BRANCH" --track "origin/$PARENT_BRANCH" >/dev/null 2>&1; then
     bt_error_exit 2 "Failed to create local parent branch '$PARENT_BRANCH'"
   fi
 fi
@@ -337,7 +343,7 @@ if ! git push origin "$PARENT_BRANCH" 2>&1; then
   bt_error_exit 2 "Failed to push parent branch"
 fi
 
-if ! git checkout "$CURRENT_BRANCH" >/dev/null 2>&1; then
+if ! git switch "$CURRENT_BRANCH" >/dev/null 2>&1; then
   bt_warn "Merged successfully, but failed to switch back to '$CURRENT_BRANCH'"
 fi
 
@@ -346,7 +352,7 @@ if [[ "$VERBOSE" == true ]]; then
   bt_info "Merge details:"
   echo "  Branch: $CURRENT_BRANCH"
   echo "  Parent: $PARENT_BRANCH"
-  echo "  Approver: $CURRENT_USER"
+  echo "  Actor: $CURRENT_USER"
   echo "  PR: #$PR_NUMBER"
   echo "  Message: $COMMIT_MESSAGE"
 fi

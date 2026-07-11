@@ -119,8 +119,17 @@ bash scripts/helpers/ckrole.sh "<role>"
 
 **Environment Variables:**
 
-- `GITHUB_ACTOR` - GitHub username (set by GitHub Actions)
+- `GITHUB_ACTOR` - GitHub username (preferred identity source)
 - `CKROLE_TRUSTED_ACTORS` - Comma-separated list of allowed bot accounts
+
+**Identity Resolution Order:**
+
+1. `GITHUB_ACTOR`
+2. `gh api user --jq '.login'` (if authenticated)
+3. `git config user.name`
+4. `USER`
+
+If the resolved value is not a valid GitHub login format, role checks fail.
 
 **Examples:**
 
@@ -262,6 +271,43 @@ scripts/bin/rmbranch dev/fix-parser-v1.0.0
 
 ---
 
+### mergetoparent
+
+**Purpose:** Merges the current source branch to its inferred parent branch using squash merge with policy checks.
+
+**Location:** `scripts/bin/mergetoparent`
+
+**Usage:**
+
+```bash
+scripts/bin/mergetoparent [OPTIONS]
+```
+
+**Options:**
+
+- `-m, --message <msg>` - Use custom squash commit message
+- `-v, --verbose` - Verbose output
+- `-h, --help` - Show usage
+
+**Policy Notes:**
+
+- Protected parents (`main`, `v<M>.<m>.<p>`) are updated via `mergetoparent` only
+- If inferred parent is protected, approver role is required
+- Resolve parent/source conflicts in the source branch before running `mergetoparent`
+- Running from detached HEAD or a protected current branch is rejected
+
+**Examples:**
+
+```bash
+# Merge current branch to inferred parent using PR title
+scripts/bin/mergetoparent
+
+# Merge with explicit message
+scripts/bin/mergetoparent -m "Merge parser fixes"
+```
+
+---
+
 ### ckversions
 
 **Purpose:** Validates version consistency across all versioned files.
@@ -393,7 +439,7 @@ Role-based script permissions are enforced by helper checks and protected script
 Approver-only scripts require explicit override confirmation:
 
 ```bash
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent <source_branch> <target_branch>
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.0
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepository
 ```
@@ -425,6 +471,9 @@ Variables used by briteTest scripts:
 | `CKROLE_TRUSTED_ACTORS` | Comma-separated allowed bots | Empty |
 | `CONTRIBUTORS_FILE` | Path to contributors config | `config/contributors.md` |
 | `BRAND_HISTORY` | Path to brand history log | `logs/brand_history.md` |
+| `GITHUB_ACTOR` | Preferred GitHub login for role checks | Environment-specific |
+
+For role-gated scripts, ensure one of the supported identity sources resolves to a valid GitHub login in `config/contributors.md`.
 
 ---
 
@@ -481,6 +530,18 @@ See individual script sections for detailed exit code meanings.
 ```bash
 chmod +x scripts/bin/* scripts/helpers/*
 ```
+
+#### Role Check Fails for Known Approver/Reviewer
+
+**Error:** Identity cannot be resolved or user not found in contributors list
+
+**Solution:**
+
+1. Ensure login exists in `config/contributors.md`
+2. Ensure identity resolves to your GitHub login:
+	- `export GITHUB_ACTOR=<login>`
+	- or `gh auth login`
+	- or `git config user.name <login>`
 
 #### Git Command Failures
 

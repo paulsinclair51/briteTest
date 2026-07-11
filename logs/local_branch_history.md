@@ -23,3 +23,7 @@ branch history.
 | 2026-07-07 01:40:48 | Branch `copilot*` deletion failed. |
 | 2026-07-09 22:55:20 | Branch `copilot/consolidate-*` deletion failed. |
 | 2026-07-10 06:17:01 | Branch `zz.invalid-policy-test` deleted. |
+
+**2026-07-11 21:07:21**: Branch `main` deletion failed - Branch 'main' is protected and cannot be deleted
+
+**2026-07-11 21:11:48**: Branch `main` deleted.

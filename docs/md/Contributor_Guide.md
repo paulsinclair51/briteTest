@@ -231,6 +231,19 @@ briteTest uses a six-tier access model for public repository safety:
 
 **Write access is script-controlled** (`mkbranch`, `commit`, `mkpullrequest`, `mergetoparent`, `chtarget`, `mkrelease`) rather than direct protected-branch git operations.
 
+### Identity Prerequisites for Role-Gated Scripts
+
+Role-gated scripts (for example `mergetoparent` and `mkrelease`) require a
+resolvable GitHub login that matches an entry in `config/contributors.md`.
+
+Configure at least one of these identity sources:
+
+- `GITHUB_ACTOR` set to your GitHub login
+- `gh auth login` completed in your environment
+- `git config user.name <github-login>` using your GitHub login (not display name)
+
+If identity cannot be resolved, role checks fail by design.
+
 ---
 
 ## Public Repository Security
@@ -498,6 +511,14 @@ Protected branches require:
 - ✗ No direct commits
 - ✗ No deletions
 
+Protected branches (`main` and `v<M>.<m>.0`) are read-only for direct commit.
+Updates are made through `scripts/bin/mergetoparent` only:
+
+- Use `scripts/bin/syncfromparent` (or equivalent) in the source branch first
+- Resolve conflicts in the source branch before running `mergetoparent`
+- Merge to protected parent using `mergetoparent`
+- When the parent is protected, approver role is required
+
 ---
 
 ## Troubleshooting FAQ
@@ -558,6 +579,20 @@ git filter-repo --path <file> --invert-paths
 **Q: "I accidentally committed to main"
 
 **A:** Don't panic. Contact repository owner. Main is protected so direct commits should fail.
+
+**Q: "Role-gated script says it cannot determine GitHub login identity"
+
+**A:** Configure one of the supported identity sources:
+```bash
+# Option 1: Environment identity
+export GITHUB_ACTOR=<your-github-login>
+
+# Option 2: GitHub CLI authentication
+gh auth login
+
+# Option 3: Git identity mapped to GitHub login
+git config user.name <your-github-login>
+```
 
 **Q: "How do I undo the last commit?"
 
@@ -629,8 +664,12 @@ For new contributors to briteTest:
   ```
 - [ ] **Set up Git configuration**
   ```bash
-  git config user.name "Your Name"
+  git config user.name "your-github-login"
   git config user.email "your.email@example.com"
+  ```
+- [ ] **Authenticate GitHub CLI (recommended for role-gated scripts)**
+  ```bash
+  gh auth login
   ```
 - [ ] **Set up GPG signing** (see [GPG Signing Setup](#gpg-signing-setup) section)
 - [ ] **Set up pre-commit hook** (see [Setting Up Pre-commit Hooks](#setting-up-pre-commit-hooks) section)

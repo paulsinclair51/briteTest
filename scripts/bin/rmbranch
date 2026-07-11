@@ -21,9 +21,12 @@ Arguments:
                      Examples: fix/bug, add-feature, refactor.
 
 Protected branches:
-  - main cannot be deleted.
+  - main and version branches cannot be deleted from remote.
+  - Local protected branches can be deleted when they exist as local-only
+    artifacts.
   - No branch-name policy validation is applied by this script. If a branch
-    ref exists (local and/or remote) and is not protected, it can be removed.
+    ref exists (local and/or remote), it can be removed subject to protected
+    branch safeguards above.
 
 Options:
   -h, --help         Output this help to stdout and exit (other options
@@ -142,7 +145,7 @@ COMMENT=""
 INCLUDE_LOCAL_FLAG=false
 INCLUDE_REMOTE_FLAG=false
 
-# Protected branches that cannot be deleted
+# Protected branch references for remote deletion checks
 PROTECTED_BRANCHES=("main")
 
 
@@ -225,6 +228,9 @@ is_protected_branch() {
       return 0
     fi
   done
+  if [[ "$branch" =~ ^v([1-9][0-9]?)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$ ]]; then
+    return 0
+  fi
   return 1
 }
 
@@ -352,13 +358,6 @@ if [[ -z "$BRANCHNAME" ]]; then
   error_exit 1 "Branch name cannot be empty" ""
 fi
 
-# Check if branch is protected
-if is_protected_branch "$BRANCHNAME"; then
-  _msg="Branch '$BRANCHNAME' is protected and cannot"
-  error_exit 4 "$_msg be deleted" "$BRANCHNAME" \
-      "$COMMENT"
-fi
-
 # Change to repo root
 cd "$REPO_ROOT"
 
@@ -410,6 +409,21 @@ if remote_branch_exists "$BRANCHNAME"; then
   REMOTE_EXISTS=true
 fi
 
+# Protected branches are never removed from remote. If user requested both,
+# degrade to local-only so local cleanup of protected artifacts is possible.
+if is_protected_branch "$BRANCHNAME"; then
+  if [[ "$MODE" == "remote" ]]; then
+    error_exit 4 "Branch '$BRANCHNAME' is protected and cannot be deleted from remote" \
+      "$BRANCHNAME" "$COMMENT"
+  fi
+
+  if [[ "$MODE" == "both" ]]; then
+    warn "Branch '$BRANCHNAME' is protected; skipping remote deletion and continuing with local deletion only"
+    MODE="local"
+    MODE_DESC="local"
+  fi
+fi
+
 # Verify branch exists in the requested mode
 if [[ "$MODE" == "local" && "$LOCAL_EXISTS" == false ]]; then
   _msg="Local branch '$BRANCHNAME' does not exist"
@@ -438,14 +452,20 @@ if [[ "$MODE" == "local" || "$MODE" == "both" ]]; then
     # Check if we're currently on the branch
     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     if [[ "$CURRENT_BRANCH" == "$BRANCHNAME" ]]; then
-      info "Switching to main branch..."
-      if ! git checkout main >/dev/null 2>&1; then
-        # Try master if main doesn't exist
-        if ! git checkout master >/dev/null 2>&1; then
-          _msg="Failed to switch away from branch" 
-      error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" \
-          "$COMMENT"
+      info "Switching away from '$BRANCHNAME' before deletion..."
+      if [[ "$BRANCHNAME" != "main" ]] && local_branch_exists "main"; then
+        if ! git switch main >/dev/null 2>&1; then
+          _msg="Failed to switch away from branch"
+          error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
         fi
+      elif remote_branch_exists "main"; then
+        if ! git switch --detach "origin/main" >/dev/null 2>&1; then
+          _msg="Failed to switch away from branch"
+          error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
+        fi
+      else
+        _msg="Failed to switch away from branch"
+        error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
       fi
     fi
     
