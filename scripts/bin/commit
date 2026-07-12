@@ -498,7 +498,11 @@ EOF
 
   if [[ "$report_mode" == "commit_push" ]]; then
     printf '\n## Commit/Push\n\n' >> "$REPORT_FILE"
-    append_table_header
+    if [[ "$COMMITTED_FILES" -gt 0 ]]; then
+      append_table_header
+    else
+      printf 'None\n' >> "$REPORT_FILE"
+    fi
   else
     printf '\n## Commit\n\n' >> "$REPORT_FILE"
     append_table_header
