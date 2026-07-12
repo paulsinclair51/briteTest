@@ -533,8 +533,7 @@ EOF
   fi
 
   if [[ "$report_mode" == "commit_push" ]]; then
-    printf '\n## Push\n\n' >> "$REPORT_FILE"
-    append_table_header
+    :
   fi
 
   if [[ "$PRE_PUSHED_COMMITS" -gt 0 ]]; then
@@ -551,6 +550,15 @@ EOF
       write_report_row "$file_path" "$added" "$removed" "$total_lines" "$push_notes"
       pushed_only=$((pushed_only + 1))
     done < "$PREPUSH_STATS_FILE"
+  fi
+
+  if [[ "$report_mode" == "commit_push" ]]; then
+    printf '\n## Push\n\n' >> "$REPORT_FILE"
+    if [[ "$pushed_only" -gt 0 ]]; then
+      append_table_header
+    else
+      printf 'None.\n' >> "$REPORT_FILE"
+    fi
   fi
 
   total_rows=$((committed_only + pushed_only + committed_and_pushed))
