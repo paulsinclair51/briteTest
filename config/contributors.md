@@ -1,4 +1,4 @@
-# Contributors
+u# Contributors
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
@@ -34,6 +34,6 @@ Contributors are categorized by their roles and permissions:
 
 Each entry uses this form:
 
-- `<github-login>, <role>
+- `\<github-login\>, \<role\>
 
 - paulsinclair51, A
