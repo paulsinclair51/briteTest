@@ -1,4 +1,4 @@
-u# Contributors
+#u# Contributors
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
@@ -10,6 +10,10 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 This file lists the allowed contributors to briteTest with their GitHub login
 and briteTest role.
+
+Each entry uses this form:
+
+- \<github-login\>, \<role\>
 
 An approver may modify the list below to add or remove a contributor or change a
 contributor's role.
@@ -31,9 +35,5 @@ Contributors are categorized by their roles and permissions:
   documentation changes.
 
 ## Contributors
-
-Each entry uses this form:
-
-- \<github-login\>, \<role\>
 
 - paulsinclair51, A
