@@ -12,13 +12,13 @@
 
 ## Version Status Flow
 
-| Version | Dev | Fix |
-|---------|-----|-----|
-| <version> | Closed | Closed |
-| <version> | Open | Closed |
-| <version> | Released | Closed |
-| <version> | Released | Open |
-| <version> | Released | Suspended |
+| Dev | Fix |
+|-----|-----|
+| Closed | Closed |
+| Open | Closed |
+| Released | Closed |
+| Released | Open |
+| Released | Suspended |
 
 Mormally, Released:Suspended is ends the flow but, as needed, fix status
 can be updated back to Open.
