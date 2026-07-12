@@ -8,15 +8,14 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Overview
 
-This file lists the allowed contributors to briteTest with their GitHub login,
-role, and email address.
+This file lists the allowed contributors to briteTest with their GitHub login
+and role.
 
 An approver may modify the list below to add or remove a contributor or change a
-contributor's role. If there are no approvers, a reviewer may modify the list.
-If there are neither approvers nor reviewers, a contributor may modify the list.
-Otherwise, any user may modify the list.
+contributor's role.
 
-See `<repo>/docs/md/Contributor_Guide.md` for additional information.
+See `<repo>/docs/md/Contributor_Guide.md` for additional information, including
+handling the case that there are no approvers.
 
 ## Contributor Roles and Responsibilities
 
@@ -35,6 +34,6 @@ Contributors are categorized by their roles and permissions:
 
 Each entry uses this form:
 
-- `<github-login>, <role>, <email>`
+- `<github-login>, <role>
 
-- paulsinclair51, A, 16927624+paulsinclair51@users.noreply.github.com
+- paulsinclair51, A
