@@ -9,7 +9,7 @@ For license details, see `<repo>/LICENSE`.
 See `<repo>/README.md` for an introduction to briteTest.
 
 See `<repo>/docs/md/Contributot_Guide.md` for more information about version and release
-workfloes.
+workflows.
 
 ## Dev Status
 - **Closed**: Not yet accepting dev changes.
