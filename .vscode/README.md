@@ -32,7 +32,7 @@ settings:
 
 ## Notes
 
-Additional configuration files may be added here as needed:
+Additional VS Code configuration files may be added here as needed:
 
 - **launch.json**: Debug configurations for running and debugging the project.
 
