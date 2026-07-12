@@ -1,4 +1,5 @@
 # `<repo>/config/`
+
 Directory containing repository configuration files.
 
 Copyright (c) 2026 Paul Sinclair  
