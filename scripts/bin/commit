@@ -812,8 +812,24 @@ fi
 
 print_summary
 generate_commit_push_report
-if [[ "$PUSH" == true && "$DRY_RUN" == true ]]; then
-  bt_success "Commit/Push dry-run complete"
+if [[ "$PUSH" == true ]]; then
+  if [[ "$DRY_RUN" == true ]]; then
+    if [[ "$COMMITTED_FILES" -gt 0 || "$PUSHED_COMMITS" -gt 0 ]]; then
+      bt_success "Commit/Push dry-run complete"
+    else
+      bt_success "No commits or pushes"
+    fi
+  elif [[ "$COMMITTED_FILES" -gt 0 && "$PUSHED_COMMITS" -gt 0 ]]; then
+    bt_success "Commit/Push complete"
+  elif [[ "$COMMITTED_FILES" -eq 0 && "$PUSHED_COMMITS" -gt 0 ]]; then
+    bt_success "Push complete"
+  elif [[ "$COMMITTED_FILES" -eq 0 && "$PUSHED_COMMITS" -eq 0 ]]; then
+    bt_success "No commits or pushes"
+  else
+    bt_success "Commit complete"
+  fi
+elif [[ "$COMMITTED_FILES" -eq 0 ]]; then
+  bt_success "No commits"
 else
   bt_success "Commit complete"
 fi
