@@ -9,7 +9,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 ## Overview
 
 This file lists the allowed contributors to briteTest with their GitHub login
-and role.
+and briteTest role.
 
 An approver may modify the list below to add or remove a contributor or change a
 contributor's role.
