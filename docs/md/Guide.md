@@ -81,32 +81,36 @@ A printer-friendly PDF file for this document is available.
    1.3. [Requirements](#13-requirements)<br>
    1.4. [Installation](#14-installation)<br>
 
-2. [**Runner Framework and API**](#2-test-runner-framework-and-api)<br>
-   2.1. [What the Runner Framework and API Does](#21-what-the-runner-framework-and-api-does)<br>
+2. [**Contributing**](#2-contributing)<br>
+   2.1. [For Public Users](#21-for-public-users)<br>
+   2.2. [For Contributors](#22-for-contributors)<br>
 
-3. [**Running Tests**](#3-running-tests)
+3. [**Runner Framework and API**](#3-test-runner-framework-and-api)<br>
+   3.1. [What the Runner Framework and API Does](#31-what-the-runner-framework-and-api-does)<br>
 
-4. [**Report Generation**](#4-report-generation)
+4. [**Running Tests**](#4-running-tests)
 
-5. [**Customization**](#5-customization)<br>
+5. [**Report Generation**](#5-report-generation)
 
-6. [**Test Report**](#6-test-report)
+6. [**Customization**](#6-customization)<br>
 
-7. [**Advanced Features and Topics**](#7-advanced-features-and-topics)
+7. [**Test Report**](#7-test-report)
 
-8. [**Test Expressions**](#8-test-expressions)
+8. [**Advanced Features and Topics**](#8-advanced-features-and-topics)
 
-9. [**Setup and Teardown**](#9-setup-and-teardown)
+9. [**Test Expressions**](#9-test-expressions)
 
-10. [**Test Groups**](#10-test-groups)
+10. [**Setup and Teardown**](#10-setup-and-teardown)
 
-11. [**1Concurrent Tests**](#11-concurrent-tests)
+11. [**Test Groups**](#11-test-groups)
 
-12. [**Isolation**](#12-isolation)<br>
+12. [**1Concurrent Tests**](#12-concurrent-tests)
 
-13.  [**Test API**](#13-test-api)<br>
-[13.1 File Functions](#131-file-functions)<br>
-[**13.2 Compare Functions**](#132-compare-functions)
+13. [**Isolation**](#13-isolation)<br>
+
+14.  [**Test API**](#14-test-api)<br>
+[14.1 File Functions](#141-file-functions)<br>
+[**14.2 Compare Functions**](#142-compare-functions)
 </details>
 
 <details>
@@ -237,7 +241,7 @@ Test Report
 1. Orchestrator                 4
 2. Guard 1 and 2                6
 --------------------------------------------------
-                      Total    10
+                       Total    10
 ```
 
 </details>
@@ -262,9 +266,71 @@ source file, or integrating via your build system.
 </details>
 
 <details>
-<summary><strong>2. Runner Framework and API</strong></summary>
+<summary><strong>2. Contributing</strong></summary>
 
-## 2. Runner Framework and API
+## 2. Contributing
+
+briteTest welcomes feedback and contributions from the community. This section
+explains how to engage with the project based on your interest level.
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1. For Public Users</summary>
+
+### 2.1. For Public Users
+
+If you use briteTest and want to provide feedback, ask questions, or suggest features:
+
+**Use [GitHub Discussions](../../discussions)**
+
+- **Ask questions** about using briteTest
+- **Suggest features** and improvements
+- **Report bugs** and share workarounds
+- **Share examples** and best practices
+
+GitHub Discussions is the public engagement channel. All feedback is welcome and
+will be reviewed by the maintainers.
+
+**Follow releases:**
+
+Subscribe to [releases](../../releases) to get notified about new versions and
+improvements.
+
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.2. For Contributors</summary>
+
+### 2.2. For Contributors
+
+To contribute code or documentation to briteTest:
+
+1. **Request contributor access** via [GitHub Discussions](../../discussions)
+   or contact the maintainers
+2. **Review** the [Contributor Guide](./Contributor_Guide.md) for detailed
+   requirements on:
+   - Branching model and workflow
+   - Coding standards
+   - Documentation guidelines
+   - Testing requirements
+   - Pull request process
+
+3. **Add to contributors list** — Once approved, you'll be added to
+   `config/contributors.md` with one of these roles:
+   - **C** (Contributor): Can create branches and submit changes
+   - **R** (Reviewer): Can also review pull requests
+   - **A** (Approver): Can merge changes and manage releases
+
+**Pull requests are internal to contributors** — The development workflow
+is visible only to contributors. Use GitHub Discussions for public feedback
+on features or issues.
+
+</details>
+</details>
+
+<details>
+<summary><strong>3. Runner Framework and API</strong></summary>
+
+## 3. Runner Framework and API
 
 The Runner Framework (implemented using the Runner API) executes all test
 expressions (that implement the tests), aggregates results, and produces
@@ -275,9 +341,9 @@ tests. Developers use this API to express expected behavior, group related
 tests, and define optional setup/teardown logic.
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1. What the Runner Framework and API Does</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. What the Runner Framework and API Does</summary>
 
-### 2.1. What the Runner Framework and API Does
+### 3.1. What the Runner Framework and API Does
 
 The Runner framework coordinates test execution from the orchestrator down to
 individual test groups. It initializes the run, applies include and
@@ -291,87 +357,87 @@ detection and reporting.
 </details>
 
 <details>
-<summary><strong>3. Running Tests</strong></summary>
+<summary><strong>4. Running Tests</strong></summary>
 
-## 3. Running Tests
+## 4. Running Tests
 
 How to invoke the runner from `main()`, including optional parameters such as
 output paths or configuration flags.
 </details>
 
 <details>
-<summary><strong>4. Report Generation</strong></summary>
+<summary><strong>5. Report Generation</strong></summary>
 
-## 4. Report Generation
+## 5. Report Generation
 
 How briteTest collects pass/fail information and formats it for output.
 </details>
 
 <details>
-<summary><strong>5. Customization</strong></summary>
+<summary><strong>6. Customization</strong></summary>
 
-## 5. Customization
+## 6. Customization
 
 Notes that you can build your own runner logic if you need custom ordering,
 filtering, or integration behavior.
 </details>
 
 <details>
-<summary><strong>6. Test Report</strong></summary>
+<summary><strong>7. Test Report</strong></summary>
 
-## 6. Test Report
+## 7. Test Report
 
 Describes the structure of the test report, failures, optional details, and
 how to consume it in tooling or CI.
 </details>
 
 <details>
-<summary><strong>7. Advanced Features and Topics</strong></summary>
+<summary><strong>8. Advanced Features and Topics</strong></summary>
 
-## 7. Advanced Features and Topics
+## 8. Advanced Features and Topics
 
 *Filtering tests and custom report writers are available in the User Guide.*
 </details>
 
 <details>
-<summary><strong>8. Test Expressions</strong></summary>
+<summary><strong>9. Test Expressions</strong></summary>
 
-## 8. Test Expressions
+## 9. Test Expressions
 
 How to write a test expression for `RA_TEST(expr)` and how expressions are
 evaluated.
 </details>
 
 <details>
-<summary><strong>9. Setup and Teardown</strong></summary>
+<summary><strong>10. Setup and Teardown</strong></summary>
 
-## 9. Setup and Teardown
+## 10. Setup and Teardown
 
 Optional per‑group or per‑test initialization and cleanup helpers.
 </details>
 
 <details>
-<summary><strong>10. Test Groups</strong></summary>
+<summary><strong>11. Test Groups</strong></summary>
 
-## 10. Test Groups
+## 11. Test Groups
 
 How to organize related tests into groups for readability and logical
 structure.
 </details>
 
 <details>
-<summary><strong>11. Concurrent Tests</strong></summary>
+<summary><strong>12. Concurrent Tests</strong></summary>
 
-## 11. Concurrent Tests
+## 12. Concurrent Tests
 
 How to mark tests as concurrent and how Runner Framework handles parallel execution
 safely.
 </details>
 
 <details>
-<summary><strong>12. Isolation</strong></summary>
+<summary><strong>13. Isolation</strong></summary>
 
-## 12. Isolation
+## 13. Isolation
 
 Isolation controls how much separation is used when running tests.
 
@@ -386,9 +452,9 @@ under test.
 </details>
 
 <details>
-<summary><strong>13. Test API</strong></summary>
+<summary><strong>14. Test API</strong></summary>
 
-## 13. Test API
+## 14. Test API
 
 The Test API provides macros and functions for writing tests. Developers use
 this API to express expected behavior, group related tests, and define optional
@@ -403,9 +469,9 @@ See the Test Reference for a complete list of helpers provided by the API.
 The following two sections provide examples of file and compare functions.
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;13.1. File Functions Examples</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;14.1. File Functions Examples</summary>
 
-### 13.1. File Functions Examples
+### 14.1. File Functions Examples
 
 These helpers cover file and directory-related functions in the Test API.
 
@@ -417,9 +483,9 @@ Examples include:
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;13.2. Compare Functions</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;14.2. Compare Functions</summary>
 
-### 13.2. Compare Functions
+### 14.2. Compare Functions
 
 These helpers cover comparison and matching functions in the Test API.
 
