@@ -54,6 +54,7 @@ Options:
                      is the same as: commit -m "do   keep   this spacing   for commit message"
   -p                 Push changes to remote after commit to branch.
                      Push occurs immediately when requested.
+  -v                 Verbose output. Shows staging-related progress lines.
 
   Note: -m MSG, --message MSG, and -- TEXT are mutually exclusive and one is
   required if one or more commits are to be made. Ignored if no changes need
@@ -78,22 +79,21 @@ Examples:
 
 
 Outputs:
-  - Writes help text, status messages, and results or summaries to stdout.
-  - When -p is specified, output distinguishes:
-    - files committed in this run ([commit+push])
-    - previously committed but unpushed commits ([push-only])
-  - Status labels in detailed lists:
-    - [commit]: file committed in this run and not pushed in this run
-    - [commit+push]: file committed in this run and included in this run's push
-    - [push-only]: previously committed change pending push (no new commit now)
+  - By default (without -v), output to stdout is:
+    - Current branch line.
+    - Final status line includes counts based on mode:
+      - Commit: <n> (commit-only)
+      - Commit/Push: <c>, Push: <p> (-p)
+      - Push: <p> (push-only with -p)
+      - No commits / No commits or pushes when no work was done.
+  - With -v, output to stdout includes additional progress and
+    detailed file/commit lists.
   - Writes a report to:
     - <repo>/reports/commit-<datetime>.md (commit-only normal run)
     - <repo>/reports/commit-d-<datetime>.md (commit-only dry run)
     - <repo>/reports/commit_push-<datetime>.md (commit+push normal run)
     - <repo>/reports/commit_push-d-<datetime>.md (commit+push dry run)
-  - Older dry-run reports (<repo>/reports/commit-d-*.md and
-    <repo>/reports/commit_push-d-*.md) are removed when a new report is
-    generated.
+  - Older dry-run reports are removed when a new report is generated.
   - Writes errors and diagnostics to stderr.
 
 Exit codes:
@@ -110,10 +110,13 @@ EOF
 }
 
 # High-Level Flow:
-# - Parses options and validates local branch / protected-branch constraints.
-# - Determines whether a commit is needed, validates message only when needed,
-#   then commits (or reports planned commit in dry-run mode).
-# - Optionally pushes unpushed commits and reports detailed commit/push summary.
+# - Parse options and initialize run mode (commit-only vs commit+push, dry-run,
+#   verbose).
+# - Validate branch constraints and determine whether there are local changes to
+#   commit.
+# - Execute commit and optional push, with verbose-only progress details.
+# - Generate a report only when work occurred, then print a single final status
+#   line that includes counts and report disposition.
 
 set -euo pipefail
 
@@ -166,6 +169,7 @@ initialize_report_file() {
 COMMIT_MESSAGE=""
 PUSH=false
 DRY_RUN=false
+VERBOSE=false
 FILES=()
 COMMITTED_FILES=0
 PUSHED_COMMITS=0
@@ -340,11 +344,12 @@ write_report_row() {
   local removed="$3"
   local total_lines="$4"
   local notes="$5"
+  local out_file="${6:-$REPORT_FILE}"
   local net
 
   net=$((added - removed))
   printf '| %s | %s | %s | %+d | %s | %s |\n' \
-    "$file_path" "$added" "$removed" "$net" "$total_lines" "$notes" >> "$REPORT_FILE"
+    "$file_path" "$added" "$removed" "$net" "$total_lines" "$notes" >> "$out_file"
 }
 
 append_table_header() {
@@ -490,7 +495,9 @@ EOF
 
   # Track commit-file names to avoid duplicate push-only rows.
   local commit_files_tmp
+  local push_rows_tmp
   commit_files_tmp="$(mktemp)"
+  push_rows_tmp="$(mktemp)"
 
   if [[ -n "$COMMIT_FILE_LIST" ]]; then
     printf '%s\n' "$COMMIT_FILE_LIST" > "$commit_files_tmp"
@@ -501,7 +508,7 @@ EOF
     if [[ "$COMMITTED_FILES" -gt 0 ]]; then
       append_table_header
     else
-      printf 'None\n' >> "$REPORT_FILE"
+      printf 'None.\n' >> "$REPORT_FILE"
     fi
   else
     printf '\n## Commit\n\n' >> "$REPORT_FILE"
@@ -532,10 +539,6 @@ EOF
     fi
   fi
 
-  if [[ "$report_mode" == "commit_push" ]]; then
-    :
-  fi
-
   if [[ "$PRE_PUSHED_COMMITS" -gt 0 ]]; then
     while IFS=$'\t' read -r file_path added removed; do
       [[ -n "$file_path" ]] || continue
@@ -547,7 +550,7 @@ EOF
       local push_notes
       push_notes="$(get_prepush_note_for_file "$file_path" "$added" "$removed")"
       push_notes="${push_notes//|/\\|}"
-      write_report_row "$file_path" "$added" "$removed" "$total_lines" "$push_notes"
+      write_report_row "$file_path" "$added" "$removed" "$total_lines" "$push_notes" "$push_rows_tmp"
       pushed_only=$((pushed_only + 1))
     done < "$PREPUSH_STATS_FILE"
   fi
@@ -556,6 +559,7 @@ EOF
     printf '\n## Push\n\n' >> "$REPORT_FILE"
     if [[ "$pushed_only" -gt 0 ]]; then
       append_table_header
+      cat "$push_rows_tmp" >> "$REPORT_FILE"
     else
       printf 'None.\n' >> "$REPORT_FILE"
     fi
@@ -590,8 +594,7 @@ EOF
 
   cleanup_old_dry_run_reports
 
-  rm -f "$commit_files_tmp"
-  bt_success "Report generated: ${REPORT_FILE#${REPO_ROOT}/}"
+  rm -f "$commit_files_tmp" "$push_rows_tmp"
 }
 
 print_push_commit_details() {
@@ -627,6 +630,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -d)
       DRY_RUN=true
+      shift
+      ;;
+    -v)
+      VERBOSE=true
       shift
       ;;
     -p)
@@ -713,39 +720,53 @@ fi
 # Commit flow
 if [[ "$NEEDS_COMMIT" == true ]]; then
   if [[ "$DRY_RUN" == true ]]; then
-    bt_info "Dry run: would create commit with $COMMITTED_FILES file(s)"
-    if [[ "$PUSH" == true ]]; then
-      print_commit_file_details "Files that would be committed:" "commit+push"
-    else
-      print_commit_file_details "Files that would be committed:" "commit"
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Dry run: would create commit with $COMMITTED_FILES file(s)"
+      if [[ "$PUSH" == true ]]; then
+        print_commit_file_details "Files that would be committed:" "commit+push"
+      else
+        print_commit_file_details "Files that would be committed:" "commit"
+      fi
     fi
   else
-    bt_info "Staging changes..."
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Staging changes..."
+    fi
     if [[ ${#FILES[@]} -eq 0 ]]; then
       if ! git add --all 2>&1; then
         bt_error_exit 6 "Failed to stage changes"
       fi
-      bt_info "Staged all changes"
+      if [[ "$VERBOSE" == true ]]; then
+        bt_info "Staged all changes"
+      fi
     else
       if ! git add "${FILES[@]}" 2>&1; then
         bt_error_exit 6 "Failed to stage files: ${FILES[*]}"
       fi
-      bt_info "Staged files: ${FILES[*]}"
+      if [[ "$VERBOSE" == true ]]; then
+        bt_info "Staged files: ${FILES[*]}"
+      fi
     fi
 
-    bt_info "Creating commit..."
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Creating commit..."
+    fi
     if ! git commit -m "$COMMIT_MESSAGE" 2>&1; then
       bt_error_exit 6 "Failed to create commit"
     fi
-    bt_success "Commit created: $COMMIT_MESSAGE"
-    if [[ "$PUSH" == true ]]; then
-      print_commit_file_details "Committed files:" "commit+push"
-    else
-      print_commit_file_details "Committed files:" "commit"
+    if [[ "$VERBOSE" == true ]]; then
+      bt_success "Commit created: $COMMIT_MESSAGE"
+      if [[ "$PUSH" == true ]]; then
+        print_commit_file_details "Committed files:" "commit+push"
+      else
+        print_commit_file_details "Committed files:" "commit"
+      fi
     fi
   fi
 else
-  bt_info "No changes staged to commit"
+  if [[ "$VERBOSE" == true ]]; then
+    bt_info "No changes to commit"
+  fi
 fi
 
 # Push if requested
@@ -757,14 +778,21 @@ if [[ "$PUSH" == true ]]; then
   collect_prepush_file_stats
 
   if ! is_remote_connected; then
-    bt_warn "Remote 'origin' is not connected; skipping push"
+    if [[ "$VERBOSE" == true ]]; then
+      bt_warn "Remote 'origin' is not connected; skipping push"
+    fi
     if [[ "$PRE_PUSHED_COMMITS" -gt 0 ]]; then
       PUSHED_COMMITS="$PRE_PUSHED_COMMITS"
       PUSH_COMMIT_LIST="$PRE_PUSH_COMMIT_LIST"
-      print_push_commit_details "Previously committed changes pending push:" "push-only"
+      if [[ "$VERBOSE" == true ]]; then
+        print_push_commit_details "Previously committed changes pending push:" "push-only"
+      fi
     fi
-    print_summary
+    if [[ "$VERBOSE" == true ]]; then
+      print_summary
+    fi
     generate_commit_push_report
+    bt_success "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}. Push skipped (remote not connected). Report generated: ${REPORT_FILE#${REPO_ROOT}/}."
     exit 5
   fi
 
@@ -777,73 +805,91 @@ if [[ "$PUSH" == true ]]; then
   fi
 
   if [[ "$PUSHED_COMMITS" -eq 0 ]]; then
-    bt_info "Nothing to push"
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Nothing to push"
+    fi
   else
-    bt_info "Ready to push $PUSHED_COMMITS commit(s) to remote"
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Ready to push $PUSHED_COMMITS commit(s) to remote"
+    fi
 
     if [[ "$NEEDS_COMMIT" == false && "$PRE_PUSHED_COMMITS" -gt 0 ]]; then
       PUSH_COMMIT_LIST="$PRE_PUSH_COMMIT_LIST"
-      print_push_commit_details "Previously committed changes selected for push:" "push-only"
+      if [[ "$VERBOSE" == true ]]; then
+        print_push_commit_details "Previously committed changes selected for push:" "push-only"
+      fi
     elif [[ "$PRE_PUSHED_COMMITS" -gt 0 ]]; then
       PUSH_COMMIT_LIST="$PRE_PUSH_COMMIT_LIST"
-      print_push_commit_details "Previously committed changes pending push:" "push-only"
+      if [[ "$VERBOSE" == true ]]; then
+        print_push_commit_details "Previously committed changes pending push:" "push-only"
+      fi
     fi
 
     if [[ "$NEEDS_COMMIT" == true && "$DRY_RUN" == true ]]; then
-      if [[ "$PRE_PUSHED_COMMITS" -gt 0 ]]; then
-        bt_info "This run would add one new commit to the push set:"
-      else
-        bt_info "This run would push one new commit from current changes:"
+      if [[ "$VERBOSE" == true ]]; then
+        if [[ "$PRE_PUSHED_COMMITS" -gt 0 ]]; then
+          bt_info "This run would add one new commit to the push set:"
+        else
+          bt_info "This run would push one new commit from current changes:"
+        fi
+        bt_info "  - <new commit from current working changes> [push]"
       fi
-      bt_info "  - <new commit from current working changes> [push]"
     elif [[ "$NEEDS_COMMIT" == true ]]; then
       # Show the full selected push set after listing previously pending commits.
       collect_unpushed_commits "$CURRENT_BRANCH"
-      print_push_commit_details "Commits selected for push (including this run):" "push"
+      if [[ "$VERBOSE" == true ]]; then
+        print_push_commit_details "Commits selected for push (including this run):" "push"
+      fi
     else
-      print_push_commit_details "Commits selected for push:" "push"
+      if [[ "$VERBOSE" == true ]]; then
+        print_push_commit_details "Commits selected for push:" "push"
+      fi
     fi
 
-    bt_info "Pushing branch '$CURRENT_BRANCH' to remote..."
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Pushing branch '$CURRENT_BRANCH' to remote..."
+    fi
 
     # Push changes
     if [[ "$DRY_RUN" == true ]]; then
-      bt_info "Dry run: would push $PUSHED_COMMITS commit(s)"
+      if [[ "$VERBOSE" == true ]]; then
+        bt_info "Dry run: would push $PUSHED_COMMITS commit(s)"
+      fi
     else
       if ! git push origin "$CURRENT_BRANCH" 2>&1; then
         bt_error_exit 7 "Failed to push to remote"
       fi
-      bt_success "Pushed to remote"
+      if [[ "$VERBOSE" == true ]]; then
+        bt_success "Pushed to remote"
+      fi
     fi
   fi
 fi
 
-if [[ "$COMMITTED_FILES" -gt 0 || "$PUSHED_COMMITS" -gt 0 ]]; then
+if [[ "$VERBOSE" == true && ( "$COMMITTED_FILES" -gt 0 || "$PUSHED_COMMITS" -gt 0 ) ]]; then
   print_summary
 fi
 if [[ "$PUSH" == true ]]; then
   if [[ "$COMMITTED_FILES" -gt 0 || "$PUSHED_COMMITS" -gt 0 ]]; then
     generate_commit_push_report
     if [[ "$DRY_RUN" == true ]]; then
-      bt_success "Commit/Push dry-run complete"
+      bt_success "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}. Commit/Push dry-run complete. Report generated: ${REPORT_FILE#${REPO_ROOT}/}."
     elif [[ "$COMMITTED_FILES" -gt 0 && "$PUSHED_COMMITS" -gt 0 ]]; then
-      bt_success "Commit/Push complete"
+      bt_success "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}. Commit/Push complete. Report generated: ${REPORT_FILE#${REPO_ROOT}/}."
     elif [[ "$COMMITTED_FILES" -eq 0 && "$PUSHED_COMMITS" -gt 0 ]]; then
-      bt_success "Push complete"
+      bt_success "Push: ${PUSHED_COMMITS}. Push complete. Report generated: ${REPORT_FILE#${REPO_ROOT}/}."
     else
-      bt_success "Commit complete"
+      bt_success "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}. Commit complete. Report generated: ${REPORT_FILE#${REPO_ROOT}/}."
     fi
   else
-    bt_info "Report not generated"
-    bt_success "No commits or pushes"
+    bt_success "No commits or pushes. Report not generated."
   fi
 else
   if [[ "$COMMITTED_FILES" -eq 0 ]]; then
-    bt_info "Report not generated"
-    bt_success "No commits"
+    bt_success "No commits. Report not generated."
   else
     generate_commit_push_report
-    bt_success "Commit complete"
+    bt_success "Commit: ${COMMITTED_FILES}. Commit complete. Report generated: ${REPORT_FILE#${REPO_ROOT}/}."
   fi
 fi
 exit 0
