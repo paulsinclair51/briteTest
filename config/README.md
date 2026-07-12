@@ -17,7 +17,7 @@ See `<repo>/README.md` for an introduction to briteTest.
   Used by `make lint-md` in the project `Makefile`. See below for details.
 
 - **version_status.md**: Specifies the status of versions for accepting changes.
-.
+
 - **README.md**: This directory guide.
 
 ## Subdirectories
