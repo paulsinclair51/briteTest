@@ -22,7 +22,8 @@
 
 Mormally, Released:Suspended is ends the flow but, as needed, fix status
 can be updated back to Open.
-## Status
+
+## Current Status
 
 | Version | Dev | Fix |
 |---------|-----|-----|
