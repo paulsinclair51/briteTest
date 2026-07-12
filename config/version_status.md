@@ -41,3 +41,6 @@ can be updated back to Open.
 | v1.0.0 | Open | Closed |
 | v1.1.0 | Closed | Closed |
 | v2.0.0 | Closed | Closed |
+
+If a version is not listed, its status is Closed/Closed.
+
