@@ -818,11 +818,9 @@ if [[ "$PUSH" == true ]]; then
   fi
 fi
 
-if [[ "$COMMITTED_FILES" -eq 0 && "$PUSHED_COMMITS" -eq 0 ]]; then
-  bt_info "Nothing to commit, nothing to push"
+if [[ "$COMMITTED_FILES" -gt 0 || "$PUSHED_COMMITS" -gt 0 ]]; then
+  print_summary
 fi
-
-print_summary
 if [[ "$PUSH" == true ]]; then
   if [[ "$COMMITTED_FILES" -gt 0 || "$PUSHED_COMMITS" -gt 0 ]]; then
     generate_commit_push_report
@@ -840,10 +838,11 @@ if [[ "$PUSH" == true ]]; then
     bt_success "No commits or pushes"
   fi
 else
-  bt_info "Report not generated"
   if [[ "$COMMITTED_FILES" -eq 0 ]]; then
+    bt_info "Report not generated"
     bt_success "No commits"
   else
+    generate_commit_push_report
     bt_success "Commit complete"
   fi
 fi
