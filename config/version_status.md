@@ -31,7 +31,7 @@ workfloes.
 | Released | Open |
 | Released | Suspended |
 
-Mormally, Released:Suspended is ends the flow but, as needed, fix status
+Normally, Released/Suspended ends the flow but, as needed, fix status
 can be updated back to Open.
 
 ## Current Status
