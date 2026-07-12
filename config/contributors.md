@@ -8,8 +8,8 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Overview
 
-This file lists the allowed contributors to briteTest with their GitHub login
-and briteTest role.
+This file defines the allowed contributors to briteTest with their GitHub login
+and briteTest role in the following Contributor section.
 
 Each entry uses this form:
 
