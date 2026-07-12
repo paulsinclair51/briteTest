@@ -31,7 +31,7 @@ Contributors are categorized by their roles and permissions:
   Reviewers help maintain code and documentation quality through peer review.
 
 - **A** (Approver): Can contribute, review pull requests (PRs), approve PRs for
-  merging, and modify permissions. Approvers have final authority on code and
+  merging, modify this file, and modify permissions. Approvers have final authority on code and
   documentation changes.
 
 ## Contributors
