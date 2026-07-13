@@ -61,7 +61,7 @@ Options:
                        Usage: mergetoparent -- Merge parser fixes
                        Note: '--' must be a separate token, followed by at
                        least one token. Leading/trailing whitespace is not
-                       preserved and whitespace between tokens is normalized
+                       preserved and whitespace between tokens is reduced
                        to a single space.
                        In quoted tokens, whitespace is preserved and the
                        quotes are removed, for example:
@@ -74,8 +74,8 @@ Options:
 -m TOKEN, --message TOKEN, -- TOKENS are mutually exclusive. Only one may
 be specified.
 
-Note: Normalized TOKEN/TOKENS must include at least one non-whitespace
-character.
+Note: The resulting commit message from TOKEN/TOKENS must include at least
+one non-whitespace character.
 
 If a custom message is not specified:
 
