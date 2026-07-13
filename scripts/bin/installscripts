@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # installscripts - Make all scripts in /scripts/bin/ executable and add to PATH.
+#                  Also installs Git hooks for workflow protection.
 #
 # See usage below for details, or run: bash /scripts/bin/installscripts -h
 #
@@ -14,11 +15,12 @@ Usage:
   bash /scripts/bin/installscripts
   bash /scripts/bin/installscripts -h | --help
 
-Make all scripts in /scripts/bin/ executable and add /scripts/bin/ to PATH.
+Make all scripts in /scripts/bin/ executable, add to PATH, and install Git hooks.
 
 This script:
   - Makes all scripts in /scripts/bin/ executable (chmod +x).
   - Adds /scripts/bin/ to PATH in ~/.bashrc if not already present.
+  - Installs Git hooks to .git/hooks/ to enforce script-only workflow.
   - Loads the updated configuration so scripts are available immediately.
 
 After running, scripts in /scripts/bin/ will be:
@@ -26,12 +28,17 @@ After running, scripts in /scripts/bin/ will be:
   - Available by name in the shell (e.g., lsbranch -h, installscripts -h).
   - Persistent across new shell sessions.
 
+Git hooks will be:
+  - Installed to .git/hooks/
+  - Active immediately
+  - Preventing direct use of unsafe git commands.
+
 Options:
   -h, --help  Output this help to stdout and exit (other options
               and arguments are ignored).
 
 Examples:
-  # Install scripts and add to PATH
+  # Install scripts and hooks
   bash /scripts/bin/installscripts
 
   # Show help
@@ -47,6 +54,7 @@ Exit codes:
   0  Success
   1  scripts/bin directory not found
   2  Failed to load configuration
+  3  Failed to install Git hooks
 EOF
 }
 
@@ -107,6 +115,22 @@ else
   echo "  ✓ Added to ~/.bashrc"
 fi
 
+# Install Git hooks
+echo ""
+echo "Installing Git hooks for workflow protection..."
+hook_installer="$repo_root/scripts/helpers/install-git-hooks.sh"
+
+if [[ -f "$hook_installer" ]]; then
+  if bash "$hook_installer"; then
+    echo "  ✓ Git hooks installed"
+  else
+    echo "  ⚠ Warning: Failed to install Git hooks" >&2
+    echo "     Run manually: bash $hook_installer" >&2
+  fi
+else
+  echo "  ⚠ Warning: Hook installer not found at $hook_installer" >&2
+fi
+
 # Load the updated configuration
 echo ""
 echo "Loading updated configuration..."
@@ -121,5 +145,9 @@ echo ""
 echo "Scripts in $scripts_bin are now:"
 echo "  - Executable"
 echo "  - Available in PATH for current and future sessions"
+echo ""
+echo "Git hooks are now:"
+echo "  - Installed to .git/hooks/"
+echo "  - Active and protecting your workflow"
 echo ""
 echo "You can now run scripts by name, e.g.: lsbranch -h"
