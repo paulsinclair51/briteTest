@@ -74,7 +74,7 @@ Options:
 -m TOKEN, --message TOKEN, -- TOKENS are mutually exclusive. Only one may
 be specified.
 
-Note: The resulting commit message from TOKEN/TOKENS must include at least
+The resulting commit message from TOKEN/TOKENS must include at least
 one non-whitespace character.
 
 If a custom message is not specified:
