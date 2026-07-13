@@ -1,6 +1,8 @@
 # `<repo>/scripts/bin/`
 
-Directory containing contributor scripts.
+Directory containing contributor scripts for briteTest workflow.
+
+**⚠️ IMPORTANT: All scripts must be installed via `mkclone` or `installscripts`**
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
@@ -8,113 +10,258 @@ For license details, see `<repo>/LICENSE`.
 
 See `<repo>/README.md` for an introduction to briteTest.
 
+---
+
+## Quick Start
+
+```bash
+# Clone repository with automatic setup (RECOMMENDED)
+mkclone
+
+# OR install scripts manually
+bash scripts/bin/installscripts
+```
+
+For detailed setup: See [`docs/SETUP_FIRST_CLONE.md`](../../docs/SETUP_FIRST_CLONE.md)
+
+---
+
 ## Files
 
 ### Setup and Installation
 
-- **installscripts**: Make all scripts executable and add
-   `<repo>/scripts/bin/` to PATH.
+- **`mkclone`**: Clone the repository with automatic installation of scripts and Git hooks.
+  - Clones repository
+  - Installs scripts
+  - Installs Git hooks
+  - Adds scripts to PATH
+  - **USE THIS FOR FIRST CLONE** ✅
+
+- **`installscripts`**: Make all scripts executable and add `<repo>/scripts/bin/` to PATH.
+  - Also installs Git hooks
+  - Idempotent (safe to run multiple times)
+
+### Git Hook Protection
+
+**All scripts below work with Git hooks. See [`docs/GIT_HOOKS_WORKFLOW.md`](../../docs/GIT_HOOKS_WORKFLOW.md) for details.**
+
+### Branch Workflow Scripts
+
+- **`mkbranch`**: Create new branches with policy validation.
+  - Usage: `mkbranch patch/my-fix main`
+  - Creates local branch from parent
+  - Optionally pushes to remote with `-r`
+
+- **`commit`**: Commit and optionally push changes.
+  - Usage: `commit -m "Your message"`
+  - Use instead of `git add` and `git commit`
+  - Add `-p` flag to push: `commit -m "msg" -p`
+  - Add `-v` for verbose output
+
+- **`merge`**: Merge current branch to its parent branch.
+  - Usage: `merge`
+  - Use after PR approval
+  - Validates PR, status checks, and permissions
+
+- **`rmbranch`**: Delete branches locally and/or remotely.
+  - Usage: `rmbranch patch/old-fix`
+  - Add `-f` to force delete unmerged commits
+
+- **`undo`**: Undo recent commit, merge, or release operations.
+  - Usage: `undo commit` or `undo merge` or `undo release`
+  - Soft resets to preserve changes
+
+- **`chtarget`**: Rebase current branch onto a different parent.
+  - Usage: `chtarget v1.2.3`
+  - Use when changing version target
+  - Add `-d` for dry-run preview
+
+- **`mkrelease`**: Create and publish releases with git tags.
+  - Usage: `mkrelease v1.0.0`
+  - Creates annotated tag and GitHub release
+  - Only on `main` branch
 
 ### Document and Brand Management
 
-- **ckstyle**: Check style quidelines for documention, code, scripts,
-   directory guides, versions etc. for the current branch.
-   See Contributor Guide for guidelines.
-- **gendocs**: Generate PDF and DOCX documentation.
-- **genpngs**: Generate branding PNG images from SVG files.
-- **replacephrases**: Apply configured phrase replacements in markdown files.
-- **updatebrand**: Update branding text and regenerate related assets.
+- **`ckstyle`**: Check style guidelines for documentation, code, scripts, etc.
+- **`gendocs`**: Generate PDF and DOCX documentation.
+- **`genpngs`**: Generate branding PNG images from SVG files.
+- **`replacephrases`**: Apply configured phrase replacements in markdown files.
+- **`updatebrand`**: Update branding text and regenerate related assets.
 
 ### Repository and Fork Management
 
-- **mkfork**: Create a fork of the repository and optionally configure it with
-  upstream remote and user as approver.
+- **`mkfork`**: Create a fork and optionally configure with upstream remote.
 
-### Branch and Workflow Management
+### Additional Scripts
 
-- **ckbranch_history**: Query branch history log entries.
-- **lsbranch**: List a branch or branches and their status.
-- **mkbranch**: Create branches with policy validation.
-- **mkclone**: Clone the repository with optional target naming.
-- **commit**: Commit and optionally push changes.
-- **copyfix**: Cherry-pick/copy fix commits from another branch.
-- **mkfeedback**: View/respond to PR feedback workflows.
-- **merge**: Merge current branch to its parent branch.
-- **mkpullrequest**: Create or update a pull request.
-- **chtarget**: Retarget a targeted branch to a different version parent.
-- **mkrelease**: Create and publish releases.
-- **synceremote**: Fetch and pull latest changes.
-- **syncparent**: Merge parent branch into current branch.
-- **testscripts**: Run tests and optional documentation checks.
-- **undo**: Undo recent merge/release/commit operations.
-- **rmbranch**: Remove local and/or remote branches.
+- **`ckbranch_history`**: Query branch history log entries.
+- **`lsbranch`**: List branches and their status.
+- **`copyfix`**: Cherry-pick/copy fix commits from another branch.
+- **`mkfeedback`**: View/respond to PR feedback workflows.
+- **`mkpullrequest`**: Create or update a pull request.
+- **`synceremote`**: Fetch and pull latest changes.
+- **`syncparent`**: Merge parent branch into current branch.
+- **`testscripts`**: Run tests and documentation checks.
 
-### README Directory Guide
+---
+
+## Git Hooks Integration
+
+**All scripts work seamlessly with Git hooks that enforce script-only workflow.**
+
+Hooks prevent direct use of:
+- ❌ `git add` / `git commit` → Use `commit` script
+- ❌ `git push` → Use `commit -p`
+- ❌ `git merge` → Use `merge` script
+- ❌ `git branch -d` → Use `rmbranch` script
+- ❌ `git rebase` → Use `chtarget` script
+- ❌ `git tag` → Use `mkrelease` script
+
+Hooks auto-install on first clone and provide clear error messages.
+
+**For details:** See [`docs/GIT_HOOKS_WORKFLOW.md`](../../docs/GIT_HOOKS_WORKFLOW.md)
+
+---
+
+## Getting Started
+
+### Step 1: Clone with `mkclone`
+
+```bash
+mkclone
+cd BriteTest
+```
+
+This automatically:
+- Clones the repository
+- Installs all scripts
+- Installs Git hooks
+- Makes scripts available
+
+### Step 2: Verify Setup
+
+```bash
+# Check hooks installed
+ls -la .git/hooks/ | grep -E 'orchestrator|pre-commit|pre-push'
+
+# Try a script
+commit -h
+```
+
+### Step 3: Start Working
+
+```bash
+# Create a branch
+mkbranch patch/my-fix main
+
+# Make changes and commit
+commit -m "Fix bug"
+
+# Push when ready
+commit -p
+```
+
+---
+
+## Script Usage
+
+For any script's detailed help:
+
+```bash
+<script-name> -h
+```
+
+Examples:
+```bash
+commit -h
+merge -h
+mkbranch -h
+rmbranch -h
+undo -h
+chtarget -h
+mkrelease -h
+```
+
+---
+
+## Common Workflow
+
+```bash
+# Setup (once per clone)
+mkclone
+cd BriteTest
+
+# Create branch
+mkbranch patch/feature-name main
+
+# Make changes
+echo "code" > file.js
+
+# Commit
+commit -m "Add feature"
+
+# Push
+commit -p
+
+# Create PR on GitHub
+
+# After approval, merge
+merge
+
+# Delete old branch
+rmbranch patch/feature-name
+```
+
+---
+
+## Troubleshooting
+
+### Scripts not executable
+
+Re-run setup:
+```bash
+bash scripts/bin/installscripts
+```
+
+### Scripts not in PATH
+
+Reload shell configuration:
+```bash
+source ~/.bashrc
+```
+
+### Git command blocked
+
+Error message tells you which script to use. Read it carefully!
+
+Examples:
+- "Use 'commit' script" → Run `commit -m "message"`
+- "Use 'commit -p'" → Run `commit -m "message" -p`
+- "Use 'merge' script" → Run `merge`
+
+### Hooks not installed
+
+Re-install hooks:
+```bash
+bash scripts/helpers/install-git-hooks.sh
+```
+
+---
+
+## Documentation
+
+- **First Setup:** [`docs/SETUP_FIRST_CLONE.md`](../../docs/SETUP_FIRST_CLONE.md)
+- **Workflows:** [`docs/GIT_HOOKS_WORKFLOW.md`](../../docs/GIT_HOOKS_WORKFLOW.md)
+- **Contributing:** [`docs/md/Contributor_Guide.md`](../../docs/md/Contributor_Guide.md)
+- **Hook Details:** [`scripts/helpers/.githooks/README.md`](../helpers/.githooks/README.md)
+
+---
+
+## README Directory Guide
 
 - **README.md**: This directory guide.
 
 ## Subdirectories
 
 - None.
-
-## Getting Started
-
-To make all scripts executable and add them to your PATH, run:
-
-   ```sh
-   bash `<repo>/scripts/bin/installscripts`
-   ```
-
-This script will:
-- Make all scripts executable (chmod +x)
-- Add `<repo>/scripts/bin/` to PATH in ~/.bashrc
-- Load the updated configuration so scripts are available immediately
-
-For more information, run:
-
-  ```sh
-  bash `<repo>/scripts/bin/installscripts` -h
-  ```
-
-## Usage
-
-For a script's usage information, execute the script using the
-`-h` option. For example,
-
-  ```sh
-  lsbranch -h
-  ```
-
-## Troubleshooting
-
-### Scripts not executable
-
-If a script is not executable in your environment, you can:
-
-1. Run or rerun `<repo>/scripts/bin/installscripts` (see Getting
-   Started above).
-
-3. Manually fix individual scripts:
-
-   ```sh
-   chmod +x `<repo>/scripts/bin/<script_name>`
-   ```
-
-### Scripts not in PATH
-
-1. Run or rerun `<repo>/scripts/bin/installscripts` (see Getting
-   Started above).
-
-3. Manually update the PATH configuration:
-
-   - Add this line to ~/.bashrc:
-
-      ```sh
-      export PATH="`<repo>/scripts/bin`:$PATH"
-      ```
-
-   - Then reload your shell configuration:
-
-     ```sh
-     source ~/.bashrc
-     ```
