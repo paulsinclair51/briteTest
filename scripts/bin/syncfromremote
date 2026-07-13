@@ -147,6 +147,11 @@ EOF
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+REPORT_FILE=""
+ORIGINAL_ARGS=("$@")
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
@@ -158,79 +163,283 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 SYNC_ALL=false
 VERBOSE=false
 COMMENT=""
+DRY_RUN=false
+TARGET_BRANCH=""
+
+CURRENT_BRANCH=""
+
+EVALUATED_COUNT=0
+SYNCED_COUNT=0
+SKIPPED_COUNT=0
+REMOTE_MATCH_COUNT=0
+
+declare -a RESULT_BRANCHES=()
+declare -a RESULT_STATUS=()
+declare -a RESULT_REASON=()
 
 
-check_diverged() {
+format_command_line() {
+  local formatted="syncfromremote"
+  local arg
+
+  for arg in "${ORIGINAL_ARGS[@]}"; do
+    printf -v formatted '%s %q' "$formatted" "$arg"
+  done
+
+  printf '%s\n' "$formatted"
+}
+
+initialize_report_file() {
+  if [[ "$DRY_RUN" == true ]]; then
+    REPORT_FILE="$REPO_ROOT/reports/syncfromremote-d-${RUN_TS_FILE}.md"
+  else
+    REPORT_FILE="$REPO_ROOT/reports/syncfromremote-${RUN_TS_FILE}.md"
+  fi
+}
+
+cleanup_old_dry_run_reports() {
+  local old_report
+
+  for old_report in "$REPO_ROOT"/reports/syncfromremote-d-*.md; do
+    [[ -e "$old_report" ]] || continue
+    [[ -n "$REPORT_FILE" && "$old_report" == "$REPORT_FILE" ]] && continue
+    rm -f "$old_report"
+  done
+}
+
+is_remote_connected() {
+  git remote get-url origin >/dev/null 2>&1 || return 1
+  git ls-remote --heads origin >/dev/null 2>&1 || return 1
+}
+
+branch_has_uncommitted_changes() {
   local branch="$1"
-  
-  # Get local and remote commit hashes
-  local local_commit=$(git rev-parse "$branch" 2>/dev/null || echo "")
-  local remote_commit=$(git rev-parse "origin/$branch" 2>/dev/null || echo "")
-  
-  if [[ -z "$local_commit" ]] || [[ -z "$remote_commit" ]]; then
+
+  if [[ "$branch" != "$CURRENT_BRANCH" ]]; then
     return 1
   fi
-  
-  # Check if branches have diverged
-  local merge_base=$(git merge-base "$branch" "origin/$branch" \
-    2>/dev/null || echo "")
-  
-  if [[ "$merge_base" != "$local_commit" ]] && \
-    [[ "$merge_base" != "$remote_commit" ]]; then
-    return 0  # Diverged
-  fi
-  
-  return 1  # Not diverged
+
+  [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]
 }
 
-count_unpushed_commits() {
+branch_has_remote() {
   local branch="$1"
-  
-  # Count commits that are in local branch but not in origin
-  git rev-list --count "origin/$branch..$branch" 2>/dev/null || echo "0"
+  git show-ref --verify --quiet "refs/remotes/origin/$branch"
 }
 
-count_commits_behind_parent() {
+branch_is_diverged() {
   local branch="$1"
-
-  local parent_branch
-  parent_branch=$(bt_resolve_parent_branch "$branch" "")
-
-  if [[ -z "$parent_branch" ]]; then
-    echo "0"
-    return 0
-  fi
-
-  git rev-list --count "$branch..origin/$parent_branch" 2>/dev/null || echo "0"
-}
-
-fast_forward_branch_ref() {
-  local branch="$1"
-
-  if ! git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
-    return 1
-  fi
 
   local local_commit
   local remote_commit
   local merge_base
-  local_commit=$(git rev-parse "$branch" 2>/dev/null || echo "")
-  remote_commit=$(git rev-parse "origin/$branch" 2>/dev/null || echo "")
-  merge_base=$(git merge-base "$branch" "origin/$branch" 2>/dev/null || echo "")
 
-  if [[ -z "$local_commit" || -z "$remote_commit" ]]; then
-    return 1
+  local_commit="$(git rev-parse "$branch" 2>/dev/null || true)"
+  remote_commit="$(git rev-parse "origin/$branch" 2>/dev/null || true)"
+  merge_base="$(git merge-base "$branch" "origin/$branch" 2>/dev/null || true)"
+
+  [[ -n "$local_commit" && -n "$remote_commit" && -n "$merge_base" ]] || return 1
+
+  [[ "$merge_base" != "$local_commit" && "$merge_base" != "$remote_commit" ]]
+}
+
+branch_is_up_to_date() {
+  local branch="$1"
+  local local_commit
+  local remote_commit
+
+  local_commit="$(git rev-parse "$branch" 2>/dev/null || true)"
+  remote_commit="$(git rev-parse "origin/$branch" 2>/dev/null || true)"
+
+  [[ -n "$local_commit" && "$local_commit" == "$remote_commit" ]]
+}
+
+branch_fast_forward_possible() {
+  local branch="$1"
+
+  local local_commit
+  local remote_commit
+  local merge_base
+
+  local_commit="$(git rev-parse "$branch" 2>/dev/null || true)"
+  remote_commit="$(git rev-parse "origin/$branch" 2>/dev/null || true)"
+  merge_base="$(git merge-base "$branch" "origin/$branch" 2>/dev/null || true)"
+
+  [[ -n "$local_commit" && -n "$remote_commit" && -n "$merge_base" ]] || return 1
+
+  [[ "$merge_base" == "$local_commit" ]]
+}
+
+add_result() {
+  local branch="$1"
+  local status="$2"
+  local reason="$3"
+
+  RESULT_BRANCHES+=("$branch")
+  RESULT_STATUS+=("$status")
+  RESULT_REASON+=("$reason")
+}
+
+warn_branch_behind_parent() {
+  local branch="$1"
+
+  local parent_branch
+  parent_branch="$(bt_resolve_parent_branch "$branch" "")"
+  [[ -n "$parent_branch" ]] || return 0
+
+  local behind_parent
+  behind_parent="$(git rev-list --count "$branch..origin/$parent_branch" 2>/dev/null || echo 0)"
+  [[ "$behind_parent" =~ ^[0-9]+$ ]] || behind_parent=0
+
+  if [[ "$behind_parent" -gt 0 ]]; then
+    bt_warn "Branch '$branch' is $behind_parent commit(s) behind parent '$parent_branch'"
+    if bt_is_protected_branch "$branch"; then
+      bt_info "Protected branches require an approver-managed merge workflow"
+    else
+      bt_info "Run: syncfromparent"
+    fi
+  fi
+}
+
+evaluate_branch() {
+  local branch="$1"
+
+  EVALUATED_COUNT=$((EVALUATED_COUNT + 1))
+
+  if ! branch_has_remote "$branch"; then
+    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+    add_result "$branch" "skipped" "no corresponding remote branch"
+    if [[ "$VERBOSE" == true ]]; then
+      bt_warn "Skipped '$branch': no corresponding remote branch"
+    fi
+    return 0
   fi
 
-  if [[ "$local_commit" == "$remote_commit" ]]; then
-    return 2
+  REMOTE_MATCH_COUNT=$((REMOTE_MATCH_COUNT + 1))
+
+  if branch_has_uncommitted_changes "$branch"; then
+    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+    add_result "$branch" "skipped" "local branch has uncommitted changes"
+    bt_warn "Skipped '$branch': local branch has uncommitted changes"
+    return 0
   fi
 
-  if [[ "$merge_base" != "$local_commit" ]]; then
-    return 1
+  if branch_is_diverged "$branch"; then
+    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+    add_result "$branch" "skipped" "local and remote have diverged"
+    bt_warn "Skipped '$branch': local and remote have diverged"
+    return 0
   fi
 
-  git branch -f "$branch" "origin/$branch" >/dev/null 2>&1
+  if branch_is_up_to_date "$branch"; then
+    SYNCED_COUNT=$((SYNCED_COUNT + 1))
+    add_result "$branch" "synchronized" "already up to date"
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Branch '$branch' is already up to date"
+    fi
+    warn_branch_behind_parent "$branch"
+    return 0
+  fi
+
+  if ! branch_fast_forward_possible "$branch"; then
+    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+    add_result "$branch" "skipped" "cannot fast-forward safely"
+    bt_warn "Skipped '$branch': cannot fast-forward safely"
+    return 0
+  fi
+
+  if [[ "$DRY_RUN" == true ]]; then
+    SYNCED_COUNT=$((SYNCED_COUNT + 1))
+    add_result "$branch" "synchronized" "would synchronize (dry run)"
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Dry run: would synchronize '$branch'"
+    fi
+    warn_branch_behind_parent "$branch"
+    return 0
+  fi
+
+  if [[ "$branch" == "$CURRENT_BRANCH" ]]; then
+    if git merge --ff-only "origin/$branch" >/dev/null 2>&1; then
+      SYNCED_COUNT=$((SYNCED_COUNT + 1))
+      add_result "$branch" "synchronized" "fast-forwarded from remote"
+      bt_success "Synchronized '$branch'"
+      warn_branch_behind_parent "$branch"
+      return 0
+    fi
+
+    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+    add_result "$branch" "skipped" "failed to fast-forward current branch"
+    bt_warn "Skipped '$branch': failed to fast-forward current branch"
+    return 0
+  fi
+
+  if git branch -f "$branch" "origin/$branch" >/dev/null 2>&1; then
+    SYNCED_COUNT=$((SYNCED_COUNT + 1))
+    add_result "$branch" "synchronized" "fast-forwarded from remote"
+    if [[ "$VERBOSE" == true ]]; then
+      bt_success "Synchronized '$branch'"
+    fi
+    warn_branch_behind_parent "$branch"
+    return 0
+  fi
+
+  SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+  add_result "$branch" "skipped" "failed to update local branch reference"
+  bt_warn "Skipped '$branch': failed to update local branch reference"
+}
+
+generate_report() {
+  local command_text
+  local branch_scope
+  local i
+
+  command_text="$(format_command_line)"
+  if [[ "$SYNC_ALL" == true ]]; then
+    branch_scope="all local branches"
+  else
+    branch_scope="$TARGET_BRANCH"
+  fi
+
+  mkdir -p "$REPO_ROOT/reports"
+
+  cat > "$REPORT_FILE" <<EOF
+# Sync From Remote Report ${RUN_TS_DISPLAY}
+
+**Command:** \`${command_text}\`
+
+**Branch Scope:** \`${branch_scope}\`
+
+**Synchronized:** ${SYNCED_COUNT}<br>
+**Skipped:** ${SKIPPED_COUNT}<br>
+**Total Evaluated:** ${EVALUATED_COUNT}
+
+## Branch Results
+
+| **Branch** | **Status** | **Reason** |
+| --- | --- | --- |
+EOF
+
+  for ((i=0; i<${#RESULT_BRANCHES[@]}; i++)); do
+    local branch="${RESULT_BRANCHES[$i]}"
+    local status="${RESULT_STATUS[$i]}"
+    local reason="${RESULT_REASON[$i]}"
+
+    [[ -n "$reason" ]] || reason="-"
+    reason="${reason//|/\\|}"
+    printf '| %s | %s | %s |\n' "$branch" "$status" "$reason" >> "$REPORT_FILE"
+  done
+
+  if [[ -n "$COMMENT" ]]; then
+    printf '\n## Notes\n\n- User note: %s\n' "$COMMENT" >> "$REPORT_FILE"
+  fi
+
+  if [[ "$SKIPPED_COUNT" -gt 0 ]]; then
+    printf '\n- Review skipped-branch reasons above for follow-up actions.\n' >> "$REPORT_FILE"
+  fi
+
+  if [[ "$DRY_RUN" == true ]]; then
+    cleanup_old_dry_run_reports
+  fi
 }
 
 # Parse options and arguments
@@ -242,6 +451,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -a | --all)
       SYNC_ALL=true
+      shift
+      ;;
+    -d)
+      DRY_RUN=true
       shift
       ;;
     -v | --verbose)
@@ -264,6 +477,9 @@ while [[ $# -gt 0 ]]; do
       if [[ -n "$COMMENT" ]]; then
         bt_error_exit 1 "Cannot use both -m and -- for comment"
       fi
+      if [[ $# -lt 1 ]]; then
+        bt_error_exit 1 "Option -- requires at least one token for comment"
+      fi
       COMMENT="$*"
       break
       ;;
@@ -271,104 +487,93 @@ while [[ $# -gt 0 ]]; do
       bt_error_exit 1 "Unknown option: $1"
       ;;
     *)
-      bt_error_exit 1 "Unknown argument: $1"
+      if [[ -n "$TARGET_BRANCH" ]]; then
+        bt_error_exit 1 "Only one BRANCH argument is allowed"
+      fi
+      TARGET_BRANCH="$1"
+      shift
       ;;
   esac
 done
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
-  bt_error_exit 2 "Failed to determine current branch")
+  bt_error_exit 1 "Failed to determine current branch")
+
+if [[ "$CURRENT_BRANCH" == "HEAD" && -z "$TARGET_BRANCH" ]]; then
+  bt_error_exit 1 "Current branch is detached; specify BRANCH explicitly"
+fi
+
+if [[ "$SYNC_ALL" == true && -n "$TARGET_BRANCH" ]]; then
+  bt_error_exit 1 "Cannot combine -a with BRANCH"
+fi
+
+if [[ -z "$TARGET_BRANCH" && "$SYNC_ALL" == false ]]; then
+  TARGET_BRANCH="$CURRENT_BRANCH"
+fi
+
+if [[ "$SYNC_ALL" == false ]]; then
+  if ! git show-ref --verify --quiet "refs/heads/$TARGET_BRANCH"; then
+    bt_error_exit 1 "Local branch '$TARGET_BRANCH' does not exist"
+  fi
+fi
+
 bt_info "Current branch: $CURRENT_BRANCH"
 
 if [[ -n "$COMMENT" ]]; then
   bt_info "Note: $COMMENT"
 fi
 
-# Fetch from remote
-bt_info "Fetching from remote..."
-if ! git fetch origin 2>&1; then
-  bt_error_exit 2 "Failed to fetch from remote"
+if ! is_remote_connected; then
+  bt_error_exit 2 "Remote disconnected"
 fi
-bt_success "Fetched successfully"
 
-# Sync current branch
-if [[ "$SYNC_ALL" == false ]]; then
-  bt_info "Pulling latest changes into $CURRENT_BRANCH..."
-  
-  # Check for divergence before pulling
-  if check_diverged "$CURRENT_BRANCH"; then
-    bt_error_exit 3 \
-      "Branch '$CURRENT_BRANCH' has diverged from remote. Manual resolution "\
-"needed. Use 'git rebase' or 'merge' to resolve."
+if [[ "$DRY_RUN" == false ]]; then
+  bt_info "Fetching from remote..."
+  if ! git fetch origin 2>&1; then
+    bt_error_exit 2 "Remote disconnected"
   fi
-  
-  # Pull changes
-  if ! git pull origin "$CURRENT_BRANCH" 2>&1; then
-    bt_error_exit 2 "Failed to pull changes for $CURRENT_BRANCH"
-  fi
-  
-  bt_success "Updated $CURRENT_BRANCH"
-  
-  # Show commit count if verbose
-  if [[ "$VERBOSE" == true ]]; then
-    new_commits=$(git rev-list --count "HEAD@{1}..HEAD" 2>/dev/null || echo "?")
-    if [[ "$new_commits" != "?" ]]; then
-      bt_info "$new_commits new commits pulled"
-    fi
-  fi
+  bt_success "Fetched successfully"
 else
-  # Sync all local branches safely.
-  bt_info "Fast-forwarding local branches where safe..."
+  bt_info "Dry run: no fetch, pull, or branch updates will be performed"
+fi
 
-  local_branches=$(git for-each-ref --format='%(refname:short)' refs/heads)
-  updated_count=0
-  skipped_count=0
-
+declare -a EVAL_BRANCHES=()
+if [[ "$SYNC_ALL" == true ]]; then
   while IFS= read -r branch; do
     [[ -n "$branch" ]] || continue
-    [[ "$branch" == "$CURRENT_BRANCH" ]] && continue
+    EVAL_BRANCHES+=("$branch")
+  done < <(git for-each-ref --format='%(refname:short)' refs/heads)
 
-    if fast_forward_branch_ref "$branch"; then
-      updated_count=$((updated_count + 1))
-    else
-      rc=$?
-      if [[ "$rc" -eq 2 ]]; then
-        continue
-      fi
-      skipped_count=$((skipped_count + 1))
-      if [[ "$VERBOSE" == true ]]; then
-        bt_warn "Skipped local branch '$branch' (ahead, diverged, or no remote)"
-      fi
-    fi
-  done <<< "$local_branches"
-
-  bt_success "Updated $updated_count additional local branch(es)"
-  if [[ "$skipped_count" -gt 0 ]]; then
-    bt_warn "Skipped $skipped_count branch(es) that could not be fast-forwarded safely"
+  if [[ "${#EVAL_BRANCHES[@]}" -eq 0 ]]; then
+    bt_error_exit 5 "No local branches"
   fi
+else
+  EVAL_BRANCHES=("$TARGET_BRANCH")
 fi
 
-# Check for unpushed commits in current branch
-unpushed=$(count_unpushed_commits "$CURRENT_BRANCH")
-if [[ "$unpushed" -gt 0 ]]; then
-  bt_warn "Local commits not pushed: $unpushed commit(s)"
-  if [[ "$VERBOSE" == true ]]; then
-    git log --oneline "origin/$CURRENT_BRANCH..$CURRENT_BRANCH" \
-      2>/dev/null | sed 's/^/  /'
-  fi
+for branch in "${EVAL_BRANCHES[@]}"; do
+  evaluate_branch "$branch"
+done
+
+initialize_report_file
+generate_report
+
+bt_info "Summary: synchronized=$SYNCED_COUNT, skipped=$SKIPPED_COUNT, total=$EVALUATED_COUNT"
+bt_success "Report generated: ${REPORT_FILE#${REPO_ROOT}/}"
+
+if [[ "$REMOTE_MATCH_COUNT" -eq 0 ]]; then
+  bt_error_exit 6 "No remote branches for the local branches"
 fi
 
-# Check if behind parent branch
-PARENT_BRANCH=$(bt_resolve_parent_branch "$CURRENT_BRANCH" "")
-behind_parent=$(count_commits_behind_parent "$CURRENT_BRANCH")
-if [[ "$behind_parent" -gt 0 ]] && [[ -n "$PARENT_BRANCH" ]]; then
-  bt_warn "Your branch is $behind_parent commit(s) behind parent '$PARENT_BRANCH'"
-  if bt_is_protected_branch "$CURRENT_BRANCH"; then
-    bt_info "Protected branches require an approver-managed merge workflow"
-  else
-    bt_info "Run: syncfromparent"
-  fi
+if [[ "$SYNCED_COUNT" -gt 0 && "$SKIPPED_COUNT" -gt 0 ]]; then
+  bt_success "Sync complete: partial success"
+  exit 3
+fi
+
+if [[ "$SYNCED_COUNT" -eq 0 ]]; then
+  bt_warn "Sync complete: no branches synchronized"
+  exit 4
 fi
 
 bt_success "Sync complete"
