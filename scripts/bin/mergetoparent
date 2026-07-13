@@ -16,9 +16,9 @@ Usage:
 
 Merge the current branch to its parent branch using squash merge.
 
-Merging to a protected branch (main or a version branch) requires the current
-user to be
-an approver (A entry in config/contributors.md).
+Merging to a protected parent branch (remote-only main or a version branch)
+requires the current user to be an approver (A entry in
+config/contributors.md).
 
 Before merging:
   - Verifies current user is an approver (if merging to protected branch)
@@ -113,6 +113,27 @@ get_parent_branch() {
   }
 
   echo "$parent_branch"
+}
+
+checkout_parent_branch() {
+  local parent_branch="$1"
+
+  if [[ "$parent_branch" == "main" ]]; then
+    if ! git switch --detach "origin/$parent_branch" >/dev/null 2>&1; then
+      bt_error_exit 2 "Failed to switch to remote parent branch '$parent_branch'"
+    fi
+    return 0
+  fi
+
+  if git show-ref --verify --quiet "refs/heads/$parent_branch"; then
+    if ! git switch "$parent_branch" >/dev/null 2>&1; then
+      bt_error_exit 2 "Failed to switch to parent branch '$parent_branch'"
+    fi
+  else
+    if ! git switch -c "$parent_branch" --track "origin/$parent_branch" >/dev/null 2>&1; then
+      bt_error_exit 2 "Failed to create local parent branch '$parent_branch'"
+    fi
+  fi
 }
 
 is_approver() {
@@ -309,18 +330,12 @@ fi
 bt_info "Performing squash merge..."
 git fetch origin 2>/dev/null || bt_warn "Failed to fetch from origin"
 
-if git show-ref --verify --quiet "refs/heads/$PARENT_BRANCH"; then
-  if ! git switch "$PARENT_BRANCH" >/dev/null 2>&1; then
-    bt_error_exit 2 "Failed to switch to parent branch '$PARENT_BRANCH'"
-  fi
-else
-  if ! git switch -c "$PARENT_BRANCH" --track "origin/$PARENT_BRANCH" >/dev/null 2>&1; then
-    bt_error_exit 2 "Failed to create local parent branch '$PARENT_BRANCH'"
-  fi
-fi
+checkout_parent_branch "$PARENT_BRANCH"
 
-if ! git pull --ff-only origin "$PARENT_BRANCH" 2>&1; then
-  bt_error_exit 2 "Failed to fast-forward parent branch '$PARENT_BRANCH'"
+if [[ "$PARENT_BRANCH" != "main" ]]; then
+  if ! git pull --ff-only origin "$PARENT_BRANCH" 2>&1; then
+    bt_error_exit 2 "Failed to fast-forward parent branch '$PARENT_BRANCH'"
+  fi
 fi
 
 if ! git merge --squash --no-commit "$CURRENT_BRANCH" 2>&1; then
@@ -339,8 +354,14 @@ fi
 
 # Push to remote
 bt_info "Pushing parent branch..."
-if ! git push origin "$PARENT_BRANCH" 2>&1; then
-  bt_error_exit 2 "Failed to push parent branch"
+if [[ "$PARENT_BRANCH" == "main" ]]; then
+  if ! git push origin HEAD:"$PARENT_BRANCH" 2>&1; then
+    bt_error_exit 2 "Failed to push remote parent branch"
+  fi
+else
+  if ! git push origin "$PARENT_BRANCH" 2>&1; then
+    bt_error_exit 2 "Failed to push parent branch"
+  fi
 fi
 
 if ! git switch "$CURRENT_BRANCH" >/dev/null 2>&1; then

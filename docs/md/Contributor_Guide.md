@@ -66,7 +66,7 @@ Contributors should read this document before submitting changes, reviewing, or 
 This repository uses a release-oriented branching model with four branch types:
 
 **Protected Branches** (Require PR, no force-push, no deletion):
-- `main` - Production-ready code
+- `main` - Production-ready code (remote-only; use `origin/main` for Git commands)
 - `v<M>.<m>.0` - Version/release branches (e.g., v1.0.0, v2.1.0)
 
 **Unprotected Branches** (Direct commits allowed, PRs encouraged):
@@ -77,8 +77,8 @@ This repository uses a release-oriented branching model with four branch types:
 - contributor → contributor ✓
 - contributor → targeted ✓
 - targeted → version ✓ (with approver)
-- version → main ✓ (with approver)
-- main → any ✗ (create FROM main only)
+- version → main ✓ (with approver, via `origin/main`)
+- main → any ✗ (reference `origin/main` only; do not create a local `main`)
 
 ---
 
@@ -182,7 +182,7 @@ git push origin mywork/feature
 ### Rebasing Your Branch
 
 ```bash
-git rebase main
+git rebase origin/main
 git push --force-with-lease origin mywork/feature
 ```
 
@@ -194,7 +194,7 @@ git push --force-with-lease origin mywork/feature
 scripts/bin/rmbranch <branch_name>
 ```
 
-Protected branches (main, v*.0) cannot be deleted.
+Protected branches (`main` as the remote-only base and `v*.0`) cannot be deleted.
 
 ### Setting Up Pre-commit Hooks
 
@@ -511,7 +511,8 @@ Protected branches require:
 - ✗ No direct commits
 - ✗ No deletions
 
-Protected branches (`main` and `v<M>.<m>.0`) are read-only for direct commit.
+The protected base branch is `origin/main`; version branches are local protected branches.
+Neither may receive direct commits.
 Updates are made through `scripts/bin/mergetoparent` only:
 
 - Use `scripts/bin/syncfromparent` (or equivalent) in the source branch first

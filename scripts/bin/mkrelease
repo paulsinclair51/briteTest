@@ -17,7 +17,7 @@ Usage:
 Create and publish a release with annotated git tag and GitHub release.
 
 Before releasing:
-  - Verifies current branch is main or protected branch (base is main)
+  - Verifies current branch is protected (base is remote-only main)
   - Checks working directory is clean
   - Verifies all status checks and CI/CD pass
   - Creates annotated git tag
@@ -56,7 +56,7 @@ Exit codes:
   1   Argument or validation error
   2   Git operation failed
   3   Working directory not clean
-  4   Not on main or protected branch
+  4   Not on protected branch
   5   Status checks not passing
   6   GitHub API error
   7   Tag already exists
@@ -323,10 +323,10 @@ bt_info "Current branch: $CURRENT_BRANCH"
 CURRENT_USER=$(get_current_user)
 bt_info "Current user: $CURRENT_USER"
 
-# Check if on main or protected branch
+# Check if on a protected branch.
 if ! is_protected_branch "$CURRENT_BRANCH"; then
-  bt_error_exit 4 "Can only release from main or a protected branch" \
-    "(base is main). Current branch: $CURRENT_BRANCH"
+  bt_error_exit 4 "Can only release from a protected branch" \
+    "(base is remote-only main). Current branch: $CURRENT_BRANCH"
 fi
 bt_success "On valid release branch"
 

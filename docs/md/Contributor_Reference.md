@@ -54,7 +54,7 @@ bash scripts/helpers/ckbranchname.sh "<branch_name>"
 **Exit Codes:**
 
 - `0` - Script execution succeeded (used with `echo $?`)
-- `1` - Valid main branch
+- `1` - Valid main branch name (remote-only branch base)
 - `2` - Valid version branch (format: v<M>.<m>.0)
 - `3` - Valid targeted branch (format: dev/<desc>-<version> or fix/<desc>-<version>)
 - `4` - Valid contributor branch (format: [<type>/]<description>)
@@ -63,7 +63,7 @@ bash scripts/helpers/ckbranchname.sh "<branch_name>"
 **Examples:**
 
 ```bash
-# Check main branch
+# Check main branch name
 bash scripts/helpers/ckbranchname.sh "main"
 # Exit code: 1
 
@@ -88,7 +88,7 @@ bash scripts/helpers/ckbranchname.sh "INVALID_NAME"
 
 | Code | Type | Format | Purpose |
 |------|------|--------|----------|
-| 1 | main | `main` | Protected main branch |
+| 1 | main | `main` | Protected main branch name (managed remotely) |
 | 2 | version | `v<M>.<m>.0` | Protected version branch |
 | 3 | targeted | `dev/fix/<desc>-<version>` | Target-specific work branch |
 | 4 | contributor | `[<type>/]<description>` | General work branch |
@@ -201,7 +201,7 @@ scripts/bin/mkbranch -r <branch_name> [<base_branch>]
 
 - `-r` - Create the branch (required)
 - `<branch_name>` - Name for the new branch
-- `<base_branch>` - Base branch to create from (default: main)
+- `<base_branch>` - Base branch to create from (default: `main`, resolved from `origin/main` when local `main` is absent)
 
 **Exit Codes:**
 
@@ -213,7 +213,7 @@ scripts/bin/mkbranch -r <branch_name> [<base_branch>]
 **Examples:**
 
 ```bash
-# Create contributor branch from main
+# Create contributor branch from main base
 scripts/bin/mkbranch -r mywork/feature main
 
 # Create targeted branch from version branch
@@ -266,7 +266,7 @@ scripts/bin/rmbranch dev/fix-parser-v1.0.0
 
 **Protected Branches (Cannot Delete):**
 
-- `main`
+- `main` (remote-only base branch)
 - `v*` (version branches)
 
 ---
@@ -291,7 +291,7 @@ scripts/bin/mergetoparent [OPTIONS]
 
 **Policy Notes:**
 
-- Protected parents (`main`, `v<M>.<m>.<p>`) are updated via `mergetoparent` only
+- Protected parents (`main` as the remote-only base, and `v<M>.<m>.<p>`) are updated via `mergetoparent` only
 - If inferred parent is protected, approver role is required
 - Resolve parent/source conflicts in the source branch before running `mergetoparent`
 - Running from detached HEAD or a protected current branch is rejected
