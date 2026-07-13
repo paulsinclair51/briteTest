@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# mkclone - Clone the repository.
+# mkclone - Clone the repository and automatically install scripts and Git hooks.
 #
 # See usage below for details, or run: mkclone -h
 #
@@ -14,7 +14,12 @@ Usage:
   mkclone [OPTIONS] [directory]
   mkclone -h | --help
 
-Clone the BriteTest repository to a local directory.
+Clone the BriteTest repository to a local directory with automatic setup.
+
+This script:
+  - Clones the repository to a target directory
+  - Automatically installs scripts and Git hooks (no manual steps required)
+  - Git hooks protect against accidental direct git commands
 
 Arguments:
   [directory]        Optional target directory name
@@ -40,13 +45,13 @@ Options:
                      everything after -- is the comment)
 
 Examples:
-  # Basic clone with default directory name
+  # Basic clone with automatic setup
   mkclone
-    -> Creates ./$REPO_NAME/
+    -> Creates ./$REPO_NAME/ with scripts and hooks installed
 
-  # Clone into custom directory
+  # Clone into custom directory with automatic setup
   mkclone my-repo
-    -> Creates ./my-repo/
+    -> Creates ./my-repo/ with scripts and hooks installed
 
   # With GitHub-style comment
   mkclone -m "Setup for new feature development"
@@ -66,6 +71,7 @@ Exit codes:
   1   Argument error
   2   Git clone failed
   3   Target directory already exists
+  4   Failed to install scripts or hooks
 EOF
 }
 
@@ -74,6 +80,7 @@ EOF
 #   target directory.
 # - Validates arguments, comment options, and target-path preconditions before
 #   cloning.
+# - Automatically runs installscripts to set up scripts and Git hooks.
 # - Reports clone results and prints next-step workflow guidance.
 
 set -euo pipefail
@@ -167,6 +174,18 @@ bt_success "Repository cloned successfully"
 # Display repository information
 bt_info "Repository: $REPO_URL"
 bt_info "Cloned to: ./$TARGET_DIR"
+
+# Install scripts and Git hooks
+bt_info "Setting up scripts and Git hooks..."
+if bash "$TARGET_DIR/scripts/bin/installscripts" >/dev/null 2>&1; then
+  bt_success "Scripts and Git hooks installed successfully"
+else
+  bt_warn "Warning: Failed to install scripts or Git hooks"
+  bt_info "You can install them manually by running:"
+  bt_info "  cd $TARGET_DIR"
+  bt_info "  bash scripts/bin/installscripts"
+fi
+
 bt_info "Next steps:"
 echo "  cd $TARGET_DIR"
 echo "  mkbranch patch/your-branch main"
