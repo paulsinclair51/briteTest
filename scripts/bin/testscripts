@@ -12,7 +12,7 @@ usage() {
   cat <<'EOF'
 Usage:
   testscripts [OPTIONS]
-  testscripts -h | --help
+  testscripts {-h | --help}
 
 Run all tests and validate code/documentation changes for BriteTest.
 

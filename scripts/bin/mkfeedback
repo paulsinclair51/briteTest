@@ -12,7 +12,7 @@ usage() {
   cat <<'EOF'
 Usage:
   mkfeedback [ACTION] [OPTIONS]
-  mkfeedback -h | --help
+  mkfeedback {-h | --help}
 
 Handle and respond to pull request review feedback.
 

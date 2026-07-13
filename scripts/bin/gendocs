@@ -28,7 +28,7 @@ Complete Usage:
   gendocs [<options>] -p [<document>[.md]] [<pdf_dir>]
   gendocs [<options>] -d [<document>[.md|.pdf]] [<docx_dir>]
   gendocs [-b <backend>] -t
-  gendocs -h | --help
+  gendocs {-h | --help}
 
 Generates .pdf files from .md source files, and .docx files directly from
 .md source files when possible, or from .pdf source files.

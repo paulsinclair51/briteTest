@@ -12,7 +12,7 @@ usage() {
   cat <<'EOF'
 Usage:
   syncfromparent [OPTIONS]
-  syncfromparent -h | --help
+  syncfromparent {-h | --help}
 
 Merge the parent branch of the current branch into current branch
 to sync up with latest changes.

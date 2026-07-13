@@ -12,7 +12,7 @@ usage() {
   cat <<'EOF'
 Usage:
   chtarget [OPTIONS] <targeted-branch> <new-parent-version>
-  chtarget -h | --help
+  chtarget {-h | --help}
 
 Retarget a targeted branch to a different version parent and rebase it.
 

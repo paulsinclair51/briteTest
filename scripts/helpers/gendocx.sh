@@ -13,7 +13,7 @@ Usage:
   gendocx [<dir_options>] <indirectory> [<outdirectory>]
   gendocx [<dir_options>]
   gendocx [-b <backend>] -t
-  gendocx -h | --help
+  gendocx {-h | --help}
 
 The third form is the same as: gendocx [<dir_options>] ./
 

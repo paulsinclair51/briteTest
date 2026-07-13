@@ -61,7 +61,7 @@ usage() {
   cat <<'EOF'
 Usage:
   mkbranch [OPTIONS] <newbranch> [<parentbranch>] [-- MSG]
-  mkbranch -h | --help
+  mkbranch {-h | --help}
 
 Create a new branch from a parent branch.
 

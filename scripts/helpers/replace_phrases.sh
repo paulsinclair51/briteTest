@@ -10,7 +10,7 @@ usage() {
   cat <<'EOF'
 Usage:
   bash scripts/helpers/replace_phrases.sh [config_file] [-d]
-  bash scripts/helpers/replace_phrases.sh -h | --help
+  bash scripts/helpers/replace_phrases.sh {-h | --help}
 
 Configuration file format:
   old_phrase = new_phrase

@@ -12,7 +12,7 @@ usage() {
   cat <<'EOF'
 Usage:
   bash /scripts/bin/installscripts
-  bash /scripts/bin/installscripts -h | --help
+  bash /scripts/bin/installscripts {-h | --help}
 
 Make all scripts in /scripts/bin/ executable and add /scripts/bin/ to PATH.
 

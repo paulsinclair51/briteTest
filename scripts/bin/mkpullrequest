@@ -12,7 +12,7 @@ usage() {
   cat <<'EOF'
 Usage:
   mkpr [OPTIONS]
-  mkpr -h | --help
+  mkpr {-h | --help}
 
 Create a new pull request or update an existing one for the current branch.
 

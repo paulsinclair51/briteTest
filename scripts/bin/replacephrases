@@ -10,7 +10,7 @@ usage() {
 	cat <<'EOF'
 Usage:
 	replacephrases [config_file] [-d]
-	replacephrases -h | --help
+	replacephrases {-h | --help}
 
 Run phrase replacement across markdown files
 using scripts/helpers/replace_phrases.sh.

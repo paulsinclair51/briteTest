@@ -12,7 +12,7 @@ usage() {
   cat <<'EOF'
 Usage:
   undo [TYPE] [OPTIONS]
-  undo -h | --help
+  undo {-h | --help}
 
 Undo recent operations: merge, release, or commit.
 

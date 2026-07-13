@@ -12,7 +12,7 @@ usage() {
   cat <<'EOF'
 Usage:
   rmbranch [OPTIONS] <branchname> [-- MSG]
-  rmbranch -h | --help
+  rmbranch {-h | --help}
 
 Remove a branch locally and/or from remote.
 

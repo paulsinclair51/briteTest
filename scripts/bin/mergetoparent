@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# mergetoparent - Merge current branch to its parent branch with approval tracking.
+# mergetoparent - Merge current branch to its parent branch with
+# approval tracking.
 #
 # See usage below for details, or run: mergetoparent -h
 #
@@ -11,61 +12,107 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mergetoparent [OPTIONS]
-  mergetoparent -h | --help
+  mergetoparent [OPTIONS] [-- TOKENS]
+  mergetoparent {-h | --help}
 
-Merge the current branch to its parent branch using squash merge.
+Merge the current branch to its parent branch.
 
 Merging to a protected parent branch (remote-only main or a version branch)
-requires the current user to be an approver (A entry in
-config/contributors.md).
+requires the current user to be an approver (an entry with A specified for
+their role in '<repo>/config/contributors.md').
 
 Before merging:
-  - Verifies current user is an approver (if merging to protected branch)
-  - Checks that all status checks and CI/CD pass
-  - Uses PR title or custom message as squash commit message
-  - Logs merge to logs/remote_branch_history.md
+  - Verifies current user is an approver if merging to a protected branch.
+  - Ensures the current branch's local and remote are in sync, and that no
+    uncommitted changes exist.
+  - Ensures the parent branch's local and remote are in sync when both local
+    and remote parent branches exist, and that no uncommitted changes exist.
+  - Ensures that the current branch is up-to-date with its parent branch.
+  - Checks that all status checks and CI/CD pass.
+  - Uses custom message, PR title, or default message as the commit message.
+  - Logs merge to '<repo>/logs/remote_branch_history.md' if parent is a
+    protected branch, otherwise, to '<repo>/logs/local_branch_history.md'.
+    The log update is kept in sync across the current branch's local and remote.
+    It is then pushed to the parent branch's remote and local branches when
+    those branches exist.
 
 Features:
-  - Squash commits into single commit
-  - Automatic approval verification for protected branches
-  - Status check validation
-  - Merge logging to logs/remote_branch_history.md
-  - No branch cleanup (branches remain after merge)
+  - Combines changes into a single commit on the parent branch.
+  - Approval verification for protected branches.
+  - Status check validation.
+  - Merge logging to '<repo>/logs/remote_branch_history.md' or
+    '<repo>/logs/local_branch_history.md' depending on whether the parent
+    branch is protected.
+  - No branch cleanup (branches remain after merge).
 
 Options:
   -h, --help           Output this help to stdout and exit (other options
                        and arguments are ignored).
-  -m, --message MSG    Custom squash commit message
-                       (uses PR title if not specified)
-  -v, --verbose        Show detailed information
+  -d                   Dry-run mode. Show what would be done without making
+                       any changes.
+  -m TOKEN             Commit message (GitHub style, requires quotes if
+                       spaces).
+                       Usage: mergetoparent -m "Merge parser fixes"
+  --message TOKEN      Commit message (GitHub style, requires quotes if
+                       spaces).
+                       Usage: mergetoparent --message "Merge parser fixes"
+  -- TOKENS            Commit message (Unix-style): all tokens after '--'
+                       are the message text.
+                       Usage: mergetoparent -- Merge parser fixes
+                       Note: '--' must be a separate token, followed by at
+                       least one token. Leading/trailing whitespace is not
+                       preserved and whitespace between tokens is normalized
+                       to a single space.
+                       In quoted tokens, whitespace is preserved and the
+                       quotes are removed, for example:
+                       mergetoparent -- keep "  exact   spacing  " here
+                       is the same as:
+                       mergetoparent -m "keep   exact   spacing   here"
+  -v                   Show detailed information and progress in stdout for
+                       diagnostic purposes.
+
+-m TOKEN, --message TOKEN, -- TOKENS are mutually exclusive. Only one may
+be specified.
+
+Note: Normalized TOKEN/TOKENS must include at least one non-whitespace
+character.
+
+If a custom message is not specified:
+
+  - The associated PR title is used as the commit message, or
+  - When a PR is not required, a default message is used:
+    - Approver merging a version branch to origin/main:
+        "v<M>.<m>.0 merged to origin/main by approver <user>."
+    - Contributor merging a contributor branch to a targeted or contributor
+      branch:
+        "<branch> merged to <parent> by contributor <user>."
 
 Examples:
-  # Merge current branch with PR title as message
+  # Merge targeted branch to its parent version branch with PR title as commit message
   mergetoparent
 
   # Merge with custom message
   mergetoparent -m "Custom commit message"
 
+  # Unix-style message
+  mergetoparent -- Merge parser fixes
+
   # Merge with verbose output
   mergetoparent -v
-
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented
-    output locations.
 
 Exit codes:
-  0   Success
-  1   Argument or validation error
-  2   Git operation failed
-  3   User is not an approver (required for protected branch)
-  4   GitHub API error
-  5   Configuration error
-  6   Status checks not passing
-  7   PR not found or invalid state
+  0   Success.
+  1   Argument or validation error.
+  2   Git operation failed.
+  3   User is not an approver (required when parent is a protected branch).
+  4   GitHub API error.
+  5   Remote is not connected.
+  6   Status checks not passing.
+  7   When a PR is required, the PR is not found or is in an invalid state.
 EOF
 }
 
@@ -91,6 +138,9 @@ source "$SCRIPT_DIR/../helpers/github_helpers.sh"
 # Default options
 CUSTOM_MESSAGE=""
 VERBOSE=false
+DRY_RUN=false
+MESSAGE_SOURCE=""
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 
 
 get_current_user() {
@@ -113,6 +163,144 @@ get_parent_branch() {
   }
 
   echo "$parent_branch"
+}
+
+is_remote_connected() {
+  git remote get-url origin >/dev/null 2>&1
+}
+
+has_local_branch() {
+  local branch="$1"
+  git show-ref --verify --quiet "refs/heads/$branch"
+}
+
+has_remote_branch() {
+  local branch="$1"
+  git show-ref --verify --quiet "refs/remotes/origin/$branch"
+}
+
+trim_whitespace() {
+  local value="$1"
+  value="${value#${value%%[![:space:]]*}}"
+  value="${value%${value##*[![:space:]]}}"
+  printf '%s' "$value"
+}
+
+ensure_branch_synced_with_remote() {
+  local branch="$1"
+  local label="$2"
+
+  if ! has_remote_branch "$branch"; then
+    bt_error_exit 5 "$label branch '$branch' has no origin/$branch reference"
+  fi
+
+  local ahead_behind
+  local ahead
+  local behind
+  ahead_behind=$(git rev-list --left-right --count "origin/$branch...$branch" 2>/dev/null || echo "")
+  ahead="${ahead_behind%%$'\t'*}"
+  behind="${ahead_behind##*$'\t'}"
+
+  if [[ ! "$ahead" =~ ^[0-9]+$ || ! "$behind" =~ ^[0-9]+$ ]]; then
+    bt_error_exit 2 "Unable to determine $label branch sync state for '$branch'"
+  fi
+
+  if [[ "$ahead" -ne 0 || "$behind" -ne 0 ]]; then
+    bt_error_exit 2 "$label branch '$branch' is not in sync with origin/$branch"
+  fi
+}
+
+resolve_parent_reference() {
+  local parent_branch="$1"
+
+  if [[ "$parent_branch" == "main" ]]; then
+    echo "origin/main"
+    return 0
+  fi
+
+  if has_local_branch "$parent_branch"; then
+    echo "$parent_branch"
+    return 0
+  fi
+
+  if has_remote_branch "$parent_branch"; then
+    echo "origin/$parent_branch"
+    return 0
+  fi
+
+  bt_error_exit 2 "Unable to resolve parent branch reference for '$parent_branch'"
+}
+
+ensure_current_up_to_date_with_parent() {
+  local current_branch="$1"
+  local parent_branch="$2"
+  local parent_ref
+
+  parent_ref=$(resolve_parent_reference "$parent_branch")
+
+  if ! git merge-base --is-ancestor "$parent_ref" "$current_branch" >/dev/null 2>&1; then
+    bt_error_exit 2 "Current branch '$current_branch' is not up-to-date with parent '$parent_branch'"
+  fi
+}
+
+is_targeted_branch() {
+  local branch="$1"
+  [[ "$branch" =~ ^(dev|fix)/.+-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]
+}
+
+is_contributor_branch() {
+  local branch="$1"
+
+  if bt_is_protected_branch "$branch" || is_targeted_branch "$branch"; then
+    return 1
+  fi
+
+  return 0
+}
+
+is_pr_required() {
+  local current_branch="$1"
+  local parent_branch="$2"
+
+  if bt_is_version_branch "$current_branch" && [[ "$parent_branch" == "main" ]]; then
+    return 1
+  fi
+
+  if is_contributor_branch "$current_branch" && \
+    (is_targeted_branch "$parent_branch" || is_contributor_branch "$parent_branch"); then
+    return 1
+  fi
+
+  return 0
+}
+
+build_default_commit_message() {
+  local current_branch="$1"
+  local parent_branch="$2"
+  local actor="$3"
+
+  if bt_is_version_branch "$current_branch" && [[ "$parent_branch" == "main" ]]; then
+    echo "$current_branch merged to origin/main by approver $actor."
+    return 0
+  fi
+
+  if is_contributor_branch "$current_branch" && \
+    (is_targeted_branch "$parent_branch" || is_contributor_branch "$parent_branch"); then
+    echo "$current_branch merged to $parent_branch by contributor $actor."
+    return 0
+  fi
+
+  bt_error_exit 7 "No default commit message rule applies for '$current_branch' -> '$parent_branch'"
+}
+
+resolve_history_file_for_parent() {
+  local parent_branch="$1"
+
+  if bt_is_protected_branch "$parent_branch"; then
+    echo "logs/remote_branch_history.md"
+  else
+    echo "logs/local_branch_history.md"
+  fi
 }
 
 checkout_parent_branch() {
@@ -208,10 +396,8 @@ log_merge_to_history() {
   local target_branch="$2"
   local approver="$3"
   local message="$4"
-  
-  local history_file="logs/remote_branch_history.md"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  local history_file="$5"
+  local history_entry="$6"
 
   mkdir -p "$(dirname "$history_file")"
   
@@ -232,11 +418,95 @@ EOF
   fi
   
   # Append merge entry
-  cat >> "$history_file" << EOF
-- [$timestamp] [$approver] Merged [$branch] to [$target_branch]: $message
-EOF
+  printf '%s\n' "$history_entry" >> "$history_file"
   
   bt_info "Logged merge to $history_file"
+}
+
+build_history_entry() {
+  local branch="$1"
+  local target_branch="$2"
+  local approver="$3"
+  local message="$4"
+
+  printf '%s' "- [$RUN_TS_DISPLAY] [$approver] Merged [$branch] to [$target_branch]: $message"
+}
+
+sync_history_to_current_branch() {
+  local current_branch="$1"
+  local history_file="$2"
+  local history_entry="$3"
+  local parent_branch="$4"
+
+  if ! git switch "$current_branch" >/dev/null 2>&1; then
+    bt_error_exit 2 "Merged successfully, but failed to switch back to '$current_branch'"
+  fi
+
+  mkdir -p "$(dirname "$history_file")"
+
+  if [[ ! -f "$history_file" ]]; then
+    cat > "$history_file" << 'EOF'
+# Branch History
+
+Copyright (c) 2026 Paul Sinclair  
+SPDX-License-Identifier: MIT  
+For license details, see `LICENSE` in the repository root.
+
+See `README.md` in the root directory for an introduction to the project.
+
+## Merge Log
+
+EOF
+  fi
+
+  if ! grep -Fxq "$history_entry" "$history_file" 2>/dev/null; then
+    printf '%s\n' "$history_entry" >> "$history_file"
+  fi
+
+  git add "$history_file" 2>/dev/null || true
+
+  if git diff --cached --quiet; then
+    bt_info "Current branch '$current_branch' history log already in sync"
+    return 0
+  fi
+
+  local sync_message
+  sync_message="chore: sync history log after merge to $parent_branch"
+  if ! git commit -m "$sync_message" >/dev/null 2>&1; then
+    bt_error_exit 2 "Failed to commit history log sync on '$current_branch'"
+  fi
+
+  if has_remote_branch "$current_branch"; then
+    if ! git push origin "$current_branch" >/dev/null 2>&1; then
+      bt_error_exit 2 "Failed to push synced history log to origin/$current_branch"
+    fi
+  fi
+}
+
+preflight_current_history_sync_push() {
+  local current_branch="$1"
+
+  # If there is no remote current branch, there is nothing to preflight.
+  if ! has_remote_branch "$current_branch"; then
+    return 0
+  fi
+
+  # Current protected branches are likely to reject direct push updates used
+  # for history-log sync; fail early to avoid partial success after parent push.
+  if bt_is_protected_branch "$current_branch"; then
+    bt_error_exit 2 \
+      "Preflight failed: syncing history log to origin/$current_branch is likely disallowed because '$current_branch' is protected"
+  fi
+
+  # Verify push capability before any merge mutation starts.
+  if ! git push --dry-run origin "HEAD:$current_branch" >/dev/null 2>&1; then
+    bt_error_exit 2 \
+      "Preflight failed: unable to verify push access for origin/$current_branch required for history-log sync"
+  fi
+
+  if [[ "$VERBOSE" == true ]]; then
+    bt_info "Preflight: history-log sync push check passed for origin/$current_branch"
+  fi
 }
 
 # Parse options and arguments
@@ -250,12 +520,32 @@ while [[ $# -gt 0 ]]; do
       if [[ $# -lt 2 ]]; then
         bt_error_exit 1 "Option -m requires a message argument"
       fi
+      if [[ -n "$MESSAGE_SOURCE" ]]; then
+        bt_error_exit 1 "-m TOKEN, --message TOKEN, and -- TOKENS are mutually exclusive"
+      fi
       CUSTOM_MESSAGE="$2"
+      MESSAGE_SOURCE="option"
       shift 2
+      ;;
+    -d)
+      DRY_RUN=true
+      shift
       ;;
     -v | --verbose)
       VERBOSE=true
       shift
+      ;;
+    --)
+      shift
+      if [[ $# -eq 0 ]]; then
+        bt_error_exit 1 "'-- TOKENS' requires at least one token"
+      fi
+      if [[ -n "$MESSAGE_SOURCE" ]]; then
+        bt_error_exit 1 "-m TOKEN, --message TOKEN, and -- TOKENS are mutually exclusive"
+      fi
+      CUSTOM_MESSAGE="$*"
+      MESSAGE_SOURCE="tokens"
+      break
       ;;
     -*)
       bt_error_exit 1 "Unknown option: $1"
@@ -266,6 +556,19 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -n "$MESSAGE_SOURCE" ]]; then
+  CUSTOM_MESSAGE="$(trim_whitespace "$CUSTOM_MESSAGE")"
+  if [[ -z "$CUSTOM_MESSAGE" ]]; then
+    bt_error_exit 1 "Normalized TOKEN/TOKENS must include at least one non-whitespace character"
+  fi
+fi
+
+if ! is_remote_connected; then
+  bt_error_exit 5 "Remote 'origin' is not connected"
+fi
+
+git fetch origin >/dev/null 2>&1 || bt_error_exit 5 "Failed to fetch from remote 'origin'"
+
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit 2 "Failed to determine current branch")
@@ -275,9 +578,8 @@ if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
   bt_error_exit 1 "Cannot run mergetoparent from detached HEAD"
 fi
 
-if bt_is_protected_branch "$CURRENT_BRANCH"; then
-  bt_error_exit 1 \
-    "Current branch '$CURRENT_BRANCH' is protected. Run mergetoparent from a non-protected branch."
+if ! has_local_branch "$CURRENT_BRANCH"; then
+  bt_error_exit 2 "Current branch '$CURRENT_BRANCH' is not a local branch"
 fi
 
 # Get current user
@@ -289,7 +591,26 @@ bt_info "Determining parent branch..."
 PARENT_BRANCH=$(get_parent_branch "$CURRENT_BRANCH")
 bt_info "Parent branch: $PARENT_BRANCH"
 
+if bt_is_protected_branch "$CURRENT_BRANCH"; then
+  if ! bt_is_version_branch "$CURRENT_BRANCH" || [[ "$PARENT_BRANCH" != "main" ]]; then
+    bt_error_exit 1 \
+      "Current branch '$CURRENT_BRANCH' is protected. Run mergetoparent from a non-protected branch."
+  fi
+
+  if ! is_approver "$CURRENT_USER"; then
+    bt_error_exit 3 "User '$CURRENT_USER' is not an approver. Only approvers can merge protected branches to origin/main."
+  fi
+fi
+
 ensure_clean_worktree
+ensure_branch_synced_with_remote "$CURRENT_BRANCH" "Current"
+
+if has_local_branch "$PARENT_BRANCH" && has_remote_branch "$PARENT_BRANCH"; then
+  ensure_branch_synced_with_remote "$PARENT_BRANCH" "Parent"
+fi
+
+ensure_current_up_to_date_with_parent "$CURRENT_BRANCH" "$PARENT_BRANCH"
+preflight_current_history_sync_push "$CURRENT_BRANCH"
 
 # Check if parent branch is protected
 if bt_is_protected_branch "$PARENT_BRANCH"; then
@@ -304,35 +625,85 @@ else
   bt_info "Parent branch is not protected"
 fi
 
-# Find associated PR
-PR_NUMBER=$(get_existing_pr_number "$CURRENT_BRANCH")
-if [[ -z "$PR_NUMBER" ]]; then
-  bt_error_exit 7 "No open PR found for branch '$CURRENT_BRANCH'"
+# Determine whether a PR is required for this merge path.
+PR_REQUIRED=true
+if is_pr_required "$CURRENT_BRANCH" "$PARENT_BRANCH"; then
+  PR_REQUIRED=true
+else
+  PR_REQUIRED=false
 fi
-bt_info "Found PR #$PR_NUMBER"
 
-# Check status checks pass
-check_status_checks "$PR_NUMBER"
+PR_NUMBER=""
+if [[ "$PR_REQUIRED" == true ]]; then
+  PR_NUMBER=$(get_existing_pr_number "$CURRENT_BRANCH")
+  if [[ -z "$PR_NUMBER" ]]; then
+    bt_error_exit 7 "No open PR found for branch '$CURRENT_BRANCH'"
+  fi
+  bt_info "Found PR #$PR_NUMBER"
+
+  # Check status checks pass
+  check_status_checks "$PR_NUMBER"
+else
+  bt_info "PR not required for '$CURRENT_BRANCH' -> '$PARENT_BRANCH'"
+
+  PR_NUMBER=$(get_existing_pr_number "$CURRENT_BRANCH")
+  if [[ -n "$PR_NUMBER" ]]; then
+    bt_info "Found PR #$PR_NUMBER; validating status checks"
+    check_status_checks "$PR_NUMBER"
+  else
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "PR-based status check skipped (a PR does not exist and is not required)"
+    fi
+  fi
+fi
 
 # Determine commit message
 if [[ -n "$CUSTOM_MESSAGE" ]]; then
   COMMIT_MESSAGE="$CUSTOM_MESSAGE"
   bt_info "Using custom message: $COMMIT_MESSAGE"
 else
-  COMMIT_MESSAGE=$(get_pr_title "$PR_NUMBER")
-  if [[ -z "$COMMIT_MESSAGE" ]]; then
-    bt_error_exit 4 "Failed to get PR title"
+  if [[ -n "$PR_NUMBER" ]]; then
+    COMMIT_MESSAGE=$(get_pr_title "$PR_NUMBER")
+    if [[ -z "$COMMIT_MESSAGE" ]]; then
+      bt_error_exit 4 "Failed to get PR title"
+    fi
+    bt_info "Using PR title as message: $COMMIT_MESSAGE"
+  else
+    COMMIT_MESSAGE=$(build_default_commit_message \
+      "$CURRENT_BRANCH" "$PARENT_BRANCH" "$CURRENT_USER")
+    bt_info "Using default message: $COMMIT_MESSAGE"
   fi
-  bt_info "Using PR title as message: $COMMIT_MESSAGE"
+fi
+
+HISTORY_FILE=$(resolve_history_file_for_parent "$PARENT_BRANCH")
+HISTORY_ENTRY=$(build_history_entry \
+  "$CURRENT_BRANCH" "$PARENT_BRANCH" "$CURRENT_USER" "$COMMIT_MESSAGE")
+
+if [[ "$DRY_RUN" == true ]]; then
+  bt_info "Dry run: would merge '$CURRENT_BRANCH' into '$PARENT_BRANCH'"
+  bt_info "Dry run: would log merge to '$HISTORY_FILE' on parent and current branches"
+  bt_info "Dry run: would commit message '$COMMIT_MESSAGE'"
+
+  if [[ "$PARENT_BRANCH" == "main" || $(has_remote_branch "$PARENT_BRANCH" && echo true || echo false) == true ]]; then
+    bt_info "Dry run: would push merge result to origin/$PARENT_BRANCH"
+  else
+    bt_info "Dry run: parent branch '$PARENT_BRANCH' has no remote branch; no push would be performed"
+  fi
+
+  if has_remote_branch "$CURRENT_BRANCH"; then
+    bt_info "Dry run: would push synced history log to origin/$CURRENT_BRANCH"
+  fi
+
+  bt_success "Dry run complete"
+  exit 0
 fi
 
 # Perform squash merge
 bt_info "Performing squash merge..."
-git fetch origin 2>/dev/null || bt_warn "Failed to fetch from origin"
 
 checkout_parent_branch "$PARENT_BRANCH"
 
-if [[ "$PARENT_BRANCH" != "main" ]]; then
+if [[ "$PARENT_BRANCH" != "main" && $(has_remote_branch "$PARENT_BRANCH" && echo true || echo false) == true ]]; then
   if ! git pull --ff-only origin "$PARENT_BRANCH" 2>&1; then
     bt_error_exit 2 "Failed to fast-forward parent branch '$PARENT_BRANCH'"
   fi
@@ -344,8 +715,8 @@ fi
 
 # Log merge to history before committing so the audit record is preserved.
 log_merge_to_history "$CURRENT_BRANCH" "$PARENT_BRANCH" \
-  "$CURRENT_USER" "$COMMIT_MESSAGE"
-git add logs/remote_branch_history.md 2>/dev/null || true
+  "$CURRENT_USER" "$COMMIT_MESSAGE" "$HISTORY_FILE" "$HISTORY_ENTRY"
+git add "$HISTORY_FILE" 2>/dev/null || true
 
 # Create commit with message
 if ! git commit -m "$COMMIT_MESSAGE" 2>&1; then
@@ -353,20 +724,22 @@ if ! git commit -m "$COMMIT_MESSAGE" 2>&1; then
 fi
 
 # Push to remote
-bt_info "Pushing parent branch..."
-if [[ "$PARENT_BRANCH" == "main" ]]; then
-  if ! git push origin HEAD:"$PARENT_BRANCH" 2>&1; then
-    bt_error_exit 2 "Failed to push remote parent branch"
+if [[ "$PARENT_BRANCH" == "main" || $(has_remote_branch "$PARENT_BRANCH" && echo true || echo false) == true ]]; then
+  bt_info "Pushing parent branch..."
+  if [[ "$PARENT_BRANCH" == "main" ]]; then
+    if ! git push origin HEAD:"$PARENT_BRANCH" 2>&1; then
+      bt_error_exit 2 "Failed to push remote parent branch"
+    fi
+  else
+    if ! git push origin "$PARENT_BRANCH" 2>&1; then
+      bt_error_exit 2 "Failed to push parent branch"
+    fi
   fi
 else
-  if ! git push origin "$PARENT_BRANCH" 2>&1; then
-    bt_error_exit 2 "Failed to push parent branch"
-  fi
+  bt_info "Parent branch '$PARENT_BRANCH' has no remote branch; skipping push"
 fi
 
-if ! git switch "$CURRENT_BRANCH" >/dev/null 2>&1; then
-  bt_warn "Merged successfully, but failed to switch back to '$CURRENT_BRANCH'"
-fi
+sync_history_to_current_branch "$CURRENT_BRANCH" "$HISTORY_FILE" "$HISTORY_ENTRY" "$PARENT_BRANCH"
 
 # Show verbose output if requested
 if [[ "$VERBOSE" == true ]]; then

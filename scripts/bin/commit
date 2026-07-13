@@ -13,7 +13,7 @@ usage() {
   cat <<'EOF'
 Usage:
   commit [OPTIONS] [files...] [-- TOKENS]
-  commit -h | --help
+  commit {-h | --help}
 
 Commit changes to the current branch in briteTest.
 Stages all changes by default and commits them with a message.

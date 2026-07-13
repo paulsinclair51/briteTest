@@ -13,7 +13,7 @@ usage() {
 Usage:
   copyfix SOURCE_BRANCH [OPTIONS]
   copyfix --continue [OPTIONS]
-  copyfix -h | --help
+  copyfix {-h | --help}
 
 Cherry-pick all commits from a source branch to the current branch.
 

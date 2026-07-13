@@ -12,7 +12,7 @@ usage() {
   cat <<'EOF'
 Usage:
   mkrelease VERSION [OPTIONS]
-  mkrelease -h | --help
+  mkrelease {-h | --help}
 
 Create and publish a release with annotated git tag and GitHub release.
 
