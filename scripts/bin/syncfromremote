@@ -11,37 +11,52 @@
 usage() {
   cat <<'EOF'
 Usage:
-  syncfromremote [OPTIONS]
-  syncfromremote -h | --help
+  syncfromremote [OPTIONS] [BRANCH] [-- TOKENS]
+  syncfromremote {-h | --help}
 
-Fetch latest changes from remote and update the current branch.
-Shows summary of changes and warns if behind its parent branch or if diverged
-from remote.
+Synchronizes a local branch with its corresponding remote branch when
+it is safe to do so. Shows summary of changes to a local branch.
+Warns if a branch is behind its parent branch or if a local branch
+has diverged from its corresponding remote. A reachable remote is
+required.
+Sync for a branch is skipped when that local branch has uncommitted
+changes.
 
-Features:
-  - Fetches from remote
-  - Pulls latest changes into current branch
-  - Fast-forwards other local branches safely when -a is used
-  - Shows summary of what changed
-  - Warns if current branch is behind its parent branch
-  - Warns if local commits exist that aren't pushed
-  - Detects diverged branches and suggests resolution
+Arguments:
+  BRANCH            The name of the local branch to synchronize with
+                    its corresponding remote branch. If BRANCH is
+                    specified, the -a option must not be specified. If
+                    BRANCH and the -a option are not specified, BRANCH
+                    defaults to the name of the current branch. If the
+                    -a option is specified, all local branches are
+                    synced to their corresponding remote branches. If
+                    a local branch has no corresponding remote branch,
+                    it is skipped.
 
 Options:
-  -h, --help         Output this help to stdout and exit (other options
-                     and arguments are ignored).
-  -a, --all          Fetch all branches and fast-forward local branches when
-                     it is safe to do so
-  -v, --verbose      Show detailed change information
-  -m, --message MSG  Add comment message (GitHub style,
-                     requires quotes if spaces)
-  -- TEXT            Add comment (Unix style,
-                     everything after -- is the comment)
-                     Note: No quotes needed, captures all remaining arguments
+  -h, --help        Output this help to stdout and exit (other options
+                    and arguments are ignored).
+  -a                Sync all local branches with their corresponding
+                    remote branch (skips local branches with no
+                    corresponding remote). This option is not allowed
+                    if BRANCH is specified.
+  -d                Preview what would happen without changing anything
+                    in your repository (no fetch, no pull, no branch
+                    updates).
+  -m TOKEN          Add comment message (GitHub style, requires quotes
+                    if spaces in TOKEN).
+  --message TOKEN   Add comment message (GitHub style, requires quotes
+                    if spaces in TOKEN).
+  -- TOKENS         Add comment (Unix style, the tokens after -- form
+                    the comment). Captures all remaining tokens as the
+                    comment. There must be at least one token after --.
+                    Whitespace between tokens is replaced with a single
+                    space. For a quoted token, the quotes are removed
+                    and whitespace within the token is preserved.
+  -v                Show detailed change and diagnostic information.
 
-Comment Options (mutually exclusive):
-  -m, --message MSG  Attach a comment to the operation
-  -- COMMENT TEXT    Unix-style comment (everything after -- is the comment)
+  Options -m TOKEN, --message TOKEN, and -- TOKENS are mutually exclusive.
+  Only one may be specified.
 
 Examples:
   # Sync current branch only
@@ -53,24 +68,73 @@ Examples:
   # Sync all branches
   syncfromremote -a
 
+  # Preview sync (dry run) for current branch
+  syncfromremote -d
+
+  # Preview sync (dry run) for a specific branch
+  syncfromremote -d dev/release-v1.0.0
+
+  # Invalid: cannot combine -a with BRANCH
+  syncfromremote -a dev/release-v1.0.0
+
   # Sync with comment
-  syncfromremote -m "Getting latest before starting feature work"
+  syncfromremote -m "Getting latest before starting feature work."
 
   # Unix-style comment
-  syncfromremote -- Getting latest changes
+  syncfromremote -- Getting latest changes.
 
+  # Sync a specific branch
+  syncfromremote dev/release-v1.0.0
+
+  # Sync a specific branch with verbose output
+  syncfromremote -v dev/release-v1.0.0
+
+  # Sync a specific branch with message option
+  syncfromremote --message "Sync before testing." dev/release-v1.0.0
+
+  # Sync a specific branch with Unix-style comment
+  syncfromremote fix/memory-fault-v1.0.0 -- sync fix with remote.
 
 Outputs:
-  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes help text, status messages, and results or summaries
+    to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented
-    output locations.
+  - Writes a report to:
+    - <repo>/reports/syncfromremote-<datetime>.md (normal run)
+    - <repo>/reports/syncfromremote-d-<datetime>.md (dry run)
+  - Report includes:
+    - Header with report title and timestamp.
+    - Command line used for the run.
+    - Branch scope summary for the run (requested branch or all).
+    - Totals summary (synchronized, skipped, total evaluated).
+    - Branch results table with one row per evaluated branch.
+      Required columns include branch name, sync status
+      (synchronized/skipped), and skip reason when skipped.
+    - Optional notes section for additional diagnostics or
+      workflow guidance.
+  - Older dry-run reports are removed when a new report is generated.
 
 Exit codes:
-  0   Success
-  1   Argument or validation error
-  2   Git fetch or pull failed
-  3   Branch diverged from remote (manual resolution needed)
+  0   Success (operation completed successfully for the requested
+      branch scope; dry run completes with no repository changes).
+  1   Argument or validation error.
+  2   Remote disconnected.
+  3   Partial success: at least one local branch was synchronized, and
+      at least one branch was skipped. See output for per-branch reasons.
+  4   No branches synchronized: all evaluated branches were skipped.
+      See output for per-branch reasons.
+  5   No local branches.
+  6   No remote branches for the local branches.
+
+If a branch is skipped because local and remote have diverged:
+  1. Inspect branch sync status:
+       lsbranch BRANCH -v
+  2. If your branch needs latest parent updates first:
+       syncfromparent
+  3. If divergence remains, use one possible script workflow
+     (for example, copy fixes to a clean branch):
+       copyfix SOURCE_BRANCH
+  4. Run syncfromremote again.
 EOF
 }
 

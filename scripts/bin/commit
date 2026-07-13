@@ -12,7 +12,7 @@
 usage() {
   cat <<'EOF'
 Usage:
-  commit [OPTIONS] [files...]
+  commit [OPTIONS] [files...] [-- TOKENS]
   commit -h | --help
 
 Commit changes to the current branch in briteTest.
@@ -28,8 +28,8 @@ Local branches may use commit:
   - [<type>/]<description> contributor branches.
 
 Arguments:
-  [files...]         Optional list of files to stage and commit
-                     If not specified, stages all changes (git add .)
+  [files...]         Optional list of files to include in the commit.
+                     If not specified, all current changes are included.
                      Examples: commit file1.js file2.js
                                commit src/index.js
 
@@ -38,12 +38,11 @@ Options:
                      and arguments are ignored).
   -d                 Dry run (do not actually commit or push, just show what
                      would be done).
-  -j                 JSON output mode. Emits one machine-readable final line.
-  -m MSG             Commit message (GitHub style, requires quotes if spaces).
+  -m TOKEN           Commit message (GitHub style, requires quotes if spaces).
                      Usage: commit -m "Fix authentication bug"
-  --message MSG      Commit message (GitHub style, requires quotes if spaces).
+  --message TOKEN    Commit message (GitHub style, requires quotes if spaces).
                      Usage: commit --message "Fix authentication bug"
-  -- TEXT            Commit message (Unix-style): all tokens after '--' are
+  -- TOKENS          Commit message (Unix-style): all tokens after '--' are
                      the message text.
                      Usage: commit -- Fix critical memory leak
                      Note: '--' must be a separate token, followed by at least
@@ -55,12 +54,15 @@ Options:
                      is the same as: commit -m "do   keep   this spacing   for commit message"
   -p                 Push changes to remote after commit to branch.
                      Push occurs immediately when requested.
-  -v                 Verbose output. Shows staging-related progress lines.
+  -v                 Verbose output. Shows detailed progress lines.
 
-  Note: -m MSG, --message MSG, and -- TEXT are mutually exclusive and one is
+  Note: -m TOKEN, --message TOKEN, and -- TOKENS are mutually exclusive and one is
   required if one or more commits are to be made. Ignored if no changes need
   to be committed. Not required if only pushing existing commits to remote.
-  Normalized MSG/TEXT must include at least one non-whitespace character.
+  In dry-run mode (-d), message requirements are still validated when a
+  commit would be created.
+
+  Note: Normalized TOKEN/TOKENS must include at least one non-whitespace character.
 
 Examples:
   Commit all changes locally only:
@@ -89,8 +91,6 @@ Outputs:
       - No commits / No commits or pushes when no work was done.
   - With -v, output to stdout includes additional progress and
     detailed file/commit lists.
-  - With -j, output is a single JSON line with final status, counts,
-    and report disposition.
   - Writes a report to:
     - <repo>/reports/commit-<datetime>.md (commit-only normal run)
     - <repo>/reports/commit-d-<datetime>.md (commit-only dry run)
@@ -173,7 +173,6 @@ COMMIT_MESSAGE=""
 PUSH=false
 DRY_RUN=false
 VERBOSE=false
-JSON_OUTPUT=false
 FILES=()
 COMMITTED_FILES=0
 PUSHED_COMMITS=0
@@ -202,47 +201,20 @@ print_summary() {
   bt_info "Summary: committed files=$COMMITTED_FILES, pushed commits=$PUSHED_COMMITS"
 }
 
-json_escape() {
-  local s="$1"
-  s="${s//\\/\\\\}"
-  s="${s//\"/\\\"}"
-  s="${s//$'\n'/\\n}"
-  s="${s//$'\r'/\\r}"
-  s="${s//$'\t'/\\t}"
-  printf '%s' "$s"
-}
-
 emit_final_status() {
   local completion_text="$1"
   local report_generated="$2"
   local report_rel=""
-  local report_markdown=""
   local final_text=""
 
   if [[ "$report_generated" == true ]]; then
     report_rel="${REPORT_FILE#${REPO_ROOT}/}"
-    if [[ -f "$REPORT_FILE" ]]; then
-      report_markdown="$(cat "$REPORT_FILE")"
-    fi
     final_text="${completion_text}. Report generated: ${report_rel}."
   else
     final_text="${completion_text}. Report not generated."
   fi
 
-  if [[ "$JSON_OUTPUT" == true ]]; then
-    printf '{"branch":"%s","commitCount":%s,"pushCount":%s,"pushRequested":%s,"dryRun":%s,"reportGenerated":%s,"reportPath":"%s","message":"%s","reportMarkdown":"%s"}\n' \
-      "$(json_escape "$CURRENT_BRANCH")" \
-      "$COMMITTED_FILES" \
-      "$PUSHED_COMMITS" \
-      "$PUSH" \
-      "$DRY_RUN" \
-      "$report_generated" \
-      "$(json_escape "$report_rel")" \
-      "$(json_escape "$final_text")" \
-      "$(json_escape "$report_markdown")"
-  else
-    bt_success "$final_text"
-  fi
+  bt_success "$final_text"
 }
 
 collect_commit_file_stats() {
@@ -722,10 +694,6 @@ while [[ $# -gt 0 ]]; do
       VERBOSE=true
       shift
       ;;
-    -j)
-      JSON_OUTPUT=true
-      shift
-      ;;
     -p)
       PUSH=true
       shift
@@ -761,9 +729,7 @@ initialize_report_file
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit 1 "Failed to determine current branch")
-if [[ "$JSON_OUTPUT" != true ]]; then
-  bt_info "Current branch: $CURRENT_BRANCH"
-fi
+bt_info "Current branch: $CURRENT_BRANCH"
 
 # Disallow commits from detached HEAD (for example, origin/main or origin/v*).
 if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
@@ -784,7 +750,7 @@ if bt_is_protected_branch "$CURRENT_BRANCH"; then
 fi
 
 # Determine commit candidates before validating message so push-only mode works
-# without requiring MSG/TEXT.
+# without requiring TOKEN/TOKENS.
 collect_commit_candidate_files
 if [[ -n "$COMMIT_FILE_LIST" ]]; then
   NEEDS_COMMIT=true
@@ -798,7 +764,7 @@ fi
 # Validate commit message only when a commit is actually needed.
 if [[ "$NEEDS_COMMIT" == true ]]; then
   if [[ -z "$COMMIT_MESSAGE" ]]; then
-    bt_error_exit 4 "Commit message is required (-m/--message or -- TEXT) when there are changes to commit"
+    bt_error_exit 4 "Commit message is required (-m/--message or -- TOKENS) when there are changes to commit"
   fi
 
   COMMIT_MESSAGE_TRIMMED="$COMMIT_MESSAGE"
