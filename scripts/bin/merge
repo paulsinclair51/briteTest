@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-# merge - Merge current branch to its parent branch with approval tracking.
+# merge - Merge a branch to its parent branch with validation.
 #
 # See usage below for details, or run: merge -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
-# For license details, see '<repo>/LICENSE't.
+# For license details, see '<repo>/LICENSE'.
 
 usage() {
   cat <<'EOF'
@@ -14,213 +14,68 @@ Usage:
   merge [OPTIONS]
   merge -h | --help
 
-Merge the current branch to its parent branch using squash merge.
+Merge the current branch to its parent branch.
 
-Merging to a protected branch (main or a version branch) requires the current
-user to be
-an approver (A/ entry in config/contributors.md).
-
-Before merging:
-  - Verifies current user is an approver (if merging to protected branch)
-  - Checks that all status checks and CI/CD pass
-  - Uses PR title or custom message as squash commit message
-  - Logs merge to logs/remote_branch_history.md
-
-Features:
-  - Squash commits into single commit
-  - Automatic approval verification for protected branches
-  - Status check validation
-  - Merge logging to logs/remote_branch_history.md
-  - No branch cleanup (branches remain after merge)
+Requirements:
+  - Current branch must be a targeted or contributor branch
+  - Parent branch must be a valid version or main branch
+  - An open PR must exist for the current branch
+  - All status checks must pass
+  - If parent is protected, current user must be an approver
 
 Options:
-  -h, --help           Output this help to stdout and exit (other options
-                       and arguments are ignored).
-  -m, --message MSG    Custom squash commit message
-                       (uses PR title if not specified)
-  -v, --verbose        Show detailed information
+  -h, --help         Output this help to stdout and exit (other options
+                     and arguments are ignored).
+  -m, --message MSG  Custom commit message for merge (GitHub style,
+                     requires quotes if spaces). If not specified,
+                     uses the PR title.
+  -v, --verbose      Show detailed progress information.
 
 Examples:
-  # Merge current branch with PR title as message
+  # Merge current branch using PR title as commit message
   merge
 
-  # Merge with custom message
-  merge -m "Custom commit message"
+  # Merge with custom commit message
+  merge -m "Custom merge message"
 
   # Merge with verbose output
   merge -v
 
 
 Outputs:
-  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes help text, status messages, and results to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented
-    output locations.
+  - Logs merge to logs/remote_branch_history.md.
 
 Exit codes:
-  0   Success
-  1   Argument or validation error
-  2   Git operation failed
-  3   User is not an approver (required for protected branch)
-  4   GitHub API error
-  5   Configuration error
-  6   Status checks not passing
-  7   PR not found or invalid state
+  0  Success
+  1  Argument or validation error
+  2  Git operation failed
+  3  Insufficient permissions (not an approver)
+  4  PR or status checks failed
+  5  Merge validation failed
 EOF
 }
-
-# High-Level Flow:
-# - Merges the current branch into its parent branch with pre-merge safety
-#   validations.
-# - Applies workflow policy checks and optional history logging around the merge
-#   action.
-# - Reports merge outcomes and next-step guidance.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
-# shellcheck source=helpers/github_helpers.sh
-source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+
+# Ensure Git hooks are installed
+ensure_hooks_installed
 
 # Default options
 CUSTOM_MESSAGE=""
 VERBOSE=false
 
-
-get_current_user() {
-  git config user.name 2>/dev/null || \
-    bt_error_exit 2 "Failed to determine current user"
-}
-
-get_parent_branch() {
-  local current_branch="$1"
-
-  local parent_branch
-  parent_branch=$(bt_resolve_parent_branch \
-    "$current_branch" "main") || {
-    bt_error_exit 2 "Failed to determine parent branch"
-  }
-
-  echo "$parent_branch"
-}
-
-is_approver() {
-  local config_file="config/contributors.md"
-  local user_name="$1"
-  
-  if [[ ! -f "$config_file" ]]; then
-    bt_error_exit 5 "Configuration file not found: $config_file"
-  fi
-  
-  # Check if user is in A/ (Approver) entries
-  if grep -E "^\s*-\s+A/${user_name}," "$config_file" > /dev/null 2>&1; then
-    return 0
-  fi
-  return 1
-}
-
-get_existing_pr_number() {
-  local branch="$1"
-
-  bt_gh_find_pr_number_for_branch "$branch" "open"
-}
-
-get_pr_title() {
-  local pr_number="$1"
-  
-  # Get PR title
-  gh pr view "$pr_number" --json title --jq '.title' 2>/dev/null || echo ""
-}
-
-get_pr_status_check() {
-  local pr_number="$1"
-  
-  # Get PR status check state
-  gh pr view "$pr_number" --json statusCheckRollup \
-    --jq '.statusCheckRollup[].state' 2>/dev/null | sort | uniq \
-    || echo "UNKNOWN"
-}
-
-check_status_checks() {
-  local pr_number="$1"
-  
-  bt_info "Checking status checks and CI/CD..."
-  
-  # Get the status check state
-  local status_states
-  status_states=$(gh pr view "$pr_number" --json statusCheckRollup \
-    --jq '.statusCheckRollup[].state' 2>/dev/null || true)
-
-  if [[ -z "$status_states" ]]; then
-    # No checks found
-    bt_info "No status checks found"
-    return 0
-  fi
-
-  if echo "$status_states" | grep -Eq '^(PENDING|EXPECTED|ACTION_REQUIRED)$'; then
-    bt_error_exit 6 "Status checks still pending"
-  fi
-
-  if echo "$status_states" | grep -Eq '^(FAILURE|ERROR|CANCELLED|TIMED_OUT)$'; then
-    bt_error_exit 6 "Status checks failed"
-  fi
-
-  if echo "$status_states" | grep -Ev '^(SUCCESS|SKIPPED|NEUTRAL)$' >/dev/null 2>&1; then
-    bt_error_exit 6 "Unknown status check state detected"
-  fi
-
-  bt_success "All status checks passed"
-}
-
-ensure_clean_worktree() {
-  if ! git diff --quiet || ! git diff --cached --quiet; then
-    bt_error_exit 2 "Working tree must be clean before running merge"
-  fi
-}
-
-log_merge_to_history() {
-  local branch="$1"
-  local target_branch="$2"
-  local approver="$3"
-  local message="$4"
-  
-  local history_file="logs/remote_branch_history.md"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  mkdir -p "$(dirname "$history_file")"
-  
-  # Create history file if it doesn't exist
-  if [[ ! -f "$history_file" ]]; then
-    cat > "$history_file" << 'EOF'
-# Branch History
-
-Copyright (c) 2026 Paul Sinclair  
-SPDX-License-Identifier: MIT  
-For license details, see `LICENSE` in the repository root.
-
-See `README.md` in the root directory for an introduction to the project.
-
-## Merge Log
-
-EOF
-  fi
-  
-  # Append merge entry
-  cat >> "$history_file" << EOF
-- [$timestamp] [$approver] Merged [$branch] to [$target_branch]: $message
-EOF
-  
-  bt_info "Logged merge to $history_file"
-}
-
-# Parse options and arguments
+# Parse options
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help)
@@ -238,39 +93,34 @@ while [[ $# -gt 0 ]]; do
       VERBOSE=true
       shift
       ;;
-    -*)
-      bt_error_exit 1 "Unknown option: $1"
-      ;;
     *)
-      bt_error_exit 1 "Unknown argument: $1"
+      bt_error_exit 1 "Unknown option: $1"
       ;;
   esac
 done
 
-# Get current branch
+# Get current branch and user
 CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit 2 "Failed to determine current branch")
-bt_info "Current branch: $CURRENT_BRANCH"
+CURRENT_USER="$(git config user.name 2>/dev/null || true)"
 
-# Get current user
-CURRENT_USER=$(get_current_user)
+if [[ -z "$CURRENT_USER" ]]; then
+  bt_error_exit 1 "Failed to determine current user from git config"
+fi
+
+bt_info "Current branch: $CURRENT_BRANCH"
 bt_info "Current user: $CURRENT_USER"
 
-# Determine parent branch
-bt_info "Determining parent branch..."
-PARENT_BRANCH=$(get_parent_branch "$CURRENT_BRANCH")
+# Get parent branch
+PARENT_BRANCH=$(bt_get_parent_branch "$CURRENT_BRANCH" || \
+  bt_error_exit 5 "Failed to determine parent branch")
 bt_info "Parent branch: $PARENT_BRANCH"
 
-ensure_clean_worktree
-
-# Check if parent branch is protected
+# Check if parent is protected
 if bt_is_protected_branch "$PARENT_BRANCH"; then
-  bt_info "Parent branch is protected"
-  
   # Verify current user is an approver
   if ! is_approver "$CURRENT_USER"; then
-    bt_error_exit 3 "User '$CURRENT_USER' is not an approver." \
-      "Only approvers can merge to protected branches."
+    bt_error_exit 3 "User '$CURRENT_USER' is not an approver. Only approvers can merge to protected branches."
   fi
   bt_success "User '$CURRENT_USER' is an approver"
 else
@@ -280,7 +130,7 @@ fi
 # Find associated PR
 PR_NUMBER=$(get_existing_pr_number "$CURRENT_BRANCH")
 if [[ -z "$PR_NUMBER" ]]; then
-  bt_error_exit 7 "No open PR found for branch '$CURRENT_BRANCH'"
+  bt_error_exit 5 "No open PR found for branch '$CURRENT_BRANCH'"
 fi
 bt_info "Found PR #$PR_NUMBER"
 
@@ -317,25 +167,37 @@ if ! git pull --ff-only origin "$PARENT_BRANCH" 2>&1; then
   bt_error_exit 2 "Failed to fast-forward parent branch '$PARENT_BRANCH'"
 fi
 
+# Use bypass for merge operation
+export BRITETEST_BYPASS_HOOKS=true
 if ! git merge --squash --no-commit "$CURRENT_BRANCH" 2>&1; then
+  unset BRITETEST_BYPASS_HOOKS
   bt_error_exit 2 "Failed to squash merge '$CURRENT_BRANCH' into '$PARENT_BRANCH'"
 fi
+unset BRITETEST_BYPASS_HOOKS
 
-# Log merge to history before committing so the audit record is preserved.
+# Log merge to history
 log_merge_to_history "$CURRENT_BRANCH" "$PARENT_BRANCH" \
   "$CURRENT_USER" "$COMMIT_MESSAGE"
+
+# Stage history file
+export BRITETEST_BYPASS_HOOKS=true
 git add logs/remote_branch_history.md 2>/dev/null || true
 
 # Create commit with message
 if ! git commit -m "$COMMIT_MESSAGE" 2>&1; then
+  unset BRITETEST_BYPASS_HOOKS
   bt_error_exit 2 "Failed to create commit"
 fi
+unset BRITETEST_BYPASS_HOOKS
 
 # Push to remote
 bt_info "Pushing parent branch..."
+export BRITETEST_BYPASS_HOOKS=true
 if ! git push origin "$PARENT_BRANCH" 2>&1; then
+  unset BRITETEST_BYPASS_HOOKS
   bt_error_exit 2 "Failed to push parent branch"
 fi
+unset BRITETEST_BYPASS_HOOKS
 
 if ! git checkout "$CURRENT_BRANCH" >/dev/null 2>&1; then
   bt_warn "Merged successfully, but failed to switch back to '$CURRENT_BRANCH'"
