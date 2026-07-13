@@ -29,7 +29,7 @@ Before merging:
     and remote parent branches exist, and that no uncommitted changes exist.
   - Ensures that the current branch is up-to-date with its parent branch.
   - Checks that all status checks and CI/CD pass.
-  - Uses custom message, PR title, or default message as the commit message.
+  - Uses the specified commit message, PR title, or default message as the commit message.
   - Logs merge to '<repo>/logs/remote_branch_history.md' if parent is a
     protected branch, otherwise, to '<repo>/logs/local_branch_history.md'.
     The log update is kept in sync across the current branch's local and remote.
@@ -77,7 +77,7 @@ be specified.
 The resulting commit message from TOKEN/TOKENS must include at least
 one non-whitespace character.
 
-If a custom message is not specified:
+If a commit message is not specified:
 
   - The associated PR title is used as the commit message, or
   - When a PR is not required, a default message is used:
@@ -91,11 +91,11 @@ Examples:
   # Merge targeted branch to its parent version branch with PR title as commit message
   mergetoparent
 
-  # Merge with custom message
-  mergetoparent -m "Custom commit message"
+  # Merge with commit message
+  mergetoparent -m "My commit message."
 
-  # Unix-style message
-  mergetoparent -- Merge parser fixes
+  # Unix-style commit message
+  mergetoparent -- Merge parser fixes.
 
   # Merge with verbose output
   mergetoparent -v
