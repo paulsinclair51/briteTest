@@ -100,6 +100,9 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 
+# Ensure Git hooks are installed
+ensure_hooks_installed
+
 # Default options
 COMMIT_MESSAGE=""
 PUSH=false

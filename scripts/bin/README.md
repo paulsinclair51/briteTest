@@ -16,10 +16,12 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ```bash
 # Clone repository with automatic setup (RECOMMENDED)
+# Can run from ANYWHERE on your local machine
 mkclone
 
-# OR install scripts manually
-bash scripts/bin/installscripts
+# Then enter directory and use scripts
+cd BriteTest
+commit -h
 ```
 
 For detailed setup: See [`docs/SETUP_FIRST_CLONE.md`](../../docs/SETUP_FIRST_CLONE.md)
@@ -31,6 +33,7 @@ For detailed setup: See [`docs/SETUP_FIRST_CLONE.md`](../../docs/SETUP_FIRST_CLO
 ### Setup and Installation
 
 - **`mkclone`**: Clone the repository with automatic installation of scripts and Git hooks.
+  - **Can run from ANY directory on your local machine**
   - Clones repository
   - Installs scripts
   - Installs Git hooks
@@ -48,7 +51,8 @@ For detailed setup: See [`docs/SETUP_FIRST_CLONE.md`](../../docs/SETUP_FIRST_CLO
 ### Branch Workflow Scripts
 
 - **`mkbranch`**: Create new branches with policy validation.
-  - Usage: `mkbranch patch/my-fix main`
+  - Usage: `mkbranch fix/my-fix main` or `mkbranch dev/feature v1.0.0`
+  - Only allows `fix/` and `dev/` for targeted branches
   - Creates local branch from parent
   - Optionally pushes to remote with `-r`
 
@@ -57,6 +61,7 @@ For detailed setup: See [`docs/SETUP_FIRST_CLONE.md`](../../docs/SETUP_FIRST_CLO
   - Use instead of `git add` and `git commit`
   - Add `-p` flag to push: `commit -m "msg" -p`
   - Add `-v` for verbose output
+  - Blocks commits to protected branches (`main`, `v*.*.*`)
 
 - **`merge`**: Merge current branch to its parent branch.
   - Usage: `merge`
@@ -64,7 +69,7 @@ For detailed setup: See [`docs/SETUP_FIRST_CLONE.md`](../../docs/SETUP_FIRST_CLO
   - Validates PR, status checks, and permissions
 
 - **`rmbranch`**: Delete branches locally and/or remotely.
-  - Usage: `rmbranch patch/old-fix`
+  - Usage: `rmbranch fix/old-fix`
   - Add `-f` to force delete unmerged commits
 
 - **`undo`**: Undo recent commit, merge, or release operations.
@@ -126,9 +131,10 @@ Hooks auto-install on first clone and provide clear error messages.
 
 ## Getting Started
 
-### Step 1: Clone with `mkclone`
+### Step 1: Clone with `mkclone` (from anywhere)
 
 ```bash
+# Run from ANY directory on your local machine
 mkclone
 cd BriteTest
 ```
@@ -152,8 +158,8 @@ commit -h
 ### Step 3: Start Working
 
 ```bash
-# Create a branch
-mkbranch patch/my-fix main
+# Create a branch (only fix/ or dev/ allowed)
+mkbranch fix/my-fix main
 
 # Make changes and commit
 commit -m "Fix bug"
@@ -188,12 +194,12 @@ mkrelease -h
 ## Common Workflow
 
 ```bash
-# Setup (once per clone)
+# Setup (once per clone, from anywhere)
 mkclone
 cd BriteTest
 
-# Create branch
-mkbranch patch/feature-name main
+# Create fix branch
+mkbranch fix/feature-name main
 
 # Make changes
 echo "code" > file.js
@@ -204,13 +210,13 @@ commit -m "Add feature"
 # Push
 commit -p
 
-# Create PR on GitHub
+# Create PR on GitHub (or use mkpullrequest script)
 
 # After approval, merge
 merge
 
 # Delete old branch
-rmbranch patch/feature-name
+rmbranch fix/feature-name
 ```
 
 ---
