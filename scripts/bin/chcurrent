@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+
+# chcurrent - Switch to the specified branch.
+#
+# See usage below for details, or run: chcurrent -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  chcurrent BRANCH [-l] [-r]
+  chcurrent origin/BRANCH
+  chcurrent {-h | --help}
+
+Switch to BRANCH.
+
+For the first usage, options may occur before or after BRANCH.
+
+If origin/BRANCH is the same as BRANCH -r
+
+Arguments:
+  BRANCH      Name of the branch to switch to.
+
+Options:
+  -h, --help  Output this help to stdout and exit (other options
+              and arguments are ignored).
+  -l          Switch to local branch if it exists.
+              If local branch doesn't exist and -r is specified, switch to
+              the remote branch (origin/BRANCH) if it exists (exit code 2).
+              Otherwise, error (exit code 3).
+  -r          If -l not specified, switch to remote branch (origin/BRANCH)
+              if it exists. If -l is not specified and the remote branch
+              doesn't exist, error (exit code 4).
+
+  Default if origin/ is not specified and -l and -r are not specified is -l -r.
+
+Examples:
+  chcurrent main
+  chcurrent dev/my-feature-v1.0.0
+
+Outputs:
+  - Writes help text and status messages to stdout.
+  - Writes errors and diagnostics to stderr.
+
+Exit codes:
+  0   Success.
+  1   Argument or validation error.
+  2   Neither local nor remote branch exists.
+  3   Local branch does not exist.
+  4   Remote branch does not exist.
+  5   Branch switch operation failed.
+EOF
+}
+
+# High-Level Flow:
+# - Parses branch and option selection for local and/or remote checkout modes.
+# - Resolves branch existence in refs/heads and refs/remotes/origin.
+# - Uses git switch for local or detached remote checkout based on flags.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+
+usage_error() {
+  local message="$1"
+
+  echo "Error: $message" >&2
+  echo >&2
+  usage >&2
+  exit 1
+}
+
+if [[ $# -eq 0 ]]; then
+  usage_error "Branch name is required"
+fi
+
+for arg in "$@"; do
+  case "$arg" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+  esac
+done
+
+WANT_LOCAL=false
+WANT_REMOTE=false
+BRANCH_ARG=""
+
+for arg in "$@"; do
+  case "$arg" in
+    -l)
+      WANT_LOCAL=true
+      ;;
+    -r)
+      WANT_REMOTE=true
+      ;;
+    --*)
+      usage_error "Unknown option: $arg"
+      ;;
+    -*)
+      usage_error "Unknown option: $arg"
+      ;;
+    *)
+      if [[ -n "$BRANCH_ARG" ]]; then
+        usage_error "Exactly one branch name is required"
+      fi
+      BRANCH_ARG="$arg"
+      ;;
+  esac
+done
+
+if [[ -z "$BRANCH_ARG" ]]; then
+  usage_error "Branch name is required"
+fi
+
+TARGET_BRANCH="$BRANCH_ARG"
+if [[ "$TARGET_BRANCH" == origin/* ]]; then
+  TARGET_BRANCH="${TARGET_BRANCH#origin/}"
+  WANT_REMOTE=true
+fi
+
+if [[ -z "$TARGET_BRANCH" ]]; then
+  usage_error "Branch name is required"
+fi
+
+if [[ "$WANT_LOCAL" == false && "$WANT_REMOTE" == false ]]; then
+  WANT_LOCAL=true
+  WANT_REMOTE=true
+fi
+
+has_local=false
+has_remote=false
+
+if git show-ref --verify --quiet "refs/heads/$TARGET_BRANCH"; then
+  has_local=true
+fi
+
+if git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
+  has_remote=true
+fi
+
+switch_local() {
+  local branch="$1"
+
+  bt_info "Switching to local branch '$branch'..."
+  if ! git switch "$branch" >/dev/null 2>&1; then
+    bt_error_exit 5 "Failed to switch to local branch '$branch'"
+  fi
+  bt_success "Current branch is now '$branch'"
+  exit 0
+}
+
+switch_remote() {
+  local branch="$1"
+
+  bt_info "Switching to remote branch 'origin/$branch' (detached HEAD)..."
+  if ! git switch --detach "origin/$branch" >/dev/null 2>&1; then
+    bt_error_exit 5 "Failed to switch to remote branch 'origin/$branch'"
+  fi
+  bt_success "Current branch is now 'origin/$branch' (detached HEAD)"
+  exit 0
+}
+
+if [[ "$WANT_LOCAL" == true && "$WANT_REMOTE" == true ]]; then
+  if [[ "$has_local" == true ]]; then
+    switch_local "$TARGET_BRANCH"
+  fi
+  if [[ "$has_remote" == true ]]; then
+    switch_remote "$TARGET_BRANCH"
+  fi
+  bt_error_exit 2 "Neither local branch '$TARGET_BRANCH' nor remote branch 'origin/$TARGET_BRANCH' exists"
+fi
+
+if [[ "$WANT_LOCAL" == true ]]; then
+  if [[ "$has_local" == false ]]; then
+    bt_error_exit 3 "Local branch '$TARGET_BRANCH' does not exist"
+  fi
+  switch_local "$TARGET_BRANCH"
+fi
+
+if [[ "$WANT_REMOTE" == true ]]; then
+  if [[ "$has_remote" == false ]]; then
+    bt_error_exit 4 "Remote branch 'origin/$TARGET_BRANCH' does not exist"
+  fi
+  switch_remote "$TARGET_BRANCH"
+fi
+
+usage_error "No valid mode selected"

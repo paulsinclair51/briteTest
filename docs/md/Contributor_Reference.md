@@ -54,7 +54,7 @@ bash scripts/helpers/ckbranchname.sh "<branch_name>"
 **Exit Codes:**
 
 - `0` - Script execution succeeded (used with `echo $?`)
-- `1` - Valid main branch
+- `1` - Valid main branch name (remote-only branch base)
 - `2` - Valid version branch (format: v<M>.<m>.0)
 - `3` - Valid targeted branch (format: dev/<desc>-<version> or fix/<desc>-<version>)
 - `4` - Valid contributor branch (format: [<type>/]<description>)
@@ -63,7 +63,7 @@ bash scripts/helpers/ckbranchname.sh "<branch_name>"
 **Examples:**
 
 ```bash
-# Check main branch
+# Check main branch name
 bash scripts/helpers/ckbranchname.sh "main"
 # Exit code: 1
 
@@ -88,7 +88,7 @@ bash scripts/helpers/ckbranchname.sh "INVALID_NAME"
 
 | Code | Type | Format | Purpose |
 |------|------|--------|----------|
-| 1 | main | `main` | Protected main branch |
+| 1 | main | `main` | Protected main branch name (managed remotely) |
 | 2 | version | `v<M>.<m>.0` | Protected version branch |
 | 3 | targeted | `dev/fix/<desc>-<version>` | Target-specific work branch |
 | 4 | contributor | `[<type>/]<description>` | General work branch |
@@ -119,8 +119,17 @@ bash scripts/helpers/ckrole.sh "<role>"
 
 **Environment Variables:**
 
-- `GITHUB_ACTOR` - GitHub username (set by GitHub Actions)
+- `GITHUB_ACTOR` - GitHub username (preferred identity source)
 - `CKROLE_TRUSTED_ACTORS` - Comma-separated list of allowed bot accounts
+
+**Identity Resolution Order:**
+
+1. `GITHUB_ACTOR`
+2. `gh api user --jq '.login'` (if authenticated)
+3. `git config user.name`
+4. `USER`
+
+If the resolved value is not a valid GitHub login format, role checks fail.
 
 **Examples:**
 
@@ -192,7 +201,7 @@ scripts/bin/mkbranch -r <branch_name> [<base_branch>]
 
 - `-r` - Create the branch (required)
 - `<branch_name>` - Name for the new branch
-- `<base_branch>` - Base branch to create from (default: main)
+- `<base_branch>` - Base branch to create from (default: `main`, resolved from `origin/main` when local `main` is absent)
 
 **Exit Codes:**
 
@@ -204,7 +213,7 @@ scripts/bin/mkbranch -r <branch_name> [<base_branch>]
 **Examples:**
 
 ```bash
-# Create contributor branch from main
+# Create contributor branch from main base
 scripts/bin/mkbranch -r mywork/feature main
 
 # Create targeted branch from version branch
@@ -257,8 +266,45 @@ scripts/bin/rmbranch dev/fix-parser-v1.0.0
 
 **Protected Branches (Cannot Delete):**
 
-- `main`
+- `main` (remote-only base branch)
 - `v*` (version branches)
+
+---
+
+### mergetoparent
+
+**Purpose:** Merges the current source branch to its inferred parent branch using squash merge with policy checks.
+
+**Location:** `scripts/bin/mergetoparent`
+
+**Usage:**
+
+```bash
+scripts/bin/mergetoparent [OPTIONS]
+```
+
+**Options:**
+
+- `-m, --message <msg>` - Use custom squash commit message
+- `-v, --verbose` - Verbose output
+- `-h, --help` - Show usage
+
+**Policy Notes:**
+
+- Protected parents (`main` as the remote-only base, and `v<M>.<m>.<p>`) are updated via `mergetoparent` only
+- If inferred parent is protected, approver role is required
+- Resolve parent/source conflicts in the source branch before running `mergetoparent`
+- Running from detached HEAD or a protected current branch is rejected
+
+**Examples:**
+
+```bash
+# Merge current branch to inferred parent using PR title
+scripts/bin/mergetoparent
+
+# Merge with explicit message
+scripts/bin/mergetoparent -m "Merge parser fixes"
+```
 
 ---
 
@@ -386,14 +432,14 @@ Role-based script permissions are enforced by helper checks and protected script
 | Branch and commit operations (`mkbranch`, `commit`, `mkpullrequest`) | ✅ | ✅ | ✅ |
 | Review operations (`mkfeedback`) | ❌ | ✅ | ✅ |
 | Retarget operations (`chtarget`) | ❌ | ❌ | ✅ |
-| Protected operations (`merge`, `mkrelease`, `fixrepository`) | ❌ | ❌ | ✅ (override required) |
+| Protected operations (`mergetoparent`, `mkrelease`, `fixrepository`) | ❌ | ❌ | ✅ (override required) |
 
 ### Protected Script Rule
 
 Approver-only scripts require explicit override confirmation:
 
 ```bash
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/merge <source_branch> <target_branch>
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.0
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepository
 ```
@@ -425,6 +471,9 @@ Variables used by briteTest scripts:
 | `CKROLE_TRUSTED_ACTORS` | Comma-separated allowed bots | Empty |
 | `CONTRIBUTORS_FILE` | Path to contributors config | `config/contributors.md` |
 | `BRAND_HISTORY` | Path to brand history log | `logs/brand_history.md` |
+| `GITHUB_ACTOR` | Preferred GitHub login for role checks | Environment-specific |
+
+For role-gated scripts, ensure one of the supported identity sources resolves to a valid GitHub login in `config/contributors.md`.
 
 ---
 
@@ -481,6 +530,18 @@ See individual script sections for detailed exit code meanings.
 ```bash
 chmod +x scripts/bin/* scripts/helpers/*
 ```
+
+#### Role Check Fails for Known Approver/Reviewer
+
+**Error:** Identity cannot be resolved or user not found in contributors list
+
+**Solution:**
+
+1. Ensure login exists in `config/contributors.md`
+2. Ensure identity resolves to your GitHub login:
+	- `export GITHUB_ACTOR=<login>`
+	- or `gh auth login`
+	- or `git config user.name <login>`
 
 #### Git Command Failures
 

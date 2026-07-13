@@ -11,6 +11,12 @@
 # contributors.md format (relevant fields):
 #   - <github-login>, <C|R|A>, <email>
 #
+# Identity resolution uses shared helper logic in this order:
+#   1) GITHUB_ACTOR
+#   2) gh api user --jq '.login' (when gh is authenticated)
+#   3) git config user.name
+#   4) USER
+#
 # Optional env override for automation/bots:
 #   CKROLE_TRUSTED_ACTORS="actor1,actor2,..."
 # If GITHUB_ACTOR matches one of those entries (case-insensitive), ckrole
@@ -21,6 +27,10 @@
 #   1 otherwise
 
 set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
+source "$script_dir/common.sh"
 
 role_arg="${1:-}"
 if [[ -z "$role_arg" ]]; then
@@ -37,13 +47,10 @@ case "$role" in
     ;;
 esac
 
-actor="${GITHUB_ACTOR:-${USER:-}}"
-if [[ -z "$actor" ]]; then
-  echo "Error: unable to determine current user (GITHUB_ACTOR/USER not set)" >&2
+if ! actor_lc="$(bt_require_login)"; then
   exit 1
 fi
-actor_lc="$(printf '%s' "$actor" | tr '[:upper:]' '[:lower:]')"
-actor_lc="${actor_lc#@}"
+actor="$actor_lc"
 
 trusted_actors="${CKROLE_TRUSTED_ACTORS:-}"
 if [[ -n "$trusted_actors" ]]; then

@@ -14,7 +14,7 @@
 #   Contributor (C) = Access to contributor scripts only
 #
 # Protected Scripts (require approver override):
-#   - merge       - Merge branches to protected branches
+#   - mergetoparent - Merge branches to protected branches
 #   - mkrelease     - Create releases and tags
 #   - fixrepository - Repair repository state
 
@@ -35,8 +35,8 @@ readonly CONTRIBUTOR_SCRIPTS=(
   "mkclone"            # Clone repository
   "commit"           # Create commits
   "copyfix"            # Cherry-pick fixes between branches
-  "synceremote"       # Sync with remote
-  "syncparent"           # Sync current branch with parent branch
+  "syncfromremote"       # Sync with remote
+  "syncfromparent"           # Sync current branch with parent branch
   "testscripts"             # Run tests
   "undo"             # Undo changes
   "ckbranch_history"   # Check branch history
@@ -52,7 +52,7 @@ readonly REVIEWER_SCRIPTS=(
 
 # Approver scripts (available to A only - in addition to all scripts)
 readonly APPROVER_SCRIPTS=(
-  "merge"            # Merge branches (protected)
+  "mergetoparent"    # Merge branches (protected)
   "chtarget"           # Retarget targeted branch to another version parent
   "mkrelease"          # Create releases (protected)
   "fixrepository"      # Fix repository issues (protected)
@@ -70,7 +70,7 @@ readonly UTILITY_SCRIPTS=(
 
 # Protected scripts (require approver override confirmation)
 readonly PROTECTED_SCRIPTS=(
-  "merge"
+  "mergetoparent"
   "chtarget"
   "mkrelease"
   "fixrepository"
@@ -111,7 +111,7 @@ get_user_role() {
 # Args: $1 = username, $2 = script name
 # Returns: 0 if allowed, 1 if not allowed
 #
-# Example: can_execute_script "paulsinclair51" "merge"
+# Example: can_execute_script "paulsinclair51" "mergetoparent"
 can_execute_script() {
   local username="$1"
   local script="$2"
@@ -147,7 +147,7 @@ can_execute_script() {
 # Args: $1 = script name
 # Returns: 0 if protected, 1 if not protected
 #
-# Example: is_protected_script "merge"
+# Example: is_protected_script "mergetoparent"
 is_protected_script() {
   local script="$1"
   array_contains "$script" "${PROTECTED_SCRIPTS[@]}"
@@ -160,7 +160,7 @@ is_protected_script() {
 # Args: $1 = script name, $2 = username
 # Returns: 0 if requires override, 1 if not required
 #
-# Example: requires_approver_override "merge" "paulsinclair51"
+# Example: requires_approver_override "mergetoparent" "paulsinclair51"
 requires_approver_override() {
   local script="$1"
   local username="$2"
@@ -194,7 +194,7 @@ requires_approver_override() {
 # Args: $1 = script name
 # Returns: 0 if allowed, exits with error if not allowed
 #
-# Example: enforce_script_access "merge"
+# Example: enforce_script_access "mergetoparent"
 enforce_script_access() {
   local script="$1"
   local username="${GITHUB_ACTOR:-$(git config user.name)}"
@@ -224,7 +224,7 @@ enforce_script_access() {
 # Args: $1 = script name, $2 = operation description
 # Returns: 0 if confirmed, exits if not confirmed
 #
-# Example: request_approver_override "merge" "merge feature to main"
+# Example: request_approver_override "mergetoparent" "merge feature to main"
 request_approver_override() {
   local script="$1"
   local operation="${2:-execute this script}"

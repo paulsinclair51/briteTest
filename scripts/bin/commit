@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# commit - Commit and optionally push changes to the repository.
+# commit - Commit changes to the local current branch and optionally push
+# changes to the corresponding remote (origin) branch.
 #
 # See usage below for details, or run: commit -h
 #
@@ -11,88 +12,123 @@
 usage() {
   cat <<'EOF'
 Usage:
-  commit [OPTIONS] [files...]
-  commit -h | --help
+  commit [OPTIONS] [files...] [-- TOKENS]
+  commit {-h | --help}
 
-Commit changes to the current branch in BriteTest.
+Commit changes to the current branch in briteTest.
 Stages all changes by default and commits them with a message.
-Optionally pushes to remote.
+Optionally pushes to remote if remote is connected.
 
-Protected branches (require merge for changes):
+Protected branches require mergetoparent for changes:
   - main
   - v<M>.<m>.<p> version branches created from main
 
-Allowed branches (can use commit):
-  - dev/<desc>-<version> and fix/<desc>-<version> targeted branches
-  - [<type>/]<description> contributor branches
+Local branches may use commit:
+  - dev/<desc>-<version> and fix/<desc>-<version> targeted branches.
+  - [<type>/]<description> contributor branches.
 
 Arguments:
-  [files...]         Optional list of files to stage and commit
-                     If not specified, stages all changes (git add .)
+  [files...]         Optional list of files to include in the commit.
+                     If not specified, all current changes are included.
                      Examples: commit file1.js file2.js
                                commit src/index.js
-
-Commit Message Options (mutually exclusive):
-  -m, --message MSG  Commit message (GitHub style, requires quotes if spaces)
-                     Usage: commit -m "Fix authentication bug"
-  -- TEXT            Unix-style message (everything after -- is the message)
-                     Usage: commit -- Fix authentication bug
-                     Note: No quotes needed, captures all remaining arguments
-
-Push Options:
-  -p, --push         Push changes to remote after commit
-                     Shows confirmation prompt before pushing
-  -f, --force        Force push (skip confirmation, use with caution)
-                     Only applies with -p/--push
 
 Options:
   -h, --help         Output this help to stdout and exit (other options
                      and arguments are ignored).
+  -d                 Dry run (do not actually commit or push, just show what
+                     would be done).
+  -m TOKEN           Commit message (GitHub style, requires quotes if spaces).
+                     Usage: commit -m "Fix authentication bug"
+  --message TOKEN    Commit message (GitHub style, requires quotes if spaces).
+                     Usage: commit --message "Fix authentication bug"
+  -- TOKENS          Commit message (Unix-style): all tokens after '--' are
+                     the message text.
+                     Usage: commit -- Fix critical memory leak
+                     Note: '--' must be a separate token, followed by at least
+                     one token. Leading/trailing whitespace is not preserved
+                     and whitespace between tokens is normalized to a single space.
+                     In quoted tokens, whitespace is preserved and the quotes are
+                     removed, for example:
+                     commit -- do "  keep   this spacing  " for commit message
+                     is the same as: commit -m "do   keep   this spacing   for commit message"
+  -p                 Push changes to remote after commit to branch.
+                     Push occurs immediately when requested.
+  -v                 Verbose output. Shows detailed progress lines.
+
+  Note: -m TOKEN, --message TOKEN, and -- TOKENS are mutually exclusive and one is
+  required if one or more commits are to be made. Ignored if no changes need
+  to be committed. Not required if only pushing existing commits to remote.
+  In dry-run mode (-d), message requirements are still validated when a
+  commit would be created.
+
+  Note: Normalized TOKEN/TOKENS must include at least one non-whitespace character.
 
 Examples:
-  # Commit all changes locally only
-  commit -m "Fix authentication bug in login module"
+  Commit all changes locally only:
+    commit -m "Fix authentication bug in login module"
 
-  # Commit specific files locally
-  commit src/auth.js src/login.js -m "Update authentication logic"
+  Commit specific files locally:
+    commit src/auth.js src/login.js -m "Update authentication logic"
 
-  # Commit all changes and push (with confirmation)
-  commit -m "Add new feature" -p
+  Commit all changes and push:
+    commit -m "Add new feature" -p
 
-  # Commit and force push (skip confirmation)
-  commit -m "Rebase and force push" -p -f
+  Unix-style message:
+    commit -- Fix critical memory leak
 
-  # Unix-style message
-  commit -- Fix critical memory leak
-
-  # Commit specific files with Unix-style message
-  commit file1.js file2.js -- Update parser logic
+  Commit specific files with Unix-style message:
+    commit file1.js file2.js -- Update parser logic
 
 
 Outputs:
-  - Writes help text, status messages, and results or summaries to stdout.
+  - By default (without -v), output to stdout is:
+    - Current branch line.
+    - Final status line includes counts based on mode:
+      - Commit: <n> (commit-only)
+      - Commit/Push: <c>, Push: <p> (-p)
+      - Push: <p> (push-only with -p)
+      - No commits / No commits or pushes when no work was done.
+  - With -v, output to stdout includes additional progress and
+    detailed file/commit lists.
+  - Writes a report to:
+    - <repo>/reports/commit-<datetime>.md (commit-only normal run)
+    - <repo>/reports/commit-d-<datetime>.md (commit-only dry run)
+    - <repo>/reports/commit_push-<datetime>.md (commit+push normal run)
+    - <repo>/reports/commit_push-d-<datetime>.md (commit+push dry run)
+  - Older dry-run reports are removed when a new report is generated.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented
-    output locations.
 
 Exit codes:
-  0   Success
-  1   Argument or validation error
-  2   Git staging or commit failed
-  3   Git push failed
-  4   Conflict handling failed
+  0   Success.
+  1   Argument or validation error.
+  2   Current branch is protected.
+  3   Current branch is not a local branch.
+  4   Commit message is missing or empty when there are changes
+      to commit.
+  5   Skipped push to remote since remote is not connected.
+  6   Git staging or commit failed.
+  7   Git push failed.
 EOF
 }
 
 # High-Level Flow:
-# - Stages and commits repository changes with workflow-aware validation.
-# - Pushes the commit and records commit metadata to history logs when
-#   configured.
-# - Checks branch context and clean/dirty states before commit operations.
+# - Parse options and initialize run mode (commit-only vs commit+push, dry-run,
+#   verbose).
+# - Validate branch constraints and determine whether there are local changes to
+#   commit.
+# - Execute commit and optional push, with verbose-only progress details.
+# - Generate a report only when work occurred, then print a single final status
+#   line that includes counts and report disposition.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+REPORT_FILE=""
+ORIGINAL_ARGS=("$@")
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
@@ -100,14 +136,537 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 
-# Ensure Git hooks are installed
-ensure_hooks_installed
+cleanup_old_dry_run_reports() {
+  local old_report
+
+  for old_report in "$REPO_ROOT"/reports/commit-d-*.md; do
+    [[ -e "$old_report" ]] || continue
+    [[ -n "$REPORT_FILE" && "$old_report" == "$REPORT_FILE" ]] && continue
+    rm -f "$old_report"
+  done
+
+  for old_report in "$REPO_ROOT"/reports/commit_push-d-*.md; do
+    [[ -e "$old_report" ]] || continue
+    [[ -n "$REPORT_FILE" && "$old_report" == "$REPORT_FILE" ]] && continue
+    rm -f "$old_report"
+  done
+}
+
+initialize_report_file() {
+  if [[ "$PUSH" == true ]]; then
+    if [[ "$DRY_RUN" == true ]]; then
+      REPORT_FILE="$REPO_ROOT/reports/commit_push-d-${RUN_TS_FILE}.md"
+    else
+      REPORT_FILE="$REPO_ROOT/reports/commit_push-${RUN_TS_FILE}.md"
+    fi
+  else
+    if [[ "$DRY_RUN" == true ]]; then
+      REPORT_FILE="$REPO_ROOT/reports/commit-d-${RUN_TS_FILE}.md"
+    else
+      REPORT_FILE="$REPO_ROOT/reports/commit-${RUN_TS_FILE}.md"
+    fi
+  fi
+}
 
 # Default options
 COMMIT_MESSAGE=""
 PUSH=false
-FORCE=false
+DRY_RUN=false
+VERBOSE=false
 FILES=()
+COMMITTED_FILES=0
+PUSHED_COMMITS=0
+NEEDS_COMMIT=false
+COMMIT_FILE_LIST=""
+PUSH_COMMIT_LIST=""
+PRE_PUSHED_COMMITS=0
+PRE_PUSH_COMMIT_LIST=""
+PUSH_RANGE=""
+REMOTE_DISCONNECTED=false
+COMMIT_STATS_FILE="$(mktemp)"
+PREPUSH_STATS_FILE="$(mktemp)"
+PREPUSH_NOTES_FILE="$(mktemp)"
+
+cleanup_runtime_files() {
+  rm -f "$COMMIT_STATS_FILE" "$PREPUSH_STATS_FILE" "$PREPUSH_NOTES_FILE"
+}
+
+trap cleanup_runtime_files EXIT
+
+is_remote_connected() {
+  git remote get-url origin >/dev/null 2>&1
+}
+
+print_summary() {
+  bt_info "Summary: committed files=$COMMITTED_FILES, pushed commits=$PUSHED_COMMITS"
+}
+
+emit_final_status() {
+  local completion_text="$1"
+  local report_generated="$2"
+  local report_rel=""
+  local final_text=""
+
+  if [[ "$report_generated" == true ]]; then
+    report_rel="${REPORT_FILE#${REPO_ROOT}/}"
+    final_text="${completion_text}. Report generated: ${report_rel}."
+  else
+    final_text="${completion_text}. Report not generated."
+  fi
+
+  bt_success "$final_text"
+}
+
+collect_commit_file_stats() {
+  : > "$COMMIT_STATS_FILE"
+
+  [[ -n "$COMMIT_FILE_LIST" ]] || return 0
+
+  printf '%s\n' "$COMMIT_FILE_LIST" | while IFS= read -r file_path; do
+    [[ -n "$file_path" ]] || continue
+
+    local added="0"
+    local removed="0"
+    local stats_line=""
+
+    stats_line="$(git diff --numstat HEAD -- "$file_path" 2>/dev/null || true)"
+    if [[ -n "$stats_line" ]]; then
+      added="$(printf '%s\n' "$stats_line" | awk '{ if ($1 ~ /^[0-9]+$/) s+=$1 } END { print s+0 }')"
+      removed="$(printf '%s\n' "$stats_line" | awk '{ if ($2 ~ /^[0-9]+$/) s+=$2 } END { print s+0 }')"
+    elif [[ -f "$file_path" ]] && ! git cat-file -e "HEAD:$file_path" >/dev/null 2>&1; then
+      added="$(wc -l < "$file_path" | tr -d ' ')"
+      removed="0"
+    fi
+
+    printf '%s\t%s\t%s\n' "$file_path" "$added" "$removed" >> "$COMMIT_STATS_FILE"
+  done
+}
+
+collect_commit_candidate_files() {
+  local status_tmp
+  local record=""
+  local status=""
+  local path=""
+  local old_path=""
+  local -a candidates=()
+
+  status_tmp="$(mktemp)"
+
+  if [[ ${#FILES[@]} -eq 0 ]]; then
+    if ! git status --porcelain -z >"$status_tmp" 2>/dev/null; then
+      rm -f "$status_tmp"
+      bt_error_exit 6 "Failed to inspect working tree status"
+    fi
+  else
+    if ! git status --porcelain -z -- "${FILES[@]}" >"$status_tmp" 2>/dev/null; then
+      rm -f "$status_tmp"
+      bt_error_exit 6 "Failed to inspect working tree status for specified files"
+    fi
+  fi
+
+  exec 3<"$status_tmp"
+
+  while IFS= read -r -d '' record <&3; do
+    [[ ${#record} -ge 3 ]] || continue
+    status="${record:0:2}"
+    path="${record:3}"
+
+    # For porcelain -z rename/copy entries, the next NUL field is the source path.
+    if [[ "${status:0:1}" == "R" || "${status:1:1}" == "R" ]]; then
+      IFS= read -r -d '' old_path <&3 || old_path=""
+      [[ -n "$old_path" ]] && candidates+=("$old_path")
+      [[ -n "$path" ]] && candidates+=("$path")
+    elif [[ "${status:0:1}" == "C" || "${status:1:1}" == "C" ]]; then
+      IFS= read -r -d '' old_path <&3 || true
+      [[ -n "$path" ]] && candidates+=("$path")
+    else
+      [[ -n "$path" ]] && candidates+=("$path")
+    fi
+  done
+  exec 3<&-
+  rm -f "$status_tmp"
+
+  if [[ ${#candidates[@]} -eq 0 ]]; then
+    COMMIT_FILE_LIST=""
+  else
+    COMMIT_FILE_LIST="$(printf '%s\n' "${candidates[@]}" | sed '/^$/d' | sort -u)"
+  fi
+}
+
+print_commit_file_details() {
+  local heading="$1"
+  local status_label="${2:-commit}"
+
+  [[ -n "$COMMIT_FILE_LIST" ]] || return 0
+
+  bt_info "$heading"
+  printf '%s\n' "$COMMIT_FILE_LIST" | while IFS= read -r file_path; do
+    [[ -n "$file_path" ]] || continue
+    bt_info "  - $file_path [$status_label]"
+  done
+}
+
+collect_unpushed_commits() {
+  local branch="$1"
+  local count="0"
+  local list=""
+
+  if git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+    PUSH_RANGE="origin/$branch..$branch"
+    count="$(git rev-list --count "origin/$branch..$branch" 2>/dev/null || echo 0)"
+    list="$(git rev-list --oneline --reverse "origin/$branch..$branch" 2>/dev/null || true)"
+  else
+    PUSH_RANGE="$branch"
+    count="$(git rev-list --count "$branch" 2>/dev/null || echo 0)"
+    list="$(git rev-list --oneline --reverse "$branch" 2>/dev/null || true)"
+  fi
+
+  if [[ ! "$count" =~ ^[0-9]+$ ]]; then
+    count=0
+  fi
+
+  PUSHED_COMMITS="$count"
+  PUSH_COMMIT_LIST="$list"
+}
+
+collect_prepush_file_stats() {
+  : > "$PREPUSH_STATS_FILE"
+  : > "$PREPUSH_NOTES_FILE"
+
+  if [[ -z "$PUSH_RANGE" || "$PRE_PUSHED_COMMITS" -eq 0 ]]; then
+    return 0
+  fi
+
+  git log --numstat --format='' "$PUSH_RANGE" 2>/dev/null | \
+    awk '
+      NF == 3 {
+        a = ($1 ~ /^[0-9]+$/) ? $1 : 0
+        r = ($2 ~ /^[0-9]+$/) ? $2 : 0
+        f = $3
+        add[f] += a
+        rem[f] += r
+      }
+      END {
+        for (f in add) {
+          printf "%s\t%d\t%d\n", f, add[f], rem[f]
+        }
+      }
+    ' | sort > "$PREPUSH_STATS_FILE"
+
+  # Build per-file push-only summary notes from how many pending commits touched
+  # each file in the push set.
+  git log --name-only --format='' "$PUSH_RANGE" 2>/dev/null | \
+    awk '
+      NF > 0 {
+        count[$0] += 1
+      }
+      END {
+        for (f in count) {
+          printf "%s\t%d\n", f, count[f]
+        }
+      }
+    ' | sort > "$PREPUSH_NOTES_FILE"
+}
+
+format_command_line() {
+  local formatted="commit"
+  local arg
+
+  for arg in "${ORIGINAL_ARGS[@]}"; do
+    printf -v formatted '%s %q' "$formatted" "$arg"
+  done
+
+  printf '%s\n' "$formatted"
+}
+
+get_stats_for_file() {
+  local file_path="$1"
+  local stats_file="$2"
+
+  local stats_line
+  stats_line="$(awk -F '\t' -v f="$file_path" '$1 == f { print $0; exit }' "$stats_file" 2>/dev/null || true)"
+  if [[ -z "$stats_line" ]]; then
+    printf '0\t0\n'
+    return 0
+  fi
+
+  printf '%s\n' "$stats_line" | awk -F '\t' '{ printf "%s\t%s\n", $2, $3 }'
+}
+
+write_report_row() {
+  local file_path="$1"
+  local added="$2"
+  local removed="$3"
+  local total_lines="$4"
+  local notes="$5"
+  local out_file="${6:-$REPORT_FILE}"
+  local net
+
+  net=$((added - removed))
+  printf '| %s | %s | %s | %+d | %s | %s |\n' \
+    "$file_path" "$added" "$removed" "$net" "$total_lines" "$notes" >> "$out_file"
+}
+
+append_table_header() {
+  cat >> "$REPORT_FILE" <<'EOF'
+| **File** | **Added** | **Deleted** | **Net** | **Total** | **Notes** |
+| --- | --- | --- | --- | --- | --- |
+EOF
+}
+
+get_total_lines_for_file() {
+  local file_path="$1"
+
+  if [[ -f "$file_path" ]]; then
+    wc -l < "$file_path" | tr -d ' '
+  else
+    printf ''
+  fi
+}
+
+build_commit_note() {
+  local file_path="$1"
+  local added="$2"
+  local removed="$3"
+  local change_text
+  local scope_text
+
+  if [[ "$added" -gt 0 && "$removed" -eq 0 ]]; then
+    change_text="Added new content"
+  elif [[ "$added" -eq 0 && "$removed" -gt 0 ]]; then
+    change_text="Removed existing content"
+  else
+    change_text="Updated existing content"
+  fi
+
+  case "$file_path" in
+    *.md)
+      scope_text="documentation"
+      ;;
+    scripts/bin/* | scripts/helpers/* | *.sh)
+      scope_text="script logic"
+      ;;
+    src/*.[ch] | include/*.[ch])
+      scope_text="C source implementation"
+      ;;
+    *)
+      scope_text="file content"
+      ;;
+  esac
+
+  printf '%s in %s\n' "$change_text" "$scope_text"
+}
+
+get_prepush_note_for_file() {
+  local file_path="$1"
+  local added="$2"
+  local removed="$3"
+  local note_line
+  local pending_count
+  local summary
+
+  note_line="$(awk -F '\t' -v f="$file_path" '$1 == f { print $2; exit }' "$PREPUSH_NOTES_FILE" 2>/dev/null || true)"
+  if [[ -n "$note_line" ]]; then
+    pending_count="$note_line"
+    summary="$(build_commit_note "$file_path" "$added" "$removed")"
+    if [[ "$pending_count" -eq 1 ]]; then
+      printf '%s\n' "$summary"
+    else
+      printf '%s (commits %s)\n' "$summary" "$pending_count"
+    fi
+  else
+    printf '%s\n' "$(build_commit_note "$file_path" "$added" "$removed")"
+  fi
+}
+
+append_push_entries_section() {
+  printf '\n## Commit Entries Selected For Push\n\n' >> "$REPORT_FILE"
+
+  if [[ "$PUSH" != true ]]; then
+    printf -- '- Entries selected: 0\n\n' >> "$REPORT_FILE"
+    printf -- '- (none)\n' >> "$REPORT_FILE"
+    return 0
+  fi
+
+  printf -- '- Entries selected: %s\n\n' "$PUSHED_COMMITS" >> "$REPORT_FILE"
+
+  if [[ -n "$PRE_PUSH_COMMIT_LIST" ]]; then
+    printf '%s\n' "$PRE_PUSH_COMMIT_LIST" | while IFS= read -r commit_line; do
+      [[ -n "$commit_line" ]] || continue
+      printf -- '- %s (already on local branch, pending remote sync before this run)\n' "$commit_line" >> "$REPORT_FILE"
+    done
+  fi
+
+  if [[ "$NEEDS_COMMIT" == true ]]; then
+    if [[ "$DRY_RUN" == true && "$PUSH" == true ]]; then
+      printf -- '- <new commit from current working changes> (would be created in this run and included in push)\n' >> "$REPORT_FILE"
+    elif [[ "$PUSH" == true ]]; then
+      local latest_commit
+      latest_commit="$(git log --oneline -1 2>/dev/null || true)"
+      if [[ -n "$latest_commit" ]]; then
+        if [[ -n "$PRE_PUSH_COMMIT_LIST" ]] && printf '%s\n' "$PRE_PUSH_COMMIT_LIST" | grep -Fxq "$latest_commit"; then
+          :
+        else
+          printf -- '- %s (created in this run and included in push)\n' "$latest_commit" >> "$REPORT_FILE"
+        fi
+      fi
+    fi
+  fi
+
+  if [[ "$PUSHED_COMMITS" -eq 0 ]]; then
+    printf -- '- (none)\n' >> "$REPORT_FILE"
+  fi
+}
+
+generate_commit_push_report() {
+  local command_text
+  command_text="$(format_command_line)"
+  local report_mode="commit"
+  local report_title="Commit Report"
+  if [[ "$PUSH" == true ]]; then
+    report_mode="commit_push"
+    report_title="Commit/Push Report"
+  fi
+
+  local committed_only=0
+  local pushed_only=0
+  local committed_and_pushed=0
+  local total_rows=0
+
+  mkdir -p "$REPO_ROOT/reports"
+
+  cat > "$REPORT_FILE" <<EOF
+# ${report_title} ${RUN_TS_DISPLAY}
+
+**Command:** \`${command_text}\`
+
+**Branch:** \`${CURRENT_BRANCH}\`
+
+__SUMMARY_LINE_1__
+__SUMMARY_LINE_2__
+__SUMMARY_LINE_3__
+__SUMMARY_LINE_4__
+EOF
+
+  # Track commit-file names to avoid duplicate push-only rows.
+  local commit_files_tmp
+  local push_rows_tmp
+  commit_files_tmp="$(mktemp)"
+  push_rows_tmp="$(mktemp)"
+
+  if [[ -n "$COMMIT_FILE_LIST" ]]; then
+    printf '%s\n' "$COMMIT_FILE_LIST" > "$commit_files_tmp"
+  fi
+
+  if [[ "$report_mode" == "commit_push" ]]; then
+    printf '\n## Commit/Push\n\n' >> "$REPORT_FILE"
+    if [[ "$COMMITTED_FILES" -gt 0 ]]; then
+      append_table_header
+    else
+      printf 'None.\n' >> "$REPORT_FILE"
+    fi
+  else
+    printf '\n## Commit\n\n' >> "$REPORT_FILE"
+    append_table_header
+  fi
+
+  if [[ "$NEEDS_COMMIT" == true ]]; then
+
+    printf '%s\n' "$COMMIT_FILE_LIST" | while IFS= read -r file_path; do
+      [[ -n "$file_path" ]] || continue
+      local stats
+      stats="$(get_stats_for_file "$file_path" "$COMMIT_STATS_FILE")"
+      local added removed
+      added="${stats%%$'\t'*}"
+      removed="${stats#*$'\t'}"
+      local total_lines
+      total_lines="$(get_total_lines_for_file "$file_path")"
+      local commit_notes
+      commit_notes="$(build_commit_note "$file_path" "$added" "$removed")"
+      commit_notes="${commit_notes//|/\\|}"
+      write_report_row "$file_path" "$added" "$removed" "$total_lines" "$commit_notes"
+    done
+
+    if [[ "$PUSH" == true ]]; then
+      committed_and_pushed="$COMMITTED_FILES"
+    else
+      committed_only="$COMMITTED_FILES"
+    fi
+  fi
+
+  if [[ "$PRE_PUSHED_COMMITS" -gt 0 ]]; then
+    while IFS=$'\t' read -r file_path added removed; do
+      [[ -n "$file_path" ]] || continue
+      if [[ -f "$commit_files_tmp" ]] && grep -Fxq "$file_path" "$commit_files_tmp"; then
+        continue
+      fi
+      local total_lines
+      total_lines="$(get_total_lines_for_file "$file_path")"
+      local push_notes
+      push_notes="$(get_prepush_note_for_file "$file_path" "$added" "$removed")"
+      push_notes="${push_notes//|/\\|}"
+      write_report_row "$file_path" "$added" "$removed" "$total_lines" "$push_notes" "$push_rows_tmp"
+      pushed_only=$((pushed_only + 1))
+    done < "$PREPUSH_STATS_FILE"
+  fi
+
+  if [[ "$report_mode" == "commit_push" ]]; then
+    printf '\n## Push\n\n' >> "$REPORT_FILE"
+    if [[ "$pushed_only" -gt 0 ]]; then
+      if [[ "$REMOTE_DISCONNECTED" == true ]]; then
+        printf 'Push deferred due to disconnected remote. Rerun when connected to push these files.\n\n' >> "$REPORT_FILE"
+      fi
+      append_table_header
+      cat "$push_rows_tmp" >> "$REPORT_FILE"
+    else
+      printf 'None.\n' >> "$REPORT_FILE"
+    fi
+  fi
+
+  total_rows=$((committed_only + pushed_only + committed_and_pushed))
+
+  # Rewrite summary block based on report mode.
+  if [[ "$report_mode" == "commit_push" ]]; then
+    # shellcheck disable=SC2016
+    awk -v cp="$committed_and_pushed" -v p="$pushed_only" -v t="$total_rows" '
+      /^__SUMMARY_LINE_1__$/ { print "**Commit/Push:** " cp "<br>"; next }
+      /^__SUMMARY_LINE_2__$/ { print "**Push:** " p "<br>"; next }
+      /^__SUMMARY_LINE_3__$/ { print "**Total:** " t; next }
+      /^__SUMMARY_LINE_4__$/ { next }
+      { print }
+    ' "$REPORT_FILE" > "$REPORT_FILE.tmp" && mv "$REPORT_FILE.tmp" "$REPORT_FILE"
+  else
+    # shellcheck disable=SC2016
+    awk -v c="$committed_only" '
+      /^__SUMMARY_LINE_1__$/ { print "**Commit:** " c; next }
+      /^__SUMMARY_LINE_2__$/ { next }
+      /^__SUMMARY_LINE_3__$/ { next }
+      /^__SUMMARY_LINE_4__$/ { next }
+      { print }
+    ' "$REPORT_FILE" > "$REPORT_FILE.tmp" && mv "$REPORT_FILE.tmp" "$REPORT_FILE"
+  fi
+
+  if [[ "$PUSH" == true ]]; then
+    append_push_entries_section
+  fi
+
+  cleanup_old_dry_run_reports
+
+  rm -f "$commit_files_tmp" "$push_rows_tmp"
+}
+
+print_push_commit_details() {
+  local heading="$1"
+  local status_label="${2:-push}"
+
+  [[ -n "$PUSH_COMMIT_LIST" ]] || return 0
+
+  bt_info "$heading"
+  printf '%s\n' "$PUSH_COMMIT_LIST" | while IFS= read -r commit_line; do
+    [[ -n "$commit_line" ]] || continue
+    bt_info "  - $commit_line [$status_label]"
+  done
+}
 
 # Parse options and arguments
 POSITIONAL_ARGS=()
@@ -127,12 +686,16 @@ while [[ $# -gt 0 ]]; do
       COMMIT_MESSAGE="$2"
       shift 2
       ;;
-    -p | --push)
-      PUSH=true
+    -d)
+      DRY_RUN=true
       shift
       ;;
-    -f | --force)
-      FORCE=true
+    -v)
+      VERBOSE=true
+      shift
+      ;;
+    -p)
+      PUSH=true
       shift
       ;;
     --)
@@ -161,86 +724,263 @@ set -- "${POSITIONAL_ARGS[@]}"
 # Collect files
 FILES=("$@")
 
-# Validate commit message
-if [[ -z "$COMMIT_MESSAGE" ]]; then
-  bt_error_exit 1 "Commit message is required (-m or -- followed by message)"
-fi
-
-if [[ "$FORCE" == true && "$PUSH" == false ]]; then
-  bt_error_exit 1 "Option -f/--force requires -p/--push"
-fi
+initialize_report_file
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
-  bt_error_exit 2 "Failed to determine current branch")
+  bt_error_exit 1 "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
+
+# Disallow commits from detached HEAD (for example, origin/main or origin/v*).
+if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
+  bt_error_exit 1 \
+    "Cannot commit from detached HEAD. Switch to a local non-protected branch first."
+fi
+
+# Commit script operates on a local branch only.
+if ! git show-ref --verify --quiet "refs/heads/$CURRENT_BRANCH"; then
+  bt_error_exit 3 "Current branch '$CURRENT_BRANCH' is not a local branch"
+fi
 
 # Check if branch is protected
 if bt_is_protected_branch "$CURRENT_BRANCH"; then
-  bt_error_exit 1 \
+  bt_error_exit 2 \
     "Cannot commit directly to protected branch '$CURRENT_BRANCH'. "\
-"Use 'merge' to merge changes to this branch."
+"Use 'mergetoparent' to merge changes to this branch."
 fi
 
-# Stage changes
-bt_info "Staging changes..."
-if [[ ${#FILES[@]} -eq 0 ]]; then
-  # Stage all changes
-  if ! git add --all 2>&1; then
-    bt_error_exit 2 "Failed to stage changes"
-  fi
-  bt_info "Staged all changes"
+# Determine commit candidates before validating message so push-only mode works
+# without requiring TOKEN/TOKENS.
+collect_commit_candidate_files
+if [[ -n "$COMMIT_FILE_LIST" ]]; then
+  NEEDS_COMMIT=true
+  COMMITTED_FILES="$(printf '%s\n' "$COMMIT_FILE_LIST" | wc -l | tr -d ' ')"
+  collect_commit_file_stats
 else
-  # Stage specific files
-  if ! git add "${FILES[@]}" 2>&1; then
-    bt_error_exit 2 "Failed to stage files: ${FILES[*]}"
-  fi
-  bt_info "Staged files: ${FILES[*]}"
+  NEEDS_COMMIT=false
+  COMMITTED_FILES=0
 fi
 
-# Check if there are staged changes
-if ! git diff --cached --quiet; then
-  # Create commit
-  bt_info "Creating commit..."
-  if ! git commit -m "$COMMIT_MESSAGE" 2>&1; then
-    bt_error_exit 2 "Failed to create commit"
+# Validate commit message only when a commit is actually needed.
+if [[ "$NEEDS_COMMIT" == true ]]; then
+  if [[ -z "$COMMIT_MESSAGE" ]]; then
+    bt_error_exit 4 "Commit message is required (-m/--message or -- TOKENS) when there are changes to commit"
   fi
-  bt_success "Commit created: $COMMIT_MESSAGE"
+
+  COMMIT_MESSAGE_TRIMMED="$COMMIT_MESSAGE"
+  COMMIT_MESSAGE_TRIMMED="${COMMIT_MESSAGE_TRIMMED#${COMMIT_MESSAGE_TRIMMED%%[![:space:]]*}}"
+  COMMIT_MESSAGE_TRIMMED="${COMMIT_MESSAGE_TRIMMED%${COMMIT_MESSAGE_TRIMMED##*[![:space:]]}}"
+  if [[ -z "$COMMIT_MESSAGE_TRIMMED" ]]; then
+    bt_error_exit 4 "Commit message must include at least one non-whitespace character when there are changes to commit"
+  fi
+fi
+
+# Commit flow
+if [[ "$NEEDS_COMMIT" == true ]]; then
+  if [[ "$DRY_RUN" == true ]]; then
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Dry run: would create commit with $COMMITTED_FILES file(s)"
+      if [[ "$PUSH" == true ]]; then
+        print_commit_file_details "Files that would be committed:" "commit+push"
+      else
+        print_commit_file_details "Files that would be committed:" "commit"
+      fi
+    fi
+  else
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Staging changes..."
+    fi
+    if [[ ${#FILES[@]} -eq 0 ]]; then
+      if [[ "$VERBOSE" == true ]]; then
+        if ! git add --all; then
+          bt_error_exit 6 "Failed to stage changes"
+        fi
+      else
+        if ! git add --all >/dev/null 2>&1; then
+          bt_error_exit 6 "Failed to stage changes"
+        fi
+      fi
+      if [[ "$VERBOSE" == true ]]; then
+        bt_info "Staged all changes"
+      fi
+    else
+      if [[ "$VERBOSE" == true ]]; then
+        if ! git add "${FILES[@]}"; then
+          bt_error_exit 6 "Failed to stage files: ${FILES[*]}"
+        fi
+      else
+        if ! git add "${FILES[@]}" >/dev/null 2>&1; then
+          bt_error_exit 6 "Failed to stage files: ${FILES[*]}"
+        fi
+      fi
+      if [[ "$VERBOSE" == true ]]; then
+        bt_info "Staged files: ${FILES[*]}"
+      fi
+    fi
+
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Creating commit..."
+    fi
+    if [[ "$VERBOSE" == true ]]; then
+      if ! git commit -m "$COMMIT_MESSAGE"; then
+        bt_error_exit 6 "Failed to create commit"
+      fi
+    else
+      if ! git commit -m "$COMMIT_MESSAGE" >/dev/null 2>&1; then
+        bt_error_exit 6 "Failed to create commit"
+      fi
+    fi
+    if [[ "$VERBOSE" == true ]]; then
+      bt_success "Commit created: $COMMIT_MESSAGE"
+      if [[ "$PUSH" == true ]]; then
+        print_commit_file_details "Committed files:" "commit+push"
+      else
+        print_commit_file_details "Committed files:" "commit"
+      fi
+    fi
+  fi
 else
-  bt_warn "No changes staged to commit"
-  exit 0
+  if [[ "$VERBOSE" == true ]]; then
+    bt_info "No changes to commit"
+  fi
 fi
 
 # Push if requested
 if [[ "$PUSH" == true ]]; then
-  bt_info "Ready to push to remote"
-  
-  # Show what will be pushed
-  bt_info "Pushing branch '$CURRENT_BRANCH' to remote..."
-  
-  if [[ "$FORCE" == false ]]; then
-    # Ask for confirmation
-    echo -n "Push to remote? (y/n): "
-    read -r response
-    if [[ ! "$response" =~ ^[Yy]$ ]]; then
-      bt_warn "Push cancelled"
-      exit 0
+  # Capture already-unpushed commits before any new commit in this run.
+  collect_unpushed_commits "$CURRENT_BRANCH"
+  PRE_PUSHED_COMMITS="$PUSHED_COMMITS"
+  PRE_PUSH_COMMIT_LIST="$PUSH_COMMIT_LIST"
+  collect_prepush_file_stats
+
+  if ! is_remote_connected; then
+    REMOTE_DISCONNECTED=true
+    if [[ "$VERBOSE" == true ]]; then
+      bt_warn "Remote 'origin' is not connected; skipping push"
     fi
+    if [[ "$PRE_PUSHED_COMMITS" -gt 0 ]]; then
+      PUSHED_COMMITS="$PRE_PUSHED_COMMITS"
+      PUSH_COMMIT_LIST="$PRE_PUSH_COMMIT_LIST"
+      if [[ "$VERBOSE" == true ]]; then
+        print_push_commit_details "Previously committed changes pending push:" "push-only"
+      fi
+    fi
+    if [[ "$VERBOSE" == true ]]; then
+      print_summary
+    fi
+    if [[ "$COMMITTED_FILES" -gt 0 || "$PUSHED_COMMITS" -gt 0 ]]; then
+      generate_commit_push_report
+      if [[ "$COMMITTED_FILES" -gt 0 ]]; then
+        emit_final_status "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}. Push deferred (remote disconnected)" true
+      else
+        emit_final_status "Push: ${PUSHED_COMMITS}. Push deferred (remote disconnected)" true
+      fi
+    else
+      emit_final_status "No commits or pushes. Push deferred (remote disconnected)" false
+    fi
+    exit 5
   fi
-  
-  # Push changes
-  if [[ "$FORCE" == true ]]; then
-    if ! git push --force origin "$CURRENT_BRANCH" 2>&1; then
-      bt_error_exit 3 "Failed to force push to remote"
+
+  collect_unpushed_commits "$CURRENT_BRANCH"
+
+  # In dry-run mode, if a commit would be created, include that hypothetical
+  # commit in push totals and output.
+  if [[ "$DRY_RUN" == true && "$NEEDS_COMMIT" == true ]]; then
+    PUSHED_COMMITS=$((PUSHED_COMMITS + 1))
+  fi
+
+  if [[ "$PUSHED_COMMITS" -eq 0 ]]; then
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Nothing to push"
     fi
-    bt_success "Force pushed to remote"
   else
-    if ! git push origin "$CURRENT_BRANCH" 2>&1; then
-      bt_error_exit 3 "Failed to push to remote"
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Ready to push $PUSHED_COMMITS commit(s) to remote"
     fi
-    bt_success "Pushed to remote"
+
+    if [[ "$NEEDS_COMMIT" == false && "$PRE_PUSHED_COMMITS" -gt 0 ]]; then
+      PUSH_COMMIT_LIST="$PRE_PUSH_COMMIT_LIST"
+      if [[ "$VERBOSE" == true ]]; then
+        print_push_commit_details "Previously committed changes selected for push:" "push-only"
+      fi
+    elif [[ "$PRE_PUSHED_COMMITS" -gt 0 ]]; then
+      PUSH_COMMIT_LIST="$PRE_PUSH_COMMIT_LIST"
+      if [[ "$VERBOSE" == true ]]; then
+        print_push_commit_details "Previously committed changes pending push:" "push-only"
+      fi
+    fi
+
+    if [[ "$NEEDS_COMMIT" == true && "$DRY_RUN" == true ]]; then
+      if [[ "$VERBOSE" == true ]]; then
+        if [[ "$PRE_PUSHED_COMMITS" -gt 0 ]]; then
+          bt_info "This run would add one new commit to the push set:"
+        else
+          bt_info "This run would push one new commit from current changes:"
+        fi
+        bt_info "  - <new commit from current working changes> [push]"
+      fi
+    elif [[ "$NEEDS_COMMIT" == true ]]; then
+      # Show the full selected push set after listing previously pending commits.
+      collect_unpushed_commits "$CURRENT_BRANCH"
+      if [[ "$VERBOSE" == true ]]; then
+        print_push_commit_details "Commits selected for push (including this run):" "push"
+      fi
+    else
+      if [[ "$VERBOSE" == true ]]; then
+        print_push_commit_details "Commits selected for push:" "push"
+      fi
+    fi
+
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Pushing branch '$CURRENT_BRANCH' to remote..."
+    fi
+
+    # Push changes
+    if [[ "$DRY_RUN" == true ]]; then
+      if [[ "$VERBOSE" == true ]]; then
+        bt_info "Dry run: would push $PUSHED_COMMITS commit(s)"
+      fi
+    else
+      if [[ "$VERBOSE" == true ]]; then
+        if ! git push origin "$CURRENT_BRANCH"; then
+          bt_error_exit 7 "Failed to push to remote"
+        fi
+      else
+        if ! git push origin "$CURRENT_BRANCH" >/dev/null 2>&1; then
+          bt_error_exit 7 "Failed to push to remote"
+        fi
+      fi
+      if [[ "$VERBOSE" == true ]]; then
+        bt_success "Pushed to remote"
+      fi
+    fi
   fi
 fi
 
-bt_success "Commit complete"
+if [[ "$VERBOSE" == true && ( "$COMMITTED_FILES" -gt 0 || "$PUSHED_COMMITS" -gt 0 ) ]]; then
+  print_summary
+fi
+if [[ "$PUSH" == true ]]; then
+  if [[ "$COMMITTED_FILES" -gt 0 || "$PUSHED_COMMITS" -gt 0 ]]; then
+    generate_commit_push_report
+    if [[ "$DRY_RUN" == true ]]; then
+      emit_final_status "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}. Commit/Push dry-run complete" true
+    elif [[ "$COMMITTED_FILES" -gt 0 && "$PUSHED_COMMITS" -gt 0 ]]; then
+      emit_final_status "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}. Commit/Push complete" true
+    elif [[ "$COMMITTED_FILES" -eq 0 && "$PUSHED_COMMITS" -gt 0 ]]; then
+      emit_final_status "Push: ${PUSHED_COMMITS}. Push complete" true
+    else
+      emit_final_status "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}. Commit complete" true
+    fi
+  else
+    emit_final_status "No commits or pushes" false
+  fi
+else
+  if [[ "$COMMITTED_FILES" -eq 0 ]]; then
+    emit_final_status "No commits" false
+  else
+    generate_commit_push_report
+    emit_final_status "Commit: ${COMMITTED_FILES}. Commit complete" true
+  fi
+fi
 exit 0

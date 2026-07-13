@@ -12,7 +12,7 @@ usage() {
   cat <<'EOF'
 Usage:
   mkfork [OPTIONS]
-  mkfork -h | --help
+  mkfork {-h | --help}
 
 Create a fork of the repository and configure it via GitHub API.
 

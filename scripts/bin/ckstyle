@@ -10,7 +10,7 @@ usage() {
   cat <<'USAGE'
 Usage:
   ckstyle [OPTIONS]
-  ckstyle -h | --help
+  ckstyle {-h | --help}
 
 Validate style across repository files.
 

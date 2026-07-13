@@ -157,7 +157,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 **Cannot:**
 - ❌ Push directly to `main` (protected)
 - ❌ Push directly to `v*.0` (protected)
-- ❌ Execute `merge`, `mkrelease`, `fixrepository`
+- ❌ Execute `mergetoparent`, `mkrelease`, `fixrepository`
 - ❌ Modify .github/workflows/
 - ❌ Modify config/
 
@@ -166,7 +166,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 - `commit` - Create commits
 - `mkpullrequest` - Create PRs
 - `testscripts` - Run tests
-- `synceremote` - Sync with remote
+- `syncfromremote` - Sync with remote
 - All utility scripts
 
 **Use Case:** Active contributors writing code and documentation
@@ -189,7 +189,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 **Cannot:**
 - ❌ Merge to `main` (protected)
 - ❌ Merge to `v*.0` (protected)
-- ❌ Execute `merge`, `mkrelease`, `fixrepository`
+- ❌ Execute `mergetoparent`, `mkrelease`, `fixrepository`
 - ❌ Modify .github/workflows/
 - ❌ Create releases
 - ❌ Direct push to protected branches
@@ -227,7 +227,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 
 **Scripts Available:**
 - All Reviewer scripts
-- `merge` (protected - requires override)
+- `mergetoparent` (protected - requires override)
 - `mkrelease` (protected - requires override)
 - `fixrepository` (protected - requires override)
 
@@ -320,7 +320,7 @@ scripts/bin/testscripts                             # ✅ Allowed
 scripts/bin/mkfeedback                         # ✅ Allowed
 
 # Approvers can execute (with override):
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/merge feature main    # ✅ Allowed
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent feature main    # ✅ Allowed
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/chtarget dev/parser-v1.0.0 v1.1.0 # ✅ Allowed
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.0        # ✅ Allowed
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# syncparent - Merge parent branch into current branch.
+# syncfromparent - Merge parent branch into current branch.
 #
-# See usage below for details, or run: syncparent -h
+# See usage below for details, or run: syncfromparent -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,8 +11,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  syncparent [OPTIONS]
-  syncparent -h | --help
+  syncfromparent [OPTIONS]
+  syncfromparent {-h | --help}
 
 Merge the parent branch of the current branch into current branch
 to sync up with latest changes.
@@ -24,11 +24,11 @@ branch was created from). Handles simple conflicts automatically
 and provides instructions
 for complex ones.
 
-Protected branches (cannot run syncparent):
+Protected branches (cannot run syncfromparent):
   - main
   - v<M>.<m>.<p> release branches created from main
 
-Allowed branches (can use syncparent):
+Allowed branches (can use syncfromparent):
   - Unprotected branches with an identified parent branch
 
 Features:
@@ -54,19 +54,19 @@ Merge Message Options (mutually exclusive):
 
 Examples:
   # Sync up with confirmations
-  syncparent
+  syncfromparent
 
   # Force merge and push (no confirmations)
-  syncparent -f
+  syncfromparent -f
 
   # Custom merge message
-  syncparent -m "Sync with latest parent branch for bug fix"
+  syncfromparent -m "Sync with latest parent branch for bug fix"
 
   # Verbose output
-  syncparent -v
+  syncfromparent -v
 
   # Unix-style message with force
-  syncparent -f -- Sync up with latest changes
+  syncfromparent -f -- Sync up with latest changes
 
 
 Outputs:
@@ -157,7 +157,7 @@ bt_info "Current branch: $CURRENT_BRANCH"
 # Check if branch is protected
 if bt_is_protected_branch "$CURRENT_BRANCH"; then
   bt_error_exit 4 "Cannot sync up on protected branch '$CURRENT_BRANCH'." \
-    "Use 'merge' to merge changes to this branch."
+    "Use 'mergetoparent' to merge changes to this branch."
 fi
 
 # Determine parent branch

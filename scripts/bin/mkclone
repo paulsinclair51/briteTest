@@ -12,7 +12,7 @@ usage() {
   cat <<EOF
 Usage:
   mkclone [OPTIONS] [directory]
-  mkclone -h | --help
+  mkclone {-h | --help}
 
 Clone the BriteTest repository to a local directory with automatic setup.
 

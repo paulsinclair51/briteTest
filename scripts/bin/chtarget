@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# chtarget - Change the parent branch of a targeted branch via rebase.
+# chtarget - Retarget a targeted branch to a different version parent.
 #
 # See usage below for details, or run: chtarget -h
 #
@@ -11,59 +11,155 @@
 usage() {
   cat <<'EOF'
 Usage:
-  chtarget NEWPARENT [OPTIONS]
-  chtarget -h | --help
+  chtarget [OPTIONS] <targeted-branch> <new-parent-version>
+  chtarget {-h | --help}
 
-Change the parent branch of the current targeted branch via rebase.
+Retarget a targeted branch to a different version parent and rebase it.
+
+This script is approver-only and is intended for cases where a targeted
+branch must move to another version (defer to later version or pull into
+an earlier version).
 
 Arguments:
-  NEWPARENT          New parent version branch (required)
-                     Example: v1.2.3, v2.0.0
+  <targeted-branch>     Targeted branch to retarget.
+                        Must be: dev/<desc>-v<M>.<m>.<p> or
+                                 fix/<desc>-v<M>.<m>.<p>
+  <new-parent-version>  New parent version branch (v<M>.<m>.<p>)
 
 Options:
-  -h, --help         Output this help to stdout and exit
-  -d, --dry-run      Preview rebase without making changes
-  -v, --verbose      Show detailed information
+  -d, --dry-run         Validate only. Do not rebase or push.
+  -h, --help            Output this help to stdout and exit.
+  -m, --message MSG     Attach reason/comment (GitHub style).
+  -- TEXT               Attach reason/comment (Unix style).
+  -v, --verbose         Verbose output.
+
+Policy checks:
+  - Caller must be an approver.
+  - New parent version branch must exist.
+  - For dev/* targeted branches, new parent must be open for dev.
+  - For fix/* targeted branches, new parent must be open for fixes.
+  - Version openness is read from: config/version_branch_access.csv
+
+Conflict handling:
+  - If rebase conflicts, script stops and prints handoff steps.
+  - Branch owner (contributor) resolves conflicts and continues rebase.
 
 Examples:
-  # Rebase current branch onto new parent
-  chtarget v1.2.3
-
-  # Preview rebase
-  chtarget v1.2.3 -d
-
-Outputs:
-  - Writes status messages to stdout
-  - Writes errors to stderr
+  chtarget dev/parser-v1.0.0 v1.1.0
+  chtarget fix/memory-v1.0.0 v1.0.1 -m "Defer fix to patch branch"
+  chtarget -d dev/parser-v1.0.0 v1.1.0
 
 Exit codes:
-  0  Success
-  1  Argument error
-  2  Git operation failed
-  4  Working tree not clean
-  5  Rebase conflicts detected
+  0   Success
+  1   Argument or validation error
+  2   Permission denied (approver required)
+  3   Policy denied (branch type/version window)
+  4   Git operation failed
+  5   Rebase conflicts detected (handoff to contributor)
 EOF
 }
+
+# High-Level Flow:
+# - Validates policy and role requirements for targeted-branch retargeting.
+# - Rebases targeted branch onto a new version parent and force-pushes update.
+# - Stops on conflicts and hands resolution to branch owner.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ACCESS_FILE="$REPO_ROOT/config/version_branch_access.csv"
+LOG_FILE="$REPO_ROOT/logs/remote_branch_history.md"
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
 
-# Ensure Git hooks are installed
-ensure_hooks_installed
-
-NEWPARENT=""
 DRY_RUN=false
 VERBOSE=false
+COMMENT=""
 
-# Parse options
+log_verbose() {
+  if [[ "$VERBOSE" == true ]]; then
+    bt_info "$1"
+  fi
+}
+
+trim() {
+  local value="$1"
+  value="${value#${value%%[![:space:]]*}}"
+  value="${value%${value##*[![:space:]]}}"
+  printf '%s' "$value"
+}
+
+is_approver() {
+  local user_name="$1"
+  local config_file="$REPO_ROOT/config/contributors.md"
+
+  if [[ ! -f "$config_file" ]]; then
+    return 1
+  fi
+
+  awk -F',' -v user="$user_name" '
+    /^- / {
+      login=$1
+      role=$2
+      gsub(/^- /, "", login)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", login)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", role)
+      if (login == user && role == "A") {
+        found=1
+      }
+    }
+    END { exit(found ? 0 : 1) }
+  ' "$config_file"
+}
+
+version_window_status() {
+  local version="$1"
+  local branch_type="$2"
+
+  if [[ ! -f "$ACCESS_FILE" ]]; then
+    bt_error_exit 3 "Version access file not found: $ACCESS_FILE"
+  fi
+
+  awk -F',' -v version="$version" -v btype="$branch_type" '
+    NR == 1 { next }
+    /^#/ { next }
+    NF >= 3 {
+      v=$1
+      d=$2
+      f=$3
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", d)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", f)
+      if (tolower(v) == tolower(version)) {
+        if (btype == "dev") {
+          print tolower(d)
+          found=1
+          exit 0
+        }
+        if (btype == "fix") {
+          print tolower(f)
+          found=1
+          exit 0
+        }
+      }
+    }
+    END {
+      if (!found) {
+        exit 2
+      }
+    }
+  ' "$ACCESS_FILE"
+}
+
+# Parse args
+POSITIONAL_ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help)
@@ -78,67 +174,141 @@ while [[ $# -gt 0 ]]; do
       VERBOSE=true
       shift
       ;;
-    *)
-      if [[ -z "$NEWPARENT" ]]; then
-        NEWPARENT="$1"
-      else
-        bt_error_exit 1 "Unexpected argument: $1"
+    -m | --message)
+      if [[ $# -lt 2 ]]; then
+        bt_error_exit 1 "Option -m requires a message argument"
       fi
+      if [[ -n "$COMMENT" ]]; then
+        bt_error_exit 1 "Cannot use both -m and -- for comment"
+      fi
+      COMMENT="$2"
+      shift 2
+      ;;
+    --)
+      shift
+      if [[ -n "$COMMENT" ]]; then
+        bt_error_exit 1 "Cannot use both -m and -- for comment"
+      fi
+      COMMENT="$*"
+      break
+      ;;
+    -*)
+      bt_error_exit 1 "Unknown option: $1"
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
       shift
       ;;
   esac
 done
 
-if [[ -z "$NEWPARENT" ]]; then
-  bt_error_exit 1 "NEWPARENT is required"
+set -- "${POSITIONAL_ARGS[@]}"
+
+if [[ $# -ne 2 ]]; then
+  bt_error_exit 1 "Expected 2 arguments: <targeted-branch> <new-parent-version>"
 fi
+
+TARGET_BRANCH="$1"
+NEW_PARENT="$2"
+
+if [[ "$TARGET_BRANCH" =~ ^(dev|fix)/.+-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]; then
+  TARGET_TYPE="${BASH_REMATCH[1]}"
+  OLD_PARENT="${BASH_REMATCH[2]}"
+else
+  bt_error_exit 3 "Invalid targeted branch '$TARGET_BRANCH'. Use dev/...-vX.Y.Z or fix/...-vX.Y.Z"
+fi
+
+if ! bt_is_version_branch "$NEW_PARENT"; then
+  bt_error_exit 3 "Invalid new parent '$NEW_PARENT'. Expected version branch v<M>.<m>.<p>"
+fi
+
+if [[ "$OLD_PARENT" == "$NEW_PARENT" ]]; then
+  bt_warn "Branch '$TARGET_BRANCH' already targets '$NEW_PARENT'"
+  exit 0
+fi
+
+CURRENT_USER="$(git config user.name 2>/dev/null || true)"
+CURRENT_USER="$(trim "$CURRENT_USER")"
+if [[ -z "$CURRENT_USER" ]]; then
+  bt_error_exit 2 "Cannot determine current user from git config"
+fi
+
+if ! is_approver "$CURRENT_USER"; then
+  bt_error_exit 2 "User '$CURRENT_USER' is not an approver"
+fi
+
+log_verbose "Approver verified: $CURRENT_USER"
+
+status=""
+if ! status=$(version_window_status "$NEW_PARENT" "$TARGET_TYPE"); then
+  if [[ "$?" -eq 2 ]]; then
+    bt_error_exit 3 "Version '$NEW_PARENT' has no access policy in $ACCESS_FILE"
+  fi
+  bt_error_exit 3 "Failed to evaluate version access policy"
+fi
+
+if [[ "$status" != "open" ]]; then
+  bt_error_exit 3 "Version '$NEW_PARENT' is closed for '$TARGET_TYPE' branches"
+fi
+
+ORIGINAL_BRANCH="$(bt_get_current_branch_or_empty)"
 
 cd "$REPO_ROOT"
 
-TARGET_BRANCH=$(bt_get_current_branch || bt_error_exit 2 "Failed to determine current branch")
-bt_info "Current branch: $TARGET_BRANCH"
-
-# Check working tree is clean
 if ! git diff --quiet || ! git diff --cached --quiet; then
   bt_error_exit 4 "Working tree must be clean before running chtarget"
 fi
 
-bt_info "Fetching from remote..."
 if ! git fetch origin >/dev/null 2>&1; then
   bt_error_exit 4 "Failed to fetch from origin"
 fi
 
-# Check new parent exists
-if ! git show-ref --verify --quiet "refs/remotes/origin/$NEWPARENT"; then
-  bt_error_exit 2 "New parent branch '$NEWPARENT' not found on origin"
+if ! git show-ref --verify --quiet "refs/remotes/origin/$NEW_PARENT"; then
+  bt_error_exit 3 "New parent version branch '$NEW_PARENT' not found on origin"
 fi
 
-bt_info "Rebasing '$TARGET_BRANCH' onto '$NEWPARENT'"
+if git show-ref --verify --quiet "refs/heads/$TARGET_BRANCH"; then
+  if ! git checkout "$TARGET_BRANCH" >/dev/null 2>&1; then
+    bt_error_exit 4 "Failed to checkout local targeted branch '$TARGET_BRANCH'"
+  fi
+elif git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
+  if ! git checkout -b "$TARGET_BRANCH" "origin/$TARGET_BRANCH" >/dev/null 2>&1; then
+    bt_error_exit 4 "Failed to create local branch '$TARGET_BRANCH' from origin"
+  fi
+else
+  bt_error_exit 3 "Targeted branch '$TARGET_BRANCH' not found locally or on origin"
+fi
 
+bt_info "Retargeting '$TARGET_BRANCH' from '$OLD_PARENT' to '$NEW_PARENT'"
 if [[ "$DRY_RUN" == true ]]; then
   bt_success "Dry-run passed"
-  bt_info "Rebase preview: git rebase origin/$NEWPARENT"
+  bt_info "Rebase preview: git rebase origin/$NEW_PARENT"
+  if [[ -n "$ORIGINAL_BRANCH" && "$ORIGINAL_BRANCH" != "$TARGET_BRANCH" ]]; then
+    git checkout "$ORIGINAL_BRANCH" >/dev/null 2>&1 || true
+  fi
   exit 0
 fi
 
-export BRITETEST_BYPASS_HOOKS=true
-if ! git rebase "origin/$NEWPARENT"; then
-  unset BRITETEST_BYPASS_HOOKS
-  bt_warn "Rebase conflicts detected"
-  bt_info "Resolve conflicts and continue:"
-  echo "  1. Resolve conflicts in your editor"
-  echo "  2. Stage resolved files: git add ."
-  echo "  3. Continue rebase: git rebase --continue"
-  echo "  4. Push with lease: git push --force-with-lease origin $TARGET_BRANCH"
-  bt_error_exit 5 "Rebase paused for conflict resolution"
+if ! git rebase "origin/$NEW_PARENT"; then
+  bt_warn "Rebase conflicts detected while retargeting '$TARGET_BRANCH'"
+  bt_info "Handoff required: branch owner resolves conflicts"
+  echo "  1. Resolve conflicts in the current branch worktree"
+  echo "  2. Continue rebase: git rebase --continue"
+  echo "  3. Push rewritten history: git push --force-with-lease origin $TARGET_BRANCH"
+  bt_error_exit 5 "Retarget paused for contributor conflict resolution"
 fi
 
-bt_info "Pushing rebased branch..."
 if ! git push --force-with-lease origin "$TARGET_BRANCH"; then
-  unset BRITETEST_BYPASS_HOOKS
-  bt_error_exit 2 "Failed to push rebased branch"
+  bt_error_exit 4 "Rebase succeeded but push failed for '$TARGET_BRANCH'"
 fi
-unset BRITETEST_BYPASS_HOOKS
 
-bt_success "Branch retargeted successfully"
+MESSAGE="Retargeted '$TARGET_BRANCH' from '$OLD_PARENT' to '$NEW_PARENT' by approver '$CURRENT_USER'"
+bt_append_history_log "$LOG_FILE" "$MESSAGE" "$COMMENT"
+
+bt_success "Retarget complete"
+
+if [[ -n "$ORIGINAL_BRANCH" && "$ORIGINAL_BRANCH" != "$TARGET_BRANCH" ]]; then
+  git checkout "$ORIGINAL_BRANCH" >/dev/null 2>&1 || true
+fi
+
 exit 0

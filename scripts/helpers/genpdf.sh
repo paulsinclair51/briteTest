@@ -14,7 +14,7 @@ Usage:
   genpdf [<dir_options>] <indirectory> [<outdirectory>]
   genpdf [<dir_options>]
   genpdf [-b <backend>] -t
-  genpdf -h | --help
+  genpdf {-h | --help}
 
 The third form is the same as: genpdf [<dir_options>] ./
 

@@ -13,7 +13,7 @@ usage() {
   cat <<'EOF'
 Usage:
   fixrepository [OPTIONS]
-  fixrepository -h | --help
+  fixrepository {-h | --help}
 
 Check the briteTest repository for corruption and issues, fix what can be safely
 fixed, and generate a non-tracked report in /reports/repository-<datetime>.md.

@@ -12,7 +12,7 @@ usage() {
 Usage:
   test_gendocs.sh
   test_gendocs.sh -v
-  test_gendocs.sh -h | --help
+  test_gendocs.sh {-h | --help}
 
 Runs a test suite for scripts/bin/gendocs and its helper scripts
 scripts/helpers/genpdf.sh and scripts/helpers/gendocx.sh.

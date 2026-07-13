@@ -12,7 +12,7 @@ usage() {
   cat <<'EOF'
 Usage:
   ckbranch_history [OPTIONS]
-  ckbranch_history -h | --help
+  ckbranch_history {-h | --help}
 
 Query and display branch history log entries from logs/remote_branch_history.md.
 

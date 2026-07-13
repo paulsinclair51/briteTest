@@ -15,7 +15,7 @@ Usage:
   genpngs <name>[.svg]
   genpngs -d *[.svg]
   genpngs -d <name>[.svg]
-  genpngs -h | --help
+  genpngs {-h | --help}
 
 Generates branding PNGs from all SVG sources in docs/branding/
 or from a specified SVG file in docs/branding/.

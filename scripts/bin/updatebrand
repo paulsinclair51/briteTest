@@ -13,7 +13,7 @@ usage() {
   cat <<'EOF'
 Usage:
   updatebrand [-d]
-  updatebrand -h | --help
+  updatebrand {-h | --help}
 
 Update the branding assets and propagate a brand change across
 repository files.
