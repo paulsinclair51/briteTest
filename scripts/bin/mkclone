@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# mkclone - Clone the repository.
+# mkclone - Clone the repository and automatically install scripts and Git hooks.
 #
 # See usage below for details, or run: mkclone -h
 #
@@ -14,15 +14,27 @@ Usage:
   mkclone [OPTIONS] [directory]
   mkclone {-h | --help}
 
-Clone the BriteTest repository to a local directory.
+Clone the BriteTest repository to a local directory with automatic setup.
+
+Requirements:
+  - Must be run on a machine with bash, git, and curl installed
+  - Network access to GitHub (https://github.com)
+  - Can be run from ANY directory on your local machine
+  - NO prior clone or local repository needed
+
+This script:
+  - Clones the repository to a target directory
+  - Automatically installs scripts and Git hooks (no manual steps required)
+  - Git hooks protect against accidental direct git commands
+  - Sets up PATH so scripts are immediately available
 
 Arguments:
   [directory]        Optional target directory name
-                     If not specified, uses '$REPO_NAME'
+                     If not specified, uses 'BriteTest'
                      Examples: mkclone
-                                 -> Creates ./$REPO_NAME/
-                               mkclone my-repo
-                                 -> Creates ./my-repo/
+                                 -> Creates ./BriteTest/
+                                mkclone my-workspace
+                                 -> Creates ./my-workspace/
 
 Comment Options (mutually exclusive):
   -m, --message MSG  Attach a comment to the operation
@@ -40,13 +52,13 @@ Options:
                      everything after -- is the comment)
 
 Examples:
-  # Basic clone with default directory name
+  # Basic clone with automatic setup (run from anywhere)
   mkclone
-    -> Creates ./$REPO_NAME/
+    -> Creates ./BriteTest/ with scripts and hooks installed
 
-  # Clone into custom directory
-  mkclone my-repo
-    -> Creates ./my-repo/
+  # Clone into custom directory with automatic setup
+  mkclone my-workspace
+    -> Creates ./my-workspace/ with scripts and hooks installed
 
   # With GitHub-style comment
   mkclone -m "Setup for new feature development"
@@ -66,23 +78,22 @@ Exit codes:
   1   Argument error
   2   Git clone failed
   3   Target directory already exists
+  4   Failed to install scripts or hooks
+  5   Missing required tools (git, bash, curl)
 EOF
 }
 
 # High-Level Flow:
+# - Can run from ANY directory on your local machine
+# - Does NOT require bash helpers upfront
 # - Clones the configured repository URL into a default or user-specified
 #   target directory.
 # - Validates arguments, comment options, and target-path preconditions before
 #   cloning.
+# - Automatically runs installscripts to set up scripts and Git hooks.
 # - Reports clone results and prints next-step workflow guidance.
 
 set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Shared helpers
-# shellcheck source=helpers/common.sh
-source "$SCRIPT_DIR/../helpers/common.sh"
 
 # Repository configuration
 REPO_URL="https://github.com/paulsinclair51/BriteTest"
@@ -92,6 +103,42 @@ REPO_NAME="BriteTest"
 COMMENT=""
 TARGET_DIR=""
 
+# Simple output helpers (no external dependency)
+info() {
+  echo "[INFO] $1"
+}
+
+success() {
+  echo "[SUCCESS] $1"
+}
+
+warn() {
+  echo "[WARN] $1"
+}
+
+error_exit() {
+  local code="$1"
+  local message="$2"
+  echo "[ERROR] $message" >&2
+  exit "$code"
+}
+
+# Check for required tools
+check_requirements() {
+  local missing=()
+  
+  if ! command -v git &> /dev/null; then
+    missing+=("git")
+  fi
+  
+  if ! command -v bash &> /dev/null; then
+    missing+=("bash")
+  fi
+  
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    error_exit 5 "Missing required tools: ${missing[*]}"
+  fi
+}
 
 # Parse options and arguments
 POSITIONAL_ARGS=()
@@ -103,10 +150,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -m requires a message argument"
+        error_exit 1 "Option -m requires a message argument"
       fi
       if [[ -n "$COMMENT" ]]; then
-        bt_error_exit 1 "Cannot use both -m and -- for comment"
+        error_exit 1 "Cannot use both -m and -- for comment"
       fi
       COMMENT="$2"
       shift 2
@@ -115,13 +162,13 @@ while [[ $# -gt 0 ]]; do
       # Unix-style comment: everything after -- is the comment
       shift
       if [[ -n "$COMMENT" ]]; then
-        bt_error_exit 1 "Cannot use both -m and -- for comment"
+        error_exit 1 "Cannot use both -m and -- for comment"
       fi
       COMMENT="$*"
       break
       ;;
     -*)
-      bt_error_exit 1 "Unknown option: $1"
+      error_exit 1 "Unknown option: $1"
       ;;
     *)
       # Positional argument
@@ -136,7 +183,7 @@ set -- "${POSITIONAL_ARGS[@]}"
 
 # Check that we have at most 1 positional argument
 if [[ $# -gt 1 ]]; then
-  bt_error_exit 1 "Expected at most 1 argument (directory), got $#"
+  error_exit 1 "Expected at most 1 argument (directory), got $#"
 fi
 
 # Determine target directory
@@ -148,27 +195,42 @@ fi
 
 # Validate target directory name
 if [[ -z "$TARGET_DIR" ]]; then
-  bt_error_exit 1 "Target directory name cannot be empty"
+  error_exit 1 "Target directory name cannot be empty"
 fi
 
 # Check if target directory already exists
 if [[ -e "$TARGET_DIR" ]]; then
-  bt_error_exit 3 "Target directory '$TARGET_DIR' already exists"
+  error_exit 3 "Target directory '$TARGET_DIR' already exists"
 fi
+
+# Check requirements before starting
+check_requirements
 
 # Clone the repository
-bt_info "Cloning repository..."
+info "Cloning repository..."
 if ! git clone "$REPO_URL" "$TARGET_DIR" 2>&1; then
-  bt_error_exit 2 "Failed to clone repository from $REPO_URL"
+  error_exit 2 "Failed to clone repository from $REPO_URL"
 fi
 
-bt_success "Repository cloned successfully"
+success "Repository cloned successfully"
 
 # Display repository information
-bt_info "Repository: $REPO_URL"
-bt_info "Cloned to: ./$TARGET_DIR"
-bt_info "Next steps:"
+info "Repository: $REPO_URL"
+info "Cloned to: ./$TARGET_DIR"
+
+# Install scripts and Git hooks
+info "Setting up scripts and Git hooks..."
+if bash "$TARGET_DIR/scripts/bin/installscripts" >/dev/null 2>&1; then
+  success "Scripts and Git hooks installed successfully"
+else
+  warn "Warning: Failed to install scripts or Git hooks"
+  info "You can install them manually by running:"
+  info "  cd $TARGET_DIR"
+  info "  bash scripts/bin/installscripts"
+fi
+
+info "Next steps:"
 echo "  cd $TARGET_DIR"
-echo "  mkbranch patch/your-branch main"
+echo "  mkbranch fix/your-branch main"
 
 exit 0
