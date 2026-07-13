@@ -141,6 +141,8 @@ VERBOSE=false
 DRY_RUN=false
 MESSAGE_SOURCE=""
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+CURRENT_IS_LOCAL=true
+CURRENT_SOURCE_REF=""
 
 
 get_current_user() {
@@ -177,6 +179,123 @@ has_local_branch() {
 has_remote_branch() {
   local branch="$1"
   git show-ref --verify --quiet "refs/remotes/origin/$branch"
+}
+
+resolve_detached_current_remote_branch() {
+  local remote_ref=""
+  local match_count=0
+  local ref
+  local first_match=""
+  local -a matched_refs=()
+
+  while IFS= read -r ref; do
+    [[ -n "$ref" ]] || continue
+    [[ "$ref" == "origin/HEAD" ]] && continue
+    remote_ref="$ref"
+    if [[ -z "$first_match" ]]; then
+      first_match="$ref"
+    fi
+    matched_refs+=("$ref")
+    match_count=$((match_count + 1))
+  done < <(git for-each-ref --format='%(refname:short)' --points-at HEAD refs/remotes/origin)
+
+  if [[ "$match_count" -eq 1 ]]; then
+    echo "${remote_ref#origin/}"
+    return 0
+  fi
+
+  if [[ "$match_count" -gt 1 ]]; then
+    local baseline_parent=""
+    local baseline_pr_required=""
+    local baseline_protected_mode=""
+    local same_behavior=true
+    local branch=""
+    local parent=""
+    local pr_required="false"
+    local protected_mode="normal"
+    local -a candidate_branches=()
+    local -a candidate_parents=()
+    local -a candidate_pr_required=()
+    local -a candidate_protected_mode=()
+
+    for ref in "${matched_refs[@]}"; do
+      branch="${ref#origin/}"
+      parent="$(get_parent_branch "$branch")"
+
+      pr_required="false"
+      if is_pr_required "$branch" "$parent"; then
+        pr_required="true"
+      fi
+
+      protected_mode="normal"
+      if bt_is_protected_branch "$branch"; then
+        if bt_is_version_branch "$branch" && [[ "$parent" == "main" ]]; then
+          protected_mode="version-to-main"
+        else
+          protected_mode="invalid-protected-source"
+        fi
+      fi
+
+      if [[ -z "$baseline_parent" ]]; then
+        baseline_parent="$parent"
+        baseline_pr_required="$pr_required"
+        baseline_protected_mode="$protected_mode"
+      elif [[ "$parent" != "$baseline_parent" || \
+              "$pr_required" != "$baseline_pr_required" || \
+              "$protected_mode" != "$baseline_protected_mode" ]]; then
+        same_behavior=false
+      fi
+
+      candidate_branches+=("$branch")
+      candidate_parents+=("$parent")
+      candidate_pr_required+=("$pr_required")
+      candidate_protected_mode+=("$protected_mode")
+    done
+
+    if [[ "$same_behavior" == false ]]; then
+      local i=0
+      local merge_eligible_count=0
+      local merge_eligible_index=-1
+      local local_present_count=0
+      local local_present_index=-1
+
+      # Safe case 1: exactly one merge-eligible candidate.
+      # Safe case 2: if multiple merge-eligible candidates exist, exactly one
+      # has a local counterpart branch.
+      for ((i = 0; i < ${#candidate_branches[@]}; i++)); do
+        if [[ "${candidate_protected_mode[$i]}" != "invalid-protected-source" ]]; then
+          merge_eligible_count=$((merge_eligible_count + 1))
+          merge_eligible_index=$i
+
+          if has_local_branch "${candidate_branches[$i]}"; then
+            local_present_count=$((local_present_count + 1))
+            local_present_index=$i
+          fi
+        fi
+      done
+
+      if [[ "$merge_eligible_count" -eq 1 ]]; then
+        bt_info "Detached HEAD matches multiple remote branches with different behavior; safely selecting merge-eligible origin/${candidate_branches[$merge_eligible_index]}"
+        echo "${candidate_branches[$merge_eligible_index]}"
+        return 0
+      fi
+
+      if [[ "$merge_eligible_count" -gt 1 && "$local_present_count" -eq 1 ]]; then
+        bt_info "Detached HEAD matches multiple remote branches with different behavior; safely selecting local-backed origin/${candidate_branches[$local_present_index]}"
+        echo "${candidate_branches[$local_present_index]}"
+        return 0
+      fi
+
+      bt_error_exit 2 \
+        "Detached HEAD matches multiple remote branches with different parent/merge behavior"
+    fi
+
+    bt_info "Detached HEAD matches multiple remote branches; selecting origin/${first_match#origin/}"
+    echo "${first_match#origin/}"
+    return 0
+  fi
+
+  return 1
 }
 
 trim_whitespace() {
@@ -235,10 +354,19 @@ ensure_current_up_to_date_with_parent() {
   local current_branch="$1"
   local parent_branch="$2"
   local parent_ref
+  local current_ref="$current_branch"
 
   parent_ref=$(resolve_parent_reference "$parent_branch")
 
-  if ! git merge-base --is-ancestor "$parent_ref" "$current_branch" >/dev/null 2>&1; then
+  if ! has_local_branch "$current_branch"; then
+    if has_remote_branch "$current_branch"; then
+      current_ref="origin/$current_branch"
+    else
+      bt_error_exit 2 "Unable to resolve current branch reference for '$current_branch'"
+    fi
+  fi
+
+  if ! git merge-base --is-ancestor "$parent_ref" "$current_ref" >/dev/null 2>&1; then
     bt_error_exit 2 "Current branch '$current_branch' is not up-to-date with parent '$parent_branch'"
   fi
 }
@@ -437,9 +565,16 @@ sync_history_to_current_branch() {
   local history_file="$2"
   local history_entry="$3"
   local parent_branch="$4"
+  local current_is_local="$5"
 
-  if ! git switch "$current_branch" >/dev/null 2>&1; then
-    bt_error_exit 2 "Merged successfully, but failed to switch back to '$current_branch'"
+  if [[ "$current_is_local" == true ]]; then
+    if ! git switch "$current_branch" >/dev/null 2>&1; then
+      bt_error_exit 2 "Merged successfully, but failed to switch back to '$current_branch'"
+    fi
+  else
+    if ! git switch --detach "origin/$current_branch" >/dev/null 2>&1; then
+      bt_error_exit 2 "Merged successfully, but failed to switch to origin/$current_branch for history sync"
+    fi
   fi
 
   mkdir -p "$(dirname "$history_file")"
@@ -477,8 +612,14 @@ EOF
   fi
 
   if has_remote_branch "$current_branch"; then
-    if ! git push origin "$current_branch" >/dev/null 2>&1; then
-      bt_error_exit 2 "Failed to push synced history log to origin/$current_branch"
+    if [[ "$current_is_local" == true ]]; then
+      if ! git push origin "$current_branch" >/dev/null 2>&1; then
+        bt_error_exit 2 "Failed to push synced history log to origin/$current_branch"
+      fi
+    else
+      if ! git push origin HEAD:"$current_branch" >/dev/null 2>&1; then
+        bt_error_exit 2 "Failed to push synced history log to origin/$current_branch"
+      fi
     fi
   fi
 }
@@ -572,14 +713,36 @@ git fetch origin >/dev/null 2>&1 || bt_error_exit 5 "Failed to fetch from remote
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit 2 "Failed to determine current branch")
-bt_info "Current branch: $CURRENT_BRANCH"
 
 if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
-  bt_error_exit 1 "Cannot run mergetoparent from detached HEAD"
+  DETACHED_REMOTE_BRANCH="$(resolve_detached_current_remote_branch || true)"
+  if [[ -z "$DETACHED_REMOTE_BRANCH" ]]; then
+    bt_error_exit 1 "Cannot determine remote-only current branch from detached HEAD"
+  fi
+
+  CURRENT_BRANCH="$DETACHED_REMOTE_BRANCH"
+  CURRENT_IS_LOCAL=false
+  CURRENT_SOURCE_REF="origin/$CURRENT_BRANCH"
+  bt_info "Current branch: $CURRENT_BRANCH (remote-only origin/$CURRENT_BRANCH)"
+else
+  bt_info "Current branch: $CURRENT_BRANCH"
 fi
 
-if ! has_local_branch "$CURRENT_BRANCH"; then
-  bt_error_exit 2 "Current branch '$CURRENT_BRANCH' is not a local branch"
+if [[ "$CURRENT_IS_LOCAL" == true ]]; then
+  if ! has_local_branch "$CURRENT_BRANCH"; then
+    if has_remote_branch "$CURRENT_BRANCH"; then
+      CURRENT_IS_LOCAL=false
+      CURRENT_SOURCE_REF="origin/$CURRENT_BRANCH"
+    else
+      bt_error_exit 2 "Current branch '$CURRENT_BRANCH' is not resolvable locally or remotely"
+    fi
+  else
+    CURRENT_SOURCE_REF="$CURRENT_BRANCH"
+  fi
+fi
+
+if [[ -z "$CURRENT_SOURCE_REF" ]]; then
+  CURRENT_SOURCE_REF="$CURRENT_BRANCH"
 fi
 
 # Get current user
@@ -603,7 +766,13 @@ if bt_is_protected_branch "$CURRENT_BRANCH"; then
 fi
 
 ensure_clean_worktree
-ensure_branch_synced_with_remote "$CURRENT_BRANCH" "Current"
+if [[ "$CURRENT_IS_LOCAL" == true ]]; then
+  ensure_branch_synced_with_remote "$CURRENT_BRANCH" "Current"
+else
+  if ! has_remote_branch "$CURRENT_BRANCH"; then
+    bt_error_exit 5 "Current branch '$CURRENT_BRANCH' has no origin/$CURRENT_BRANCH reference"
+  fi
+fi
 
 if has_local_branch "$PARENT_BRANCH" && has_remote_branch "$PARENT_BRANCH"; then
   ensure_branch_synced_with_remote "$PARENT_BRANCH" "Parent"
@@ -709,7 +878,7 @@ if [[ "$PARENT_BRANCH" != "main" && $(has_remote_branch "$PARENT_BRANCH" && echo
   fi
 fi
 
-if ! git merge --squash --no-commit "$CURRENT_BRANCH" 2>&1; then
+if ! git merge --squash --no-commit "$CURRENT_SOURCE_REF" 2>&1; then
   bt_error_exit 2 "Failed to squash merge '$CURRENT_BRANCH' into '$PARENT_BRANCH'"
 fi
 
@@ -739,7 +908,7 @@ else
   bt_info "Parent branch '$PARENT_BRANCH' has no remote branch; skipping push"
 fi
 
-sync_history_to_current_branch "$CURRENT_BRANCH" "$HISTORY_FILE" "$HISTORY_ENTRY" "$PARENT_BRANCH"
+sync_history_to_current_branch "$CURRENT_BRANCH" "$HISTORY_FILE" "$HISTORY_ENTRY" "$PARENT_BRANCH" "$CURRENT_IS_LOCAL"
 
 # Show verbose output if requested
 if [[ "$VERBOSE" == true ]]; then
