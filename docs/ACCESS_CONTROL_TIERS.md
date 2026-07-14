@@ -33,7 +33,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 │ • Read: All files                                       │
 │ • Create: Branches, commits, PRs (from forks or branches)
 │ • Cannot: Merge, Release, Direct push to main/v*.0     │
-│ • Scripts: mkbranch, commit, testscripts, etc.            │
+│ • Scripts: mkbranch, commit, syncfromremote, etc.      │
 └─────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -157,7 +157,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 **Cannot:**
 - ❌ Push directly to `main` (protected)
 - ❌ Push directly to `v*.0` (protected)
-- ❌ Execute `mergetoparent`, `mkrelease`, `fixrepository`
+- ❌ Execute `mergetoparent`, `mkrelease`, `fixrepo`
 - ❌ Modify .github/workflows/
 - ❌ Modify config/
 
@@ -165,7 +165,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 - `mkbranch` - Create branches
 - `commit` - Create commits
 - `mkpullrequest` - Create PRs
-- `testscripts` - Run tests
+- `make test-all-scripts` - Run script smoke tests
 - `syncfromremote` - Sync with remote
 - All utility scripts
 
@@ -189,7 +189,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 **Cannot:**
 - ❌ Merge to `main` (protected)
 - ❌ Merge to `v*.0` (protected)
-- ❌ Execute `mergetoparent`, `mkrelease`, `fixrepository`
+- ❌ Execute `mergetoparent`, `mkrelease`, `fixrepo`
 - ❌ Modify .github/workflows/
 - ❌ Create releases
 - ❌ Direct push to protected branches
@@ -229,7 +229,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 - All Reviewer scripts
 - `mergetoparent` (protected - requires override)
 - `mkrelease` (protected - requires override)
-- `fixrepository` (protected - requires override)
+- `fixrepo` (protected - requires override)
 
 **Use Case:** Project maintainers, official contributors with merge authority
 
@@ -314,7 +314,7 @@ All write operations go through scripts, not direct git commands:
 scripts/bin/mkbranch -r feature main          # ✅ Allowed
 scripts/bin/commit -m "feat: add feature"   # ✅ Allowed
 scripts/bin/mkpullrequest                      # ✅ Allowed
-scripts/bin/testscripts                             # ✅ Allowed
+make test-all-scripts                               # ✅ Allowed
 
 # Reviewers can additionally execute:
 scripts/bin/mkfeedback                         # ✅ Allowed

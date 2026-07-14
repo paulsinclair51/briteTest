@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-# commit - Commit changes to the local current branch and optionally push
-# changes to the corresponding remote (origin) branch.
+# commit - Commit any changes to the local current branch and
+# optionally push changes to the corresponding remote (origin)
+# branch.
 #
 # See usage below for details, or run: commit -h
 #
@@ -15,11 +16,12 @@ Usage:
   commit [OPTIONS] [files...] [-- TOKENS]
   commit {-h | --help}
 
-Commit changes to the current branch in briteTest.
-Stages all changes by default and commits them with a message.
-Optionally pushes to remote if remote is connected.
+Commit changes to the current local branch in briteTest with
+a commit message. If -p is specified, pushes to remote if
+remote is connected.
 
-Protected branches require mergetoparent for changes:
+Commit is not allowed on protected branches. Use mergetoparent
+to apply changes to a protectedbranch:
   - main
   - v<M>.<m>.<p> version branches created from main
 
@@ -92,10 +94,10 @@ Outputs:
   - With -v, output to stdout includes additional progress and
     detailed file/commit lists.
   - Writes a report to:
-    - <repo>/reports/commit-<datetime>.md (commit-only normal run)
-    - <repo>/reports/commit-d-<datetime>.md (commit-only dry run)
-    - <repo>/reports/commit_push-<datetime>.md (commit+push normal run)
-    - <repo>/reports/commit_push-d-<datetime>.md (commit+push dry run)
+    - <repo>/reports/branch/commit-<datetime>.md (commit-only normal run)
+    - <repo>/reports/branch/commit-d-<datetime>.md (commit-only dry run)
+    - <repo>/reports/branch/commit_push-<datetime>.md (commit+push normal run)
+    - <repo>/reports/branch/commit_push-d-<datetime>.md (commit+push dry run)
   - Older dry-run reports are removed when a new report is generated.
   - Writes errors and diagnostics to stderr.
 
@@ -109,6 +111,7 @@ Exit codes:
   5   Skipped push to remote since remote is not connected.
   6   Git staging or commit failed.
   7   Git push failed.
+  8   User is not authorized to run commit.
 EOF
 }
 
@@ -125,6 +128,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+BRANCH_REPORTS_DIR="$REPO_ROOT/reports/branch"
+CONTRIBUTORS_FILE="$REPO_ROOT/config/contributors.md"
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 REPORT_FILE=""
@@ -139,13 +144,13 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 cleanup_old_dry_run_reports() {
   local old_report
 
-  for old_report in "$REPO_ROOT"/reports/commit-d-*.md; do
+  for old_report in "$BRANCH_REPORTS_DIR"/commit-d-*.md; do
     [[ -e "$old_report" ]] || continue
     [[ -n "$REPORT_FILE" && "$old_report" == "$REPORT_FILE" ]] && continue
     rm -f "$old_report"
   done
 
-  for old_report in "$REPO_ROOT"/reports/commit_push-d-*.md; do
+  for old_report in "$BRANCH_REPORTS_DIR"/commit_push-d-*.md; do
     [[ -e "$old_report" ]] || continue
     [[ -n "$REPORT_FILE" && "$old_report" == "$REPORT_FILE" ]] && continue
     rm -f "$old_report"
@@ -155,15 +160,15 @@ cleanup_old_dry_run_reports() {
 initialize_report_file() {
   if [[ "$PUSH" == true ]]; then
     if [[ "$DRY_RUN" == true ]]; then
-      REPORT_FILE="$REPO_ROOT/reports/commit_push-d-${RUN_TS_FILE}.md"
+      REPORT_FILE="$BRANCH_REPORTS_DIR/commit_push-d-${RUN_TS_FILE}.md"
     else
-      REPORT_FILE="$REPO_ROOT/reports/commit_push-${RUN_TS_FILE}.md"
+      REPORT_FILE="$BRANCH_REPORTS_DIR/commit_push-${RUN_TS_FILE}.md"
     fi
   else
     if [[ "$DRY_RUN" == true ]]; then
-      REPORT_FILE="$REPO_ROOT/reports/commit-d-${RUN_TS_FILE}.md"
+      REPORT_FILE="$BRANCH_REPORTS_DIR/commit-d-${RUN_TS_FILE}.md"
     else
-      REPORT_FILE="$REPO_ROOT/reports/commit-${RUN_TS_FILE}.md"
+      REPORT_FILE="$BRANCH_REPORTS_DIR/commit-${RUN_TS_FILE}.md"
     fi
   fi
 }
@@ -192,6 +197,33 @@ cleanup_runtime_files() {
 }
 
 trap cleanup_runtime_files EXIT
+
+is_contributor_or_higher() {
+  local login="$1"
+  local user_email
+
+  user_email="$(git config user.email 2>/dev/null || true)"
+
+  awk -F',' -v login="$login" -v user_email="$user_email" '
+    function trim(s) {
+      gsub(/^[[:space:]-]+|[[:space:]]+$/, "", s)
+      return s
+    }
+    {
+      actor = trim($1)
+      role = trim($2)
+      email = trim($3)
+
+      if ((actor == login || (user_email != "" && email == user_email)) &&
+          (role == "C" || role == "R" || role == "A")) {
+        found = 1
+      }
+    }
+    END {
+      exit(found ? 0 : 1)
+    }
+  ' "$CONTRIBUTORS_FILE"
+}
 
 is_remote_connected() {
   git remote get-url origin >/dev/null 2>&1
@@ -533,7 +565,7 @@ generate_commit_push_report() {
   local committed_and_pushed=0
   local total_rows=0
 
-  mkdir -p "$REPO_ROOT/reports"
+  mkdir -p "$BRANCH_REPORTS_DIR"
 
   cat > "$REPORT_FILE" <<EOF
 # ${report_title} ${RUN_TS_DISPLAY}
@@ -740,6 +772,19 @@ fi
 # Commit script operates on a local branch only.
 if ! git show-ref --verify --quiet "refs/heads/$CURRENT_BRANCH"; then
   bt_error_exit 3 "Current branch '$CURRENT_BRANCH' is not a local branch"
+fi
+
+if [[ ! -f "$CONTRIBUTORS_FILE" ]]; then
+  bt_error_exit 8 "Configuration file not found: $CONTRIBUTORS_FILE"
+fi
+
+ACTOR_LOGIN="$(bt_require_login || true)"
+if [[ -z "$ACTOR_LOGIN" ]]; then
+  bt_error_exit 8 "Unable to determine GitHub login identity for permission check"
+fi
+
+if ! is_contributor_or_higher "$ACTOR_LOGIN"; then
+  bt_error_exit 8 "User '$ACTOR_LOGIN' is not authorized to run commit (requires contributor role or higher)"
 fi
 
 # Check if branch is protected

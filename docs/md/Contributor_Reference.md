@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
-| v1.0.0 | 2026-07-09 | Current v1.0.0 development reference; includes initial content plus PR #10 consolidation in `Script-Based Access Control`. | Paul Sinclair |
+| v1.0.0 | 2026-07-13 | Current v1.0.0 development reference; refreshed to match current `scripts/bin/` inventory and clone lifecycle scripts (`mkclone`/`rmclone`). | Paul Sinclair |
 
 ---
 
@@ -185,6 +185,19 @@ bash scripts/helpers/validate-format.sh src/
 
 Binary scripts located in `scripts/bin/` are standalone executables.
 
+### Current scripts/bin catalog
+
+This catalog reflects the current script set in `scripts/bin/`.
+
+| Category | Scripts |
+|----------|---------|
+| Setup and Installation | `installscripts` |
+| Document and Brand Management | `ckstyle`, `gendocs`, `genpngs`, `replacephrases`, `updatebrand` |
+| Repository and Fork Management | `mkfork`, `mkclone`, `rmclone`, `fixrepo` |
+| Branch and Workflow Management | `ckbranch_history`, `chcurrent`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `mkfeedback`, `mergetoparent`, `mkpullrequest`, `chtarget`, `mkrelease`, `syncfromremote`, `syncfromparent`, `undo`, `rmbranch` |
+
+---
+
 ### mkbranch
 
 **Purpose:** Creates and sets up a new branch with proper naming.
@@ -228,6 +241,61 @@ scripts/bin/mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
 - **Contributor:** `[<type>/]<description>` (type = dev, fix, feature, docs, etc.)
 - **Targeted:** `dev/<description>-<version>` or `fix/<description>-<version>`
 - **Version:** Created by approvers only
+
+---
+
+### mkclone
+
+**Purpose:** Clone the repository to a local directory and run initial script/hook setup.
+
+**Location:** `scripts/bin/mkclone`
+
+**Usage:**
+
+```bash
+scripts/bin/mkclone [OPTIONS] [directory]
+```
+
+**Examples:**
+
+```bash
+scripts/bin/mkclone
+scripts/bin/mkclone my-workspace
+```
+
+---
+
+### rmclone
+
+**Purpose:** Safely remove a local clone directory with data-loss checks.
+
+**Location:** `scripts/bin/rmclone`
+
+**Usage:**
+
+```bash
+scripts/bin/rmclone [OPTIONS] <clone-path>
+```
+
+**Options:**
+
+- `-d, --dry-run` - Preview checks and deletion plan
+- `-O, --override` - Remove even when safety checks fail
+
+**Safety checks (default):**
+
+- working tree clean
+- no stash entries
+- no local-only commits
+- origin reachability when configured
+
+**Examples:**
+
+```bash
+scripts/bin/rmclone -d ../BriteTest-work
+scripts/bin/rmclone ../BriteTest-work
+scripts/bin/rmclone -O ../BriteTest-work
+```
 
 ---
 
@@ -308,48 +376,74 @@ scripts/bin/mergetoparent -m "Merge parser fixes"
 
 ---
 
-### ckversions
+### fixrepo
 
-**Purpose:** Validates version consistency across all versioned files.
+**Purpose:** Verify repository integrity and apply safe cleanup/fixes.
 
-**Location:** `scripts/bin/ckversions`
+**Location:** `scripts/bin/fixrepo`
 
 **Usage:**
 
 ```bash
-scripts/bin/ckversions [--check] [--update]
+scripts/bin/fixrepo [OPTIONS]
+scripts/bin/fixrepo [OPTIONS] <clone-path>
 ```
 
-**Arguments:**
+**Options:**
 
-- `--check` - Check version consistency (default)
-- `--update` - Update versions to be consistent
+- `-d` - Dry run (report only; no remediations)
+- `-q` - Faster reduced-cost checks
+- `-r <sec>` - Remote connectivity timeout in seconds (`0` disables remote checks)
+- `-v` - Print report content to stdout
 
-**Exit Codes:**
+**Notes:**
 
-- `0` - Versions are consistent
-- `1` - Version inconsistency detected
+- Writes report: `reports/repository/repository-<datetime>.md`
+- Protected script: approver override required
+- On non-dry runs, cleanup is followed by rerunning affected verification
+	checks so the report reflects whether the remediation was actually effective.
+
+**Maintainer failure scenarios checklist:**
+
+| Scenario | Example Command | Expected Exit | Expected Report/Output Signal |
+|----------|------------------|---------------|-------------------------------|
+| Invalid timeout argument | `scripts/bin/fixrepo -r abc` | `1` | stderr includes `Invalid -r value` |
+| Invalid clone path | `scripts/bin/fixrepo -d /tmp/missing-clone` | `1` | stderr includes `Clone path not found or not a directory` |
+| Dry-run with detected issues | `scripts/bin/fixrepo -d` | `2` when issues exist | Report status: `Issues detected; no automated fixes applied (-d).` |
+| Non-dry run with fully verified remediation | `scripts/bin/fixrepo` | `0` | Report status: `All detected issues were resolved by verified remediations.` |
+| Non-dry run with remediation attempts but no verification | `scripts/bin/fixrepo` | `2` when unresolved | Report status: `Remediation attempts were made, but none were fully verified.` |
+| Remote checks disabled intentionally | `scripts/bin/fixrepo -r 0` | `0` or `2` (issue-dependent) | Remote check rows indicate `Skipped (disabled by -r 0)` |
+
+If behavior differs from this checklist, run `make test-fixrepo` and then
+`make test-all-scripts` before triaging script logic.
+
+---
+
+### Script Smoke Test Runner
+
+**Purpose:** Run all script smoke tests in `scripts/tests/` before PR updates.
+
+**Location:** `scripts/tests/test_scripts.sh`
+
+**Usage:**
+
+```bash
+make test-all-scripts
+bash scripts/tests/test_scripts.sh [OPTIONS]
+```
+
+**Options (`test_scripts.sh`):**
+
+- `-v, --verbose` - Detailed output
+- `-c, --continue` - Continue after failures
 
 **Examples:**
 
 ```bash
-# Check version consistency
-scripts/bin/ckversions
-
-# Check with detailed output
-scripts/bin/ckversions --check
-
-# Update versions (caution: advanced)
-scripts/bin/ckversions --update
+make test-all-scripts
+bash scripts/tests/test_scripts.sh -v
+bash scripts/tests/test_scripts.sh -c
 ```
-
-**Versioned Files:**
-
-- `include/runnerapi.h` - Runner API header
-- `src/runnerapi.c` - Runner API implementation
-- `include/testapi.h` - Test API header
-- `src/testapi.c` - Test API implementation
-- `docs/md/*.md` - Documentation (excluding README.md)
 
 ---
 
@@ -430,9 +524,10 @@ Role-based script permissions are enforced by helper checks and protected script
 | Script Capability | Contributor (C) | Reviewer (R) | Approver (A) |
 |------------------|-----------------|--------------|--------------| 
 | Branch and commit operations (`mkbranch`, `commit`, `mkpullrequest`) | ✅ | ✅ | ✅ |
+| Repository/clone lifecycle (`mkclone`, `rmclone`) | ✅ | ✅ | ✅ |
 | Review operations (`mkfeedback`) | ❌ | ✅ | ✅ |
 | Retarget operations (`chtarget`) | ❌ | ❌ | ✅ |
-| Protected operations (`mergetoparent`, `mkrelease`, `fixrepository`) | ❌ | ❌ | ✅ (override required) |
+| Protected operations (`mergetoparent`, `mkrelease`, `fixrepo`) | ❌ | ❌ | ✅ (override required) |
 
 ### Protected Script Rule
 
@@ -441,7 +536,7 @@ Approver-only scripts require explicit override confirmation:
 ```bash
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.0
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepository
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepo
 ```
 
 If override confirmation is missing, execution must fail by design.
@@ -510,16 +605,16 @@ See individual script sections for detailed exit code meanings.
 2. Run: `bash scripts/helpers/ckbranchname.sh "<name>"`
 3. Fix naming to match required format
 
-#### Version Check Fails
+#### Repository Health Check Fails
 
-**Error:** `Version inconsistency detected`
+**Error:** `Issues detected` during repository verification
 
 **Solution:**
 
-1. Run: `scripts/bin/ckversions`
-2. Review the differences reported
-3. Manually update version numbers in affected files
-4. Re-run `scripts/bin/ckversions` to verify
+1. Run: `scripts/bin/fixrepo -d`
+2. Review `reports/repository/repository-<datetime>.md`
+3. Re-run without `-d` for safe cleanup remediations
+4. If a clone path is involved, run with positional path: `scripts/bin/fixrepo <clone-path>`
 
 #### Permission Denied
 

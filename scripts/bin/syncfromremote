@@ -100,8 +100,8 @@ Outputs:
     to stdout.
   - Writes errors and diagnostics to stderr.
   - Writes a report to:
-    - <repo>/reports/syncfromremote-<datetime>.md (normal run)
-    - <repo>/reports/syncfromremote-d-<datetime>.md (dry run)
+    - <repo>/reports/branch/syncfromremote-<datetime>.md (normal run)
+    - <repo>/reports/branch/syncfromremote-d-<datetime>.md (dry run)
   - Report includes:
     - Header with report title and timestamp.
     - Command line used for the run.
@@ -148,6 +148,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+BRANCH_REPORTS_DIR="$REPO_ROOT/reports/branch"
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 REPORT_FILE=""
@@ -191,16 +192,16 @@ format_command_line() {
 
 initialize_report_file() {
   if [[ "$DRY_RUN" == true ]]; then
-    REPORT_FILE="$REPO_ROOT/reports/syncfromremote-d-${RUN_TS_FILE}.md"
+    REPORT_FILE="$BRANCH_REPORTS_DIR/syncfromremote-d-${RUN_TS_FILE}.md"
   else
-    REPORT_FILE="$REPO_ROOT/reports/syncfromremote-${RUN_TS_FILE}.md"
+    REPORT_FILE="$BRANCH_REPORTS_DIR/syncfromremote-${RUN_TS_FILE}.md"
   fi
 }
 
 cleanup_old_dry_run_reports() {
   local old_report
 
-  for old_report in "$REPO_ROOT"/reports/syncfromremote-d-*.md; do
+  for old_report in "$BRANCH_REPORTS_DIR"/syncfromremote-d-*.md; do
     [[ -e "$old_report" ]] || continue
     [[ -n "$REPORT_FILE" && "$old_report" == "$REPORT_FILE" ]] && continue
     rm -f "$old_report"
@@ -400,7 +401,7 @@ generate_report() {
     branch_scope="$TARGET_BRANCH"
   fi
 
-  mkdir -p "$REPO_ROOT/reports"
+  mkdir -p "$BRANCH_REPORTS_DIR"
 
   cat > "$REPORT_FILE" <<EOF
 # Sync From Remote Report ${RUN_TS_DISPLAY}

@@ -143,6 +143,8 @@ MESSAGE_SOURCE=""
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 CURRENT_IS_LOCAL=true
 CURRENT_SOURCE_REF=""
+TEMP_PARENT_BRANCH_CREATED=false
+TEMP_PARENT_BRANCH_NAME=""
 
 
 get_current_user() {
@@ -449,7 +451,36 @@ checkout_parent_branch() {
     if ! git switch -c "$parent_branch" --track "origin/$parent_branch" >/dev/null 2>&1; then
       bt_error_exit 2 "Failed to create local parent branch '$parent_branch'"
     fi
+    TEMP_PARENT_BRANCH_CREATED=true
+    TEMP_PARENT_BRANCH_NAME="$parent_branch"
   fi
+}
+
+cleanup_temporary_parent_branch() {
+  if [[ "$TEMP_PARENT_BRANCH_CREATED" != true || -z "$TEMP_PARENT_BRANCH_NAME" ]]; then
+    return 0
+  fi
+
+  # Ensure we are not currently on the temporary parent branch.
+  local now_branch
+  now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  if [[ "$now_branch" == "$TEMP_PARENT_BRANCH_NAME" ]]; then
+    if [[ "$CURRENT_IS_LOCAL" == true ]]; then
+      if ! git switch "$CURRENT_BRANCH" >/dev/null 2>&1; then
+        bt_error_exit 2 "Merge completed, but failed to leave temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
+      fi
+    else
+      if ! git switch --detach "origin/$CURRENT_BRANCH" >/dev/null 2>&1; then
+        bt_error_exit 2 "Merge completed, but failed to leave temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
+      fi
+    fi
+  fi
+
+  if ! git branch -D "$TEMP_PARENT_BRANCH_NAME" >/dev/null 2>&1; then
+    bt_error_exit 2 "Merge completed, but failed to remove temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
+  fi
+
+  bt_info "Removed temporary local parent branch '$TEMP_PARENT_BRANCH_NAME'"
 }
 
 is_approver() {
@@ -909,6 +940,7 @@ else
 fi
 
 sync_history_to_current_branch "$CURRENT_BRANCH" "$HISTORY_FILE" "$HISTORY_ENTRY" "$PARENT_BRANCH" "$CURRENT_IS_LOCAL"
+cleanup_temporary_parent_branch
 
 # Show verbose output if requested
 if [[ "$VERBOSE" == true ]]; then

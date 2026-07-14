@@ -14,19 +14,21 @@ Usage:
   rmbranch [OPTIONS] <branchname> [-- MSG]
   rmbranch {-h | --help}
 
-Remove a branch locally and/or from remote.
+Remove a local branch and/or remote branch.
 
 Arguments:
   <branchname>       Name of the branch to remove.
                      Examples: fix/bug, add-feature, refactor.
 
 Protected branches:
-  - main and version branches cannot be deleted from remote.
-  - Local protected branches can be deleted when they exist as local-only
-    artifacts.
+  - main and version branches cannot be removed from remote.
+  - Local protected branches can be removed when they exist as local.
   - No branch-name policy validation is applied by this script. If a branch
     ref exists (local and/or remote), it can be removed subject to protected
     branch safeguards above.
+
+Permissions:
+  - The current user must be a contributor, reviewer, or approver.
 
 Options:
   -h, --help         Output this help to stdout and exit (other options
@@ -34,7 +36,7 @@ Options:
   -l                 Remove local branch.
   -r                 Remove branch from remote.
   -a                 Remove from both local and remote (alias for -l -r).
-  -f                 Force removal (no confirmation prompt).
+  -f                 Force removal when local branch has unmerged commits.
   -m "MSG"           Attach a commit message/comment to the
                      operation. Usage: rmbranch patch/old-fix -m
                      "Reverted in favor of better approach.".
@@ -46,18 +48,33 @@ Options:
                      old-fix -- Reverted in favor of better approach.
                      Note: No quotes needed, captures all remaining.
 
+Safety behavior:
+  - rmbranch does not prompt for confirmation.
+  - Without -f, local deletion uses safe mode and fails if unmerged
+    commits exist.
+  - When local deletion is requested (-l or default both), working tree must
+    be clean before deletion starts.
+  - Local deletion is blocked if a pending `chcurrent` auto-stash exists for
+    the target branch.
+  - Rerun with -f only after validating branch cleanup status.
+
 Modes:
   Local (-l):
-    - Delete the local branch.
+    - Remove the local branch.
     - Log the operation to 'logs/local_branch_history.md'.
 
   Remote (-r):
-    - Delete the branch from remote only.
+    - Remove the branch from remote only.
     - Log the operation to 'logs/remote_branch_history.md'.
+    - Exits with code 5 if the remote branch is protected and
+      cannot be removed.
 
   Both (-l -r, default):
-    - Delete the local branch.
-    - Delete the branch from remote.
+    - Remove the local branch.
+    - Remove the branch from remote if it is not protected (main
+      or version branches).
+    - Exits with code 4 when local removal succeeded but remote
+      protected branch removal was skipped.
     - Log the operation to 'logs/remote_branch_history.md' and
       'logs/local_branch_history.md'
 
@@ -73,7 +90,7 @@ Examples: With GitHub-style comment.
     approach."
   rmbranch -r experiment -m "Experiment failed."
 
-Exanples: With Unix-style comment.
+Examples: With Unix-style comment.
   rmbranch old-fix -- Reverted in favor of better
     approach.
   rmbranch -r experiment -- Experiment failed.
@@ -82,20 +99,22 @@ Examples: Force removal with comment.
   rmbranch -f temp -m "Temporary testing branch."
   rmbranch -a -f old -- Cleanup old feature branch.
 
-
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in
-    the documented output locations.
 
 Exit codes:
-  0   Success
-  1   Argument error
-  2   Git operation failed
-  3   Branch does not exist
-  4   Branch is protected (cannot delete)
-  5   Operation cancelled
+  0   Success.
+  1   Argument error.
+  2   Git operation failed.
+  3   Branch does not exist.
+  4   Local branch removed successfully but remote branch is
+      protected and was not removed (applies to both-mode requests).
+  5   Remote branch is protected (cannot remove).
+  6   Branch has unmerged commits (use -f option to force removal).
+  7   User is not authorized (must be contributor or higher).
+  8   Local deletion blocked (working tree not clean or pending auto-stash
+      exists for target branch).
 EOF
 }
 
@@ -113,6 +132,7 @@ REMOTE_LOG_FILE="$REPO_ROOT/logs/remote_branch_history.md"
 LOCAL_LOG_FILE="$REPO_ROOT/logs/local_branch_history.md"
 COMMON_HELPER="$SCRIPT_DIR/../helpers/common.sh"
 HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
+CKROLE_HELPER="$SCRIPT_DIR/../helpers/ckrole.sh"
 
 # Shared helpers
 if [[ ! -f "$COMMON_HELPER" ]]; then
@@ -121,6 +141,11 @@ if [[ ! -f "$COMMON_HELPER" ]]; then
 fi
 if [[ ! -f "$HISTORY_HELPER" ]]; then
   _msg="Error: Required helper not found: $HISTORY_HELPER"
+  echo "$_msg" >&2
+  exit 2
+fi
+if [[ ! -f "$CKROLE_HELPER" ]]; then
+  _msg="Error: Required helper not found: $CKROLE_HELPER"
   echo "$_msg" >&2
   exit 2
 fi
@@ -144,6 +169,7 @@ FORCE=false
 COMMENT=""
 INCLUDE_LOCAL_FLAG=false
 INCLUDE_REMOTE_FLAG=false
+REMOTE_PROTECTED_SKIPPED=false
 
 # Protected branch references for remote deletion checks
 PROTECTED_BRANCHES=("main")
@@ -246,28 +272,17 @@ remote_branch_exists() {
   git show-ref --verify --quiet "refs/remotes/origin/$branch"
 }
 
-confirm_deletion() {
-  local branch="$1"
-  local mode="$2"
-  
-  if [[ "$FORCE" == true ]]; then
-    return 0
-  fi
+is_worktree_clean() {
+  [[ -z "$(git status --porcelain 2>/dev/null || true)" ]]
+}
 
-  local prompt_msg="Are you sure you want to delete" 
-  prompt_msg="$prompt_msg branch '$branch' ($mode)? (y/N) "
-  local response
-  
-  read -p "$prompt_msg" response
-  
-  case "$response" in
-    [yY])
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
+find_branch_auto_stash_ref() {
+  local branch="$1"
+  local prefix
+
+  prefix="chcurrent-auto:${branch}:"
+  git stash list --format='%gd%x09%gs' | \
+    awk -F '\t' -v p="$prefix" '$2 ~ ("^" p) { print $1; exit }'
 }
 
 # Parse options and arguments
@@ -367,6 +382,15 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
       "$COMMENT"
 fi
 
+# Require contributor role (or higher) for branch deletion operations.
+if ! bash "$CKROLE_HELPER" contributor >/dev/null 2>&1; then
+  ACTOR_LOGIN="$(bt_resolve_login_or_empty)"
+  if [[ -z "$ACTOR_LOGIN" ]]; then
+    ACTOR_LOGIN="<unknown>"
+  fi
+  error_exit 7 "User '$ACTOR_LOGIN' is not authorized to run rmbranch (requires contributor role or higher)" "$BRANCHNAME" "$COMMENT"
+fi
+
 if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
   if ! git remote get-url origin >/dev/null 2>&1; then
     error_exit 2 "Remote 'origin' is not configured" "$BRANCHNAME" "$COMMENT"
@@ -413,12 +437,20 @@ fi
 # degrade to local-only so local cleanup of protected artifacts is possible.
 if is_protected_branch "$BRANCHNAME"; then
   if [[ "$MODE" == "remote" ]]; then
-    error_exit 4 "Branch '$BRANCHNAME' is protected and cannot be deleted from remote" \
+    error_exit 5 "Remote branch '$BRANCHNAME' is protected and cannot be removed" \
       "$BRANCHNAME" "$COMMENT"
   fi
 
   if [[ "$MODE" == "both" ]]; then
+    if [[ "$LOCAL_EXISTS" == false && "$REMOTE_EXISTS" == true ]]; then
+      error_exit 5 "Remote branch '$BRANCHNAME' is protected and local branch '$BRANCHNAME' does not exist; nothing was removed" \
+        "$BRANCHNAME" "$COMMENT"
+    fi
+
     warn "Branch '$BRANCHNAME' is protected; skipping remote deletion and continuing with local deletion only"
+    if [[ "$REMOTE_EXISTS" == true ]]; then
+      REMOTE_PROTECTED_SKIPPED=true
+    fi
     MODE="local"
     MODE_DESC="local"
   fi
@@ -438,10 +470,18 @@ elif [[ "$MODE" == "both" && "$LOCAL_EXISTS" == false && \
       "$COMMENT"
 fi
 
-# Get confirmation from user
-if ! confirm_deletion "$BRANCHNAME" "$MODE_DESC"; then
-  info "Branch deletion cancelled"
-  exit 5
+# Additional preconditions for local deletion.
+if [[ "$MODE" == "local" || "$MODE" == "both" ]]; then
+  if [[ "$LOCAL_EXISTS" == true ]]; then
+    if ! is_worktree_clean; then
+      error_exit 8 "Working tree must be clean before deleting local branch '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
+    fi
+
+    BRANCH_AUTO_STASH_REF="$(find_branch_auto_stash_ref "$BRANCHNAME")"
+    if [[ -n "$BRANCH_AUTO_STASH_REF" ]]; then
+      error_exit 8 "Pending auto-stash '$BRANCH_AUTO_STASH_REF' exists for '$BRANCHNAME'; switch to '$BRANCHNAME' to recover it (or drop it explicitly) before deletion" "$BRANCHNAME" "$COMMENT"
+    fi
+  fi
 fi
 
 # Delete local branch if needed
@@ -470,13 +510,16 @@ if [[ "$MODE" == "local" || "$MODE" == "both" ]]; then
     fi
     
     if ! git branch -d "$BRANCHNAME" >/dev/null 2>&1; then
-      # Try force delete with -D
-      _msg="Local branch has unmerged commits, forcing"
-      warn "$_msg deletion..."
-      if ! git branch -D "$BRANCHNAME" >/dev/null 2>&1; then
-        _msg="Failed to delete local branch" 
-        error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" \
-            "$COMMENT"
+      if [[ "$FORCE" == true ]]; then
+        _msg="Local branch has unmerged commits, forcing"
+        warn "$_msg deletion..."
+        if ! git branch -D "$BRANCHNAME" >/dev/null 2>&1; then
+          _msg="Failed to delete local branch"
+          error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" \
+              "$COMMENT"
+        fi
+      else
+        error_exit 6 "Local branch '$BRANCHNAME' has unmerged commits; use -f option to force removal" "$BRANCHNAME" "$COMMENT"
       fi
     fi
     
@@ -502,6 +545,11 @@ fi
 _log_msg="Branch \`$BRANCHNAME\` deleted."
 log_operation "SUCCESS" "$BRANCHNAME" "$_log_msg" \
     "$COMMENT"
+
+if [[ "$REMOTE_PROTECTED_SKIPPED" == true ]]; then
+  warn "Local branch '$BRANCHNAME' deleted, but remote branch is protected and was not deleted"
+  exit 4
+fi
 
 success "Branch '$BRANCHNAME' successfully removed"
 

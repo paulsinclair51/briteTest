@@ -67,7 +67,7 @@ assert_line_count() {
   local file=$3
   local actual
   actual=$(grep -Ec -- "$regex" "$file" || true)
-  [["$actual" -eq "$expected" ]] || fail "expected $expected matches for "\
+  [[ "$actual" -eq "$expected" ]] || fail "expected $expected matches for "\
     "'$regex' in $file, found $actual"
 }
 
@@ -466,8 +466,7 @@ EOF
   assert_file_exists "$output"
   assert_file_exists "$emitted"
   assert_line_count 1 \
-    'includegraphics\[width=\\textwidth\]\{\\detokenize\{' \
-    '[^}]*Logo_with_BrandName\.png\}\}' \
+    'includegraphics\[width=\\textwidth\]\{\\detokenize\{[^}]*Logo_with_BrandName\.png\}\}' \
     "$emitted"
   assert_contains "# Title" "$emitted"
   assert_contains "Body line." "$emitted"
@@ -498,8 +497,7 @@ EOF
 
   assert_file_exists "$emitted"
   assert_line_count 1 \
-    'includegraphics\[width=\\textwidth\]\{\\detokenize\{' \
-    '[^}]*Logo_with_BrandName\.png\}\}' \
+    'includegraphics\[width=\\textwidth\]\{\\detokenize\{[^}]*Logo_with_BrandName\.png\}\}' \
     "$emitted"
   assert_contains "# Title" "$emitted"
   assert_contains "Body line." "$emitted"
@@ -520,8 +518,7 @@ test_gendocx_helper_invalid_backend() {
     "$repo/scripts/helpers/gendocx.sh" -b invalid \
     "$repo/in/input.pdf" "$repo/out/out.docx")
   [[ "$rc" -eq 2 ]] || fail "expected invalid-backend exit 2, got $rc"
-  assert_contains "Error: invalid backend 'invalid' \
-    (expected: auto|python|libreoffice)" "$tmpdir/gendocx_invalid.out"
+  assert_contains "Error: invalid backend 'invalid' (expected: auto|python|libreoffice)" "$tmpdir/gendocx_invalid.out"
 }
 
 test_gendocx_helper_libreoffice_backend() {

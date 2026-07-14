@@ -36,8 +36,28 @@ extract_report_path() {
   awk -F': ' '/^Report generated: /{print $2}' "$infile" | tail -n 1
 }
 
+AUTO_STASH_LABEL=""
+
+cleanup_auto_stash() {
+  local line=""
+  local stash_ref=""
+
+  [[ -n "$AUTO_STASH_LABEL" ]] || return 0
+
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    stash_ref="${line%% *}"
+    if [[ "${line#* }" == *"$AUTO_STASH_LABEL" ]]; then
+      git stash drop "$stash_ref" >/dev/null 2>&1 || true
+      break
+    fi
+  done < <(git stash list --format='%gd %gs')
+
+  AUTO_STASH_LABEL=""
+}
+
 TMPDIR="$(mktemp -d)"
-trap 'rm -rf "$TMPDIR"' EXIT
+trap 'cleanup_auto_stash; rm -rf "$TMPDIR"' EXIT
 REAL_GIT="$(command -v git)"
 
 # 1) Help output
@@ -90,8 +110,7 @@ report_path="$SCRIPT_DIR/../../$report_rel"
 [[ -f "$report_path" ]] || fail "generated report file should exist"
 
 current_branch=$(git rev-parse --abbrev-ref HEAD)
-grep -Eq "\\| \${current_branch}(\\*|<span[^>]*>\\*</span>) \\| \
-  local \\|" "$report_path" || \
+grep -Eq "\\| ${current_branch}(\\*|<span[^>]*>\\*</span>) \\| local \\|" "$report_path" || \
   fail "current branch should be marked with trailing * in local \
   report row"
 pass "current branch report marker"
@@ -105,9 +124,9 @@ grep -q 'only -v, -b, and -n are allowed' "$TMPDIR/branch_mode_invalid.out" || \
 pass "BRANCH mode option restrictions"
 
 # 6) Literal dots in PATTERN should be treated literally, not as regex wildcard
-rc=$(run_capture "$TMPDIR/literal.out" "$LSBRANCH" "v1.0.0*" -l)
-[[ "$rc" -eq 0 ]] || fail "lsbranch 'v1.0.0*' -l should exit 0"
-grep -q '^v1.0.0 ' "$TMPDIR/literal.out" || \
+rc=$(run_capture "$TMPDIR/literal.out" "$LSBRANCH" "v1.0.0*" -l -b)
+[[ "$rc" -eq 0 ]] || fail "lsbranch 'v1.0.0*' -l -b should exit 0"
+grep -Eq '^v1\.0\.0(\*| )' "$TMPDIR/literal.out" || \
   fail "literal dots in pattern should match branch v1.0.0"
 pass "literal glob pattern behavior"
 
@@ -127,20 +146,64 @@ done)
   fail "need one clean tracked file for dirty-worktree smoke test"
 cp "$scratch_file" "$backup_file"
 trap 'rm -rf "$TMPDIR"; if [[ -f "$backup_file" && \
-  -n "${scratch_file:-}" ]]; then cp "$backup_file" "$scratch_file"; fi' EXIT
+  -n "${scratch_file:-}" ]]; then cp "$backup_file" "$scratch_file"; fi; cleanup_auto_stash' EXIT
 printf '\nlsbranch dirty smoke test\n' >> "$scratch_file"
-rc=$(run_capture "$TMPDIR/dirty.out" "$LSBRANCH" -a -l)
-[[ "$rc" -eq 0 ]] || fail "lsbranch -a -l should exit 0 with a dirty worktree"
+rc=$(run_capture "$TMPDIR/dirty.out" "$LSBRANCH" -a -l -b)
+[[ "$rc" -eq 0 ]] || fail "lsbranch -a -l -b should exit 0 with a dirty worktree"
 if grep -q '\[check failed\]' "$TMPDIR/dirty.out"; then
   fail "lsbranch -a -l should not emit [check failed] for local \
 branches when the worktree is dirty"
 fi
-grep -q '^v1.0.0 \[local\] \[not checked out\]' "$TMPDIR/dirty.out" || \
-  fail "non-current local branches should be marked [not checked out]"
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$current_branch" != "v1.0.0" ]]; then
+  grep -q '^v1.0.0 \[local\] \[read-only\]' "$TMPDIR/dirty.out" || \
+    fail "non-current local protected branches should be marked [read-only]"
+else
+  grep -q '^v1.0.0\* \[local\] \[current\]' "$TMPDIR/dirty.out" || \
+    fail "current protected branch should be shown as current"
+fi
+if grep -q '\[not checked out\]' "$TMPDIR/dirty.out"; then
+  fail "non-current local branches should not include [not checked out]"
+fi
 cp "$backup_file" "$scratch_file"
 pass "dirty worktree local branch inspection"
 
-# 8) Verbose mode and the report should surface degraded fetch/PR lookups
+# 8) Branch-matching chcurrent auto-stash should be indicated in stdout and
+# report status
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+stash_scratch_file=$(git ls-files | while IFS= read -r path; do
+  [[ -n "$path" ]] || continue
+  [[ "$path" == reports/* ]] && continue
+  if ! git diff --quiet -- "$path"; then
+    continue
+  fi
+  echo "$path"
+  break
+done)
+[[ -n "$stash_scratch_file" ]] || \
+  fail "need one clean tracked file for auto-stash smoke test"
+stash_stamp="$(date +%Y%m%d-%H%M%S)-$$"
+AUTO_STASH_LABEL="chcurrent-auto:${current_branch}:${stash_stamp}"
+printf '\nlsbranch auto-stash smoke test\n' >> "$stash_scratch_file"
+git stash push -m "$AUTO_STASH_LABEL" -- "$stash_scratch_file" >/dev/null || \
+  fail "failed to create auto-stash test entry"
+
+rc=$(run_capture "$TMPDIR/auto_stash.out" "$LSBRANCH" "$current_branch" -b)
+[[ "$rc" -eq 0 ]] || fail "lsbranch BRANCH -b should exit 0"
+grep -Eq '\[auto-stash: [1-9][0-9]*\]' "$TMPDIR/auto_stash.out" || \
+  fail "lsbranch stdout should indicate branch-matching auto-stash"
+
+auto_stash_report_rel=$(extract_report_path "$TMPDIR/auto_stash.out")
+[[ -n "$auto_stash_report_rel" ]] || \
+  fail "auto-stash run should generate a report"
+auto_stash_report_path="$SCRIPT_DIR/../../$auto_stash_report_rel"
+grep -Eq "\\| ${current_branch}(\\*|<span[^>]*>\\*</span>) \\| local \\| .*auto-stash:[1-9][0-9]*" "$auto_stash_report_path" || \
+  fail "report local row should include auto-stash status annotation"
+
+cleanup_auto_stash
+pass "branch auto-stash indicator"
+
+# 9) Verbose mode and the report should surface degraded fetch/PR lookups
 FAKEBIN="$TMPDIR/fakebin"
 mkdir -p "$FAKEBIN"
 cat > "$FAKEBIN/git" <<EOF
@@ -166,8 +229,7 @@ rc=$(run_capture "$TMPDIR/degraded.out" env PATH="$FAKEBIN:$PATH" \
 grep -q "Warning: Failed to fetch 'origin'; remote status may be \
 stale in this report." "$TMPDIR/degraded.out" || \
   fail "verbose output should include fetch diagnostics"
-grep -q "Warning: Failed to query pull requests for 'main'; PR \
-column shown as N/A." "$TMPDIR/degraded.out" || \
+grep -q "Warning: Failed to query pull requests for 'main'; PR column shown as N/A." "$TMPDIR/degraded.out" || \
   fail "verbose output should include PR diagnostics"
 degraded_report_rel=$(extract_report_path "$TMPDIR/degraded.out")
 [[ -n "$degraded_report_rel" ]] || \
@@ -175,15 +237,13 @@ degraded_report_rel=$(extract_report_path "$TMPDIR/degraded.out")
 degraded_report_path="$SCRIPT_DIR/../../$degraded_report_rel"
 grep -q '^## Warnings$' "$degraded_report_path" || \
   fail "report should include a warnings section when helpers degrade"
-grep -q "Failed to fetch 'origin'; remote status may be stale in \
-  this report." "$degraded_report_path" || \
+grep -q "Failed to fetch 'origin'; remote status may be stale in this report." "$degraded_report_path" || \
   fail "report should include fetch warning"
-grep -q "Failed to query pull requests for 'main'; PR column \
-shown as N/A." "$degraded_report_path" || \
+grep -q "Failed to query pull requests for 'main'; PR column shown as N/A." "$degraded_report_path" || \
   fail "report should include PR warning"
 pass "degraded helper diagnostics"
 
-# 9) -n should skip fetch attempts and suppress fetch-failure warnings
+# 10) -n should skip fetch attempts and suppress fetch-failure warnings
 cat > "$FAKEBIN/git" <<EOF
 #!/usr/bin/env bash
 if [[ "\$1" == "fetch" && "\${2:-}" == "origin" ]]; then

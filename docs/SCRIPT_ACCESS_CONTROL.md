@@ -30,7 +30,7 @@ The system is hierarchical:
 - `copyfix` - Cherry-pick fix commits between branches
 - `syncfromremote` - Sync with remote repository
 - `syncfromparent` - Sync up with main branch
-- `testscripts` - Run test suite locally
+- `make test-all-scripts` - Run script smoke tests locally
 - `undo` - Undo uncommitted changes
 - `ckbranch_history` - Check branch history
 - `lsbranch` - List branches
@@ -39,7 +39,7 @@ The system is hierarchical:
 **Cannot Execute:**
 - Reviewer scripts (require R role)
 - Approver scripts (require A role)
-- Protected scripts: `mergetoparent`, `mkrelease`, `fixrepository`
+- Protected scripts: `mergetoparent`, `mkrelease`, `fixrepo`
 
 **Use Cases:**
 - Writing code and documentation
@@ -62,7 +62,7 @@ The system is hierarchical:
 
 **Cannot Execute:**
 - Approver scripts (require A role)
-- Protected scripts: `mergetoparent`, `mkrelease`, `fixrepository`
+- Protected scripts: `mergetoparent`, `mkrelease`, `fixrepo`
 
 **Use Cases:**
 - Reviewing pull requests
@@ -82,7 +82,7 @@ The system is hierarchical:
 **Additional Scripts (Protected):**
 - `mergetoparent` - Merge branches to protected branches (requires override)
 - `mkrelease` - Create releases and tags (requires override)
-- `fixrepository` - Repair repository state (requires override)
+- `fixrepo` - Repair repository state (requires override)
 - `updatebrand` - Update branding across repository
 - `replacephrases` - Replace phrases globally
 
@@ -139,20 +139,20 @@ run: scripts/bin/mergetoparent feature main
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.2.0
 ```
 
-### fixrepository - Emergency Repair
+### fixrepo - Repository Repair
 
-**What it does:** Repairs repository state (force pushes, history rewriting)
+**What it does:** Repairs repository health with safe cleanup and post-check verification
 
-**Why protected:** Can permanently lose commits or corrupt repository
+**Why protected:** Can change repository state and should be used carefully
 
 **Restrictions:**
 - Only Approvers can execute
 - Requires `SCRIPT_OVERRIDE_CONFIRMED=true`
-- Should only be used in emergencies
+- Should only be used when repository integrity or cleanup issues need attention
 
 **Example Usage:**
 ```bash
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepository
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepo
 ```
 
 ---
@@ -347,7 +347,7 @@ All approver actions on protected scripts are logged to `logs/approver-audit.log
 ```
 [AUDIT] 2026-07-09 15:23:45 Approver paulsinclair51 approved: merge (merge feature to main)
 [AUDIT] 2026-07-09 15:25:12 Approver paulsinclair51 approved: mkrelease (create release v1.0.1)
-[AUDIT] 2026-07-09 15:30:00 Approver paulsinclair51 approved: fixrepository (emergency repair)
+[AUDIT] 2026-07-09 15:30:00 Approver paulsinclair51 approved: fixrepo (emergency repair)
 ```
 
 **Audit Log Fields:**

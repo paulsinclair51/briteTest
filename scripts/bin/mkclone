@@ -229,6 +229,48 @@ else
   info "  bash scripts/bin/installscripts"
 fi
 
+# Enforce policy: do not leave a local 'main' branch in the clone.
+if git -C "$TARGET_DIR" show-ref --verify --quiet refs/heads/main; then
+  info "Applying branch policy: removing local 'main' from clone..."
+
+  current_branch="$(git -C "$TARGET_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+
+  # Preferred fallback order when choosing a non-main local branch:
+  # 1) targeted branch, 2) contributor branch, 3) version branch,
+  # 4) detach at origin/main.
+  remote_branches="$(git -C "$TARGET_DIR" for-each-ref --format='%(refname:short)' refs/remotes/origin | sed -n 's#^origin/##p' | grep -Ev '^(HEAD|main)$' | sort || true)"
+
+  preferred_remote_branch="$(printf '%s\n' "$remote_branches" | grep -E '^(dev|fix)/[a-z0-9][a-z0-9-]*-v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$' | head -n 1 || true)"
+
+  if [[ -z "$preferred_remote_branch" ]]; then
+    preferred_remote_branch="$(printf '%s\n' "$remote_branches" | grep -Ev '^v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$|^(dev|fix)/[a-z0-9][a-z0-9-]*-v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$' | head -n 1 || true)"
+  fi
+
+  if [[ -z "$preferred_remote_branch" ]]; then
+    preferred_remote_branch="$(printf '%s\n' "$remote_branches" | grep -E '^v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$' | head -n 1 || true)"
+  fi
+
+  if [[ "$current_branch" == "main" ]]; then
+    if [[ -n "$preferred_remote_branch" ]]; then
+      if ! git -C "$TARGET_DIR" switch -c "$preferred_remote_branch" --track "origin/$preferred_remote_branch" >/dev/null 2>&1; then
+        error_exit 4 "Failed to create local tracking branch '$preferred_remote_branch' before removing local main"
+      fi
+      info "Switched to local branch '$preferred_remote_branch'"
+    else
+      if ! git -C "$TARGET_DIR" switch --detach origin/main >/dev/null 2>&1; then
+        error_exit 4 "Failed to detach to origin/main before removing local main"
+      fi
+      warn "No targeted, contributor, or version branch found; repository is detached at origin/main"
+    fi
+  fi
+
+  if ! git -C "$TARGET_DIR" branch -D main >/dev/null 2>&1; then
+    error_exit 4 "Failed to remove local main branch from clone"
+  fi
+
+  success "Removed local 'main' from clone"
+fi
+
 info "Next steps:"
 echo "  cd $TARGET_DIR"
 echo "  mkbranch fix/your-branch main"

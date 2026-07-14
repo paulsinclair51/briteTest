@@ -80,11 +80,17 @@ check-doc:
 test-gendocs:
 	bash ./scripts/tests/test_gendocs.sh
 
+test-fixrepo:
+	bash ./scripts/tests/test_fixrepo.sh
+
 test-lsbranch:
 	bash ./scripts/tests/test_lsbranch.sh
 
 test-mkbranch:
 	bash ./scripts/tests/test_mkbranch.sh
+
+test-all-scripts:
+	bash ./scripts/tests/test_scripts.sh
 
 gendocs:
 	bash ./scripts/bin/gendocs
@@ -95,4 +101,4 @@ genpngs:
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run lint-md check-doc test-gendocs test-lsbranch test-mkbranch gendocs genpngs clean
+.PHONY: all run lint-md check-doc test-gendocs test-fixrepo test-lsbranch test-mkbranch test-all-scripts gendocs genpngs clean

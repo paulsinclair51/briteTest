@@ -30,7 +30,12 @@ Report includes:
   Type:    Indicates branch is `local` or `remote`.
   Parent:  Parent branch reference for the row when applicable.
            For example, 'main' or 'v1.0.0'.
-  Status:  'clean', 'dirty', or 'not checked out' for local worktree state,
+  Status:  'clean', 'dirty', 'read-only', or 'not checked out' for local
+           worktree state. For local branches, 'clean'/'dirty' reflect the
+           current checkout's shared working tree.
+           If branch-matching chcurrent auto-stashes exist,
+           status includes '; auto-stash:N' in reports and
+           '[auto-stash: N]' in stdout rows.
            'synced' or 'diverged' for tracked-branch state,
            or 'unknown'.
   Staged/Unstaged: Counts of staged and unstaged files.
@@ -100,7 +105,7 @@ Outputs:
   - Writes help (usage) text or status messages for the
     selected branches to stdout.
   - Writes errors and diagnostics to stderr.
-  - Writes a report to <repo>/reports/branch-<datetime>.md
+  - Writes a report to <repo>/reports/branch/branch-<datetime>.md
     (a GitHub untracked file).
   - Removes previous reports when a new one is successfully
     written.
@@ -138,6 +143,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+branch_reports_dir="$repo_root/reports/branch"
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
@@ -169,6 +175,8 @@ NO_ARG_MODE=false
 FETCH_ATTEMPTED=false
 REMOTE_FETCH_ENABLED=true
 WARNINGS_FILE="$(mktemp)"
+AUTO_STASH_INDEX_READY=false
+declare -A AUTO_STASH_COUNTS=()
 
 COLOR_RESET=$'\033[0m'
 COLOR_BOLD_GREEN=$'\033[1;92m'
@@ -219,6 +227,15 @@ is_contributor_branch() {
   local type='[a-z][a-z]{0,29}'
 
   [[ "$branch" =~ ^((${type}/)?${desc})$ && "$branch" != "main" ]]
+}
+
+is_protected_branch() {
+  local branch="$1"
+
+  if is_main_branch "$branch" || is_version_branch "$branch"; then
+    return 0
+  fi
+  return 1
 }
 
 branch_violates_naming_rules() {
@@ -503,6 +520,45 @@ get_unstaged_changes() {
     substr($0,2,1) != " " { c++ }
     END { print c + 0 }
   '
+}
+
+build_auto_stash_index() {
+  local stash_output=""
+  local stash_error=""
+  local subject=""
+  local stash_branch=""
+
+  if [[ "$AUTO_STASH_INDEX_READY" == true ]]; then
+    return 0
+  fi
+
+  AUTO_STASH_INDEX_READY=true
+
+  if ! capture_command_output \
+    stash_output stash_error \
+    git stash list --format='%gs'; then
+    record_diagnostic \
+      "Failed to read stash list; auto-stash indicators unavailable." \
+      "$stash_error"
+    return 0
+  fi
+
+  while IFS= read -r subject; do
+    [[ -n "$subject" ]] || continue
+    if [[ "$subject" =~ chcurrent-auto:([^:]+): ]]; then
+      stash_branch="${BASH_REMATCH[1]}"
+      AUTO_STASH_COUNTS["$stash_branch"]=$((
+        ${AUTO_STASH_COUNTS["$stash_branch"]:-0} + 1
+      ))
+    fi
+  done <<< "$stash_output"
+}
+
+get_branch_auto_stash_count() {
+  local branch="$1"
+
+  build_auto_stash_index
+  echo "${AUTO_STASH_COUNTS["$branch"]:-0}"
 }
 
 get_unpushed_commits() {
@@ -857,7 +913,7 @@ format_ratio_or_blank() {
 cleanup_old_reports() {
   local old_report
   [[ -f "$OUTPUT_FILE" ]] || return
-  for old_report in "$repo_root"/reports/branch-*.md; do
+  for old_report in "$branch_reports_dir"/branch-*.md; do
     [[ "$old_report" == "$OUTPUT_FILE" ]] && continue
     [[ -e "$old_report" ]] || continue
     rm -f "$old_report" || true
@@ -894,17 +950,23 @@ check_branch_status() {
   ensure_remote_refs_fetched
 
   # Gather status information — use fallback values if any step fails
-  local repo_status staged_count unstaged_count
+  local repo_status staged_count unstaged_count auto_stash_count
   local unpushed_count pr_count branch_type
   if [[ "$is_current" == true ]]; then
     repo_status=$(check_repo_status "$branch") || repo_status="unknown"
     staged_count=$(get_staged_changes "$branch") || staged_count="N/A"
     unstaged_count=$(get_unstaged_changes "$branch") || unstaged_count="N/A"
   else
-    repo_status="not checked out"
+    if is_protected_branch "$branch"; then
+      repo_status="read-only"
+    else
+      repo_status="not checked out"
+    fi
     staged_count=""
     unstaged_count=""
   fi
+  auto_stash_count=$(get_branch_auto_stash_count "$branch") || \
+    auto_stash_count="0"
   unpushed_count=$(get_unpushed_commits "$branch") || unpushed_count="N/A"
   pr_count=$(get_pending_pr_count    "$branch") || pr_count="N/A"
   branch_type=$(get_branch_type      "$branch") || branch_type="unknown"
@@ -938,9 +1000,11 @@ check_branch_status() {
         local_tags+=("[staged]")
       [[ "$unstaged_count" =~ ^[0-9]+$ && "$unstaged_count" -gt 0 ]] && \
         local_tags+=("[unstaged]")
-    else
-      local_tags+=("[not checked out]")
+    elif is_protected_branch "$branch"; then
+      local_tags+=("[read-only]")
     fi
+    [[ "$auto_stash_count" =~ ^[0-9]+$ && "$auto_stash_count" -gt 0 ]] && \
+      local_tags+=("[auto-stash: $auto_stash_count]")
     [[ "$unpushed_count" =~ ^[0-9]+$ && "$unpushed_count" -gt 0 ]] && \
       local_tags+=("[ahead $unpushed_count]")
 
@@ -988,9 +1052,11 @@ check_branch_status() {
           tags+=("[staged]")
         [[ "$unstaged_count" =~ ^[0-9]+$ && "$unstaged_count" -gt 0 ]] && \
           tags+=("[unstaged]")
-      else
-        tags+=("[not checked out]")
+      elif is_protected_branch "$branch"; then
+        tags+=("[read-only]")
       fi
+      [[ "$auto_stash_count" =~ ^[0-9]+$ && "$auto_stash_count" -gt 0 ]] && \
+        tags+=("[auto-stash: $auto_stash_count]")
     fi
     [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 ]] && \
       tags+=("[PRs: $pr_count]")
@@ -1006,6 +1072,9 @@ check_branch_status() {
   # Append report row(s)
     local branch_local_display="$branch_report_display"
     local local_status="$repo_status"
+    if [[ "$auto_stash_count" =~ ^[0-9]+$ && "$auto_stash_count" -gt 0 ]]; then
+      local_status+="; auto-stash:$auto_stash_count"
+    fi
     local branch_remote_display
     branch_remote_display=$(branch_name_report_display "$branch" "false")
 
@@ -1073,6 +1142,7 @@ check_branch_status() {
 
   if [[ "$VERBOSE" == true ]]; then
     echo "  Status: $repo_status"
+    echo "  Auto-stash: $auto_stash_count"
     echo "  Staged: $staged_count"
     echo "  Unstaged: $unstaged_count"
     echo "  Unpushed: $unpushed_count"
@@ -1244,10 +1314,8 @@ fi
 build_report_command
 
 # Validate reports directory and set output path
-if [[ ! -d "$repo_root/reports" ]]; then
-  bt_error_exit 3 "Reports directory not found: $repo_root/reports"
-fi
-OUTPUT_FILE="$repo_root/reports/branch-${RUN_TS_FILE}.md"
+mkdir -p "$branch_reports_dir"
+OUTPUT_FILE="$branch_reports_dir/branch-${RUN_TS_FILE}.md"
 
 # Get current branch to restore later
 ORIGINAL_BRANCH=$(bt_get_current_branch ||
@@ -1395,6 +1463,8 @@ $FOOTER_INVALID_LINE
 
 **Status**: \`clean\`, \`dirty\`, or \`not checked out\` for local worktree
 state, \`synced\` or \`diverged\` for tracked-branch state, or \`unknown\`.
+For local branches, status includes \`; auto-stash:N\` when branch-matching
+chcurrent auto-stashes exist.
 
 **Staged/Unstaged**: Counts of staged and unstaged files.
 

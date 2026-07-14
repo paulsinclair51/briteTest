@@ -52,6 +52,7 @@ cleanup() {
   rm -rf "$TMPDIR"
 }
 trap cleanup EXIT
+export GITHUB_ACTOR="testuser"
 
 ORIGIN="$TMPDIR/origin.git"
 WORK="$TMPDIR/work"
@@ -66,12 +67,12 @@ cp "$HISTORY_HELPER_SRC" "$WORK/scripts/helpers/history_log.sh"
 chmod +x "$WORK/scripts/bin/mkbranch"
 
 cat > "$WORK/config/contributors.md" <<'EOF'
-- A/Test User,
+testuser,C,test@example.com
 EOF
 
 (
   cd "$WORK"
-  git config user.name "Test User"
+  git config user.name "testuser"
   git config user.email "test@example.com"
 
   echo "seed" > README.md

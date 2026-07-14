@@ -25,7 +25,7 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
-| v1.0.0 | 2026-07-09 | Current v1.0.0 development guide; includes initial content plus PR #10 consolidation (`Access Control & Roles`, `Public Repository Security`). | Paul Sinclair |
+| v1.0.0 | 2026-07-13 | Current v1.0.0 development guide; refreshed script coverage to match current `scripts/bin/` set (including `rmclone` and `fixrepo` clone-path checks). | Paul Sinclair |
 
 ---
 
@@ -58,6 +58,15 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
 This Contributor Guide defines the expectations and rules for contributing to briteTest. It covers branching, versioning, testing, documentation, code style, validation workflows, pull requests, and release requirements.
 
 Contributors should read this document before submitting changes, reviewing, or approving to ensure consistency across the code and documentation.
+
+### Current Scripts (scripts/bin)
+
+The current executable script set is maintained in `scripts/bin/README.md`.
+
+- **Setup/installation:** `installscripts`
+- **Document/brand:** `ckstyle`, `gendocs`, `genpngs`, `replacephrases`, `updatebrand`
+- **Repository/fork/clone:** `mkfork`, `mkclone`, `rmclone`, `fixrepo`
+- **Branch/workflow:** `ckbranch_history`, `chcurrent`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `mkfeedback`, `mergetoparent`, `mkpullrequest`, `chtarget`, `mkrelease`, `syncfromremote`, `syncfromparent`, `undo`, `rmbranch`
 
 ---
 
@@ -399,7 +408,7 @@ Versioning format: `M.m.p` (major, minor, patch)
 - `include/testapi.h`, `src/testapi.c`
 - `docs/md/*.md` (except README.md)
 
-Run `scripts/bin/ckversions` to validate consistency.
+Use `make test-all-scripts` before PRs, and verify versioned file edits in `git diff`.
 
 ---
 

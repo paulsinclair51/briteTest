@@ -25,7 +25,8 @@ If no check flags are provided, all checks are enabled.
 Behavior:
   - Scans repository files while excluding /obsolete and /.git.
   - Applies enabled checks to applicable files.
-  - Produces exactly one report: reports/ckstyle-<datetime>.md
+  - Produces exactly one report:
+    reports/guidelines/ckstyle-<datetime>.md
   - Groups all issues by file in the report.
 
 Exit codes:
@@ -95,7 +96,10 @@ fi
 
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
-REPORT_FILE="$repo_root/reports/ckstyle-${RUN_TS_FILE}.md"
+GUIDELINES_REPORTS_DIR="$repo_root/reports/guidelines"
+REPORT_FILE="$GUIDELINES_REPORTS_DIR/ckstyle-${RUN_TS_FILE}.md"
+
+mkdir -p "$GUIDELINES_REPORTS_DIR"
 
 # -----------------------------
 # Issue collection
@@ -1213,7 +1217,7 @@ fi
 } > "$REPORT_FILE"
 
 # Remove old ckstyle reports only after successful write.
-for old_report in "$repo_root"/reports/ckstyle-*.md; do
+for old_report in "$GUIDELINES_REPORTS_DIR"/ckstyle-*.md; do
   [[ "$old_report" == "$REPORT_FILE" ]] && continue
   [[ -e "$old_report" ]] || continue
   rm -f "$old_report"

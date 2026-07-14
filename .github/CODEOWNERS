@@ -65,3 +65,5 @@
 #   3. '<repo>/docs/md/Contributor_Guide.md' for more information about
 #      contributors, reviewers, approvers, and guidance of source control
 #      management (SCM) for briteTest.
+
+lsbranch dirty smoke test

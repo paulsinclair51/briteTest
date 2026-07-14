@@ -27,28 +27,37 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ### Repository and Fork Management
 
+- **fixrepo**: Verify repository/clone integrity, run safe cleanup fixes,
+  rerun affected post-cleanup checks, and generate a health report.
+- **mkclone**: Clone the repository with optional target naming.
 - **mkfork**: Create a fork of the repository and optionally configure it with
   upstream remote and user as approver.
+- **rmclone**: Safely remove a local clone with validation checks and optional
+   override.
 
 ### Branch and Workflow Management
 
+- **chcurrent**: Change to specified local branch as current branch
+  (blocks `main` which is not allowed to have a local branch).
+  When local branch doesn't exist, creates local tracking branch from
+  origin/<branch>` if it exists and is available.
+  List can include cached remote-only branches.
+- **chtarget**: Retarget a targeted branch to a different version branch.
+  targeted branch is renamed to have its version as the specified version.
 - **ckbranch_history**: Query branch history log entries.
-- **chcurrent**: Switch to a specified current branch.
+- **commit**: Commit and optionally push changes to remote.
+- **copyfix**: Cherry-pick/copy fix commits from another branch.
 - **lsbranch**: List a branch or branches and their status.
 - **mkbranch**: Create branches with policy validation.
-- **mkclone**: Clone the repository with optional target naming.
-- **commit**: Commit and optionally push changes.
-- **copyfix**: Cherry-pick/copy fix commits from another branch.
 - **mkfeedback**: View/respond to PR feedback workflows.
 - **mergetoparent**: Merge current branch to its parent branch.
 - **mkpullrequest**: Create or update a pull request.
-- **chtarget**: Retarget a targeted branch to a different version parent.
 - **mkrelease**: Create and publish releases.
-- **syncfromremote**: Fetch and pull latest changes.
-- **syncfromparent**: Merge parent branch into current branch.
-- **testscripts**: Run tests and optional documentation checks.
-- **undo**: Undo recent merge/release/commit operations.
 - **rmbranch**: Remove local and/or remote branches.
+- **syncfromparent**: Merge parent branch into current branch.
+- **syncfromremote**: Fetch and pull latest changes from remote into
+  local branch
+- **undo**: Undo recent merge/release/commit operations.
 
 ### README Directory Guide
 

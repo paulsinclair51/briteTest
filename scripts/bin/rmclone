@@ -1,0 +1,256 @@
+#!/usr/bin/env bash
+
+# rmclone - Remove a local clone directory with safety checks.
+#
+# See usage below for details, or run: rmclone -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  rmclone [OPTIONS] <clone-path>
+  rmclone {-h | --help}
+
+Safely remove a local repository clone directory.
+
+Default safety checks:
+  - clone-path exists and is a Git repository
+  - no working-tree changes (staged, unstaged, untracked)
+  - no stash entries
+  - no local-only commits not present on remotes
+  - origin remote is reachable when configured
+  - target is not the current working directory (or its parent)
+
+Arguments:
+  <clone-path>          Path to the clone directory to remove.
+
+Options:
+  -h, --help            Output this help to stdout and exit.
+  -d, --dry-run         Show checks and deletion plan only.
+  -O, --override        Override safety checks and remove anyway.
+
+Examples:
+  rmclone ../BriteTest-work
+  rmclone -d ../BriteTest-work
+  rmclone -O ../BriteTest-work
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+
+Exit codes:
+  0   Success
+  1   Argument or validation error
+  2   Safety checks failed (use -O to override)
+  3   Removal failed
+  4   Operation cancelled by user
+EOF
+}
+
+# High-Level Flow:
+# - Validates target path and Git repository state.
+# - Performs non-destructive safety checks to avoid data loss.
+# - Requires explicit confirmation unless override is used.
+# - Supports dry-run mode to preview actions.
+# - Removes clone directory with rm -rf only after checks/confirmation.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
+COMMON_HELPER="$SCRIPT_DIR/../helpers/common.sh"
+
+if [[ ! -f "$COMMON_HELPER" ]]; then
+  echo "Error: Required helper not found: $COMMON_HELPER" >&2
+  exit 1
+fi
+
+# shellcheck source=helpers/common.sh
+source "$COMMON_HELPER"
+
+DRY_RUN=false
+OVERRIDE=false
+TARGET_INPUT=""
+TARGET_ABS=""
+ISSUES=()
+
+add_issue() {
+  ISSUES+=("$1")
+}
+
+resolve_abs_dir() {
+  local input_path="$1"
+
+  if [[ -z "$input_path" ]]; then
+    return 1
+  fi
+  if [[ ! -d "$input_path" ]]; then
+    return 1
+  fi
+
+  (
+    cd "$input_path" && pwd -P
+  )
+}
+
+check_path_safety() {
+  local pwd_abs
+  pwd_abs="$(pwd -P)"
+
+  if [[ "$TARGET_ABS" == "/" ]]; then
+    add_issue "Refusing to remove root directory (/)."
+  fi
+
+  if [[ "$TARGET_ABS" == "$REPO_ROOT" ]]; then
+    add_issue "Refusing to remove the current briteTest repository root."
+  fi
+
+  if [[ "$pwd_abs" == "$TARGET_ABS" || "$pwd_abs" == "$TARGET_ABS"/* ]]; then
+    add_issue "Current shell is inside target directory; run from outside target."
+  fi
+}
+
+check_git_safety() {
+  if ! git -C "$TARGET_ABS" rev-parse --git-dir >/dev/null 2>&1; then
+    add_issue "Target is not a valid Git repository: $TARGET_ABS"
+    return 0
+  fi
+
+  local status_output
+  status_output="$(git -C "$TARGET_ABS" status --porcelain 2>/dev/null || true)"
+  if [[ -n "$status_output" ]]; then
+    local changed_count
+    changed_count="$(printf '%s\n' "$status_output" | wc -l | tr -d ' ')"
+    add_issue "Working tree is not clean ($changed_count changed entries)."
+  fi
+
+  local stash_count
+  stash_count="$(git -C "$TARGET_ABS" stash list 2>/dev/null | wc -l | tr -d ' ')"
+  if [[ "$stash_count" =~ ^[0-9]+$ ]] && [[ "$stash_count" -gt 0 ]]; then
+    add_issue "Repository contains $stash_count stash entries."
+  fi
+
+  local local_only_commits
+  local_only_commits="$(git -C "$TARGET_ABS" rev-list --count --branches --not --remotes 2>/dev/null || echo 0)"
+  if [[ "$local_only_commits" =~ ^[0-9]+$ ]] && [[ "$local_only_commits" -gt 0 ]]; then
+    add_issue "Repository has $local_only_commits local-only commits not on remotes."
+  fi
+
+  local origin_url
+  origin_url="$(git -C "$TARGET_ABS" remote get-url origin 2>/dev/null || true)"
+  if [[ -n "$origin_url" ]]; then
+    if ! git -C "$TARGET_ABS" ls-remote --exit-code origin HEAD >/dev/null 2>&1; then
+      add_issue "Origin remote is configured but not reachable: $origin_url"
+    fi
+  fi
+}
+
+print_issues() {
+  local issue
+  for issue in "${ISSUES[@]}"; do
+    bt_warn "- $issue"
+  done
+}
+
+confirm_removal() {
+  if [[ "$OVERRIDE" == true ]]; then
+    return 0
+  fi
+
+  local response
+  echo ""
+  bt_warn "About to permanently delete: $TARGET_ABS"
+  read -r -p "Type DELETE to confirm: " response
+
+  if [[ "$response" != "DELETE" ]]; then
+    return 1
+  fi
+
+  return 0
+}
+
+# Parse options and arguments
+POSITIONAL_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -d | --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    -O | --override)
+      OVERRIDE=true
+      shift
+      ;;
+    -* )
+      bt_error_exit 1 "Unknown option: $1"
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+set -- "${POSITIONAL_ARGS[@]}"
+
+if [[ $# -ne 1 ]]; then
+  bt_error_exit 1 "Expected exactly 1 argument: <clone-path>"
+fi
+
+TARGET_INPUT="$1"
+TARGET_ABS="$(resolve_abs_dir "$TARGET_INPUT" || true)"
+if [[ -z "$TARGET_ABS" ]]; then
+  bt_error_exit 1 "Clone path not found or not a directory: $TARGET_INPUT"
+fi
+
+bt_info "Target clone path: $TARGET_ABS"
+
+check_path_safety
+check_git_safety
+
+if [[ "${#ISSUES[@]}" -gt 0 ]]; then
+  bt_warn "Safety checks detected potential data-loss risks:"
+  print_issues
+
+  if [[ "$OVERRIDE" == false ]]; then
+    bt_error_exit 2 "Aborting removal. Re-run with -O to override safety checks."
+  fi
+
+  bt_warn "Override enabled (-O). Continuing despite safety check failures."
+else
+  bt_success "Safety checks passed."
+fi
+
+if [[ "$DRY_RUN" == true ]]; then
+  bt_info "Dry-run mode enabled. No files were removed."
+  bt_info "Would remove clone directory: $TARGET_ABS"
+  exit 0
+fi
+
+if ! confirm_removal; then
+  bt_error_exit 4 "Operation cancelled. Clone not removed."
+fi
+
+# Move away if currently inside target and override was used.
+if [[ "$(pwd -P)" == "$TARGET_ABS" || "$(pwd -P)" == "$TARGET_ABS"/* ]]; then
+  cd /tmp
+fi
+
+bt_info "Removing clone directory..."
+if ! rm -rf -- "$TARGET_ABS"; then
+  bt_error_exit 3 "Failed to remove clone directory: $TARGET_ABS"
+fi
+
+if [[ -e "$TARGET_ABS" ]]; then
+  bt_error_exit 3 "Target still exists after removal attempt: $TARGET_ABS"
+fi
+
+bt_success "Clone removed successfully: $TARGET_ABS"
+exit 0

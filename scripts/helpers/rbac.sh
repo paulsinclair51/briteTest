@@ -16,7 +16,7 @@
 # Protected Scripts (require approver override):
 #   - mergetoparent - Merge branches to protected branches
 #   - mkrelease     - Create releases and tags
-#   - fixrepository - Repair repository state
+#   - fixrepo - Repair repository state
 
 set -euo pipefail
 
@@ -33,11 +33,11 @@ source "${script_dir}/common-utils.sh"
 readonly CONTRIBUTOR_SCRIPTS=(
   "mkbranch"           # Create branches
   "mkclone"            # Clone repository
+  "rmclone"            # Remove local clone safely
   "commit"           # Create commits
   "copyfix"            # Cherry-pick fixes between branches
   "syncfromremote"       # Sync with remote
   "syncfromparent"           # Sync current branch with parent branch
-  "testscripts"             # Run tests
   "undo"             # Undo changes
   "ckbranch_history"   # Check branch history
   "lsbranch"           # List branches
@@ -55,7 +55,7 @@ readonly APPROVER_SCRIPTS=(
   "mergetoparent"    # Merge branches (protected)
   "chtarget"           # Retarget targeted branch to another version parent
   "mkrelease"          # Create releases (protected)
-  "fixrepository"      # Fix repository issues (protected)
+  "fixrepo"            # Fix repository issues (protected)
   "updatebrand"        # Update branding
   "replacephrases"     # Replace phrases globally
 )
@@ -73,7 +73,7 @@ readonly PROTECTED_SCRIPTS=(
   "mergetoparent"
   "chtarget"
   "mkrelease"
-  "fixrepository"
+  "fixrepo"
 )
 
 #####################################################################

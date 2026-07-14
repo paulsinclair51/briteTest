@@ -31,9 +31,9 @@ Outputs:
   - Final status block (COMPLETED or DRY RUN COMPLETE).
 
 Reporting:
-  - updatebrand and updatebrand -d write a report in reports/.
-  - Non-dry run report: updatebrand-YYYYMMDD-HHMMSS.md
-  - Dry-run report: updatebrand-dry-run-YYYYMMDD-HHMMSS.md
+    - updatebrand and updatebrand -d write a report in reports/guidelines/.
+    - Non-dry run report: reports/guidelines/updatebrand-YYYYMMDD-HHMMSS.md
+    - Dry-run report: reports/guidelines/updatebrand-dry-run-YYYYMMDD-HHMMSS.md
   - -h/--help does not generate a report.
   - On successful non-dry runs, existing dry-run reports are deleted.
 
@@ -85,7 +85,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CONFIG_FILE="${REPO_ROOT}/logs/brand_history.md"
 BRANDING_DIR="${REPO_ROOT}/docs/branding"
 GENPNGS_SCRIPT="${SCRIPT_DIR}/genpngs"
-REPORTS_DIR="${REPO_ROOT}/reports"
+REPORTS_DIR="${REPO_ROOT}/reports/guidelines"
 
 DRY_RUN=0
 
@@ -503,11 +503,7 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-# Validate reports directory exists
-if [[ ! -d "$REPORTS_DIR" ]]; then
-    error_exit "Reports directory not found: $REPORTS_DIR" \
-        "$EXIT_COMMAND_FAILED"
-fi
+mkdir -p "$REPORTS_DIR"
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
     RUN_LOG_FILE="${REPORTS_DIR}/updatebrand-dry-run-${RUN_TS_FILE}.md"
