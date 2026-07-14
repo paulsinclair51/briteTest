@@ -194,7 +194,7 @@ find_branch_auto_stash_ref() {
 
   prefix="chcurrent-auto:${branch}:"
   git stash list --format='%gd%x09%gs' | \
-    awk -F '\t' -v p="$prefix" '$2 ~ ("^" p) { print $1; exit }'
+    awk -F '\t' -v p="$prefix" 'index($2, p) { print $1; exit }'
 }
 
 can_apply_stash_cleanly() {
