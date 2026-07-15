@@ -230,13 +230,10 @@ emit_final_status() {
   local completion_text="$1"
   local report_generated="$2"
   local report_rel=""
-  local final_text=""
+  local final_text="$completion_text"
 
   if [[ "$report_generated" == true ]]; then
     report_rel="${REPORT_FILE#${REPO_ROOT}/}"
-    final_text="${completion_text}. Report generated: ${report_rel}."
-  else
-    final_text="${completion_text}. Report not generated."
   fi
 
   if [[ "$DIVERGENCE_AUTO_RESOLVED" == true ]]; then
@@ -244,6 +241,12 @@ emit_final_status() {
   fi
 
   bt_success "$final_text"
+
+  if [[ "$report_generated" == true ]]; then
+    bt_success "Report generated: ${report_rel}."
+  else
+    bt_success "Report not generated."
+  fi
 }
 
 collect_commit_file_stats() {
@@ -984,13 +987,13 @@ fi
 if [[ "$COMMITTED_FILES" -gt 0 || "$PUSHED_COMMITS" -gt 0 ]]; then
   generate_commit_report
   if [[ "$DRY_RUN" == true ]]; then
-    emit_final_status "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}. Dry-run complete" true
+    emit_final_status "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}. Dry-run" true
   elif [[ "$COMMITTED_FILES" -gt 0 && "$PUSHED_COMMITS" -gt 0 ]]; then
-    emit_final_status "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}. Complete" true
+    emit_final_status "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}" true
   elif [[ "$COMMITTED_FILES" -eq 0 && "$PUSHED_COMMITS" -gt 0 ]]; then
-    emit_final_status "Push: ${PUSHED_COMMITS}. Complete" true
+    emit_final_status "Push: ${PUSHED_COMMITS}" true
   else
-    emit_final_status "Commit: ${COMMITTED_FILES}. Complete" true
+    emit_final_status "Commit: ${COMMITTED_FILES}" true
   fi
 else
   emit_final_status "No commits or pushes" false
