@@ -54,14 +54,6 @@ dkms.conf
 # debug information files
 *.dwo
 
-# Branch management logs (ignore by default)
-logs/*
-# Track selected log files.
-!logs/remote_branch_history.md
-!logs/updatebrand-log-*.md
-# Ignore dry-run update logs.
-logs/updatebrand-log-dry-run-*.md
-
 # Python virtual environments
 .venv/
 
@@ -69,6 +61,32 @@ logs/updatebrand-log-dry-run-*.md
 __pycache__/
 *.pyc
 
-# Reports (track only the directory README)
+# Logs/
+# Ignore dry-run and local logs.
+logs/*-d-*.md
+logs/local_*.md
+
+# Reports/
+
 reports/*
 !reports/README.md
+!reports/branch/
+!reports/guidelines/
+!reports/repository/
+
+reports/branch/*
+!reports/branch/README.md
+!reports/branch/mergeto-v*.*.*-*.md
+!reports/branch/mergeto-main-*.md
+# Ignore dry-run reports.
+reports/branch/*-d-*.md
+
+reports/guidelines/*
+!reports/guidelines/README.md
+!reports/guidelines/updatebrand-*.md
+# Ignore dry-run reports.
+reports/guidelines/*-d-*.md
+
+# reports/repository/
+# Ignore dry-run reports.
+reports/repository/*-d-*.md
