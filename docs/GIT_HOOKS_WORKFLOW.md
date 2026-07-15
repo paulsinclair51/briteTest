@@ -66,8 +66,8 @@ commit -m "My change"
 
 | Blocked | Use Script | Example |
 |---------|------------|---------|
-| `git push` | `commit -p` | `commit -m "msg" -p` |
-| `git push --force` | `commit -p` | (merge handles it) |
+| `git push` | `commit` | `commit -m "msg"` |
+| `git push --force` | `merge` | (merge handles it) |
 | `git push origin --delete` | `rmbranch` | `rmbranch my-branch -r` |
 
 ```bash
@@ -76,7 +76,7 @@ git push origin my-branch
 git push --force-with-lease
 
 # ✅ Use this instead:
-commit -m "My change" -p
+commit -m "My change"
 ```
 
 ### Branch Operations
@@ -145,9 +145,8 @@ undo release
 commit -m "Your commit message"
 
 # With options:
-commit -m "Message" -p              # Commit and push
 commit -m "Message" -v              # Verbose output
-commit file1.js file2.js -m "Msg"  # Specific files
+commit -- Fix issue in current branch workflow
 ```
 
 ### "Direct git push operations are not allowed"
@@ -156,11 +155,11 @@ commit file1.js file2.js -m "Msg"  # Specific files
 
 **Use instead:**
 ```bash
-# Push via commit script
-commit -m "Your message" -p
+# Push via commit script (auto-push occurs when origin/<branch> exists)
+commit -m "Your message"
 
-# Or if already committed:
-commit -p  # -p flag alone pushes existing commits
+# Or if already committed and only push is needed:
+commit
 ```
 
 ### "Direct git merge operations are not allowed"

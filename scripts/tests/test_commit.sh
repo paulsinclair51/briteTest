@@ -61,6 +61,7 @@ trap cleanup EXIT
 
 ORIGIN="$TMPDIR/origin.git"
 WORK="$TMPDIR/work"
+PEER="$TMPDIR/peer"
 
 git init --bare "$ORIGIN" >/dev/null 2>&1
 git clone "$ORIGIN" "$WORK" >/dev/null 2>&1
@@ -96,14 +97,14 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./scripts/bin/c
 assert_contains "Usage:" "$TMPDIR/help.out"
 pass "help output"
 
-# 2) Unauthorized user should be blocked with exit 8
+# 2) Unauthorized user should be blocked with exit 10
 printf '\nunauthorized role test\n' >> "$WORK/README.md"
 (
   cd "$WORK"
   git config user.email "outsider@example.com"
 )
 rc=$(run_capture "$TMPDIR/unauth.out" env GITHUB_ACTOR=outsider bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -m 'test unauthorized'")
-[[ "$rc" -eq 8 ]] || fail "unauthorized user should exit 8 (got $rc)"
+[[ "$rc" -eq 10 ]] || fail "unauthorized user should exit 10 (got $rc)"
 assert_contains "is not authorized to run commit" "$TMPDIR/unauth.out"
 (
   cd "$WORK"
@@ -119,21 +120,53 @@ dry_report="$(latest_report "$WORK")"
 assert_contains "Report generated:" "$TMPDIR/dry.out"
 pass "dry-run commit"
 
-# 4) Missing message when changes exist should fail with exit 4
+# 4) Missing message when changes exist should fail with exit 6
 printf '\nmessage required test\n' >> "$WORK/README.md"
 rc=$(run_capture "$TMPDIR/missing-message.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit")
-[[ "$rc" -eq 4 ]] || fail "missing message should exit 4 (got $rc)"
+[[ "$rc" -eq 6 ]] || fail "missing message should exit 6 (got $rc)"
 assert_contains "Commit message is required" "$TMPDIR/missing-message.out"
 pass "missing message handling"
 
-# 5) Push requested with disconnected remote should exit 5 and report deferred push
+# 5) Empty message when changes exist should fail with exit 7
+printf '\nempty message test\n' >> "$WORK/README.md"
+rc=$(run_capture "$TMPDIR/empty-message.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -m '   '")
+[[ "$rc" -eq 7 ]] || fail "empty message should exit 7 (got $rc)"
+assert_contains "must include at least one non-whitespace character" "$TMPDIR/empty-message.out"
+pass "empty message handling"
+
+# 6) -p should be rejected (auto-push is now implicit)
+rc=$(run_capture "$TMPDIR/p_option.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -p -m 'invalid option test'")
+[[ "$rc" -eq 1 ]] || fail "commit -p should exit 1 (got $rc)"
+assert_contains "Unknown option: -p" "$TMPDIR/p_option.out"
+pass "-p option rejection"
+
+# 7) Positional file arguments should be rejected
+rc=$(run_capture "$TMPDIR/positional.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit README.md -m 'invalid positional arg test'")
+[[ "$rc" -eq 1 ]] || fail "commit with positional file argument should exit 1 (got $rc)"
+assert_contains "Unexpected argument: README.md" "$TMPDIR/positional.out"
+pass "positional file argument rejection"
+
+# 8) Diverged local/remote history should auto-resolve and succeed with guidance
+git clone "$ORIGIN" "$PEER" >/dev/null 2>&1
+(
+  cd "$PEER"
+  git config user.name "peer"
+  git config user.email "peer@example.com"
+  git checkout dev/commit-tests-v1.0.0 >/dev/null 2>&1
+  echo "peer change" > PEER_ONLY.md
+  git add PEER_ONLY.md
+  git commit -m "peer update" >/dev/null 2>&1
+  git push origin dev/commit-tests-v1.0.0 >/dev/null 2>&1
+)
 (
   cd "$WORK"
-  git remote remove origin
+  git fetch origin dev/commit-tests-v1.0.0 >/dev/null 2>&1
 )
-rc=$(run_capture "$TMPDIR/disconnected.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -p -m 'defer push'")
-[[ "$rc" -eq 5 ]] || fail "remote disconnected push should exit 5 (got $rc)"
-assert_contains "Push deferred (remote disconnected)" "$TMPDIR/disconnected.out"
-pass "remote disconnected push handling"
+echo "local diverged change" > LOCAL_ONLY.md
+rc=$(run_capture "$TMPDIR/diverged.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -m 'local diverged change'")
+[[ "$rc" -eq 0 ]] || fail "diverged branch auto-resolve should exit 0 (got $rc)"
+assert_contains "auto-resolved" "$TMPDIR/diverged.out"
+assert_contains "review resolved code" "$TMPDIR/diverged.out"
+pass "divergence auto-resolution"
 
 echo "All commit smoke tests passed."

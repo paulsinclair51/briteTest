@@ -17,7 +17,6 @@ by Git.
 - **branch/**: Branch/workflow and sync reports.
 	- `branch-<datetime>.md` from `<repo>/scripts/bin/lsbranch`
 	- `commit[-d]-<datetime>.md` from `<repo>/scripts/bin/commit`
-	- `commit_push[-d]-<datetime>.md` from `<repo>/scripts/bin/commit`
 	- `syncfromremote[-d]-<datetime>.md` from `<repo>/scripts/bin/syncfromremote`
 
 - **repository/**: Repository/fork/clone lifecycle reports.

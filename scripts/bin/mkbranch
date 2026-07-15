@@ -290,6 +290,17 @@ log_verbose() {
   fi
 }
 
+is_worktree_dirty() {
+  [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]
+}
+
+ensure_clean_before_branch_switch() {
+  if is_worktree_dirty; then
+    error_exit 5 "Current branch has uncommitted changes. Commit first before running mkbranch" \
+      "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+  fi
+}
+
 log_operation() {
   local status="$1"
   local branchname="$2"
@@ -720,6 +731,7 @@ if [[ "$MODE" == "local" ]]; then
     error_exit 8 "Branch '$BRANCHNAME' already exists locally" \
       "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
+  ensure_clean_before_branch_switch
   echo "Creating local branch from '$PARENTBRANCHNAME'..."
   if ! git checkout -b "$BRANCHNAME" "$PARENTBRANCHNAME" >/dev/null 2>&1; then
     error_exit 5 "Failed to create branch '$BRANCHNAME'" \
@@ -741,6 +753,7 @@ fi
 
 CREATED_LOCAL=0
 if [[ "$LOCAL_EXISTS" -eq 0 ]]; then
+  ensure_clean_before_branch_switch
   echo "Creating local branch from '$PARENTBRANCHNAME'..."
   if ! git checkout -b "$BRANCHNAME" "$PARENTBRANCHNAME" >/dev/null 2>&1; then
     error_exit 5 "Failed to create branch '$BRANCHNAME'" \

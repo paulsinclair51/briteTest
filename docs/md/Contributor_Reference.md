@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
 | v1.0.0 | 2026-07-13 | Current v1.0.0 development reference; refreshed to match current `scripts/bin/` inventory and clone lifecycle scripts (`mkclone`/`rmclone`). | Paul Sinclair |
+| v1.0.0 | 2026-07-14 | Added current `chcurrent` and `commit` behavior details (dirty-worktree guard, commit auto-push, report naming). | Paul Sinclair |
 
 ---
 
@@ -241,6 +242,60 @@ scripts/bin/mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
 - **Contributor:** `[<type>/]<description>` (type = dev, fix, feature, docs, etc.)
 - **Targeted:** `dev/<description>-<version>` or `fix/<description>-<version>`
 - **Version:** Created by approvers only
+
+---
+
+### chcurrent
+
+**Purpose:** Switch to a local branch (or create local tracking branch from
+origin) with safety checks.
+
+**Location:** `scripts/bin/chcurrent`
+
+**Usage:**
+
+```bash
+scripts/bin/chcurrent <branch>
+scripts/bin/chcurrent --list-remote-only
+```
+
+**Current behavior highlights:**
+
+- Rejects remote ref input form (`origin/<branch>`).
+- Blocks switching to `main` by policy.
+- Creates a local tracking branch when branch exists only on origin.
+- Blocks switching when current worktree is dirty; commit first.
+
+---
+
+### commit
+
+**Purpose:** Commit changes on the current local non-protected branch.
+
+**Location:** `scripts/bin/commit`
+
+**Usage:**
+
+```bash
+scripts/bin/commit [OPTIONS] [-- TOKENS]
+```
+
+**Options:**
+
+- `-d` - Dry run
+- `-m, --message <msg>` - Commit message
+- `-- <tokens...>` - Unix-style commit message
+- `-v` - Verbose output
+
+**Current behavior highlights:**
+
+- `-p` is not supported.
+- Auto-push occurs only when origin is connected and
+  `origin/<current-branch>` exists.
+- If those push preconditions are not met, commit still succeeds locally.
+- Report file naming is unified:
+  - `reports/branch/commit-<datetime>.md`
+  - `reports/branch/commit-d-<datetime>.md` (dry-run)
 
 ---
 
