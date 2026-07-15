@@ -178,6 +178,7 @@ COMMIT_FILE_LIST=""
 PUSH_COMMIT_LIST=""
 PRE_PUSHED_COMMITS=0
 PRE_PUSH_COMMIT_LIST=""
+PRE_PUSH_RANGE=""
 PUSH_RANGE=""
 BEHIND_COMMITS=0
 DIVERGENCE_AUTO_RESOLVED=false
@@ -397,11 +398,11 @@ collect_prepush_file_stats() {
   : > "$PREPUSH_STATS_FILE"
   : > "$PREPUSH_NOTES_FILE"
 
-  if [[ -z "$PUSH_RANGE" || "$PRE_PUSHED_COMMITS" -eq 0 ]]; then
+  if [[ -z "$PRE_PUSH_RANGE" || "$PRE_PUSHED_COMMITS" -eq 0 ]]; then
     return 0
   fi
 
-  git log --numstat --format='' "$PUSH_RANGE" 2>/dev/null | \
+  git log --numstat --format='' "$PRE_PUSH_RANGE" 2>/dev/null | \
     awk '
       NF == 3 {
         a = ($1 ~ /^[0-9]+$/) ? $1 : 0
@@ -419,7 +420,7 @@ collect_prepush_file_stats() {
 
   # Build per-file push-only summary notes from how many pending commits touched
   # each file in the push set.
-  git log --name-only --format='' "$PUSH_RANGE" 2>/dev/null | \
+  git log --name-only --format='' "$PRE_PUSH_RANGE" 2>/dev/null | \
     awk '
       NF > 0 {
         count[$0] += 1
@@ -622,19 +623,16 @@ EOF
 
   # Track commit-file names to avoid duplicate push-only rows.
   local commit_files_tmp
+  local commit_only_rows_tmp
+  local commit_push_rows_tmp
   local push_rows_tmp
   commit_files_tmp="$(mktemp)"
+  commit_only_rows_tmp="$(mktemp)"
+  commit_push_rows_tmp="$(mktemp)"
   push_rows_tmp="$(mktemp)"
 
   if [[ -n "$COMMIT_FILE_LIST" ]]; then
     printf '%s\n' "$COMMIT_FILE_LIST" > "$commit_files_tmp"
-  fi
-
-  printf '\n## Commit\n\n' >> "$REPORT_FILE"
-  if [[ "$COMMITTED_FILES" -gt 0 ]]; then
-    append_table_header
-  else
-    printf 'None.\n' >> "$REPORT_FILE"
   fi
 
   if [[ "$NEEDS_COMMIT" == true ]]; then
@@ -651,7 +649,11 @@ EOF
       local commit_notes
       commit_notes="$(build_commit_note "$file_path" "$added" "$removed")"
       commit_notes="${commit_notes//|/\\|}"
-      write_report_row "$file_path" "$added" "$removed" "$total_lines" "$commit_notes"
+      if [[ "$PUSH" == true ]]; then
+        write_report_row "$file_path" "$added" "$removed" "$total_lines" "$commit_notes" "$commit_push_rows_tmp"
+      else
+        write_report_row "$file_path" "$added" "$removed" "$total_lines" "$commit_notes" "$commit_only_rows_tmp"
+      fi
     done
 
     if [[ "$PUSH" == true ]]; then
@@ -677,12 +679,22 @@ EOF
     done < "$PREPUSH_STATS_FILE"
   fi
 
-  printf '\n## Push\n\n' >> "$REPORT_FILE"
+  if [[ "$committed_only" -gt 0 ]]; then
+    printf '\n## Commit\n\n' >> "$REPORT_FILE"
+    append_table_header
+    cat "$commit_only_rows_tmp" >> "$REPORT_FILE"
+  fi
+
+  if [[ "$committed_and_pushed" -gt 0 ]]; then
+    printf '\n## Commit/Push\n\n' >> "$REPORT_FILE"
+    append_table_header
+    cat "$commit_push_rows_tmp" >> "$REPORT_FILE"
+  fi
+
   if [[ "$pushed_only" -gt 0 ]]; then
+    printf '\n## Push\n\n' >> "$REPORT_FILE"
     append_table_header
     cat "$push_rows_tmp" >> "$REPORT_FILE"
-  else
-    printf 'None.\n' >> "$REPORT_FILE"
   fi
 
   total_rows=$((committed_only + pushed_only + committed_and_pushed))
@@ -701,7 +713,7 @@ EOF
 
   cleanup_old_dry_run_reports
 
-  rm -f "$commit_files_tmp" "$push_rows_tmp"
+  rm -f "$commit_files_tmp" "$commit_only_rows_tmp" "$commit_push_rows_tmp" "$push_rows_tmp"
 }
 
 print_push_commit_details() {
@@ -818,6 +830,15 @@ else
   COMMITTED_FILES=0
 fi
 
+# Capture pre-run unpushed commits before any commit in this run.
+if [[ "$PUSH" == true ]]; then
+  collect_unpushed_commits "$CURRENT_BRANCH"
+  PRE_PUSHED_COMMITS="$PUSHED_COMMITS"
+  PRE_PUSH_COMMIT_LIST="$PUSH_COMMIT_LIST"
+  PRE_PUSH_RANGE="$PUSH_RANGE"
+  collect_prepush_file_stats
+fi
+
 # Validate commit message only when a commit is actually needed.
 if [[ "$NEEDS_COMMIT" == true ]]; then
   if [[ -z "$COMMIT_MESSAGE" ]]; then
@@ -889,12 +910,6 @@ fi
 
 # Automatic push when eligible
 if [[ "$PUSH" == true ]]; then
-  # Capture already-unpushed commits before any new commit in this run.
-  collect_unpushed_commits "$CURRENT_BRANCH"
-  PRE_PUSHED_COMMITS="$PUSHED_COMMITS"
-  PRE_PUSH_COMMIT_LIST="$PUSH_COMMIT_LIST"
-  collect_prepush_file_stats
-
   collect_unpushed_commits "$CURRENT_BRANCH"
 
   # In dry-run mode, if a commit would be created, include that hypothetical
