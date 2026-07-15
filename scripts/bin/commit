@@ -90,7 +90,7 @@ Outputs:
 
 Exit codes:
   0   Success.
-  1   Invalid option or argument. Full usage is shown in the error output.
+  1   Invalid option or argument. Full usage is shown on stdout.
   2   Could not detect current branch. Run this from a cloned repository.
   3   Not on a local branch. Use `chcurrent` to switch to a local
       non-protected branch, then retry.
@@ -143,7 +143,7 @@ usage_error() {
 
   echo "Error: $message" >&2
   echo >&2
-  usage >&2
+  usage
   exit 1
 }
 
