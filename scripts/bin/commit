@@ -1012,9 +1012,9 @@ fi
 if [[ "$COMMITTED_FILES" -gt 0 || "$PUSHED_COMMITS" -gt 0 ]]; then
   generate_commit_report
   if [[ "$DRY_RUN" == true ]]; then
-    emit_final_status "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}. Dry-run" true
+    emit_final_status "Commit/Push: ${COMMITTED_FILES}. Dry-run" true
   elif [[ "$COMMITTED_FILES" -gt 0 && "$PUSHED_COMMITS" -gt 0 ]]; then
-    emit_final_status "Commit/Push: ${COMMITTED_FILES}, Push: ${PUSHED_COMMITS}" true
+    emit_final_status "Commit/Push: ${COMMITTED_FILES}" true
   elif [[ "$COMMITTED_FILES" -eq 0 && "$PUSHED_COMMITS" -gt 0 ]]; then
     emit_final_status "Push: ${PUSHED_COMMITS}" true
   else
