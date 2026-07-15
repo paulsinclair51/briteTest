@@ -33,7 +33,8 @@ Report includes:
   Status:  'clean', 'dirty', 'read-only', or 'not checked out' for local
            worktree state. For local branches, 'clean'/'dirty' reflect the
            current checkout's shared working tree.
-           If branch-matching chcurrent auto-stashes exist,
+           If branch-matching legacy auto-stashes exist
+           (label: chcurrent-auto:BRANCH:TIMESTAMP),
            status includes '; auto-stash:N' in reports and
            '[auto-stash: N]' in stdout rows.
            'synced' or 'diverged' for tracked-branch state,
@@ -1464,7 +1465,8 @@ $FOOTER_INVALID_LINE
 **Status**: \`clean\`, \`dirty\`, or \`not checked out\` for local worktree
 state, \`synced\` or \`diverged\` for tracked-branch state, or \`unknown\`.
 For local branches, status includes \`; auto-stash:N\` when branch-matching
-chcurrent auto-stashes exist.
+legacy auto-stashes exist (label:
+\`chcurrent-auto:BRANCH:TIMESTAMP\`).
 
 **Staged/Unstaged**: Counts of staged and unstaged files.
 

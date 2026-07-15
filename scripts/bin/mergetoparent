@@ -545,8 +545,8 @@ check_status_checks() {
 }
 
 ensure_clean_worktree() {
-  if ! git diff --quiet || ! git diff --cached --quiet; then
-    bt_error_exit 2 "Working tree must be clean before running mergetoparent"
+  if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
+    bt_error_exit 2 "Current branch has uncommitted changes. Commit first before running mergetoparent"
   fi
 }
 

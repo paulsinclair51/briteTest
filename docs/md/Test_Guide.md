@@ -39,8 +39,8 @@ SOFTWARE OR THE USE  OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Preface
 
-This document is intended for users and contributors who need guidance
-for using the Test API.
+This document is intended for users who need guidance for using
+the Test API.
 
 For a list of other documents and the repository layout, see
 the Documentation Guide.

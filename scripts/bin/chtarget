@@ -255,8 +255,8 @@ ORIGINAL_BRANCH="$(bt_get_current_branch_or_empty)"
 
 cd "$REPO_ROOT"
 
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  bt_error_exit 4 "Working tree must be clean before running chtarget"
+if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
+  bt_error_exit 4 "Current branch has uncommitted changes. Commit first before running chtarget"
 fi
 
 if ! git fetch origin >/dev/null 2>&1; then

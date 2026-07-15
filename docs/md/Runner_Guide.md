@@ -40,8 +40,8 @@ SOFTWARE.
 
 ## Preface
 
-This document is intended for user and contributors who need
-guidance on using the Runner Framework and API.
+This document is intended for users who need guidance on using
+the Runner Framework and API.
 
 For a list of other documents and the repository layout, see
 the Documentation Guide.
@@ -305,7 +305,6 @@ Use `--help` or `-h` to display usage information.
 See:
 
 - **Runner Reference** for detailed API semantics.
-- **Contributor Guide** for development and versioning rules.
 </details>
 
 <details>
@@ -477,11 +476,11 @@ briteTest focuses on executing tests and reporting results. It does not:
 - Provide mocking or stubbing frameworks -- users implement their own mocking and stubbing.
 - Include built-in setup/teardown systems -- users implement their own patterns as needed.
 - Handle memory management or leak detection -- external tools (e.g., Valgrind) must be used.
-- Manage source control or repository structure -- briteTest does not define SCM workflows.
+- Manage source control or repository structure -- briteTest does not define SCM policy.
 - Integrate with build systems or CI pipelines -- users configure these as needed.
 - Manage test artifacts such as expected-output ("control") files.
 - Define or enforce directory layouts for tests or project structure.
-- Promote output files to control files -- users handle this workflow manually.
+- Promote output files to control files -- users handle this manually.
 - Track versioning or history of test artifacts.
 - Produce rich reporting formats such as JUnit XML or HTML output.
 - Provide functionality outside the features explicitly described in this document.

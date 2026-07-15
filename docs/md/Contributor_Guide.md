@@ -26,6 +26,7 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
 | v1.0.0 | 2026-07-13 | Current v1.0.0 development guide; refreshed script coverage to match current `scripts/bin/` set (including `rmclone` and `fixrepo` clone-path checks). | Paul Sinclair |
+| v1.0.0 | 2026-07-14 | Updated script workflow notes to reflect current branch-switch dirty guards and `commit` auto-push behavior. | Paul Sinclair |
 
 ---
 
@@ -173,20 +174,35 @@ scripts/bin/mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
 - **Targeted:** `dev/<desc>-<version>` or `fix/<desc>-<version>`
 - **Version:** `v<M>.<m>.0` (created by approvers only)
 
+### Switching Branches Safely
+
+Use `scripts/bin/chcurrent <branch>` to switch branches.
+
+- Branch switching is blocked if the current branch is dirty.
+- Commit changes first, then run `chcurrent`.
+- This policy also applies to script flows that internally switch branches
+  (for example, during merge/retarget/create operations).
+
 ### Making Changes
 
 ```bash
-git checkout mywork/feature
+scripts/bin/chcurrent mywork/feature
 # Edit files...
-git add .
-git commit -m "feat: add new capability"
-git push origin mywork/feature
+scripts/bin/commit -m "feat: add new capability"
 ```
 
 **Commit Best Practices:**
 - Keep commits focused and logical
 - Use conventional commit format: `<type>: <description>`
 - Valid types: feat, fix, docs, style, refactor, test, chore
+
+`scripts/bin/commit` behavior summary:
+- Automatically pushes when `origin` is connected and
+  `origin/<current-branch>` exists.
+- Does not push when remote is disconnected or no corresponding remote branch
+  exists.
+- Uses report naming: `reports/branch/commit-<datetime>.md`
+  (or `commit-d-<datetime>.md` in dry-run).
 
 ### Rebasing Your Branch
 

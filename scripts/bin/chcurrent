@@ -33,10 +33,8 @@ Rules:
   - Switching to main is blocked by policy.
   - If BRANCH is missing locally but exists on origin, chcurrent creates
     a local tracking branch automatically.
-  - If current working tree has uncommitted changes, chcurrent creates a
-    branch-tagged auto-stash before switching.
-  - After switching, chcurrent attempts to re-apply a matching auto-stash
-    for the new current branch when it can be applied cleanly.
+  - Branch switching is blocked when the current working tree is dirty.
+    Commit your changes first.
 
 Examples:
   chcurrent dev/my-feature-v1.0.0
@@ -52,7 +50,7 @@ Exit codes:
   1   Argument or validation error.
   3   Local branch does not exist.
   5   Branch switch operation failed.
-  6   Auto-stash creation failed.
+  6   Current branch is dirty; commit changes first.
 EOF
 }
 
@@ -168,73 +166,6 @@ is_worktree_dirty() {
   [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]
 }
 
-make_auto_stash_label() {
-  local branch="$1"
-  local ts
-  ts="$(date '+%Y%m%d-%H%M%S')"
-  printf 'chcurrent-auto:%s:%s\n' "$branch" "$ts"
-}
-
-create_auto_stash() {
-  local branch="$1"
-  local label
-
-  label="$(make_auto_stash_label "$branch")"
-  if ! git stash push -u -m "$label" >/dev/null 2>&1; then
-    return 1
-  fi
-
-  bt_info "Stashed uncommitted changes from '$branch'"
-  return 0
-}
-
-find_branch_auto_stash_ref() {
-  local branch="$1"
-  local prefix
-
-  prefix="chcurrent-auto:${branch}:"
-  git stash list --format='%gd%x09%gs' | \
-    awk -F '\t' -v p="$prefix" 'index($2, p) { print $1; exit }'
-}
-
-can_apply_stash_cleanly() {
-  local stash_ref="$1"
-
-  git stash show -p "$stash_ref" | git apply --3way --check >/dev/null 2>&1
-}
-
-apply_branch_auto_stash_if_present() {
-  local branch="$1"
-  local stash_ref
-
-  stash_ref="$(find_branch_auto_stash_ref "$branch")"
-  if [[ -z "$stash_ref" ]]; then
-    return 0
-  fi
-
-  if is_worktree_dirty; then
-    bt_warn "Auto-unstash skipped for '$branch' because working tree is not clean"
-    bt_warn "Manual recovery: git stash list | grep 'chcurrent-auto:${branch}:'"
-    return 0
-  fi
-
-  if ! can_apply_stash_cleanly "$stash_ref"; then
-    bt_warn "Auto-unstash skipped for '$branch' due to potential conflicts"
-    bt_warn "Manual recovery: git stash apply --index $stash_ref"
-    return 0
-  fi
-
-  if ! git stash apply --index "$stash_ref" >/dev/null 2>&1; then
-    bt_warn "Auto-unstash failed for '$branch'; stash kept as $stash_ref"
-    bt_warn "Manual recovery: git stash apply --index $stash_ref"
-    return 0
-  fi
-
-  git stash drop "$stash_ref" >/dev/null 2>&1 || true
-  bt_info "Unstashed saved changes for '$branch'"
-  return 0
-}
-
 TARGET_BRANCH="$BRANCH_ARG"
 if [[ "$TARGET_BRANCH" == origin/* ]]; then
   bt_error_exit 1 "Remote branch input '$TARGET_BRANCH' is not allowed. Create a local tracking branch first."
@@ -257,6 +188,13 @@ fi
 has_cached_remote=false
 if git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
   has_cached_remote=true
+fi
+
+current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+if is_worktree_dirty &&
+  [[ -n "$current_branch" && "$current_branch" != "HEAD" ]] &&
+  [[ "$TARGET_BRANCH" != "$current_branch" ]]; then
+  bt_error_exit 6 "Current branch '$current_branch' has uncommitted changes. Commit first before switching."
 fi
 
 switch_local() {
@@ -303,41 +241,18 @@ refresh_remote_branch_ref() {
 }
 
 if [[ "$has_local" == false ]]; then
-  previous_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
-  if is_worktree_dirty; then
-    if [[ -z "$previous_branch" || "$previous_branch" == "HEAD" ]]; then
-      bt_error_exit 6 "Unable to auto-stash changes from detached HEAD"
-    fi
-    if ! create_auto_stash "$previous_branch"; then
-      bt_error_exit 6 "Failed to auto-stash uncommitted changes before switch"
-    fi
-  fi
-
   if [[ "$has_cached_remote" == true ]]; then
     create_and_switch_tracking_branch "$TARGET_BRANCH"
-    apply_branch_auto_stash_if_present "$TARGET_BRANCH"
     exit 0
   fi
 
   if refresh_remote_branch_ref "$TARGET_BRANCH"; then
     create_and_switch_tracking_branch "$TARGET_BRANCH"
-    apply_branch_auto_stash_if_present "$TARGET_BRANCH"
     exit 0
   fi
 
   bt_error_exit 3 "Local branch '$TARGET_BRANCH' does not exist and was not found on origin"
 fi
 
-previous_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
-if is_worktree_dirty; then
-  if [[ -z "$previous_branch" || "$previous_branch" == "HEAD" ]]; then
-    bt_error_exit 6 "Unable to auto-stash changes from detached HEAD"
-  fi
-  if ! create_auto_stash "$previous_branch"; then
-    bt_error_exit 6 "Failed to auto-stash uncommitted changes before switch"
-  fi
-fi
-
 switch_local "$TARGET_BRANCH"
-apply_branch_auto_stash_if_present "$TARGET_BRANCH"
 exit 0

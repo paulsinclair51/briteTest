@@ -302,27 +302,14 @@ improvements.
 
 ### 2.2. For Contributors
 
-To contribute code or documentation to briteTest:
+Contribution workflow details are intentionally maintained outside this guide.
 
-1. **Request contributor access** via [GitHub Discussions](../../discussions)
-   or contact the maintainers
-2. **Review** the [Contributor Guide](./Contributor_Guide.md) for detailed
-   requirements on:
-   - Branching model and workflow
-   - Coding standards
-   - Documentation guidelines
-   - Testing requirements
-   - Pull request process
+For contributing process, branching workflow, and script usage:
 
-3. **Add to contributors list** — Once approved, you'll be added to
-   `config/contributors.md` with one of these roles:
-   - **C** (Contributor): Can create branches and submit changes
-   - **R** (Reviewer): Can also review pull requests
-   - **A** (Approver): Can merge changes and manage releases
+1. Review [Contributor_Guide.md](./Contributor_Guide.md)
+2. Use [Contributor_Reference.md](./Contributor_Reference.md) for command-level details
 
-**Pull requests are internal to contributors** — The development workflow
-is visible only to contributors. Use GitHub Discussions for public feedback
-on features or issues.
+Use this Guide for Runner Framework/API and Test API concepts.
 
 </details>
 </details>

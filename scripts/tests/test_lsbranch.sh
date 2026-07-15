@@ -168,8 +168,8 @@ fi
 cp "$backup_file" "$scratch_file"
 pass "dirty worktree local branch inspection"
 
-# 8) Branch-matching chcurrent auto-stash should be indicated in stdout and
-# report status
+# 8) Branch-matching legacy auto-stash label should be indicated in stdout
+# and report status
 current_branch=$(git rev-parse --abbrev-ref HEAD)
 stash_scratch_file=$(git ls-files | while IFS= read -r path; do
   [[ -n "$path" ]] || continue
