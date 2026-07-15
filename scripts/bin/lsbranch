@@ -153,6 +153,8 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/github_helpers.sh
 source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
@@ -665,6 +667,14 @@ ensure_remote_refs_fetched() {
       "Failed to fetch 'origin'; remote status may be stale in this report." \
       "$fetch_error"
   fi
+  
+  # Propagate repository history from remote if available
+  bt_propagate_repository_history
+  case $? in
+    0) ;;
+    1) bt_info "Updated repository history from remote" ;;
+    *) ;;
+  esac
 }
 
 format_zero_as_dash() {

@@ -70,6 +70,8 @@ fi
 
 # shellcheck source=helpers/common.sh
 source "$COMMON_HELPER"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 DRY_RUN=false
 OVERRIDE=false
@@ -79,6 +81,30 @@ ISSUES=()
 
 add_issue() {
   ISSUES+=("$1")
+}
+
+log_removal_to_repository_history() {
+  local target_path="$1"
+  local timestamp
+  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  
+  # Only attempt if repository_history.md exists in current clone
+  if [[ ! -f "$REPO_ROOT/logs/repository_history.md" ]]; then
+    return 0
+  fi
+  
+  # Get current user
+  local user
+  user=$(git config user.name 2>/dev/null || echo "unknown")
+  
+  # Append to repository history (Clone and Fork Operations section)
+  # Format: Date Time | Operation | Repository | Actor | Details
+  local entry
+  entry="| $timestamp | rmclone | ${target_path##*/} | $user | Removed |"
+  
+  printf '%s\n' "$entry" >> "$REPO_ROOT/logs/repository_history.md"
+  
+  bt_info "Logged removal to repository history"
 }
 
 resolve_abs_dir() {
@@ -212,6 +238,14 @@ fi
 
 bt_info "Target clone path: $TARGET_ABS"
 
+# Propagate repository history from remote if available
+bt_propagate_repository_history
+case $? in
+  0) bt_info "Repository history already up to date" ;;
+  1) bt_info "Updated repository history from remote" ;;
+  *) ;;  # offline or unavailable, continue silently
+esac
+
 check_path_safety
 check_git_safety
 
@@ -253,4 +287,9 @@ if [[ -e "$TARGET_ABS" ]]; then
 fi
 
 bt_success "Clone removed successfully: $TARGET_ABS"
+
+# Log removal to repository history and push to origin/main
+log_removal_to_repository_history "$TARGET_ABS"
+bt_commit_and_push_repository_history "rmclone: Removed local clone"
+
 exit 0

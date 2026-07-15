@@ -325,3 +325,130 @@ validate_c_format() {
 
   return 0
 }
+
+#####################################################################
+# BRANCH NAME VALIDATION
+#####################################################################
+
+# validate_version_branch: Check if branch is a version branch (v<M>.<m>.<p>)
+#
+# Args: $1 = branch name
+# Returns: 0 if valid version branch, 1 otherwise
+#
+# Example: validate_version_branch "v1.0.0"     # valid
+#          validate_version_branch "v1.2"       # invalid
+validate_version_branch() {
+  local branch="$1"
+
+  if [[ "$branch" =~ ^v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$ ]]; then
+    return 0
+  fi
+  return 1
+}
+
+# validate_targeted_branch: Check if branch is a targeted branch (dev/* or fix/*)
+#
+# Format: dev/<description>-<version> or fix/<description>-<version>
+# Only 'dev/' and 'fix/' prefixes are allowed (no 'feature/', 'hotfix/', etc.)
+#
+# Args: $1 = branch name
+# Returns: 0 if valid targeted branch, 1 otherwise
+#
+# Example: validate_targeted_branch "dev/parser-v1.0.0"   # valid
+#          validate_targeted_branch "feature/parser-v1.0.0" # invalid
+validate_targeted_branch() {
+  local branch="$1"
+
+  if [[ "$branch" =~ ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]; then
+    return 0
+  fi
+  return 1
+}
+
+# validate_contributor_branch: Check if branch is a contributor branch (simple name)
+#
+# Format: simple name without '/' separator
+# Cannot be 'main', version branch, or targeted branch
+#
+# Args: $1 = branch name
+# Returns: 0 if valid contributor branch, 1 otherwise
+#
+# Example: validate_contributor_branch "my-feature"     # valid
+#          validate_contributor_branch "bob/feature"    # invalid
+validate_contributor_branch() {
+  local branch="$1"
+
+  # Reject 'main'
+  if [[ "$branch" == "main" ]]; then
+    return 1
+  fi
+
+  # Reject version branches
+  if validate_version_branch "$branch"; then
+    return 1
+  fi
+
+  # Reject targeted branches
+  if validate_targeted_branch "$branch"; then
+    return 1
+  fi
+
+  # Reject any branch with '/' separator
+  if [[ "$branch" =~ / ]]; then
+    return 1
+  fi
+
+  # Accept simple names: [a-z0-9][a-z0-9-]*
+  if [[ "$branch" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
+# validate_branch_name: Validate that branch name conforms to naming conventions
+#
+# Accepts: version branches, targeted branches, contributor branches, or 'main'
+#
+# Args: $1 = branch name, $2 = optional error message context
+# Returns: 0 if valid, 1 if invalid
+#
+# Performance: O(1) - regex checks only
+#
+# Example: validate_branch_name "dev/feature-v1.0.0" "checking merge source"
+#          validate_branch_name "my-work" "target branch"
+validate_branch_name() {
+  local branch="$1"
+  local context="${2:-}"
+
+  # Allow 'main'
+  if [[ "$branch" == "main" ]]; then
+    return 0
+  fi
+
+  # Check version branches
+  if validate_version_branch "$branch"; then
+    return 0
+  fi
+
+  # Check targeted branches (dev/* or fix/*)
+  if validate_targeted_branch "$branch"; then
+    return 0
+  fi
+
+  # Check contributor branches
+  if validate_contributor_branch "$branch"; then
+    return 0
+  fi
+
+  # If we get here, branch name is invalid
+  if [[ -n "$context" ]]; then
+    log_error "Invalid branch name '$branch' ($context). Must be:" >&2
+    log_error "  - 'main'" >&2
+    log_error "  - Version: v<M>.<m>.<p> (e.g., v1.0.0)" >&2
+    log_error "  - Targeted: dev/<desc>-v<M>.<m>.<p> or fix/<desc>-v<M>.<m>.<p>" >&2
+    log_error "  - Contributor: simple name (e.g., my-feature, bugfix-123)" >&2
+  fi
+
+  return 1
+}

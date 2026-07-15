@@ -69,6 +69,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 usage_error() {
   local message="$1"
@@ -230,6 +232,14 @@ refresh_remote_branch_ref() {
     if ! git fetch origin "$branch:refs/remotes/origin/$branch" >/dev/null 2>&1; then
       bt_error_exit 5 "Found origin/$branch but failed to fetch its reference"
     fi
+    
+    # Propagate repository history from remote if available
+    bt_propagate_repository_history
+    case $? in
+      0) ;;
+      1) bt_info "Updated repository history from remote" ;;
+      *) ;;
+    esac
     return 0
   fi
 

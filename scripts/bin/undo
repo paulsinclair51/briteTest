@@ -90,6 +90,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
+# shellcheck source=helpers/validation-helpers.sh
+source "$SCRIPT_DIR/../helpers/validation-helpers.sh"
 
 # Default options
 UNDO_TYPE=""
@@ -107,7 +111,10 @@ log_undo_to_history() {
   local operation="$1"
   local details="$2"
 
-  local history_file="$REPO_ROOT/logs/remote_branch_history.md"
+  local current_branch
+  current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+  [[ "$current_branch" == "HEAD" ]] && current_branch="main"
+  local history_file="$REPO_ROOT/$(bt_branch_to_history_file "$current_branch")"
   local timestamp
   timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
@@ -336,6 +343,21 @@ done
 if [[ -z "$UNDO_TYPE" ]]; then
   bt_error_exit 1 "UNDO_TYPE argument required (merge, release, or commit)"
 fi
+
+# Validate current branch conforms to naming conventions
+current_branch=$(bt_get_current_branch || echo "main")
+[[ "$current_branch" == "HEAD" ]] && current_branch="main"
+if ! validate_branch_name "$current_branch" "current branch"; then
+  bt_error_exit 1 "Current branch does not conform to naming conventions"
+fi
+
+# Propagate repository history from remote if available
+bt_propagate_repository_history
+case $? in
+  0) ;;
+  1) bt_info "Updated repository history from remote" ;;
+  *) ;;
+esac
 
 # Dispatch to appropriate undo function
 case "$UNDO_TYPE" in

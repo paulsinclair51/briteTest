@@ -41,6 +41,13 @@ EOF
 
 set -euo pipefail
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
+if [[ -f "$HISTORY_HELPER" ]]; then
+  if source "$HISTORY_HELPER" 2>/dev/null; then
+    bt_propagate_repository_history >/dev/null 2>&1
+  fi
+fi
 
 for arg in "$@"; do
 	case "$arg" in

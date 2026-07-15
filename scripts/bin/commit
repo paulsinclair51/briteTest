@@ -137,6 +137,8 @@ ORIGINAL_ARGS=("$@")
 source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 usage_error() {
   local message="$1"
@@ -384,6 +386,14 @@ auto_resolve_divergence_if_safe() {
   if ! git fetch origin "$branch" >/dev/null 2>&1; then
     bt_error_exit 16 "Unable to connect to remote. Verify remote access/network and retry."
   fi
+
+  # Propagate repository history from remote if available
+  bt_propagate_repository_history
+  case $? in
+    0) ;;
+    1) bt_info "Updated repository history from remote" ;;
+    *) ;;
+  esac
 
   if git rebase "origin/$branch" >/dev/null 2>&1; then
     DIVERGENCE_AUTO_RESOLVED=true

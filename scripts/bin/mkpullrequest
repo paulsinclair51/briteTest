@@ -102,6 +102,11 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/github_helpers.sh
 source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
+
+# Propagate repository history from remote if available
+bt_propagate_repository_history >/dev/null 2>&1
 
 # Default options
 DRAFT=false

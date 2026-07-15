@@ -91,6 +91,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 # Default options
 CUSTOM_MESSAGE=""
@@ -219,6 +221,14 @@ bt_success "Working directory is clean"
 # Fetch latest from remote
 bt_info "Fetching latest from remote..."
 git fetch origin 2>/dev/null || bt_warn "Failed to fetch from origin"
+
+# Propagate repository history from remote if available
+bt_propagate_repository_history
+case $? in
+  0) ;;
+  1) bt_info "Updated repository history from remote" ;;
+  *) ;;
+esac
 
 # Verify source branch exists
 if ! branch_exists "$SOURCE_BRANCH"; then

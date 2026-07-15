@@ -102,9 +102,22 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # Shared helpers
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
+# shellcheck source=helpers/validation-helpers.sh
+source "$SCRIPT_DIR/../helpers/validation-helpers.sh"
 
 # Default options
-HISTORY_FILE="$REPO_ROOT/logs/remote_branch_history.md"
+# Default to the current branch's history file.
+_ck_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+[[ "$_ck_branch" == "HEAD" || -z "$_ck_branch" ]] && _ck_branch="main"
+
+# Validate branch name conforms to naming conventions
+if ! validate_branch_name "$_ck_branch" "current branch"; then
+  bt_error_exit 1 "Current branch does not conform to naming conventions"
+fi
+
+HISTORY_FILE="$REPO_ROOT/$(bt_branch_to_history_file "$_ck_branch")"
 OUTPUT_FILE=""
 VERBOSE=false
 FILTER_TYPE=""
@@ -179,6 +192,14 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Propagate repository history from remote if available
+bt_propagate_repository_history
+case $? in
+  0) ;;
+  1) bt_info "Updated repository history from remote" ;;
+  *) ;;
+esac
 
 # Check history file exists
 if [[ ! -f "$HISTORY_FILE" ]]; then
