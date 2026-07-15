@@ -159,6 +159,8 @@ ORIGINAL_ARGS=("$@")
 source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 # Default options
 SYNC_ALL=false
@@ -535,6 +537,14 @@ if [[ "$DRY_RUN" == false ]]; then
     bt_error_exit 2 "Remote disconnected"
   fi
   bt_success "Fetched successfully"
+  
+  # Propagate repository history from remote if available
+  bt_propagate_repository_history
+  case $? in
+    0) ;;
+    1) bt_info "Updated repository history from remote" ;;
+    *) ;;
+  esac
 else
   bt_info "Dry run: no fetch, pull, or branch updates will be performed"
 fi

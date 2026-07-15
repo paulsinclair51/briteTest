@@ -161,6 +161,8 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/github_helpers.sh
 source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 # Default options
 VERBOSE=false
@@ -252,6 +254,14 @@ sync_to_pr() {
   fi
   
   bt_success "Changes pushed to PR"
+  
+  # Propagate repository history from remote if available
+  bt_propagate_repository_history
+  case $? in
+    0) ;;
+    1) bt_info "Updated repository history from remote" ;;
+    *) ;;
+  esac
   
   if command -v gh &> /dev/null; then
     bt_info "PR updated and ready for review"

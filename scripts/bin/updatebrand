@@ -81,6 +81,12 @@ EOF
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
+if [[ -f "$HISTORY_HELPER" ]]; then
+  if source "$HISTORY_HELPER" 2>/dev/null; then
+    bt_propagate_repository_history >/dev/null 2>&1
+  fi
+fi
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CONFIG_FILE="${REPO_ROOT}/logs/brand_history.md"
 BRANDING_DIR="${REPO_ROOT}/docs/branding"

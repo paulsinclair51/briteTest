@@ -61,32 +61,6 @@ dkms.conf
 __pycache__/
 *.pyc
 
-# Logs/
-# Ignore dry-run and local logs.
-logs/*-d-*.md
-logs/local_*.md
-
-# Reports/
-
-reports/*
-!reports/README.md
-!reports/branch/
-!reports/guidelines/
-!reports/repository/
-
-reports/branch/*
-!reports/branch/README.md
-!reports/branch/mergeto-v*.*.*-*.md
-!reports/branch/mergeto-main-*.md
-# Ignore dry-run reports.
-reports/branch/*-d-*.md
-
-reports/guidelines/*
-!reports/guidelines/README.md
-!reports/guidelines/updatebrand-*.md
-# Ignore dry-run reports.
-reports/guidelines/*-d-*.md
-
-# reports/repository/
-# Ignore dry-run reports.
-reports/repository/*-d-*.md
+# tests/
+tests/tmp/*
+!tests/tmp/README.md

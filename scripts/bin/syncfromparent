@@ -98,6 +98,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Shared helpers
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 
@@ -173,6 +175,14 @@ bt_info "Fetching latest from remote..."
 if ! git fetch origin "$PARENT_BRANCH" 2>&1 >/dev/null; then
   bt_error_exit 2 "Failed to fetch parent branch '$PARENT_BRANCH' from remote"
 fi
+
+# Propagate repository history from remote if available
+bt_propagate_repository_history
+case $? in
+  0) ;;
+  1) bt_info "Updated repository history from remote" ;;
+  *) ;;
+esac
 
 # Count commits from parent branch to current branch
 commits_to_merge=""

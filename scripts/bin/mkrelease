@@ -80,6 +80,8 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/github_helpers.sh
 source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 # Default options
 VERBOSE=false
@@ -243,8 +245,10 @@ create_github_release() {
 log_release_to_history() {
   local version="$1"
   local user="$2"
-  
-  local history_file="logs/remote_branch_history.md"
+  local branch="$3"
+
+  local history_file
+  history_file="$(bt_branch_to_history_file "$branch")"
   local timestamp
   timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
@@ -272,6 +276,32 @@ EOF
 EOF
 
   bt_info "Logged release to $history_file"
+}
+
+# Log release to repository-level history (for cross-clone visibility).
+log_release_to_repository_history() {
+  local version="$1"
+  local user="$2"
+  local branch="$3"
+  
+  local repo_history="logs/repository_history.md"
+  local timestamp
+  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  
+  # Only attempt to update if we're on a tracked branch (not in new clone)
+  if [[ ! -f "$repo_history" ]]; then
+    return 0
+  fi
+  
+  # Find the Release Operations section and append entry
+  # Format: Date Time | Version | Branch | Actor | Status
+  local entry
+  entry="| $timestamp | $version | $branch | $user | Released |"
+  
+  # Append to repository history
+  printf '%s\n' "$entry" >> "$repo_history"
+  
+  bt_info "Logged release to $repo_history"
 }
 
 # Parse options and arguments
@@ -339,7 +369,13 @@ bt_success "Working directory is clean"
 bt_info "Fetching latest from remote..."
 git fetch origin 2>/dev/null || bt_warn "Failed to fetch from origin"
 
-# Check status checks pass
+# Propagate repository history from remote if available
+bt_propagate_repository_history
+case $? in
+  0) bt_info "Repository history already up to date" ;;
+  1) bt_info "Updated repository history from remote" ;;
+  *) ;;  # offline or unavailable, continue silently
+esac
 check_status_checks "$CURRENT_BRANCH"
 
 # Create annotated tag
@@ -351,8 +387,10 @@ push_tag "$VERSION"
 # Create GitHub release
 create_github_release "$VERSION"
 
-# Log release to history
-log_release_to_history "$VERSION" "$CURRENT_USER"
+# Log release to history (both branch-specific and repository-level)
+log_release_to_history "$VERSION" "$CURRENT_USER" "$CURRENT_BRANCH"
+log_release_to_repository_history "$VERSION" "$CURRENT_USER" "$CURRENT_BRANCH"
+bt_commit_and_push_repository_history "mkrelease: Released $VERSION"
 
 # Show verbose output if requested
 if [[ "$VERBOSE" == true ]]; then

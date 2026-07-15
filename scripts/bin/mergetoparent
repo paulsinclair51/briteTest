@@ -30,19 +30,19 @@ Before merging:
   - Ensures that the current branch is up-to-date with its parent branch.
   - Checks that all status checks and CI/CD pass.
   - Uses the specified commit message, PR title, or default message as the commit message.
-  - Logs merge to '<repo>/logs/remote_branch_history.md' if parent is a
-    protected branch, otherwise, to '<repo>/logs/local_branch_history.md'.
-    The log update is kept in sync across the current branch's local and remote.
-    It is then pushed to the parent branch's remote and local branches when
-    those branches exist.
+  - Logs merge to '<repo>/logs/<parent>_history.md' on the parent branch
+    (e.g. 'logs/v1.0.0_history.md') and '<repo>/logs/<current>_history.md'
+    on the current branch. Branch name '/' separators are replaced with '.'
+    in the filename. The log update is kept in sync across the current
+    branch's local and remote. It is then pushed to the parent branch's
+    remote and local branches when those branches exist.
 
 Features:
   - Combines changes into a single commit on the parent branch.
   - Approval verification for protected branches.
   - Status check validation.
-  - Merge logging to '<repo>/logs/remote_branch_history.md' or
-    '<repo>/logs/local_branch_history.md' depending on whether the parent
-    branch is protected.
+  - Merge logging to '<repo>/logs/<branch>_history.md' (branch name with
+    '/' replaced by '.') for both the parent and current branches.
   - No branch cleanup (branches remain after merge).
 
 Options:
@@ -134,6 +134,10 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/github_helpers.sh
 source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+# shellcheck source=helpers/validation-helpers.sh
+source "$SCRIPT_DIR/../helpers/validation-helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 # Default options
 CUSTOM_MESSAGE=""
@@ -423,13 +427,41 @@ build_default_commit_message() {
   bt_error_exit 7 "No default commit message rule applies for '$current_branch' -> '$parent_branch'"
 }
 
-resolve_history_file_for_parent() {
-  local parent_branch="$1"
+branch_to_history_file() {
+  local branch="$1"
+  local slug="${branch//\//.}"
+  echo "logs/${slug}_history.md"
+}
 
-  if bt_is_protected_branch "$parent_branch"; then
-    echo "logs/remote_branch_history.md"
-  else
-    echo "logs/local_branch_history.md"
+# Remove branch-specific files that should not carry over to the parent branch
+# after a squash merge: branch reports from reports/branch/ (except README.md
+# and mergeto-*.md) and history log files belonging to other branches.
+cleanup_merged_branch_files() {
+  local current_branch="$1"
+  local parent_branch="$2"
+  local parent_slug="${parent_branch//\//.}"
+
+  local report_files
+  mapfile -t report_files < <(
+    git ls-files -- 'reports/branch/' \
+      | grep -Ev '(^|/)README\.md$|(^|/)mergeto-[^/]*\.md$'
+  )
+  if [[ ${#report_files[@]} -gt 0 ]]; then
+    git rm -f --ignore-unmatch -- "${report_files[@]}" >/dev/null 2>&1 || true
+  fi
+
+  local history_files
+  mapfile -t history_files < <(
+    git ls-files -- 'logs/' \
+      | grep '_history\.md$' \
+      | grep -Fv "logs/${parent_slug}_history.md"
+  )
+  if [[ ${#history_files[@]} -gt 0 ]]; then
+    git rm -f --ignore-unmatch -- "${history_files[@]}" >/dev/null 2>&1 || true
+  fi
+
+  if [[ "$VERBOSE" == true ]]; then
+    bt_info "Cleaned up branch-specific files from merge"
   fi
 }
 
@@ -593,10 +625,11 @@ build_history_entry() {
 
 sync_history_to_current_branch() {
   local current_branch="$1"
-  local history_file="$2"
-  local history_entry="$3"
-  local parent_branch="$4"
-  local current_is_local="$5"
+  local history_entry="$2"
+  local parent_branch="$3"
+  local current_is_local="$4"
+  local history_file
+  history_file="$(branch_to_history_file "$current_branch")"
 
   if [[ "$current_is_local" == true ]]; then
     if ! git switch "$current_branch" >/dev/null 2>&1; then
@@ -741,6 +774,14 @@ fi
 
 git fetch origin >/dev/null 2>&1 || bt_error_exit 5 "Failed to fetch from remote 'origin'"
 
+# Propagate repository history from remote if available
+bt_propagate_repository_history
+case $? in
+  0) ;;
+  1) bt_info "Updated repository history from remote" ;;
+  *) ;;
+esac
+
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit 2 "Failed to determine current branch")
@@ -784,6 +825,15 @@ bt_info "Current user: $CURRENT_USER"
 bt_info "Determining parent branch..."
 PARENT_BRANCH=$(get_parent_branch "$CURRENT_BRANCH")
 bt_info "Parent branch: $PARENT_BRANCH"
+
+# Validate branch names conform to naming conventions
+if ! validate_branch_name "$CURRENT_BRANCH" "current branch"; then
+  bt_error_exit 1 "Current branch does not conform to naming conventions"
+fi
+
+if ! validate_branch_name "$PARENT_BRANCH" "parent branch"; then
+  bt_error_exit 1 "Parent branch does not conform to naming conventions"
+fi
 
 if bt_is_protected_branch "$CURRENT_BRANCH"; then
   if ! bt_is_version_branch "$CURRENT_BRANCH" || [[ "$PARENT_BRANCH" != "main" ]]; then
@@ -875,13 +925,14 @@ else
   fi
 fi
 
-HISTORY_FILE=$(resolve_history_file_for_parent "$PARENT_BRANCH")
+HISTORY_FILE=$(branch_to_history_file "$PARENT_BRANCH")
 HISTORY_ENTRY=$(build_history_entry \
   "$CURRENT_BRANCH" "$PARENT_BRANCH" "$CURRENT_USER" "$COMMIT_MESSAGE")
 
 if [[ "$DRY_RUN" == true ]]; then
   bt_info "Dry run: would merge '$CURRENT_BRANCH' into '$PARENT_BRANCH'"
-  bt_info "Dry run: would log merge to '$HISTORY_FILE' on parent and current branches"
+  bt_info "Dry run: would log merge to '$HISTORY_FILE' on parent branch"
+  bt_info "Dry run: would log merge to '$(branch_to_history_file "$CURRENT_BRANCH")' on current branch"
   bt_info "Dry run: would commit message '$COMMIT_MESSAGE'"
 
   if [[ "$PARENT_BRANCH" == "main" || $(has_remote_branch "$PARENT_BRANCH" && echo true || echo false) == true ]]; then
@@ -913,6 +964,9 @@ if ! git merge --squash --no-commit "$CURRENT_SOURCE_REF" 2>&1; then
   bt_error_exit 2 "Failed to squash merge '$CURRENT_BRANCH' into '$PARENT_BRANCH'"
 fi
 
+# Remove branch-specific files that should not carry over to the parent branch.
+cleanup_merged_branch_files "$CURRENT_BRANCH" "$PARENT_BRANCH"
+
 # Log merge to history before committing so the audit record is preserved.
 log_merge_to_history "$CURRENT_BRANCH" "$PARENT_BRANCH" \
   "$CURRENT_USER" "$COMMIT_MESSAGE" "$HISTORY_FILE" "$HISTORY_ENTRY"
@@ -939,7 +993,7 @@ else
   bt_info "Parent branch '$PARENT_BRANCH' has no remote branch; skipping push"
 fi
 
-sync_history_to_current_branch "$CURRENT_BRANCH" "$HISTORY_FILE" "$HISTORY_ENTRY" "$PARENT_BRANCH" "$CURRENT_IS_LOCAL"
+sync_history_to_current_branch "$CURRENT_BRANCH" "$HISTORY_ENTRY" "$PARENT_BRANCH" "$CURRENT_IS_LOCAL"
 cleanup_temporary_parent_branch
 
 # Show verbose output if requested
