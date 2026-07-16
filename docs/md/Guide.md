@@ -1,8 +1,9 @@
+![briteTest Logo](/docs/branding/Guide.png)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/paulsinclair51/briteTest?display_name=tag)](https://github.com/paulsinclair51/briteTest/releases)
 [![CI](https://github.com/paulsinclair51/briteTest/actions/workflows/ci.yml/badge.svg)](https://github.com/paulsinclair51/briteTest/actions/workflows/ci.yml)
 
-![briteTest Logo](/docs/branding/Guide.png)
 
 #### Version: v1.0.0
 
@@ -49,8 +50,8 @@ briteTest including concepts and a quick start example. This also serves as the
 `<repo>/README.md` for briteTest.
 
 briteTest provides a Runner API and a Test API, each implemented with a single
-`.h` / `.c` pair with no external dependencies and requiring only a POSIX.1‑2001
-environment and a C99‑compliant compiler.
+`.h` / `.c` pair with no external dependencies and requiring only a POSIX.1-2001
+environment and a C99-compliant compiler.
 
 For a list of other documents and the repository layout, see
 the Documentation Guide.
@@ -66,7 +67,7 @@ A printer-friendly PDF file for this document is available.
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
-| v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+| v1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
 </details>
 </details>
 
@@ -123,16 +124,16 @@ A printer-friendly PDF file for this document is available.
 
 ### 1.1. Key Strengths
 
-- Lightweight design — minimal files, minimal API surface, easy to embed.
-- Macro‑based Runner API — simple orchestration with predictable control flow.
-- Function‑based Test API — tests are just C functions, easy to organize and debug.
-- Fault‑tolerant execution — protects the test suite from crashes and undefined
+- Lightweight design - minimal files, minimal API surface, easy to embed.
+- Macro-based Runner API - simple orchestration with predictable control flow.
+- Function-based Test API - tests are just C functions, easy to organize and debug.
+- Fault-tolerant execution - protects the test suite from crashes and undefined
   behavior.
 - Parallel and concurrent test execution,
-- Clear reporting — readable summaries of passes, failures, and faults.
+- Clear reporting - readable summaries of passes, failures, and faults.
 - Pure C implementation.
 - Minimal footprint (single header + source cor the ).
-- Optional process‑isolated execution.
+- Optional process-isolated execution.
 </details>
 
 <details>
@@ -209,7 +210,6 @@ RA_DECLARE_ORCHESTRATOR(main)
   RA_EXIT;
 }
 ```
-
 </details>
 
 4. Build the executable `test_quick` in your current directory:
@@ -243,7 +243,6 @@ Test Report
 --------------------------------------------------
                        Total    10
 ```
-
 </details>
 </details>
 
@@ -294,7 +293,6 @@ will be reviewed by the maintainers.
 
 Subscribe to [releases](../../releases) to get notified about new versions and
 improvements.
-
 </details>
 
 <details>
@@ -310,7 +308,6 @@ For contributing process, branching workflow, and script usage:
 2. Use [Contributor_Reference.md](./Contributor_Reference.md) for command-level details
 
 Use this Guide for Runner Framework/API and Test API concepts.
-
 </details>
 </details>
 
@@ -400,7 +397,7 @@ evaluated.
 
 ## 10. Setup and Teardown
 
-Optional per‑group or per‑test initialization and cleanup helpers.
+Optional per-group or per-test initialization and cleanup helpers.
 </details>
 
 <details>

@@ -7,9 +7,16 @@ For license details, see `<repo>/LICENSE`.
 
 See `<repo>/README.md` for an introduction to briteTest.
 
+## Documentation Lifecycle Policy
+
+- Adding new files under `<repo>/docs/md/` requires approver approval.
+
 ## Files
 
 - **README.md**: This directory guide.
+
+- **IMPLEMENTATION_VERIFICATION_PLAN.md**: Consolidated verification and
+  planning tracker for temporary top-level `docs/*.md` documents.
 
 ## Subdirectories
 

@@ -143,6 +143,13 @@ rc=$(run_capture "$TMPDIR/validate-specific.out" \
 [[ "$rc" -eq 8 ]] || fail "validate local-exists should exit 8 (got $rc)"
 pass "validate specific exit code"
 
+# 6b) Contributor branch with optional type prefix should validate
+rc=$(run_capture "$TMPDIR/contributor-prefixed.out" \
+  bash "$WORK/scripts/bin/mkbranch" -d mywork/feature-one dev/local-exists-v1.0.0)
+[[ "$rc" -eq 0 ]] || fail "prefixed contributor branch should validate (got $rc)"
+assert_contains "can be created" "$TMPDIR/contributor-prefixed.out"
+pass "contributor optional prefix format"
+
 # 7) Missing helper fails gracefully with exit 5
 mv "$WORK/scripts/helpers/history_log.sh" \
   "$WORK/scripts/helpers/history_log.sh.bak"

@@ -1,6 +1,6 @@
 ![Runner Internal Reference](/docs/branding/Runner_Internal_Reference.png)
 
-#### Version: 1.0.0
+#### Version: v1.0.0
 
 This document provides a reference to the briteTestRunner API internals.
 It includes types, structs, unions, enums, macros, and functions.
@@ -55,7 +55,7 @@ A printer-friendly PDF file for this document is available.
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
-| v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+| v1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
 </details>
 </details>
 
@@ -378,6 +378,7 @@ Describe what is returned and under what conditions.
 <return-type> result = <FunctionName>(...);
 ```
 </details><br>
+</details>
 </details>
 
 <details>

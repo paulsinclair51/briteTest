@@ -8,9 +8,34 @@ contributors, reviewers, and approvers.
 
 #### Copyright (c) 2026 Paul Sinclair
 
+<details>
+<summary><strong>License</strong></summary>
+
+### License
+
 SPDX-License-Identifier: MIT
 
----
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</details>
+
+<details>
+<summary><strong>Preface</strong></summary>
 
 ## Preface
 
@@ -21,14 +46,19 @@ For detailed script reference information, see the [Contributor_Reference.md](./
 
 For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md).
 
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
+
 ### Document Version History
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
-| v1.0.0 | 2026-07-13 | Current v1.0.0 development guide; refreshed script coverage to match current `scripts/bin/` set (including `rmclone` and `fixrepo` clone-path checks). | Paul Sinclair |
-| v1.0.0 | 2026-07-14 | Updated script workflow notes to reflect current branch-switch dirty guards and `commit` auto-push behavior. | Paul Sinclair |
+| v1.0.0 | 2026-07-09 | Initial verison. | Paul Sinclair |
+</details><br>
+</details>
 
----
+<details>
+<summary><strong>Table of Contents</strong></summary>
 
 ## Table of Contents
 
@@ -51,8 +81,7 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
 17. [Protected Branches](#protected-branches)
 18. [Troubleshooting FAQ](#troubleshooting-faq)
 19. [Team Onboarding Checklist](#team-onboarding-checklist)
-
----
+</details>
 
 ## Introduction
 
@@ -65,11 +94,9 @@ Contributors should read this document before submitting changes, reviewing, or 
 The current executable script set is maintained in `scripts/bin/README.md`.
 
 - **Setup/installation:** `installscripts`
-- **Document/brand:** `ckstyle`, `gendocs`, `genpngs`, `replacetext`, `rebrand`
+- **Document/brand:** `ckstyle`, `gendocs`, `genpngs`, `replacephrases`, `updatebrand`
 - **Repository/fork/clone:** `mkfork`, `mkclone`, `rmclone`, `fixrepo`
-- **Branch/workflow:** `lsbranchlog`, `chbranch`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `feedback`, `mrgup`, `review`, `retarget`, `release`, `mrgbranch`, `mrgdown`, `undo`, `rmbranch`
-
----
+- **Branch/workflow:** `ckbranch_history`, `chcurrent`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `mkfeedback`, `mergetoparent`, `mkpullrequest`, `chtarget`, `mkrelease`, `syncfromremote`, `syncfromparent`, `undo`, `rmbranch`
 
 ## Branching Model Overview
 
@@ -77,24 +104,23 @@ This repository uses a release-oriented branching model with four branch types:
 
 **Protected Branches** (Require PR, no force-push, no deletion):
 - `main` - Production-ready code (remote-only; use `origin/main` for Git commands)
-- `v<M>.<m>.0` - Version/release branches (e.g., v1.0.0, v2.1.0)
+- `v<M>.<m>.0` - Version branches (e.g., v1.0.0, v2.1.0)
 
-**Unprotected Branches** (Direct commits allowed, PRs encouraged):
+**Unprotected Branches** (Direct commits allowed, PRs optional):
 - `dev/<desc>-<version>` or `fix/<desc>-<version>` - Targeted branches
 - `[<type>/]<description>` - Contributor branches
 
-**Valid Merge Paths:**
-- contributor → contributor ✓
-- contributor → targeted ✓
-- targeted → version ✓ (with approver)
-- version → main ✓ (with approver, via `origin/main`)
-- main → any ✗ (reference `origin/main` only; do not create a local `main`)
-
----
+**Valid Merge Up Paths:**
+- contributor -> contributor (optional PR/review by contributors, mrgup by the contributor)
+- contributor -> targeted (recommended PR/review by contributors, mrgup by the contributor)
+- targeted -> version (required PR/review by reviewers, mrgup by an approver)
+- version -> `origin/main` (no PR, mrgup by an approver)
+- main -> any (not allowed)
 
 ## Validation Workflows
 
-briteTest uses 15 automated GitHub Actions workflows providing defense-in-depth validation across all git operations.
+briteTest uses 15 automated GitHub Actions workflows providing defense-in-depth
+validation across all git operations.
 
 ### Workflow Summary Dashboard
 
@@ -118,13 +144,13 @@ briteTest uses 15 automated GitHub Actions workflows providing defense-in-depth 
 
 ### Primary Prevention Layer
 
-These workflows run **BEFORE merge** to prevent problems:
+These workflows run **BEFORE merge up** to prevent problems:
 
-✓ **Valid commits:** Allowed to proceed
-✗ **Invalid commits:** PR blocked until fixed
+PASS: **Valid commits:** Allowed to proceed
+BLOCKED: **Invalid commits:** PR blocked until fixed
 
 **Examples of blocked commits:**
-- Merge with wrong branch path (contributor→main)
+- Merge with wrong branch path (contributor->main)
 - Commit message format: "Add feature" (missing type: prefix)
 - File modification: LICENSE
 - Secret detected: AWS API key in code
@@ -132,10 +158,10 @@ These workflows run **BEFORE merge** to prevent problems:
 
 ### Secondary Audit Layer
 
-These workflows run **AFTER merge** for compliance logging:
+These workflows run **AFTER merge up** for compliance logging:
 
-✓ **Purpose:** Audit trail, monitoring, compliance
-⚠ **Note:** Cannot prevent already-merged changes, but logs violations
+**Purpose:** Audit trail, monitoring, compliance
+**Note:** Cannot prevent already-merged up changes, but logs violations
 
 **Examples of audited operations:**
 - Rebase on version branch
@@ -152,15 +178,27 @@ These workflows run **AFTER merge** for compliance logging:
 3. **Re-push** - GitHub automatically re-runs validations
 4. **Verify passing** - Green checkmark on PR before requesting review
 
----
+## Branch Management
 
-## Git Operations and Branch Management
+The following shows the path to the script but just the script name is needed
+if the default path is setup for bash (this is normally done automatically;
+use scripts/bin/installscripts to set the default path manually).
 
 ### Creating Branches
 
+Changes are made in a targeted or contributor branch which you need
+to create:
+
 ```bash
-scripts/bin/mkbranch -r <branch_name> [<base_branch>]
+scripts/bin/mkbranch -r BRANCH [PARENTBRANCH]
 ```
+
+BRANCH is the targeted or contributor branch to use for making
+your changes.
+
+PARENTBRANCH is the version, targeted, or contributor branch from which to
+create the branch. Default for a targeted branch is the version branch
+corresponding to the version in the targeted branch name.
 
 **Examples:**
 ```bash
@@ -173,53 +211,66 @@ scripts/bin/mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
 - **Contributor:** `[<type>/]<description>` (e.g., `dev/json-parser`)
 - **Targeted:** `dev/<desc>-<version>` or `fix/<desc>-<version>`
 - **Version:** `v<M>.<m>.0` (created by approvers only)
-
-### Switching Branches Safely
-
-Use `scripts/bin/chbranch <branch>` to switch branches.
-
-- Branch switching is blocked if the current branch is dirty.
-- Commit changes first, then run `chbranch`.
-- This policy also applies to script flows that internally switch branches
-  (for example, during merge/retarget/create operations).
+- **Main**: `main`
 
 ### Making Changes
 
+A script-based workflow is required to make changes. Direct use of git commands
+that modify the repository is not allowed accept by the owner. A script validates
+the action, enforces policy, issues the git commands needed to completed the action,
+generates informational output, and, for some scripts, a report. This simplifies the
+workflow for contributors, reviewers, and approvers while maintaining integrity in
+the repostory.
+
 ```bash
-scripts/bin/chbranch mywork/feature
+scripts/bin/chcurrent BRANCH
 # Edit files...
-scripts/bin/commit -m "feat: add new capability"
+scripts/bin/commit -- Feature: add new capability.
 ```
+
+BRANCH is the contributor branch or a targeted branch to use for making
+changes.
 
 **Commit Best Practices:**
 - Keep commits focused and logical
 - Use conventional commit format: `<type>: <description>`
-- Valid types: feat, fix, docs, style, refactor, test, chore
+- Suggested types: feature, fix, doc, style, refactor, cleanup, test
+- Commit often
 
 `scripts/bin/commit` behavior summary:
-- Automatically pushes when `origin` is connected and
-  `origin/<current-branch>` exists.
-- Does not push when remote is disconnected or no corresponding remote branch
-  exists.
-- Uses report naming: `reports/branch/commit-<datetime>.md`
-  (or `commit-d-<datetime>.md` in dry-run).
+- Automatically pushes when `origin` is connected and `origin/<current-branch>` exists.
+- Does not push when remote is disconnected or no corresponding remote branch exists.
+- Uses report naming: `reports/branch/commit-<datetime>.md` (or `commit-d-<datetime>.md` in dry-run).
 
-### Rebasing Your Branch
+### Merge Remote Branch to Local Branch
 
-```bash
-git rebase origin/main
-git push --force-with-lease origin mywork/feature
-```
-
-⚠ **Never rebase protected branches** - GitHub blocks force pushes anyway
-
-### Deleting Branches
+Rebase a local branch to its remote has had changes. There must
+not be any untracked or uncommitted changes for the local branch
+(if there are, use the commit or undo scripts prior to the merge).
 
 ```bash
-scripts/bin/rmbranch <branch_name>
+scripts/bin/chcurrent BRANCH
+scripts/bin/mrgremote
 ```
 
-Protected branches (`main` as the remote-only base and `v*.0`) cannot be deleted.
+BRANCH is the contributor branch or targeted branch to merge.
+
+If no unsresolved conflicts, then done.
+
+Otherwise, resolve conflicts (see merge remote report) and then repeat
+above. Iterate this workflow until there are no more conflicts (in most
+cases, conflicts are automatically resolved in one execution of mrgremote
+or two executions of mrgremote if there unresolved conflicts).
+
+### Remving (Deleting) Branches
+
+```bash
+scripts/bin/rmbranch BRANCH
+```
+
+BRANCH is the contributor branch or a targeted branch to remove.
+
+Protected branches (`main` and `v*.0`) cannot be deleted.
 
 ### Setting Up Pre-commit Hooks
 
@@ -231,15 +282,13 @@ cat > .git/hooks/pre-commit << 'EOF'
 #!/bin/bash
 CURRENT=$(git rev-parse --abbrev-ref HEAD)
 if [[ "$CURRENT" == "main" ]] || [[ "$CURRENT" == v*.0 ]]; then
-  echo "❌ Error: Cannot commit directly to protected branch '$CURRENT'"
+  echo "Error: Cannot commit directly to protected branch '$CURRENT'"
   echo "Create a feature branch: scripts/bin/mkbranch -r <name> $CURRENT"
   exit 1
 fi
 EOF
 chmod +x .git/hooks/pre-commit
 ```
-
----
 
 ## Access Control & Roles
 
@@ -254,11 +303,26 @@ briteTest uses a six-tier access model for public repository safety:
 | **APPROVER (A)** | Merge, release, run protected scripts with override confirmation | Must follow audit and override controls |
 | **MAINTAINER** | Repository admin and access management | Responsible for governance and audits |
 
-**Write access is script-controlled** (`mkbranch`, `commit`, `review`, `mrgup`, `retarget`, `release`) rather than direct protected-branch git operations.
+### File Access Matrix
+
+Use the following shorthand:
+- `R` = readable
+- `RW` = editable through the standard PR workflow
+- `RW*` = editable only through protected approver workflow
+
+| File or Path | PUBLIC | USERS | C | R | A | MAINTAINER |
+|--------------|--------|-------|---|---|---|------------|
+| `README.md`, `LICENSE`, `.github/SECURITY.md` | R | R | R | R | R | RW |
+| `docs/md/`, `docs/branding/`, `src/`, `include/`, `examples/` | R | R | RW | RW | RW | RW |
+| `scripts/bin/`, `scripts/helpers/` | R | R | RW | RW | RW* | RW |
+| `.github/workflows/`, branch-protection settings | R | R | - | - | RW* | RW |
+| `config/contributors.md`, governance/policy docs | R | R | RW | RW | RW* | RW |
+
+**Write access is script-controlled** (`mkbranch`, `commit`, `mkpullrequest`, `mergetoparent`, `chtarget`, `mkrelease`) rather than direct protected-branch git operations.
 
 ### Identity Prerequisites for Role-Gated Scripts
 
-Role-gated scripts (for example `mrgup` and `release`) require a
+Role-gated scripts (for example `mergetoparent` and `mkrelease`) require a
 resolvable GitHub login that matches an entry in `config/contributors.md`.
 
 Configure at least one of these identity sources:
@@ -268,8 +332,6 @@ Configure at least one of these identity sources:
 - `git config user.name <github-login>` using your GitHub login (not display name)
 
 If identity cannot be resolved, role checks fail by design.
-
----
 
 ## Public Repository Security
 
@@ -283,8 +345,6 @@ Security controls expected for contributor workflows:
 - **Auditability:** approver-level actions and protected operations must remain traceable through workflow/script logs.
 
 Keep this section aligned with repository policy whenever workflows or branch protections change.
-
----
 
 ## GPG Signing Setup
 
@@ -340,7 +400,7 @@ gpg --armor --export 3AA5C34371567BD2
 ```
 
 Copy the output and add to GitHub:
-- Go to Settings → SSH and GPG keys
+- Go to Settings -> SSH and GPG keys
 - Click "New GPG key"
 - Paste the key
 - Confirm
@@ -409,8 +469,6 @@ gpg --list-secret-keys
 - Verify commit email matches GitHub account email
 - Wait a few seconds (GitHub takes time to verify)
 
----
-
 ## Versioning Guidelines
 
 Versioning format: `M.m.p` (major, minor, patch)
@@ -426,15 +484,11 @@ Versioning format: `M.m.p` (major, minor, patch)
 
 Use `make test-all-scripts` before PRs, and verify versioned file edits in `git diff`.
 
----
-
 ## Branding
 
 - **Brand name:** briteTest
 - **Distinctive camelCase** aligns with `bT` monogram
-- Update branding with: `scripts/bin/rebrand`
-
----
+- Update branding with: `scripts/bin/updatebrand`
 
 ## Documentation Guidelines
 
@@ -445,8 +499,6 @@ Use `make test-all-scripts` before PRs, and verify versioned file edits in `git 
 - Maintain parallel structure in lists
 - Define terms once, use consistently
 
----
-
 ## Code Guidelines
 
 - C99 standard
@@ -454,22 +506,15 @@ Use `make test-all-scripts` before PRs, and verify versioned file edits in `git 
 - Keep headers self-contained
 - Add MIT license header to new files
 
----
-
 ## Testing Requirements
 
 ```bash
 make run
-make test-all-scripts
 ```
 
 - Ensure all tests pass before opening PR
 - Update tests when code changes
 - Include test coverage for new features
-- For branch-change behavior updates, run `scripts/tests/test_chbranch.sh`
-  (or `make test-all-scripts`) to validate exit-code and safety semantics.
-
----
 
 ## CODEOWNERS and Review Routing
 
@@ -480,8 +525,6 @@ make test-all-scripts
 
 See `.github/CODEOWNERS` for details.
 
----
-
 ## Making Modifications in a Branch
 
 1. Create focused, logically grouped changes
@@ -490,8 +533,6 @@ See `.github/CODEOWNERS` for details.
 4. Follow code and documentation guidelines
 5. Include test coverage
 6. Verify tests pass: `make run`
-
----
 
 ## Pull Request (PR)
 
@@ -517,7 +558,6 @@ See `.github/CODEOWNERS` for details.
 6. Address feedback and re-push
 7. Once approved and checks pass, approver merges
 
----
 
 ## Release
 
@@ -527,28 +567,26 @@ See `.github/CODEOWNERS` for details.
 4. **Tag:** `git tag v1.2.3` and push
 5. **Publish:** Create GitHub release with notes
 
----
 
 ## Protected Branches
 
 Protected branches require:
-- ✓ Pull request before merging
-- ✓ Status checks pass
-- ✓ Approvals from code owners
-- ✗ No force pushes
-- ✗ No direct commits
-- ✗ No deletions
+- required: pull request before merging
+- required: status checks pass
+- required: approvals from code owners
+- prohibited: force pushes
+- prohibited: direct commits
+- prohibited: deletions
 
 The protected base branch is `origin/main`; version branches are local protected branches.
 Neither may receive direct commits.
-Updates are made through `scripts/bin/mrgup` only:
+Updates are made through `scripts/bin/mergetoparent` only:
 
-- Use `scripts/bin/mrgdown` (or equivalent) in the source branch first
-- Resolve conflicts in the source branch before running `mrgup`
-- Merge to protected parent using `mrgup`
+- Use `scripts/bin/syncfromparent` (or equivalent) in the source branch first
+- Resolve conflicts in the source branch before running `mergetoparent`
+- Merge to protected parent using `mergetoparent`
 - When the parent is protected, approver role is required
 
----
 
 ## Troubleshooting FAQ
 
@@ -558,10 +596,10 @@ Updates are made through `scripts/bin/mrgup` only:
 
 **A:** Use conventional format: `<type>: <description>`
 ```bash
-# ❌ Wrong
+# Wrong
 git commit -m "Add new feature"
 
-# ✅ Correct
+# Correct
 git commit -m "feat: add new feature"
 ```
 
@@ -676,7 +714,6 @@ git fetch origin
 git pull origin main  # or version branch
 ```
 
----
 
 ## Team Onboarding Checklist
 
@@ -796,7 +833,6 @@ scripts/bin/rmbranch mywork/feature
 - **Issue:** Open an issue on GitHub
 - **Question:** Start a discussion on GitHub Discussions
 
----
 
 ## Related Documents
 

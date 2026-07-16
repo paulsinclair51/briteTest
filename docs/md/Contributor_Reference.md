@@ -1,6 +1,4 @@
-# Contributor Reference
-
-## Scripts and Tools Reference
+![Contributor Reference](/docs/branding/Contributor_Reference.png)
 
 #### Version: v1.0.0
 
@@ -8,18 +6,59 @@ Comprehensive reference for all scripts and helper tools used in briteTest devel
 
 #### Copyright (c) 2026 Paul Sinclair
 
+<details>
+<summary><strong>License</strong></summary>
+
+### License
+
 SPDX-License-Identifier: MIT
 
----
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-## Document Version History
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</details>
+
+<details>
+<summary><strong>Preface</strong></summary>
+
+## Preface
+
+This document is for contributors, reviewers, and approvers who need
+script-level details for workflow, validation, and role-based operations.
+
+For contribution policies and branching rules, see
+[Contributor_Guide.md](./Contributor_Guide.md).
+
+For an in-depth analysis of the SCM system, see
+[SCM_REVIEW.md](../SCM_REVIEW.md).
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
+
+### Document Version History
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
-| v1.0.0 | 2026-07-13 | Current v1.0.0 development reference; refreshed to match current `scripts/bin/` inventory and clone lifecycle scripts (`mkclone`/`rmclone`). | Paul Sinclair |
-| v1.0.0 | 2026-07-14 | Added current `chbranch` and `commit` behavior details (dirty-worktree guard, commit auto-push, report naming). | Paul Sinclair |
+| v1.0.0 | 2026-07-09 | Initial version. | Paul Sinclair |
+</details><br>
+</details>
 
----
+<details>
+<summary><strong>Table of Contents</strong></summary>
 
 ## Table of Contents
 
@@ -29,8 +68,8 @@ SPDX-License-Identifier: MIT
 4. [Environment Variables](#environment-variables)
 5. [Exit Codes](#exit-codes)
 6. [Troubleshooting](#troubleshooting)
+</details>
 
----
 
 ## Helper Scripts
 
@@ -95,7 +134,6 @@ bash scripts/helpers/ckbranchname.sh "INVALID_NAME"
 | 4 | contributor | `[<type>/]<description>` | General work branch |
 | 5 | invalid | Any other | Invalid naming |
 
----
 
 ### ckrole.sh
 
@@ -144,7 +182,6 @@ bash scripts/helpers/ckrole.sh approver
 # Exit code: 0 or 1
 ```
 
----
 
 ### validate-format.sh
 
@@ -180,24 +217,10 @@ bash scripts/helpers/validate-format.sh src/runner.c
 bash scripts/helpers/validate-format.sh src/
 ```
 
----
 
 ## Binary Scripts
 
 Binary scripts located in `scripts/bin/` are standalone executables.
-
-### Current scripts/bin catalog
-
-This catalog reflects the current script set in `scripts/bin/`.
-
-| Category | Scripts |
-|----------|---------|
-| Setup and Installation | `installscripts` |
-| Document and Brand Management | `ckstyle`, `gendocs`, `genpngs`, `replacetext`, `rebrand` |
-| Repository and Fork Management | `mkfork`, `mkclone`, `rmclone`, `fixrepo` |
-| Branch and Workflow Management | `lsbranchlog`, `chbranch`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `feedback`, `mrgup`, `review`, `retarget`, `release`, `mrgbranch`, `mrgdown`, `undo`, `rmbranch` |
-
----
 
 ### mkbranch
 
@@ -243,130 +266,6 @@ scripts/bin/mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
 - **Targeted:** `dev/<description>-<version>` or `fix/<description>-<version>`
 - **Version:** Created by approvers only
 
----
-
-### chbranch
-
-**Purpose:** Change to a branch with local-first behavior and guarded
-local/remote mode switching.
-
-**Location:** `scripts/bin/chbranch`
-
-**Usage:**
-
-```bash
-scripts/bin/chbranch <branch>
-scripts/bin/chbranch -r <branch>
-scripts/bin/chbranch -f <branch>
-```
-
-**Current behavior highlights:**
-
-- Rejects remote ref input form (`origin/<branch>`).
-- Blocks switching to `main` by policy.
-- Uses local branch when it exists; otherwise changes to remote `origin/<branch>`.
-- Blocks switching when current worktree is dirty unless `-f` is used.
-- `-r` requires remote branch availability and returns distinct not-found/
-	unreachable exit codes.
-- `-f -r` preserves uncommitted changes when the remote target fails prechecks.
-
-**Validation smoke test:**
-
-```bash
-bash scripts/tests/test_chbranch.sh
-```
-
-The smoke test covers help/argument validation and key exit-code paths,
-including no-change (`2`), branch/remote not-found (`3`/`4`), dirty
-worktree (`6`), and remote unreachable (`7`).
-
----
-
-### commit
-
-**Purpose:** Commit changes on the current local non-protected branch.
-
-**Location:** `scripts/bin/commit`
-
-**Usage:**
-
-```bash
-scripts/bin/commit [OPTIONS] [-- TOKENS]
-```
-
-**Options:**
-
-- `-d` - Dry run
-- `-m, --message <msg>` - Commit message
-- `-- <tokens...>` - Unix-style commit message
-- `-v` - Verbose output
-
-**Current behavior highlights:**
-
-- `-p` is not supported.
-- Auto-push occurs only when origin is connected and
-  `origin/<current-branch>` exists.
-- If those push preconditions are not met, commit still succeeds locally.
-- Report file naming is unified:
-  - `reports/branch/commit-<datetime>.md`
-  - `reports/branch/commit-d-<datetime>.md` (dry-run)
-
----
-
-### mkclone
-
-**Purpose:** Clone the repository to a local directory and run initial script/hook setup.
-
-**Location:** `scripts/bin/mkclone`
-
-**Usage:**
-
-```bash
-scripts/bin/mkclone [OPTIONS] [directory]
-```
-
-**Examples:**
-
-```bash
-scripts/bin/mkclone
-scripts/bin/mkclone my-workspace
-```
-
----
-
-### rmclone
-
-**Purpose:** Safely remove a local clone directory with data-loss checks.
-
-**Location:** `scripts/bin/rmclone`
-
-**Usage:**
-
-```bash
-scripts/bin/rmclone [OPTIONS] <clone-path>
-```
-
-**Options:**
-
-- `-d, --dry-run` - Preview checks and deletion plan
-- `-O, --override` - Remove even when safety checks fail
-
-**Safety checks (default):**
-
-- working tree clean
-- no stash entries
-- no local-only commits
-- origin reachability when configured
-
-**Examples:**
-
-```bash
-scripts/bin/rmclone -d ../BriteTest-work
-scripts/bin/rmclone ../BriteTest-work
-scripts/bin/rmclone -O ../BriteTest-work
-```
-
----
 
 ### rmbranch
 
@@ -406,18 +305,17 @@ scripts/bin/rmbranch dev/fix-parser-v1.0.0
 - `main` (remote-only base branch)
 - `v*` (version branches)
 
----
 
-### mrgup
+### mergetoparent
 
 **Purpose:** Merges the current source branch to its inferred parent branch using squash merge with policy checks.
 
-**Location:** `scripts/bin/mrgup`
+**Location:** `scripts/bin/mergetoparent`
 
 **Usage:**
 
 ```bash
-scripts/bin/mrgup [OPTIONS]
+scripts/bin/mergetoparent [OPTIONS]
 ```
 
 **Options:**
@@ -428,106 +326,76 @@ scripts/bin/mrgup [OPTIONS]
 
 **Policy Notes:**
 
-- Protected parents (`main` as the remote-only base, and `v<M>.<m>.<p>`) are updated via `mrgup` only
+- Protected parents (`main` as the remote-only base, and `v<M>.<m>.<p>`) are updated via `mergetoparent` only
 - If inferred parent is protected, approver role is required
-- Resolve parent/source conflicts in the source branch before running `mrgup`
+- Resolve parent/source conflicts in the source branch before running `mergetoparent`
 - Running from detached HEAD or a protected current branch is rejected
 
 **Examples:**
 
 ```bash
 # Merge current branch to inferred parent using PR title
-scripts/bin/mrgup
+scripts/bin/mergetoparent
 
 # Merge with explicit message
-scripts/bin/mrgup -m "Merge parser fixes"
+scripts/bin/mergetoparent -m "Merge parser fixes"
 ```
 
----
 
-### fixrepo
+### ckversions
 
-**Purpose:** Verify repository integrity and apply safe cleanup/fixes.
+**Purpose:** Validates version consistency across all versioned files.
 
-**Location:** `scripts/bin/fixrepo`
+**Location:** `scripts/bin/ckversions`
 
 **Usage:**
 
 ```bash
-scripts/bin/fixrepo [OPTIONS]
-scripts/bin/fixrepo [OPTIONS] <clone-path>
+scripts/bin/ckversions [--check] [--update]
 ```
 
-**Options:**
+**Arguments:**
 
-- `-d` - Dry run (report only; no remediations)
-- `-q` - Faster reduced-cost checks
-- `-r <sec>` - Remote connectivity timeout in seconds (`0` disables remote checks)
-- `-v` - Print report content to stdout
+- `--check` - Check version consistency (default)
+- `--update` - Update versions to be consistent
 
-**Notes:**
+**Exit Codes:**
 
-- Writes report: `reports/repository/repository-<datetime>.md`
-- Protected script: approver override required
-- On non-dry runs, cleanup is followed by rerunning affected verification
-	checks so the report reflects whether the remediation was actually effective.
-
-**Maintainer failure scenarios checklist:**
-
-| Scenario | Example Command | Expected Exit | Expected Report/Output Signal |
-|----------|------------------|---------------|-------------------------------|
-| Invalid timeout argument | `scripts/bin/fixrepo -r abc` | `1` | stderr includes `Invalid -r value` |
-| Invalid clone path | `scripts/bin/fixrepo -d /tmp/missing-clone` | `1` | stderr includes `Clone path not found or not a directory` |
-| Dry-run with detected issues | `scripts/bin/fixrepo -d` | `2` when issues exist | Report status: `Issues detected; no automated fixes applied (-d).` |
-| Non-dry run with fully verified remediation | `scripts/bin/fixrepo` | `0` | Report status: `All detected issues were resolved by verified remediations.` |
-| Non-dry run with remediation attempts but no verification | `scripts/bin/fixrepo` | `2` when unresolved | Report status: `Remediation attempts were made, but none were fully verified.` |
-| Remote checks disabled intentionally | `scripts/bin/fixrepo -r 0` | `0` or `2` (issue-dependent) | Remote check rows indicate `Skipped (disabled by -r 0)` |
-
-If behavior differs from this checklist, run `make test-fixrepo` and then
-`make test-all-scripts` before triaging script logic.
-
----
-
-### Script Smoke Test Runner
-
-**Purpose:** Run all script smoke tests in `scripts/tests/` before PR updates.
-
-**Location:** `scripts/tests/test_scripts.sh`
-
-**Usage:**
-
-```bash
-make test-all-scripts
-bash scripts/tests/test_scripts.sh [OPTIONS]
-```
-
-**Options (`test_scripts.sh`):**
-
-- `-v, --verbose` - Detailed output
-- `-c, --continue` - Continue after failures
-
-When present, `test_chbranch.sh` is prioritized to run first.
+- `0` - Versions are consistent
+- `1` - Version inconsistency detected
 
 **Examples:**
 
 ```bash
-make test-all-scripts
-bash scripts/tests/test_scripts.sh -v
-bash scripts/tests/test_scripts.sh -c
+# Check version consistency
+scripts/bin/ckversions
+
+# Check with detailed output
+scripts/bin/ckversions --check
+
+# Update versions (caution: advanced)
+scripts/bin/ckversions --update
 ```
 
----
+**Versioned Files:**
 
-### rebrand
+- `include/runnerapi.h` - Runner API header
+- `src/runnerapi.c` - Runner API implementation
+- `include/testapi.h` - Test API header
+- `src/testapi.c` - Test API implementation
+- `docs/md/*.md` - Documentation (excluding README.md)
+
+
+### updatebrand
 
 **Purpose:** Updates brand name, initials, and tagline across the repository.
 
-**Location:** `scripts/bin/rebrand`
+**Location:** `scripts/bin/updatebrand`
 
 **Usage:**
 
 ```bash
-scripts/bin/rebrand [-d] [-h]
+scripts/bin/updatebrand [-d] [-h]
 ```
 
 **Arguments:**
@@ -543,12 +411,11 @@ scripts/bin/rebrand [-d] [-h]
 **Workflow:**
 
 1. Edit `logs/brand_history.md` with new brand values
-2. Run dry run: `scripts/bin/rebrand -d`
-3. Review changes in `reports/guidelines/rebrand-dry-run-*.md`
-4. Apply: `scripts/bin/rebrand`
+2. Run dry run: `scripts/bin/updatebrand -d`
+3. Review changes in `logs/updatebrand-log-dry-run-*.md`
+4. Apply: `scripts/bin/updatebrand`
 5. Verify with `git diff`
 
----
 
 ### genpngs
 
@@ -584,7 +451,6 @@ scripts/bin/genpngs docs/branding/logo.svg
 scripts/bin/genpngs docs/branding/
 ```
 
----
 
 ## Script-Based Access Control
 
@@ -594,25 +460,23 @@ Role-based script permissions are enforced by helper checks and protected script
 
 | Script Capability | Contributor (C) | Reviewer (R) | Approver (A) |
 |------------------|-----------------|--------------|--------------| 
-| Branch and commit operations (`mkbranch`, `commit`, `review`) | ✅ | ✅ | ✅ |
-| Repository/clone lifecycle (`mkclone`, `rmclone`) | ✅ | ✅ | ✅ |
-| Review operations (`feedback`) | ❌ | ✅ | ✅ |
-| Retarget operations (`retarget`) | ❌ | ❌ | ✅ |
-| Protected operations (`mrgup`, `release`, `fixrepo`) | ❌ | ❌ | ✅ (override required) |
+| Branch and commit operations (`mkbranch`, `commit`, `mkpullrequest`) | PASS | PASS | PASS |
+| Review operations (`mkfeedback`) | FAIL | PASS | PASS |
+| Retarget operations (`chtarget`) | FAIL | FAIL | PASS |
+| Protected operations (`mergetoparent`, `mkrelease`, `fixrepository`) | FAIL | FAIL | PASS (override required) |
 
 ### Protected Script Rule
 
 Approver-only scripts require explicit override confirmation:
 
 ```bash
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mrgup
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/release v1.0.0
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepo
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.0
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepository
 ```
 
 If override confirmation is missing, execution must fail by design.
 
----
 
 ## Environment Variables
 
@@ -641,7 +505,6 @@ Variables used by briteTest scripts:
 
 For role-gated scripts, ensure one of the supported identity sources resolves to a valid GitHub login in `config/contributors.md`.
 
----
 
 ## Exit Codes
 
@@ -660,7 +523,6 @@ For role-gated scripts, ensure one of the supported identity sources resolves to
 
 See individual script sections for detailed exit code meanings.
 
----
 
 ## Troubleshooting
 
@@ -676,16 +538,16 @@ See individual script sections for detailed exit code meanings.
 2. Run: `bash scripts/helpers/ckbranchname.sh "<name>"`
 3. Fix naming to match required format
 
-#### Repository Health Check Fails
+#### Version Check Fails
 
-**Error:** `Issues detected` during repository verification
+**Error:** `Version inconsistency detected`
 
 **Solution:**
 
-1. Run: `scripts/bin/fixrepo -d`
-2. Review `reports/repository/repository-<datetime>.md`
-3. Re-run without `-d` for safe cleanup remediations
-4. If a clone path is involved, run with positional path: `scripts/bin/fixrepo <clone-path>`
+1. Run: `scripts/bin/ckversions`
+2. Review the differences reported
+3. Manually update version numbers in affected files
+4. Re-run `scripts/bin/ckversions` to verify
 
 #### Permission Denied
 
@@ -720,7 +582,6 @@ chmod +x scripts/bin/* scripts/helpers/*
 3. Fetch latest refs: `git fetch --all`
 4. Try command again
 
----
 
 ## Related Documentation
 
