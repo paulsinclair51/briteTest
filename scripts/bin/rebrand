@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# updatebrand - Updates branding assets and propagates a brand change
+# rebrand - Updates branding assets and propagates a brand change
 #               across repository files.
 #
-# See usage below for details, or run: updatebrand -h
+# See usage below for details, or run: rebrand -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -12,8 +12,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  updatebrand [-d]
-  updatebrand {-h | --help}
+  rebrand [-d]
+  rebrand {-h | --help}
 
 Update the branding assets and propagate a brand change across
 repository files.
@@ -31,9 +31,9 @@ Outputs:
   - Final status block (COMPLETED or DRY RUN COMPLETE).
 
 Reporting:
-    - updatebrand and updatebrand -d write a report in reports/guidelines/.
-    - Non-dry run report: reports/guidelines/updatebrand-YYYYMMDD-HHMMSS.md
-    - Dry-run report: reports/guidelines/updatebrand-dry-run-YYYYMMDD-HHMMSS.md
+    - rebrand and rebrand -d write a report in reports/guidelines/.
+    - Non-dry run report: reports/guidelines/rebrand-YYYYMMDD-HHMMSS.md
+    - Dry-run report: reports/guidelines/rebrand-dry-run-YYYYMMDD-HHMMSS.md
   - -h/--help does not generate a report.
   - On successful non-dry runs, existing dry-run reports are deleted.
 
@@ -58,7 +58,7 @@ Exit Codes:
 To change the brand name, brand initials, or tagline:
   - Add a new entry with no Completed date to the Brand History
     table in logs/brand_history.md.
-  - Run scripts/bin/updatebrand.
+  - Run scripts/bin/rebrand.
 
 The script will:
   - Update SVG files in docs/branding based on pending row values
@@ -415,7 +415,7 @@ cleanup_dry_run_reports() {
     local -a dry_run_reports=()
 
     mapfile -t dry_run_reports < <(find "${REPORTS_DIR}" \
-        -maxdepth 1 -type f -name 'updatebrand-dry-run-*.md' \
+        -maxdepth 1 -type f -name 'rebrand-dry-run-*.md' \
         | sort)
 
     if [[ "${#dry_run_reports[@]}" -eq 0 ]]; then
@@ -512,9 +512,9 @@ done
 mkdir -p "$REPORTS_DIR"
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
-    RUN_LOG_FILE="${REPORTS_DIR}/updatebrand-dry-run-${RUN_TS_FILE}.md"
+    RUN_LOG_FILE="${REPORTS_DIR}/rebrand-dry-run-${RUN_TS_FILE}.md"
 else
-    RUN_LOG_FILE="${REPORTS_DIR}/updatebrand-${RUN_TS_FILE}.md"
+    RUN_LOG_FILE="${REPORTS_DIR}/rebrand-${RUN_TS_FILE}.md"
 fi
 
 trap write_run_log_on_exit EXIT

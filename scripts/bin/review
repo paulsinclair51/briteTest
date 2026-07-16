@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# mkpullrequest - Create or update pull request on GitHub.
+# review - Create or update pull request on GitHub.
 #
-# See usage below for details, or run: mkpullrequest -h
+# See usage below for details, or run: review -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,8 +11,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mkpr [OPTIONS]
-  mkpr {-h | --help}
+  review [OPTIONS]
+  review {-h | --help}
 
 Create a new pull request or update an existing one for the current branch.
 
@@ -49,25 +49,25 @@ Options:
 
 Examples:
   # Create PR with auto-generated title
-  mkpr
+  review
 
   # Create draft PR
-  mkpr --draft -t "WIP: New feature"
+  review --draft -t "WIP: New feature"
 
   # Create PR with labels and open in browser
-  mkpr -l "bug,urgent" -b
+  review -l "bug,urgent" -b
 
   # Create PR and add description
-  mkpr -d "This PR fixes issue #123 by refactoring the auth module"
+  review -d "This PR fixes issue #123 by refactoring the auth module"
 
   # Unix-style description
-  mkpr -- This PR fixes the critical bug
+  review -- This PR fixes the critical bug
 
 Workflow:
-  1. Create PR: mkpr --draft -t "WIP: Feature"
+  1. Create PR: review --draft -t "WIP: Feature"
   2. Code review requests changes
   3. Make changes and commit: git add . && git commit -m "Address feedback"
-  4. Update PR and mark ready: mkpr
+  4. Update PR and mark ready: review
 
 
 Outputs:

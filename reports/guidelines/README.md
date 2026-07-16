@@ -4,6 +4,6 @@ Directory for guideline/style/wording conformance reports.
 
 Examples:
 - `ckstyle-<datetime>.md` from `scripts/bin/ckstyle`
-- `updatebrand[-dry-run]-<datetime>.md` from `scripts/bin/updatebrand`
+- `rebrand[-dry-run]-<datetime>.md` from `scripts/bin/rebrand`
 
-Reserved for future guideline report outputs (for example, `replacephrases` if report generation is added).
+Reserved for future guideline report outputs (for example, `replacetext` if report generation is added).

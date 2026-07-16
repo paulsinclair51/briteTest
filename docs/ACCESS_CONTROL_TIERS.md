@@ -33,7 +33,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 │ • Read: All files                                       │
 │ • Create: Branches, commits, PRs (from forks or branches)
 │ • Cannot: Merge, Release, Direct push to main/v*.0     │
-│ • Scripts: mkbranch, commit, syncfromremote, etc.      │
+│ • Scripts: mkbranch, commit, mrgbranch, etc.      │
 └─────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -41,7 +41,7 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 │ • Read: All files                                       │
 │ • Review: PRs, approve changes                          │
 │ • Cannot: Merge to main/v*.0, Release                   │
-│ • Scripts: mkfeedback (in addition to C)                │
+│ • Scripts: feedback (in addition to C)                │
 └─────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -157,16 +157,16 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 **Cannot:**
 - ❌ Push directly to `main` (protected)
 - ❌ Push directly to `v*.0` (protected)
-- ❌ Execute `mergetoparent`, `mkrelease`, `fixrepo`
+- ❌ Execute `mrgup`, `release`, `fixrepo`
 - ❌ Modify .github/workflows/
 - ❌ Modify config/
 
 **Scripts Available:**
 - `mkbranch` - Create branches
 - `commit` - Create commits
-- `mkpullrequest` - Create PRs
+- `review` - Create PRs
 - `make test-all-scripts` - Run script smoke tests
-- `syncfromremote` - Sync with remote
+- `mrgbranch` - Sync with remote
 - All utility scripts
 
 **Use Case:** Active contributors writing code and documentation
@@ -183,20 +183,20 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 
 **Write Access (Controlled by Scripts):**
 - ✅ All Contributor capabilities
-- ✅ Provide review feedback (via `mkfeedback`)
+- ✅ Provide review feedback (via `feedback`)
 - ✅ Create/update pull requests
 
 **Cannot:**
 - ❌ Merge to `main` (protected)
 - ❌ Merge to `v*.0` (protected)
-- ❌ Execute `mergetoparent`, `mkrelease`, `fixrepo`
+- ❌ Execute `mrgup`, `release`, `fixrepo`
 - ❌ Modify .github/workflows/
 - ❌ Create releases
 - ❌ Direct push to protected branches
 
 **Scripts Available:**
 - All Contributor scripts
-- `mkfeedback` - Review feedback
+- `feedback` - Review feedback
 - `ckstyle` - Check code style
 
 **Use Case:** Trusted team members who review PRs and maintain code quality
@@ -227,8 +227,8 @@ briteTest is a **public open-source repository** with tiered access control. Thi
 
 **Scripts Available:**
 - All Reviewer scripts
-- `mergetoparent` (protected - requires override)
-- `mkrelease` (protected - requires override)
+- `mrgup` (protected - requires override)
+- `release` (protected - requires override)
 - `fixrepo` (protected - requires override)
 
 **Use Case:** Project maintainers, official contributors with merge authority
@@ -313,16 +313,16 @@ All write operations go through scripts, not direct git commands:
 # Contributors can execute:
 scripts/bin/mkbranch -r feature main          # ✅ Allowed
 scripts/bin/commit -m "feat: add feature"   # ✅ Allowed
-scripts/bin/mkpullrequest                      # ✅ Allowed
+scripts/bin/review                      # ✅ Allowed
 make test-all-scripts                               # ✅ Allowed
 
 # Reviewers can additionally execute:
-scripts/bin/mkfeedback                         # ✅ Allowed
+scripts/bin/feedback                         # ✅ Allowed
 
 # Approvers can execute (with override):
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent feature main    # ✅ Allowed
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/chtarget dev/parser-v1.0.0 v1.1.0 # ✅ Allowed
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.0        # ✅ Allowed
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mrgup feature main    # ✅ Allowed
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/retarget dev/parser-v1.0.0 v1.1.0 # ✅ Allowed
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/release v1.0.0        # ✅ Allowed
 
 # Direct git commands to protected branches blocked:
 git push origin feature:main                   # ❌ Blocked by branch protection

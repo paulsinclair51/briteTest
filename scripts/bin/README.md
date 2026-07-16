@@ -22,8 +22,8 @@ See `<repo>/README.md` for an introduction to briteTest.
    See Contributor Guide for guidelines.
 - **gendocs**: Generate PDF and DOCX documentation.
 - **genpngs**: Generate branding PNG images from SVG files.
-- **replacephrases**: Apply configured phrase replacements in markdown files.
-- **updatebrand**: Update branding text and regenerate related assets.
+- **replacetext**: Apply configured text replacements in markdown files.
+- **rebrand**: Update branding text and regenerate related assets.
 
 ### Repository and Fork Management
 
@@ -37,25 +37,25 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ### Branch and Workflow Management
 
-- **chcurrent**: Change to specified local branch as current branch
+- **chbranch**: Change to specified local branch as current branch
   (blocks `main` which is not allowed to have a local branch).
   When local branch doesn't exist, creates local tracking branch from
   origin/<branch>` if it exists and is available.
   List can include cached remote-only branches.
-- **chtarget**: Retarget a targeted branch to a different version branch.
+- **retarget**: Retarget a targeted branch to a different version branch.
   targeted branch is renamed to have its version as the specified version.
-- **ckbranch_history**: Query branch history log entries.
+- **lsbranchlog**: Query branch history log entries.
 - **commit**: Commit and optionally push changes to remote.
 - **copyfix**: Cherry-pick/copy fix commits from another branch.
 - **lsbranch**: List a branch or branches and their status.
 - **mkbranch**: Create branches with policy validation.
-- **mkfeedback**: View/respond to PR feedback workflows.
-- **mergetoparent**: Merge current branch to its parent branch.
-- **mkpullrequest**: Create or update a pull request.
-- **mkrelease**: Create and publish releases.
+- **feedback**: View/respond to PR feedback workflows.
+- **mrgup**: Merge current branch to its parent branch.
+- **review**: Create or update a pull request.
+- **release**: Create and publish releases.
 - **rmbranch**: Remove local and/or remote branches.
-- **syncfromparent**: Merge parent branch into current branch.
-- **syncfromremote**: Fetch and pull latest changes from remote into
+- **mrgdown**: Merge parent branch into current branch.
+- **mrgbranch**: Fetch and pull latest changes from remote into
   local branch
 - **undo**: Undo recent merge/release/commit operations.
 

@@ -25,13 +25,13 @@ by Git.
 
 - **guidelines/**: Style, wording, and guideline-conformance reports.
 	- `ckstyle-<datetime>.md` from `<repo>/scripts/bin/ckstyle`
-	- `updatebrand[-dry-run]-<datetime>.md` from `<repo>/scripts/bin/updatebrand`
+	- `rebrand[-dry-run]-<datetime>.md` from `<repo>/scripts/bin/rebrand`
 	- Reserved for future guideline report outputs (for example,
-	  `replacephrases` if report generation is added)
+	  `replacetext` if report generation is added)
 
 - **(root-level files)**: General or legacy report files.
 	- legacy historical report files generated before subdirectory migration
-	- user-directed ad hoc outputs (for example `ckbranch_history -o <file>`)
+	- user-directed ad hoc outputs (for example `lsbranchlog -o <file>`)
 
 ## Files
 

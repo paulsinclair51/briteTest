@@ -16,6 +16,9 @@ See `<repo>/README.md` for an introduction to briteTest.
 - **markdownlint.json**: Markdown lint configuration for this repository.
   Used by `make lint-md` in the project `Makefile`. See below for details.
 
+- **text_mappings.txt**: Default text replacement mappings used by
+  `scripts/bin/replacetext`.
+
 - **version_status.md**: Specifies the status of versions for accepting changes.
 
 - **README.md**: This directory guide.

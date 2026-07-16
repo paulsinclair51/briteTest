@@ -8,14 +8,18 @@
 # Purpose: Define which scripts can be executed by each role.
 #          Roles are hierarchical: Approver > Reviewer > Contributor
 #
+# Note: Command-name mappings were updated to renamed scripts (mrgup,
+# mrgdown, mrgbranch, review). End-to-end RBAC enforcement integration
+# requires a separate full review and is intentionally deferred.
+#
 # Role Hierarchy:
 #   Approver (A) = Full access to all scripts
 #   Reviewer (R) = Access to contributor + reviewer scripts
 #   Contributor (C) = Access to contributor scripts only
 #
 # Protected Scripts (require approver override):
-#   - mergetoparent - Merge branches to protected branches
-#   - mkrelease     - Create releases and tags
+#   - mrgup - Merge branches to protected branches
+#   - release     - Create releases and tags
 #   - fixrepo - Repair repository state
 
 set -euo pipefail
@@ -36,43 +40,43 @@ readonly CONTRIBUTOR_SCRIPTS=(
   "rmclone"            # Remove local clone safely
   "commit"           # Create commits
   "copyfix"            # Cherry-pick fixes between branches
-  "syncfromremote"       # Sync with remote
-  "syncfromparent"           # Sync current branch with parent branch
+  "mrgbranch"       # Sync with remote
+  "mrgdown"           # Sync current branch with parent branch
   "undo"             # Undo changes
-  "ckbranch_history"   # Check branch history
+  "lsbranchlog"   # Check branch history
   "lsbranch"           # List branches
 )
 
 # Reviewer scripts (available to R, A - in addition to contributor scripts)
 readonly REVIEWER_SCRIPTS=(
-  "mkfeedback"         # Provide code review feedback
-  "mkpullrequest"      # Create/update pull requests
+  "feedback"         # Provide code review feedback
+  "review"      # Create/update pull requests
   "ckstyle"            # Check code style
 )
 
 # Approver scripts (available to A only - in addition to all scripts)
 readonly APPROVER_SCRIPTS=(
-  "mergetoparent"    # Merge branches (protected)
-  "chtarget"           # Retarget targeted branch to another version parent
-  "mkrelease"          # Create releases (protected)
+  "mrgup"    # Merge branches (protected)
+  "retarget"           # Retarget targeted branch to another version parent
+  "release"          # Create releases (protected)
   "fixrepo"            # Fix repository issues (protected)
-  "updatebrand"        # Update branding
-  "replacephrases"     # Replace phrases globally
+  "rebrand"        # Update branding
+  "replacetext"     # Replace text globally
 )
 
 # Utility scripts (available to all)
 readonly UTILITY_SCRIPTS=(
   "gendocs"            # Generate documentation
   "genpngs"            # Generate PNG files
-  "ckbranch_history"   # Check branch history
+  "lsbranchlog"   # Check branch history
   "installscripts"     # Install scripts
 )
 
 # Protected scripts (require approver override confirmation)
 readonly PROTECTED_SCRIPTS=(
-  "mergetoparent"
-  "chtarget"
-  "mkrelease"
+  "mrgup"
+  "retarget"
+  "release"
   "fixrepo"
 )
 
@@ -111,7 +115,7 @@ get_user_role() {
 # Args: $1 = username, $2 = script name
 # Returns: 0 if allowed, 1 if not allowed
 #
-# Example: can_execute_script "paulsinclair51" "mergetoparent"
+# Example: can_execute_script "paulsinclair51" "mrgup"
 can_execute_script() {
   local username="$1"
   local script="$2"
@@ -147,7 +151,7 @@ can_execute_script() {
 # Args: $1 = script name
 # Returns: 0 if protected, 1 if not protected
 #
-# Example: is_protected_script "mergetoparent"
+# Example: is_protected_script "mrgup"
 is_protected_script() {
   local script="$1"
   array_contains "$script" "${PROTECTED_SCRIPTS[@]}"
@@ -160,7 +164,7 @@ is_protected_script() {
 # Args: $1 = script name, $2 = username
 # Returns: 0 if requires override, 1 if not required
 #
-# Example: requires_approver_override "mergetoparent" "paulsinclair51"
+# Example: requires_approver_override "mrgup" "paulsinclair51"
 requires_approver_override() {
   local script="$1"
   local username="$2"
@@ -194,7 +198,7 @@ requires_approver_override() {
 # Args: $1 = script name
 # Returns: 0 if allowed, exits with error if not allowed
 #
-# Example: enforce_script_access "mergetoparent"
+# Example: enforce_script_access "mrgup"
 enforce_script_access() {
   local script="$1"
   local username="${GITHUB_ACTOR:-$(git config user.name)}"
@@ -224,7 +228,7 @@ enforce_script_access() {
 # Args: $1 = script name, $2 = operation description
 # Returns: 0 if confirmed, exits if not confirmed
 #
-# Example: request_approver_override "mergetoparent" "merge feature to main"
+# Example: request_approver_override "mrgup" "merge feature to main"
 request_approver_override() {
   local script="$1"
   local operation="${2:-execute this script}"

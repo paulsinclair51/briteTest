@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
 | v1.0.0 | 2026-07-13 | Current v1.0.0 development reference; refreshed to match current `scripts/bin/` inventory and clone lifecycle scripts (`mkclone`/`rmclone`). | Paul Sinclair |
-| v1.0.0 | 2026-07-14 | Added current `chcurrent` and `commit` behavior details (dirty-worktree guard, commit auto-push, report naming). | Paul Sinclair |
+| v1.0.0 | 2026-07-14 | Added current `chbranch` and `commit` behavior details (dirty-worktree guard, commit auto-push, report naming). | Paul Sinclair |
 
 ---
 
@@ -193,9 +193,9 @@ This catalog reflects the current script set in `scripts/bin/`.
 | Category | Scripts |
 |----------|---------|
 | Setup and Installation | `installscripts` |
-| Document and Brand Management | `ckstyle`, `gendocs`, `genpngs`, `replacephrases`, `updatebrand` |
+| Document and Brand Management | `ckstyle`, `gendocs`, `genpngs`, `replacetext`, `rebrand` |
 | Repository and Fork Management | `mkfork`, `mkclone`, `rmclone`, `fixrepo` |
-| Branch and Workflow Management | `ckbranch_history`, `chcurrent`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `mkfeedback`, `mergetoparent`, `mkpullrequest`, `chtarget`, `mkrelease`, `syncfromremote`, `syncfromparent`, `undo`, `rmbranch` |
+| Branch and Workflow Management | `lsbranchlog`, `chbranch`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `feedback`, `mrgup`, `review`, `retarget`, `release`, `mrgbranch`, `mrgdown`, `undo`, `rmbranch` |
 
 ---
 
@@ -245,26 +245,40 @@ scripts/bin/mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
 
 ---
 
-### chcurrent
+### chbranch
 
-**Purpose:** Switch to a local branch (or create local tracking branch from
-origin) with safety checks.
+**Purpose:** Change to a branch with local-first behavior and guarded
+local/remote mode switching.
 
-**Location:** `scripts/bin/chcurrent`
+**Location:** `scripts/bin/chbranch`
 
 **Usage:**
 
 ```bash
-scripts/bin/chcurrent <branch>
-scripts/bin/chcurrent --list-remote-only
+scripts/bin/chbranch <branch>
+scripts/bin/chbranch -r <branch>
+scripts/bin/chbranch -f <branch>
 ```
 
 **Current behavior highlights:**
 
 - Rejects remote ref input form (`origin/<branch>`).
 - Blocks switching to `main` by policy.
-- Creates a local tracking branch when branch exists only on origin.
-- Blocks switching when current worktree is dirty; commit first.
+- Uses local branch when it exists; otherwise changes to remote `origin/<branch>`.
+- Blocks switching when current worktree is dirty unless `-f` is used.
+- `-r` requires remote branch availability and returns distinct not-found/
+	unreachable exit codes.
+- `-f -r` preserves uncommitted changes when the remote target fails prechecks.
+
+**Validation smoke test:**
+
+```bash
+bash scripts/tests/test_chbranch.sh
+```
+
+The smoke test covers help/argument validation and key exit-code paths,
+including no-change (`2`), branch/remote not-found (`3`/`4`), dirty
+worktree (`6`), and remote unreachable (`7`).
 
 ---
 
@@ -394,16 +408,16 @@ scripts/bin/rmbranch dev/fix-parser-v1.0.0
 
 ---
 
-### mergetoparent
+### mrgup
 
 **Purpose:** Merges the current source branch to its inferred parent branch using squash merge with policy checks.
 
-**Location:** `scripts/bin/mergetoparent`
+**Location:** `scripts/bin/mrgup`
 
 **Usage:**
 
 ```bash
-scripts/bin/mergetoparent [OPTIONS]
+scripts/bin/mrgup [OPTIONS]
 ```
 
 **Options:**
@@ -414,19 +428,19 @@ scripts/bin/mergetoparent [OPTIONS]
 
 **Policy Notes:**
 
-- Protected parents (`main` as the remote-only base, and `v<M>.<m>.<p>`) are updated via `mergetoparent` only
+- Protected parents (`main` as the remote-only base, and `v<M>.<m>.<p>`) are updated via `mrgup` only
 - If inferred parent is protected, approver role is required
-- Resolve parent/source conflicts in the source branch before running `mergetoparent`
+- Resolve parent/source conflicts in the source branch before running `mrgup`
 - Running from detached HEAD or a protected current branch is rejected
 
 **Examples:**
 
 ```bash
 # Merge current branch to inferred parent using PR title
-scripts/bin/mergetoparent
+scripts/bin/mrgup
 
 # Merge with explicit message
-scripts/bin/mergetoparent -m "Merge parser fixes"
+scripts/bin/mrgup -m "Merge parser fixes"
 ```
 
 ---
@@ -492,6 +506,8 @@ bash scripts/tests/test_scripts.sh [OPTIONS]
 - `-v, --verbose` - Detailed output
 - `-c, --continue` - Continue after failures
 
+When present, `test_chbranch.sh` is prioritized to run first.
+
 **Examples:**
 
 ```bash
@@ -502,16 +518,16 @@ bash scripts/tests/test_scripts.sh -c
 
 ---
 
-### updatebrand
+### rebrand
 
 **Purpose:** Updates brand name, initials, and tagline across the repository.
 
-**Location:** `scripts/bin/updatebrand`
+**Location:** `scripts/bin/rebrand`
 
 **Usage:**
 
 ```bash
-scripts/bin/updatebrand [-d] [-h]
+scripts/bin/rebrand [-d] [-h]
 ```
 
 **Arguments:**
@@ -527,9 +543,9 @@ scripts/bin/updatebrand [-d] [-h]
 **Workflow:**
 
 1. Edit `logs/brand_history.md` with new brand values
-2. Run dry run: `scripts/bin/updatebrand -d`
-3. Review changes in `logs/updatebrand-log-dry-run-*.md`
-4. Apply: `scripts/bin/updatebrand`
+2. Run dry run: `scripts/bin/rebrand -d`
+3. Review changes in `reports/guidelines/rebrand-dry-run-*.md`
+4. Apply: `scripts/bin/rebrand`
 5. Verify with `git diff`
 
 ---
@@ -578,19 +594,19 @@ Role-based script permissions are enforced by helper checks and protected script
 
 | Script Capability | Contributor (C) | Reviewer (R) | Approver (A) |
 |------------------|-----------------|--------------|--------------| 
-| Branch and commit operations (`mkbranch`, `commit`, `mkpullrequest`) | ✅ | ✅ | ✅ |
+| Branch and commit operations (`mkbranch`, `commit`, `review`) | ✅ | ✅ | ✅ |
 | Repository/clone lifecycle (`mkclone`, `rmclone`) | ✅ | ✅ | ✅ |
-| Review operations (`mkfeedback`) | ❌ | ✅ | ✅ |
-| Retarget operations (`chtarget`) | ❌ | ❌ | ✅ |
-| Protected operations (`mergetoparent`, `mkrelease`, `fixrepo`) | ❌ | ❌ | ✅ (override required) |
+| Review operations (`feedback`) | ❌ | ✅ | ✅ |
+| Retarget operations (`retarget`) | ❌ | ❌ | ✅ |
+| Protected operations (`mrgup`, `release`, `fixrepo`) | ❌ | ❌ | ✅ (override required) |
 
 ### Protected Script Rule
 
 Approver-only scripts require explicit override confirmation:
 
 ```bash
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.0
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mrgup
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/release v1.0.0
 SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepo
 ```
 

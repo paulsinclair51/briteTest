@@ -4,8 +4,8 @@ Repository-level operational history for briteTest.
 
 This file logs all repository-wide operations:
 - Clone and fork operations (mkclone, rmclone, mkfork)
-- Brand updates (updatebrand)
-- Release operations (mkrelease)
+- Brand updates (rebrand)
+- Release operations (release)
 
 **Location**: `origin/main/logs/repository_history.md`  
 **Scope**: Repository-wide (single source of truth)  
