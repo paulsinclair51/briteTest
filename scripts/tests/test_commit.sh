@@ -167,6 +167,13 @@ rc=$(run_capture "$TMPDIR/diverged.out" env GITHUB_ACTOR=testuser bash -lc "cd '
 [[ "$rc" -eq 0 ]] || fail "diverged branch auto-resolve should exit 0 (got $rc)"
 assert_contains "auto-resolved" "$TMPDIR/diverged.out"
 assert_contains "review resolved code" "$TMPDIR/diverged.out"
+diverged_report="$(latest_report "$WORK")"
+[[ -f "$diverged_report" ]] || fail "expected diverged commit report"
+assert_contains "**Push Commit:**" "$diverged_report"
+assert_contains "local diverged change" "$diverged_report"
+if grep -q '^## Commit Entries Selected For Push' "$diverged_report"; then
+  fail "commit report should not include the old push-entries section"
+fi
 pass "divergence auto-resolution"
 
 echo "All commit smoke tests passed."
