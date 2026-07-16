@@ -744,7 +744,8 @@ EOF
     fi
 
     if [[ -n "$push_commit_comment" ]]; then
-      push_commit_summary="${push_commit_summary}
+      # Use a hard line break so markdown renderers keep these on separate lines.
+      push_commit_summary="${push_commit_summary}  
 **Commit Comment:** $push_commit_comment"
     fi
   fi
