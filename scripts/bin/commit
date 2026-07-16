@@ -626,6 +626,8 @@ generate_commit_report() {
   local committed_and_pushed=0
   local total_rows=0
   local commit_hash=""
+  local push_commit_hash=""
+  local push_commit_comment=""
 
   mkdir -p "$BRANCH_REPORTS_DIR"
 
@@ -730,10 +732,20 @@ EOF
 
   push_commit_summary="$(get_push_commit_summary)"
   if [[ -n "$push_commit_summary" ]]; then
+    push_commit_hash="${push_commit_summary%% *}"
+    if [[ "$push_commit_summary" == *" "* ]]; then
+      push_commit_comment="${push_commit_summary#* }"
+    fi
+
     if [[ "$DID_PUSH_REMOTE" == true ]]; then
-      push_commit_summary="**Pushed Commit Hash and Comment:** $push_commit_summary"
+      push_commit_summary="**Pushed Commit Hash:** $push_commit_hash"
     else
-      push_commit_summary="**Commit Selected for Push:** $push_commit_summary"
+      push_commit_summary="**Commit Selected for Push Hash:** $push_commit_hash"
+    fi
+
+    if [[ -n "$push_commit_comment" ]]; then
+      push_commit_summary="${push_commit_summary}
+**Commit Comment:** $push_commit_comment"
     fi
   fi
 
