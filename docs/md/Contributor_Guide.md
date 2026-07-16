@@ -89,7 +89,14 @@ This Contributor Guide defines the expectations and rules for contributing to br
 
 Contributors should read this document before submitting changes, reviewing, or approving to ensure consistency across the code and documentation.
 
-### Current Scripts (scripts/bin)
+### Scripts (scripts/bin)
+
+A script-based workflow is required. Direct use of git commands that modify the
+repository is not allowed accept by the owner. A script validates the action,
+enforces policy, issues the git commands needed to completed the action,
+generates informational output, and, for some scripts, a report. This simplifies the
+workflow for contributors, reviewers, and approvers while maintaining integrity in
+the repostory.
 
 The current executable script set is maintained in `scripts/bin/README.md`.
 
@@ -197,8 +204,9 @@ BRANCH is the targeted or contributor branch to use for making
 your changes.
 
 PARENTBRANCH is the version, targeted, or contributor branch from which to
-create the branch. Default for a targeted branch is the version branch
-corresponding to the version in the targeted branch name.
+create the branch. If BRANCH is a targeted branch name, the default is the
+version branchcorresponding to th e version in BRANCH; otherwise,
+PARENTBRANCH must be specified.
 
 **Examples:**
 ```bash
@@ -214,13 +222,6 @@ scripts/bin/mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
 - **Main**: `main`
 
 ### Making Changes
-
-A script-based workflow is required to make changes. Direct use of git commands
-that modify the repository is not allowed accept by the owner. A script validates
-the action, enforces policy, issues the git commands needed to completed the action,
-generates informational output, and, for some scripts, a report. This simplifies the
-workflow for contributors, reviewers, and approvers while maintaining integrity in
-the repostory.
 
 ```bash
 scripts/bin/chcurrent BRANCH
