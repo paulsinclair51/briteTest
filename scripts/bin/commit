@@ -563,43 +563,21 @@ get_prepush_note_for_file() {
   fi
 }
 
-append_push_entries_section() {
-  printf '\n## Commit Entries Selected For Push\n\n' >> "$REPORT_FILE"
+get_push_commit_summary() {
+  local summary=""
 
   if [[ "$PUSH" != true ]]; then
-    printf -- '- Entries selected: 0\n\n' >> "$REPORT_FILE"
-    printf -- '- (none)\n' >> "$REPORT_FILE"
+    printf '%s' ""
     return 0
   fi
 
-  printf -- '- Entries selected: %s\n\n' "$PUSHED_COMMITS" >> "$REPORT_FILE"
-
-  if [[ -n "$PRE_PUSH_COMMIT_LIST" ]]; then
-    printf '%s\n' "$PRE_PUSH_COMMIT_LIST" | while IFS= read -r commit_line; do
-      [[ -n "$commit_line" ]] || continue
-      printf -- '- %s (already on local branch, pending remote sync before this run)\n' "$commit_line" >> "$REPORT_FILE"
-    done
+  if [[ "$NEEDS_COMMIT" == true && "$DRY_RUN" == false ]]; then
+    summary="$(git log --oneline -1 2>/dev/null || true)"
+  elif [[ -n "$PRE_PUSH_COMMIT_LIST" ]]; then
+    summary="$(printf '%s\n' "$PRE_PUSH_COMMIT_LIST" | sed -n '1p')"
   fi
 
-  if [[ "$NEEDS_COMMIT" == true ]]; then
-    if [[ "$DRY_RUN" == true && "$PUSH" == true ]]; then
-      printf -- '- <new commit from current working changes> (would be created in this run and included in push)\n' >> "$REPORT_FILE"
-    elif [[ "$PUSH" == true ]]; then
-      local latest_commit
-      latest_commit="$(git log --oneline -1 2>/dev/null || true)"
-      if [[ -n "$latest_commit" ]]; then
-        if [[ -n "$PRE_PUSH_COMMIT_LIST" ]] && printf '%s\n' "$PRE_PUSH_COMMIT_LIST" | grep -Fxq "$latest_commit"; then
-          :
-        else
-          printf -- '- %s (created in this run and included in push)\n' "$latest_commit" >> "$REPORT_FILE"
-        fi
-      fi
-    fi
-  fi
-
-  if [[ "$PUSHED_COMMITS" -eq 0 ]]; then
-    printf -- '- (none)\n' >> "$REPORT_FILE"
-  fi
+  printf '%s' "$summary"
 }
 
 append_divergence_section() {
@@ -633,6 +611,8 @@ generate_commit_report() {
 **Command:** \`${command_text}\`
 
 **Branch:** \`${CURRENT_BRANCH}\`
+
+__PUSH_SUMMARY_LINE__
 
 __SUMMARY_LINE_1__
 __SUMMARY_LINE_2__
@@ -718,16 +698,25 @@ EOF
 
   total_rows=$((committed_only + pushed_only + committed_and_pushed))
 
+  push_commit_summary="$(get_push_commit_summary)"
+  if [[ -n "$push_commit_summary" ]]; then
+    push_commit_summary="**Push Commit:** $push_commit_summary"
+  fi
+
   # shellcheck disable=SC2016
-  awk -v cp="$committed_and_pushed" -v c="$committed_only" -v p="$pushed_only" -v t="$total_rows" '
+  awk -v cp="$committed_and_pushed" -v c="$committed_only" -v p="$pushed_only" -v t="$total_rows" -v push_commit_summary="$push_commit_summary" '
+    /^__PUSH_SUMMARY_LINE__$/ {
+      if (push_commit_summary != "") {
+        print push_commit_summary
+      }
+      next
+    }
     /^__SUMMARY_LINE_1__$/ { print "**Commit/Push:** " cp "<br>"; next }
     /^__SUMMARY_LINE_2__$/ { print "**Commit:** " c "<br>"; next }
     /^__SUMMARY_LINE_3__$/ { print "**Push:** " p "<br>"; next }
     /^__SUMMARY_LINE_4__$/ { print "**Total:** " t; next }
     { print }
   ' "$REPORT_FILE" > "$REPORT_FILE.tmp" && mv "$REPORT_FILE.tmp" "$REPORT_FILE"
-
-  append_push_entries_section
   append_divergence_section
 
   cleanup_old_dry_run_reports
