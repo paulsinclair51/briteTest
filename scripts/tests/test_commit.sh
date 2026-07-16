@@ -118,6 +118,10 @@ rc=$(run_capture "$TMPDIR/dry.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK
 dry_report="$(latest_report "$WORK")"
 [[ -f "$dry_report" ]] || fail "expected dry-run commit report"
 assert_contains "Report generated:" "$TMPDIR/dry.out"
+assert_contains "**Commit Hash**" "$dry_report"
+if grep -Fq -- "| n/a |" "$dry_report"; then
+  fail "dry-run commit report should leave Commit Hash blank"
+fi
 pass "dry-run commit"
 
 # 4) Missing message when changes exist should fail with exit 6
@@ -178,5 +182,41 @@ if grep -q '^## Commit Entries Selected For Push' "$diverged_report"; then
   fail "commit report should not include the old push-entries section"
 fi
 pass "divergence auto-resolution"
+
+# 9) Pending local commit without a push in this run should use selected-for-push label
+printf '\npending push direct commit\n' >> "$WORK/README.md"
+(
+  cd "$WORK"
+  git add README.md
+  git commit -m "manual pending push" >/dev/null 2>&1
+)
+rc=$(run_capture "$TMPDIR/pending-push.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -m 'pending push dry run'")
+[[ "$rc" -eq 0 ]] || fail "commit -d with pending local push should exit 0 (got $rc)"
+pending_report="$(latest_report "$WORK")"
+[[ -f "$pending_report" ]] || fail "expected pending-push commit report"
+assert_contains "**Commit Selected for Push:**" "$pending_report"
+assert_contains "manual pending push" "$pending_report"
+if grep -q '^\*\*Pushed Commit Hash and Comment:\*\*' "$pending_report"; then
+  fail "pending-push report should not use pushed-commit label"
+fi
+pass "pending push label"
+
+# 10) No remote-tracked branch should omit push-summary line entirely
+(
+  cd "$WORK"
+  git checkout -b local-only-commit-test >/dev/null 2>&1
+)
+printf '\nlocal only branch change\n' >> "$WORK/README.md"
+rc=$(run_capture "$TMPDIR/no-remote.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -m 'local only dry run'")
+[[ "$rc" -eq 0 ]] || fail "commit -d on local-only branch should exit 0 (got $rc)"
+no_remote_report="$(latest_report "$WORK")"
+[[ -f "$no_remote_report" ]] || fail "expected local-only commit report"
+if grep -q '^\*\*Pushed Commit Hash and Comment:\*\*' "$no_remote_report"; then
+  fail "local-only report should omit pushed-commit summary line"
+fi
+if grep -q '^\*\*Commit Selected for Push:\*\*' "$no_remote_report"; then
+  fail "local-only report should omit selected-for-push summary line"
+fi
+pass "no remote push summary omission"
 
 echo "All commit smoke tests passed."

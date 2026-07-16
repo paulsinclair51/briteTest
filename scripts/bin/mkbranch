@@ -710,8 +710,13 @@ fi
 log_verbose "Fetched origin successfully"
 
 # Propagate repository history from remote if available
-bt_propagate_repository_history
-case $? in
+history_status=0
+if bt_propagate_repository_history; then
+  history_status=0
+else
+  history_status=$?
+fi
+case "$history_status" in
   0) log_verbose "Repository history already up to date" ;;
   1) log_verbose "Updated repository history from remote" ;;
   *) ;;

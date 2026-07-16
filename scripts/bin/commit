@@ -184,6 +184,7 @@ DRY_RUN=false
 VERBOSE=false
 COMMITTED_FILES=0
 PUSHED_COMMITS=0
+DID_PUSH_REMOTE=false
 NEEDS_COMMIT=false
 COMMIT_FILE_LIST=""
 PUSH_COMMIT_LIST=""
@@ -631,7 +632,7 @@ generate_commit_report() {
   if [[ "$NEEDS_COMMIT" == true && "$DRY_RUN" == false ]]; then
     commit_hash="$(git rev-parse --short HEAD 2>/dev/null || true)"
   elif [[ "$NEEDS_COMMIT" == true && "$DRY_RUN" == true ]]; then
-    commit_hash="n/a"
+    commit_hash=""
   fi
 
   cat > "$REPORT_FILE" <<EOF
@@ -729,7 +730,11 @@ EOF
 
   push_commit_summary="$(get_push_commit_summary)"
   if [[ -n "$push_commit_summary" ]]; then
-    push_commit_summary="**Pushed Commit Hash and Comment:** $push_commit_summary"
+    if [[ "$DID_PUSH_REMOTE" == true ]]; then
+      push_commit_summary="**Pushed Commit Hash and Comment:** $push_commit_summary"
+    else
+      push_commit_summary="**Commit Selected for Push:** $push_commit_summary"
+    fi
   fi
 
   # shellcheck disable=SC2016
@@ -1026,6 +1031,7 @@ if [[ "$PUSH" == true ]]; then
           bt_error_exit 14 "Failed to push to remote"
         fi
       fi
+      DID_PUSH_REMOTE=true
       if [[ "$VERBOSE" == true ]]; then
         bt_success "Pushed to remote"
       fi
