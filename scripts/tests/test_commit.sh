@@ -176,7 +176,8 @@ diverged_report="$(latest_report "$WORK")"
 assert_contains "**Commit Hash**" "$diverged_report"
 diverged_hash="$(cd "$WORK" && git rev-parse --short HEAD)"
 assert_contains "$diverged_hash" "$diverged_report"
-assert_contains "**Pushed Commit Hash and Comment:**" "$diverged_report"
+assert_contains "**Pushed Commit Hash:** $diverged_hash" "$diverged_report"
+assert_contains "**Commit Comment:** local diverged change" "$diverged_report"
 assert_contains "local diverged change" "$diverged_report"
 if grep -q '^## Commit Entries Selected For Push' "$diverged_report"; then
   fail "commit report should not include the old push-entries section"
@@ -194,9 +195,10 @@ rc=$(run_capture "$TMPDIR/pending-push.out" env GITHUB_ACTOR=testuser bash -lc "
 [[ "$rc" -eq 0 ]] || fail "commit -d with pending local push should exit 0 (got $rc)"
 pending_report="$(latest_report "$WORK")"
 [[ -f "$pending_report" ]] || fail "expected pending-push commit report"
-assert_contains "**Commit Selected for Push:**" "$pending_report"
-assert_contains "manual pending push" "$pending_report"
-if grep -q '^\*\*Pushed Commit Hash and Comment:\*\*' "$pending_report"; then
+pending_hash="$(cd "$WORK" && git rev-parse --short HEAD)"
+assert_contains "**Commit Selected for Push Hash:** $pending_hash" "$pending_report"
+assert_contains "**Commit Comment:** manual pending push" "$pending_report"
+if grep -q '^\*\*Pushed Commit Hash:\*\*' "$pending_report"; then
   fail "pending-push report should not use pushed-commit label"
 fi
 pass "pending push label"
@@ -214,7 +216,10 @@ no_remote_report="$(latest_report "$WORK")"
 if grep -q '^\*\*Pushed Commit Hash and Comment:\*\*' "$no_remote_report"; then
   fail "local-only report should omit pushed-commit summary line"
 fi
-if grep -q '^\*\*Commit Selected for Push:\*\*' "$no_remote_report"; then
+if grep -q '^\*\*Pushed Commit Hash:\*\*' "$no_remote_report"; then
+  fail "local-only report should omit pushed-commit summary line"
+fi
+if grep -q '^\*\*Commit Selected for Push Hash:\*\*' "$no_remote_report"; then
   fail "local-only report should omit selected-for-push summary line"
 fi
 pass "no remote push summary omission"
