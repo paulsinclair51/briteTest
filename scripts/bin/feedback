@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# mkfeedback - Handle and respond to PR review feedback.
+# feedback - Handle and respond to PR review feedback.
 #
-# See usage below for details, or run: mkfeedback -h
+# See usage below for details, or run: feedback -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,8 +11,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mkfeedback [ACTION] [OPTIONS]
-  mkfeedback {-h | --help}
+  feedback [ACTION] [OPTIONS]
+  feedback {-h | --help}
 
 Handle and respond to pull request review feedback.
 
@@ -46,87 +46,87 @@ Options:
 Workflow:
 
   1. View feedback:
-     mkfeedback view
+     feedback view
 
   2. Make changes locally to address feedback:
      # Edit files
      git add .
 
   3. Commit changes with reference to feedback:
-     mkfeedback update -m "Address reviewer feedback on auth logic"
+     feedback update -m "Address reviewer feedback on auth logic"
 
   4. Push to PR:
-     mkfeedback sync
+     feedback sync
 
   5. Respond to reviewer:
-    mkfeedback respond -m "Fixed as requested, auth now validates"
+    feedback respond -m "Fixed as requested, auth now validates"
     "tokens properly"
 
 Examples:
 
   # Show all comments on current PR
-  mkfeedback view
+  feedback view
 
   # Show all comments with verbose detail
-  mkfeedback view -v
+  feedback view -v
 
   # Commit fixes for feedback
-  mkfeedback update -m "Add null-check in parser as requested"
+  feedback update -m "Add null-check in parser as requested"
 
   # Push updates to PR
-  mkfeedback sync
+  feedback sync
 
   # Add response to PR
-  mkfeedback respond -m "Updated error handling as discussed"
+  feedback respond -m "Updated error handling as discussed"
 
   # Mark feedback resolved
-  mkfeedback resolve -c comment-id
+  feedback resolve -c comment-id
 
 Workflow Scenarios:
 
   Scenario 1: Small changes requested
   ---------------------------------
-  mkfeedback view              # See what's requested
+  feedback view              # See what's requested
   # Edit files...
-  mkfeedback update -m "Fix parameter validation"
-  mkfeedback sync              # Push changes
+  feedback update -m "Fix parameter validation"
+  feedback sync              # Push changes
 
   Scenario 2: Multiple reviewers with different feedback
   -------------------------------------------------------
-  mkfeedback view -v           # See all comments with context
+  feedback view -v           # See all comments with context
   # Address feedback from reviewer 1
-  mkfeedback update -m "Fix race condition in worker thread"
+  feedback update -m "Fix race condition in worker thread"
   # Address feedback from reviewer 2
-  mkfeedback update -m "Add error handling for edge case"
-  mkfeedback sync              # Push all fixes together
+  feedback update -m "Add error handling for edge case"
+  feedback sync              # Push all fixes together
 
   Scenario 3: Request clarification
   ----------------------------------
-  mkfeedback view              # See feedback
-  mkfeedback respond -m "Question: Should this handle null input?"
+  feedback view              # See feedback
+  feedback respond -m "Question: Should this handle null input?"
   # Wait for clarification
-  mkfeedback view              # Check for response
+  feedback view              # Check for response
   # Make changes based on clarification
-  mkfeedback update
-  mkfeedback sync
+  feedback update
+  feedback sync
 
   Scenario 4: Disagreement with feedback
   ----------------------------------------
-  mkfeedback view              # See feedback
-  mkfeedback respond -m "This approach is intentional because X."
+  feedback view              # See feedback
+  feedback respond -m "This approach is intentional because X."
   "Alternative would be Y."
   # If reviewer agrees, continue
   # If reviewer insists, make the change
-  mkfeedback update -m "Changed approach per reviewer request"
-  mkfeedback sync
+  feedback update -m "Changed approach per reviewer request"
+  feedback sync
 
 Remote Workflow (Codespaces, SSH, etc.):
 
   When working in Codespaces or remote environments:
-  - Use `mkfeedback view` to see feedback without browser
-  - Use `mkfeedback update` to organize your commits
-  - Use `mkfeedback respond` to communicate feedback resolutions
-  - Use `mkfeedback sync` to push changes from remote environment
+  - Use `feedback view` to see feedback without browser
+  - Use `feedback update` to organize your commits
+  - Use `feedback respond` to communicate feedback resolutions
+  - Use `feedback sync` to push changes from remote environment
 
 
 Outputs:
@@ -195,7 +195,7 @@ view_feedback() {
     
     if [[ -z "$pr_number" ]]; then
       bt_error_exit 3 "No PR found for branch '$branch'." \
-        "Create a PR first using mkpr."
+        "Create a PR first using review."
     fi
     
     bt_info "Fetching reviews for PR #$pr_number..."
@@ -209,7 +209,7 @@ view_feedback() {
     bt_success "Done"
   else
     bt_error_exit 4 "GitHub CLI (gh) not installed." \
-      "Install gh to use mkfeedback."
+      "Install gh to use feedback."
   fi
 }
 

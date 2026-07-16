@@ -98,7 +98,7 @@ unset BRITETEST_BYPASS_HOOKS
 - Before `git tag -d` (line ~256), set bypass
 - Before `git push origin --delete` (line ~262), set bypass
 
-#### 6. `scripts/bin/chtarget`
+#### 6. `scripts/bin/retarget`
 **Changes needed:**
 - Add hook verification at startup
 - Before `git rebase` (line ~241), set bypass
@@ -110,7 +110,7 @@ unset BRITETEST_BYPASS_HOOKS
 - Before `git cherry-pick` operations, set bypass
 - Unset after operation
 
-#### 8. `scripts/bin/mkrelease`
+#### 8. `scripts/bin/release`
 **Changes needed:**
 - Add hook verification at startup
 - Before `git tag` operations, set bypass
@@ -236,7 +236,7 @@ ensure_hooks_installed
 - pre-commit → Use `commit` script
 - pre-push → Use `commit -p`
 - pre-merge-commit → Use `merge` script
-- post-rewrite → Use `chtarget` or `copyfix`
+- post-rewrite → Use `retarget` or `copyfix`
 
 ---
 
@@ -259,9 +259,9 @@ ensure_hooks_installed
 - [ ] scripts/bin/merge
 - [ ] scripts/bin/rmbranch
 - [ ] scripts/bin/undo
-- [ ] scripts/bin/chtarget
+- [ ] scripts/bin/retarget
 - [ ] scripts/bin/copyfix
-- [ ] scripts/bin/mkrelease
+- [ ] scripts/bin/release
 - [ ] scripts/bin/mkbranch
 
 ## Files Requiring Creation

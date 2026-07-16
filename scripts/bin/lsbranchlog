@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# ckbranch_history - Query and display branch history log entries.
+# lsbranchlog - Query and display branch history log entries.
 #
-# See usage below for details, or run: ckbranch_history -h
+# See usage below for details, or run: lsbranchlog -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,8 +11,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  ckbranch_history [OPTIONS]
-  ckbranch_history {-h | --help}
+  lsbranchlog [OPTIONS]
+  lsbranchlog {-h | --help}
 
 Query and display branch history log entries from logs/remote_branch_history.md.
 
@@ -47,31 +47,31 @@ Options:
 
 Examples:
   # Show all history entries
-  ckbranch_history
+  lsbranchlog
 
   # Show last 10 entries
-  ckbranch_history -l 10
+  lsbranchlog -l 10
 
   # Show all merges
-  ckbranch_history -t merged
+  lsbranchlog -t merged
 
   # Show all releases
-  ckbranch_history -t released
+  lsbranchlog -t released
 
   # Show entries for a specific branch
-  ckbranch_history -b "feature/auth"
+  lsbranchlog -b "feature/auth"
 
   # Show entries from a specific user
-  ckbranch_history -u "alice"
+  lsbranchlog -u "alice"
 
   # Show all undos
-  ckbranch_history -t undo
+  lsbranchlog -t undo
 
   # Export to file
-  ckbranch_history -o history_report.txt
+  lsbranchlog -o history_report.txt
 
   # Combine filters: merges by alice on auth branches
-  ckbranch_history -t merged -u alice -b auth -l 20
+  lsbranchlog -t merged -u alice -b auth -l 20
 
 
 Outputs:

@@ -42,7 +42,7 @@ See `<repo>/README.md` for an introduction to briteTest.
   - Log merge operations
   - Track branch modifications
 
-- **`replace_phrases.sh`**: Apply configured phrase replacements in markdown files.
+- Text replacement logic is implemented directly in `scripts/bin/replacetext`.
 
 ### Git Hooks
 

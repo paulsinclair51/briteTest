@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# chtarget - Retarget a targeted branch to a different version parent.
+# retarget - Retarget a targeted branch to a different version parent.
 #
-# See usage below for details, or run: chtarget -h
+# See usage below for details, or run: retarget -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,8 +11,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  chtarget [OPTIONS] <targeted-branch> <new-parent-version>
-  chtarget {-h | --help}
+  retarget [OPTIONS] <targeted-branch> <new-parent-version>
+  retarget {-h | --help}
 
 Retarget a targeted branch to a different version parent and rebase it.
 
@@ -45,9 +45,9 @@ Conflict handling:
   - Branch owner (contributor) resolves conflicts and continues rebase.
 
 Examples:
-  chtarget dev/parser-v1.0.0 v1.1.0
-  chtarget fix/memory-v1.0.0 v1.0.1 -m "Defer fix to patch branch"
-  chtarget -d dev/parser-v1.0.0 v1.1.0
+  retarget dev/parser-v1.0.0 v1.1.0
+  retarget fix/memory-v1.0.0 v1.0.1 -m "Defer fix to patch branch"
+  retarget -d dev/parser-v1.0.0 v1.1.0
 
 Exit codes:
   0   Success
@@ -257,7 +257,7 @@ ORIGINAL_BRANCH="$(bt_get_current_branch_or_empty)"
 cd "$REPO_ROOT"
 
 if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
-  bt_error_exit 4 "Current branch has uncommitted changes. Commit first before running chtarget"
+  bt_error_exit 4 "Current branch has uncommitted changes. Commit first before running retarget"
 fi
 
 if ! git fetch origin >/dev/null 2>&1; then

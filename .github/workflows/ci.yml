@@ -46,7 +46,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Apply brand name replacements
-        run: scripts/bin/replacephrases docs/branding/brand.txt
+        run: scripts/bin/replacetext docs/branding/brand.txt
 
       - name: Validate directory README format
         run: ./scripts/bin/ckdirectory_guides

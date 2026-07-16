@@ -20,7 +20,7 @@ Commit changes to the current local branch in briteTest with
 a commit message. After commit, this script automatically pushes
 when remote is connected and the corresponding remote branch exists.
 
-Commit is not allowed on protected branches. Use mergetoparent
+Commit is not allowed on protected branches. Use mrgup
 to apply changes to a protected branch:
   - main
   - v<M>.<m>.<p> version branches created from main.
@@ -92,9 +92,9 @@ Exit codes:
   0   Success.
   1   Invalid option or argument. Full usage is shown on stdout.
   2   Could not detect current branch. Run this from a cloned repository.
-  3   Not on a local branch. Use `chcurrent` to switch to a local
+  3   Not on a local branch. Use `chbranch` to switch to a local
       non-protected branch, then retry.
-  5   Current branch is a protected branch. Use `chcurrent` to switch to a
+  5   Current branch is a protected branch. Use `chbranch` to switch to a
       non-protected local branch, then retry.
   6   Commit message missing. Provide `-m` <message>, `--message <message>`,
       or `-- <message>`.
@@ -107,7 +107,7 @@ Exit codes:
   12  Could not stage or commit changes. Run `fixrepo`; if issue persists,
       contact an approver to help resolve file/state issues, then retry.
   14  Push failed. Verify remote access/network and retry.
-  15  Divergence was not auto-resolved. Run `syncfromremote`, resolve any
+  15  Divergence was not auto-resolved. Run `mrgbranch`, resolve any
       conflicts, review changes, then rerun commit.
   16  Unable to connect to remote. Verify remote access/network and retry.
 EOF
@@ -137,8 +137,17 @@ ORIGINAL_ARGS=("$@")
 source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
-# shellcheck source=helpers/history_log.sh
-source "$SCRIPT_DIR/../helpers/history_log.sh"
+
+# history_log.sh is optional in minimal or isolated test environments.
+# If unavailable, provide a no-op fallback used by divergence handling.
+if [[ -f "$SCRIPT_DIR/../helpers/history_log.sh" ]]; then
+  # shellcheck source=helpers/history_log.sh
+  source "$SCRIPT_DIR/../helpers/history_log.sh"
+else
+  bt_propagate_repository_history() {
+    return 0
+  }
+fi
 
 usage_error() {
   local message="$1"
@@ -376,7 +385,7 @@ auto_resolve_divergence_if_safe() {
   local branch="$1"
 
   if [[ "$DRY_RUN" == true ]]; then
-    bt_error_exit 15 "Local and remote branch '$branch' have diverged. Dry run cannot perform auto-resolution. Run without -d to auto-resolve or run 'syncfromremote' manually."
+    bt_error_exit 15 "Local and remote branch '$branch' have diverged. Dry run cannot perform auto-resolution. Run without -d to auto-resolve or run 'mrgbranch' manually."
   fi
 
   if [[ "$VERBOSE" == true ]]; then
@@ -402,7 +411,7 @@ auto_resolve_divergence_if_safe() {
   fi
 
   git rebase --abort >/dev/null 2>&1 || true
-  bt_error_exit 15 "Local and remote branch '$branch' have diverged and could not be auto-resolved cleanly. Run 'syncfromremote', resolve conflicts, then rerun commit."
+  bt_error_exit 15 "Local and remote branch '$branch' have diverged and could not be auto-resolved cleanly. Run 'mrgbranch', resolve conflicts, then rerun commit."
 }
 collect_prepush_file_stats() {
   : > "$PREPUSH_STATS_FILE"
@@ -792,12 +801,12 @@ bt_info "Current branch: $CURRENT_BRANCH"
 # Disallow commits from detached HEAD (for example, origin/main or origin/v*).
 if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
   bt_error_exit 3 \
-    "Not on a local working branch. Use 'chcurrent' to switch to a local non-protected branch, then retry."
+    "Not on a local working branch. Use 'chbranch' to switch to a local non-protected branch, then retry."
 fi
 
 # Commit script operates on a local branch only.
 if ! git show-ref --verify --quiet "refs/heads/$CURRENT_BRANCH"; then
-  bt_error_exit 3 "Not on a local branch. Use 'chcurrent' to switch to a local non-protected branch, then retry."
+  bt_error_exit 3 "Not on a local branch. Use 'chbranch' to switch to a local non-protected branch, then retry."
 fi
 
 if [[ ! -f "$CONTRIBUTORS_FILE" ]]; then
@@ -816,7 +825,7 @@ fi
 # Check if branch is protected
 if bt_is_protected_branch "$CURRENT_BRANCH"; then
   bt_error_exit 5 \
-    "Current branch '$CURRENT_BRANCH' is protected. Use 'chcurrent' to switch to a non-protected local branch, then retry."
+    "Current branch '$CURRENT_BRANCH' is protected. Use 'chbranch' to switch to a non-protected local branch, then retry."
 fi
 
 # Automatic push is enabled only when origin is connected and a
@@ -934,7 +943,7 @@ if [[ "$PUSH" == true ]]; then
     collect_unpushed_commits "$CURRENT_BRANCH"
     collect_remote_behind_commits "$CURRENT_BRANCH"
     if [[ "$BEHIND_COMMITS" -gt 0 && "$PUSHED_COMMITS" -gt 0 ]]; then
-      bt_error_exit 15 "Local and remote branch '$CURRENT_BRANCH' still appear diverged after auto-resolution. Run 'syncfromremote', resolve conflicts, then rerun commit."
+      bt_error_exit 15 "Local and remote branch '$CURRENT_BRANCH' still appear diverged after auto-resolution. Run 'mrgbranch', resolve conflicts, then rerun commit."
     fi
   fi
 

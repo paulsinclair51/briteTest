@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# mergetoparent - Merge current branch to its parent branch with
+# mrgup - Merge current branch to its parent branch with
 # approval tracking.
 #
-# See usage below for details, or run: mergetoparent -h
+# See usage below for details, or run: mrgup -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -12,8 +12,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mergetoparent [OPTIONS] [-- TOKENS]
-  mergetoparent {-h | --help}
+  mrgup [OPTIONS] [-- TOKENS]
+  mrgup {-h | --help}
 
 Merge the current branch to its parent branch.
 
@@ -52,22 +52,22 @@ Options:
                        any changes.
   -m TOKEN             Commit message (GitHub style, requires quotes if
                        spaces).
-                       Usage: mergetoparent -m "Merge parser fixes"
+                       Usage: mrgup -m "Merge parser fixes"
   --message TOKEN      Commit message (GitHub style, requires quotes if
                        spaces).
-                       Usage: mergetoparent --message "Merge parser fixes"
+                       Usage: mrgup --message "Merge parser fixes"
   -- TOKENS            Commit message (Unix-style): all tokens after '--'
                        are the message text.
-                       Usage: mergetoparent -- Merge parser fixes
+                       Usage: mrgup -- Merge parser fixes
                        Note: '--' must be a separate token, followed by at
                        least one token. Leading/trailing whitespace is not
                        preserved and whitespace between tokens is reduced
                        to a single space.
                        In quoted tokens, whitespace is preserved and the
                        quotes are removed, for example:
-                       mergetoparent -- keep "  exact   spacing  " here
+                       mrgup -- keep "  exact   spacing  " here
                        is the same as:
-                       mergetoparent -m "keep   exact   spacing   here"
+                       mrgup -m "keep   exact   spacing   here"
   -v                   Show detailed information and progress in stdout for
                        diagnostic purposes.
 
@@ -89,16 +89,16 @@ If a commit message is not specified:
 
 Examples:
   # Merge targeted branch to its parent version branch with PR title as commit message
-  mergetoparent
+  mrgup
 
   # Merge with commit message
-  mergetoparent -m "My commit message."
+  mrgup -m "My commit message."
 
   # Unix-style commit message
-  mergetoparent -- Merge parser fixes.
+  mrgup -- Merge parser fixes.
 
   # Merge with verbose output
-  mergetoparent -v
+  mrgup -v
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
@@ -578,7 +578,7 @@ check_status_checks() {
 
 ensure_clean_worktree() {
   if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
-    bt_error_exit 2 "Current branch has uncommitted changes. Commit first before running mergetoparent"
+    bt_error_exit 2 "Current branch has uncommitted changes. Commit first before running mrgup"
   fi
 }
 
@@ -838,7 +838,7 @@ fi
 if bt_is_protected_branch "$CURRENT_BRANCH"; then
   if ! bt_is_version_branch "$CURRENT_BRANCH" || [[ "$PARENT_BRANCH" != "main" ]]; then
     bt_error_exit 1 \
-      "Current branch '$CURRENT_BRANCH' is protected. Run mergetoparent from a non-protected branch."
+      "Current branch '$CURRENT_BRANCH' is protected. Run mrgup from a non-protected branch."
   fi
 
   if ! is_approver "$CURRENT_USER"; then

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# syncfromremote - Fetch and pull latest changes from remote.
+# mrgbranch - Fetch and pull latest changes from remote.
 #
-# See usage below for details, or run: syncfromremote -h
+# See usage below for details, or run: mrgbranch -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,8 +11,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  syncfromremote [OPTIONS] [BRANCH] [-- TOKENS]
-  syncfromremote {-h | --help}
+  mrgbranch [OPTIONS] [BRANCH] [-- TOKENS]
+  mrgbranch {-h | --help}
 
 Synchronizes a local branch with its corresponding remote branch when
 it is safe to do so. Shows summary of changes to a local branch.
@@ -60,48 +60,48 @@ Options:
 
 Examples:
   # Sync current branch only
-  syncfromremote
+  mrgbranch
 
   # Sync with verbose output
-  syncfromremote -v
+  mrgbranch -v
 
   # Sync all branches
-  syncfromremote -a
+  mrgbranch -a
 
   # Preview sync (dry run) for current branch
-  syncfromremote -d
+  mrgbranch -d
 
   # Preview sync (dry run) for a specific branch
-  syncfromremote -d dev/release-v1.0.0
+  mrgbranch -d dev/release-v1.0.0
 
   # Invalid: cannot combine -a with BRANCH
-  syncfromremote -a dev/release-v1.0.0
+  mrgbranch -a dev/release-v1.0.0
 
   # Sync with comment
-  syncfromremote -m "Getting latest before starting feature work."
+  mrgbranch -m "Getting latest before starting feature work."
 
   # Unix-style comment
-  syncfromremote -- Getting latest changes.
+  mrgbranch -- Getting latest changes.
 
   # Sync a specific branch
-  syncfromremote dev/release-v1.0.0
+  mrgbranch dev/release-v1.0.0
 
   # Sync a specific branch with verbose output
-  syncfromremote -v dev/release-v1.0.0
+  mrgbranch -v dev/release-v1.0.0
 
   # Sync a specific branch with message option
-  syncfromremote --message "Sync before testing." dev/release-v1.0.0
+  mrgbranch --message "Sync before testing." dev/release-v1.0.0
 
   # Sync a specific branch with Unix-style comment
-  syncfromremote fix/memory-fault-v1.0.0 -- sync fix with remote.
+  mrgbranch fix/memory-fault-v1.0.0 -- sync fix with remote.
 
 Outputs:
   - Writes help text, status messages, and results or summaries
     to stdout.
   - Writes errors and diagnostics to stderr.
   - Writes a report to:
-    - <repo>/reports/branch/syncfromremote-<datetime>.md (normal run)
-    - <repo>/reports/branch/syncfromremote-d-<datetime>.md (dry run)
+    - <repo>/reports/branch/mrgbranch-<datetime>.md (normal run)
+    - <repo>/reports/branch/mrgbranch-d-<datetime>.md (dry run)
   - Report includes:
     - Header with report title and timestamp.
     - Command line used for the run.
@@ -130,11 +130,11 @@ If a branch is skipped because local and remote have diverged:
   1. Inspect branch sync status:
        lsbranch BRANCH -v
   2. If your branch needs latest parent updates first:
-       syncfromparent
+       mrgdown
   3. If divergence remains, use one possible script workflow
      (for example, copy fixes to a clean branch):
        copyfix SOURCE_BRANCH
-  4. Run syncfromremote again.
+  4. Run mrgbranch again.
 EOF
 }
 
@@ -182,7 +182,7 @@ declare -a RESULT_REASON=()
 
 
 format_command_line() {
-  local formatted="syncfromremote"
+  local formatted="mrgbranch"
   local arg
 
   for arg in "${ORIGINAL_ARGS[@]}"; do
@@ -194,16 +194,16 @@ format_command_line() {
 
 initialize_report_file() {
   if [[ "$DRY_RUN" == true ]]; then
-    REPORT_FILE="$BRANCH_REPORTS_DIR/syncfromremote-d-${RUN_TS_FILE}.md"
+    REPORT_FILE="$BRANCH_REPORTS_DIR/mrgbranch-d-${RUN_TS_FILE}.md"
   else
-    REPORT_FILE="$BRANCH_REPORTS_DIR/syncfromremote-${RUN_TS_FILE}.md"
+    REPORT_FILE="$BRANCH_REPORTS_DIR/mrgbranch-${RUN_TS_FILE}.md"
   fi
 }
 
 cleanup_old_dry_run_reports() {
   local old_report
 
-  for old_report in "$BRANCH_REPORTS_DIR"/syncfromremote-d-*.md; do
+  for old_report in "$BRANCH_REPORTS_DIR"/mrgbranch-d-*.md; do
     [[ -e "$old_report" ]] || continue
     [[ -n "$REPORT_FILE" && "$old_report" == "$REPORT_FILE" ]] && continue
     rm -f "$old_report"
@@ -299,7 +299,7 @@ warn_branch_behind_parent() {
     if bt_is_protected_branch "$branch"; then
       bt_info "Protected branches require an approver-managed merge workflow"
     else
-      bt_info "Run: syncfromparent"
+      bt_info "Run: mrgdown"
     fi
   fi
 }

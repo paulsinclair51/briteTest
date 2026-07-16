@@ -102,7 +102,7 @@ rmbranch feature -f
 | Blocked | Use Script | Example |
 |---------|------------|---------|
 | `git merge` | `merge` | `merge` (merge current) |
-| `git rebase` | `chtarget` | `chtarget v1.2.3` |
+| `git rebase` | `retarget` | `retarget v1.2.3` |
 | `git cherry-pick` | Future | (planned) |
 
 ```bash
@@ -112,14 +112,14 @@ git rebase origin/main
 
 # ✅ Use this instead:
 merge                        # Merges current branch to parent
-chtarget v1.2.3             # Rebases current onto v1.2.3
+retarget v1.2.3             # Rebases current onto v1.2.3
 ```
 
 ### Tag Operations
 
 | Blocked | Use Script | Example |
 |---------|------------|---------|
-| `git tag` (create) | `mkrelease` | `mkrelease v1.0.0` |
+| `git tag` (create) | `release` | `release v1.0.0` |
 | `git tag -d` | `undo` | `undo release` |
 
 ```bash
@@ -128,7 +128,7 @@ git tag v1.0.0
 git tag -d v0.9.9
 
 # ✅ Use this instead:
-mkrelease v1.0.0
+release v1.0.0
 undo release
 ```
 
@@ -388,8 +388,8 @@ commit            # Commit and optionally push
 merge             # Merge to parent
 rmbranch          # Delete branch
 undo              # Undo commit/merge/release
-chtarget          # Rebase to new parent
-mkrelease         # Create release
+retarget          # Rebase to new parent
+release         # Create release
 ```
 
 ### Workflow:

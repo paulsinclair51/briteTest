@@ -1,0 +1,570 @@
+#!/usr/bin/env bash
+
+# replacetext - Run markdown text replacement from a config file.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+	cat <<'EOF'
+Usage:
+	replacetext [-d] [-r] [MAPPINGS]
+	replacetext [-d] [-r] FIND REPLACE [FIND REPLACE]...
+
+	replacetext {-h | --help}
+	replacetext -x
+
+Run text replacement across markdown files based on text mappings defined 
+in a mapping file or command-line FIND REPLACE token pairs.
+
+Arguments:
+	MAPPINGS     Optional text mappings file path.
+	             Default: config/text_mappings.txt if command-line
+				 FIND REPLACE token pairs are not provided.
+	             Format:
+				   - Lines beginning with # are comments.
+	               - One or more FIND REPLACE token pairs per non-empty,
+				     non-comment line: FIND REPLACE [FIND REPLACE]...
+	               - FIND cannot be empty ('' or "").
+	               - Empty REPLACE is allowed only as an explicit empty token
+				     ('' or "").
+	FIND         Token to find and replace.
+	REPLACE      Replacement token for FIND.
+	             Quote tokens (with ' or ") containing whitespace.
+	             In command line, tokens beginning with '-' must appear
+			     after '--' (end of options).
+
+Options:
+	-d           Dry-run to show planned changes without modifying files.
+	-r           Treat FIND values as Perl-compatible regex patterns
+	             (literal mode is default).
+	--           End option parsing. Required before FIND/REPLACE tokens
+	             that begin with '-'.
+	-x           Display basic regex guide and examples to stdout and exit.
+	             Other options (besides -h and --help) and arguments are
+				 ignored.
+	-h, --help   Output this help to stdout and exit. Other options (besides
+	             -x) and arguments are ignored.
+
+Combined Help Behavior:
+	If both -h/--help and -x are specified, output is:
+	  1) usage/help text
+	  2) regex guide text
+	Then exits with code 0.
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+
+Exit Codes:
+	0   Success (including -h, --help, dry run completion with one or more
+	    replacements found).
+	1   Argument or validation error.
+	2   Missing FIND token.
+	3   Missing REPLACE token for a FIND token.
+	4   MAPPINGS file missing.
+	5   MAPPINGS file has invalid mappings format/content.
+	6   Nothing found to replace.
+	7   Unexpected runtime/tool failure.
+
+EOF
+}
+
+regex_guide() {
+	cat <<'EOF'
+Regex Quick Guide (-r mode)
+
+How it works:
+	- Without -r, FIND is treated as literal text.
+	- With -r, FIND is treated as a Perl regex pattern.
+	- In -r mode, REPLACE may use capture groups such as $1, $2.
+
+Common tokens:
+	.      any single character
+	*      zero or more of previous token
+	+      one or more of previous token
+	?      optional previous token
+	^      start of line
+	$      end of line
+	(...)  capture group
+	\d     digit, \s whitespace, \w word character
+
+Examples:
+	replacetext -d -r "\b\d{4}\b" "YEAR"
+		Replace any 4-digit year with YEAR
+
+	replacetext -d -r "[ ]{2,}" " "
+		Collapse repeated spaces to one space
+
+	replacetext -d -r "\b([A-Za-z]+)[ ]+([A-Za-z]+)\b" "$2, $1"
+		Reorder "First Last" to "Last, First"
+
+	replacetext -d -r "[ \t]+$" ""
+		Remove trailing spaces/tabs
+
+Tips:
+	- Start with -d to preview changes.
+	- Quote patterns so the shell does not alter them.
+	- Escape literal dots as \.
+EOF
+}
+
+# High-Level Flow:
+# - Loads text mapping rules from a config file.
+# - Supports direct mappings using one or more FIND REPLACE token pairs.
+# - Traverses markdown files and applies text replacements (or previews with
+#   -d).
+# - Supports dry-run preview and apply modes.
+# - Reports file-level replacement counts and summary totals.
+
+set -euo pipefail
+
+EXIT_SUCCESS=0
+EXIT_ARG_ERROR=1
+EXIT_MISSING_FIND=2
+EXIT_MISSING_REPLACE=3
+EXIT_MAPPINGS_MISSING=4
+EXIT_MAPPINGS_INVALID=5
+EXIT_NOTHING_TO_REPLACE=6
+EXIT_RUNTIME_ERROR=7
+
+is_known_exit_status() {
+	case "$1" in
+		"$EXIT_SUCCESS"|"$EXIT_ARG_ERROR"|"$EXIT_MISSING_FIND"|"$EXIT_MISSING_REPLACE"|"$EXIT_MAPPINGS_MISSING"|"$EXIT_MAPPINGS_INVALID"|"$EXIT_NOTHING_TO_REPLACE"|"$EXIT_RUNTIME_ERROR")
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
+exit_handler() {
+	local status="$1"
+	if is_known_exit_status "$status"; then
+		return
+	fi
+
+	echo "Error: Unexpected runtime/tool failure." >&2
+	trap - EXIT
+	exit "$EXIT_RUNTIME_ERROR"
+}
+
+trap 'exit_handler $?' EXIT
+
+require_command() {
+	local cmd="$1"
+	if ! command -v "$cmd" >/dev/null 2>&1; then
+		echo "Error: Required runtime tool not found: $cmd" >&2
+		exit "$EXIT_RUNTIME_ERROR"
+	fi
+}
+
+for required_cmd in perl mktemp mv find sort; do
+	require_command "$required_cmd"
+done
+
+script_path="${BASH_SOURCE[0]}"
+script_dir="${script_path%/*}"
+if [[ "$script_dir" == "$script_path" ]]; then
+	script_dir='.'
+fi
+SCRIPT_DIR="$( cd "$script_dir" && pwd )"
+HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
+if [[ -f "$HISTORY_HELPER" ]]; then
+  if source "$HISTORY_HELPER" 2>/dev/null; then
+    bt_propagate_repository_history >/dev/null 2>&1
+  fi
+fi
+
+count_occurrences() {
+	local file="$1"
+	local old_text="$2"
+	local regex_mode="$3"
+
+	if [[ "$regex_mode" -eq 1 ]]; then
+		OLD_TEXT="$old_text" perl -0777 -ne \
+			'my $count = () = $_ =~ /$ENV{OLD_TEXT}/g; print $count;' \
+			"$file"
+	else
+		OLD_TEXT="$old_text" perl -0777 -ne \
+			'my $count = () = $_ =~ /\Q$ENV{OLD_TEXT}\E/g; print $count;' \
+			"$file"
+	fi
+}
+
+apply_replacement() {
+	local file="$1"
+	local old_text="$2"
+	local new_text="$3"
+	local regex_mode="$4"
+	local tmp_file
+
+	tmp_file="$(mktemp)"
+	if [[ "$regex_mode" -eq 1 ]]; then
+		OLD_TEXT="$old_text" NEW_TEXT="$new_text" perl -0777 -e '
+			use strict;
+			use warnings;
+			my ($old_text, $new_text) = @ENV{qw(OLD_TEXT NEW_TEXT)};
+			local $/;
+			my $content = <>;
+			$content =~ s/$old_text/$new_text/g;
+			print $content;
+		' "$file" > "$tmp_file"
+	else
+		OLD_TEXT="$old_text" NEW_TEXT="$new_text" perl -0777 -e '
+			use strict;
+			use warnings;
+			my ($old_text, $new_text) = @ENV{qw(OLD_TEXT NEW_TEXT)};
+			local $/;
+			my $content = <>;
+			$content =~ s/\Q$old_text\E/$new_text/g;
+			print $content;
+		' "$file" > "$tmp_file"
+	fi
+	mv "$tmp_file" "$file"
+}
+
+trim_leading_spaces() {
+	local value="$1"
+	value="${value#"${value%%[![:space:]]*}"}"
+	printf '%s' "$value"
+}
+
+trim_trailing_spaces() {
+	local value="$1"
+	value="${value%"${value##*[![:space:]]}"}"
+	printf '%s' "$value"
+}
+
+tokenize_mapping_line() {
+	local input="$1"
+	local state='normal'
+	local token=''
+	local token_active=0
+	local ch=''
+	local next=''
+	local i=0
+	local len=${#input}
+
+	TOKENIZED_WORDS=()
+
+	for ((i=0; i<len; i++)); do
+		ch="${input:i:1}"
+		case "$state" in
+			normal)
+				case "$ch" in
+					[[:space:]])
+						if [[ -n "$token" || "$token_active" -eq 1 ]]; then
+							TOKENIZED_WORDS+=("$token")
+							token=''
+							token_active=0
+						fi
+						;;
+					"'")
+						state='single'
+						token_active=1
+						;;
+					'"')
+						state='double'
+						token_active=1
+						;;
+					'\\')
+						token_active=1
+						if (( i + 1 < len )); then
+							i=$((i + 1))
+							token+="${input:i:1}"
+						else
+							token+='\\'
+						fi
+						;;
+					*)
+						token+="$ch"
+						token_active=1
+						;;
+				esac
+				;;
+			single)
+				if [[ "$ch" == "'" ]]; then
+					state='normal'
+				else
+					token+="$ch"
+				fi
+				;;
+			double)
+				if [[ "$ch" == '"' ]]; then
+					state='normal'
+				elif [[ "$ch" == '\\' ]]; then
+					if (( i + 1 < len )); then
+						next="${input:i+1:1}"
+						case "$next" in
+							'"'|'\\'|'$'|'`')
+								token+="$next"
+								i=$((i + 1))
+								;;
+							*)
+								token+='\\'
+								;;
+						esac
+					else
+						token+='\\'
+					fi
+				else
+					token+="$ch"
+				fi
+				;;
+		esac
+	done
+
+	if [[ "$state" != 'normal' ]]; then
+		return 1
+	fi
+
+	if [[ -n "$token" || "$token_active" -eq 1 ]]; then
+		TOKENIZED_WORDS+=("$token")
+	fi
+
+	return 0
+}
+
+config_file="config/text_mappings.txt"
+dry_run=0
+regex_mode=0
+direct_mode=false
+declare -a positionals=()
+
+validate_regex_pattern() {
+	local pattern="$1"
+	if ! FIND_PATTERN="$pattern" perl -e '
+		use strict;
+		use warnings;
+		my $pattern = $ENV{FIND_PATTERN};
+		eval { qr/$pattern/; 1 } or die;
+	' >/dev/null 2>&1; then
+		echo "Error: Invalid regex FIND pattern: $pattern" >&2
+		exit "$EXIT_ARG_ERROR"
+	fi
+}
+
+show_help=0
+show_regex_guide=0
+end_of_options=0
+while [[ $# -gt 0 ]]; do
+	if [[ "$end_of_options" -eq 1 ]]; then
+		positionals+=("$1")
+		shift
+		continue
+	fi
+
+	case "$1" in
+		--)
+			end_of_options=1
+			;;
+		-h | --help)
+			show_help=1
+			;;
+		-d)
+			dry_run=1
+			;;
+		-r | --regex)
+			regex_mode=1
+			;;
+		-x)
+			show_regex_guide=1
+			;;
+		-*)
+			echo "Error: Unknown option: $1" >&2
+			exit "$EXIT_ARG_ERROR"
+			;;
+		*)
+			positionals+=("$1")
+			;;
+	esac
+	shift
+done
+
+if [[ "$show_help" -eq 1 && "$show_regex_guide" -eq 1 ]]; then
+	usage
+	echo
+	regex_guide
+	exit "$EXIT_SUCCESS"
+fi
+
+if [[ "$show_help" -eq 1 ]]; then
+	usage
+	exit "$EXIT_SUCCESS"
+fi
+
+if [[ "$show_regex_guide" -eq 1 ]]; then
+	regex_guide
+	exit "$EXIT_SUCCESS"
+fi
+
+if [[ ${#positionals[@]} -eq 0 ]]; then
+	:
+elif [[ ${#positionals[@]} -eq 1 ]]; then
+	config_file="${positionals[0]}"
+else
+	direct_mode=true
+fi
+
+declare -a old_texts=()
+declare -a new_texts=()
+if [[ "$direct_mode" == true ]]; then
+	if (( ${#positionals[@]} % 2 != 0 )); then
+		echo "Error: Missing REPLACE token for FIND: ${positionals[-1]}" >&2
+		exit "$EXIT_MISSING_REPLACE"
+	fi
+
+	for ((i=0; i<${#positionals[@]}; i+=2)); do
+		old_text="${positionals[i]}"
+		new_text="${positionals[i+1]}"
+
+		if [[ -z "$old_text" ]]; then
+			echo "Error: Missing FIND token in direct mapping pair." >&2
+			exit "$EXIT_MISSING_FIND"
+		fi
+
+		if [[ "$regex_mode" -eq 1 ]]; then
+			validate_regex_pattern "$old_text"
+		fi
+
+		old_texts+=("$old_text")
+		new_texts+=("$new_text")
+	done
+
+	if [[ ${#old_texts[@]} -eq 0 ]]; then
+		echo "Error: No valid FIND REPLACE mapping arguments provided." >&2
+		exit "$EXIT_ARG_ERROR"
+	fi
+
+	echo "Loaded ${#old_texts[@]} direct replacement mapping(s) from arguments"
+else
+	if [[ ! -f "$config_file" ]]; then
+		echo "Error: MAPPINGS file not found: $config_file" >&2
+		exit "$EXIT_MAPPINGS_MISSING"
+	fi
+
+	line_num=0
+	while IFS= read -r line || [[ -n "$line" ]]; do
+		line_num=$((line_num + 1))
+		line="${line%$'\r'}"
+
+		stripped="$(trim_leading_spaces "$line")"
+		if [[ -z "$stripped" || "$stripped" == \#* ]]; then
+			continue
+		fi
+
+		if ! tokenize_mapping_line "$line"; then
+			echo "Error: Line $line_num: Invalid quoting in mappings line." >&2
+			exit "$EXIT_MAPPINGS_INVALID"
+		fi
+
+		if (( ${#TOKENIZED_WORDS[@]} == 0 )); then
+			continue
+		fi
+
+		if (( ${#TOKENIZED_WORDS[@]} % 2 != 0 )); then
+			echo "Error: Line $line_num: Missing REPLACE token for FIND: ${TOKENIZED_WORDS[-1]}" >&2
+			exit "$EXIT_MAPPINGS_INVALID"
+		fi
+
+		for ((i=0; i<${#TOKENIZED_WORDS[@]}; i+=2)); do
+			old_text="${TOKENIZED_WORDS[i]}"
+			new_text="${TOKENIZED_WORDS[i+1]}"
+
+			if [[ -z "$old_text" ]]; then
+				echo "Error: Line $line_num: FIND token cannot be empty." >&2
+				exit "$EXIT_MAPPINGS_INVALID"
+			fi
+
+			if [[ "$regex_mode" -eq 1 ]]; then
+				validate_regex_pattern "$old_text"
+			fi
+
+			old_texts+=("$old_text")
+			new_texts+=("$new_text")
+		done
+	done < "$config_file"
+
+	if [[ ${#old_texts[@]} -eq 0 ]]; then
+		echo "No replacements found in $config_file"
+		exit "$EXIT_NOTHING_TO_REPLACE"
+	fi
+
+	echo "Loaded ${#old_texts[@]} replacement(s) from $config_file"
+fi
+echo
+
+if [[ "$dry_run" -eq 1 ]]; then
+	echo "DRY RUN MODE - No files will be modified"
+	echo
+fi
+
+if ! md_file_list="$(find . -type f -name '*.md' \
+	! -path './.git/*' ! -path './.github/*' | sort)"; then
+	echo "Error: Failed to discover markdown files." >&2
+	exit "$EXIT_RUNTIME_ERROR"
+fi
+
+mapfile -t md_files <<< "$md_file_list"
+
+if [[ ${#md_files[@]} -eq 0 ]]; then
+	echo "No .md files found"
+	exit "$EXIT_SUCCESS"
+fi
+
+total_replacements=0
+files_modified=0
+
+for file in "${md_files[@]}"; do
+	file_replacements=0
+	declare -a changes=()
+
+	for i in "${!old_texts[@]}"; do
+		old_text="${old_texts[$i]}"
+		new_text="${new_texts[$i]}"
+
+		count="$(count_occurrences "$file" "$old_text" "$regex_mode")"
+		if [[ "$count" -gt 0 ]]; then
+			file_replacements=$((file_replacements + count))
+			changes+=("  - Replaced '$old_text' -> '$new_text'" \
+				"(${count} occurrence(s))")
+			if [[ "$dry_run" -eq 0 ]]; then
+				apply_replacement "$file" "$old_text" "$new_text" "$regex_mode"
+			fi
+		fi
+	done
+
+	if [[ "$file_replacements" -gt 0 ]]; then
+		files_modified=$((files_modified + 1))
+		total_replacements=$((total_replacements + file_replacements))
+		echo "$file:"
+		for change in "${changes[@]}"; do
+			echo "$change"
+		done
+		echo
+	fi
+done
+
+echo "============================================================"
+if [[ "$dry_run" -eq 1 ]]; then
+	echo "DRY RUN SUMMARY:"
+else
+	echo "SUMMARY:"
+fi
+echo "  Files processed: ${#md_files[@]}"
+echo "  Files modified: ${files_modified}"
+echo "  Total replacements: ${total_replacements}"
+
+if [[ "$dry_run" -eq 1 ]]; then
+	echo
+	echo "Run without -d to apply these changes"
+fi
+
+if [[ "$total_replacements" -eq 0 ]]; then
+	exit "$EXIT_NOTHING_TO_REPLACE"
+fi
+
+exit "$EXIT_SUCCESS"

@@ -17,6 +17,8 @@ Usage:
 Run all script smoke tests in scripts/tests matching test_*.sh
 (excluding this runner itself).
 
+When present, test_chbranch.sh is prioritized to run first.
+
 Options:
   -h, --help           Output this help to stdout and exit.
   -v, --verbose        Show per-test execution details.
@@ -61,6 +63,18 @@ fail_count=0
 mapfile -t test_files < <(
   find "$SCRIPT_DIR" -maxdepth 1 -type f -name 'test_*.sh' ! -name 'test_scripts.sh' | sort
 )
+
+# Prioritize chbranch regression tests when present.
+chbranch_test="$SCRIPT_DIR/test_chbranch.sh"
+if [[ -f "$chbranch_test" ]]; then
+  filtered=()
+  for test_file in "${test_files[@]}"; do
+    if [[ "$test_file" != "$chbranch_test" ]]; then
+      filtered+=("$test_file")
+    fi
+  done
+  test_files=("$chbranch_test" "${filtered[@]}")
+fi
 
 if [[ "${#test_files[@]}" -eq 0 ]]; then
   echo "Error: No test_*.sh files found in $SCRIPT_DIR" >&2

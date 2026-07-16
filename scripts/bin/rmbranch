@@ -54,7 +54,7 @@ Safety behavior:
     commits exist.
   - When local deletion is requested (-l or default both), working tree must
     be clean before deletion starts.
-  - Local deletion is blocked if a pending `chcurrent` auto-stash exists for
+  - Local deletion is blocked if a pending `chbranch` auto-stash exists for
     the target branch.
   - Rerun with -f only after validating branch cleanup status.
 
@@ -275,7 +275,7 @@ find_branch_auto_stash_ref() {
   local branch="$1"
   local prefix
 
-  prefix="chcurrent-auto:${branch}:"
+  prefix="chbranch-auto:${branch}:"
   git stash list --format='%gd%x09%gs' | \
     awk -F '\t' -v p="$prefix" 'index($2, p) { print $1; exit }'
 }

@@ -65,9 +65,9 @@ Contributors should read this document before submitting changes, reviewing, or 
 The current executable script set is maintained in `scripts/bin/README.md`.
 
 - **Setup/installation:** `installscripts`
-- **Document/brand:** `ckstyle`, `gendocs`, `genpngs`, `replacephrases`, `updatebrand`
+- **Document/brand:** `ckstyle`, `gendocs`, `genpngs`, `replacetext`, `rebrand`
 - **Repository/fork/clone:** `mkfork`, `mkclone`, `rmclone`, `fixrepo`
-- **Branch/workflow:** `ckbranch_history`, `chcurrent`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `mkfeedback`, `mergetoparent`, `mkpullrequest`, `chtarget`, `mkrelease`, `syncfromremote`, `syncfromparent`, `undo`, `rmbranch`
+- **Branch/workflow:** `lsbranchlog`, `chbranch`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `feedback`, `mrgup`, `review`, `retarget`, `release`, `mrgbranch`, `mrgdown`, `undo`, `rmbranch`
 
 ---
 
@@ -176,17 +176,17 @@ scripts/bin/mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
 
 ### Switching Branches Safely
 
-Use `scripts/bin/chcurrent <branch>` to switch branches.
+Use `scripts/bin/chbranch <branch>` to switch branches.
 
 - Branch switching is blocked if the current branch is dirty.
-- Commit changes first, then run `chcurrent`.
+- Commit changes first, then run `chbranch`.
 - This policy also applies to script flows that internally switch branches
   (for example, during merge/retarget/create operations).
 
 ### Making Changes
 
 ```bash
-scripts/bin/chcurrent mywork/feature
+scripts/bin/chbranch mywork/feature
 # Edit files...
 scripts/bin/commit -m "feat: add new capability"
 ```
@@ -254,11 +254,11 @@ briteTest uses a six-tier access model for public repository safety:
 | **APPROVER (A)** | Merge, release, run protected scripts with override confirmation | Must follow audit and override controls |
 | **MAINTAINER** | Repository admin and access management | Responsible for governance and audits |
 
-**Write access is script-controlled** (`mkbranch`, `commit`, `mkpullrequest`, `mergetoparent`, `chtarget`, `mkrelease`) rather than direct protected-branch git operations.
+**Write access is script-controlled** (`mkbranch`, `commit`, `review`, `mrgup`, `retarget`, `release`) rather than direct protected-branch git operations.
 
 ### Identity Prerequisites for Role-Gated Scripts
 
-Role-gated scripts (for example `mergetoparent` and `mkrelease`) require a
+Role-gated scripts (for example `mrgup` and `release`) require a
 resolvable GitHub login that matches an entry in `config/contributors.md`.
 
 Configure at least one of these identity sources:
@@ -432,7 +432,7 @@ Use `make test-all-scripts` before PRs, and verify versioned file edits in `git 
 
 - **Brand name:** briteTest
 - **Distinctive camelCase** aligns with `bT` monogram
-- Update branding with: `scripts/bin/updatebrand`
+- Update branding with: `scripts/bin/rebrand`
 
 ---
 
@@ -460,11 +460,14 @@ Use `make test-all-scripts` before PRs, and verify versioned file edits in `git 
 
 ```bash
 make run
+make test-all-scripts
 ```
 
 - Ensure all tests pass before opening PR
 - Update tests when code changes
 - Include test coverage for new features
+- For branch-change behavior updates, run `scripts/tests/test_chbranch.sh`
+  (or `make test-all-scripts`) to validate exit-code and safety semantics.
 
 ---
 
@@ -538,11 +541,11 @@ Protected branches require:
 
 The protected base branch is `origin/main`; version branches are local protected branches.
 Neither may receive direct commits.
-Updates are made through `scripts/bin/mergetoparent` only:
+Updates are made through `scripts/bin/mrgup` only:
 
-- Use `scripts/bin/syncfromparent` (or equivalent) in the source branch first
-- Resolve conflicts in the source branch before running `mergetoparent`
-- Merge to protected parent using `mergetoparent`
+- Use `scripts/bin/mrgdown` (or equivalent) in the source branch first
+- Resolve conflicts in the source branch before running `mrgup`
+- Merge to protected parent using `mrgup`
 - When the parent is protected, approver role is required
 
 ---

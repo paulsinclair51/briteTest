@@ -414,7 +414,7 @@ git log --show-signature
 **Process:**
 ```bash
 # 1. Tag the release
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.0
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/release v1.0.0
 
 # 2. GitHub automatically creates release page
 # 3. Add release notes

@@ -167,8 +167,8 @@ After `mkclone` and `installscripts`, these commands are available:
 | `merge` | Merge to parent branch | `merge` |
 | `rmbranch` | Delete branch | `rmbranch patch/old-fix` |
 | `undo` | Undo commit/merge/release | `undo commit` |
-| `chtarget` | Rebase to new parent | `chtarget v1.2.3` |
-| `mkrelease` | Create release | `mkrelease v1.0.0` |
+| `retarget` | Rebase to new parent | `retarget v1.2.3` |
+| `release` | Create release | `release v1.0.0` |
 
 **For detailed help on any script:**
 ```bash
