@@ -11,38 +11,32 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mrgbranch [OPTIONS] [BRANCH] [-- TOKENS]
+  mrgbranch [OPTIONS] [-- TOKENS]
   mrgbranch {-h | --help}
 
-Synchronizes a local branch with its corresponding remote branch when
-it is safe to do so. Shows summary of changes to a local branch.
-Warns if a branch is behind its parent branch or if a local branch
-has diverged from its corresponding remote. A reachable remote is
-required.
-Sync for a branch is skipped when that local branch has uncommitted
-changes.
+If local branch is behind its remote branch, mrgbranch fetches and
+pulls the latest changes from the remote branch into the local
+branch when it is safe to do so so that the local branch is
+synchronized with its remote branch.
 
-Arguments:
-  BRANCH            The name of the local branch to synchronize with
-                    its corresponding remote branch. If BRANCH is
-                    specified, the -a option must not be specified. If
-                    BRANCH and the -a option are not specified, BRANCH
-                    defaults to the name of the current branch. If the
-                    -a option is specified, all local branches are
-                    synced to their corresponding remote branches. If
-                    a local branch has no corresponding remote branch,
-                    it is skipped.
+If local and remote branches have diverged, mrgbranch attempts to
+automatically resolve the divergence via rebase when it is safe to
+do so.
+
+If automatic rebase encounters conflicts, mrgbranch leaves the rebase
+in progress for manual resolution. The report includes conflicting files
+and guidance for manual resolution. After resolving conflicts, rerun
+mrgbranch.
+
+The merge is skipped when the current local branch has uncommitted or
+untracked changes.
 
 Options:
   -h, --help        Output this help to stdout and exit (other options
                     and arguments are ignored).
-  -a                Sync all local branches with their corresponding
-                    remote branch (skips local branches with no
-                    corresponding remote). This option is not allowed
-                    if BRANCH is specified.
-  -d                Preview what would happen without changing anything
-                    in your repository (no fetch, no pull, no branch
-                    updates).
+  -d                Dry-run to preview what would happen without changing
+                    anything in your repository (no fetch, no pull, no
+                    branch updates).
   -m TOKEN          Add comment message (GitHub style, requires quotes
                     if spaces in TOKEN).
   --message TOKEN   Add comment message (GitHub style, requires quotes
@@ -65,35 +59,14 @@ Examples:
   # Sync with verbose output
   mrgbranch -v
 
-  # Sync all branches
-  mrgbranch -a
-
   # Preview sync (dry run) for current branch
   mrgbranch -d
-
-  # Preview sync (dry run) for a specific branch
-  mrgbranch -d dev/release-v1.0.0
-
-  # Invalid: cannot combine -a with BRANCH
-  mrgbranch -a dev/release-v1.0.0
 
   # Sync with comment
   mrgbranch -m "Getting latest before starting feature work."
 
   # Unix-style comment
   mrgbranch -- Getting latest changes.
-
-  # Sync a specific branch
-  mrgbranch dev/release-v1.0.0
-
-  # Sync a specific branch with verbose output
-  mrgbranch -v dev/release-v1.0.0
-
-  # Sync a specific branch with message option
-  mrgbranch --message "Sync before testing." dev/release-v1.0.0
-
-  # Sync a specific branch with Unix-style comment
-  mrgbranch fix/memory-fault-v1.0.0 -- sync fix with remote.
 
 Outputs:
   - Writes help text, status messages, and results or summaries
@@ -105,26 +78,26 @@ Outputs:
   - Report includes:
     - Header with report title and timestamp.
     - Command line used for the run.
-    - Branch scope summary for the run (requested branch or all).
+    - Branch scope summary for the run (current branch).
     - Totals summary (synchronized, skipped, total evaluated).
     - Branch results table with one row per evaluated branch.
       Required columns include branch name, sync status
       (synchronized/skipped), and skip reason when skipped.
+    - Divergence details section when divergence is detected,
+      including auto-resolution outcome, conflicting files (if any),
+      and guidance for manual resolution.
     - Optional notes section for additional diagnostics or
       workflow guidance.
   - Older dry-run reports are removed when a new report is generated.
 
 Exit codes:
-  0   Success (operation completed successfully for the requested
-      branch scope; dry run completes with no repository changes).
+  0   Success (operation completed for current branch scope; dry run
+    completes with no repository changes).
   1   Argument or validation error.
   2   Remote disconnected.
-  3   Partial success: at least one local branch was synchronized, and
-      at least one branch was skipped. See output for per-branch reasons.
-  4   No branches synchronized: all evaluated branches were skipped.
-      See output for per-branch reasons.
-  5   No local branches.
-  6   No remote branches for the local branches.
+  4   No synchronization performed for current branch (for example,
+    missing corresponding remote, dirty worktree, divergence, or
+    no safe fast-forward).
 
 If a branch is skipped because local and remote have diverged:
   1. Inspect branch sync status:
@@ -139,10 +112,10 @@ EOF
 }
 
 # High-Level Flow:
-# - Synchronizes current branch with remote by fetching and pulling latest
+# - Merges current branch with remote by fetching and pulling latest
 #   updates.
-# - Validates branch/repository conditions before sync operations.
-# - Reports sync results and non-fast-forward/error situations.
+# - Validates branch/repository conditions before merge operations.
+# - Reports merge branch results and non-fast-forward/error situations.
 
 set -euo pipefail
 
@@ -163,22 +136,25 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 # Default options
-SYNC_ALL=false
 VERBOSE=false
 COMMENT=""
 DRY_RUN=false
-TARGET_BRANCH=""
 
 CURRENT_BRANCH=""
+REBASE_IN_PROGRESS_AT_START=false
 
 EVALUATED_COUNT=0
 SYNCED_COUNT=0
 SKIPPED_COUNT=0
-REMOTE_MATCH_COUNT=0
+GLOBAL_SKIP_REASON=""
 
 declare -a RESULT_BRANCHES=()
 declare -a RESULT_STATUS=()
 declare -a RESULT_REASON=()
+declare -a DIVERGENCE_BRANCHES=()
+declare -a DIVERGENCE_OUTCOMES=()
+declare -a DIVERGENCE_FILES=()
+declare -a DIVERGENCE_GUIDANCE=()
 
 
 format_command_line() {
@@ -215,19 +191,100 @@ is_remote_connected() {
   git ls-remote --heads origin >/dev/null 2>&1 || return 1
 }
 
-branch_has_uncommitted_changes() {
-  local branch="$1"
-
-  if [[ "$branch" != "$CURRENT_BRANCH" ]]; then
-    return 1
-  fi
-
+current_branch_has_uncommitted_changes() {
   [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]
 }
 
 branch_has_remote() {
   local branch="$1"
   git show-ref --verify --quiet "refs/remotes/origin/$branch"
+}
+
+remote_branch_exists() {
+  local branch="$1"
+  git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1
+}
+
+is_rebase_in_progress() {
+  [[ -d "$(git rev-parse --git-path rebase-merge 2>/dev/null || true)" || -d "$(git rev-parse --git-path rebase-apply 2>/dev/null || true)" ]]
+}
+
+get_rebase_head_branch() {
+  local head_name=""
+  local path
+
+  for path in "$(git rev-parse --git-path rebase-merge/head-name 2>/dev/null || true)" "$(git rev-parse --git-path rebase-apply/head-name 2>/dev/null || true)"; do
+    [[ -f "$path" ]] || continue
+    head_name="$(tr -d '\n' < "$path")"
+    break
+  done
+
+  [[ -n "$head_name" ]] || return 1
+  head_name="${head_name#refs/heads/}"
+  [[ -n "$head_name" ]] || return 1
+  printf '%s\n' "$head_name"
+}
+
+get_conflict_files() {
+  local conflict_files
+  conflict_files="$(git diff --name-only --diff-filter=U 2>/dev/null || true)"
+  if [[ -z "$conflict_files" ]]; then
+    conflict_files="$(git status --porcelain 2>/dev/null | awk '/^UU / {print $2}')"
+  fi
+  [[ -n "$conflict_files" ]] || conflict_files="(unable to determine conflicting files)"
+  printf '%s\n' "$conflict_files"
+}
+
+continue_rebase_if_in_progress() {
+  local branch="$1"
+  local progressed=false
+
+  if ! is_rebase_in_progress; then
+    return 1
+  fi
+
+  while is_rebase_in_progress; do
+    local conflict_files
+    conflict_files="$(get_conflict_files)"
+    if [[ "$conflict_files" != "(unable to determine conflicting files)" ]]; then
+      SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+      add_result "$branch" "skipped" "manual conflict resolution required (rebase in progress)"
+      add_divergence_detail \
+        "$branch" \
+        "rebase paused for manual conflict resolution" \
+        "$conflict_files" \
+        "Resolve conflicts, stage files, rerun mrgbranch to continue. Use git rebase --abort to cancel."
+      bt_warn "Skipped '$branch': rebase is paused for manual conflict resolution"
+      return 0
+    fi
+
+    bt_info "Rebase in progress on '$branch'; attempting to continue"
+    if ! GIT_EDITOR=true git rebase --continue >/dev/null 2>&1; then
+      local continue_conflicts
+      continue_conflicts="$(get_conflict_files)"
+      if [[ "$continue_conflicts" != "(unable to determine conflicting files)" ]]; then
+        SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+        add_result "$branch" "skipped" "manual conflict resolution required (rebase in progress)"
+        add_divergence_detail \
+          "$branch" \
+          "rebase paused for manual conflict resolution" \
+          "$continue_conflicts" \
+          "Resolve conflicts, stage files, rerun mrgbranch to continue. Use git rebase --abort to cancel."
+        bt_warn "Skipped '$branch': rebase paused again due to conflicts"
+        return 0
+      fi
+      SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+      add_result "$branch" "skipped" "failed to continue rebase"
+      bt_warn "Skipped '$branch': failed to continue rebase"
+      return 0
+    fi
+    progressed=true
+  done
+
+  if [[ "$progressed" == true ]]; then
+    bt_success "Completed in-progress rebase for '$branch'"
+  fi
+  return 1
 }
 
 branch_is_diverged() {
@@ -257,6 +314,21 @@ branch_is_up_to_date() {
   [[ -n "$local_commit" && "$local_commit" == "$remote_commit" ]]
 }
 
+branch_contains_remote() {
+  local branch="$1"
+  local local_commit
+  local remote_commit
+  local merge_base
+
+  local_commit="$(git rev-parse "$branch" 2>/dev/null || true)"
+  remote_commit="$(git rev-parse "origin/$branch" 2>/dev/null || true)"
+  merge_base="$(git merge-base "$branch" "origin/$branch" 2>/dev/null || true)"
+
+  [[ -n "$local_commit" && -n "$remote_commit" && -n "$merge_base" ]] || return 1
+
+  [[ "$merge_base" == "$remote_commit" ]]
+}
+
 branch_fast_forward_possible() {
   local branch="$1"
 
@@ -281,6 +353,61 @@ add_result() {
   RESULT_BRANCHES+=("$branch")
   RESULT_STATUS+=("$status")
   RESULT_REASON+=("$reason")
+}
+
+add_divergence_detail() {
+  local branch="$1"
+  local outcome="$2"
+  local files="$3"
+  local guidance="$4"
+
+  DIVERGENCE_BRANCHES+=("$branch")
+  DIVERGENCE_OUTCOMES+=("$outcome")
+  DIVERGENCE_FILES+=("$files")
+  DIVERGENCE_GUIDANCE+=("$guidance")
+}
+
+attempt_auto_resolve_divergence() {
+  local branch="$1"
+
+  if [[ "$DRY_RUN" == true ]]; then
+    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+    add_result "$branch" "skipped" "local and remote have diverged (dry run: auto-resolution not executed)"
+    add_divergence_detail \
+      "$branch" \
+      "dry-run only; auto-resolution not executed" \
+      "" \
+      "Run mrgbranch without -d to attempt automatic rebase, or run git rebase origin/$branch and resolve conflicts manually."
+    bt_warn "Skipped '$branch': local and remote have diverged (dry run)"
+    return 0
+  fi
+
+  bt_warn "Branch '$branch' has diverged; attempting automatic rebase onto origin/$branch"
+
+  if git rebase "origin/$branch" >/dev/null 2>&1; then
+    SYNCED_COUNT=$((SYNCED_COUNT + 1))
+    add_result "$branch" "synchronized" "auto-resolved divergence via rebase"
+    add_divergence_detail \
+      "$branch" \
+      "auto-resolved via rebase" \
+      "" \
+      "Review rebased commits, run tests, and push when ready."
+    bt_success "Synchronized '$branch' (auto-resolved divergence)"
+    warn_branch_behind_parent "$branch"
+    return 0
+  fi
+
+  local conflict_files
+  conflict_files="$(get_conflict_files)"
+
+  SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+  add_result "$branch" "skipped" "diverged; rebase paused for manual conflict resolution"
+  add_divergence_detail \
+    "$branch" \
+    "rebase paused for manual conflict resolution" \
+    "$conflict_files" \
+    "Resolve conflicts in listed files, stage them, and rerun mrgbranch to continue rebase. Use git rebase --abort to cancel."
+  bt_warn "Skipped '$branch': diverged and requires manual conflict resolution"
 }
 
 warn_branch_behind_parent() {
@@ -309,6 +436,17 @@ evaluate_branch() {
 
   EVALUATED_COUNT=$((EVALUATED_COUNT + 1))
 
+  if [[ -n "$GLOBAL_SKIP_REASON" ]]; then
+    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+    add_result "$branch" "skipped" "$GLOBAL_SKIP_REASON"
+    bt_warn "Skipped '$branch': $GLOBAL_SKIP_REASON"
+    return 0
+  fi
+
+  if continue_rebase_if_in_progress "$branch"; then
+    return 0
+  fi
+
   if ! branch_has_remote "$branch"; then
     SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
     add_result "$branch" "skipped" "no corresponding remote branch"
@@ -318,19 +456,8 @@ evaluate_branch() {
     return 0
   fi
 
-  REMOTE_MATCH_COUNT=$((REMOTE_MATCH_COUNT + 1))
-
-  if branch_has_uncommitted_changes "$branch"; then
-    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-    add_result "$branch" "skipped" "local branch has uncommitted changes"
-    bt_warn "Skipped '$branch': local branch has uncommitted changes"
-    return 0
-  fi
-
   if branch_is_diverged "$branch"; then
-    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-    add_result "$branch" "skipped" "local and remote have diverged"
-    bt_warn "Skipped '$branch': local and remote have diverged"
+    attempt_auto_resolve_divergence "$branch"
     return 0
   fi
 
@@ -339,6 +466,16 @@ evaluate_branch() {
     add_result "$branch" "synchronized" "already up to date"
     if [[ "$VERBOSE" == true ]]; then
       bt_info "Branch '$branch' is already up to date"
+    fi
+    warn_branch_behind_parent "$branch"
+    return 0
+  fi
+
+  if branch_contains_remote "$branch"; then
+    SYNCED_COUNT=$((SYNCED_COUNT + 1))
+    add_result "$branch" "synchronized" "contains latest remote commits (local ahead)"
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Branch '$branch' already contains latest remote commits"
     fi
     warn_branch_behind_parent "$branch"
     return 0
@@ -361,34 +498,17 @@ evaluate_branch() {
     return 0
   fi
 
-  if [[ "$branch" == "$CURRENT_BRANCH" ]]; then
-    if git merge --ff-only "origin/$branch" >/dev/null 2>&1; then
-      SYNCED_COUNT=$((SYNCED_COUNT + 1))
-      add_result "$branch" "synchronized" "fast-forwarded from remote"
-      bt_success "Synchronized '$branch'"
-      warn_branch_behind_parent "$branch"
-      return 0
-    fi
-
-    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-    add_result "$branch" "skipped" "failed to fast-forward current branch"
-    bt_warn "Skipped '$branch': failed to fast-forward current branch"
-    return 0
-  fi
-
-  if git branch -f "$branch" "origin/$branch" >/dev/null 2>&1; then
+  if git merge --ff-only "origin/$branch" >/dev/null 2>&1; then
     SYNCED_COUNT=$((SYNCED_COUNT + 1))
     add_result "$branch" "synchronized" "fast-forwarded from remote"
-    if [[ "$VERBOSE" == true ]]; then
-      bt_success "Synchronized '$branch'"
-    fi
+    bt_success "Synchronized '$branch'"
     warn_branch_behind_parent "$branch"
     return 0
   fi
 
   SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-  add_result "$branch" "skipped" "failed to update local branch reference"
-  bt_warn "Skipped '$branch': failed to update local branch reference"
+  add_result "$branch" "skipped" "failed to fast-forward current branch"
+  bt_warn "Skipped '$branch': failed to fast-forward current branch"
 }
 
 generate_report() {
@@ -397,11 +517,7 @@ generate_report() {
   local i
 
   command_text="$(format_command_line)"
-  if [[ "$SYNC_ALL" == true ]]; then
-    branch_scope="all local branches"
-  else
-    branch_scope="$TARGET_BRANCH"
-  fi
+  branch_scope="$CURRENT_BRANCH"
 
   mkdir -p "$BRANCH_REPORTS_DIR"
 
@@ -440,6 +556,29 @@ EOF
     printf '\n- Review skipped-branch reasons above for follow-up actions.\n' >> "$REPORT_FILE"
   fi
 
+  if [[ "${#DIVERGENCE_BRANCHES[@]}" -gt 0 ]]; then
+    printf '\n## Divergence Details\n' >> "$REPORT_FILE"
+    for ((i=0; i<${#DIVERGENCE_BRANCHES[@]}; i++)); do
+      local d_branch="${DIVERGENCE_BRANCHES[$i]}"
+      local d_outcome="${DIVERGENCE_OUTCOMES[$i]}"
+      local d_files="${DIVERGENCE_FILES[$i]}"
+      local d_guidance="${DIVERGENCE_GUIDANCE[$i]}"
+
+      printf '\n### `%s`\n\n' "$d_branch" >> "$REPORT_FILE"
+      printf -- '- Outcome: %s\n' "$d_outcome" >> "$REPORT_FILE"
+      if [[ -n "$d_files" ]]; then
+        printf -- '- Conflicting files:\n' >> "$REPORT_FILE"
+        while IFS= read -r file_path; do
+          [[ -n "$file_path" ]] || continue
+          printf '  - %s\n' "$file_path" >> "$REPORT_FILE"
+        done <<< "$d_files"
+      fi
+      if [[ -n "$d_guidance" ]]; then
+        printf -- '- Guidance: %s\n' "$d_guidance" >> "$REPORT_FILE"
+      fi
+    done
+  fi
+
   if [[ "$DRY_RUN" == true ]]; then
     cleanup_old_dry_run_reports
   fi
@@ -451,10 +590,6 @@ while [[ $# -gt 0 ]]; do
     -h | --help)
       usage
       exit 0
-      ;;
-    -a | --all)
-      SYNC_ALL=true
-      shift
       ;;
     -d)
       DRY_RUN=true
@@ -490,11 +625,7 @@ while [[ $# -gt 0 ]]; do
       bt_error_exit 1 "Unknown option: $1"
       ;;
     *)
-      if [[ -n "$TARGET_BRANCH" ]]; then
-        bt_error_exit 1 "Only one BRANCH argument is allowed"
-      fi
-      TARGET_BRANCH="$1"
-      shift
+      bt_error_exit 1 "Unexpected argument: $1"
       ;;
   esac
 done
@@ -503,22 +634,19 @@ done
 CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit 1 "Failed to determine current branch")
 
-if [[ "$CURRENT_BRANCH" == "HEAD" && -z "$TARGET_BRANCH" ]]; then
-  bt_error_exit 1 "Current branch is detached; specify BRANCH explicitly"
-fi
-
-if [[ "$SYNC_ALL" == true && -n "$TARGET_BRANCH" ]]; then
-  bt_error_exit 1 "Cannot combine -a with BRANCH"
-fi
-
-if [[ -z "$TARGET_BRANCH" && "$SYNC_ALL" == false ]]; then
-  TARGET_BRANCH="$CURRENT_BRANCH"
-fi
-
-if [[ "$SYNC_ALL" == false ]]; then
-  if ! git show-ref --verify --quiet "refs/heads/$TARGET_BRANCH"; then
-    bt_error_exit 1 "Local branch '$TARGET_BRANCH' does not exist"
+if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
+  if is_rebase_in_progress; then
+    REBASE_IN_PROGRESS_AT_START=true
+    CURRENT_BRANCH="$(get_rebase_head_branch || true)"
+    [[ -n "$CURRENT_BRANCH" ]] || bt_error_exit 1 "Current branch is detached"
+    bt_info "Detected rebase in progress for branch: $CURRENT_BRANCH"
+  else
+    bt_error_exit 1 "Current branch is detached"
   fi
+fi
+
+if is_rebase_in_progress; then
+  REBASE_IN_PROGRESS_AT_START=true
 fi
 
 bt_info "Current branch: $CURRENT_BRANCH"
@@ -531,16 +659,35 @@ if ! is_remote_connected; then
   bt_error_exit 2 "Remote disconnected"
 fi
 
-if [[ "$DRY_RUN" == false ]]; then
+if remote_branch_exists "$CURRENT_BRANCH"; then
+  :
+else
+  GLOBAL_SKIP_REASON="current branch '$CURRENT_BRANCH' has no corresponding remote branch"
+fi
+
+if [[ "$REBASE_IN_PROGRESS_AT_START" == false ]] && current_branch_has_uncommitted_changes; then
+  GLOBAL_SKIP_REASON="current branch '$CURRENT_BRANCH' has uncommitted or untracked changes"
+fi
+
+if [[ -n "$GLOBAL_SKIP_REASON" ]]; then
+  bt_warn "Synchronization gated: $GLOBAL_SKIP_REASON"
+elif is_rebase_in_progress; then
+  bt_info "Rebase already in progress; skipping fetch and continuing rebase workflow"
+elif [[ "$DRY_RUN" == false ]]; then
   bt_info "Fetching from remote..."
   if ! git fetch origin 2>&1; then
     bt_error_exit 2 "Remote disconnected"
   fi
   bt_success "Fetched successfully"
-  
+
   # Propagate repository history from remote if available
-  bt_propagate_repository_history
-  case $? in
+  history_status=0
+  if bt_propagate_repository_history; then
+    history_status=0
+  else
+    history_status=$?
+  fi
+  case "$history_status" in
     0) ;;
     1) bt_info "Updated repository history from remote" ;;
     *) ;;
@@ -549,19 +696,7 @@ else
   bt_info "Dry run: no fetch, pull, or branch updates will be performed"
 fi
 
-declare -a EVAL_BRANCHES=()
-if [[ "$SYNC_ALL" == true ]]; then
-  while IFS= read -r branch; do
-    [[ -n "$branch" ]] || continue
-    EVAL_BRANCHES+=("$branch")
-  done < <(git for-each-ref --format='%(refname:short)' refs/heads)
-
-  if [[ "${#EVAL_BRANCHES[@]}" -eq 0 ]]; then
-    bt_error_exit 5 "No local branches"
-  fi
-else
-  EVAL_BRANCHES=("$TARGET_BRANCH")
-fi
+declare -a EVAL_BRANCHES=("$CURRENT_BRANCH")
 
 for branch in "${EVAL_BRANCHES[@]}"; do
   evaluate_branch "$branch"
@@ -572,15 +707,6 @@ generate_report
 
 bt_info "Summary: synchronized=$SYNCED_COUNT, skipped=$SKIPPED_COUNT, total=$EVALUATED_COUNT"
 bt_success "Report generated: ${REPORT_FILE#${REPO_ROOT}/}"
-
-if [[ "$REMOTE_MATCH_COUNT" -eq 0 ]]; then
-  bt_error_exit 6 "No remote branches for the local branches"
-fi
-
-if [[ "$SYNCED_COUNT" -gt 0 && "$SKIPPED_COUNT" -gt 0 ]]; then
-  bt_success "Sync complete: partial success"
-  exit 3
-fi
 
 if [[ "$SYNCED_COUNT" -eq 0 ]]; then
   bt_warn "Sync complete: no branches synchronized"

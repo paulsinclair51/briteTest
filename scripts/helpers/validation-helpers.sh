@@ -365,18 +365,23 @@ validate_targeted_branch() {
   return 1
 }
 
-# validate_contributor_branch: Check if branch is a contributor branch (simple name)
+# validate_contributor_branch: Check if branch is a contributor branch
 #
-# Format: simple name without '/' separator
+# Format: [<type>/]<description>
+# - <type> is 1-30 lowercase letters (optional)
+# - <description> is lowercase alnum words separated by single hyphens
 # Cannot be 'main', version branch, or targeted branch
 #
 # Args: $1 = branch name
 # Returns: 0 if valid contributor branch, 1 otherwise
 #
-# Example: validate_contributor_branch "my-feature"     # valid
-#          validate_contributor_branch "bob/feature"    # invalid
+# Example: validate_contributor_branch "my-feature"       # valid
+#          validate_contributor_branch "mywork/feature"   # valid
+#          validate_contributor_branch "bob/Feature"      # invalid
 validate_contributor_branch() {
   local branch="$1"
+  local desc='[a-z0-9]+(-[a-z0-9]+)*'
+  local type='[a-z][a-z]{0,29}'
 
   # Reject 'main'
   if [[ "$branch" == "main" ]]; then
@@ -393,13 +398,8 @@ validate_contributor_branch() {
     return 1
   fi
 
-  # Reject any branch with '/' separator
-  if [[ "$branch" =~ / ]]; then
-    return 1
-  fi
-
-  # Accept simple names: [a-z0-9][a-z0-9-]*
-  if [[ "$branch" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+  # Accept contributor format: [<type>/]<description>
+  if [[ "$branch" =~ ^((${type}/)?${desc})$ ]]; then
     return 0
   fi
 
@@ -447,7 +447,7 @@ validate_branch_name() {
     log_error "  - 'main'" >&2
     log_error "  - Version: v<M>.<m>.<p> (e.g., v1.0.0)" >&2
     log_error "  - Targeted: dev/<desc>-v<M>.<m>.<p> or fix/<desc>-v<M>.<m>.<p>" >&2
-    log_error "  - Contributor: simple name (e.g., my-feature, bugfix-123)" >&2
+    log_error "  - Contributor: [<type>/]<desc> (e.g., my-feature, mywork/bugfix-123)" >&2
   fi
 
   return 1

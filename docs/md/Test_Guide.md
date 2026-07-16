@@ -54,11 +54,9 @@ A printer-friendly PDF file for this document is available.
 
 ### Document Version History
 
-| Document | Runner | Test | Date | Comment | Author/Editor |
-|----------|------|--------|------|---------|---------------|
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
-| v1.0.0 | 2026‑06‑11 | Initial version. | Paul Sinclair |
+| v1.0.0 | 2026-06-11 | Initial version. | Paul Sinclair |
 </details>
 </details>
 
