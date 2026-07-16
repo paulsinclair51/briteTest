@@ -477,7 +477,22 @@ get_stats_for_file() {
   printf '%s\n' "$stats_line" | awk -F '\t' '{ printf "%s\t%s\n", $2, $3 }'
 }
 
-write_report_row() {
+write_commit_report_row() {
+  local file_path="$1"
+  local commit_hash="$2"
+  local added="$3"
+  local removed="$4"
+  local total_lines="$5"
+  local notes="$6"
+  local out_file="${7:-$REPORT_FILE}"
+  local net
+
+  net=$((added - removed))
+  printf '| %s | %s | %s | %s | %+d | %s | %s |\n' \
+    "$file_path" "$commit_hash" "$added" "$removed" "$net" "$total_lines" "$notes" >> "$out_file"
+}
+
+write_push_report_row() {
   local file_path="$1"
   local added="$2"
   local removed="$3"
@@ -491,7 +506,14 @@ write_report_row() {
     "$file_path" "$added" "$removed" "$net" "$total_lines" "$notes" >> "$out_file"
 }
 
-append_table_header() {
+append_commit_table_header() {
+  cat >> "$REPORT_FILE" <<'EOF'
+| **File** | **Commit Hash** | **Added** | **Deleted** | **Net** | **Total** | **Notes** |
+| --- | --- | --- | --- | --- | --- | --- |
+EOF
+}
+
+append_push_table_header() {
   cat >> "$REPORT_FILE" <<'EOF'
 | **File** | **Added** | **Deleted** | **Net** | **Total** | **Notes** |
 | --- | --- | --- | --- | --- | --- |
@@ -602,8 +624,15 @@ generate_commit_report() {
   local pushed_only=0
   local committed_and_pushed=0
   local total_rows=0
+  local commit_hash=""
 
   mkdir -p "$BRANCH_REPORTS_DIR"
+
+  if [[ "$NEEDS_COMMIT" == true && "$DRY_RUN" == false ]]; then
+    commit_hash="$(git rev-parse --short HEAD 2>/dev/null || true)"
+  elif [[ "$NEEDS_COMMIT" == true && "$DRY_RUN" == true ]]; then
+    commit_hash="n/a"
+  fi
 
   cat > "$REPORT_FILE" <<EOF
 # ${report_title} ${RUN_TS_DISPLAY}
@@ -649,9 +678,9 @@ EOF
       commit_notes="$(build_commit_note "$file_path" "$added" "$removed")"
       commit_notes="${commit_notes//|/\\|}"
       if [[ "$PUSH" == true ]]; then
-        write_report_row "$file_path" "$added" "$removed" "$total_lines" "$commit_notes" "$commit_push_rows_tmp"
+        write_commit_report_row "$file_path" "$commit_hash" "$added" "$removed" "$total_lines" "$commit_notes" "$commit_push_rows_tmp"
       else
-        write_report_row "$file_path" "$added" "$removed" "$total_lines" "$commit_notes" "$commit_only_rows_tmp"
+        write_commit_report_row "$file_path" "$commit_hash" "$added" "$removed" "$total_lines" "$commit_notes" "$commit_only_rows_tmp"
       fi
     done
 
@@ -673,26 +702,26 @@ EOF
       local push_notes
       push_notes="$(get_prepush_note_for_file "$file_path" "$added" "$removed")"
       push_notes="${push_notes//|/\\|}"
-      write_report_row "$file_path" "$added" "$removed" "$total_lines" "$push_notes" "$push_rows_tmp"
+      write_push_report_row "$file_path" "$added" "$removed" "$total_lines" "$push_notes" "$push_rows_tmp"
       pushed_only=$((pushed_only + 1))
     done < "$PREPUSH_STATS_FILE"
   fi
 
   if [[ "$committed_only" -gt 0 ]]; then
     printf '\n## Commit\n\n' >> "$REPORT_FILE"
-    append_table_header
+    append_commit_table_header
     cat "$commit_only_rows_tmp" >> "$REPORT_FILE"
   fi
 
   if [[ "$committed_and_pushed" -gt 0 ]]; then
     printf '\n## Commit/Push\n\n' >> "$REPORT_FILE"
-    append_table_header
+    append_commit_table_header
     cat "$commit_push_rows_tmp" >> "$REPORT_FILE"
   fi
 
   if [[ "$pushed_only" -gt 0 ]]; then
     printf '\n## Push\n\n' >> "$REPORT_FILE"
-    append_table_header
+    append_push_table_header
     cat "$push_rows_tmp" >> "$REPORT_FILE"
   fi
 
@@ -700,7 +729,7 @@ EOF
 
   push_commit_summary="$(get_push_commit_summary)"
   if [[ -n "$push_commit_summary" ]]; then
-    push_commit_summary="**Push Commit:** $push_commit_summary"
+    push_commit_summary="**Pushed Commit Hash and Comment:** $push_commit_summary"
   fi
 
   # shellcheck disable=SC2016
