@@ -3,7 +3,7 @@
 # orchestrator.sh - Common hook enforcement logic
 #
 # This helper provides shared functionality for all Git hooks:
-# - Bypasses enforcement when BRITETEST_BYPASS_HOOKS=true (set by scripts)
+# - Bypasses enforcement when GIT_BYPASS_HOOKS=true (set by scripts)
 # - Provides consistent error messages
 # - Logs hook execution for audit trails
 #
@@ -17,12 +17,12 @@
 set -euo pipefail
 
 # Check if this operation is being performed by an authorized script
-# Scripts set BRITETEST_BYPASS_HOOKS=true when they perform git operations
+# Scripts set GIT_BYPASS_HOOKS=true when they perform git operations
 check_bypass() {
   local operation="$1"
   local suggested_script="${2:-}"
   
-  if [[ "${BRITETEST_BYPASS_HOOKS:-false}" == "true" ]]; then
+  if [[ "${GIT_BYPASS_HOOKS:-false}" == "true" ]]; then
     return 0  # Operation allowed
   fi
   
@@ -38,7 +38,7 @@ check_bypass() {
     echo >&2
     echo "   For help: $suggested_script -h" >&2
   else
-    echo "   Use the appropriate briteTest script instead." >&2
+    echo "   Use the appropriate script instead." >&2
     echo "   For help, run: commit -h, merge -h, etc." >&2
   fi
   

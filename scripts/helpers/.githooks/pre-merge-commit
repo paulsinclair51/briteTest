@@ -5,7 +5,7 @@
 # This hook runs before 'git merge' command creates a merge commit.
 # It prevents developers from bypassing the script-based merge workflow.
 #
-# Scripts set BRITETEST_BYPASS_HOOKS=true when performing authorized merges.
+# Scripts set GIT_BYPASS_HOOKS=true when performing authorized merges.
 #
 # Blocked operations:
 #   git merge <branch>              → Use: merge [branch]
@@ -24,7 +24,7 @@ if [[ -f "$ORCHESTRATOR" ]]; then
 fi
 
 # Check if bypass flag is set by authorized script
-if [[ "${BRITETEST_BYPASS_HOOKS:-false}" == "true" ]]; then
+if [[ "${GIT_BYPASS_HOOKS:-false}" == "true" ]]; then
   exit 0
 fi
 

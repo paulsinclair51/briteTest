@@ -169,6 +169,17 @@ if ! source "$VALIDATION_HELPER"; then
   echo "$_msg" >&2
   exit 2
 fi
+GIT_HELPER="$SCRIPT_DIR/../helpers/git_helpers.sh"
+if [[ ! -f "$GIT_HELPER" ]]; then
+  echo "Error: Required helper not found: $GIT_HELPER" >&2
+  exit 2
+fi
+# shellcheck source=helpers/git_helpers.sh
+if ! source "$GIT_HELPER"; then
+  _msg="Error: Failed to load helper: $GIT_HELPER"
+  echo "$_msg" >&2
+  exit 2
+fi
 
 LOG_FILE="$REPO_ROOT/$(bt_branch_to_history_file "$_LOG_BRANCH")"
 
@@ -272,10 +283,6 @@ local_branch_exists() {
 remote_branch_exists() {
   local branch="$1"
   git show-ref --verify --quiet "refs/remotes/origin/$branch"
-}
-
-is_worktree_clean() {
-  [[ -z "$(git status --porcelain 2>/dev/null || true)" ]]
 }
 
 find_branch_auto_stash_ref() {
@@ -488,7 +495,7 @@ fi
 # Additional preconditions for local deletion.
 if [[ "$MODE" == "local" || "$MODE" == "both" ]]; then
   if [[ "$LOCAL_EXISTS" == true ]]; then
-    if ! is_worktree_clean; then
+    if bt_is_worktree_dirty; then
       error_exit 8 "Working tree must be clean before deleting local branch '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
     fi
 

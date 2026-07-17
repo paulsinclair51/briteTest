@@ -16,6 +16,27 @@ bt_get_current_branch() {
   git rev-parse --abbrev-ref HEAD 2>/dev/null
 }
 
+# bt_is_worktree_dirty
+#
+# Returns 0 (true) if the working tree has any uncommitted changes:
+# staged changes, unstaged modifications to tracked files, or untracked files.
+# Returns 1 (false) if the working tree is clean.
+#
+# Untracked files are intentionally included (--untracked-files=no is NOT used)
+# so the definition of "dirty" is consistent across all scripts that gate
+# operations on a clean working tree (rmbranch, chbranch, mkbranch, etc.).
+#
+# --no-optional-locks prevents git from opportunistically refreshing the index
+# as a side effect of a read-only status check.
+#
+# stderr is suppressed; if git exits non-zero (e.g. called outside a work
+# tree), the subshell produces no output and the function returns 1 (not
+# dirty). Callers are expected to have already validated the git context.
+# The || true prevents set -euo pipefail from aborting on a non-zero git exit.
+bt_is_worktree_dirty() {
+  [[ -n "$(git --no-optional-locks status --porcelain 2>/dev/null || true)" ]]
+}
+
 bt_is_version_branch() {
   local branch="$1"
 

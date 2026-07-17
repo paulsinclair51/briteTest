@@ -589,7 +589,7 @@ check_status_checks() {
 }
 
 ensure_clean_worktree() {
-  if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
+  if bt_is_worktree_dirty; then
     bt_error_exit "$EXIT_NOT_FOUND" "Current branch has uncommitted changes. Commit first before running mrgup"
   fi
 }

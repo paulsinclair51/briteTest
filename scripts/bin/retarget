@@ -269,7 +269,7 @@ ORIGINAL_BRANCH="$(bt_get_current_branch_or_empty)"
 
 cd "$REPO_ROOT"
 
-if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
+if bt_is_worktree_dirty; then
   bt_error_exit "$EXIT_CONFIG_ERROR" "Current branch has uncommitted changes. Commit first before running retarget"
 fi
 

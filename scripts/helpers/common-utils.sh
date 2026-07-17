@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Common Utility Functions for briteTest
+# Common Utility Functions for Repository Scripts
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
