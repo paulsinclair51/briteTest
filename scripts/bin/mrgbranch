@@ -204,7 +204,7 @@ is_remote_connected() {
 }
 
 current_branch_has_uncommitted_changes() {
-  [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]
+  bt_is_worktree_dirty
 }
 
 branch_has_remote() {
@@ -241,7 +241,7 @@ get_conflict_files() {
   local conflict_files
   conflict_files="$(git diff --name-only --diff-filter=U 2>/dev/null || true)"
   if [[ -z "$conflict_files" ]]; then
-    conflict_files="$(git status --porcelain 2>/dev/null | awk '/^UU / {print $2}')"
+    conflict_files="$(git --no-optional-locks status --porcelain 2>/dev/null | awk '/^UU / {print $2}')"
   fi
   [[ -n "$conflict_files" ]] || conflict_files="(unable to determine conflicting files)"
   printf '%s\n' "$conflict_files"

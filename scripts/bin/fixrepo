@@ -67,7 +67,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd -P)"
-# briteTest-specific: keep generated reports under this workspace layout.
+# Repository-specific: keep generated reports under this workspace layout.
 REPOSITORY_REPORTS_DIR="$REPO_ROOT/reports/repository"
 
 # Validate required helpers exist
@@ -181,10 +181,10 @@ resolve_dir_path() {
   )
 }
 
-is_britetest_candidate() {
+has_required_api_files() {
   local repo_path="$1"
 
-  # Treat as briteTest when any core API file exists.
+  # Treat as valid repository when required API files exist.
   if [[ -f "$repo_path/src/runnerapi.c" || -f "$repo_path/src/testapi.c" || -f "$repo_path/include/runnerapi.h" || -f "$repo_path/include/testapi.h" ]]; then
     return 0
   fi
@@ -471,7 +471,7 @@ check_working_directory() {
 check_repository_structure() {
   append_section "Repository Structure"
 
-  # briteTest-specific: these paths reflect the expected repo layout.
+  # Repository-specific: these paths reflect the expected repo layout.
   local required_items=(
     ".git"
     ".gitignore"
@@ -500,22 +500,22 @@ check_repository_structure() {
   fi
 }
 
-check_britetest_repository_layout() {
-  append_section "briteTest Repository Checks"
+check_repository_layout() {
+  append_section "Repository Structure Checks"
 
   local target_kind="repository"
   if [[ "$CURRENT_TARGET_NAME" == "Clone Repository" ]]; then
     target_kind="clone"
   fi
 
-  if ! is_britetest_candidate "$CURRENT_REPO"; then
-    append_check "briteTest Repository Checks" "PASS" \
-      "briteTest-specific layout checks skipped for this $target_kind because it does not appear to be a briteTest repository, clone, or fork."
+  if ! has_required_api_files "$CURRENT_REPO"; then
+    append_check "Repository Structure Checks" "PASS" \
+      "Repository structure checks skipped for this $target_kind because it does not appear to have required API files."
     return 0
   fi
 
-  append_check "briteTest Repository Checks" "PASS" \
-    "Target appears to be a briteTest repository, clone, or fork; running layout checks."
+  append_check "Repository Structure Checks" "PASS" \
+    "Repository has required API files; running layout checks."
   check_repository_structure
 }
 
@@ -602,7 +602,7 @@ run_target_checks() {
   check_loose_objects
   check_large_objects
   check_working_directory
-  check_britetest_repository_layout
+  check_repository_layout
   cleanup_repository
 
   return 0
@@ -703,7 +703,7 @@ cleanup_old_reports() {
 
   [[ -f "$OUTPUT_FILE" ]] || return
 
-  # briteTest-specific: keep a small rolling history and recent month of diagnostics.
+  # Repository-specific: keep a small rolling history and recent month of diagnostics.
   keep_recent_cutoff=$(( $(date +%s) - (30 * 24 * 60 * 60) ))
 
   while IFS= read -r old_report; do
@@ -794,7 +794,7 @@ if [[ -n "$CLONE_PATH" ]]; then
     usage_error "Clone path not found or not a directory: $CLONE_PATH"
   fi
 
-  # briteTest-specific: clone targets are expected to be git worktrees compatible with this script.
+  # Repository-specific: clone targets are expected to be git worktrees compatible with this script.
   if ! git -C "$CLONE_ABS" rev-parse --git-dir >/dev/null 2>&1; then
     usage_error "Clone path is not a git repository: $CLONE_ABS"
   fi

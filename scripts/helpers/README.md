@@ -49,7 +49,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 **`.githooks/` subdirectory contains all Git hook files:**
 
 - **`orchestrator.sh`**: Master enforcement logic.
-  - Checks `BRITETEST_BYPASS_HOOKS` environment variable
+  - Checks `GIT_BYPASS_HOOKS` environment variable
   - Blocks operations if bypass not set
   - Provides helpful error messages
 
@@ -111,7 +111,7 @@ Git hooks enforce script-only workflow by preventing direct use of dangerous git
 
 ### Bypass Mechanism
 
-Hooks check for `BRITETEST_BYPASS_HOOKS=true` environment variable:
+Hooks check for `GIT_BYPASS_HOOKS=true` environment variable:
 
 ```bash
 # Direct command (blocked by hook):
@@ -124,9 +124,9 @@ commit -p                     # ✅ OK (sets bypass internally)
 Scripts set bypass before git operations and immediately unset after:
 
 ```bash
-export BRITETEST_BYPASS_HOOKS=true
+export GIT_BYPASS_HOOKS=true
 git push origin branch
-unset BRITETEST_BYPASS_HOOKS
+unset GIT_BYPASS_HOOKS
 ```
 
 ### Error Messages
@@ -134,7 +134,7 @@ unset BRITETEST_BYPASS_HOOKS
 When hooks block operations, they provide clear error messages:
 
 ```
-Error: Direct git commit/add operations are not allowed in briteTest.
+Error: Direct git commit/add operations are not allowed.
 
 Use the 'commit' script instead:
   commit -m "your message"
@@ -219,16 +219,16 @@ ensure_hooks_installed
 
 ```bash
 # Before any restricted git operation:
-export BRITETEST_BYPASS_HOOKS=true
+export GIT_BYPASS_HOOKS=true
 
 # Execute git command
 if ! git <operation>; then
-  unset BRITETEST_BYPASS_HOOKS
+  unset GIT_BYPASS_HOOKS
   bt_error_exit 1 "Operation failed"
 fi
 
 # IMMEDIATELY unset after
-unset BRITETEST_BYPASS_HOOKS
+unset GIT_BYPASS_HOOKS
 ```
 
 ### Restricted Operations That Need Bypass

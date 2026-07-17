@@ -5,7 +5,7 @@
 # This hook runs before 'git add' and 'git commit' commands.
 # It prevents developers from bypassing the script-based workflow.
 #
-# Scripts set BRITETEST_BYPASS_HOOKS=true when performing authorized commits.
+# Scripts set GIT_BYPASS_HOOKS=true when performing authorized commits.
 #
 # Blocked operations:
 #   git add <file>          → Use: commit -m "msg"
@@ -24,7 +24,7 @@ if [[ -f "$ORCHESTRATOR" ]]; then
 fi
 
 # Check if bypass flag is set by authorized script
-if [[ "${BRITETEST_BYPASS_HOOKS:-false}" == "true" ]]; then
+if [[ "${GIT_BYPASS_HOOKS:-false}" == "true" ]]; then
   exit 0
 fi
 

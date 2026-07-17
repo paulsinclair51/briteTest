@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Validation Helper Functions for briteTest
+# Validation Helper Functions
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT

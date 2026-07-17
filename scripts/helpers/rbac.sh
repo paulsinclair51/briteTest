@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script Permission Definitions for briteTest
+# Script Permission Definitions
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT

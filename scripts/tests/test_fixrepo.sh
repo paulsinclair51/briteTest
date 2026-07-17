@@ -174,13 +174,13 @@ assert_contains "**Issues Remaining:** 0" "$brite_report"
 assert_contains "Status: All detected issues were resolved by verified remediations." "$brite_report"
 pass "verified remediation flow"
 
-# 3) Non-briteTest fixture should skip briteTest-specific layout checks
+# 3) Non-API fixture should skip repository structure layout checks
 rc=$(run_capture "$TMPDIR/plain.out" bash "$PLAIN_REPO/scripts/bin/fixrepo" -d -q)
 [[ "$rc" -eq 0 ]] || fail "fixrepo -d -q should exit 0 on clean plain fixture (got $rc)"
 plain_report="$(latest_report "$PLAIN_REPO")"
 [[ -f "$plain_report" ]] || fail "expected report file for plain fixture"
-assert_contains "briteTest-specific layout checks skipped" "$plain_report"
-pass "non-briteTest skip path"
+assert_contains "Repository structure checks skipped" "$plain_report"
+pass "non-API fixture skip path"
 
 # 4) A second clean repo can be checked as a clone-path target
 rc=$(run_capture "$TMPDIR/clone.out" bash "$PLAIN_REPO/scripts/bin/fixrepo" -d -q "$SECOND_PLAIN_REPO")

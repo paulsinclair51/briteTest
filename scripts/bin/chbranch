@@ -119,10 +119,6 @@ current_local_branch() {
   git symbolic-ref -q --short HEAD 2>/dev/null || true
 }
 
-is_worktree_dirty() {
-  [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]
-}
-
 discard_uncommitted_changes() {
   bt_warn "Force mode enabled: discarding all uncommitted changes"
 
@@ -302,7 +298,7 @@ ensure_clean_or_discard() {
   local curr_branch="$1"
   local msg=""
 
-  if ! is_worktree_dirty; then
+  if ! bt_is_worktree_dirty; then
     return 0
   fi
 

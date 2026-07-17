@@ -265,6 +265,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 CONFIG_FILE="$REPO_ROOT/config/contributors.md"
 HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
+GIT_HELPER="$SCRIPT_DIR/../helpers/git_helpers.sh"
 
 # Shared helpers
 if [[ ! -f "$HISTORY_HELPER" ]]; then
@@ -274,6 +275,15 @@ fi
 # shellcheck source=helpers/history_log.sh
 if ! source "$HISTORY_HELPER"; then
   echo "Error: Failed to load helper: $HISTORY_HELPER" >&2
+  exit 5
+fi
+if [[ ! -f "$GIT_HELPER" ]]; then
+  echo "Error: Required helper not found: $GIT_HELPER" >&2
+  exit 5
+fi
+# shellcheck source=helpers/git_helpers.sh
+if ! source "$GIT_HELPER"; then
+  echo "Error: Failed to load helper: $GIT_HELPER" >&2
   exit 5
 fi
 
@@ -299,12 +309,8 @@ log_verbose() {
   fi
 }
 
-is_worktree_dirty() {
-  [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]
-}
-
 ensure_clean_before_branch_switch() {
-  if is_worktree_dirty; then
+  if bt_is_worktree_dirty; then
     error_exit 5 "Current branch has uncommitted changes. Commit first before running mkbranch" \
       "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
