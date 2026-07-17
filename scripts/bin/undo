@@ -246,7 +246,7 @@ undo_release() {
 
   # Delete remote tag
   bt_info "Deleting remote tag..."
-  if ! git push origin --delete "$last_tag" 2>&1; then
+  if ! GIT_BYPASS_HOOKS=true git push origin --delete "$last_tag" 2>&1; then
     bt_warn "Failed to delete remote tag (may need manual cleanup)"
   fi
 

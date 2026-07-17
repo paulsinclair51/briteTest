@@ -269,7 +269,7 @@ fi
 
 # Push merge commit
 bt_info "Pushing merge commit to remote..."
-if ! git push origin "$CURRENT_BRANCH" 2>&1; then
+if ! GIT_BYPASS_HOOKS=true git push origin "$CURRENT_BRANCH" 2>&1; then
   bt_error_exit "$EXIT_NOT_FOUND" "Failed to push merge commit to remote"
 fi
 
