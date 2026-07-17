@@ -68,12 +68,11 @@ Outputs:
     output locations.
 
 Exit codes:
-  0   Success
-  1   Argument or validation error
-  2   Git operation failed
-  3   Working directory not clean
-  4   Source branch not found
-  5   Cherry-pick conflicts (pause for resolution)
+  0   Success.
+  1   Invalid option or argument.
+  2   Operation failed (e.g., uncommitted changes).
+  3   Config error (e.g., source branch not found).
+  200 Git operation failed.
 EOF
 }
 
@@ -94,6 +93,20 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
 
+readonly EXIT_SUCCESS=0
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_OPERATION_FAILED=2
+readonly EXIT_CONFIG_ERROR=3
+readonly EXIT_GIT_FAILED=200
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
 # Default options
 CUSTOM_MESSAGE=""
 VERBOSE=false
@@ -103,7 +116,7 @@ SOURCE_BRANCH=""
 
 check_working_directory_clean() {
   if ! git diff-index --quiet HEAD --; then
-    bt_error_exit 3 "Working directory has uncommitted changes." \
+    bt_error_exit "$EXIT_OPERATION_FAILED" "Working directory has uncommitted changes." \
       "Commit or stash them first."
   fi
 }
@@ -165,7 +178,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -m requires a message argument"
+        usage_error "Option -m requires a message argument"
       fi
       CUSTOM_MESSAGE="$2"
       shift 2
@@ -175,14 +188,14 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -*)
-      bt_error_exit 1 "Unknown option: $1"
+      usage_error "Unknown option: $1"
       ;;
     *)
       if [[ "$CONTINUE_MODE" == false ]]; then
         SOURCE_BRANCH="$1"
         shift
       else
-        bt_error_exit 1 "Unexpected argument with --continue: $1"
+        usage_error "Unexpected argument with --continue: $1"
       fi
       ;;
   esac
@@ -205,12 +218,12 @@ fi
 
 # Validate source branch provided
 if [[ -z "$SOURCE_BRANCH" ]]; then
-  bt_error_exit 1 "SOURCE_BRANCH argument required"
+  usage_error "SOURCE_BRANCH argument required"
 fi
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
-  bt_error_exit 2 "Failed to determine current branch")
+  bt_error_exit "$EXIT_GIT_FAILED" "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
 
 # Check working directory is clean
@@ -232,7 +245,7 @@ esac
 
 # Verify source branch exists
 if ! branch_exists "$SOURCE_BRANCH"; then
-  bt_error_exit 4 "Source branch not found: $SOURCE_BRANCH"
+  bt_error_exit "$EXIT_CONFIG_ERROR" "Source branch not found: $SOURCE_BRANCH"
 fi
 bt_info "Source branch found: $SOURCE_BRANCH"
 

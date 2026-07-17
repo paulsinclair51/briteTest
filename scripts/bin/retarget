@@ -80,6 +80,19 @@ source "$SCRIPT_DIR/../helpers/history_log.sh"
 # shellcheck source=helpers/validation-helpers.sh
 source "$SCRIPT_DIR/../helpers/validation-helpers.sh"
 
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_FOUND=2
+readonly EXIT_OPERATION_FAILED=3
+readonly EXIT_CONFIG_ERROR=4
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
 DRY_RUN=false
 VERBOSE=false
 COMMENT=""
@@ -125,7 +138,7 @@ version_window_status() {
   local branch_type="$2"
 
   if [[ ! -f "$ACCESS_FILE" ]]; then
-    bt_error_exit 3 "Version access file not found: $ACCESS_FILE"
+    bt_error_exit "$EXIT_OPERATION_FAILED" "Version access file not found: $ACCESS_FILE"
   fi
 
   awk -F',' -v version="$version" -v btype="$branch_type" '
@@ -153,7 +166,7 @@ version_window_status() {
     }
     END {
       if (!found) {
-        exit 2
+        exit "$EXIT_NOT_FOUND"
       }
     }
   ' "$ACCESS_FILE"
@@ -177,10 +190,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -m requires a message argument"
+        usage_error "Option -m requires a message argument"
       fi
       if [[ -n "$COMMENT" ]]; then
-        bt_error_exit 1 "Cannot use both -m and -- for comment"
+        usage_error "Cannot use both -m and -- for comment"
       fi
       COMMENT="$2"
       shift 2
@@ -188,13 +201,13 @@ while [[ $# -gt 0 ]]; do
     --)
       shift
       if [[ -n "$COMMENT" ]]; then
-        bt_error_exit 1 "Cannot use both -m and -- for comment"
+        usage_error "Cannot use both -m and -- for comment"
       fi
       COMMENT="$*"
       break
       ;;
     -*)
-      bt_error_exit 1 "Unknown option: $1"
+      usage_error "Unknown option: $1"
       ;;
     *)
       POSITIONAL_ARGS+=("$1")
@@ -206,7 +219,7 @@ done
 set -- "${POSITIONAL_ARGS[@]}"
 
 if [[ $# -ne 2 ]]; then
-  bt_error_exit 1 "Expected 2 arguments: <targeted-branch> <new-parent-version>"
+  usage_error "Expected 2 arguments: <targeted-branch> <new-parent-version>"
 fi
 
 TARGET_BRANCH="$1"
@@ -216,11 +229,11 @@ if [[ "$TARGET_BRANCH" =~ ^(dev|fix)/.+-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9]
   TARGET_TYPE="${BASH_REMATCH[1]}"
   OLD_PARENT="${BASH_REMATCH[2]}"
 else
-  bt_error_exit 3 "Invalid targeted branch '$TARGET_BRANCH'. Use dev/...-vX.Y.Z or fix/...-vX.Y.Z"
+  bt_error_exit "$EXIT_OPERATION_FAILED" "Invalid targeted branch '$TARGET_BRANCH'. Use dev/...-vX.Y.Z or fix/...-vX.Y.Z"
 fi
 
 if ! bt_is_version_branch "$NEW_PARENT"; then
-  bt_error_exit 3 "Invalid new parent '$NEW_PARENT'. Expected version branch v<M>.<m>.<p>"
+  bt_error_exit "$EXIT_OPERATION_FAILED" "Invalid new parent '$NEW_PARENT'. Expected version branch v<M>.<m>.<p>"
 fi
 
 if [[ "$OLD_PARENT" == "$NEW_PARENT" ]]; then
@@ -231,11 +244,11 @@ fi
 CURRENT_USER="$(git config user.name 2>/dev/null || true)"
 CURRENT_USER="$(trim "$CURRENT_USER")"
 if [[ -z "$CURRENT_USER" ]]; then
-  bt_error_exit 2 "Cannot determine current user from git config"
+  bt_error_exit "$EXIT_NOT_FOUND" "Cannot determine current user from git config"
 fi
 
 if ! is_approver "$CURRENT_USER"; then
-  bt_error_exit 2 "User '$CURRENT_USER' is not an approver"
+  bt_error_exit "$EXIT_NOT_FOUND" "User '$CURRENT_USER' is not an approver"
 fi
 
 log_verbose "Approver verified: $CURRENT_USER"
@@ -243,13 +256,13 @@ log_verbose "Approver verified: $CURRENT_USER"
 status=""
 if ! status=$(version_window_status "$NEW_PARENT" "$TARGET_TYPE"); then
   if [[ "$?" -eq 2 ]]; then
-    bt_error_exit 3 "Version '$NEW_PARENT' has no access policy in $ACCESS_FILE"
+    bt_error_exit "$EXIT_OPERATION_FAILED" "Version '$NEW_PARENT' has no access policy in $ACCESS_FILE"
   fi
-  bt_error_exit 3 "Failed to evaluate version access policy"
+  bt_error_exit "$EXIT_OPERATION_FAILED" "Failed to evaluate version access policy"
 fi
 
 if [[ "$status" != "open" ]]; then
-  bt_error_exit 3 "Version '$NEW_PARENT' is closed for '$TARGET_TYPE' branches"
+  bt_error_exit "$EXIT_OPERATION_FAILED" "Version '$NEW_PARENT' is closed for '$TARGET_TYPE' branches"
 fi
 
 ORIGINAL_BRANCH="$(bt_get_current_branch_or_empty)"
@@ -257,11 +270,11 @@ ORIGINAL_BRANCH="$(bt_get_current_branch_or_empty)"
 cd "$REPO_ROOT"
 
 if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
-  bt_error_exit 4 "Current branch has uncommitted changes. Commit first before running retarget"
+  bt_error_exit "$EXIT_CONFIG_ERROR" "Current branch has uncommitted changes. Commit first before running retarget"
 fi
 
 if ! git fetch origin >/dev/null 2>&1; then
-  bt_error_exit 4 "Failed to fetch from origin"
+  bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to fetch from origin"
 fi
 
 # Propagate repository history from remote if available
@@ -273,19 +286,19 @@ case $? in
 esac
 
 if ! git show-ref --verify --quiet "refs/remotes/origin/$NEW_PARENT"; then
-  bt_error_exit 3 "New parent version branch '$NEW_PARENT' not found on origin"
+  bt_error_exit "$EXIT_OPERATION_FAILED" "New parent version branch '$NEW_PARENT' not found on origin"
 fi
 
 if git show-ref --verify --quiet "refs/heads/$TARGET_BRANCH"; then
   if ! git checkout "$TARGET_BRANCH" >/dev/null 2>&1; then
-    bt_error_exit 4 "Failed to checkout local targeted branch '$TARGET_BRANCH'"
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to checkout local targeted branch '$TARGET_BRANCH'"
   fi
 elif git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
   if ! git checkout -b "$TARGET_BRANCH" "origin/$TARGET_BRANCH" >/dev/null 2>&1; then
-    bt_error_exit 4 "Failed to create local branch '$TARGET_BRANCH' from origin"
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to create local branch '$TARGET_BRANCH' from origin"
   fi
 else
-  bt_error_exit 3 "Targeted branch '$TARGET_BRANCH' not found locally or on origin"
+  bt_error_exit "$EXIT_OPERATION_FAILED" "Targeted branch '$TARGET_BRANCH' not found locally or on origin"
 fi
 
 bt_info "Retargeting '$TARGET_BRANCH' from '$OLD_PARENT' to '$NEW_PARENT'"
@@ -304,11 +317,11 @@ if ! git rebase "origin/$NEW_PARENT"; then
   echo "  1. Resolve conflicts in the current branch worktree"
   echo "  2. Continue rebase: git rebase --continue"
   echo "  3. Push rewritten history: git push --force-with-lease origin $TARGET_BRANCH"
-  bt_error_exit 5 "Retarget paused for contributor conflict resolution"
+  bt_error_exit "$EXIT_INTERNAL_ERROR" "Retarget paused for contributor conflict resolution"
 fi
 
 if ! git push --force-with-lease origin "$TARGET_BRANCH"; then
-  bt_error_exit 4 "Rebase succeeded but push failed for '$TARGET_BRANCH'"
+  bt_error_exit "$EXIT_CONFIG_ERROR" "Rebase succeeded but push failed for '$TARGET_BRANCH'"
 fi
 
 MESSAGE="Retargeted '$TARGET_BRANCH' from '$OLD_PARENT' to '$NEW_PARENT' by approver '$CURRENT_USER'"

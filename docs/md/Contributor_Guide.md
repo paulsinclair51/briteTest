@@ -62,34 +62,83 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
 
 ## Table of Contents
 
-1. [Introduction](#introduction)
-2. [Branching Model Overview](#branching-model-overview)
-3. [Validation Workflows](#validation-workflows)
-4. [Git Operations and Branch Management](#git-operations-and-branch-management)
-5. [Access Control & Roles](#access-control--roles)
-6. [Public Repository Security](#public-repository-security)
-7. [GPG Signing Setup](#gpg-signing-setup)
-8. [Versioning Guidelines](#versioning-guidelines)
-9. [Branding](#branding)
-10. [Documentation Guidelines](#documentation-guidelines)
-11. [Code Guidelines](#code-guidelines)
-12. [Testing Requirements](#testing-requirements)
-13. [CODEOWNERS and Review Routing](#codeowners-and-review-routing)
-14. [Making Modifications in a Branch](#making-modifications-in-a-branch)
-15. [Pull Request (PR)](#pull-request-pr)
-16. [Release](#release)
-17. [Protected Branches](#protected-branches)
-18. [Troubleshooting FAQ](#troubleshooting-faq)
-19. [Team Onboarding Checklist](#team-onboarding-checklist)
+1. [Introduction](#1-introduction)<br>
+   1.1. [Scripts (scripts/bin)](#11-scripts-scriptsbin)<br>
+
+2. [Branching Model Overview](#2-branching-model-overview)<br>
+
+3. [Validation Workflows](#3-validation-workflows)<br>
+   3.1. [Workflow Summary Dashboard](#31-workflow-summary-dashboard)<br>
+   3.2. [Primary Prevention Layer](#32-primary-prevention-layer)<br>
+   3.3. [Secondary Audit Layer](#33-secondary-audit-layer)<br>
+   3.4. [Handling Validation Failures](#34-handling-validation-failures)<br>
+
+4. [Branch Management](#4-branch-management)<br>
+   4.1. [Creating Branches](#41-creating-branches)<br>
+   4.2. [Making Changes](#42-making-changes)<br>
+   4.3. [Merge Remote Branch to Local Branch](#43-merge-remote-branch-to-local-branch)<br>
+   4.4. [Removing (Deleting) Branches](#44-removing-deleting-branches)<br>
+   4.5. [Setting Up Pre-commit Hooks](#45-setting-up-pre-commit-hooks)<br>
+
+5. [Access Control & Roles](#5-access-control--roles)<br>
+   5.1. [File Access Matrix](#51-file-access-matrix)<br>
+   5.2. [Identity Prerequisites for Role-Gated Scripts](#52-identity-prerequisites-for-role-gated-scripts)<br>
+
+6. [Public Repository Security](#6-public-repository-security)<br>
+
+7. [GPG Signing Setup](#7-gpg-signing-setup)<br>
+   7.1. [Linux/Mac Setup](#71-linuxmac-setup)<br>
+   7.2. [Windows Setup](#72-windows-setup)<br>
+   7.3. [Signing Commits](#73-signing-commits)<br>
+   7.4. [Troubleshooting GPG](#74-troubleshooting-gpg)<br>
+
+8. [Versioning Guidelines](#8-versioning-guidelines)<br>
+
+9. [Branding](#9-branding)<br>
+
+10. [Documentation Guidelines](#10-documentation-guidelines)<br>
+
+11. [Code Guidelines](#11-code-guidelines)<br>
+
+12. [Testing Requirements](#12-testing-requirements)<br>
+
+13. [CODEOWNERS and Review Routing](#13-codeowners-and-review-routing)<br>
+
+14. [Making Modifications in a Branch](#14-making-modifications-in-a-branch)<br>
+
+15. [Pull Request (PR)](#15-pull-request-pr)<br>
+   15.1. [Pre-PR Checklist](#151-pre-pr-checklist)<br>
+   15.2. [Opening and Reviewing](#152-opening-and-reviewing)<br>
+
+16. [Release](#16-release)<br>
+
+17. [Protected Branches](#17-protected-branches)<br>
+
+18. [Troubleshooting FAQ](#18-troubleshooting-faq)<br>
+   18.1. [Validation Failures](#181-validation-failures)<br>
+   18.2. [Git Operations](#182-git-operations)<br>
+   18.3. [Merge and Reviews](#183-merge-and-reviews)<br>
+
+19. [Team Onboarding Checklist](#19-team-onboarding-checklist)<br>
+   19.1. [Before First Commit](#191-before-first-commit)<br>
+   19.2. [First Contribution](#192-first-contribution)<br>
+   19.3. [Quick Reference](#193-quick-reference)<br>
+   19.4. [Getting Help](#194-getting-help)<br>
 </details>
 
-## Introduction
+<details>
+<summary><strong>1. Introduction</strong></summary>
+
+## 1. Introduction
 
 This Contributor Guide defines the expectations and rules for contributing to briteTest. It covers branching, versioning, testing, documentation, code style, validation workflows, pull requests, and release requirements.
 
 Contributors should read this document before submitting changes, reviewing, or approving to ensure consistency across the code and documentation.
 
-### Scripts (scripts/bin)
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.1. Scripts (scripts/bin)</summary>
+
+### 1.1. Scripts (scripts/bin)
 
 A script-based workflow is required. Direct use of git commands that modify the
 repository is not allowed accept by the owner. A script validates the action,
@@ -104,8 +153,13 @@ The current executable script set is maintained in `scripts/bin/README.md`.
 - **Document/brand:** `ckstyle`, `gendocs`, `genpngs`, `replacephrases`, `updatebrand`
 - **Repository/fork/clone:** `mkfork`, `mkclone`, `rmclone`, `fixrepo`
 - **Branch/workflow:** `ckbranch_history`, `chcurrent`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `mkfeedback`, `mergetoparent`, `mkpullrequest`, `chtarget`, `mkrelease`, `syncfromremote`, `syncfromparent`, `undo`, `rmbranch`
+</details>
+</details>
 
-## Branching Model Overview
+<details>
+<summary><strong>2. Branching Model Overview</strong></summary>
+
+## 2. Branching Model Overview
 
 This repository uses a release-oriented branching model with four branch types:
 
@@ -123,13 +177,20 @@ This repository uses a release-oriented branching model with four branch types:
 - targeted -> version (required PR/review by reviewers, mrgup by an approver)
 - version -> `origin/main` (no PR, mrgup by an approver)
 - main -> any (not allowed)
+</details>
 
-## Validation Workflows
+<details>
+<summary><strong>3. Validation Workflows</strong></summary>
+
+## 3. Validation Workflows
 
 briteTest uses 15 automated GitHub Actions workflows providing defense-in-depth
 validation across all git operations.
 
-### Workflow Summary Dashboard
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Workflow Summary Dashboard</summary>
+
+### 3.1. Workflow Summary Dashboard
 
 | Workflow | Purpose | Trigger | When Blocks |
 |----------|---------|---------|------------|
@@ -148,8 +209,12 @@ validation across all git operations.
 | branch-validation-license-headers.yml | Ensures MIT license headers | PR events | Missing headers |
 | branch-validation-code-quality.yml | Runs linting and format checks | PR events | Formatting issues |
 | branch-validation-tags.yml | Validates tag naming conventions | Tag creation | Invalid tag format |
+</details>
 
-### Primary Prevention Layer
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.2. Primary Prevention Layer</summary>
+
+### 3.2. Primary Prevention Layer
 
 These workflows run **BEFORE merge up** to prevent problems:
 
@@ -162,8 +227,12 @@ BLOCKED: **Invalid commits:** PR blocked until fixed
 - File modification: LICENSE
 - Secret detected: AWS API key in code
 - Large file: 15MB binary uploaded
+</details>
 
-### Secondary Audit Layer
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.3. Secondary Audit Layer</summary>
+
+### 3.3. Secondary Audit Layer
 
 These workflows run **AFTER merge up** for compliance logging:
 
@@ -175,8 +244,12 @@ These workflows run **AFTER merge up** for compliance logging:
 - Force push attempt (blocked by GitHub anyway)
 - Cherry-pick to non-protected branch
 - Invalid tag creation
+</details>
 
-### Handling Validation Failures
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.4. Handling Validation Failures</summary>
+
+### 3.4. Handling Validation Failures
 
 **When a validation fails:**
 
@@ -184,14 +257,22 @@ These workflows run **AFTER merge up** for compliance logging:
 2. **Fix locally** - Make the required changes
 3. **Re-push** - GitHub automatically re-runs validations
 4. **Verify passing** - Green checkmark on PR before requesting review
+</details>
+</details>
 
-## Branch Management
+<details>
+<summary><strong>4. Branch Management</strong></summary>
+
+## 4. Branch Management
 
 The following shows the path to the script but just the script name is needed
 if the default path is setup for bash (this is normally done automatically;
 use scripts/bin/installscripts to set the default path manually).
 
-### Creating Branches
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;4.1. Creating Branches</summary>
+
+### 4.1. Creating Branches
 
 Changes are made in a targeted or contributor branch which you need
 to create:
@@ -220,8 +301,12 @@ scripts/bin/mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
 - **Targeted:** `dev/<desc>-<version>` or `fix/<desc>-<version>`
 - **Version:** `v<M>.<m>.0` (created by approvers only)
 - **Main**: `main`
+</details>
 
-### Making Changes
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;4.2. Making Changes</summary>
+
+### 4.2. Making Changes
 
 ```bash
 scripts/bin/chcurrent BRANCH
@@ -242,8 +327,12 @@ changes.
 - Automatically pushes when `origin` is connected and `origin/<current-branch>` exists.
 - Does not push when remote is disconnected or no corresponding remote branch exists.
 - Uses report naming: `reports/branch/commit-<datetime>.md` (or `commit-d-<datetime>.md` in dry-run).
+</details>
 
-### Merge Remote Branch to Local Branch
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;4.3. Merge Remote Branch to Local Branch</summary>
+
+### 4.3. Merge Remote Branch to Local Branch
 
 Rebase a local branch to its remote has had changes. There must
 not be any untracked or uncommitted changes for the local branch
@@ -262,8 +351,12 @@ Otherwise, resolve conflicts (see merge remote report) and then repeat
 above. Iterate this workflow until there are no more conflicts (in most
 cases, conflicts are automatically resolved in one execution of mrgremote
 or two executions of mrgremote if there unresolved conflicts).
+</details>
 
-### Remving (Deleting) Branches
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;4.4. Removing (Deleting) Branches</summary>
+
+### 4.4. Removing (Deleting) Branches
 
 ```bash
 scripts/bin/rmbranch BRANCH
@@ -272,8 +365,12 @@ scripts/bin/rmbranch BRANCH
 BRANCH is the contributor branch or a targeted branch to remove.
 
 Protected branches (`main` and `v*.0`) cannot be deleted.
+</details>
 
-### Setting Up Pre-commit Hooks
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;4.5. Setting Up Pre-commit Hooks</summary>
+
+### 4.5. Setting Up Pre-commit Hooks
 
 Prevent accidental commits to protected branches:
 
@@ -290,8 +387,13 @@ fi
 EOF
 chmod +x .git/hooks/pre-commit
 ```
+</details>
+</details>
 
-## Access Control & Roles
+<details>
+<summary><strong>5. Access Control & Roles</strong></summary>
+
+## 5. Access Control & Roles
 
 briteTest uses a six-tier access model for public repository safety:
 
@@ -304,24 +406,22 @@ briteTest uses a six-tier access model for public repository safety:
 | **APPROVER (A)** | Merge, release, run protected scripts with override confirmation | Must follow audit and override controls |
 | **MAINTAINER** | Repository admin and access management | Responsible for governance and audits |
 
-### File Access Matrix
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.1. File Access Matrix</summary>
 
-Use the following shorthand:
-- `R` = readable
-- `RW` = editable through the standard PR workflow
-- `RW*` = editable only through protected approver workflow
-
-| File or Path | PUBLIC | USERS | C | R | A | MAINTAINER |
-|--------------|--------|-------|---|---|---|------------|
-| `README.md`, `LICENSE`, `.github/SECURITY.md` | R | R | R | R | R | RW |
+### 5.1. File Access Matrix
 | `docs/md/`, `docs/branding/`, `src/`, `include/`, `examples/` | R | R | RW | RW | RW | RW |
 | `scripts/bin/`, `scripts/helpers/` | R | R | RW | RW | RW* | RW |
 | `.github/workflows/`, branch-protection settings | R | R | - | - | RW* | RW |
 | `config/contributors.md`, governance/policy docs | R | R | RW | RW | RW* | RW |
 
 **Write access is script-controlled** (`mkbranch`, `commit`, `mkpullrequest`, `mergetoparent`, `chtarget`, `mkrelease`) rather than direct protected-branch git operations.
+</details>
 
-### Identity Prerequisites for Role-Gated Scripts
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.2. Identity Prerequisites for Role-Gated Scripts</summary>
+
+### 5.2. Identity Prerequisites for Role-Gated Scripts
 
 Role-gated scripts (for example `mergetoparent` and `mkrelease`) require a
 resolvable GitHub login that matches an entry in `config/contributors.md`.
@@ -333,8 +433,13 @@ Configure at least one of these identity sources:
 - `git config user.name <github-login>` using your GitHub login (not display name)
 
 If identity cannot be resolved, role checks fail by design.
+</details>
+</details>
 
-## Public Repository Security
+<details>
+<summary><strong>6. Public Repository Security</strong></summary>
+
+## 6. Public Repository Security
 
 Security controls expected for contributor workflows:
 
@@ -346,12 +451,19 @@ Security controls expected for contributor workflows:
 - **Auditability:** approver-level actions and protected operations must remain traceable through workflow/script logs.
 
 Keep this section aligned with repository policy whenever workflows or branch protections change.
+</details>
 
-## GPG Signing Setup
+<details>
+<summary><strong>7. GPG Signing Setup</strong></summary>
+
+## 7. GPG Signing Setup
 
 For commits to protected branches (main and version branches), GPG signatures are required.
 
-### Linux/Mac Setup
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;7.1. Linux/Mac Setup</summary>
+
+### 7.1. Linux/Mac Setup
 
 **1. Generate GPG Key**
 
@@ -405,8 +517,12 @@ Copy the output and add to GitHub:
 - Click "New GPG key"
 - Paste the key
 - Confirm
+</details>
 
-### Windows Setup
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;7.2. Windows Setup</summary>
+
+### 7.2. Windows Setup
 
 **1. Install GPG**
 
@@ -429,8 +545,12 @@ git config --global gpg.program "C:\Program Files (x86)\GNU\GnuPG\bin\gpg.exe"
 git config --global user.signingkey <YOUR_KEY_ID>
 git config --global commit.gpgsign true
 ```
+</details>
 
-### Signing Commits
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;7.3. Signing Commits</summary>
+
+### 7.3. Signing Commits
 
 Once configured, commits are automatically signed:
 
@@ -443,8 +563,12 @@ Or sign manually:
 ```bash
 git commit -S -m "feat: add feature"
 ```
+</details>
 
-### Troubleshooting GPG
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;7.4. Troubleshooting GPG</summary>
+
+### 7.4. Troubleshooting GPG
 
 **Error: "gpg failed to sign"
 
@@ -469,8 +593,13 @@ gpg --list-secret-keys
 - Verify public key is added to GitHub
 - Verify commit email matches GitHub account email
 - Wait a few seconds (GitHub takes time to verify)
+</details>
+</details>
 
-## Versioning Guidelines
+<details>
+<summary><strong>8. Versioning Guidelines</strong></summary>
+
+## 8. Versioning Guidelines
 
 Versioning format: `M.m.p` (major, minor, patch)
 
@@ -484,14 +613,22 @@ Versioning format: `M.m.p` (major, minor, patch)
 - `docs/md/*.md` (except README.md)
 
 Use `make test-all-scripts` before PRs, and verify versioned file edits in `git diff`.
+</details>
 
-## Branding
+<details>
+<summary><strong>9. Branding</strong></summary>
+
+## 9. Branding
 
 - **Brand name:** briteTest
 - **Distinctive camelCase** aligns with `bT` monogram
 - Update branding with: `scripts/bin/updatebrand`
+</details>
 
-## Documentation Guidelines
+<details>
+<summary><strong>10. Documentation Guidelines</strong></summary>
+
+## 10. Documentation Guidelines
 
 - Root `README.md` remains short and onboarding-focused
 - Technical tone: precise, neutral, clear
@@ -499,15 +636,23 @@ Use `make test-all-scripts` before PRs, and verify versioned file edits in `git 
 - Use fenced code blocks for examples
 - Maintain parallel structure in lists
 - Define terms once, use consistently
+</details>
 
-## Code Guidelines
+<details>
+<summary><strong>11. Code Guidelines</strong></summary>
+
+## 11. Code Guidelines
 
 - C99 standard
 - POSIX.1-2001 APIs only
 - Keep headers self-contained
 - Add MIT license header to new files
+</details>
 
-## Testing Requirements
+<details>
+<summary><strong>12. Testing Requirements</strong></summary>
+
+## 12. Testing Requirements
 
 ```bash
 make run
@@ -516,8 +661,12 @@ make run
 - Ensure all tests pass before opening PR
 - Update tests when code changes
 - Include test coverage for new features
+</details>
 
-## CODEOWNERS and Review Routing
+<details>
+<summary><strong>13. CODEOWNERS and Review Routing</strong></summary>
+
+## 13. CODEOWNERS and Review Routing
 
 - **Default owner:** `paulsinclair51`
 - CODEOWNERS affects who is **requested** for review
@@ -525,8 +674,12 @@ make run
 - Blocking depends on branch protection rules
 
 See `.github/CODEOWNERS` for details.
+</details>
 
-## Making Modifications in a Branch
+<details>
+<summary><strong>14. Making Modifications in a Branch</strong></summary>
+
+## 14. Making Modifications in a Branch
 
 1. Create focused, logically grouped changes
 2. Update documentation in parallel with code
@@ -534,10 +687,17 @@ See `.github/CODEOWNERS` for details.
 4. Follow code and documentation guidelines
 5. Include test coverage
 6. Verify tests pass: `make run`
+</details>
 
-## Pull Request (PR)
+<details>
+<summary><strong>15. Pull Request (PR)</strong></summary>
 
-### Pre-PR Checklist
+## 15. Pull Request (PR)
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;15.1. Pre-PR Checklist</summary>
+
+### 15.1. Pre-PR Checklist
 
 - [ ] Changes are focused and logically grouped
 - [ ] Documentation updated
@@ -548,8 +708,12 @@ See `.github/CODEOWNERS` for details.
 - [ ] No secrets or credentials
 - [ ] No files > 10MB
 - [ ] No protected file modifications
+</details>
 
-### Opening and Reviewing
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;15.2. Opening and Reviewing</summary>
+
+### 15.2. Opening and Reviewing
 
 1. Push your branch to repository
 2. Open PR on GitHub with clear title and description
@@ -558,18 +722,25 @@ See `.github/CODEOWNERS` for details.
 5. Reviewers examine for quality, correctness, standards
 6. Address feedback and re-push
 7. Once approved and checks pass, approver merges
+</details>
+</details>
 
+<details>
+<summary><strong>16. Release</strong></summary>
 
-## Release
+## 16. Release
 
 1. **Prepare:** Summary of changes, verify versions, ensure compatibility
 2. **Validate:** `make run`, check for stale references
 3. **Commit:** Clear message with version updates and release notes
 4. **Tag:** `git tag v1.2.3` and push
 5. **Publish:** Create GitHub release with notes
+</details>
 
+<details>
+<summary><strong>17. Protected Branches</strong></summary>
 
-## Protected Branches
+## 17. Protected Branches
 
 Protected branches require:
 - required: pull request before merging
@@ -587,11 +758,17 @@ Updates are made through `scripts/bin/mergetoparent` only:
 - Resolve conflicts in the source branch before running `mergetoparent`
 - Merge to protected parent using `mergetoparent`
 - When the parent is protected, approver role is required
+</details>
 
+<details>
+<summary><strong>18. Troubleshooting FAQ</strong></summary>
 
-## Troubleshooting FAQ
+## 18. Troubleshooting FAQ
 
-### Validation Failures
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;18.1. Validation Failures</summary>
+
+### 18.1. Validation Failures
 
 **Q: "Commit message format is invalid"
 
@@ -605,6 +782,12 @@ git commit -m "feat: add new feature"
 ```
 
 Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;18.2. Git Operations</summary>
+
+### 18.2. Git Operations
 
 **Q: "File size exceeds 10MB"
 
@@ -623,8 +806,6 @@ git add .gitattributes
 **A:** Don't modify LICENSE, SECURITY.md, or .github/workflows/ unless approved.
 For legitimate changes, contact the repository owner.
 
-**Q: "Secrets detected in code"
-
 **A:** Remove credentials immediately:
 ```bash
 # Remove the file from history
@@ -641,8 +822,6 @@ git filter-repo --path <file> --invert-paths
 // Copyright (c) 2026 Paul Sinclair
 // SPDX-License-Identifier: MIT
 ```
-
-### Git Operations
 
 **Q: "I accidentally committed to main"
 
@@ -687,8 +866,12 @@ scripts/bin/rmbranch <branch_name>
 ```
 
 Protected branches (main, v*.0) cannot be deleted.
+</details>
 
-### Merge and Reviews
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;18.3. Merge and Reviews</summary>
+
+### 18.3. Merge and Reviews
 
 **Q: "PR is blocked by validation checks"
 
@@ -714,13 +897,20 @@ Protected branches (main, v*.0) cannot be deleted.
 git fetch origin
 git pull origin main  # or version branch
 ```
+</details>
+</details>
 
+<details>
+<summary><strong>19. Team Onboarding Checklist</strong></summary>
 
-## Team Onboarding Checklist
+## 19. Team Onboarding Checklist
 
 For new contributors to briteTest:
 
-### Before First Commit
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;19.1. Before First Commit</summary>
+
+### 19.1. Before First Commit
 
 - [ ] **Read the Contributor Guide** (this document)
 - [ ] **Read Contributor Reference** for script details
@@ -744,20 +934,21 @@ For new contributors to briteTest:
   ```bash
   git config --global --list
   ```
+</details>
 
-### First Contribution
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;19.2. First Contribution</summary>
 
-- [ ] **Pick a task** (start with something small)
-- [ ] **Create a branch**
+### 19.2. First Contribution
   ```bash
   scripts/bin/mkbranch -r mywork/description main
   ```
-- [ ] **Make changes**
+- Make changes
   ```bash
   git checkout mywork/description
   # Edit files...
   ```
-- [ ] **Test locally**
+- Test locally
   ```bash
   make run  # Ensure all tests pass
   ```
@@ -798,8 +989,12 @@ For new contributors to briteTest:
 - [ ] **Celebrate merge**
   - Once approved and checks pass, approver merges
   - Your contribution is now in the codebase!
+</details>
 
-### Quick Reference
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;19.3. Quick Reference</summary>
+
+### 19.3. Quick Reference
 
 Common commands:
 ```bash
@@ -825,18 +1020,28 @@ make run
 # Delete branch
 scripts/bin/rmbranch mywork/feature
 ```
+</details>
 
-### Getting Help
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;19.4. Getting Help</summary>
+
+### 19.4. Getting Help
 
 - **This guide:** `docs/md/Contributor_Guide.md`
 - **Script reference:** `docs/md/Contributor_Reference.md`
 - **SCM deep dive:** `docs/SCM_REVIEW.md`
 - **Issue:** Open an issue on GitHub
 - **Question:** Start a discussion on GitHub Discussions
+</details>
+</details>
 
+<details>
+<summary><strong>Related Documents</strong></summary>
 
 ## Related Documents
 
 - [Contributor_Reference.md](./Contributor_Reference.md) - Script reference and tools
 - [SCM_REVIEW.md](../SCM_REVIEW.md) - Detailed SCM system analysis
 - [README.md](../../README.md) - Project overview
+</details>
+

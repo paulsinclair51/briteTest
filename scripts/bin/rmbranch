@@ -172,6 +172,14 @@ fi
 
 LOG_FILE="$REPO_ROOT/$(bt_branch_to_history_file "$_LOG_BRANCH")"
 
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit 1
+}
+
 # Default options
 MODE="both"  # local, remote, or both
 FORCE=false
@@ -182,7 +190,6 @@ REMOTE_PROTECTED_SKIPPED=false
 
 # Protected branch references for remote deletion checks
 PROTECTED_BRANCHES=("main")
-
 
 append_log_entry() {
   local log_file="$1"
@@ -307,11 +314,11 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -m requires a message argument" "" ""
+        usage_error "Option -m requires a message argument" "" ""
       fi
       if [[ -n "$COMMENT" ]]; then
       _msg="Cannot use both -m and -- for comment"
-      error_exit 1 "$_msg" "" ""
+      usage_error "$_msg" "" ""
       fi
       COMMENT="$2"
       shift 2
@@ -320,13 +327,13 @@ while [[ $# -gt 0 ]]; do
       # Unix-style comment: everything after -- is the comment
       shift
       if [[ -n "$COMMENT" ]]; then
-        error_exit 1 "Cannot use both -m and -- for comment" "" ""
+        usage_error "Cannot use both -m and -- for comment" "" ""
       fi
       COMMENT="$*"
       break
       ;;
     -*)
-      error_exit 1 "Unknown option: $1" "" ""
+      usage_error "Unknown option: $1" "" ""
       ;;
     *)
       # Positional argument
@@ -358,19 +365,19 @@ set -- "${POSITIONAL_ARGS[@]}"
 
 # Check that we have exactly 1 positional argument
 if [[ $# -ne 1 ]]; then
-  error_exit 1 "Expected 1 argument (branchname), got $#" ""
+  usage_error "Expected 1 argument (branchname), got $#" ""
 fi
 
 BRANCHNAME="$1"
 
 # Validate branch name
 if [[ -z "$BRANCHNAME" ]]; then
-  error_exit 1 "Branch name cannot be empty" ""
+  usage_error "Branch name cannot be empty" ""
 fi
 
 # Validate branch name conforms to naming conventions
 if ! validate_branch_name "$BRANCHNAME" "branch to delete"; then
-  error_exit 1 "Branch does not conform to naming conventions" "$BRANCHNAME"
+  usage_error "Branch does not conform to naming conventions" "$BRANCHNAME"
 fi
 
 # Change to repo root

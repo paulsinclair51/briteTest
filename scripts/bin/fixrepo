@@ -50,7 +50,7 @@ Outputs:
 
 Exit codes:
   0   Success - no issues or all issues fixed.
-  1   Argument or validation error.
+  1   Invalid option or argument.
   2   Issues detected - some may not be fixable.
   3   Reports directory does not exist.
   4   Critical repository error.
@@ -73,11 +73,11 @@ REPOSITORY_REPORTS_DIR="$REPO_ROOT/reports/repository"
 # Validate required helpers exist
 if [[ ! -f "$SCRIPT_DIR/../helpers/common.sh" ]]; then
   echo "Error: Required helper not found: $SCRIPT_DIR/../helpers/common.sh" >&2
-  exit 1
+  exit "$EXIT_INVALID_ARGUMENT"
 fi
 if [[ ! -f "$SCRIPT_DIR/../helpers/git_helpers.sh" ]]; then
   echo "Error: Required helper not found: $SCRIPT_DIR/../helpers/git_helpers.sh" >&2
-  exit 1
+  exit "$EXIT_INVALID_ARGUMENT"
 fi
 
 # shellcheck source=helpers/common.sh
@@ -98,6 +98,22 @@ fi
 
 # Propagate repository history from remote if available
 bt_propagate_repository_history >/dev/null 2>&1
+
+readonly EXIT_SUCCESS=0
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_FOUND=2
+readonly EXIT_OPERATION_FAILED=3
+readonly EXIT_CONFIG_ERROR=4
+readonly EXIT_INTERNAL_ERROR=100
+readonly EXIT_RUNTIME_ERROR=200
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
 
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
@@ -734,12 +750,12 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -r)
-      [[ $# -ge 2 ]] || bt_error_exit 1 "Missing value for $1"
+      [[ $# -ge 2 ]] || usage_error "Missing value for $1"
       REMOTE_TIMEOUT_SECONDS="$2"
       shift 2
       ;;
     -*)
-      bt_error_exit 1 "Unknown option: $1"
+      usage_error "Unknown option: $1"
       ;;
     *)
       POSITIONAL+=("$1")
@@ -749,7 +765,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "${#POSITIONAL[@]}" -gt 1 ]]; then
-  bt_error_exit 1 "Unexpected extra arguments: ${POSITIONAL[*]}"
+  usage_error "Unexpected extra arguments: ${POSITIONAL[*]}"
 fi
 
 if [[ "${#POSITIONAL[@]}" -eq 1 ]]; then
@@ -757,15 +773,15 @@ if [[ "${#POSITIONAL[@]}" -eq 1 ]]; then
 fi
 
 if ! is_valid_timeout_seconds "$REMOTE_TIMEOUT_SECONDS"; then
-  bt_error_exit 1 "Invalid -r value: $REMOTE_TIMEOUT_SECONDS (expected integer >= 0)"
+  usage_error "Invalid -r value: $REMOTE_TIMEOUT_SECONDS (expected integer >= 0)"
 fi
 
 if [[ ! -d "$REPO_ROOT/reports" ]]; then
-  bt_error_exit 3 "Reports directory not found: $REPO_ROOT/reports"
+  bt_error_exit "$EXIT_OPERATION_FAILED" "Reports directory not found: $REPO_ROOT/reports"
 fi
 
 if ! mkdir -p "$REPOSITORY_REPORTS_DIR"; then
-  bt_error_exit 3 "Unable to create reports directory: $REPOSITORY_REPORTS_DIR"
+  bt_error_exit "$EXIT_OPERATION_FAILED" "Unable to create reports directory: $REPOSITORY_REPORTS_DIR"
 fi
 
 OUTPUT_FILE="$REPOSITORY_REPORTS_DIR/repository-${RUN_TS_FILE}.md"
@@ -775,12 +791,12 @@ add_target_repo "Primary Repository" "$REPO_ROOT"
 if [[ -n "$CLONE_PATH" ]]; then
   CLONE_ABS="$(resolve_dir_path "$CLONE_PATH" || true)"
   if [[ -z "$CLONE_ABS" ]]; then
-    bt_error_exit 1 "Clone path not found or not a directory: $CLONE_PATH"
+    usage_error "Clone path not found or not a directory: $CLONE_PATH"
   fi
 
   # briteTest-specific: clone targets are expected to be git worktrees compatible with this script.
   if ! git -C "$CLONE_ABS" rev-parse --git-dir >/dev/null 2>&1; then
-    bt_error_exit 1 "Clone path is not a git repository: $CLONE_ABS"
+    usage_error "Clone path is not a git repository: $CLONE_ABS"
   fi
 
   add_target_repo "Clone Repository" "$CLONE_ABS"
@@ -814,7 +830,7 @@ if [[ "$VERBOSE" == true ]]; then
 fi
 
 if [[ "$CRITICAL_ERROR" == true ]]; then
-  exit 4
+  exit "$EXIT_CONFIG_ERROR"
 fi
 
 ISSUES_REMAINING=$((ISSUES_FOUND - REMEDIATIONS_VERIFIED))
@@ -823,7 +839,7 @@ if [[ "$ISSUES_REMAINING" -lt 0 ]]; then
 fi
 
 if [[ "$ISSUES_REMAINING" -gt 0 ]]; then
-  exit 2
+  exit "$EXIT_NOT_FOUND"
 fi
 
 exit 0

@@ -114,6 +114,16 @@ fi
 REPO_URL="https://github.com/paulsinclair51/BriteTest"
 REPO_NAME="BriteTest"
 
+readonly EXIT_INVALID_ARGUMENT=1
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
 # Default options
 COMMENT=""
 TARGET_DIR=""
@@ -165,10 +175,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -m requires a message argument"
+        usage_error "Option -m requires a message argument"
       fi
       if [[ -n "$COMMENT" ]]; then
-        error_exit 1 "Cannot use both -m and -- for comment"
+        usage_error "Cannot use both -m and -- for comment"
       fi
       COMMENT="$2"
       shift 2
@@ -177,13 +187,13 @@ while [[ $# -gt 0 ]]; do
       # Unix-style comment: everything after -- is the comment
       shift
       if [[ -n "$COMMENT" ]]; then
-        error_exit 1 "Cannot use both -m and -- for comment"
+        usage_error "Cannot use both -m and -- for comment"
       fi
       COMMENT="$*"
       break
       ;;
     -*)
-      error_exit 1 "Unknown option: $1"
+      usage_error "Unknown option: $1"
       ;;
     *)
       # Positional argument
@@ -198,7 +208,7 @@ set -- "${POSITIONAL_ARGS[@]}"
 
 # Check that we have at most 1 positional argument
 if [[ $# -gt 1 ]]; then
-  error_exit 1 "Expected at most 1 argument (directory), got $#"
+  usage_error "Expected at most 1 argument (directory), got $#"
 fi
 
 # Determine target directory
@@ -210,7 +220,7 @@ fi
 
 # Validate target directory name
 if [[ -z "$TARGET_DIR" ]]; then
-  error_exit 1 "Target directory name cannot be empty"
+  usage_error "Target directory name cannot be empty"
 fi
 
 # Check if target directory already exists

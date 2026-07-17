@@ -107,6 +107,19 @@ source "$SCRIPT_DIR/../helpers/history_log.sh"
 # shellcheck source=helpers/validation-helpers.sh
 source "$SCRIPT_DIR/../helpers/validation-helpers.sh"
 
+readonly EXIT_SUCCESS=0
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_FOUND=2
+readonly EXIT_OPERATION_FAILED=3
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
 # Default options
 # Default to the current branch's history file.
 _ck_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
@@ -114,7 +127,7 @@ _ck_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 
 # Validate branch name conforms to naming conventions
 if ! validate_branch_name "$_ck_branch" "current branch"; then
-  bt_error_exit 1 "Current branch does not conform to naming conventions"
+  usage_error "Current branch does not conform to naming conventions"
 fi
 
 HISTORY_FILE="$REPO_ROOT/$(bt_branch_to_history_file "$_ck_branch")"
@@ -136,28 +149,28 @@ while [[ $# -gt 0 ]]; do
       ;;
     -t | --type)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -t requires a type argument"
+        usage_error "Option -t requires a type argument"
       fi
       FILTER_TYPE="$2"
       shift 2
       ;;
     -b | --branch)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -b requires a branch argument"
+        usage_error "Option -b requires a branch argument"
       fi
       FILTER_BRANCH="$2"
       shift 2
       ;;
     -u | --user)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -u requires a user argument"
+        usage_error "Option -u requires a user argument"
       fi
       FILTER_USER="$2"
       shift 2
       ;;
     -l | --limit)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -l requires a number argument"
+        usage_error "Option -l requires a number argument"
       fi
       LIMIT="$2"
       shift 2
@@ -168,7 +181,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -o | --output)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -o requires a file argument"
+        usage_error "Option -o requires a file argument"
       fi
       OUTPUT_FILE="$2"
       shift 2
@@ -179,16 +192,16 @@ while [[ $# -gt 0 ]]; do
       ;;
     -f | --file)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -f requires a file argument"
+        usage_error "Option -f requires a file argument"
       fi
       HISTORY_FILE="$2"
       shift 2
       ;;
     -*)
-      bt_error_exit 1 "Unknown option: $1"
+      usage_error "Unknown option: $1"
       ;;
     *)
-      bt_error_exit 1 "Unknown argument: $1"
+      usage_error "Unknown argument: $1"
       ;;
   esac
 done
@@ -203,7 +216,7 @@ esac
 
 # Check history file exists
 if [[ ! -f "$HISTORY_FILE" ]]; then
-  bt_error_exit 2 "History file not found: $HISTORY_FILE"
+  bt_error_exit "$EXIT_NOT_FOUND" "History file not found: $HISTORY_FILE"
 fi
 
 bt_info "Reading history from $HISTORY_FILE"
@@ -214,7 +227,7 @@ entries=$(grep -E '^\s*-\s+\[' "$HISTORY_FILE" | tail -n +1)
 
 if [[ -z "$entries" ]]; then
   bt_warn "No history entries found"
-  exit 3
+  exit "$EXIT_OPERATION_FAILED"
 fi
 
 # Apply filters
@@ -241,7 +254,7 @@ fi
 # Check if any entries remain after filtering
 if [[ -z "$filtered_entries" ]]; then
   bt_warn "No entries found matching criteria"
-  exit 3
+  exit "$EXIT_OPERATION_FAILED"
 fi
 
 # Reverse order if requested
