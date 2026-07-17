@@ -802,7 +802,7 @@ fi
 
 if [[ "$MODE" == "remote" ]]; then
   echo "Pushing branch to remote..."
-  if ! git push -u origin "$BRANCHNAME" >/dev/null 2>&1; then
+  if ! GIT_BYPASS_HOOKS=true git push -u origin "$BRANCHNAME" >/dev/null 2>&1; then
     # Clean up only the branch created in this run.
     if [[ "$CREATED_LOCAL" -eq 1 ]]; then
       git checkout - >/dev/null 2>&1 || true

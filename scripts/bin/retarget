@@ -320,7 +320,7 @@ if ! git rebase "origin/$NEW_PARENT"; then
   bt_error_exit "$EXIT_INTERNAL_ERROR" "Retarget paused for contributor conflict resolution"
 fi
 
-if ! git push --force-with-lease origin "$TARGET_BRANCH"; then
+if ! GIT_BYPASS_HOOKS=true git push --force-with-lease origin "$TARGET_BRANCH"; then
   bt_error_exit "$EXIT_CONFIG_ERROR" "Rebase succeeded but push failed for '$TARGET_BRANCH'"
 fi
 

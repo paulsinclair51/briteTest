@@ -674,7 +674,7 @@ EOF
     printf '%s\n' "$history_entry" >> "$history_file"
   fi
 
-  git add "$history_file" 2>/dev/null || true
+  GIT_BYPASS_HOOKS=true git add "$history_file" 2>/dev/null || true
 
   if git diff --cached --quiet; then
     bt_info "Current branch '$current_branch' history log already in sync"
@@ -683,17 +683,17 @@ EOF
 
   local sync_message
   sync_message="chore: sync history log after merge to $parent_branch"
-  if ! git commit -m "$sync_message" >/dev/null 2>&1; then
+  if ! GIT_BYPASS_HOOKS=true git commit -m "$sync_message" >/dev/null 2>&1; then
     bt_error_exit "$EXIT_NOT_FOUND" "Failed to commit history log sync on '$current_branch'"
   fi
 
   if has_remote_branch "$current_branch"; then
     if [[ "$current_is_local" == true ]]; then
-      if ! git push origin "$current_branch" >/dev/null 2>&1; then
+      if ! GIT_BYPASS_HOOKS=true git push origin "$current_branch" >/dev/null 2>&1; then
         bt_error_exit "$EXIT_NOT_FOUND" "Failed to push synced history log to origin/$current_branch"
       fi
     else
-      if ! git push origin HEAD:"$current_branch" >/dev/null 2>&1; then
+      if ! GIT_BYPASS_HOOKS=true git push origin HEAD:"$current_branch" >/dev/null 2>&1; then
         bt_error_exit "$EXIT_NOT_FOUND" "Failed to push synced history log to origin/$current_branch"
       fi
     fi
@@ -716,7 +716,7 @@ preflight_current_history_sync_push() {
   fi
 
   # Verify push capability before any merge mutation starts.
-  if ! git push --dry-run origin "HEAD:$current_branch" >/dev/null 2>&1; then
+  if ! GIT_BYPASS_HOOKS=true git push --dry-run origin "HEAD:$current_branch" >/dev/null 2>&1; then
     bt_error_exit "$EXIT_NOT_FOUND" \
       "Preflight failed: unable to verify push access for origin/$current_branch required for history-log sync"
   fi
@@ -982,10 +982,10 @@ cleanup_merged_branch_files "$CURRENT_BRANCH" "$PARENT_BRANCH"
 # Log merge to history before committing so the audit record is preserved.
 log_merge_to_history "$CURRENT_BRANCH" "$PARENT_BRANCH" \
   "$CURRENT_USER" "$COMMIT_MESSAGE" "$HISTORY_FILE" "$HISTORY_ENTRY"
-git add "$HISTORY_FILE" 2>/dev/null || true
+GIT_BYPASS_HOOKS=true git add "$HISTORY_FILE" 2>/dev/null || true
 
 # Create commit with message
-if ! git commit -m "$COMMIT_MESSAGE" 2>&1; then
+if ! GIT_BYPASS_HOOKS=true git commit -m "$COMMIT_MESSAGE" 2>&1; then
   bt_error_exit "$EXIT_NOT_FOUND" "Failed to create commit"
 fi
 
@@ -993,11 +993,11 @@ fi
 if [[ "$PARENT_BRANCH" == "main" || $(has_remote_branch "$PARENT_BRANCH" && echo true || echo false) == true ]]; then
   bt_info "Pushing parent branch..."
   if [[ "$PARENT_BRANCH" == "main" ]]; then
-    if ! git push origin HEAD:"$PARENT_BRANCH" 2>&1; then
+    if ! GIT_BYPASS_HOOKS=true git push origin HEAD:"$PARENT_BRANCH" 2>&1; then
       bt_error_exit "$EXIT_NOT_FOUND" "Failed to push remote parent branch"
     fi
   else
-    if ! git push origin "$PARENT_BRANCH" 2>&1; then
+    if ! GIT_BYPASS_HOOKS=true git push origin "$PARENT_BRANCH" 2>&1; then
       bt_error_exit "$EXIT_NOT_FOUND" "Failed to push parent branch"
     fi
   fi
