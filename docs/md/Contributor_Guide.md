@@ -2,9 +2,7 @@
 
 #### Version: v1.0.0
 
-This document defines the contribution process, coding standards, documentation
-rules, versioning guidelines, branch management, and validation workflows for 
-contributors, reviewers, and approvers.
+This document defines the contribution process, coding standards, documentation rules, versioning guidelines, branch management, and validation workflows for contributors, reviewers, and approvers.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -78,16 +76,25 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
    4.2. [Making Changes](#42-making-changes)<br>
    4.3. [Merge Remote Branch to Local Branch](#43-merge-remote-branch-to-local-branch)<br>
    4.4. [Removing (Deleting) Branches](#44-removing-deleting-branches)<br>
-   4.5. [Setting Up Pre-commit Hooks](#45-setting-up-pre-commit-hooks)<br>
+   4.5. [Git Hooks Infrastructure](#45-git-hooks-infrastructure)<br>
+        4.5.1. [Automatic Setup](#451-automatic-setup)<br>
+        4.5.2. [How Hooks Work](#452-how-hooks-work)<br>
+        4.5.3. [Available Hooks](#453-available-hooks)<br>
+      4.5.4. [How Enforcement Hooks Work](#454-how-enforcement-hooks-work)<br>
+      4.5.5. [Script Bypass (Automatic)](#455-script-bypass-automatic)<br>
+      4.5.6. [Workflow: Commit and Push Example](#456-workflow-commit-and-push-example)<br>
+      4.5.7. [Identity Configuration](#457-identity-configuration)<br>
+      4.5.8. [Troubleshooting Hooks](#458-troubleshooting-hooks)<br>
 
 5. [Access Control & Roles](#5-access-control--roles)<br>
    5.1. [File Access Matrix](#51-file-access-matrix)<br>
    5.2. [Identity Prerequisites for Role-Gated Scripts](#52-identity-prerequisites-for-role-gated-scripts)<br>
+   5.3. [Detailed Tier Access Levels](#53-detailed-tier-access-levels)<br>
 
 6. [Public Repository Security](#6-public-repository-security)<br>
 
-7. [GPG Signing Setup](#7-gpg-signing-setup)<br>
-   7.1. [Linux/Mac Setup](#71-linuxmac-setup)<br>
+7. [GPG Signing](#7-gpg-signing)<br>
+   7.1. [Linux Setup](#71-linux-setup)<br>
    7.2. [Windows Setup](#72-windows-setup)<br>
    7.3. [Signing Commits](#73-signing-commits)<br>
    7.4. [Troubleshooting GPG](#74-troubleshooting-gpg)<br>
@@ -149,7 +156,7 @@ the repostory.
 
 The current executable script set is maintained in `scripts/bin/README.md`.
 
-- **Setup/installation:** `installscripts`
+- **Setup/installation:** `setupclone`
 - **Document/brand:** `ckstyle`, `gendocs`, `genpngs`, `replacephrases`, `updatebrand`
 - **Repository/fork/clone:** `mkfork`, `mkclone`, `rmclone`, `fixrepo`
 - **Branch/workflow:** `ckbranch_history`, `chcurrent`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `mkfeedback`, `mergetoparent`, `mkpullrequest`, `chtarget`, `mkrelease`, `syncfromremote`, `syncfromparent`, `undo`, `rmbranch`
@@ -267,7 +274,7 @@ These workflows run **AFTER merge up** for compliance logging:
 
 The following shows the path to the script but just the script name is needed
 if the default path is setup for bash (this is normally done automatically;
-use scripts/bin/installscripts to set the default path manually).
+use scripts/bin/setupclone to set the default path manually).
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;4.1. Creating Branches</summary>
@@ -368,24 +375,138 @@ Protected branches (`main` and `v*.0`) cannot be deleted.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;4.5. Setting Up Pre-commit Hooks</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;4.5. Git Hooks Infrastructure</summary>
 
-### 4.5. Setting Up Pre-commit Hooks
+### 4.5. Git Hooks Infrastructure
 
-Prevent accidental commits to protected branches:
+The repository uses Git hooks to automate configuration and validation during development. Hooks are versioned in the repository and automatically configured on clone and checkout operations.
+
+#### 4.5.1. Automatic Setup
+
+Hooks are automatically configured when you:
+- Clone the repository for the first time
+- Run `scripts/bin/setupclone` 
+- Checkout branches
+
+No manual setup is required. If hooks are not configured, you can manually run:
 
 ```bash
-mkdir -p .git/hooks
-cat > .git/hooks/pre-commit << 'EOF'
-#!/bin/bash
-CURRENT=$(git rev-parse --abbrev-ref HEAD)
-if [[ "$CURRENT" == "main" ]] || [[ "$CURRENT" == v*.0 ]]; then
-  echo "Error: Cannot commit directly to protected branch '$CURRENT'"
-  echo "Create a feature branch: scripts/bin/mkbranch -r <name> $CURRENT"
-  exit 1
-fi
-EOF
-chmod +x .git/hooks/pre-commit
+bash scripts/helpers/install-git-hooks.sh
+```
+
+#### 4.5.2. How Hooks Work
+
+The repository uses Git's `core.hooksPath` configuration (Git 2.9+) to point to a versioned hooks directory instead of the traditional `.git/hooks/` approach. This means:
+
+- **Hooks are tracked in version control** at `scripts/helpers/.githooks/`
+- **Changes to hooks apply automatically** after pulling updates
+- **Hooks run in consistent environments** across all clones and Codespaces
+- **No copying or duplication** to `.git/hooks/` directories
+
+#### 4.5.3. Available Hooks
+
+The repository uses four Git hooks to enforce the script-based workflow and configure development environment:
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| **post-checkout** | After clone, branch checkout | Auto-configures git identity to match your GitHub login |
+| **pre-commit** | Before `git add`/`git commit` | Enforces script-based commits via `commit` script |
+| **pre-push** | Before `git push` | Enforces script-based push operations |
+| **pre-merge-commit** | Before `git merge` | Enforces script-based merge operations |
+
+#### 4.5.4. How Enforcement Hooks Work
+
+The enforcement hooks (pre-commit, pre-push, pre-merge-commit) prevent direct Git commands and require you to use the appropriate briteTest script instead:
+
+**Example: Attempting direct commit (blocked)**
+```bash
+$ git add file.txt
+$ git commit -m "my change"
+
+[ERROR] Direct git add/commit/rm operations are not allowed.
+
+   Use the 'commit' script instead:
+   
+     commit -m "Your commit message"
+     commit -m "Message" -p    # Commit and push
+   
+   For help:
+     commit -h
+```
+
+**Why this protection?**
+- [OK] Ensures all changes go through validated scripts
+- [OK] Maintains consistent commit history and metadata
+- [OK] Prevents accidental commits to protected branches
+- [OK] Enables audit trails and compliance logging
+
+#### 4.5.5. Script Bypass (Automatic)
+
+Scripts automatically bypass hook enforcement by setting an environment variable:
+
+```bash
+# When you run:
+commit -m "my change"
+
+# The script internally does:
+export BRITETEST_BYPASS_HOOKS=true
+git add <files>
+git commit -m "my change"
+unset BRITETEST_BYPASS_HOOKS
+```
+
+This is transparent - you don't need to do anything. The script handles the details.
+
+#### 4.5.6. Workflow: Commit and Push Example
+
+**Direct approach (blocked):**
+```bash
+git add file.txt
+git commit -m "fix typo"     # [ERROR] BLOCKED by pre-commit hook
+git push origin branch       # [ERROR] BLOCKED by pre-push hook
+```
+
+**Correct approach (using scripts):**
+```bash
+commit -m "fix typo"         # [OK] Uses commit script
+commit -m "fix typo" -p      # [OK] Commit AND push in one step
+```
+
+#### 4.5.7. Identity Configuration
+
+When you clone or checkout a branch, the post-checkout hook automatically:
+
+```bash
+# Sets local git config to match your GitHub login
+git config --local user.name "paulsinclair51"
+
+# Ensures core.hooksPath is configured
+git config core.hooksPath scripts/helpers/.githooks
+```
+
+This happens transparently - you don't see the hook running, but your git identity is automatically correct.
+
+#### 4.5.8. Troubleshooting Hooks
+
+If you suspect hooks aren't working:
+
+```bash
+# Check if core.hooksPath is configured
+git config core.hooksPath
+
+# Manually reconfigure hooks
+bash scripts/helpers/install-git-hooks.sh
+
+# Verify your git identity
+git config --local user.name
+git config --local user.email
+```
+
+If git identity is wrong, you can correct it manually:
+
+```bash
+git config --local user.name "your-github-login"
+git config --local user.email "your-email@example.com"
 ```
 </details>
 </details>
@@ -433,6 +554,103 @@ Configure at least one of these identity sources:
 - `git config user.name <github-login>` using your GitHub login (not display name)
 
 If identity cannot be resolved, role checks fail by design.
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.3. Detailed Tier Access Levels</summary>
+
+### 5.3. Detailed Tier Access Levels
+
+#### PUBLIC (Unauthenticated Users)
+
+**Who:** Anyone on the Internet
+
+**Read Access:**
+- README, public documentation, source code, examples, LICENSE
+- Clone and fork the repository
+
+**Cannot:**
+- Push changes, submit PRs, execute scripts
+- Access internal/private documentation
+
+#### USERS (Read-Only Collaborators)
+
+**Who:** Invited collaborators with read-only access
+
+**Read Access:**
+- All public content
+- Private documentation (if granted)
+- All repository files
+
+**Cannot:**
+- Push changes, submit PRs to main repo
+- Execute briteTest scripts
+- Modify any files
+
+#### CONTRIBUTOR (C)
+
+**Who:** Active contributors who can submit work for review
+
+**Can:**
+- Create feature branches from main/version branches
+- Create commits and sign them
+- Submit pull requests for review
+- Run contributor-tier scripts (`mkbranch`, `commit`, `copyfix`, `mrgbranch`, etc.)
+- Cherry-pick fixes between branches
+- Access all scripts/code for reading
+
+**Cannot:**
+- Merge to main or version branches
+- Create releases
+- Run approver-only scripts (`mrgup`, `release`, `fixrepo`)
+- Modify workflow/security configuration
+
+#### REVIEWER (R)
+
+**Who:** Experienced contributors who provide code review feedback
+
+**Inherits:** All Contributor capabilities
+
+**Additional:**
+- Provide feedback and approve/request changes on PRs
+- Rebase branches and update pull requests
+- Run reviewer-tier scripts (`feedback`, `review`)
+- Check code style compliance (`ckstyle`)
+
+**Cannot:**
+- Merge to protected branches
+- Create releases
+- Run approver-only scripts
+
+#### APPROVER (A)
+
+**Who:** Maintainers responsible for merges, releases, and protected operations
+
+**Inherits:** All Reviewer and Contributor capabilities
+
+**Additional:**
+- Merge PRs to main and version branches
+- Create official releases and version tags
+- Run approver-only scripts (`mrgup`, `release`, `fixrepo`, `rebrand`, `replacetext`)
+- Modify repository configuration (with override)
+
+**Requirements:**
+- Protected scripts require explicit `SCRIPT_OVERRIDE_CONFIRMED=true` confirmation
+- Must follow audit trail and approval controls
+- Responsible for release integrity and repository governance
+
+#### MAINTAINER
+
+**Who:** Repository owner
+
+**Access:**
+- Full administrative access to all repository settings
+- Add/remove collaborators and change access levels
+- Modify branch protection rules
+- Change repository configuration and secrets
+- All approver capabilities
+
+---
 </details>
 </details>
 
@@ -912,27 +1130,75 @@ For new contributors to briteTest:
 
 ### 19.1. Before First Commit
 
-- [ ] **Read the Contributor Guide** (this document)
-- [ ] **Read Contributor Reference** for script details
+**Clone using mkclone (recommended method):**
+
+`mkclone` is the only way to properly set up a new clone because it automatically handles setup tasks:
+
+- [ ] **Clone the repository using mkclone** (from anywhere on your system)
+  ```bash
+  # Create clone with default directory name (BriteTest/)
+  mkclone
+
+  # Or specify a custom directory name
+  mkclone my-britetest-workspace
+
+  # mkclone automatically:
+  # - Clones the repository
+  # - Runs setupclone to make scripts executable
+  # - Adds scripts to your PATH
+  # - Configures Git hooks via core.hooksPath
+  ```
+
+- [ ] **Enter the repository directory**
+  ```bash
+  cd BriteTest  # or your custom directory name
+  ```
+
+- [ ] **Verify Git hooks are installed**
+  ```bash
+  git config core.hooksPath
+  # Should output: scripts/helpers/.githooks
+  ```
+
+**Manual setup (if you prefer `git clone`):**
+
+If you clone manually instead of using `mkclone`:
+
 - [ ] **Clone the repository**
   ```bash
   git clone https://github.com/paulsinclair51/briteTest.git
   cd briteTest
   ```
-- [ ] **Set up Git configuration**
+
+- [ ] **Run setupclone to complete setup**
+  ```bash
+  bash scripts/bin/setupclone
+  # Handles: chmod +x, PATH setup, Git hooks configuration
+  ```
+
+- [ ] **Reload your shell to activate PATH changes**
+  ```bash
+  source ~/.bashrc  # or ~/.zshrc for Mac
+  ```
+
+**Configure Git identity (required for role-gated scripts):**
+
+- [ ] **Set Git user.name to your GitHub login** (must match `config/contributors.md`)
   ```bash
   git config user.name "your-github-login"
   git config user.email "your.email@example.com"
   ```
-- [ ] **Authenticate GitHub CLI (recommended for role-gated scripts)**
+
+- [ ] **Authenticate GitHub CLI** (recommended for scripts that check roles)
   ```bash
   gh auth login
   ```
-- [ ] **Set up GPG signing** (see [GPG Signing Setup](#gpg-signing-setup) section)
-- [ ] **Set up pre-commit hook** (see [Setting Up Pre-commit Hooks](#setting-up-pre-commit-hooks) section)
+
+- [ ] **Set up GPG signing** (see [GPG Signing Setup](#7-gpg-signing-setup) section)
+
 - [ ] **Verify Git configuration**
   ```bash
-  git config --global --list
+  git config --local --list
   ```
 </details>
 

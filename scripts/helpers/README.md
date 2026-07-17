@@ -82,7 +82,7 @@ See `<repo>/README.md` for an introduction to briteTest.
   - Copies hooks from `.githooks/` to `.git/hooks/`
   - Makes hooks executable
   - Idempotent (safe to run multiple times)
-  - Called automatically by `installscripts` and `mkclone`
+  - Called automatically by `setupclone` and `mkclone`
 
 ### Directory Guide
 
@@ -155,9 +155,9 @@ Hooks install automatically when you:
    mkclone
    ```
 
-2. **Run `installscripts`:**
+2. **Run `setupclone`:**
    ```bash
-   bash scripts/bin/installscripts
+   bash scripts/bin/setupclone
    ```
 
 ### Manual Installation

@@ -104,7 +104,7 @@ merge
 If hooks didn't install (rare), manually install them:
 
 ```bash
-bash scripts/bin/installscripts
+bash scripts/bin/setupclone
 ```
 
 ### "Direct git push operations are not allowed"
@@ -148,7 +148,7 @@ You tried to commit directly to `main` or a version branch. Instead:
 If hooks are updated in the repo, reinstall them:
 
 ```bash
-bash scripts/bin/installscripts
+bash scripts/bin/setupclone
 ```
 
 The `post-checkout` hook will auto-verify and reinstall if needed.
@@ -157,7 +157,7 @@ The `post-checkout` hook will auto-verify and reinstall if needed.
 
 ## Available Scripts
 
-After `mkclone` and `installscripts`, these commands are available:
+After `mkclone` and `setupclone`, these commands are available:
 
 | Script | Purpose | Example |
 |--------|---------|----------|

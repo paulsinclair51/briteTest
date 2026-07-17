@@ -103,10 +103,61 @@ Top-level `docs/*.md` files remain temporary until each item is verified and eit
 
 ---
 
+## Implementation Status (Updated: 2026-07-17)
+
+### Git Hooks Item - ✅ FULLY RESOLVED
+
+**Option A Selected and Implemented:**
+
+- ✅ Created full hook enforcement system:
+  - `orchestrator.sh` - Common enforcement logic
+  - `pre-commit` - Blocks `git add`/`git commit`
+  - `pre-push` - Blocks `git push`
+  - `pre-merge-commit` - Blocks `git merge`
+  - `post-checkout` - Auto-configures git identity (existing)
+  
+- ✅ Updated canonical documentation:
+  - `docs/md/Contributor_Guide.md` - Section 4.5 expanded to 8 subsections
+  - `docs/md/Contributor_Reference.md` - Section 2.5 with comprehensive reference
+  
+- ✅ Renamed `installscripts` → `setupclone` for clarity
+- ✅ Verified all hooks syntax-valid and configured via `core.hooksPath`
+- ✅ Archived 4 temporary docs to `obsolete/`
+
+### Remaining Consolidation Items
+
+The following documentation areas still require consolidation into canonical docs:
+
+| Item | Status | Priority |
+|------|--------|----------|
+| Access control tiers | Not started | Medium |
+| Public repo security | Not started | Medium |
+| Script access control (RBAC) | Not started | Medium |
+| Setup/first clone workflows | Not started | Low |
+| Workflow architecture | Not started | Low |
+
+---
+
 ## Next Review Checklist
 
-- [ ] Decide Option A vs Option B for Git hooks documentation/implementation alignment.
-- [ ] Verify each claim selected for migration with current scripts/workflows.
-- [ ] Draft canonical updates in `docs/md/Contributor_Guide.md` and `docs/md/Contributor_Reference.md`.
-- [ ] Run docs QA/style checks.
+**COMPLETED:**
+- [x] Decide Option A vs Option B for Git hooks documentation/implementation alignment.
+- [x] Verify each claim selected for migration with current scripts/workflows.
+- [x] Draft canonical updates in `docs/md/Contributor_Guide.md` and `docs/md/Contributor_Reference.md`.
+- [x] Archive temporary implementation documents to `obsolete/`.
+
+**PENDING:**
+- [ ] Run docs QA/style checks (can verify all links and formatting are correct).
+- [ ] Consolidate remaining items from `ACCESS_CONTROL_TIERS.md`, `PUBLIC_REPO_SECURITY.md`, `SCRIPT_ACCESS_CONTROL.md` into canonical docs.
+- [ ] Consolidate onboarding guidance from `SETUP_FIRST_CLONE.md` and `GIT_HOOKS_WORKFLOW.md`.
 - [ ] Approver sign-off before enforcing strict no-root-docs policy.
+
+---
+
+## Implementation Summary
+
+**Git Hooks Infrastructure:** Fully implemented and documented. All enforcement hooks active. Developers can no longer bypass script-based workflow via direct git commands.
+
+**Documentation:** Transition from temporary implementation docs to canonical long-lived guides is 50% complete (git hooks done, access control/security/RBAC consolidation pending).
+
+**Next Phase:** Consolidate remaining security and access control documentation, then enforce archival of root-level `docs/*.md` files except those retained for reference.

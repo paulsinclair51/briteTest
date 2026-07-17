@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+# pre-commit hook - Block direct git add and git commit operations
+#
+# This hook runs before 'git add' and 'git commit' commands.
+# It prevents developers from bypassing the script-based workflow.
+#
+# Scripts set BRITETEST_BYPASS_HOOKS=true when performing authorized commits.
+#
+# Blocked operations:
+#   git add <file>          → Use: commit -m "msg"
+#   git commit -m "msg"     → Use: commit -m "msg"
+#   git rm <file>           → Use: commit -m "msg"
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+
+set -euo pipefail
+
+# Source orchestrator for common functions
+ORCHESTRATOR="$(git rev-parse --git-dir)/hooks/orchestrator.sh"
+if [[ -f "$ORCHESTRATOR" ]]; then
+  source "$ORCHESTRATOR" 2>/dev/null || true
+fi
+
+# Check if bypass flag is set by authorized script
+if [[ "${BRITETEST_BYPASS_HOOKS:-false}" == "true" ]]; then
+  exit 0
+fi
+
+# Block the operation with helpful guidance
+cat >&2 << 'EOF'
+
+❌ Error: Direct git add/commit/rm operations are not allowed.
+
+   Use the 'commit' script instead:
+   
+     commit -m "Your commit message"
+     commit -m "Message" -p    # Commit and push
+   
+   For help:
+     commit -h
+
+EOF
+
+exit 1

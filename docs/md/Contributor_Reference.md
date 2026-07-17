@@ -78,7 +78,7 @@ For contribution policies, branching rules, and workflows, see
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.15. [release](#1115-release)<br>
    1.2. [Repository and Clone Management](#12-repository-and-clone-management)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. [fixrepo](#121-fixrepo)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. [installscripts](#122-installscripts)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. [setupclone](#122-setupclone)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. [mkclone](#123-mkclone)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. [mkfork](#124-mkfork)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. [rmclone](#125-rmclone)<br>
@@ -105,6 +105,13 @@ For contribution policies, branching rules, and workflows, see
    2.4. [Documentation Generators](#24-documentation-generators)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.4.1. [gendocx.sh](#241-gendocxsh)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.4.2. [genpdf.sh](#242-genpdfsh)<br>
+   2.5. [Git Hooks Infrastructure](#25-git-hooks-infrastructure)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.1. [install-git-hooks.sh](#251-install-git-hookssh)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.2. [post-checkout](#252-post-checkout)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.3. [pre-commit](#253-pre-commit)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.4. [pre-push](#254-pre-push)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.5. [pre-merge-commit](#255-pre-merge-commit)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.6. [orchestrator.sh](#256-orchestratorsh)<br>
 
 3. [Script-Based Access Control](#3-script-based-access-control)<br>
    3.1. [Role Permissions Matrix](#31-role-permissions-matrix)<br>
@@ -120,11 +127,17 @@ For contribution policies, branching rules, and workflows, see
 
 6. [Troubleshooting](#6-troubleshooting)<br>
    6.1. [Common Issues](#61-common-issues)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;6.1.1. [Branch Creation Fails](#611-branch-creation-fails)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;6.1.2. [Version Check Fails](#612-version-check-fails)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;6.1.3. [Permission Denied](#613-permission-denied)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;6.1.4. [Role Check Fails for Known Approver/Reviewer](#614-role-check-fails-for-known-approverreviewer)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;6.1.5. [Git Command Failures](#615-git-command-failures)<br>
+      6.1.1. [Branch Creation Fails](#611-branch-creation-fails)<br>
+      6.1.2. [Version Check Fails](#612-version-check-fails)<br>
+      6.1.3. [Permission Denied](#613-permission-denied)<br>
+      6.1.4. [Role Check Fails for Known Approver/Reviewer](#614-role-check-fails-for-known-approverreviewer)<br>
+      6.1.5. [Git Command Failures](#615-git-command-failures)<br>
+
+7. [GitHub Actions Workflow Architecture](#7-github-actions-workflow-architecture)<br>
+   7.1. [Architecture Overview](#71-architecture-overview)<br>
+   7.2. [Layered Validation Approach](#72-layered-validation-approach)<br>
+   7.3. [Helper Script Library](#73-helper-script-library)<br>
+   7.4. [Adding New Validations](#74-adding-new-validations)<br>
 </details>
 
 <details>
@@ -426,22 +439,23 @@ fixrepo [OPTIONS]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. installscripts</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. setupclone</summary>
 
-#### 1.2.2. installscripts
+#### 1.2.2. setupclone
 
-**Purpose:** Install and setup all scripts in `scripts/bin/`.
+**Purpose:** Setup clone environment - install scripts, add to PATH, and configure Git hooks.
 
 **Usage:**
 
 ```bash
-bash scripts/bin/installscripts [OPTIONS]
+bash scripts/bin/setupclone [OPTIONS]
 ```
 
 **Functions:**
 
 - Make all scripts executable
 - Add `scripts/bin/` to PATH in `~/.bashrc`
+- Configure Git hooks via `core.hooksPath`
 - Load configuration immediately
 </details>
 
@@ -842,6 +856,240 @@ bash scripts/helpers/genpdf.sh <markdown_file> [<output_file>]
 - Markdown to PDF conversion tools (pandoc, etc.)
 </details>
 </details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.5. Git Hooks Infrastructure</summary>
+
+### 2.5. Git Hooks Infrastructure
+
+Git hooks automate configuration and enforce the script-based workflow. All hooks are versioned in `scripts/helpers/.githooks/` and configured via Git's `core.hooksPath` mechanism.
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.1. install-git-hooks.sh</summary>
+
+#### 2.5.1. install-git-hooks.sh
+
+**Purpose:** Configure Git to use hooks from the versioned `.githooks/` directory via `core.hooksPath`.
+
+**Usage:**
+
+```bash
+bash scripts/helpers/install-git-hooks.sh [--silent]
+```
+
+**Options:**
+
+- `--silent` - Suppress output (for use in automated workflows)
+
+**What it does:**
+
+- Configures `git config core.hooksPath scripts/helpers/.githooks`
+- Makes all hook files executable
+- Works in both fresh clones and existing repositories
+
+**Exit codes:**
+
+- `0` - Git hooks configured successfully
+- `1` - Could not determine repository root
+- `2` - .git directory not found
+- `3` - .githooks directory not found
+- `4` - Failed to set core.hooksPath
+
+**Called by:**
+
+- `setupclone` - Automatically during clone setup
+- `mkclone` - Automatically during repository cloning
+- `post-checkout` hook - As fallback safety net
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.2. post-checkout</summary>
+
+#### 2.5.2. post-checkout
+
+**Purpose:** Auto-configure git identity and ensure hooks are installed after clone and checkout.
+
+**Triggers:** After `git clone`, `git checkout`, or any git operation that changes working tree
+
+**What it does:**
+
+1. Queries GitHub API via `gh cli` to get your GitHub login
+2. Sets `git config --local user.name` to your GitHub login (not display name)
+3. Verifies `core.hooksPath` is configured
+
+**Why it matters:**
+
+- Prevents git user.name truncation issues
+- Ensures commits are attributed to your GitHub login
+- Runs automatically on every clone without user action
+
+**Example:**
+
+```bash
+# After git clone, hook runs automatically
+# You see your git config updated:
+$ git config --local user.name
+paulsinclair51
+```
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.3. pre-commit</summary>
+
+#### 2.5.3. pre-commit
+
+**Purpose:** Block direct `git add` and `git commit` operations to enforce script-based commits.
+
+**Triggers:** Before `git add` or `git commit` command
+
+**What it blocks:**
+
+```bash
+git add <file>           # [ERROR] BLOCKED
+git commit -m "msg"      # [ERROR] BLOCKED
+git rm <file>            # [ERROR] BLOCKED
+```
+
+**What to use instead:**
+
+```bash
+commit -m "Your message"           # [OK] Correct approach
+commit -m "Message" -p             # [OK] Commit + push
+```
+
+**How to bypass (scripts only):**
+
+Scripts automatically set `BRITETEST_BYPASS_HOOKS=true` before git operations.
+
+**Error message shown:**
+
+```
+[ERROR] Direct git add/commit/rm operations are not allowed.
+
+   Use the 'commit' script instead:
+   
+     commit -m "Your commit message"
+     commit -m "Message" -p    # Commit and push
+   
+   For help:
+     commit -h
+```
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.4. pre-push</summary>
+
+#### 2.5.4. pre-push
+
+**Purpose:** Block direct `git push` operations to enforce script-based push workflows.
+
+**Triggers:** Before `git push` command
+
+**What it blocks:**
+
+```bash
+git push origin <branch>           # [ERROR] BLOCKED
+git push --force-with-lease        # [ERROR] BLOCKED
+git push origin --delete <branch>  # [ERROR] BLOCKED
+```
+
+**What to use instead:**
+
+```bash
+commit -m "msg" -p                 # [OK] Commit + push
+merge [branch]                     # [OK] Merge to parent
+rmbranch <branch> -r               # [OK] Delete remote branch
+```
+
+**Error message shown:**
+
+```
+[ERROR] Direct git push operations are not allowed.
+
+   Use the appropriate script instead:
+   ...
+```
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.5. pre-merge-commit</summary>
+
+#### 2.5.5. pre-merge-commit
+
+**Purpose:** Block direct `git merge` operations to enforce script-based merge workflows.
+
+**Triggers:** Before `git merge` command creates a merge commit
+
+**What it blocks:**
+
+```bash
+git merge <branch>           # [ERROR] BLOCKED
+git merge --squash           # [ERROR] BLOCKED
+git merge --no-ff            # [ERROR] BLOCKED
+```
+
+**What to use instead:**
+
+```bash
+merge [branch]               # [OK] Merge to parent branch
+merge -s                     # [OK] Merge with squash
+```
+
+**Error message shown:**
+
+```
+[ERROR] Direct git merge operations are not allowed.
+
+   Use the 'merge' script instead:
+   ...
+```
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.6. orchestrator.sh</summary>
+
+#### 2.5.6. orchestrator.sh
+
+**Purpose:** Provide common enforcement logic shared by all Git hooks.
+
+**Usage:**
+
+Sourced by other hooks, not called directly:
+
+```bash
+source "$(git rev-parse --git-dir)/hooks/orchestrator.sh"
+check_bypass "git commit" "commit"
+```
+
+**Functions provided:**
+
+- `check_bypass <operation> [suggested_script]` - Check if bypass flag set and show error if blocked
+- `hook_name` - Get current hook name
+- `git_command_in_progress` - Check if git command is in progress
+
+**How it works:**
+
+1. Checks `BRITETEST_BYPASS_HOOKS` environment variable
+2. If set to `true`, allows operation (script is running)
+3. If not set, blocks operation and shows error guidance
+
+**Bypass flag usage (internal):**
+
+```bash
+# Scripts use this pattern:
+export BRITETEST_BYPASS_HOOKS=true
+git add files...
+git commit -m "msg"
+unset BRITETEST_BYPASS_HOOKS
+```
+
+**Security model:**
+
+- Only scripts can set `BRITETEST_BYPASS_HOOKS`
+- Environment variable is unset immediately after operation
+- Direct user git commands cannot bypass hooks
+</details>
+</details>
 </details>
 
 <details>
@@ -856,12 +1104,82 @@ Role-based script permissions are enforced by helper checks and protected script
 
 ### 3.1. Role Permissions Matrix
 
+briteTest implements hierarchical role-based access control: **Approver (A)** > **Reviewer (R)** > **Contributor (C)**
+
+#### Capabilities by Role
+
 | Script Capability | Contributor (C) | Reviewer (R) | Approver (A) |
 |------------------|-----------------|--------------|--------------| 
-| Branch and commit operations (`mkbranch`, `commit`, `mkpullrequest`) | PASS | PASS | PASS |
-| Review operations (`mkfeedback`) | FAIL | PASS | PASS |
-| Retarget operations (`chtarget`) | FAIL | FAIL | PASS |
-| Protected operations (`mergetoparent`, `mkrelease`, `fixrepository`) | FAIL | FAIL | PASS (override required) |
+| Branch and commit operations | [OK] | [OK] | [OK] |
+| Review operations | [NO] | [OK] | [OK] |
+| Retarget operations | [NO] | [NO] | [OK] |
+| Protected operations (merge/release/repair) | [NO] | [NO] | [OK] (override required) |
+
+#### Scripts by Role
+
+**Contributor (C) Scripts** - Basic contributor access
+```
+mkbranch          - Create new feature branches from parent
+mkclone           - Clone the repository
+commit            - Create and sign commits with optional push (-p)
+copyfix           - Cherry-pick fix commits between branches
+mrgbranch         - Sync with remote repository
+mrgdown           - Sync down from main branch
+undo              - Undo uncommitted changes
+lsbranchlog       - Check branch history
+lsbranch          - List branches and status
+ckstyle           - Check code style compliance
+gendocs           - Generate PDF/DOCX documentation
+genpngs           - Generate PNG branding from SVG
+setupclone        - Setup clone environment
+```
+
+**Reviewer (R) Scripts** - Inherits all Contributor scripts, plus:
+```
+feedback          - Provide code review feedback on PRs
+review            - Create/update pull requests for review
+```
+
+**Approver (A) Scripts** - Inherits all Reviewer + Contributor scripts, plus:
+```
+mrgup             - Merge branches to parent/protected branches (requires override)
+release           - Create releases and version tags (requires override)
+fixrepo           - Repair repository state (requires override)
+rebrand           - Update branding across repository (requires override)
+replacetext       - Replace text globally across repo (requires override)
+```
+
+#### How Role Checking Works
+
+1. User's GitHub login is resolved from (in order):
+   - `GITHUB_ACTOR` environment variable
+   - `gh auth login` via GitHub CLI
+   - `git config user.name` (must be GitHub login, not display name)
+
+2. Login is matched against `config/contributors.md` to determine role (C/R/A)
+
+3. Script checks required role and either executes or fails with permission error
+
+**Example Role Check:**
+```bash
+# If you are a Contributor and run:
+mrgup
+
+# Script will fail:
+[ERROR] This operation requires Reviewer role or higher
+```
+
+#### Protected Script Override
+
+Approver-only scripts require explicit override confirmation:
+
+```bash
+SCRIPT_OVERRIDE_CONFIRMED=true mrgup
+SCRIPT_OVERRIDE_CONFIRMED=true release v1.0.0
+SCRIPT_OVERRIDE_CONFIRMED=true fixrepo
+```
+
+Without override flag, execution fails by design as safety measure.
 </details>
 
 <details>
@@ -872,9 +1190,9 @@ Role-based script permissions are enforced by helper checks and protected script
 Approver-only scripts require explicit override confirmation:
 
 ```bash
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mergetoparent
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mkrelease v1.0.0
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepository
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mrgup
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/release v1.0.0
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepo
 ```
 
 If override confirmation is missing, execution must fail by design.
@@ -1095,4 +1413,170 @@ chmod +x scripts/bin/* scripts/helpers/*
 3. Fetch latest refs: `git fetch --all`
 4. Try command again
 </details>
+</details>
+
+<details>
+<summary><strong>7. GitHub Actions Workflow Architecture</strong></summary>
+
+## 7. GitHub Actions Workflow Architecture
+
+### 7.1. Architecture Overview
+
+briteTest uses a **defense-in-depth** validation approach with two layers of GitHub Actions workflows:
+
+**Primary Layer (Prevention)** - Blocks invalid PRs before merge
+- `branch-validation-pull-request.yml` - PR content validation
+- `branch-validation-commit-message.yml` - Commit message format
+- `branch-validation-gpg-signature.yml` - Signed commits required
+- `branch-validation-file-changes.yml` - Protected file changes blocked
+- `branch-validation-secrets.yml` - Secret scanning
+- `branch-validation-code-quality.yml` - Code standards
+- `+4 more prevention workflows` - Specialized validation (license headers, file size, workflows, authors)
+
+**Secondary Layer (Audit)** - Creates compliance log after merge
+- `branch-validation-merge.yml` - Log merge operations
+- `branch-validation-rebase.yml` - Log rebase operations  
+- `branch-validation-force-push.yml` - Log force push operations
+- `branch-validation-cherry-pick.yml` - Log cherry-pick operations
+- `+1 more audit workflow` - Tag operations logging
+
+### 7.2. Layered Validation Approach
+
+```
+[=============================================================]
+  LAYER 1: PRIMARY - Prevention (PR Blocks)
+  Runs on: pull_request (opened, synchronize, reopened)
+  Result: Fails PR if any validation fails
+  + 10 prevention workflows covering all key validations
+[=============================================================]
+                            |
+                    All Checks Pass
+                            |
+          PR Approved and Ready to Merge
+                            |
+[=============================================================]
+  LAYER 2: SECONDARY - Audit (Compliance Logging)
+  Runs on: push (to main and version branches)
+  Result: Creates audit log entry in reports/
+  + 5 audit workflows tracking protected-branch activity
+[=============================================================]
+                            |
+              Audit Trail Recorded
+```
+
+**Benefits of this approach:**
+- Failures detected early (before merge)
+- Issues fixed in PRs (not production)
+- Audit trail shows who changed what, when
+- Compliance visibility for code governance
+- Easy to add new validations without modifying old workflows
+
+### 7.3. Helper Script Library
+
+Workflows use centralized helper scripts to reduce duplication and share validation logic:
+
+```
+scripts/helpers/
++-- common-utils.sh
+|   +-- log_info, log_error, log_section
+|   +-- assert_set, assert_file_exists
+|   +-- timer_start, timer_end
+|   +-- string_contains, string_equals
+|   +-- array_contains
+|   +-- git_log_range, git_changed_files
+|   +-- print_success, print_failure
+|
++-- validation-helpers.sh
+|   +-- validate_commit_message() - Check commit format
+|   +-- validate_all_commit_messages() - Check PR commits
+|   +-- scan_for_secrets() - Pattern matching for secrets
+|   +-- check_file_size() - File size limits
+|   +-- validate_license_header() - License text presence
+|   +-- validate_shell_format() - Shell script syntax
+|   +-- validate_c_format() - C/H file syntax
+|
++-- Domain-Specific Helpers
+|   +-- ckbranchname.sh - Branch naming validation
+|   +-- ckrole.sh - User role verification
+|   +-- rbac.sh - Role-based access control
+|   +-- Others - Repository-specific checks
+```
+
+**Key principles:**
+- Functions are reusable and standalone
+- Clear return codes (0=success, 1=failure)
+- Documented with inline comments
+- Efficient (fail fast, minimize git operations)
+- Tested in workflows before merge
+
+### 7.4. Adding New Validations
+
+To add a new validation workflow:
+
+**1. Implement validation function** in `scripts/helpers/validation-helpers.sh`:
+
+```bash
+# validate_my_check: Description of what is validated
+#
+# Args: $1 = parameter (e.g., commit hash, file path)
+# Returns: 0 if valid, 1 if invalid (non-zero)
+# 
+validate_my_check() {
+  local param=$1
+  
+  # Your validation logic
+  if [[ condition ]]; then
+    return 0  # Valid
+  else
+    return 1  # Invalid
+  fi
+}
+```
+
+**2. Create workflow file** `.github/workflows/branch-validation-mycheck.yml`:
+
+```yaml
+name: Validate My Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for comparisons
+
+      - name: Source helpers
+        run: |
+          source scripts/helpers/common-utils.sh
+          source scripts/helpers/validation-helpers.sh
+
+      - name: Run validation
+        run: |
+          timer_start
+          log_section "My Check"
+          
+          if validate_my_check "param"; then
+            print_success "My check passed"
+            timer_end "my_check"
+          else
+            print_failure "My check failed"
+            exit 1
+          fi
+```
+
+**3. Register in branch protection rules:**
+
+Add the new workflow to GitHub branch protection settings for `main` and version branches.
+
+**4. Test and iterate:**
+
+- Push to a test branch to verify workflow runs
+- Fix any issues and re-push
+- Once working, create PR for review
 </details>

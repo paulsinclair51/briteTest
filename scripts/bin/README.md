@@ -12,7 +12,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ### Setup and Installation
 
-- **installscripts**: Make all scripts executable and add
+- **setupclone**: Setup clone environment
    `<repo>/scripts/bin/` to PATH.
 
 ### Document and Brand Management
@@ -72,7 +72,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 To make all scripts executable and add them to your PATH, run:
 
    ```sh
-   bash `<repo>/scripts/bin/installscripts`
+   bash `<repo>/scripts/bin/setupclone`
    ```
 
 This script will:
@@ -83,7 +83,7 @@ This script will:
 For more information, run:
 
   ```sh
-  bash `<repo>/scripts/bin/installscripts` -h
+  bash `<repo>/scripts/bin/setupclone` -h
   ```
 
 ## Usage
@@ -101,7 +101,7 @@ For a script's usage information, execute the script using the
 
 If a script is not executable in your environment, you can:
 
-1. Run or rerun `<repo>/scripts/bin/installscripts` (see Getting
+1. Run or rerun `<repo>/scripts/bin/setupclone` (see Getting
    Started above).
 
 3. Manually fix individual scripts:
@@ -112,7 +112,7 @@ If a script is not executable in your environment, you can:
 
 ### Scripts not in PATH
 
-1. Run or rerun `<repo>/scripts/bin/installscripts` (see Getting
+1. Run or rerun `<repo>/scripts/bin/setupclone` (see Getting
    Started above).
 
 3. Manually update the PATH configuration:

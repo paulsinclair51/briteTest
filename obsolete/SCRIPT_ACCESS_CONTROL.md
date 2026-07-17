@@ -34,7 +34,7 @@ The system is hierarchical:
 - `undo` - Undo uncommitted changes
 - `lsbranchlog` - Check branch history
 - `lsbranch` - List branches
-- Utility scripts: `gendocs`, `genpngs`, `installscripts`
+- Utility scripts: `gendocs`, `genpngs`, `setupclone`
 
 **Cannot Execute:**
 - Reviewer scripts (require R role)
