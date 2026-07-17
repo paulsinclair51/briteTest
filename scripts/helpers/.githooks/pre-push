@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+# pre-push hook - Block direct git push operations
+#
+# This hook runs before 'git push' command.
+# It prevents developers from bypassing the script-based workflow.
+#
+# Scripts set BRITETEST_BYPASS_HOOKS=true when performing authorized pushes.
+#
+# Blocked operations:
+#   git push origin branch           → Use: commit -m "msg" -p
+#   git push --force-with-lease     → Use: merge -f (for rebase)
+#   git push origin --delete branch → Use: rmbranch <branch> -r
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+
+set -euo pipefail
+
+# Source orchestrator for common functions
+ORCHESTRATOR="$(git rev-parse --git-dir)/hooks/orchestrator.sh"
+if [[ -f "$ORCHESTRATOR" ]]; then
+  source "$ORCHESTRATOR" 2>/dev/null || true
+fi
+
+# Check if bypass flag is set by authorized script
+if [[ "${BRITETEST_BYPASS_HOOKS:-false}" == "true" ]]; then
+  exit 0
+fi
+
+# Block the operation with helpful guidance
+cat >&2 << 'EOF'
+
+❌ Error: Direct git push operations are not allowed.
+
+   Use the appropriate script instead:
+   
+   For committing and pushing:
+     commit -m "Your message" -p
+   
+   For pushing after merge:
+     merge [branch]
+   
+   For deleting remote branches:
+     rmbranch <branch> -r
+   
+   For help:
+     commit -h, merge -h, rmbranch -h
+
+EOF
+
+exit 1

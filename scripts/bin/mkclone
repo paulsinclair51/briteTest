@@ -90,7 +90,7 @@ EOF
 #   target directory.
 # - Validates arguments, comment options, and target-path preconditions before
 #   cloning.
-# - Automatically runs installscripts to set up scripts and Git hooks.
+# - Automatically runs setupclone to set up scripts and Git hooks.
 # - Reports clone results and prints next-step workflow guidance.
 
 set -euo pipefail

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# installscripts - Make all scripts in /scripts/bin/ executable and add to PATH.
-#                  Also installs Git hooks for workflow protection.
+# setupclone - Make all scripts in /scripts/bin/ executable, add to PATH,
+#              and configure Git hooks using core.hooksPath.
 #
-# See usage below for details, or run: bash /scripts/bin/installscripts -h
+# See usage below for details, or run: bash /scripts/bin/setupclone -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -12,37 +12,37 @@
 usage() {
   cat <<'EOF'
 Usage:
-  bash /scripts/bin/installscripts
-  bash /scripts/bin/installscripts {-h | --help}
+  bash /scripts/bin/setupclone
+  bash /scripts/bin/setupclone {-h | --help}
 
-Make all scripts in /scripts/bin/ executable, add to PATH, and install Git hooks.
+Make all scripts in /scripts/bin/ executable, add to PATH, and configure Git hooks.
 
 This script:
   - Makes all scripts in /scripts/bin/ executable (chmod +x).
   - Adds /scripts/bin/ to PATH in ~/.bashrc if not already present.
-  - Installs Git hooks to .git/hooks/ to enforce script-only workflow.
+  - Configures Git to use hooks from scripts/helpers/.githooks/ via core.hooksPath.
   - Loads the updated configuration so scripts are available immediately.
 
 After running, scripts in /scripts/bin/ will be:
   - Executable by the user.
-  - Available by name in the shell (e.g., lsbranch -h, installscripts -h).
+  - Available by name in the shell (e.g., lsbranch -h, setupclone -h).
   - Persistent across new shell sessions.
 
 Git hooks will be:
-  - Installed to .git/hooks/
-  - Active immediately
-  - Preventing direct use of unsafe git commands.
+  - Configured to use the versioned hooks directory (scripts/helpers/.githooks/)
+  - Active immediately on checkout operations
+  - Automatically maintained through version control
 
 Options:
   -h, --help  Output this help to stdout and exit (other options
               and arguments are ignored).
 
 Examples:
-  # Install scripts and hooks
-  bash /scripts/bin/installscripts
+  # Setup clone environment
+  bash /scripts/bin/setupclone
 
   # Show help
-  bash /scripts/bin/installscripts -h
+  bash /scripts/bin/setupclone -h
 
 
 Outputs:
@@ -138,9 +138,9 @@ hook_installer="$repo_root/scripts/helpers/install-git-hooks.sh"
 
 if [[ -f "$hook_installer" ]]; then
   if bash "$hook_installer"; then
-    echo "  ✓ Git hooks installed"
+    echo "  ✓ Git hooks configured"
   else
-    echo "  ⚠ Warning: Failed to install Git hooks" >&2
+    echo "  ⚠ Warning: Failed to configure Git hooks" >&2
     echo "     Run manually: bash $hook_installer" >&2
   fi
 else
@@ -163,7 +163,8 @@ echo "  - Executable"
 echo "  - Available in PATH for current and future sessions"
 echo ""
 echo "Git hooks are now:"
-echo "  - Installed to .git/hooks/"
-echo "  - Active and protecting your workflow"
+echo "  - Configured to use versioned hooks directory (scripts/helpers/.githooks/)"
+echo "  - Active immediately"
+echo "  - Will run on checkout and other git operations"
 echo ""
 echo "You can now run scripts by name, e.g.: lsbranch -h"

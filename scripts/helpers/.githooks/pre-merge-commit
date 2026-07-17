@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+# pre-merge-commit hook - Block direct git merge operations
+#
+# This hook runs before 'git merge' command creates a merge commit.
+# It prevents developers from bypassing the script-based merge workflow.
+#
+# Scripts set BRITETEST_BYPASS_HOOKS=true when performing authorized merges.
+#
+# Blocked operations:
+#   git merge <branch>              → Use: merge [branch]
+#   git merge --squash              → Use: merge -s (squash mode)
+#   git merge --no-ff               → Use: merge -ff (fast-forward mode)
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+
+set -euo pipefail
+
+# Source orchestrator for common functions
+ORCHESTRATOR="$(git rev-parse --git-dir)/hooks/orchestrator.sh"
+if [[ -f "$ORCHESTRATOR" ]]; then
+  source "$ORCHESTRATOR" 2>/dev/null || true
+fi
+
+# Check if bypass flag is set by authorized script
+if [[ "${BRITETEST_BYPASS_HOOKS:-false}" == "true" ]]; then
+  exit 0
+fi
+
+# Block the operation with helpful guidance
+cat >&2 << 'EOF'
+
+❌ Error: Direct git merge operations are not allowed.
+
+   Use the 'merge' script instead:
+   
+     merge [branch]        # Merge current branch to parent
+     merge -s              # Merge with squash
+     merge -ff             # Merge with fast-forward
+   
+   For help:
+     merge -h
+
+EOF
+
+exit 1

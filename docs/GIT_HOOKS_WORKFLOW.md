@@ -268,9 +268,9 @@ Hooks install automatically in two ways:
    mkclone          # Clones repo and installs hooks
    ```
 
-2. **Via `installscripts`:**
+2. **Via `setupclone`:**
    ```bash
-   bash scripts/bin/installscripts
+   bash scripts/bin/setupclone
    ```
 
 ### Manual Installation

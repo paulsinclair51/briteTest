@@ -69,7 +69,7 @@ readonly UTILITY_SCRIPTS=(
   "gendocs"            # Generate documentation
   "genpngs"            # Generate PNG files
   "lsbranchlog"   # Check branch history
-  "installscripts"     # Install scripts
+  "setupclone"         # Setup clone environment
 )
 
 # Protected scripts (require approver override confirmation)
