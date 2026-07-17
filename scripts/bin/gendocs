@@ -130,12 +130,9 @@ Notes:
 
 Exit Codes:
   0   Success.
-  1   Usage error: general.
-  2   Usage error: invalid or incomplete option.
-  3   Usage error: invalid argument.
-  4   Usage error: invalid option combination/mode.
-  5   Input not found.
-  6   No source files to process.
+  1   Invalid option or argument.
+  2   Input not found.
+  3   No source files to process.
   100 Internal setup error: helper script missing.
   110 Internal helper/toolchain check failed.
   111 Internal helper failure: genpdf helper returned non-zero.
@@ -184,6 +181,14 @@ if [[ -f "$HISTORY_HELPER" ]]; then
   fi
 fi
 
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit 1
+}
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 genpdf_script="$repo_root/scripts/helpers/genpdf.sh"
 gendocx_script="$repo_root/scripts/helpers/gendocx.sh"
@@ -221,12 +226,9 @@ declare -a positional=()
 # 100-199: internal script/setup issues
 # 200-249: system call/tool execution failures
 EXIT_SUCCESS=0
-EXIT_USAGE_GENERAL=1
-EXIT_USAGE_OPTION=2
-EXIT_USAGE_ARGUMENT=3
-EXIT_USAGE_MODE=4
-EXIT_INPUT_NOT_FOUND=5
-EXIT_INPUT_EMPTY=6
+EXIT_INVALID_ARGUMENT=1
+EXIT_INPUT_NOT_FOUND=2
+EXIT_INPUT_EMPTY=3
 EXIT_INTERNAL_HELPER_MISSING=100
 EXIT_INTERNAL_TOOLCHECK_FAILED=110
 EXIT_INTERNAL_GENPDF_FAILED=111
@@ -242,14 +244,9 @@ status_message_for_code() {
   local code=$1
   case "$code" in
     $EXIT_SUCCESS) echo "STATUS[0]: success" ;;
-    $EXIT_USAGE_GENERAL) echo "STATUS[1]: usage error (general)" ;;
-    $EXIT_USAGE_OPTION) echo "STATUS[2]: usage error" \
-      "(invalid or incomplete option)" ;;
-    $EXIT_USAGE_ARGUMENT) echo "STATUS[3]: usage error (invalid argument)" ;;
-    $EXIT_USAGE_MODE) echo "STATUS[4]: usage error (invalid option" \
-      "combination or mode)" ;;
-    $EXIT_INPUT_NOT_FOUND) echo "STATUS[5]: input not found" ;;
-    $EXIT_INPUT_EMPTY) echo "STATUS[6]: no source files to process" ;;
+    $EXIT_INVALID_ARGUMENT) echo "STATUS[1]: usage error" ;;
+    $EXIT_INPUT_NOT_FOUND) echo "STATUS[2]: input not found" ;;
+    $EXIT_INPUT_EMPTY) echo "STATUS[3]: no source files to process" ;;
     $EXIT_INTERNAL_HELPER_MISSING)
       echo "STATUS[100]: internal setup error (helper script missing)"
       ;;
@@ -539,19 +536,19 @@ while [[ $# -gt 0 ]]; do
     -t) tool_check=1 ;;
     -i)
       shift
-      [[ $# -gt 0 ]] || exit_with "$EXIT_USAGE_OPTION" \
+      [[ $# -gt 0 ]] || exit_with "$EXIT_INVALID_ARGUMENT" \
         "-i requires a pattern value."
       include_patterns+=("$1")
       ;;
     -x)
       shift
-      [[ $# -gt 0 ]] || exit_with "$EXIT_USAGE_OPTION" \
+      [[ $# -gt 0 ]] || exit_with "$EXIT_INVALID_ARGUMENT" \
         "-x requires a pattern value."
       exclude_patterns+=("$1")
       ;;
     -b)
       shift
-      [[ $# -gt 0 ]] || exit_with "$EXIT_USAGE_OPTION" \
+      [[ $# -gt 0 ]] || exit_with "$EXIT_INVALID_ARGUMENT" \
         "-b requires a backend value."
       if [[ "$1" == */* ]]; then
         backend_md_pdf="${1%%/*}"
@@ -561,30 +558,30 @@ while [[ $# -gt 0 ]]; do
         backend_pdf_docx="$1"
       fi
       ;;
-    -*) usage >&2; exit_with "$EXIT_USAGE_GENERAL" "Unknown option: $1" ;;
+    -*) usage_error "Unknown option: $1" ;;
     *) positional+=("$1") ;;
   esac
   shift
 done
 
 [[ $pdf_only -eq 1 && $docx_only -eq 1 ]] && \
-  exit_with "$EXIT_USAGE_MODE" "-p and -d are mutually exclusive."
+  exit_with "$EXIT_INVALID_ARGUMENT" "-p and -d are mutually exclusive."
 
 if [[ $tool_check -eq 1 ]]; then
   # With -t, only -b is allowed. All other options/args are invalid.
   if has_disallowed_toolcheck_args; then
-    exit_with "$EXIT_USAGE_MODE" "With -t, only -b is allowed."
+    exit_with "$EXIT_INVALID_ARGUMENT" "With -t, only -b is allowed."
   fi
 
   validate_toolcheck_backends "$backend_md_pdf" "$backend_pdf_docx" || \
-    exit_with "$EXIT_USAGE_OPTION" \
+    exit_with "$EXIT_INVALID_ARGUMENT" \
       "Invalid backend selection for -t: $backend_md_pdf/$backend_pdf_docx"
 else
   validate_backend_combo "$backend_md_pdf" "$backend_pdf_docx" || \
-    exit_with "$EXIT_USAGE_OPTION" \
+    exit_with "$EXIT_INVALID_ARGUMENT" \
       "Invalid backend selection: $backend_md_pdf/$backend_pdf_docx"
   [[ "$backend_md_pdf" != "all" && "$backend_pdf_docx" != "all" ]] || \
-    exit_with "$EXIT_USAGE_MODE" "Backend token 'all' is only valid with -t."
+    exit_with "$EXIT_INVALID_ARGUMENT" "Backend token 'all' is only valid with -t."
 fi
 
 [[ -f "$genpdf_script" ]] || \
@@ -645,7 +642,7 @@ out1="${positional[1]:-}"
 out2="${positional[2]:-}"
 
 if [[ ${#positional[@]} -gt 3 ]]; then
-  exit_with "$EXIT_USAGE_ARGUMENT" "Too many positional arguments."
+  exit_with "$EXIT_INVALID_ARGUMENT" "Too many positional arguments."
 fi
 
 declare -a sources=()
@@ -811,7 +808,7 @@ for src in "${sources[@]}"; do
 
   elif [[ "$src" == *.pdf ]]; then
     # Only valid in -d mode per usage
-    [[ $docx_only -eq 1 ]] || exit_with "$EXIT_USAGE_MODE" \
+    [[ $docx_only -eq 1 ]] || exit_with "$EXIT_INVALID_ARGUMENT" \
       ".pdf input requires -d mode."
     base="${b%.pdf}"
     target_docx="$docx_base/${base}.docx"
@@ -820,7 +817,7 @@ for src in "${sources[@]}"; do
         "gendocx helper failed while generating DOCX from PDF source: $src"
     fi
   else
-    exit_with "$EXIT_USAGE_ARGUMENT" "Unsupported source type: $src"
+    exit_with "$EXIT_INVALID_ARGUMENT" "Unsupported source type: $src"
   fi
 done
 

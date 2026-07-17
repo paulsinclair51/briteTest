@@ -90,26 +90,17 @@ Outputs:
 
 Exit codes:
   0   Success.
-  1   Invalid option or argument. Full usage is shown on stdout.
-  2   Could not detect current branch. Run this from a cloned repository.
-  3   Not on a local branch. Use `chbranch` to switch to a local
-      non-protected branch, then retry.
-  5   Current branch is a protected branch. Use `chbranch` to switch to a
-      non-protected local branch, then retry.
-  6   Commit message missing. Provide `-m` <message>, `--message <message>`,
-      or `-- <message>`.
-  7   Commit message empty. Use at least one non-whitespace character.
-  8   Contributors list is missing. Contact an approver to restore
-      `config/contributors.md`.
-  9   Could not detect your GitHub identity. Set login context and retry.
-  10  Not authorized for commit. Request authorization from an approver.
-  11  Could not inspect working tree. Check repository health and permissions.
-  12  Could not stage or commit changes. Run `fixrepo`; if issue persists,
-      contact an approver to help resolve file/state issues, then retry.
-  14  Push failed. Verify remote access/network and retry.
-  15  Divergence was not auto-resolved. Run `mrgbranch`, resolve any
-      conflicts, review changes, then rerun commit.
-  16  Unable to connect to remote. Verify remote access/network and retry.
+  1   Invalid option or argument.
+  3   Branch diverged. Run `mrgbranch` to resolve conflicts, then retry.
+  4   Remote is not connected/reachable. Verify remote access and network,
+      then retry.
+  5   Not authorized for commit. Request authorization from an approver.
+  6   Could not inspect working tree. Run `fixrepo` or request an approver
+      to help resolve repository health and permissions issues.
+  200 Could not stage or commit changes (git add/commit failed). Run `fixrepo`;
+      if the issue persists, contact an approver to resolve file/state issues.
+  201 Could not push to remote (git push failed). Verify remote access and
+      network, then retry.
 EOF
 }
 
@@ -149,13 +140,21 @@ else
   }
 fi
 
+readonly EXIT_SUCCESS=0
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_BRANCH_DIVERGED=3
+readonly EXIT_REMOTE_UNREACHABLE=4
+readonly EXIT_NOT_AUTHORIZED=5
+readonly EXIT_WORKTREE_INSPECTION_FAILED=6
+readonly EXIT_STAGE_COMMIT_FAILED=200
+readonly EXIT_PUSH_FAILED=201
+
 usage_error() {
   local message="$1"
-
-  echo "Error: $message" >&2
-  echo >&2
   usage
-  exit 1
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
 }
 
 cleanup_old_dry_run_reports() {
@@ -299,7 +298,7 @@ collect_commit_candidate_files() {
 
   if ! git status --porcelain -z >"$status_tmp" 2>/dev/null; then
     rm -f "$status_tmp"
-    bt_error_exit 11 "Failed to inspect working tree status"
+    bt_error_exit "$EXIT_WORKTREE_INSPECTION_FAILED" "Failed to inspect working tree status"
   fi
 
   exec 3<"$status_tmp"
@@ -386,7 +385,7 @@ auto_resolve_divergence_if_safe() {
   local branch="$1"
 
   if [[ "$DRY_RUN" == true ]]; then
-    bt_error_exit 15 "Local and remote branch '$branch' have diverged. Dry run cannot perform auto-resolution. Run without -d to auto-resolve or run 'mrgbranch' manually."
+    bt_error_exit "$EXIT_BRANCH_DIVERGED" "Local and remote branch '$branch' have diverged. Dry run cannot perform auto-resolution. Run without -d to auto-resolve or run 'mrgbranch' manually."
   fi
 
   if [[ "$VERBOSE" == true ]]; then
@@ -394,7 +393,7 @@ auto_resolve_divergence_if_safe() {
   fi
 
   if ! git fetch origin "$branch" >/dev/null 2>&1; then
-    bt_error_exit 16 "Unable to connect to remote. Verify remote access/network and retry."
+    bt_error_exit "$EXIT_REMOTE_UNREACHABLE" "Unable to connect to remote. Verify remote access/network and retry."
   fi
 
   # Propagate repository history from remote if available
@@ -412,7 +411,7 @@ auto_resolve_divergence_if_safe() {
   fi
 
   git rebase --abort >/dev/null 2>&1 || true
-  bt_error_exit 15 "Local and remote branch '$branch' have diverged and could not be auto-resolved cleanly. Run 'mrgbranch', resolve conflicts, then rerun commit."
+  bt_error_exit "$EXIT_BRANCH_DIVERGED" "Local and remote branch '$branch' have diverged and could not be auto-resolved cleanly. Run 'mrgbranch', resolve conflicts, then rerun commit."
 }
 collect_prepush_file_stats() {
   : > "$PREPUSH_STATS_FILE"
@@ -831,7 +830,7 @@ initialize_report_file
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
-  bt_error_exit 2 "Failed to determine current branch")
+  bt_error_exit "$EXIT_NOT_ON_BRANCH" "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
 
 # Disallow commits from detached HEAD (for example, origin/main or origin/v*).
@@ -842,20 +841,20 @@ fi
 
 # Commit script operates on a local branch only.
 if ! git show-ref --verify --quiet "refs/heads/$CURRENT_BRANCH"; then
-  bt_error_exit 3 "Not on a local branch. Use 'chbranch' to switch to a local non-protected branch, then retry."
+  bt_error_exit "$EXIT_NOT_ON_LOCAL_BRANCH" "Not on a local branch. Use 'chbranch' to switch to a local non-protected branch, then retry."
 fi
 
 if [[ ! -f "$CONTRIBUTORS_FILE" ]]; then
-  bt_error_exit 8 "Configuration file not found: $CONTRIBUTORS_FILE"
+  bt_error_exit "$EXIT_CONFIG_NOT_FOUND" "Configuration file not found: $CONTRIBUTORS_FILE"
 fi
 
 ACTOR_LOGIN="$(bt_require_login || true)"
 if [[ -z "$ACTOR_LOGIN" ]]; then
-  bt_error_exit 9 "Unable to determine GitHub login identity for permission check"
+  bt_error_exit "$EXIT_LOGIN_UNKNOWN" "Unable to determine GitHub login identity for permission check"
 fi
 
 if ! is_contributor_or_higher "$ACTOR_LOGIN"; then
-  bt_error_exit 10 "User '$ACTOR_LOGIN' is not authorized to run commit (requires contributor role or higher)"
+  bt_error_exit "$EXIT_NOT_AUTHORIZED" "User '$ACTOR_LOGIN' is not authorized to run commit (requires contributor role or higher)"
 fi
 
 # Check if branch is protected
@@ -897,14 +896,14 @@ fi
 # Validate commit message only when a commit is actually needed.
 if [[ "$NEEDS_COMMIT" == true ]]; then
   if [[ -z "$COMMIT_MESSAGE" ]]; then
-    bt_error_exit 6 "Commit message is required (-m/--message or -- TOKENS) when there are changes to commit"
+    bt_error_exit "$EXIT_MESSAGE_REQUIRED" "Commit message is required (-m/--message or -- TOKENS) when there are changes to commit"
   fi
 
   COMMIT_MESSAGE_TRIMMED="$COMMIT_MESSAGE"
   COMMIT_MESSAGE_TRIMMED="${COMMIT_MESSAGE_TRIMMED#${COMMIT_MESSAGE_TRIMMED%%[![:space:]]*}}"
   COMMIT_MESSAGE_TRIMMED="${COMMIT_MESSAGE_TRIMMED%${COMMIT_MESSAGE_TRIMMED##*[![:space:]]}}"
   if [[ -z "$COMMIT_MESSAGE_TRIMMED" ]]; then
-    bt_error_exit 7 "Commit message must include at least one non-whitespace character when there are changes to commit"
+    bt_error_exit "$EXIT_MESSAGE_EMPTY" "Commit message must include at least one non-whitespace character when there are changes to commit"
   fi
 fi
 
@@ -925,11 +924,11 @@ if [[ "$NEEDS_COMMIT" == true ]]; then
     fi
     if [[ "$VERBOSE" == true ]]; then
       if ! git add --all; then
-        bt_error_exit 12 "Could not stage or commit changes. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
+        bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Could not stage or commit changes. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
       fi
     else
       if ! git add --all >/dev/null 2>&1; then
-        bt_error_exit 12 "Could not stage or commit changes. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
+        bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Could not stage or commit changes. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
       fi
     fi
     if [[ "$VERBOSE" == true ]]; then
@@ -941,11 +940,11 @@ if [[ "$NEEDS_COMMIT" == true ]]; then
     fi
     if [[ "$VERBOSE" == true ]]; then
       if ! git commit -m "$COMMIT_MESSAGE"; then
-        bt_error_exit 12 "Could not stage or commit changes. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
+        bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Could not stage or commit changes. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
       fi
     else
       if ! git commit -m "$COMMIT_MESSAGE" >/dev/null 2>&1; then
-        bt_error_exit 12 "Could not stage or commit changes. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
+        bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Could not stage or commit changes. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
       fi
     fi
     if [[ "$VERBOSE" == true ]]; then
@@ -979,7 +978,7 @@ if [[ "$PUSH" == true ]]; then
     collect_unpushed_commits "$CURRENT_BRANCH"
     collect_remote_behind_commits "$CURRENT_BRANCH"
     if [[ "$BEHIND_COMMITS" -gt 0 && "$PUSHED_COMMITS" -gt 0 ]]; then
-      bt_error_exit 15 "Local and remote branch '$CURRENT_BRANCH' still appear diverged after auto-resolution. Run 'mrgbranch', resolve conflicts, then rerun commit."
+      bt_error_exit "$EXIT_BRANCH_DIVERGED" "Local and remote branch '$CURRENT_BRANCH' still appear diverged after auto-resolution. Run 'mrgbranch', resolve conflicts, then rerun commit."
     fi
   fi
 
@@ -1037,11 +1036,11 @@ if [[ "$PUSH" == true ]]; then
     else
       if [[ "$VERBOSE" == true ]]; then
         if ! git push origin "$CURRENT_BRANCH"; then
-          bt_error_exit 14 "Failed to push to remote"
+          bt_error_exit "$EXIT_PUSH_FAILED" "Failed to push to remote"
         fi
       else
         if ! git push origin "$CURRENT_BRANCH" >/dev/null 2>&1; then
-          bt_error_exit 14 "Failed to push to remote"
+          bt_error_exit "$EXIT_PUSH_FAILED" "Failed to push to remote"
         fi
       fi
       DID_PUSH_REMOTE=true

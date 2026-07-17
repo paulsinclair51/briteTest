@@ -103,6 +103,20 @@ source "$SCRIPT_DIR/../helpers/history_log.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_FOUND=2
+readonly EXIT_OPERATION_FAILED=3
+readonly EXIT_CONFIG_ERROR=4
+readonly EXIT_INTERNAL_ERROR=100
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
 # Default options
 FORCE=false
 VERBOSE=false
@@ -125,10 +139,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -m requires a message argument"
+        usage_error "Option -m requires a message argument"
       fi
       if [[ -n "$CUSTOM_MESSAGE" ]]; then
-        bt_error_exit 1 "Cannot use both -m and -- for message"
+        usage_error "Cannot use both -m and -- for message"
       fi
       CUSTOM_MESSAGE="$2"
       shift 2
@@ -137,28 +151,28 @@ while [[ $# -gt 0 ]]; do
       # Unix-style message: everything after -- is the message
       shift
       if [[ -n "$CUSTOM_MESSAGE" ]]; then
-        bt_error_exit 1 "Cannot use both -m and -- for message"
+        usage_error "Cannot use both -m and -- for message"
       fi
       CUSTOM_MESSAGE="$*"
       break
       ;;
     -*)
-      bt_error_exit 1 "Unknown option: $1"
+      usage_error "Unknown option: $1"
       ;;
     *)
-      bt_error_exit 1 "Unknown argument: $1"
+      usage_error "Unknown argument: $1"
       ;;
   esac
 done
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
-  bt_error_exit 2 "Failed to determine current branch")
+  bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
 
 # Check if branch is protected
 if bt_is_protected_branch "$CURRENT_BRANCH"; then
-  bt_error_exit 4 "Cannot sync up on protected branch '$CURRENT_BRANCH'." \
+  bt_error_exit "$EXIT_CONFIG_ERROR" "Cannot sync up on protected branch '$CURRENT_BRANCH'." \
     "Use 'mrgup' to merge changes to this branch."
 fi
 
@@ -166,14 +180,14 @@ fi
 bt_info "Determining parent branch..."
 PARENT_BRANCH=$(bt_resolve_parent_branch "$CURRENT_BRANCH" "main")
 if [[ -z "$PARENT_BRANCH" ]]; then
-  bt_error_exit 5 "Failed to determine parent branch"
+  bt_error_exit "$EXIT_INTERNAL_ERROR" "Failed to determine parent branch"
 fi
 bt_info "Parent branch: $PARENT_BRANCH"
 
 # Ensure parent branch exists and is up to date
 bt_info "Fetching latest from remote..."
 if ! git fetch origin "$PARENT_BRANCH" 2>&1 >/dev/null; then
-  bt_error_exit 2 "Failed to fetch parent branch '$PARENT_BRANCH' from remote"
+  bt_error_exit "$EXIT_NOT_FOUND" "Failed to fetch parent branch '$PARENT_BRANCH' from remote"
 fi
 
 # Propagate repository history from remote if available
@@ -229,9 +243,9 @@ fi
     echo "  1. Edit conflicted files to resolve conflicts"
     echo "  2. Stage resolved files: git add <files>"
     echo "  3. Complete merge: git commit"
-    bt_error_exit 3 "Merge stopped - manual conflict resolution needed"
+    bt_error_exit "$EXIT_OPERATION_FAILED" "Merge stopped - manual conflict resolution needed"
   else
-    bt_error_exit 2 "Failed to merge $BASE_BRANCH into $CURRENT_BRANCH"
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to merge $BASE_BRANCH into $CURRENT_BRANCH"
   fi
 fi
 
@@ -256,7 +270,7 @@ fi
 # Push merge commit
 bt_info "Pushing merge commit to remote..."
 if ! git push origin "$CURRENT_BRANCH" 2>&1; then
-  bt_error_exit 2 "Failed to push merge commit to remote"
+  bt_error_exit "$EXIT_NOT_FOUND" "Failed to push merge commit to remote"
 fi
 
 bt_success "Pushed merge commit"

@@ -135,6 +135,18 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
 
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_FOUND=2
+readonly EXIT_CONFIG_ERROR=4
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
 # Default options
 VERBOSE=false
 COMMENT=""
@@ -601,10 +613,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -m requires a message argument"
+        usage_error "Option -m requires a message argument"
       fi
       if [[ -n "$COMMENT" ]]; then
-        bt_error_exit 1 "Cannot use both -m and -- for comment"
+        usage_error "Cannot use both -m and -- for comment"
       fi
       COMMENT="$2"
       shift 2
@@ -613,35 +625,35 @@ while [[ $# -gt 0 ]]; do
       # Unix-style comment: everything after -- is the comment
       shift
       if [[ -n "$COMMENT" ]]; then
-        bt_error_exit 1 "Cannot use both -m and -- for comment"
+        usage_error "Cannot use both -m and -- for comment"
       fi
       if [[ $# -lt 1 ]]; then
-        bt_error_exit 1 "Option -- requires at least one token for comment"
+        usage_error "Option -- requires at least one token for comment"
       fi
       COMMENT="$*"
       break
       ;;
     -*)
-      bt_error_exit 1 "Unknown option: $1"
+      usage_error "Unknown option: $1"
       ;;
     *)
-      bt_error_exit 1 "Unexpected argument: $1"
+      usage_error "Unexpected argument: $1"
       ;;
   esac
 done
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
-  bt_error_exit 1 "Failed to determine current branch")
+  usage_error "Failed to determine current branch")
 
 if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
   if is_rebase_in_progress; then
     REBASE_IN_PROGRESS_AT_START=true
     CURRENT_BRANCH="$(get_rebase_head_branch || true)"
-    [[ -n "$CURRENT_BRANCH" ]] || bt_error_exit 1 "Current branch is detached"
+    [[ -n "$CURRENT_BRANCH" ]] || usage_error "Current branch is detached"
     bt_info "Detected rebase in progress for branch: $CURRENT_BRANCH"
   else
-    bt_error_exit 1 "Current branch is detached"
+    usage_error "Current branch is detached"
   fi
 fi
 
@@ -656,7 +668,7 @@ if [[ -n "$COMMENT" ]]; then
 fi
 
 if ! is_remote_connected; then
-  bt_error_exit 2 "Remote disconnected"
+  bt_error_exit "$EXIT_NOT_FOUND" "Remote disconnected"
 fi
 
 if remote_branch_exists "$CURRENT_BRANCH"; then
@@ -676,7 +688,7 @@ elif is_rebase_in_progress; then
 elif [[ "$DRY_RUN" == false ]]; then
   bt_info "Fetching from remote..."
   if ! git fetch origin 2>&1; then
-    bt_error_exit 2 "Remote disconnected"
+    bt_error_exit "$EXIT_NOT_FOUND" "Remote disconnected"
   fi
   bt_success "Fetched successfully"
 
@@ -710,7 +722,7 @@ bt_success "Report generated: ${REPORT_FILE#${REPO_ROOT}/}"
 
 if [[ "$SYNCED_COUNT" -eq 0 ]]; then
   bt_warn "Sync complete: no branches synchronized"
-  exit 4
+  exit "$EXIT_CONFIG_ERROR"
 fi
 
 bt_success "Sync complete"

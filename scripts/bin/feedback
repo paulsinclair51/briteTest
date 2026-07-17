@@ -136,11 +136,11 @@ Outputs:
     output locations.
 
 Exit codes:
-  0   Success
-  1   Argument or validation error
-  2   Failed to fetch PR feedback
-  3   No PR associated with current branch
-  4   GitHub API error
+  0   Success.
+  1   Invalid option or argument.
+  2   Failed to fetch PR feedback.
+  3   No PR associated with current branch.
+  4   GitHub API error.
 EOF
 }
 
@@ -163,6 +163,20 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 source "$SCRIPT_DIR/../helpers/github_helpers.sh"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
+
+readonly EXIT_SUCCESS=0
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_FOUND=2
+readonly EXIT_OPERATION_FAILED=3
+readonly EXIT_CONFIG_ERROR=4
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
 
 # Default options
 VERBOSE=false
@@ -187,14 +201,14 @@ view_feedback() {
   local pr_number
   
   branch=$(bt_get_current_branch || \
-    bt_error_exit 2 "Failed to determine current branch")
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
   bt_info "Current branch: $branch"
   
   if command -v gh &> /dev/null; then
     pr_number=$(get_pr_number "$branch")
     
     if [[ -z "$pr_number" ]]; then
-      bt_error_exit 3 "No PR found for branch '$branch'." \
+      bt_error_exit "$EXIT_OPERATION_FAILED" "No PR found for branch '$branch'." \
         "Create a PR first using review."
     fi
     
@@ -208,7 +222,7 @@ view_feedback() {
     
     bt_success "Done"
   else
-    bt_error_exit 4 "GitHub CLI (gh) not installed." \
+    bt_error_exit "$EXIT_CONFIG_ERROR" "GitHub CLI (gh) not installed." \
       "Install gh to use feedback."
   fi
 }
@@ -217,23 +231,23 @@ update_for_feedback() {
   local branch
   
   branch=$(bt_get_current_branch || \
-    bt_error_exit 2 "Failed to determine current branch")
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
   bt_info "Current branch: $branch"
   
   if [[ -z "$COMMENT" ]]; then
-    bt_error_exit 1 "Message required. Use -m or -- to provide commit message."
+    usage_error "Message required. Use -m or -- to provide commit message."
   fi
   
   bt_info "Staging changes..."
   if ! git add . 2>&1; then
-    bt_error_exit 2 "Failed to stage changes"
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to stage changes"
   fi
   
   # Check if there are changes to commit
   if ! git diff --cached --quiet; then
     bt_info "Committing feedback fixes..."
     if ! git commit -m "$COMMENT" 2>&1; then
-      bt_error_exit 2 "Failed to commit changes"
+      bt_error_exit "$EXIT_NOT_FOUND" "Failed to commit changes"
     fi
     bt_success "Changes committed: $COMMENT"
   else
@@ -245,12 +259,12 @@ sync_to_pr() {
   local branch
   
   branch=$(bt_get_current_branch || \
-    bt_error_exit 2 "Failed to determine current branch")
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
   bt_info "Current branch: $branch"
   
   bt_info "Pushing changes to remote..."
   if ! git push origin "$branch" 2>&1; then
-    bt_error_exit 2 "Failed to push changes"
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to push changes"
   fi
   
   bt_success "Changes pushed to PR"
@@ -273,27 +287,27 @@ respond_to_feedback() {
   local pr_number
   
   branch=$(bt_get_current_branch || \
-    bt_error_exit 2 "Failed to determine current branch")
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
   
   if command -v gh &> /dev/null; then
     pr_number=$(get_pr_number "$branch")
     
     if [[ -z "$pr_number" ]]; then
-      bt_error_exit 3 "No PR found for branch '$branch'."
+      bt_error_exit "$EXIT_OPERATION_FAILED" "No PR found for branch '$branch'."
     fi
     
     if [[ -z "$COMMENT" ]]; then
-      bt_error_exit 1 "Comment required. Use -m or -- to provide response."
+      usage_error "Comment required. Use -m or -- to provide response."
     fi
     
     bt_info "Adding comment to PR #$pr_number..."
     if ! gh pr comment "$pr_number" -b "$COMMENT" 2>&1; then
-      bt_error_exit 4 "Failed to add comment to PR"
+      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to add comment to PR"
     fi
     
     bt_success "Comment added to PR"
   else
-    bt_error_exit 4 "GitHub CLI (gh) not installed."
+    bt_error_exit "$EXIT_CONFIG_ERROR" "GitHub CLI (gh) not installed."
   fi
 }
 
@@ -310,17 +324,17 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -m requires a message argument"
+        usage_error "Option -m requires a message argument"
       fi
       if [[ -n "$COMMENT" ]]; then
-        bt_error_exit 1 "Cannot use both -m and -- for message"
+        usage_error "Cannot use both -m and -- for message"
       fi
       COMMENT="$2"
       shift 2
       ;;
     -c | --comment)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -c requires a comment ID"
+        usage_error "Option -c requires a comment ID"
       fi
       shift 2
       ;;
@@ -328,20 +342,20 @@ while [[ $# -gt 0 ]]; do
       # Unix-style message
       shift
       if [[ -n "$COMMENT" ]]; then
-        bt_error_exit 1 "Cannot use both -m and -- for message"
+        usage_error "Cannot use both -m and -- for message"
       fi
       COMMENT="$*"
       break
       ;;
     -*)
-      bt_error_exit 1 "Unknown option: $1"
+      usage_error "Unknown option: $1"
       ;;
     *)
       if [[ -z "$ACTION" ]]; then
         ACTION="$1"
         shift
       else
-        bt_error_exit 1 "Unexpected argument: $1"
+        usage_error "Unexpected argument: $1"
       fi
       ;;
   esac
@@ -349,7 +363,7 @@ done
 
 # Validate action
 if [[ -z "$ACTION" ]]; then
-  bt_error_exit 1 "ACTION required (view, update, respond, sync, or resolve)"
+  usage_error "ACTION required (view, update, respond, sync, or resolve)"
 fi
 
 # Dispatch to appropriate function
@@ -370,7 +384,7 @@ case "$ACTION" in
     bt_success "Feedback resolved (manual action needed in GitHub)"
     ;;
   *)
-    bt_error_exit 1 "Unknown action: $ACTION" \
+    usage_error "Unknown action: $ACTION" \
       "(valid: view, update, respond, sync, resolve)"
     ;;
 esac

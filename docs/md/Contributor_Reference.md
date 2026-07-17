@@ -40,11 +40,8 @@ SOFTWARE.
 This document is for contributors, reviewers, and approvers who need
 script-level details for workflow, validation, and role-based operations.
 
-For contribution policies and branching rules, see
+For contribution policies, branching rules, and workflows, see
 [Contributor_Guide.md](./Contributor_Guide.md).
-
-For an in-depth analysis of the SCM system, see
-[SCM_REVIEW.md](../SCM_REVIEW.md).
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
@@ -62,24 +59,571 @@ For an in-depth analysis of the SCM system, see
 
 ## Table of Contents
 
-1. [Helper Scripts](#helper-scripts)
-2. [Binary Scripts](#binary-scripts)
-3. [Script-Based Access Control](#script-based-access-control)
-4. [Environment Variables](#environment-variables)
-5. [Exit Codes](#exit-codes)
-6. [Troubleshooting](#troubleshooting)
+1. [scripts/bin/](#1-scriptsbin)<br>
+   1.1. [Workflow Management](#11-workflow-management)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.1. [chbranch](#111-chbranch)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.2. [commit](#112-commit)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.3. [copyfix](#113-copyfix)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.4. [feedback](#114-feedback)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.5. [lsbranch](#115-lsbranch)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.6. [lsbranchlog](#116-lsbranchlog)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.7. [mkbranch](#117-mkbranch)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. [mrgbranch](#118-mrgbranch)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.9. [mrgdown](#119-mrgdown)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.10. [mrgup](#1110-mrgup)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.11. [retarget](#1111-retarget)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.12. [review](#1112-review)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.13. [rmbranch](#1113-rmbranch)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.14. [undo](#1114-undo)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.15. [release](#1115-release)<br>
+   1.2. [Repository and Clone Management](#12-repository-and-clone-management)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. [fixrepo](#121-fixrepo)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. [installscripts](#122-installscripts)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. [mkclone](#123-mkclone)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. [mkfork](#124-mkfork)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. [rmclone](#125-rmclone)<br>
+   1.3. [Documentation and Branding](#13-documentation-and-branding)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.1. [ckstyle](#131-ckstyle)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.2. [gendocs](#132-gendocs)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.3. [genpngs](#133-genpngs)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.4. [rebrand](#134-rebrand)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.5. [replacetext](#135-replacetext)<br>
+
+2. [scripts/helpers/](#2-scriptshelpers)<br>
+   2.1. [Validation Helpers](#21-validation-helpers)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.1. [ckbranchname.sh](#211-ckbranchnamesh)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.2. [ckrole.sh](#212-ckrolesh)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.3. [rbac.sh](#213-rbacsh)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.4. [validation-helpers.sh](#214-validation-helperssh)<br>
+   2.2. [Git and GitHub Helpers](#22-git-and-github-helpers)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.1. [git_helpers.sh](#221-git_helperssh)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.2. [github_helpers.sh](#222-github_helperssh)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.3. [history_log.sh](#223-history_logsh)<br>
+   2.3. [Core Utilities](#23-core-utilities)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3.1. [common.sh](#231-commonsh)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3.2. [common-utils.sh](#232-common-utilssh)<br>
+   2.4. [Documentation Generators](#24-documentation-generators)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.4.1. [gendocx.sh](#241-gendocxsh)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.4.2. [genpdf.sh](#242-genpdfsh)<br>
+
+3. [Script-Based Access Control](#3-script-based-access-control)<br>
+   3.1. [Role Permissions Matrix](#31-role-permissions-matrix)<br>
+   3.2. [Protected Script Rule](#32-protected-script-rule)<br>
+
+4. [Environment Variables](#4-environment-variables)<br>
+   4.1. [GitHub Actions Environment](#41-github-actions-environment)<br>
+   4.2. [Custom Variables](#42-custom-variables)<br>
+
+5. [Exit Codes](#5-exit-codes)<br>
+   5.1. [Common Exit Codes](#51-common-exit-codes)<br>
+   5.2. [Script-Specific Codes](#52-script-specific-codes)<br>
+
+6. [Troubleshooting](#6-troubleshooting)<br>
+   6.1. [Common Issues](#61-common-issues)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;6.1.1. [Branch Creation Fails](#611-branch-creation-fails)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;6.1.2. [Version Check Fails](#612-version-check-fails)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;6.1.3. [Permission Denied](#613-permission-denied)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;6.1.4. [Role Check Fails for Known Approver/Reviewer](#614-role-check-fails-for-known-approverreviewer)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;6.1.5. [Git Command Failures](#615-git-command-failures)<br>
 </details>
 
+<details>
+<summary><strong>1. scripts/bin/</strong></summary>
 
-## Helper Scripts
+## 1. scripts/bin/
 
-Helper scripts located in `scripts/helpers/` are designed to be sourced or called by other scripts and workflows.
+Standalone executable scripts located in `scripts/bin/`. For full usage
+information, run any script with `-h` or `--help`.
 
-### ckbranchname.sh
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.1. Workflow Management</summary>
+
+### 1.1. Workflow Management
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.1. chbranch</summary>
+
+#### 1.1.1 chbranch
+
+**Purpose:** Change to specified local branch as current branch.
+
+**Usage:**
+
+```bash
+chbranch BRANCH
+```
+
+**Notes:**
+
+- Blocks checkout to `main` (remote-only branch)
+- Creates local tracking branch if it doesn't exist
+- Can include cached remote-only branches
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.2. commit</summary>
+
+#### 1.1.2. commit
+
+**Purpose:** Commit changes with optional push to remote.
+
+**Usage:**
+
+```bash
+commit [OPTIONS]
+```
+
+**Options:**
+
+- `-p, --push` - Push after commit
+- `-m, --message <msg>` - Custom commit message
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.3. copyfix</summary>
+
+#### 1.1.3. copyfix
+
+**Purpose:** Cherry-pick fix commits from another branch into current branch.
+
+**Usage:**
+
+```bash
+copyfix <source_branch> [<commit_hash>]
+```
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.4. feedback</summary>
+
+#### 1.1.4. feedback
+
+**Purpose:** View and respond to pull request review feedback.
+
+**Usage:**
+
+```bash
+feedback [OPTIONS]
+```
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.5. lsbranch</summary>
+
+#### 1.1.5. lsbranch
+
+**Purpose:** List branches and their status information.
+
+**Usage:**
+
+```bash
+lsbranch [<pattern>]
+```
+
+**Arguments:**
+
+- `<pattern>` - Optional: Branch name pattern to filter
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.6. lsbranchlog</summary>
+
+#### 1.1.6. lsbranchlog
+
+**Purpose:** Query branch history log entries.
+
+**Usage:**
+
+```bash
+lsbranchlog [OPTIONS] [<pattern>]
+```
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.7. mkbranch</summary>
+
+#### 1.1.7. mkbranch
+
+**Purpose:** Create branches with policy validation and proper naming.
+
+**Usage:**
+
+```bash
+mkbranch -r BRANCH [PARENTBRANCH]
+```
+
+**Arguments:**
+
+- `-r` - Create the branch (required)
+- `BRANCH` - Name for the new branch
+- `PARENTBRANCH` - Parent branch (if BRANCH is a targeted branch, defaults
+  to version branch corresponding to the target version BRANCH; otherwise,
+  otherwise, PARENTBRANCH must be specified).
+
+**Branch Naming Guide:**
+
+- **Contributor:** `[<type>/]<description>` (type: dev, fix, feature, docs)
+- **Targeted:** `dev/<description>-<version>` or `fix/<description>-<version>`
+- **Version:** `v<M>.<m>.<p>` (approvers only)
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. mrgbranch</summary>
+
+#### 1.1.8. mrgbranch
+
+**Purpose:** Fetch and pull latest changes from remote into local branch.
+
+**Usage:**
+
+```bash
+mrgbranch [BRANCHNAME]
+```
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.9. mrgdown</summary>
+
+#### 1.1.9. mrgdown
+
+**Purpose:** Merge parent branch into current branch to sync changes.
+
+**Usage:**
+
+```bash
+mrgdown [OPTIONS]
+```
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.10. mrgup</summary>
+
+#### 1.1.10. mrgup
+
+**Purpose:** Merge current branch to its inferred parent branch.
+
+**Usage:**
+
+```bash
+mrgup [OPTIONS]
+```
+
+**Options:**
+
+- `-m, --message <msg>` - Custom merge message
+- `-v, --verbose` - Verbose output
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.11 release</summary>
+
+#### 1.1.11. release
+
+**Purpose:** Create and publish releases for the repository.
+
+**Usage:**
+
+```bash
+release <version> [OPTIONS]
+```
+
+**Notes:**
+
+- Approver role required
+- Creates version branch and tags
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.12. retarget</summary>
+
+#### 1.1.12. retarget
+
+**Purpose:** Retarget a targeted branch to a different version branch.
+
+**Usage:**
+
+```bash
+retarget <branch_name> <new_version>
+```
+
+**Notes:**
+
+- Renames targeted branch with new version
+- Approver role required
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.13. review</summary>
+
+#### 1.1.13. review
+
+**Purpose:** Create or update a pull request for code review.
+
+**Usage:**
+
+```bash
+review [OPTIONS]
+```
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.14. rmbranch</summary>
+
+#### 1.1.14. rmbranch
+
+**Purpose:** Safely remove local and/or remote branches with validation.
+
+**Usage:**
+
+```bash
+rmbranch <branch_name> [OPTIONS]
+```
+
+**Protected Branches (Cannot Delete):**
+
+- `main` (remote-only base branch)
+- `v*` (version branches)
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.15. undo</summary>
+
+#### 1.1.15. undo
+
+**Purpose:** Undo recent merge, release, or commit operations.
+
+**Usage:**
+
+```bash
+undo [OPTIONS]
+```
+</details>
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.2. Repository and Clone Management</summary>
+
+### 1.2. Repository and Clone Management
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. fixrepo</summary>
+
+#### 1.2.1. fixrepo
+
+**Purpose:** Verify repository/clone integrity and run safe cleanup fixes.
+
+**Usage:**
+
+```bash
+fixrepo [OPTIONS]
+```
+
+**Functions:**
+
+- Verify repository structure
+- Run post-cleanup checks
+- Generate health report
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. installscripts</summary>
+
+#### 1.2.2. installscripts
+
+**Purpose:** Install and setup all scripts in `scripts/bin/`.
+
+**Usage:**
+
+```bash
+bash scripts/bin/installscripts [OPTIONS]
+```
+
+**Functions:**
+
+- Make all scripts executable
+- Add `scripts/bin/` to PATH in `~/.bashrc`
+- Load configuration immediately
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. mkclone</summary>
+
+#### 1.2.3. mkclone
+
+**Purpose:** Clone the repository with optional target naming.
+
+**Usage:**
+
+```bash
+mkclone [<target_name>]
+```
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. mkfork</summary>
+
+#### 1.2.4. mkfork
+
+**Purpose:** Create a fork of the repository and optionally configure upstream.
+
+**Usage:**
+
+```bash
+mkfork [OPTIONS]
+```
+
+**Options:**
+
+- Upstream remote configuration
+- User as approver setup
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. rmclone</summary>
+
+#### 1.2.5. rmclone
+
+**Purpose:** Safely remove a local clone with validation checks.
+
+**Usage:**
+
+```bash
+rmclone <clone_path> [OPTIONS]
+```
+
+**Options:**
+
+- `-f, --force` - Override validation checks
+</details>
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;1.3. Documentation and Branding</summary>
+
+### 1.3. Documentation and Branding
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.1. ckstyle</summary>
+
+#### 1.3.1. ckstyle
+
+**Purpose:** Validate style guidelines for documentation, code, scripts, and versions.
+
+**Usage:**
+
+```bash
+ckstyle [OPTIONS]
+```
+
+**Options:**
+
+- `-d` - Run document checks
+- `-r` - Run directory guide checks
+- `-v` - Run version consistency checks
+
+**Validation Coverage:**
+
+- Markdown document formatting
+- Front matter structure
+- Details/summary pairing
+- Heading numbering
+- ASCII-only content
+- Document version history
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.2. gendocs</summary>
+
+#### 1.3.2. gendocs
+
+**Purpose:** Generate PDF and DOCX documentation from Markdown sources.
+
+**Usage:**
+
+```bash
+gendocs [OPTIONS]
+```
+
+**Output:** Generated documents in `build/` directory
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.3. genpngs</summary>
+
+#### 1.3.3. genpngs
+
+**Purpose:** Generate PNG branding images from SVG source files.
+
+**Usage:**
+
+```bash
+genpngs [<svg_file_or_dir>]
+```
+
+**Arguments:**
+
+- `<svg_file_or_dir>` - Optional: Specific SVG or directory (default: `docs/branding/`)
+
+**Requirements:**
+
+- `inkscape` or `convert` command-line tools
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.4. rebrand</summary>
+
+#### 1.3.4. rebrand
+
+**Purpose:** Update brand name, initials, and tagline across the repository.
+
+**Usage:**
+
+```bash
+rebrand [OPTIONS]
+```
+
+**Workflow:**
+
+1. Edit `logs/brand_history.md` with new brand values
+2. Run script to update all references
+3. Regenerates related branding assets
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.5. replacetext</summary>
+
+#### 1.3.5. replacetext
+
+**Purpose:** Apply configured text replacements in markdown files.
+
+**Usage:**
+
+```bash
+replacetext [OPTIONS]
+```
+</details>
+</details>
+</details>
+
+<details>
+<summary><strong>2. scripts/helpers/</strong></summary>
+
+## 2. scripts/helpers/
+
+Helper modules and utilities located in `scripts/helpers/` designed to
+be sourced or called by other scripts and workflows.
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1. Validation Helpers</summary>
+
+### 2.1. Validation Helpers
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.1. ckbranchname.sh</summary>
+
+#### 2.1.1. ckbranchname.sh
 
 **Purpose:** Validates branch names against repository naming conventions.
-
-**Location:** `scripts/helpers/ckbranchname.sh`
 
 **Usage:**
 
@@ -87,59 +631,31 @@ Helper scripts located in `scripts/helpers/` are designed to be sourced or calle
 bash scripts/helpers/ckbranchname.sh "<branch_name>"
 ```
 
-**Arguments:**
-
-- `<branch_name>` - The branch name to validate
-
 **Exit Codes:**
 
-- `0` - Script execution succeeded (used with `echo $?`)
-- `1` - Valid main branch name (remote-only branch base)
-- `2` - Valid version branch (format: v<M>.<m>.0)
-- `3` - Valid targeted branch (format: dev/<desc>-<version> or fix/<desc>-<version>)
-- `4` - Valid contributor branch (format: [<type>/]<description>)
+- `1` - Valid main branch name
+- `2` - Valid version branch (format: `v<M>.<m>.<p>`)
+- `3` - Valid targeted branch (format: `dev/<desc>-<version>` or `fix/<desc>-<version>`)
+- `4` - Valid contributor branch (format: `[<type>/]<description>`)
 - `5` - Invalid branch name
-
-**Examples:**
-
-```bash
-# Check main branch name
-bash scripts/helpers/ckbranchname.sh "main"
-# Exit code: 1
-
-# Check version branch
-bash scripts/helpers/ckbranchname.sh "v1.0.0"
-# Exit code: 2
-
-# Check targeted branch
-bash scripts/helpers/ckbranchname.sh "dev/fix-parser-v1.0.0"
-# Exit code: 3
-
-# Check contributor branch
-bash scripts/helpers/ckbranchname.sh "mywork/feature-name"
-# Exit code: 4
-
-# Check invalid branch
-bash scripts/helpers/ckbranchname.sh "INVALID_NAME"
-# Exit code: 5
-```
 
 **Branch Type Codes:**
 
 | Code | Type | Format | Purpose |
 |------|------|--------|----------|
-| 1 | main | `main` | Protected main branch name (managed remotely) |
-| 2 | version | `v<M>.<m>.0` | Protected version branch |
-| 3 | targeted | `dev/fix/<desc>-<version>` | Target-specific work branch |
+| 1 | main | `main` | Remote-only base branch |
+| 2 | version | `v<M>.<m>.<p>` | Protected version branch |
+| 3 | targeted | `dev/fix/<desc>-<version>` | Target-specific work |
 | 4 | contributor | `[<type>/]<description>` | General work branch |
 | 5 | invalid | Any other | Invalid naming |
+</details>
 
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.2. ckrole.sh</summary>
 
-### ckrole.sh
+#### 2.1.2. ckrole.sh
 
 **Purpose:** Validates user roles and permissions.
-
-**Location:** `scripts/helpers/ckrole.sh`
 
 **Usage:**
 
@@ -156,307 +672,189 @@ bash scripts/helpers/ckrole.sh "<role>"
 - `0` - User has the specified role
 - `1` - User does not have the role
 
-**Environment Variables:**
-
-- `GITHUB_ACTOR` - GitHub username (preferred identity source)
-- `CKROLE_TRUSTED_ACTORS` - Comma-separated list of allowed bot accounts
-
 **Identity Resolution Order:**
 
-1. `GITHUB_ACTOR`
-2. `gh api user --jq '.login'` (if authenticated)
+1. `GITHUB_ACTOR` environment variable
+2. `gh api user --jq '.login'` (GitHub CLI)
 3. `git config user.name`
-4. `USER`
+4. `USER` environment variable
 
-If the resolved value is not a valid GitHub login format, role checks fail.
+**Environment Variables:**
 
-**Examples:**
+- `GITHUB_ACTOR` - GitHub username (preferred)
+- `CKROLE_TRUSTED_ACTORS` - Comma-separated allowed bot accounts
+</details>
 
-```bash
-# Check if user is contributor
-bash scripts/helpers/ckrole.sh contributor
-# Exit code: 0 or 1
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.3. rbac.sh</summary>
 
-# Check if user is approver
-bash scripts/helpers/ckrole.sh approver
-# Exit code: 0 or 1
-```
+#### 2.1.3. rbac.sh
 
+**Purpose:** Role-based access control implementation for script execution.
 
-### validate-format.sh
+**Functions:**
 
-**Purpose:** Validates code formatting using clang-format.
+- User role verification
+- Permission enforcement
+- Policy validation
+</details>
 
-**Location:** `scripts/helpers/validate-format.sh`
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.4. validation-helpers.sh</summary>
 
-**Usage:**
+### 2.1.4. validation-helpers.sh
 
-```bash
-bash scripts/helpers/validate-format.sh [<file_or_dir>]
-```
+**Purpose:** General validation utility functions for scripts.
 
-**Arguments:**
+**Functions:**
 
-- `<file_or_dir>` - Optional: File or directory to check (default: current directory)
+- Input validation
+- Format checking
+- State verification
+</details>
+</details>
 
-**Exit Codes:**
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.2. Git and GitHub Helpers</summary>
 
-- `0` - All files properly formatted
-- `1` - Formatting issues found
+### 2.2. Git and GitHub Helpers
 
-**Examples:**
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.1. git_helpers.sh</summary>
 
-```bash
-# Check all C/C++ files
-bash scripts/helpers/validate-format.sh
+#### 2.2.1. git_helpers.sh
 
-# Check specific file
-bash scripts/helpers/validate-format.sh src/runner.c
+**Purpose:** Shared Git branch and repository operation helpers.
 
-# Check directory
-bash scripts/helpers/validate-format.sh src/
-```
+**Functions:**
 
+- Branch lookup and resolution
+- Parent branch detection
+- Protected branch checks
+- Git state operations
+</details>
 
-## Binary Scripts
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.2. github_helpers.sh</summary>
 
-Binary scripts located in `scripts/bin/` are standalone executables.
+#### 2.2.2. github_helpers.sh
 
-### mkbranch
+**Purpose:** Shared GitHub CLI pull-request and status helpers.
 
-**Purpose:** Creates and sets up a new branch with proper naming.
+**Functions:**
 
-**Location:** `scripts/bin/mkbranch`
+- PR lookup and status
+- Status check validation
+- Approver verification
+- GitHub API integration
+</details>
 
-**Usage:**
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.3. history_log.sh</summary>
 
-```bash
-scripts/bin/mkbranch -r <branch_name> [<base_branch>]
-```
+#### 2.2.3. history_log.sh
 
-**Arguments:**
+**Purpose:** Shared branch-history markdown logging helpers.
 
-- `-r` - Create the branch (required)
-- `<branch_name>` - Name for the new branch
-- `<base_branch>` - Base branch to create from (default: `main`, resolved from `origin/main` when local `main` is absent)
+**Functions:**
 
-**Exit Codes:**
+- Log merge operations
+- Track branch modifications
+- Generate history reports
+</details>
+</details>
 
-- `0` - Branch created successfully
-- `1` - Branch name invalid
-- `2` - Base branch not found
-- `3` - Branch already exists
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.3. Core Utilities</summary>
 
-**Examples:**
+### 2.3. Core Utilities
 
-```bash
-# Create contributor branch from main base
-scripts/bin/mkbranch -r mywork/feature main
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3.1. common.sh</summary>
 
-# Create targeted branch from version branch
-scripts/bin/mkbranch -r dev/fix-parser-v1.0.0 v1.0.0
+#### 2.3.1. common.sh
 
-# Create targeted fix branch
-scripts/bin/mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
-```
+**Purpose:** Shared output and branch-detection helpers for consistent messaging.
 
-**Branch Naming Guide:**
+**Functions:**
 
-- **Contributor:** `[<type>/]<description>` (type = dev, fix, feature, docs, etc.)
-- **Targeted:** `dev/<description>-<version>` or `fix/<description>-<version>`
-- **Version:** Created by approvers only
+- `bt_info()` - Print info message
+- `bt_success()` - Print success message
+- `bt_error_exit()` - Print error and exit
+- `bt_get_current_branch()` - Get current branch name
+- `ensure_hooks_installed()` - Verify/install Git hooks
+</details>
 
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3.2. common-utils.sh</summary>
 
-### rmbranch
+#### 2.3.2. common-utils.sh
 
-**Purpose:** Safely removes a branch with validation.
+**Purpose:** Common utility functions shared across scripts.
 
-**Location:** `scripts/bin/rmbranch`
+**Functions:**
 
-**Usage:**
+- Path manipulation
+- String utilities
+- File operations
+- General helpers
+</details>
+</details>
 
-```bash
-scripts/bin/rmbranch <branch_name>
-```
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.4. Documentation Generators</summary>
 
-**Arguments:**
+### 2.4. Documentation Generators
 
-- `<branch_name>` - Name of branch to remove
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.4.1. gendocx.sh</summary>
 
-**Exit Codes:**
+#### 2.4.1. gendocx.sh
 
-- `0` - Branch removed successfully
-- `1` - Protected branch (cannot delete)
-- `2` - Branch not found
-- `3` - Error during deletion
-
-**Examples:**
-
-```bash
-# Delete a contributor branch
-scripts/bin/rmbranch mywork/feature
-
-# Delete a targeted branch
-scripts/bin/rmbranch dev/fix-parser-v1.0.0
-```
-
-**Protected Branches (Cannot Delete):**
-
-- `main` (remote-only base branch)
-- `v*` (version branches)
-
-
-### mergetoparent
-
-**Purpose:** Merges the current source branch to its inferred parent branch using squash merge with policy checks.
-
-**Location:** `scripts/bin/mergetoparent`
+**Purpose:** Generate DOCX files from PDF sources.
 
 **Usage:**
 
 ```bash
-scripts/bin/mergetoparent [OPTIONS]
+bash scripts/helpers/gendocx.sh <pdf_file> [<output_file>]
 ```
-
-**Options:**
-
-- `-m, --message <msg>` - Use custom squash commit message
-- `-v, --verbose` - Verbose output
-- `-h, --help` - Show usage
-
-**Policy Notes:**
-
-- Protected parents (`main` as the remote-only base, and `v<M>.<m>.<p>`) are updated via `mergetoparent` only
-- If inferred parent is protected, approver role is required
-- Resolve parent/source conflicts in the source branch before running `mergetoparent`
-- Running from detached HEAD or a protected current branch is rejected
-
-**Examples:**
-
-```bash
-# Merge current branch to inferred parent using PR title
-scripts/bin/mergetoparent
-
-# Merge with explicit message
-scripts/bin/mergetoparent -m "Merge parser fixes"
-```
-
-
-### ckversions
-
-**Purpose:** Validates version consistency across all versioned files.
-
-**Location:** `scripts/bin/ckversions`
-
-**Usage:**
-
-```bash
-scripts/bin/ckversions [--check] [--update]
-```
-
-**Arguments:**
-
-- `--check` - Check version consistency (default)
-- `--update` - Update versions to be consistent
-
-**Exit Codes:**
-
-- `0` - Versions are consistent
-- `1` - Version inconsistency detected
-
-**Examples:**
-
-```bash
-# Check version consistency
-scripts/bin/ckversions
-
-# Check with detailed output
-scripts/bin/ckversions --check
-
-# Update versions (caution: advanced)
-scripts/bin/ckversions --update
-```
-
-**Versioned Files:**
-
-- `include/runnerapi.h` - Runner API header
-- `src/runnerapi.c` - Runner API implementation
-- `include/testapi.h` - Test API header
-- `src/testapi.c` - Test API implementation
-- `docs/md/*.md` - Documentation (excluding README.md)
-
-
-### updatebrand
-
-**Purpose:** Updates brand name, initials, and tagline across the repository.
-
-**Location:** `scripts/bin/updatebrand`
-
-**Usage:**
-
-```bash
-scripts/bin/updatebrand [-d] [-h]
-```
-
-**Arguments:**
-
-- `-d` - Dry run (show changes without applying)
-- `-h` - Show help
-
-**Exit Codes:**
-
-- `0` - Update completed successfully
-- `1` - Configuration error or failed update
-
-**Workflow:**
-
-1. Edit `logs/brand_history.md` with new brand values
-2. Run dry run: `scripts/bin/updatebrand -d`
-3. Review changes in `logs/updatebrand-log-dry-run-*.md`
-4. Apply: `scripts/bin/updatebrand`
-5. Verify with `git diff`
-
-
-### genpngs
-
-**Purpose:** Generates PNG files from SVG branding assets.
-
-**Location:** `scripts/bin/genpngs`
-
-**Usage:**
-
-```bash
-scripts/bin/genpngs [<svg_file_or_dir>]
-```
-
-**Arguments:**
-
-- `<svg_file_or_dir>` - Optional: Specific SVG or directory (default: docs/branding)
 
 **Requirements:**
 
-- `inkscape` or `convert` command-line tools
-- SVG source files in `docs/branding/`
+- PDF to DOCX conversion tools
+</details>
 
-**Examples:**
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.4.2. genpdf.sh</summary>
+
+#### 2.4.2. genpdf.sh
+
+**Purpose:** Generate PDF files from Markdown sources.
+
+**Usage:**
 
 ```bash
-# Generate all PNG files
-scripts/bin/genpngs
-
-# Generate from specific SVG
-scripts/bin/genpngs docs/branding/logo.svg
-
-# Generate from directory
-scripts/bin/genpngs docs/branding/
+bash scripts/helpers/genpdf.sh <markdown_file> [<output_file>]
 ```
 
+**Requirements:**
 
-## Script-Based Access Control
+- Markdown to PDF conversion tools (pandoc, etc.)
+</details>
+</details>
+</details>
+
+<details>
+<summary><strong>3. Script-Based Access Control</strong></summary>
+
+## 3. Script-Based Access Control
 
 Role-based script permissions are enforced by helper checks and protected script wrappers.
 
-### Role Permissions Matrix
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Role Permissions Matrix</summary>
+
+### 3.1. Role Permissions Matrix
 
 | Script Capability | Contributor (C) | Reviewer (R) | Approver (A) |
 |------------------|-----------------|--------------|--------------| 
@@ -464,8 +862,12 @@ Role-based script permissions are enforced by helper checks and protected script
 | Review operations (`mkfeedback`) | FAIL | PASS | PASS |
 | Retarget operations (`chtarget`) | FAIL | FAIL | PASS |
 | Protected operations (`mergetoparent`, `mkrelease`, `fixrepository`) | FAIL | FAIL | PASS (override required) |
+</details>
 
-### Protected Script Rule
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.2. Protected Script Rule</summary>
+
+### 3.2. Protected Script Rule
 
 Approver-only scripts require explicit override confirmation:
 
@@ -476,11 +878,18 @@ SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepository
 ```
 
 If override confirmation is missing, execution must fail by design.
+</details>
+</details>
 
+<details>
+<summary><strong>4. Environment Variables</strong></summary>
 
-## Environment Variables
+## 4. Environment Variables
 
-### GitHub Actions Environment
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;4.1. GitHub Actions Environment</summary>
+
+### 4.1. GitHub Actions Environment
 
 These variables are automatically set by GitHub Actions:
 
@@ -491,8 +900,12 @@ These variables are automatically set by GitHub Actions:
 | `GITHUB_REF_NAME` | Branch or tag name | `main`, `v1.0.0` |
 | `GITHUB_BASE_REF` | Target branch (PR only) | `main` |
 | `GITHUB_HEAD_REF` | Source branch (PR only) | `dev/feature-v1.0.0` |
+</details>
 
-### Custom Variables
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;4.2. Custom Variables</summary>
+
+### 4.2. Custom Variables
 
 Variables used by briteTest scripts:
 
@@ -504,29 +917,129 @@ Variables used by briteTest scripts:
 | `GITHUB_ACTOR` | Preferred GitHub login for role checks | Environment-specific |
 
 For role-gated scripts, ensure one of the supported identity sources resolves to a valid GitHub login in `config/contributors.md`.
+</details>
+</details>
 
+<details>
+<summary><strong>5. Exit Codes</strong></summary>
 
-## Exit Codes
+## 5. Exit Codes
 
-### Common Exit Codes
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.1. Common Exit Codes</summary>
+
+### 5.1. Common Exit Codes
+
+| Code | Common Meaning |
+|------|----------|
+| 0 | Success |
+| 1 | Argument/option error or validation failure |
+| 2 | Git operation failed or invalid usage |
+| 3 | Resource not found or operation not allowed |
+| 4 | Conflict detected or API error |
+| 5 | Permission/authorization error or operation failed |
+| 6+ | Script-specific errors (see individual script documentation) |
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.2. Script-Specific Codes</summary>
+
+### 5.2. Script-Specific Codes
+
+**ckstyle**
+
+| Code | Meaning |
+|------|----------|
+| 0 | Success (no validation issues) |
+| 1 | Invalid option or argument |
+| 2 | Validation issues found |
+
+**commit**
 
 | Code | Meaning |
 |------|----------|
 | 0 | Success |
-| 1 | General failure / validation failure |
-| 2 | Not found / missing argument |
-| 3 | Already exists / conflict |
-| 4 | Permission denied |
-| 5 | Invalid format |
+| 1 | Invalid option or argument |
+| 2 | Could not detect current branch |
+| 3 | Not on a local branch |
+| 5 | Current branch is protected |
+| 6 | Commit message missing |
+| 7 | Commit message empty |
+| 8 | Contributors list missing |
+| 9 | Could not detect GitHub identity |
+| 10 | Not authorized for commit |
+| 11 | Could not inspect working tree |
+| 12 | Could not stage or commit changes |
+| 14 | Push failed |
+| 15 | Branch divergence not auto-resolved |
 
-### Script-Specific Codes
+**mkbranch**
 
-See individual script sections for detailed exit code meanings.
+| Code | Meaning |
+|------|----------|
+| 0 | Success |
+| 1 | Arguments/options invalid |
+| 2 | Invalid branch name |
+| 3 | Invalid option |
+| 4 | Conflicting options |
+| 5 | Git operation failed |
+| 6 | Local parent branch doesn't exist |
+| 7 | Remote parent branch doesn't exist |
+| 8 | Local branch already exists |
+| 9 | Remote branch already exists |
+| 10 | Validation failed |
 
+**rmbranch**
 
-## Troubleshooting
+| Code | Meaning |
+|------|----------|
+| 0 | Success |
+| 1 | Argument error |
+| 2 | Git operation failed |
+| 3 | Branch does not exist |
+| 4 | Local deleted, remote protected |
+| 5 | Remote branch is protected |
+| 6 | Branch has unmerged commits |
+| 7 | User not authorized |
+| 8 | Local deletion blocked |
 
-### Common Issues
+**review**
+
+| Code | Meaning |
+|------|----------|
+| 0 | Success |
+| 1 | Argument or validation error |
+| 2 | Git operation failed |
+| 3 | Cannot create PR from main branch |
+| 4 | GitHub API error |
+| 5 | Configuration error |
+
+**chbranch**
+
+| Code | Meaning |
+|------|----------|
+| 0 | Success |
+| 1 | Argument or validation error |
+| 2 | Branch already current |
+| 3 | Branch does not exist |
+| 4 | Remote branch does not exist |
+| 5 | Branch operation failed |
+| 6 | Current branch is dirty |
+| 7 | Remote branch unreachable |
+
+For other scripts, run with `-h` or `--help` to view exit code documentation.
+</details>
+</details>
+
+<details>
+<summary><strong>6. Troubleshooting</strong></summary>
+
+## 6. Troubleshooting
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;6.1. Common Issues</summary>
+
+### 6.1. Common Issues
 
 #### Branch Creation Fails
 
@@ -581,10 +1094,5 @@ chmod +x scripts/bin/* scripts/helpers/*
 2. Verify git is initialized: `ls -la .git`
 3. Fetch latest refs: `git fetch --all`
 4. Try command again
-
-
-## Related Documentation
-
-- [Contributor_Guide.md](./Contributor_Guide.md) - Main contribution guide
-- [README.md](../../README.md) - Project overview
-- Branch naming workflow examples in Contributor_Guide.md
+</details>
+</details>

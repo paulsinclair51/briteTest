@@ -283,6 +283,16 @@ VERBOSE=0
 COMMENT=""
 EXPLICIT_LOCAL_MODE=0
 
+readonly EXIT_INVALID_ARGUMENT=1
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
 log_verbose() {
   if [[ "$VERBOSE" -eq 1 ]]; then
     echo "[verbose] $*"
@@ -526,7 +536,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        error_exit 1 "Option -m requires a message argument" "" "" ""
+        usage_error "Option -m requires a message argument" "" "" ""
       fi
       if [[ -n "$COMMENT" ]]; then
         error_exit 4 "Cannot use both -m and -- for comment" "" "" ""
@@ -555,7 +565,7 @@ while [[ $# -gt 0 ]]; do
       break
       ;;
     -*)
-      error_exit 3 "Unknown option: $1" "" "" ""
+      usage_error "Unknown option: $1"
       ;;
     *)
       # Positional argument
@@ -570,7 +580,7 @@ set -- "${POSITIONAL_ARGS[@]}"
 
 # Check that we have 1-2 positional arguments
 if [[ $# -lt 1 || $# -gt 2 ]]; then
-  error_exit 1 \
+  usage_error \
     "Expected 1 or 2 arguments (newbranch [parentbranch]), got $#" \
     "" "" ""
 fi
@@ -588,7 +598,7 @@ if is_valid_version "$BRANCHNAME"; then
   if [[ -z "$PARENTBRANCHNAME" ]]; then
     PARENTBRANCHNAME="main"
   elif [[ "$PARENTBRANCHNAME" != "main" ]]; then
-    error_exit 1 \
+    usage_error \
       "When newbranch is a version branch, parentbranch must be 'main'" \
       "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
@@ -601,7 +611,7 @@ elif is_targeted_branch_name "$BRANCHNAME"; then
   if [[ -z "$PARENTBRANCHNAME" ]]; then
     PARENTBRANCHNAME="$TARGET_VERSION"
   elif [[ "$PARENTBRANCHNAME" != "$TARGET_VERSION" ]]; then
-    error_exit 1 \
+    usage_error \
       "When newbranch is a targeted branch, parentbranch must match " \
       "its target version '$TARGET_VERSION'" \
       "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
@@ -609,14 +619,14 @@ elif is_targeted_branch_name "$BRANCHNAME"; then
 elif is_contributor_branch_name "$BRANCHNAME"; then
   BRANCH_TYPE="contributor"
   if [[ -z "$PARENTBRANCHNAME" ]]; then
-    error_exit 1 \
+    usage_error \
       "When newbranch is a contributor branch, parentbranch is " \
       "required" \
       "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
   if ! is_targeted_branch_name "$PARENTBRANCHNAME" && \
       ! is_contributor_branch_name "$PARENTBRANCHNAME"; then
-    error_exit 1 \
+    usage_error \
       "For contributor branches, parentbranch must be a targeted " \
       "or contributor branch" \
       "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
@@ -635,7 +645,7 @@ log_verbose "Branch type: $BRANCH_TYPE"
 
 # Validate branch name format (basic validation)
 if [[ -z "$BRANCHNAME" ]]; then
-  error_exit 1 "Branch name cannot be empty" "$BRANCHNAME" \
+  usage_error "Branch name cannot be empty" "$BRANCHNAME" \
     "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 
@@ -656,7 +666,7 @@ fi
 
 CURRENT_USER="$(git config user.name 2>/dev/null || true)"
 if [[ -z "$CURRENT_USER" ]]; then
-  error_exit 1 "Failed to determine current user from git config " \
+  usage_error "Failed to determine current user from git config " \
     "user.name" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 

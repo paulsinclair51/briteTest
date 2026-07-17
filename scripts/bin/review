@@ -108,6 +108,20 @@ source "$SCRIPT_DIR/../helpers/history_log.sh"
 # Propagate repository history from remote if available
 bt_propagate_repository_history >/dev/null 2>&1
 
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_FOUND=2
+readonly EXIT_OPERATION_FAILED=3
+readonly EXIT_CONFIG_ERROR=4
+readonly EXIT_INTERNAL_ERROR=100
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
 # Default options
 DRAFT=false
 VERBOSE=false
@@ -124,13 +138,13 @@ get_target_branch() {
   
   # Cannot create PR from main
   if [[ "$current_branch" == "main" ]]; then
-    bt_error_exit 3 "Cannot create PR from main branch"
+    bt_error_exit "$EXIT_OPERATION_FAILED" "Cannot create PR from main branch"
   fi
   
   local target_branch
   target_branch=$(bt_resolve_target_branch_from_fork_point \
     "$current_branch" "main") || {
-    bt_error_exit 2 "Failed to determine target branch"
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine target branch"
   }
 
   echo "$target_branch"
@@ -170,7 +184,7 @@ extract_reviewers_from_config() {
   local config_file="config/contributors.md"
   
   if [[ ! -f "$config_file" ]]; then
-    bt_error_exit 5 "Configuration file not found: $config_file"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "Configuration file not found: $config_file"
   fi
   
   # Extract all R/ and A/ entries, format: [R/]name or [A/]name
@@ -181,7 +195,7 @@ extract_reviewers_from_config() {
     tr '\n' ',' | sed 's/,$//')
   
   if [[ -z "$reviewers" ]]; then
-    bt_error_exit 5 "No reviewers or approvers found in $config_file" \
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "No reviewers or approvers found in $config_file" \
       "(need at least one A/ entry)"
   fi
   
@@ -197,17 +211,17 @@ while [[ $# -gt 0 ]]; do
       ;;
     -t | --title)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -t requires a title argument"
+        usage_error "Option -t requires a title argument"
       fi
       CUSTOM_TITLE="$2"
       shift 2
       ;;
     -d | --description)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -d requires a description argument"
+        usage_error "Option -d requires a description argument"
       fi
       if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
-        bt_error_exit 1 "Cannot use both -d and -- for description"
+        usage_error "Cannot use both -d and -- for description"
       fi
       CUSTOM_DESCRIPTION="$2"
       shift 2
@@ -218,14 +232,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     -l | --labels)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -l requires labels argument"
+        usage_error "Option -l requires labels argument"
       fi
       LABELS="$2"
       shift 2
       ;;
     -a | --assignees)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -a requires assignees argument"
+        usage_error "Option -a requires assignees argument"
       fi
       ASSIGNEES="$2"
       shift 2
@@ -243,23 +257,23 @@ while [[ $# -gt 0 ]]; do
       # Unix-style description: everything after -- is the description
       shift
       if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
-        bt_error_exit 1 "Cannot use both -d and -- for description"
+        usage_error "Cannot use both -d and -- for description"
       fi
       CUSTOM_DESCRIPTION="$*"
       break
       ;;
     -*)
-      bt_error_exit 1 "Unknown option: $1"
+      usage_error "Unknown option: $1"
       ;;
     *)
-      bt_error_exit 1 "Unknown argument: $1"
+      usage_error "Unknown argument: $1"
       ;;
   esac
 done
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
-  bt_error_exit 2 "Failed to determine current branch")
+  bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
 
 # Determine target branch
@@ -290,36 +304,36 @@ if [[ -n "$EXISTING_PR" ]]; then
   
   # Update title
   gh pr edit "$EXISTING_PR" --title "$TITLE" 2>&1 || \
-    bt_error_exit 4 "Failed to update PR title"
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to update PR title"
   
   # Update description if provided
   if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
     gh pr edit "$EXISTING_PR" --body "$CUSTOM_DESCRIPTION" 2>&1 || \
-      bt_error_exit 4 "Failed to update PR description"
+      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to update PR description"
   fi
   
   # Update labels if provided
   if [[ -n "$LABELS" ]]; then
     gh pr edit "$EXISTING_PR" --add-label "$LABELS" 2>&1 || \
-      bt_error_exit 4 "Failed to add labels"
+      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to add labels"
   fi
   
   # Update assignees if provided
   if [[ -n "$ASSIGNEES" ]]; then
     gh pr edit "$EXISTING_PR" --add-assignee "$ASSIGNEES" 2>&1 || \
-      bt_error_exit 4 "Failed to add assignees"
+      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to add assignees"
   fi
   
   # Update reviewers from config
   gh pr edit "$EXISTING_PR" --add-reviewer "$REVIEWERS" 2>&1 || \
-    bt_error_exit 4 "Failed to add reviewers"
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to add reviewers"
   
   # Check if PR is draft and mark ready if not using --draft flag
   CURRENT_DRAFT_STATUS=$(get_pr_draft_status "$EXISTING_PR")
   if [[ "$CURRENT_DRAFT_STATUS" == "true" ]] && [[ "$DRAFT" == false ]]; then
     bt_info "Marking PR as ready for review..."
     gh pr ready "$EXISTING_PR" 2>&1 || \
-      bt_error_exit 4 "Failed to mark PR as ready"
+      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to mark PR as ready"
   fi
   
   bt_success "PR #$EXISTING_PR updated"
@@ -353,13 +367,13 @@ else
   
   # Execute command and capture PR number
   pr_url=""
-  pr_url=$(eval "$create_cmd" 2>&1) || bt_error_exit 4 "Failed to create PR"
+  pr_url=$(eval "$create_cmd" 2>&1) || bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to create PR"
   
   # Extract PR number from URL
   EXISTING_PR=$(echo "$pr_url" | grep -oP '#\K[0-9]+' | head -1)
   
   if [[ -z "$EXISTING_PR" ]]; then
-    bt_error_exit 4 "Failed to extract PR number from response"
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to extract PR number from response"
   fi
   
   if [[ "$DRAFT" == true ]]; then

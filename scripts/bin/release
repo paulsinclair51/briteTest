@@ -83,6 +83,20 @@ source "$SCRIPT_DIR/../helpers/github_helpers.sh"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
 
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_FOUND=2
+readonly EXIT_OPERATION_FAILED=3
+readonly EXIT_CONFIG_ERROR=4
+readonly EXIT_INTERNAL_ERROR=100
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
 # Default options
 VERBOSE=false
 VERSION=""
@@ -90,12 +104,12 @@ VERSION=""
 
 get_current_user() {
   git config user.name 2>/dev/null || \
-    bt_error_exit 2 "Failed to determine current user"
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current user"
 }
 
 check_working_directory_clean() {
   if ! git diff-index --quiet HEAD --; then
-    bt_error_exit 3 "Working directory has uncommitted changes." \
+    bt_error_exit "$EXIT_OPERATION_FAILED" "Working directory has uncommitted changes." \
       "Commit or stash them first."
   fi
 }
@@ -173,13 +187,13 @@ check_status_checks() {
       return 0
       ;;
     PENDING)
-      bt_error_exit 5 "Status checks still pending"
+      bt_error_exit "$EXIT_INTERNAL_ERROR" "Status checks still pending"
       ;;
     FAILURE)
-      bt_error_exit 5 "Status checks failed"
+      bt_error_exit "$EXIT_INTERNAL_ERROR" "Status checks failed"
       ;;
     *)
-      bt_error_exit 5 "Unknown status check state: $status_state"
+      bt_error_exit "$EXIT_INTERNAL_ERROR" "Unknown status check state: $status_state"
       ;;
   esac
 }
@@ -189,7 +203,7 @@ validate_version() {
   
   # Check version format (v1.2.3 or 1.2.3)
   if ! [[ "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    bt_error_exit 1 "Invalid version format: $version" \
+    usage_error "Invalid version format: $version" \
       "(expected: v1.2.3 or 1.2.3)"
   fi
 }
@@ -207,12 +221,12 @@ create_annotated_tag() {
   
   # Check tag doesn't already exist
   if tag_exists "$tag"; then
-    bt_error_exit 7 "Tag already exists: $tag"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "Tag already exists: $tag"
   fi
   
   # Create annotated tag
   if ! git tag -a "$tag" -m "Release $tag by $user" 2>&1; then
-    bt_error_exit 2 "Failed to create tag"
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to create tag"
   fi
   
   bt_success "Tag created: $tag"
@@ -224,7 +238,7 @@ push_tag() {
   bt_info "Pushing tag to remote..."
   
   if ! git push origin "$tag" 2>&1; then
-    bt_error_exit 2 "Failed to push tag"
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to push tag"
   fi
   
   bt_success "Tag pushed: $tag"
@@ -236,7 +250,7 @@ create_github_release() {
   bt_info "Creating GitHub release: $tag"
   
   if ! gh release create "$tag" --title "$tag" --notes "" 2>&1; then
-    bt_error_exit 6 "Failed to create GitHub release"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "Failed to create GitHub release"
   fi
   
   bt_success "GitHub release created: $tag"
@@ -316,14 +330,14 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -*)
-      bt_error_exit 1 "Unknown option: $1"
+      usage_error "Unknown option: $1"
       ;;
     *)
       if [[ -z "$VERSION" ]]; then
         VERSION="$1"
         shift
       else
-        bt_error_exit 1 "Unexpected argument: $1"
+        usage_error "Unexpected argument: $1"
       fi
       ;;
   esac
@@ -331,7 +345,7 @@ done
 
 # Validate version provided
 if [[ -z "$VERSION" ]]; then
-  bt_error_exit 1 "VERSION argument required"
+  usage_error "VERSION argument required"
 fi
 
 # Validate version format
@@ -346,7 +360,7 @@ bt_info "Release version: $VERSION"
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
-  bt_error_exit 2 "Failed to determine current branch")
+  bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
 
 # Get current user
@@ -355,7 +369,7 @@ bt_info "Current user: $CURRENT_USER"
 
 # Check if on a protected branch.
 if ! is_protected_branch "$CURRENT_BRANCH"; then
-  bt_error_exit 4 "Can only release from a protected branch" \
+  bt_error_exit "$EXIT_CONFIG_ERROR" "Can only release from a protected branch" \
     "(base is remote-only main). Current branch: $CURRENT_BRANCH"
 fi
 bt_success "On valid release branch"

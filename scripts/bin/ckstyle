@@ -31,16 +31,24 @@ Behavior:
 
 Exit codes:
   0  Success (no issues found).
-  1  Validation issues found.
-  2  Invalid usage.
+  1  Invalid option or argument.
+  2  Validation issues found.
 USAGE
 }
 
 set -euo pipefail
 
-readonly EXIT_OK=0
-readonly EXIT_VALIDATION=1
-readonly EXIT_USAGE=2
+readonly EXIT_SUCCESS=0
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_VALIDATION_FAILED=100
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
 
 CHECK_DOCUMENTS_FLAG=false
 CHECK_GUIDES_FLAG=false
@@ -49,7 +57,7 @@ CHECK_VERSIONS_FLAG=false
 for arg in "$@"; do
   if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
     usage
-    exit "$EXIT_OK"
+    exit "$EXIT_SUCCESS"
   fi
 done
 
@@ -68,30 +76,28 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     *)
-      echo "ERROR: unknown argument: $1" >&2
-      usage >&2
-      exit "$EXIT_USAGE"
+      usage_error "Unknown option: $1"
       ;;
   esac
 done
 
 if ! $CHECK_DOCUMENTS_FLAG && ! $CHECK_GUIDES_FLAG && \
   ! $CHECK_VERSIONS_FLAG; then
-  CHECK_DOCUMENTS=true
-  CHECK_GUIDES=true
-  CHECK_VERSIONS=true
-else
-  CHECK_DOCUMENTS=$CHECK_DOCUMENTS_FLAG
-  CHECK_GUIDES=$CHECK_GUIDES_FLAG
-  CHECK_VERSIONS=$CHECK_VERSIONS_FLAG
+  CHECK_DOCUMENTS_FLAG=true
+  CHECK_GUIDES_FLAG=true
+  CHECK_VERSIONS_FLAG=true
 fi
+
+CHECK_DOCUMENTS=$CHECK_DOCUMENTS_FLAG
+CHECK_GUIDES=$CHECK_GUIDES_FLAG
+CHECK_VERSIONS=$CHECK_VERSIONS_FLAG
 
 repo_root="$(cd "$(dirname "$0")/../../" && pwd)"
 cd "$repo_root"
 
 if [[ ! -d reports ]]; then
   echo "ERROR: reports directory not found: $repo_root/reports" >&2
-  exit "$EXIT_VALIDATION"
+  exit "$EXIT_VALIDATION_FAILED"
 fi
 
 # Propagate repository history from remote if available
@@ -240,6 +246,23 @@ doc_check_details_structure() {
           if (lines[i] ~ /^[[:space:]]*$/ && \
               lines[i + 1] ~ /^[[:space:]]*<\/details>(<br>)?[[:space:]]*$/) {
             print "blank line before </details> is not allowed"
+          }
+        }
+      }
+    ' "$file"
+  )
+
+  while IFS= read -r msg; do
+    [[ -n "$msg" ]] && add_issue "$file" "$msg"
+  done < <(
+    awk '
+      { lines[NR] = $0 }
+      END {
+        for (i = 2; i <= NR; i++) {
+          if (lines[i] ~ /^<details>$/) {
+            if (lines[i - 1] !~ /^[[:space:]]*$/) {
+              print "<details> must be preceded by a blank line"
+            }
           }
         }
       }
@@ -1363,9 +1386,9 @@ if [[ $TOTAL_ISSUES -gt 0 ]]; then
   echo "ERROR: validation failed with $TOTAL_ISSUES issue(s) across" \
     "${#ISSUE_FILES[@]} file(s)."
   echo "INFO: report written to $REPORT_FILE"
-  exit "$EXIT_VALIDATION"
+  exit "$EXIT_VALIDATION_FAILED"
 fi
 
 echo "INFO: all selected validations passed."
 echo "INFO: report written to $REPORT_FILE"
-exit "$EXIT_OK"
+exit "$EXIT_SUCCESS"

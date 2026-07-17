@@ -120,18 +120,18 @@ EOF
 
 set -euo pipefail
 
-EXIT_SUCCESS=0
-EXIT_ARG_ERROR=1
-EXIT_MISSING_FIND=2
-EXIT_MISSING_REPLACE=3
-EXIT_MAPPINGS_MISSING=4
-EXIT_MAPPINGS_INVALID=5
-EXIT_NOTHING_TO_REPLACE=6
-EXIT_RUNTIME_ERROR=7
+readonly EXIT_SUCCESS=0
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_MISSING_FIND=2
+readonly EXIT_MISSING_REPLACE=3
+readonly EXIT_MAPPINGS_MISSING=4
+readonly EXIT_MAPPINGS_INVALID=5
+readonly EXIT_NOTHING_TO_REPLACE=6
+readonly EXIT_RUNTIME_ERROR=200
 
 is_known_exit_status() {
 	case "$1" in
-		"$EXIT_SUCCESS"|"$EXIT_ARG_ERROR"|"$EXIT_MISSING_FIND"|"$EXIT_MISSING_REPLACE"|"$EXIT_MAPPINGS_MISSING"|"$EXIT_MAPPINGS_INVALID"|"$EXIT_NOTHING_TO_REPLACE"|"$EXIT_RUNTIME_ERROR")
+		"$EXIT_SUCCESS"|"$EXIT_INVALID_ARGUMENT"|"$EXIT_MISSING_FIND"|"$EXIT_MISSING_REPLACE"|"$EXIT_MAPPINGS_MISSING"|"$EXIT_MAPPINGS_INVALID"|"$EXIT_NOTHING_TO_REPLACE"|"$EXIT_RUNTIME_ERROR")
 			return 0
 			;;
 		*)
@@ -177,6 +177,14 @@ if [[ -f "$HISTORY_HELPER" ]]; then
     bt_propagate_repository_history >/dev/null 2>&1
   fi
 fi
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
 
 count_occurrences() {
 	local file="$1"
@@ -343,7 +351,7 @@ validate_regex_pattern() {
 		eval { qr/$pattern/; 1 } or die;
 	' >/dev/null 2>&1; then
 		echo "Error: Invalid regex FIND pattern: $pattern" >&2
-		exit "$EXIT_ARG_ERROR"
+		exit "$EXIT_INVALID_ARGUMENT"
 	fi
 }
 
@@ -374,8 +382,7 @@ while [[ $# -gt 0 ]]; do
 			show_regex_guide=1
 			;;
 		-*)
-			echo "Error: Unknown option: $1" >&2
-			exit "$EXIT_ARG_ERROR"
+			usage_error "Unknown option: $1"
 			;;
 		*)
 			positionals+=("$1")
@@ -436,7 +443,7 @@ if [[ "$direct_mode" == true ]]; then
 
 	if [[ ${#old_texts[@]} -eq 0 ]]; then
 		echo "Error: No valid FIND REPLACE mapping arguments provided." >&2
-		exit "$EXIT_ARG_ERROR"
+		exit "$EXIT_INVALID_ARGUMENT"
 	fi
 
 	echo "Loaded ${#old_texts[@]} direct replacement mapping(s) from arguments"

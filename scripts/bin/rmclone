@@ -65,13 +65,26 @@ COMMON_HELPER="$SCRIPT_DIR/../helpers/common.sh"
 
 if [[ ! -f "$COMMON_HELPER" ]]; then
   echo "Error: Required helper not found: $COMMON_HELPER" >&2
-  exit 1
+  exit "$EXIT_INVALID_ARGUMENT"
 fi
 
 # shellcheck source=helpers/common.sh
 source "$COMMON_HELPER"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
+
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_FOUND=2
+readonly EXIT_OPERATION_FAILED=3
+readonly EXIT_CONFIG_ERROR=4
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
 
 DRY_RUN=false
 OVERRIDE=false
@@ -215,7 +228,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -* )
-      bt_error_exit 1 "Unknown option: $1"
+      usage_error "Unknown option: $1"
       ;;
     *)
       POSITIONAL_ARGS+=("$1")
@@ -227,13 +240,13 @@ done
 set -- "${POSITIONAL_ARGS[@]}"
 
 if [[ $# -ne 1 ]]; then
-  bt_error_exit 1 "Expected exactly 1 argument: <clone-path>"
+  usage_error "Expected exactly 1 argument: <clone-path>"
 fi
 
 TARGET_INPUT="$1"
 TARGET_ABS="$(resolve_abs_dir "$TARGET_INPUT" || true)"
 if [[ -z "$TARGET_ABS" ]]; then
-  bt_error_exit 1 "Clone path not found or not a directory: $TARGET_INPUT"
+  usage_error "Clone path not found or not a directory: $TARGET_INPUT"
 fi
 
 bt_info "Target clone path: $TARGET_ABS"
@@ -254,7 +267,7 @@ if [[ "${#ISSUES[@]}" -gt 0 ]]; then
   print_issues
 
   if [[ "$OVERRIDE" == false ]]; then
-    bt_error_exit 2 "Aborting removal. Re-run with -O to override safety checks."
+    bt_error_exit "$EXIT_NOT_FOUND" "Aborting removal. Re-run with -O to override safety checks."
   fi
 
   bt_warn "Override enabled (-O). Continuing despite safety check failures."
@@ -269,7 +282,7 @@ if [[ "$DRY_RUN" == true ]]; then
 fi
 
 if ! confirm_removal; then
-  bt_error_exit 4 "Operation cancelled. Clone not removed."
+  bt_error_exit "$EXIT_CONFIG_ERROR" "Operation cancelled. Clone not removed."
 fi
 
 # Move away if currently inside target and override was used.
@@ -279,11 +292,11 @@ fi
 
 bt_info "Removing clone directory..."
 if ! rm -rf -- "$TARGET_ABS"; then
-  bt_error_exit 3 "Failed to remove clone directory: $TARGET_ABS"
+  bt_error_exit "$EXIT_OPERATION_FAILED" "Failed to remove clone directory: $TARGET_ABS"
 fi
 
 if [[ -e "$TARGET_ABS" ]]; then
-  bt_error_exit 3 "Target still exists after removal attempt: $TARGET_ABS"
+  bt_error_exit "$EXIT_OPERATION_FAILED" "Target still exists after removal attempt: $TARGET_ABS"
 fi
 
 bt_success "Clone removed successfully: $TARGET_ABS"

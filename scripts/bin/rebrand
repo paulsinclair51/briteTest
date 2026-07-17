@@ -38,22 +38,22 @@ Reporting:
   - On successful non-dry runs, existing dry-run reports are deleted.
 
 Exit Codes:
-    0  Success (includes help output).
-    1  No pending Brand History row found (nothing to do).
-    2  Invalid command-line argument or option.
-    3  Brand history file not found.
-    4  Brand history file is empty.
-    5  Branding directory not found.
-    6  Completed Brand History row not found for comparison.
-    7  scripts/bin/genpngs is missing or not executable.
-    8  Required command failed unexpectedly.
-    9  Pending Brand History row matches the following completed row.
-    10 New Brand Name equals previous Initials.
-    11 New Initials equals previous Brand Name.
-    12 New Brand Name equals previous Tagline.
-    13 New Tagline equals previous Brand Name.
-    14 New Initials equals previous Tagline.
-    15 New Tagline equals previous Initials.
+    0   Success (includes help output).
+    1   Invalid command-line argument or option.
+    2   No pending Brand History row found (nothing to do).
+    3   Brand history file not found.
+    4   Brand history file is empty.
+    100 Branding directory not found.
+    101 Completed Brand History row not found for comparison.
+    102 scripts/bin/genpngs is missing or not executable.
+    103 Required command failed unexpectedly.
+    104 Pending Brand History row matches the following completed row.
+    105 New Brand Name equals previous Initials.
+    106 New Initials equals previous Brand Name.
+    107 New Brand Name equals previous Tagline.
+    108 New Tagline equals previous Brand Name.
+    109 New Initials equals previous Tagline.
+    110 New Tagline equals previous Initials.
 
 To change the brand name, brand initials, or tagline:
   - Add a new entry with no Completed date to the Brand History
@@ -101,27 +101,34 @@ RUN_OUTPUT_FILE="$(mktemp)"
 RUN_LOG_FILE=""
 
 # Exit code definitions
-EXIT_SUCCESS=0
-EXIT_NO_PENDING_ROW=1
-EXIT_INVALID_ARGUMENT=2
-EXIT_CONFIG_NOT_FOUND=3
-EXIT_CONFIG_EMPTY=4
-EXIT_BRANDING_DIR_MISSING=5
-EXIT_MISSING_COMPLETED_ROW=6
-EXIT_MISSING_GENPNGS=7
-EXIT_COMMAND_FAILED=8
-EXIT_PENDING_MATCHES_COMPLETED=9
-EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_INITIALS=10
-EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_BRAND=11
-EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_TAGLINE=12
-EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_BRAND=13
-EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_TAGLINE=14
-EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_INITIALS=15
+readonly EXIT_SUCCESS=0
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NO_PENDING_ROW=2
+readonly EXIT_CONFIG_NOT_FOUND=3
+readonly EXIT_CONFIG_EMPTY=4
+readonly EXIT_BRANDING_DIR_MISSING=100
+readonly EXIT_MISSING_COMPLETED_ROW=101
+readonly EXIT_MISSING_GENPNGS=102
+readonly EXIT_COMMAND_FAILED=103
+readonly EXIT_PENDING_MATCHES_COMPLETED=104
+readonly EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_INITIALS=105
+readonly EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_BRAND=106
+readonly EXIT_CONFLICT_NEW_BRAND_EQUALS_PREV_TAGLINE=107
+readonly EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_BRAND=108
+readonly EXIT_CONFLICT_NEW_INITIALS_EQUALS_PREV_TAGLINE=109
+readonly EXIT_CONFLICT_NEW_TAGLINE_EQUALS_PREV_INITIALS=110
 
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
 
 error_exit() {
     local message="$1"
-    local code="${2:-1}"
+    local code="${2:-$EXIT_COMMAND_FAILED}"
 
     echo "Error: ${message}" >&2
     exit "$code"
@@ -502,8 +509,7 @@ while [[ $# -gt 0 ]]; do
             DRY_RUN=1
             ;;
         *)
-            usage >&2
-            error_exit "Unknown argument or option: $1" "$EXIT_INVALID_ARGUMENT"
+            usage_error "Unknown argument or option: $1"
             ;;
     esac
     shift

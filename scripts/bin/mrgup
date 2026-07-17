@@ -139,6 +139,18 @@ source "$SCRIPT_DIR/../helpers/validation-helpers.sh"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
 
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_FOUND=2
+readonly EXIT_INTERNAL_ERROR=100
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
 # Default options
 CUSTOM_MESSAGE=""
 VERBOSE=false
@@ -155,7 +167,7 @@ get_current_user() {
   local user_name
 
   if ! user_name="$(bt_require_login)"; then
-    bt_error_exit 2 "Unable to determine GitHub login identity for role checks"
+    bt_error_exit "$EXIT_NOT_FOUND" "Unable to determine GitHub login identity for role checks"
   fi
 
   echo "$user_name"
@@ -167,7 +179,7 @@ get_parent_branch() {
   local parent_branch
   parent_branch=$(bt_resolve_parent_branch \
     "$current_branch" "main") || {
-    bt_error_exit 2 "Failed to determine parent branch"
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine parent branch"
   }
 
   echo "$parent_branch"
@@ -292,7 +304,7 @@ resolve_detached_current_remote_branch() {
         return 0
       fi
 
-      bt_error_exit 2 \
+      bt_error_exit "$EXIT_NOT_FOUND" \
         "Detached HEAD matches multiple remote branches with different parent/merge behavior"
     fi
 
@@ -316,7 +328,7 @@ ensure_branch_synced_with_remote() {
   local label="$2"
 
   if ! has_remote_branch "$branch"; then
-    bt_error_exit 5 "$label branch '$branch' has no origin/$branch reference"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "$label branch '$branch' has no origin/$branch reference"
   fi
 
   local ahead_behind
@@ -327,11 +339,11 @@ ensure_branch_synced_with_remote() {
   behind="${ahead_behind##*$'\t'}"
 
   if [[ ! "$ahead" =~ ^[0-9]+$ || ! "$behind" =~ ^[0-9]+$ ]]; then
-    bt_error_exit 2 "Unable to determine $label branch sync state for '$branch'"
+    bt_error_exit "$EXIT_NOT_FOUND" "Unable to determine $label branch sync state for '$branch'"
   fi
 
   if [[ "$ahead" -ne 0 || "$behind" -ne 0 ]]; then
-    bt_error_exit 2 "$label branch '$branch' is not in sync with origin/$branch"
+    bt_error_exit "$EXIT_NOT_FOUND" "$label branch '$branch' is not in sync with origin/$branch"
   fi
 }
 
@@ -353,7 +365,7 @@ resolve_parent_reference() {
     return 0
   fi
 
-  bt_error_exit 2 "Unable to resolve parent branch reference for '$parent_branch'"
+  bt_error_exit "$EXIT_NOT_FOUND" "Unable to resolve parent branch reference for '$parent_branch'"
 }
 
 ensure_current_up_to_date_with_parent() {
@@ -368,12 +380,12 @@ ensure_current_up_to_date_with_parent() {
     if has_remote_branch "$current_branch"; then
       current_ref="origin/$current_branch"
     else
-      bt_error_exit 2 "Unable to resolve current branch reference for '$current_branch'"
+      bt_error_exit "$EXIT_NOT_FOUND" "Unable to resolve current branch reference for '$current_branch'"
     fi
   fi
 
   if ! git merge-base --is-ancestor "$parent_ref" "$current_ref" >/dev/null 2>&1; then
-    bt_error_exit 2 "Current branch '$current_branch' is not up-to-date with parent '$parent_branch'"
+    bt_error_exit "$EXIT_NOT_FOUND" "Current branch '$current_branch' is not up-to-date with parent '$parent_branch'"
   fi
 }
 
@@ -424,7 +436,7 @@ build_default_commit_message() {
     return 0
   fi
 
-  bt_error_exit 7 "No default commit message rule applies for '$current_branch' -> '$parent_branch'"
+  bt_error_exit "$EXIT_INTERNAL_ERROR" "No default commit message rule applies for '$current_branch' -> '$parent_branch'"
 }
 
 branch_to_history_file() {
@@ -470,18 +482,18 @@ checkout_parent_branch() {
 
   if [[ "$parent_branch" == "main" ]]; then
     if ! git switch --detach "origin/$parent_branch" >/dev/null 2>&1; then
-      bt_error_exit 2 "Failed to switch to remote parent branch '$parent_branch'"
+      bt_error_exit "$EXIT_NOT_FOUND" "Failed to switch to remote parent branch '$parent_branch'"
     fi
     return 0
   fi
 
   if git show-ref --verify --quiet "refs/heads/$parent_branch"; then
     if ! git switch "$parent_branch" >/dev/null 2>&1; then
-      bt_error_exit 2 "Failed to switch to parent branch '$parent_branch'"
+      bt_error_exit "$EXIT_NOT_FOUND" "Failed to switch to parent branch '$parent_branch'"
     fi
   else
     if ! git switch -c "$parent_branch" --track "origin/$parent_branch" >/dev/null 2>&1; then
-      bt_error_exit 2 "Failed to create local parent branch '$parent_branch'"
+      bt_error_exit "$EXIT_NOT_FOUND" "Failed to create local parent branch '$parent_branch'"
     fi
     TEMP_PARENT_BRANCH_CREATED=true
     TEMP_PARENT_BRANCH_NAME="$parent_branch"
@@ -499,17 +511,17 @@ cleanup_temporary_parent_branch() {
   if [[ "$now_branch" == "$TEMP_PARENT_BRANCH_NAME" ]]; then
     if [[ "$CURRENT_IS_LOCAL" == true ]]; then
       if ! git switch "$CURRENT_BRANCH" >/dev/null 2>&1; then
-        bt_error_exit 2 "Merge completed, but failed to leave temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
+        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to leave temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
       fi
     else
       if ! git switch --detach "origin/$CURRENT_BRANCH" >/dev/null 2>&1; then
-        bt_error_exit 2 "Merge completed, but failed to leave temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
+        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to leave temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
       fi
     fi
   fi
 
   if ! git branch -D "$TEMP_PARENT_BRANCH_NAME" >/dev/null 2>&1; then
-    bt_error_exit 2 "Merge completed, but failed to remove temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
+    bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to remove temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
   fi
 
   bt_info "Removed temporary local parent branch '$TEMP_PARENT_BRANCH_NAME'"
@@ -562,15 +574,15 @@ check_status_checks() {
   fi
 
   if echo "$status_states" | grep -Eq '^(PENDING|EXPECTED|ACTION_REQUIRED)$'; then
-    bt_error_exit 6 "Status checks still pending"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "Status checks still pending"
   fi
 
   if echo "$status_states" | grep -Eq '^(FAILURE|ERROR|CANCELLED|TIMED_OUT)$'; then
-    bt_error_exit 6 "Status checks failed"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "Status checks failed"
   fi
 
   if echo "$status_states" | grep -Ev '^(SUCCESS|SKIPPED|NEUTRAL)$' >/dev/null 2>&1; then
-    bt_error_exit 6 "Unknown status check state detected"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "Unknown status check state detected"
   fi
 
   bt_success "All status checks passed"
@@ -578,7 +590,7 @@ check_status_checks() {
 
 ensure_clean_worktree() {
   if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
-    bt_error_exit 2 "Current branch has uncommitted changes. Commit first before running mrgup"
+    bt_error_exit "$EXIT_NOT_FOUND" "Current branch has uncommitted changes. Commit first before running mrgup"
   fi
 }
 
@@ -633,11 +645,11 @@ sync_history_to_current_branch() {
 
   if [[ "$current_is_local" == true ]]; then
     if ! git switch "$current_branch" >/dev/null 2>&1; then
-      bt_error_exit 2 "Merged successfully, but failed to switch back to '$current_branch'"
+      bt_error_exit "$EXIT_NOT_FOUND" "Merged successfully, but failed to switch back to '$current_branch'"
     fi
   else
     if ! git switch --detach "origin/$current_branch" >/dev/null 2>&1; then
-      bt_error_exit 2 "Merged successfully, but failed to switch to origin/$current_branch for history sync"
+      bt_error_exit "$EXIT_NOT_FOUND" "Merged successfully, but failed to switch to origin/$current_branch for history sync"
     fi
   fi
 
@@ -672,17 +684,17 @@ EOF
   local sync_message
   sync_message="chore: sync history log after merge to $parent_branch"
   if ! git commit -m "$sync_message" >/dev/null 2>&1; then
-    bt_error_exit 2 "Failed to commit history log sync on '$current_branch'"
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to commit history log sync on '$current_branch'"
   fi
 
   if has_remote_branch "$current_branch"; then
     if [[ "$current_is_local" == true ]]; then
       if ! git push origin "$current_branch" >/dev/null 2>&1; then
-        bt_error_exit 2 "Failed to push synced history log to origin/$current_branch"
+        bt_error_exit "$EXIT_NOT_FOUND" "Failed to push synced history log to origin/$current_branch"
       fi
     else
       if ! git push origin HEAD:"$current_branch" >/dev/null 2>&1; then
-        bt_error_exit 2 "Failed to push synced history log to origin/$current_branch"
+        bt_error_exit "$EXIT_NOT_FOUND" "Failed to push synced history log to origin/$current_branch"
       fi
     fi
   fi
@@ -699,13 +711,13 @@ preflight_current_history_sync_push() {
   # Current protected branches are likely to reject direct push updates used
   # for history-log sync; fail early to avoid partial success after parent push.
   if bt_is_protected_branch "$current_branch"; then
-    bt_error_exit 2 \
+    bt_error_exit "$EXIT_NOT_FOUND" \
       "Preflight failed: syncing history log to origin/$current_branch is likely disallowed because '$current_branch' is protected"
   fi
 
   # Verify push capability before any merge mutation starts.
   if ! git push --dry-run origin "HEAD:$current_branch" >/dev/null 2>&1; then
-    bt_error_exit 2 \
+    bt_error_exit "$EXIT_NOT_FOUND" \
       "Preflight failed: unable to verify push access for origin/$current_branch required for history-log sync"
   fi
 
@@ -723,10 +735,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m | --message)
       if [[ $# -lt 2 ]]; then
-        bt_error_exit 1 "Option -m requires a message argument"
+        usage_error "Option -m requires a message argument"
       fi
       if [[ -n "$MESSAGE_SOURCE" ]]; then
-        bt_error_exit 1 "-m TOKEN, --message TOKEN, and -- TOKENS are mutually exclusive"
+        usage_error "-m TOKEN, --message TOKEN, and -- TOKENS are mutually exclusive"
       fi
       CUSTOM_MESSAGE="$2"
       MESSAGE_SOURCE="option"
@@ -743,20 +755,20 @@ while [[ $# -gt 0 ]]; do
     --)
       shift
       if [[ $# -eq 0 ]]; then
-        bt_error_exit 1 "'-- TOKENS' requires at least one token"
+        usage_error "'-- TOKENS' requires at least one token"
       fi
       if [[ -n "$MESSAGE_SOURCE" ]]; then
-        bt_error_exit 1 "-m TOKEN, --message TOKEN, and -- TOKENS are mutually exclusive"
+        usage_error "-m TOKEN, --message TOKEN, and -- TOKENS are mutually exclusive"
       fi
       CUSTOM_MESSAGE="$*"
       MESSAGE_SOURCE="tokens"
       break
       ;;
     -*)
-      bt_error_exit 1 "Unknown option: $1"
+      usage_error "Unknown option: $1"
       ;;
     *)
-      bt_error_exit 1 "Unknown argument: $1"
+      usage_error "Unknown argument: $1"
       ;;
   esac
 done
@@ -764,15 +776,15 @@ done
 if [[ -n "$MESSAGE_SOURCE" ]]; then
   CUSTOM_MESSAGE="$(trim_whitespace "$CUSTOM_MESSAGE")"
   if [[ -z "$CUSTOM_MESSAGE" ]]; then
-    bt_error_exit 1 "Normalized TOKEN/TOKENS must include at least one non-whitespace character"
+    usage_error "Normalized TOKEN/TOKENS must include at least one non-whitespace character"
   fi
 fi
 
 if ! is_remote_connected; then
-  bt_error_exit 5 "Remote 'origin' is not connected"
+  bt_error_exit "$EXIT_INTERNAL_ERROR" "Remote 'origin' is not connected"
 fi
 
-git fetch origin >/dev/null 2>&1 || bt_error_exit 5 "Failed to fetch from remote 'origin'"
+git fetch origin >/dev/null 2>&1 || bt_error_exit "$EXIT_INTERNAL_ERROR" "Failed to fetch from remote 'origin'"
 
 # Propagate repository history from remote if available
 bt_propagate_repository_history
@@ -784,12 +796,12 @@ esac
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
-  bt_error_exit 2 "Failed to determine current branch")
+  bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
 
 if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
   DETACHED_REMOTE_BRANCH="$(resolve_detached_current_remote_branch || true)"
   if [[ -z "$DETACHED_REMOTE_BRANCH" ]]; then
-    bt_error_exit 1 "Cannot determine remote-only current branch from detached HEAD"
+    usage_error "Cannot determine remote-only current branch from detached HEAD"
   fi
 
   CURRENT_BRANCH="$DETACHED_REMOTE_BRANCH"
@@ -806,7 +818,7 @@ if [[ "$CURRENT_IS_LOCAL" == true ]]; then
       CURRENT_IS_LOCAL=false
       CURRENT_SOURCE_REF="origin/$CURRENT_BRANCH"
     else
-      bt_error_exit 2 "Current branch '$CURRENT_BRANCH' is not resolvable locally or remotely"
+      bt_error_exit "$EXIT_NOT_FOUND" "Current branch '$CURRENT_BRANCH' is not resolvable locally or remotely"
     fi
   else
     CURRENT_SOURCE_REF="$CURRENT_BRANCH"
@@ -828,11 +840,11 @@ bt_info "Parent branch: $PARENT_BRANCH"
 
 # Validate branch names conform to naming conventions
 if ! validate_branch_name "$CURRENT_BRANCH" "current branch"; then
-  bt_error_exit 1 "Current branch does not conform to naming conventions"
+  usage_error "Current branch does not conform to naming conventions"
 fi
 
 if ! validate_branch_name "$PARENT_BRANCH" "parent branch"; then
-  bt_error_exit 1 "Parent branch does not conform to naming conventions"
+  usage_error "Parent branch does not conform to naming conventions"
 fi
 
 if bt_is_protected_branch "$CURRENT_BRANCH"; then
@@ -842,7 +854,7 @@ if bt_is_protected_branch "$CURRENT_BRANCH"; then
   fi
 
   if ! is_approver "$CURRENT_USER"; then
-    bt_error_exit 3 "User '$CURRENT_USER' is not an approver. Only approvers can merge protected branches to origin/main."
+    bt_error_exit "$EXIT_OPERATION_FAILED" "User '$CURRENT_USER' is not an approver. Only approvers can merge protected branches to origin/main."
   fi
 fi
 
@@ -851,7 +863,7 @@ if [[ "$CURRENT_IS_LOCAL" == true ]]; then
   ensure_branch_synced_with_remote "$CURRENT_BRANCH" "Current"
 else
   if ! has_remote_branch "$CURRENT_BRANCH"; then
-    bt_error_exit 5 "Current branch '$CURRENT_BRANCH' has no origin/$CURRENT_BRANCH reference"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "Current branch '$CURRENT_BRANCH' has no origin/$CURRENT_BRANCH reference"
   fi
 fi
 
@@ -868,7 +880,7 @@ if bt_is_protected_branch "$PARENT_BRANCH"; then
   
   # Verify current user is an approver
   if ! is_approver "$CURRENT_USER"; then
-    bt_error_exit 3 "User '$CURRENT_USER' is not an approver. Only approvers can merge to protected branches."
+    bt_error_exit "$EXIT_OPERATION_FAILED" "User '$CURRENT_USER' is not an approver. Only approvers can merge to protected branches."
   fi
   bt_success "User '$CURRENT_USER' is an approver"
 else
@@ -887,7 +899,7 @@ PR_NUMBER=""
 if [[ "$PR_REQUIRED" == true ]]; then
   PR_NUMBER=$(get_existing_pr_number "$CURRENT_BRANCH")
   if [[ -z "$PR_NUMBER" ]]; then
-    bt_error_exit 7 "No open PR found for branch '$CURRENT_BRANCH'"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "No open PR found for branch '$CURRENT_BRANCH'"
   fi
   bt_info "Found PR #$PR_NUMBER"
 
@@ -915,7 +927,7 @@ else
   if [[ -n "$PR_NUMBER" ]]; then
     COMMIT_MESSAGE=$(get_pr_title "$PR_NUMBER")
     if [[ -z "$COMMIT_MESSAGE" ]]; then
-      bt_error_exit 4 "Failed to get PR title"
+      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to get PR title"
     fi
     bt_info "Using PR title as message: $COMMIT_MESSAGE"
   else
@@ -956,12 +968,12 @@ checkout_parent_branch "$PARENT_BRANCH"
 
 if [[ "$PARENT_BRANCH" != "main" && $(has_remote_branch "$PARENT_BRANCH" && echo true || echo false) == true ]]; then
   if ! git pull --ff-only origin "$PARENT_BRANCH" 2>&1; then
-    bt_error_exit 2 "Failed to fast-forward parent branch '$PARENT_BRANCH'"
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to fast-forward parent branch '$PARENT_BRANCH'"
   fi
 fi
 
 if ! git merge --squash --no-commit "$CURRENT_SOURCE_REF" 2>&1; then
-  bt_error_exit 2 "Failed to squash merge '$CURRENT_BRANCH' into '$PARENT_BRANCH'"
+  bt_error_exit "$EXIT_NOT_FOUND" "Failed to squash merge '$CURRENT_BRANCH' into '$PARENT_BRANCH'"
 fi
 
 # Remove branch-specific files that should not carry over to the parent branch.
@@ -974,7 +986,7 @@ git add "$HISTORY_FILE" 2>/dev/null || true
 
 # Create commit with message
 if ! git commit -m "$COMMIT_MESSAGE" 2>&1; then
-  bt_error_exit 2 "Failed to create commit"
+  bt_error_exit "$EXIT_NOT_FOUND" "Failed to create commit"
 fi
 
 # Push to remote
@@ -982,11 +994,11 @@ if [[ "$PARENT_BRANCH" == "main" || $(has_remote_branch "$PARENT_BRANCH" && echo
   bt_info "Pushing parent branch..."
   if [[ "$PARENT_BRANCH" == "main" ]]; then
     if ! git push origin HEAD:"$PARENT_BRANCH" 2>&1; then
-      bt_error_exit 2 "Failed to push remote parent branch"
+      bt_error_exit "$EXIT_NOT_FOUND" "Failed to push remote parent branch"
     fi
   else
     if ! git push origin "$PARENT_BRANCH" 2>&1; then
-      bt_error_exit 2 "Failed to push parent branch"
+      bt_error_exit "$EXIT_NOT_FOUND" "Failed to push parent branch"
     fi
   fi
 else

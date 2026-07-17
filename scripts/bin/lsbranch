@@ -123,12 +123,20 @@ Exit codes:
 EOF
 }
 
+readonly EXIT_SUCCESS=0
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_FOUND=2
+readonly EXIT_OPERATION_FAILED=3
+readonly EXIT_CONFIG_ERROR=4
+readonly EXIT_INTERNAL_ERROR=100
+readonly EXIT_RUNTIME_ERROR=200
+
 usage_error() {
   local message="$1"
-  echo "Error: $message" >&2
+  usage
   echo >&2
-  usage >&2
-  exit 1
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
 }
 
 # High-Level Flow:
@@ -1268,7 +1276,7 @@ while [[ $# -gt 0 ]]; do
         printf 'was likely expanded by the shell.\n' >&2
         printf 'Quote the pattern to prevent expansion, '
         printf 'e.g.: lsbranch "*"\n' >&2
-        exit 1
+        exit "$EXIT_INVALID_ARGUMENT"
       fi
       if [[ "$1" =~ [\*\?\[] ]]; then
         BRANCH_PATTERN="$1"
@@ -1330,13 +1338,13 @@ OUTPUT_FILE="$branch_reports_dir/branch-${RUN_TS_FILE}.md"
 
 # Get current branch to restore later
 ORIGINAL_BRANCH=$(bt_get_current_branch ||
-  bt_error_exit 2 "Failed to determine current branch")
+  bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
 
 # Determine branches to check
 if [[ -n "$TARGET_BRANCH" ]]; then
   if ! has_local_branch "$TARGET_BRANCH" &&
     ! has_remote_branch "$TARGET_BRANCH"; then
-    bt_error_exit 5 "Branch does not exist: $TARGET_BRANCH"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "Branch does not exist: $TARGET_BRANCH"
   fi
 
   BRANCHES_TO_CHECK=""
@@ -1356,7 +1364,7 @@ elif [[ -z "$BRANCH_PATTERN" ]]; then
   # Default scope is current branch; remote scope is current tracked branch,
   # if any.
   if ! has_local_branch "$ORIGINAL_BRANCH"; then
-    bt_error_exit 5 "Current branch does not exist: $ORIGINAL_BRANCH"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "Current branch does not exist: $ORIGINAL_BRANCH"
   fi
 
   BRANCHES_TO_CHECK="$ORIGINAL_BRANCH"
@@ -1505,6 +1513,6 @@ if [[ "$VERBOSE" == true ]]; then
 fi
 
 if [[ "$INVALID_ONLY" == true && "$INVALID_BRANCHES_FOUND" -gt 0 ]]; then
-  exit 4
+  exit "$EXIT_CONFIG_ERROR"
 fi
 exit 0
