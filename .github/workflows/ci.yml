@@ -66,6 +66,9 @@ jobs:
         run: |
           bash ./scripts/bin/genpdf -i "*.md" -x "README.md" docs/md docs/pdf
 
+      - name: Run report helper tests
+        run: make test-report-helpers
+
       - name: Upload docs PDF artifacts
         uses: actions/upload-artifact@v4
         with:
