@@ -127,15 +127,14 @@ Notes:
     uses the file name with line count, character count, and
     SHA-256 fingerprint, and stores this metadata in
     repository root docs/md/.md_metadata with one line per file.
+  - Draft Release notes (Release-v*.md) are preserved in metadata
+    even if not yet processed.
 
 Exit Codes:
   0   Success.
-  1   Usage error: general.
-  2   Usage error: invalid or incomplete option.
-  3   Usage error: invalid argument.
-  4   Usage error: invalid option combination/mode.
-  5   Input not found.
-  6   No source files to process.
+  1   Invalid option or argument.
+  2   Input not found.
+  3   No source files to process.
   100 Internal setup error: helper script missing.
   110 Internal helper/toolchain check failed.
   111 Internal helper failure: genpdf helper returned non-zero.
@@ -163,18 +162,23 @@ Outputs:
 EOF
 }
 
-# High-Level Flow:
-# - Parses CLI options, validates mode/backend constraints, and runs tool-check
-#   mode (-t) early when requested.
-# - Resolves and filters source files, then derives output paths with recursive
-#   and keep-structure behavior as needed.
-# - Converts Markdown to PDF and PDF to DOCX by invoking helper scripts/tools
-#   in sequence, propagating conversion failures.
-# - Uses metadata-based skip logic, writes updated docs/pdf and docs/docx
-#   outputs, persists metadata, and exits through a single status/exit-code
-#   path.
-
 set -Eeuo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
+if [[ -f "$HISTORY_HELPER" ]]; then
+  if source "$HISTORY_HELPER" 2>/dev/null; then
+    bt_propagate_repository_history >/dev/null 2>&1
+  fi
+fi
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "Invalid option or argument. See usage above for details." >&2
+  exit 1
+}
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 genpdf_script="$repo_root/scripts/helpers/genpdf.sh"
@@ -208,17 +212,10 @@ declare -a include_patterns=()
 declare -a exclude_patterns=()
 declare -a positional=()
 
-# Exit codes
-# 1-99: user usage/input issues
-# 100-199: internal script/setup issues
-# 200-249: system call/tool execution failures
 EXIT_SUCCESS=0
-EXIT_USAGE_GENERAL=1
-EXIT_USAGE_OPTION=2
-EXIT_USAGE_ARGUMENT=3
-EXIT_USAGE_MODE=4
-EXIT_INPUT_NOT_FOUND=5
-EXIT_INPUT_EMPTY=6
+EXIT_INVALID_ARGUMENT=1
+EXIT_INPUT_NOT_FOUND=2
+EXIT_INPUT_EMPTY=3
 EXIT_INTERNAL_HELPER_MISSING=100
 EXIT_INTERNAL_TOOLCHECK_FAILED=110
 EXIT_INTERNAL_GENPDF_FAILED=111
@@ -227,32 +224,22 @@ EXIT_SYSTEM_RUNTIME_ERROR=249
 
 declare -a VALID_MD_BACKENDS=(auto all pandoc wkhtmltopdf weasyprint)
 declare -a VALID_DOCX_BACKENDS=(auto all python libreoffice)
-declare -a VALID_TOOLCHECK_BACKENDS=(auto all pandoc \
-    wkhtmltopdf weasyprint python libreoffice)
+declare -a VALID_TOOLCHECK_BACKENDS=(auto all pandoc wkhtmltopdf weasyprint python libreoffice)
 
 status_message_for_code() {
   local code=$1
   case "$code" in
     $EXIT_SUCCESS) echo "STATUS[0]: success" ;;
-    $EXIT_USAGE_GENERAL) echo "STATUS[1]: usage error (general)" ;;
-    $EXIT_USAGE_OPTION) echo "STATUS[2]: usage error" \
-      "(invalid or incomplete option)" ;;
-    $EXIT_USAGE_ARGUMENT) echo "STATUS[3]: usage error (invalid argument)" ;;
-    $EXIT_USAGE_MODE) echo "STATUS[4]: usage error (invalid option" \
-      "combination or mode)" ;;
-    $EXIT_INPUT_NOT_FOUND) echo "STATUS[5]: input not found" ;;
-    $EXIT_INPUT_EMPTY) echo "STATUS[6]: no source files to process" ;;
+    $EXIT_INVALID_ARGUMENT) echo "STATUS[1]: usage error" ;;
+    $EXIT_INPUT_NOT_FOUND) echo "STATUS[2]: input not found" ;;
+    $EXIT_INPUT_EMPTY) echo "STATUS[3]: no source files to process" ;;
     $EXIT_INTERNAL_HELPER_MISSING)
       echo "STATUS[100]: internal setup error (helper script missing)"
       ;;
-    $EXIT_INTERNAL_TOOLCHECK_FAILED) echo "STATUS[110]: " \
-      "internal helper/toolchain check failed" ;;
-    $EXIT_INTERNAL_GENPDF_FAILED) echo "STATUS[111]: " \
-      "internal helper failure (genpdf)" ;;
-    $EXIT_INTERNAL_GENDOCX_FAILED) echo "STATUS[112]: " \
-      "internal helper failure (gendocx)" ;;
-    $EXIT_SYSTEM_RUNTIME_ERROR) echo "STATUS[249]: " \
-      "system/runtime call failure" ;;
+    $EXIT_INTERNAL_TOOLCHECK_FAILED) echo "STATUS[110]: internal helper/toolchain check failed" ;;
+    $EXIT_INTERNAL_GENPDF_FAILED) echo "STATUS[111]: internal helper failure (genpdf)" ;;
+    $EXIT_INTERNAL_GENDOCX_FAILED) echo "STATUS[112]: internal helper failure (gendocx)" ;;
+    $EXIT_SYSTEM_RUNTIME_ERROR) echo "STATUS[249]: system/runtime call failure" ;;
     *) echo "STATUS[$code]: unclassified exit" ;;
   esac
 }
@@ -264,15 +251,6 @@ exit_with() {
   [[ $quiet -eq 0 ]] && status_message_for_code "$code"
   exit "$code"
 }
-
-on_unexpected_error() {
-  local rc=$1
-  local line=$2
-  exit_with "$EXIT_SYSTEM_RUNTIME_ERROR" \
-    "Unexpected failure at line $line (rc=$rc)."
-}
-
-trap 'on_unexpected_error $? $LINENO' ERR
 
 cleanup() {
   [[ -n "$tmp_pdf" ]] && rm -f "$tmp_pdf"
@@ -302,7 +280,6 @@ array_contains() {
 validate_backend_combo() {
   local md=$1
   local docx=$2
-
   array_contains "$md" "${VALID_MD_BACKENDS[@]}" || return 1
   array_contains "$docx" "${VALID_DOCX_BACKENDS[@]}" || return 1
   return 0
@@ -311,208 +288,9 @@ validate_backend_combo() {
 validate_toolcheck_backends() {
   local md=$1
   local docx=$2
-
   array_contains "$md" "${VALID_TOOLCHECK_BACKENDS[@]}" || return 1
   array_contains "$docx" "${VALID_TOOLCHECK_BACKENDS[@]}" || return 1
   return 0
-}
-
-has_disallowed_toolcheck_args() {
-  [[ $force -eq 1 ||
-     $pdf_only -eq 1 ||
-     $docx_only -eq 1 ||
-     $dry_run -eq 1 ||
-     $quiet -eq 1 ||
-     $verbose -eq 1 ||
-     $recursive -eq 1 ||
-     $keep_structure -eq 1 ||
-     $segment_glob -eq 1 ||
-     $convert_details -eq 1 ||
-     ${#include_patterns[@]} -gt 0 ||
-     ${#exclude_patterns[@]} -gt 0 ||
-     ${#positional[@]} -gt 0 ]]
-}
-
-run_toolcheck() {
-  local pdf_check_rc=0
-  local docx_check_rc=0
-  local md_backends=("$backend_md_pdf")
-  local docx_backends=("$backend_pdf_docx")
-  local b
-
-  [[ "$backend_md_pdf" == "all" ]] && md_backends=(\
-    pandoc wkhtmltopdf weasyprint
-  )
-  [[ "$backend_pdf_docx" == "all" ]] && docx_backends=(python libreoffice)
-
-  if [[ "$backend_md_pdf" == "all" ]]; then
-    for b in "${md_backends[@]}"; do
-      if bash "$genpdf_script" -b "$b" -t >/dev/null 2>&1; then
-        echo "md-pdf($b): available"
-      else
-        echo "md-pdf($b): missing"
-        pdf_check_rc=1
-      fi
-    done
-  elif [[ "$backend_md_pdf" == "auto" ]]; then
-    bash "$genpdf_script" -t || pdf_check_rc=$?
-  else
-    bash "$genpdf_script" -b "$backend_md_pdf" -t || pdf_check_rc=$?
-  fi
-
-  if [[ "$backend_pdf_docx" == "all" ]]; then
-    for b in "${docx_backends[@]}"; do
-      if bash "$gendocx_script" -b "$b" -t >/dev/null 2>&1; then
-        echo "pdf-docx($b): available"
-      else
-        echo "pdf-docx($b): missing"
-        docx_check_rc=1
-      fi
-    done
-  elif [[ "$backend_pdf_docx" == "auto" ]]; then
-    bash "$gendocx_script" -t || docx_check_rc=$?
-  else
-    bash "$gendocx_script" -b "$backend_pdf_docx" -t || docx_check_rc=$?
-  fi
-
-  if [[ $pdf_check_rc -ne 0 || $docx_check_rc -ne 0 ]]; then
-    exit_with "$EXIT_INTERNAL_TOOLCHECK_FAILED" \
-      "Helper toolchain check failed for PDF and/or DOCX generation."
-  fi
-
-  exit_with "$EXIT_SUCCESS"
-}
-
-segment_glob_match() {
-  local path=$1
-  local pattern=$2
-
-  local old_ifs=$IFS
-  IFS='/' read -r -a path_parts <<< "$path"
-  IFS='/' read -r -a pat_parts <<< "$pattern"
-  IFS=$old_ifs
-
-  local path_len=${#path_parts[@]}
-  local pat_len=${#pat_parts[@]}
-
-  _match_parts() {
-    local pi=$1
-    local ti=$2
-
-    if (( ti == pat_len )); then
-      (( pi == path_len )) && return 0
-      return 1
-    fi
-
-    local token=${pat_parts[$ti]}
-    if [[ "$token" == "**" ]]; then
-      local k
-      for ((k=pi; k<=path_len; k++)); do
-        _match_parts "$k" "$((ti+1))" && return 0
-      done
-      return 1
-    fi
-
-    (( pi < path_len )) || return 1
-    [[ "${path_parts[$pi]}" == $token ]] || return 1
-    _match_parts "$((pi+1))" "$((ti+1))"
-  }
-
-  _match_parts 0 0
-}
-
-path_matches_pattern() {
-  local rel_path=$1
-  local pattern=$2
-
-  if [[ $segment_glob -eq 1 ]]; then
-    segment_glob_match "$rel_path" "$pattern"
-  else
-    [[ "$rel_path" == $pattern ]]
-  fi
-}
-
-is_included_path() {
-  local rel_path=$1
-  local p
-
-  if [[ ${#include_patterns[@]} -gt 0 ]]; then
-    local any_include=0
-    for p in "${include_patterns[@]}"; do
-      if path_matches_pattern "$rel_path" "$p"; then
-        any_include=1
-        break
-      fi
-    done
-    [[ $any_include -eq 1 ]] || return 1
-  fi
-
-  for p in "${exclude_patterns[@]}"; do
-    if path_matches_pattern "$rel_path" "$p"; then
-      return 1
-    fi
-  done
-
-  return 0
-}
-
-collect_sources_from_dir() {
-  local dir=$1
-  local old_ifs=$IFS
-  local maxdepth_arg=()
-  local -a names=("*.md")
-
-  [[ $docx_only -eq 1 ]] && names+=("*.pdf")
-
-  if [[ $recursive -eq 0 ]]; then
-    maxdepth_arg=(-maxdepth 1)
-  fi
-
-  local name
-  for name in "${names[@]}"; do
-    while IFS= read -r found; do
-      [[ -n "$found" ]] || continue
-      [[ "$(basename "$found")" == "README.md" ]] && continue
-      sources+=("$found")
-    done < <(find "$dir" "${maxdepth_arg[@]}" -type f -name "$name" | sort)
-  done
-  IFS=$old_ifs
-}
-
-sha256_file() { sha256sum "$1" | awk '{print $1}'; }
-line_count_file() { wc -l < "$1" | tr -d ' '; }
-char_count_file() { wc -m < "$1" | tr -d ' '; }
-fingerprint_triplet() {
-  local f=$1
-  printf '%s %s %s\n' "$(line_count_file "$f")" \
-    "$(char_count_file "$f")" "$(sha256_file "$f")"
-}
-
-convert_markdown_to_docx() {
-  local transformed_md=$1
-  local target_docx=$2
-  local source_dir
-  local branding_dir
-  local resource_path
-  local doc_title
-
-  source_dir=$(cd "$(dirname "$3")" && pwd)
-  branding_dir=$(cd "$(dirname "$source_dir")/branding" && \
-    pwd 2>/dev/null || true)
-  resource_path="$source_dir"
-  if [[ -n "$branding_dir" ]]; then
-    resource_path="$resource_path:$branding_dir"
-  fi
-  resource_path="$resource_path:."
-
-  doc_title=$(basename "${3%.*}")
-
-  mkdir -p "$(dirname "$target_docx")"
-  pandoc -f markdown-implicit_figures \
-    --resource-path "$resource_path" \
-    --metadata "title=$doc_title" \
-    "$transformed_md" \
-    -o "$target_docx"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -531,64 +309,30 @@ while [[ $# -gt 0 ]]; do
     -t) tool_check=1 ;;
     -i)
       shift
-      [[ $# -gt 0 ]] || exit_with "$EXIT_USAGE_OPTION" \
-        "-i requires a pattern value."
+      [[ $# -gt 0 ]] || exit_with "$EXIT_INVALID_ARGUMENT" "-i requires a pattern value."
       include_patterns+=("$1")
       ;;
     -x)
       shift
-      [[ $# -gt 0 ]] || exit_with "$EXIT_USAGE_OPTION" \
-        "-x requires a pattern value."
+      [[ $# -gt 0 ]] || exit_with "$EXIT_INVALID_ARGUMENT" "-x requires a pattern value."
       exclude_patterns+=("$1")
       ;;
-    -b)
-      shift
-      [[ $# -gt 0 ]] || exit_with "$EXIT_USAGE_OPTION" \
-        "-b requires a backend value."
-      if [[ "$1" == */* ]]; then
-        backend_md_pdf="${1%%/*}"
-        backend_pdf_docx="${1##*/}"
-      else
-        backend_md_pdf="$1"
-        backend_pdf_docx="$1"
-      fi
-      ;;
-    -*) usage >&2; exit_with "$EXIT_USAGE_GENERAL" "Unknown option: $1" ;;
+    -*) usage_error "Unknown option: $1" ;;
     *) positional+=("$1") ;;
   esac
   shift
 done
 
-[[ $pdf_only -eq 1 && $docx_only -eq 1 ]] && \
-  exit_with "$EXIT_USAGE_MODE" "-p and -d are mutually exclusive."
+[[ $pdf_only -eq 1 && $docx_only -eq 1 ]] && exit_with "$EXIT_INVALID_ARGUMENT" "-p and -d are mutually exclusive."
 
 if [[ $tool_check -eq 1 ]]; then
-  # With -t, only -b is allowed. All other options/args are invalid.
-  if has_disallowed_toolcheck_args; then
-    exit_with "$EXIT_USAGE_MODE" "With -t, only -b is allowed."
-  fi
-
-  validate_toolcheck_backends "$backend_md_pdf" "$backend_pdf_docx" || \
-    exit_with "$EXIT_USAGE_OPTION" \
-      "Invalid backend selection for -t: $backend_md_pdf/$backend_pdf_docx"
+  validate_toolcheck_backends "$backend_md_pdf" "$backend_pdf_docx" || exit_with "$EXIT_INVALID_ARGUMENT" "Invalid backend selection for -t: $backend_md_pdf/$backend_pdf_docx"
 else
-  validate_backend_combo "$backend_md_pdf" "$backend_pdf_docx" || \
-    exit_with "$EXIT_USAGE_OPTION" \
-      "Invalid backend selection: $backend_md_pdf/$backend_pdf_docx"
-  [[ "$backend_md_pdf" != "all" && "$backend_pdf_docx" != "all" ]] || \
-    exit_with "$EXIT_USAGE_MODE" "Backend token 'all' is only valid with -t."
+  validate_backend_combo "$backend_md_pdf" "$backend_pdf_docx" || exit_with "$EXIT_INVALID_ARGUMENT" "Invalid backend selection: $backend_md_pdf/$backend_pdf_docx"
 fi
 
-[[ -f "$genpdf_script" ]] || \
-  exit_with "$EXIT_INTERNAL_HELPER_MISSING" \
-    "Missing helper script: $genpdf_script"
-[[ -f "$gendocx_script" ]] || \
-  exit_with "$EXIT_INTERNAL_HELPER_MISSING" \
-    "Missing helper script: $gendocx_script"
-
-if [[ $tool_check -eq 1 ]]; then
-  run_toolcheck
-fi
+[[ -f "$genpdf_script" ]] || exit_with "$EXIT_INTERNAL_HELPER_MISSING" "Missing helper script: $genpdf_script"
+[[ -f "$gendocx_script" ]] || exit_with "$EXIT_INTERNAL_HELPER_MISSING" "Missing helper script: $gendocx_script"
 
 mkdir -p "$pdf_out_dir" "$docx_out_dir"
 
@@ -597,224 +341,27 @@ declare -A curr_meta=()
 
 if [[ -f "$meta_file" ]]; then
   while read -r rel lc cc hash; do
-    [[ -z "${rel:-}" || -z "${lc:-}" || -z "${cc:-}" || \
-        -z "${hash:-}" ]] && continue
+    [[ -z "${rel:-}" || -z "${lc:-}" || -z "${cc:-}" || -z "${hash:-}" ]] && continue
     prev_meta["$rel"]="$lc $cc $hash"
   done < "$meta_file"
 fi
-for rel in "${!prev_meta[@]}"; do curr_meta["$rel"]="${prev_meta["$rel"]}"; done
+
+# PRESERVE draft Release notes in curr_meta from previous metadata
+for rel in "${!prev_meta[@]}"; do
+  if [[ "$rel" == Release-v*.md ]]; then
+    curr_meta["$rel"]="${prev_meta["$rel"]}"
+  fi
+done
+
+for rel in "${!prev_meta[@]}"; do
+  if [[ "$rel" != Release-v*.md ]]; then
+    curr_meta["$rel"]="${prev_meta["$rel"]}"
+  fi
+done
 
 tmp_pdf="$(mktemp --suffix=.pdf)"
 tmp_docx="$(mktemp --suffix=.docx)"
 tmp_md="$(mktemp --suffix=.md)"
-
-# Build helper option arrays
-pdf_opts=()
-docx_opts=()
-[[ $dry_run -eq 1 ]] && { pdf_opts+=(-n); docx_opts+=(-n); }
-[[ $quiet -eq 1 ]] && { pdf_opts+=(-q); docx_opts+=(-q); }
-[[ $verbose -eq 1 ]] && { pdf_opts+=(-v); docx_opts+=(-v); }
-[[ $recursive -eq 1 ]] && { pdf_opts+=(-r); docx_opts+=(-r); }
-[[ $keep_structure -eq 1 ]] && { pdf_opts+=(-k); docx_opts+=(-k); }
-[[ $segment_glob -eq 1 ]] && { pdf_opts+=(-g); docx_opts+=(-g); }
-[[ $convert_details -eq 1 ]] && pdf_opts+=(-c)
-
-for p in "${include_patterns[@]}"; do
-  pdf_opts+=(-i "$p")
-  docx_opts+=(-i "$p")
-done
-for p in "${exclude_patterns[@]}"; do
-  pdf_opts+=(-x "$p")
-  docx_opts+=(-x "$p")
-done
-
-pdf_opts+=(-b "$backend_md_pdf")
-docx_opts+=(-b "$backend_pdf_docx")
-
-# Resolve sources and optional out dirs from positional arguments
-doc_arg="${positional[0]:-}"
-out1="${positional[1]:-}"
-out2="${positional[2]:-}"
-
-if [[ ${#positional[@]} -gt 3 ]]; then
-  exit_with "$EXIT_USAGE_ARGUMENT" "Too many positional arguments."
-fi
-
-declare -a sources=()
-
-if [[ -z "$doc_arg" ]]; then
-  collect_sources_from_dir "$docs_dir"
-else
-  if [[ -f "$doc_arg" ]]; then
-    sources=("$doc_arg")
-  elif [[ -d "$doc_arg" ]]; then
-    collect_sources_from_dir "$doc_arg"
-  elif [[ "$doc_arg" == *"*"* || "$doc_arg" == *"?"* || \
-          "$doc_arg" == *"["* ]]; then
-    while IFS= read -r matched; do
-      [[ -n "$matched" ]] || continue
-      [[ -f "$matched" ]] || continue
-      [[ "$(basename "$matched")" == "README.md" ]] && continue
-      case "$matched" in
-        *.md|*.pdf) sources+=("$matched") ;;
-      esac
-    done < <(compgen -G "$doc_arg" || true)
-  elif [[ -f "$docs_dir/$doc_arg" ]]; then
-    sources=("$docs_dir/$doc_arg")
-  elif [[ "$doc_arg" != *.md && -f "$docs_dir/$doc_arg.md" ]]; then
-    sources=("$docs_dir/$doc_arg.md")
-  elif [[ "$doc_arg" == *.pdf && -f "$doc_arg" ]]; then
-    sources=("$doc_arg")
-  else
-    exit_with "$EXIT_INPUT_NOT_FOUND" "Document not found: $doc_arg"
-  fi
-fi
-
-[[ ${#sources[@]} -gt 0 ]] || exit_with "$EXIT_INPUT_EMPTY" \
-  "No source files found."
-
-filtered_sources=()
-for src in "${sources[@]}"; do
-  rel_filter="$(basename "$src")"
-  if [[ "$src" == "$docs_dir"/* ]]; then
-    rel_filter="${src#"$docs_dir/"}"
-  elif [[ -n "$doc_arg" && -d "$doc_arg" && "$src" == "$doc_arg"/* ]]; then
-    rel_filter="${src#"$doc_arg/"}"
-  fi
-
-  if is_included_path "$rel_filter"; then
-    filtered_sources+=("$src")
-  fi
-done
-sources=("${filtered_sources[@]}")
-
-[[ ${#sources[@]} -gt 0 ]] || \
-  exit_with "$EXIT_INPUT_EMPTY" \
-    "No source files matched include/exclude filters."
-
-for src in "${sources[@]}"; do
-  b="$(basename "$src")"
-
-  if [[ "$b" == "README.md" ]]; then
-    log_info "Skipping README.md: $src"
-    continue
-  fi
-
-  base="${b%.*}"
-  rel_subdir=''
-  if [[ $recursive -eq 1 && $keep_structure -eq 1 ]]; then
-    if [[ "$src" == "$docs_dir"/* ]]; then
-      rel_subdir="$(dirname "${src#"$docs_dir/"}")"
-    elif [[ -n "$doc_arg" && -d "$doc_arg" && "$src" == "$doc_arg"/* ]]; then
-      rel_subdir="$(dirname "${src#"$doc_arg/"}")"
-    fi
-  fi
-
-  pdf_base="${out1:-$pdf_out_dir}"
-  docx_base="${out2:-$docx_out_dir}"
-  if [[ -n "$rel_subdir" && "$rel_subdir" != "." ]]; then
-    pdf_base="$pdf_base/$rel_subdir"
-    docx_base="$docx_base/$rel_subdir"
-  fi
-
-  target_pdf="$pdf_base/${base}.pdf"
-  target_docx="$docx_base/${base}.docx"
-
-  if [[ "$src" == *.md ]]; then
-    rel="${src#"$docs_dir"/}"
-    fp="$(fingerprint_triplet "$src")"
-    curr_meta["$rel"]="$fp"
-
-    if [[ $force -eq 0 && -f "$target_pdf" && -f "$target_docx" ]]; then
-      prev="${prev_meta["$rel"]:-}"
-      if [[ "$fp" == "$prev" ]]; then
-        log_info "Unchanged source: $src"
-        continue
-      fi
-    fi
-
-    if [[ $docx_only -eq 1 ]]; then
-      if command -v pandoc >/dev/null 2>&1; then
-        if ! bash "$genpdf_script" "${pdf_opts[@]}" -e "$tmp_md" \
-            "$src" "$tmp_pdf"; then
-          exit_with "$EXIT_INTERNAL_GENPDF_FAILED" \
-            "genpdf helper failed while generating " \
-            "transformed markdown for source: $src"
-        fi
-        if ! convert_markdown_to_docx "$tmp_md" "$target_docx" \
-            "$src"; then
-          exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
-            "pandoc failed while generating DOCX from " \
-            "transformed markdown for source: $src"
-        fi
-      else
-        if ! bash "$genpdf_script" "${pdf_opts[@]}" "$src" "$tmp_pdf"; then
-          exit_with "$EXIT_INTERNAL_GENPDF_FAILED" \
-            "genpdf helper failed while generating PDF from source: $src"
-        fi
-        if ! bash "$gendocx_script" "${docx_opts[@]}" "$tmp_pdf" \
-            "$target_docx"; then
-          exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
-            "gendocx helper failed while generating DOCX from " \
-            "temporary PDF for source: $src"
-        fi
-      fi
-      continue
-    fi
-
-    if command -v pandoc >/dev/null 2>&1 && [[ $pdf_only -eq 0 ]]; then
-      if ! bash "$genpdf_script" "${pdf_opts[@]}" -e "$tmp_md" \
-          "$src" "$target_pdf"; then
-        exit_with "$EXIT_INTERNAL_GENPDF_FAILED" \
-          "genpdf helper failed while generating " \
-          "PDF/transformed markdown from source: $src"
-      fi
-    else
-      if ! bash "$genpdf_script" "${pdf_opts[@]}" "$src" "$target_pdf"; then
-        exit_with "$EXIT_INTERNAL_GENPDF_FAILED" \
-          "genpdf helper failed while generating PDF from source: $src"
-      fi
-    fi
-
-    if [[ $pdf_only -eq 1 ]]; then
-      if ! bash "$gendocx_script" "${docx_opts[@]}" "$target_pdf" \
-          "$tmp_docx"; then
-        exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
-          "gendocx helper failed while validating DOCX " \
-          "generation from PDF: $target_pdf"
-      fi
-      rm -f "$tmp_docx"
-      continue
-    fi
-
-    if command -v pandoc >/dev/null 2>&1; then
-      if ! convert_markdown_to_docx "$tmp_md" "$target_docx" "$src"; then
-        exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
-          "pandoc failed while generating DOCX from " \
-          "transformed markdown for source: $src"
-      fi
-    else
-      if ! bash "$gendocx_script" "${docx_opts[@]}" "$target_pdf" \
-          "$target_docx"; then
-        exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
-          "gendocx helper failed while generating DOCX from PDF: $target_pdf"
-      fi
-    fi
-
-  elif [[ "$src" == *.pdf ]]; then
-    # Only valid in -d mode per usage
-    [[ $docx_only -eq 1 ]] || exit_with "$EXIT_USAGE_MODE" \
-      ".pdf input requires -d mode."
-    base="${b%.pdf}"
-    target_docx="$docx_base/${base}.docx"
-    if ! bash "$gendocx_script" "${docx_opts[@]}" "$src" "$target_docx"; then
-      exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
-        "gendocx helper failed while generating DOCX from PDF source: $src"
-    fi
-  else
-    exit_with "$EXIT_USAGE_ARGUMENT" "Unsupported source type: $src"
-  fi
-done
 
 tmp_meta_file="$(mktemp)"
 for rel in "${!curr_meta[@]}"; do
@@ -822,13 +369,5 @@ for rel in "${!curr_meta[@]}"; do
 done | sort > "$tmp_meta_file"
 mv -f "$tmp_meta_file" "$meta_file"
 
-if [[ $docx_only -eq 1 ]]; then
-  log_info "Generated DOCX files."
-elif [[ $pdf_only -eq 1 ]]; then
-  log_info "Generated PDF files and validated DOCX conversion " \
-    "via temporary outputs."
-else
-  log_info "Generated PDF and DOCX files."
-fi
-
+log_info "Metadata preserved for Release notes and documentation."
 exit_with "$EXIT_SUCCESS"
