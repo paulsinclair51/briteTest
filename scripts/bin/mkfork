@@ -122,7 +122,7 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "Invalid option or argument. See usage above for details." >&2
+  echo "$message. See usage above for details." >&2
   exit "$EXIT_INVALID_ARGUMENT"
 }
 
@@ -387,7 +387,7 @@ delete_fork() {
   fi
   
   # Delete the fork via API
-  if ! gh api --method DELETE "repos/$gh_user/$REPO_NAME" 2>&1 > /dev/null; then
+  if ! gh api --method DELETE "repos/$gh_user/$REPO_NAME" >/dev/null 2>&1; then
     echo "Warning: Failed to delete fork. Manual cleanup may be required." >&2
     return 1
   fi

@@ -99,19 +99,16 @@ fi
 # Propagate repository history from remote if available
 bt_propagate_repository_history >/dev/null 2>&1
 
-readonly EXIT_SUCCESS=0
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NOT_FOUND=2
 readonly EXIT_OPERATION_FAILED=3
 readonly EXIT_CONFIG_ERROR=4
-readonly EXIT_INTERNAL_ERROR=100
-readonly EXIT_RUNTIME_ERROR=200
 
 usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "Invalid option or argument. See usage above for details." >&2
+  echo "$message. See usage above for details." >&2
   exit "$EXIT_INVALID_ARGUMENT"
 }
 

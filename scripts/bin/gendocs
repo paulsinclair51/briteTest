@@ -185,7 +185,7 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "Invalid option or argument. See usage above for details." >&2
+  echo "$message. See usage above for details." >&2
   exit 1
 }
 
@@ -419,6 +419,7 @@ segment_glob_match() {
     fi
 
     (( pi < path_len )) || return 1
+    # shellcheck disable=SC2053  # token may include glob patterns.
     [[ "${path_parts[$pi]}" == $token ]] || return 1
     _match_parts "$((pi+1))" "$((ti+1))"
   }
@@ -433,6 +434,7 @@ path_matches_pattern() {
   if [[ $segment_glob -eq 1 ]]; then
     segment_glob_match "$rel_path" "$pattern"
   else
+    # shellcheck disable=SC2053  # pattern may include glob patterns.
     [[ "$rel_path" == $pattern ]]
   fi
 }

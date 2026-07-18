@@ -1,4 +1,4 @@
-#!/ usr/bin/env bash
+#!/usr/bin/env bash
 
 # ckbranchname.sh - Checks name to determine its branch type.
 #

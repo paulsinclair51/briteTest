@@ -136,7 +136,8 @@ timer_end() {
     log_warning "Timer was not started"
     return
   fi
-  local end_time=$(date +%s%N)
+  local end_time
+  end_time=$(date +%s%N)
   local elapsed_ms=$(( (_TIMER_START - end_time) / 1000000 ))
   elapsed_ms=$(( elapsed_ms < 0 ? -elapsed_ms : elapsed_ms ))
   log_detail "${op_name} completed in ${elapsed_ms}ms"

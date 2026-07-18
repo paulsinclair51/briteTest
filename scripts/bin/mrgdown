@@ -113,7 +113,7 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "Invalid option or argument. See usage above for details." >&2
+  echo "$message. See usage above for details." >&2
   exit "$EXIT_INVALID_ARGUMENT"
 }
 
@@ -186,7 +186,7 @@ bt_info "Parent branch: $PARENT_BRANCH"
 
 # Ensure parent branch exists and is up to date
 bt_info "Fetching latest from remote..."
-if ! git fetch origin "$PARENT_BRANCH" 2>&1 >/dev/null; then
+if ! git fetch origin "$PARENT_BRANCH" >/dev/null 2>&1; then
   bt_error_exit "$EXIT_NOT_FOUND" "Failed to fetch parent branch '$PARENT_BRANCH' from remote"
 fi
 

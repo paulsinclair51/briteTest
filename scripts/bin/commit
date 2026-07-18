@@ -37,40 +37,40 @@ Options:
                      and arguments are ignored).
   -d                 Dry run (do not actually commit or push, just show what
                      would be done).
-  -m TOKEN           Commit message (GitHub style, requires quotes if spaces).
-                     Usage: commit -m "Fix authentication bug"
-  --message TOKEN    Commit message (GitHub style, requires quotes if spaces).
-                     Usage: commit --message "Fix authentication bug"
-  -- TOKENS          Commit message (Unix-style): all tokens after '--' are
-                     the message text.
-                     Usage: commit -- Fix critical memory leak
-                     Note: '--' must be a separate token, followed by at least
-                     one token. Leading/trailing whitespace is not preserved
-                     and whitespace between tokens is reduced to a single space.
-                     In quoted tokens, whitespace is preserved and the quotes are
-                     removed, for example:
-                     commit -- do "  keep   this spacing  " for commit message
-                     is the same as: commit -m "do   keep   this spacing   for commit message"
+  -m TOKEN           Commit message.
+  --message TOKEN    Commit message.
+  -- TOKEN...        Commit message.
   -v                 Verbose output. Shows detailed progress lines.
 
-  Note: -m TOKEN, --message TOKEN, and -- TOKENS are mutually exclusive and one is
-  required if one or more commits are to be made. Ignored if no changes need
-  to be committed. Not required if only pushing existing local commits to remote.
-  In dry-run mode (-d), message requirements are still validated when a
-  commit would be created.
-
-  Note: The resulting commit message from TOKEN/TOKENS must include at least
-  one non-whitespace character.
+  For commit message options '-m TOKEN', '--message TOKEN', and '-- TOKEN...':
+    - These are mutually exclusive.
+    - One is required if one or more commits are to be made.
+    - Ignored if no changes need to be committed.
+    - Not required if only pushing existing local commits to remote.
+    - In dry-run mode (-d), message requirements are still validated when a
+      commit would be created.
+    - For '-- TOKEN...', '--' must be a separate token, followed by at least
+      one or more tokens. Leading/trailing whitespace is not preserved
+      and whitespace between tokens is reduced to a single space.
+    - For a quoted token, whitespace is preserved and the quotes are
+      removed.
+    - For example, the following both have the same commit message:
+        commit -- do "  keep   this spacing  " for commit message.
+        commit -m "do   keep   this spacing   for commit message."
+    - The resulting commit message from TOKEN/TOKENS must include at least
+      one non-whitespace character.
+    - Always ensure that the commit message accurately reflects the changes
+      being committed.
 
 Examples:
   Commit all changes (auto-pushes when corresponding remote exists):
-    commit -m "Fix authentication bug in login module"
+    commit -m "Fix authentication bug in login module."
 
   Commit all changes (auto-pushes when corresponding remote exists):
-    commit -m "Add new feature"
+    commit -m "Add new feature."
 
-  Unix-style message:
-    commit -- Fix critical memory leak
+  '-- TOKEN...' commit message:
+    commit -- Fix critical memory leak.
 
 Outputs:
   - By default (without -v), output to stdout is:
@@ -90,14 +90,14 @@ Outputs:
 
 Exit codes:
   0   Success.
-  1   Invalid option or argument.
+  1   Invalid command usage. See the error line after usage output for details.
   3   Branch diverged. Run `mrgbranch` to resolve conflicts, then retry.
   4   Remote is not connected/reachable. Verify remote access and network,
       then retry.
   5   Not authorized for commit. Request authorization from an approver.
   6   Could not inspect working tree. Run `fixrepo` or request an approver
       to help resolve repository health and permissions issues.
-  200 Could not stage or commit changes (git add/commit failed). Run `fixrepo`;
+  200 Failed to commit. Run `fixrepo`;
       if the issue persists, contact an approver to resolve file/state issues.
   201 Could not push to remote (git push failed). Verify remote access and
       network, then retry.
@@ -140,7 +140,6 @@ else
   }
 fi
 
-readonly EXIT_SUCCESS=0
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_BRANCH_DIVERGED=3
 readonly EXIT_REMOTE_UNREACHABLE=4
@@ -153,8 +152,20 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "Invalid option or argument. See usage above for details." >&2
+  echo "$message. See usage above for details." >&2
   exit "$EXIT_INVALID_ARGUMENT"
+}
+
+fail_commit_and_exit() {
+  bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Failed to commit. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
+}
+
+run_git_command() {
+  if [[ "$VERBOSE" == true ]]; then
+    "$@"
+  else
+    "$@" >/dev/null 2>&1
+  fi
 }
 
 cleanup_old_dry_run_reports() {
@@ -198,6 +209,7 @@ PREPUSH_STATS_FILE="$(mktemp)"
 PREPUSH_NOTES_FILE="$(mktemp)"
 
 cleanup_runtime_files() {
+  # shellcheck disable=SC2317  # Invoked by trap cleanup_runtime_files EXIT.
   rm -f "$COMMIT_STATS_FILE" "$PREPUSH_STATS_FILE" "$PREPUSH_NOTES_FILE"
 }
 
@@ -245,7 +257,7 @@ emit_final_status() {
   local final_text="$completion_text"
 
   if [[ "$report_generated" == true ]]; then
-    report_rel="${REPORT_FILE#${REPO_ROOT}/}"
+    report_rel="${REPORT_FILE#"${REPO_ROOT}"/}"
   fi
 
   if [[ "$DIVERGENCE_AUTO_RESOLVED" == true ]]; then
@@ -383,6 +395,7 @@ collect_remote_behind_commits() {
 
 auto_resolve_divergence_if_safe() {
   local branch="$1"
+  local history_status=0
 
   if [[ "$DRY_RUN" == true ]]; then
     bt_error_exit "$EXIT_BRANCH_DIVERGED" "Local and remote branch '$branch' have diverged. Dry run cannot perform auto-resolution. Run without -d to auto-resolve or run 'mrgbranch' manually."
@@ -397,8 +410,8 @@ auto_resolve_divergence_if_safe() {
   fi
 
   # Propagate repository history from remote if available
-  bt_propagate_repository_history
-  case $? in
+  bt_propagate_repository_history || history_status=$?
+  case "$history_status" in
     0) ;;
     1) bt_info "Updated repository history from remote" ;;
     *) ;;
@@ -900,8 +913,8 @@ if [[ "$NEEDS_COMMIT" == true ]]; then
   fi
 
   COMMIT_MESSAGE_TRIMMED="$COMMIT_MESSAGE"
-  COMMIT_MESSAGE_TRIMMED="${COMMIT_MESSAGE_TRIMMED#${COMMIT_MESSAGE_TRIMMED%%[![:space:]]*}}"
-  COMMIT_MESSAGE_TRIMMED="${COMMIT_MESSAGE_TRIMMED%${COMMIT_MESSAGE_TRIMMED##*[![:space:]]}}"
+  COMMIT_MESSAGE_TRIMMED="${COMMIT_MESSAGE_TRIMMED#"${COMMIT_MESSAGE_TRIMMED%%[![:space:]]*}"}"
+  COMMIT_MESSAGE_TRIMMED="${COMMIT_MESSAGE_TRIMMED%"${COMMIT_MESSAGE_TRIMMED##*[![:space:]]}"}"
   if [[ -z "$COMMIT_MESSAGE_TRIMMED" ]]; then
     bt_error_exit "$EXIT_MESSAGE_EMPTY" "Commit message must include at least one non-whitespace character when there are changes to commit"
   fi
@@ -920,32 +933,20 @@ if [[ "$NEEDS_COMMIT" == true ]]; then
     fi
   else
     if [[ "$VERBOSE" == true ]]; then
-      bt_info "Staging changes..."
+      bt_info "Preparing for commit..."
+    fi
+    if ! run_git_command env GIT_BYPASS_HOOKS=true git add --all; then
+      fail_commit_and_exit
     fi
     if [[ "$VERBOSE" == true ]]; then
-      if ! GIT_BYPASS_HOOKS=true git add --all; then
-        bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Could not stage or commit changes. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
-      fi
-    else
-      if ! GIT_BYPASS_HOOKS=true git add --all >/dev/null 2>&1; then
-        bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Could not stage or commit changes. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
-      fi
-    fi
-    if [[ "$VERBOSE" == true ]]; then
-      bt_info "Staged all changes"
+      bt_info "Prepared for commit"
     fi
 
     if [[ "$VERBOSE" == true ]]; then
       bt_info "Creating commit..."
     fi
-    if [[ "$VERBOSE" == true ]]; then
-      if ! GIT_BYPASS_HOOKS=true git commit -m "$COMMIT_MESSAGE"; then
-        bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Could not stage or commit changes. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
-      fi
-    else
-      if ! GIT_BYPASS_HOOKS=true git commit -m "$COMMIT_MESSAGE" >/dev/null 2>&1; then
-        bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Could not stage or commit changes. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
-      fi
+    if ! run_git_command env GIT_BYPASS_HOOKS=true git commit -m "$COMMIT_MESSAGE"; then
+      fail_commit_and_exit
     fi
     if [[ "$VERBOSE" == true ]]; then
       bt_success "Commit created: $COMMIT_MESSAGE"
@@ -1034,14 +1035,8 @@ if [[ "$PUSH" == true ]]; then
         bt_info "Dry run: would push $PUSHED_COMMITS commit(s)"
       fi
     else
-      if [[ "$VERBOSE" == true ]]; then
-        if ! GIT_BYPASS_HOOKS=true git push origin "$CURRENT_BRANCH"; then
-          bt_error_exit "$EXIT_PUSH_FAILED" "Failed to push to remote"
-        fi
-      else
-        if ! GIT_BYPASS_HOOKS=true git push origin "$CURRENT_BRANCH" >/dev/null 2>&1; then
-          bt_error_exit "$EXIT_PUSH_FAILED" "Failed to push to remote"
-        fi
+      if ! run_git_command env GIT_BYPASS_HOOKS=true git push origin "$CURRENT_BRANCH"; then
+        bt_error_exit "$EXIT_PUSH_FAILED" "Failed to push to remote. Verify remote access and network, then retry."
       fi
       DID_PUSH_REMOTE=true
       if [[ "$VERBOSE" == true ]]; then
