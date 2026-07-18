@@ -27,7 +27,7 @@ Arguments:
                         The file must exist in docs/branding/.
 
 Options:
-  -d                    Show what would be generated without writing files.
+  -d                    Dry-run showing what would be generated without writing files.
   -h, --help            Output this help to stdout and exit (other options
                         and arguments are ignored).
 
