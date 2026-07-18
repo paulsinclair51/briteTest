@@ -1,0 +1,58 @@
+name: ShellCheck
+
+'on':
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: ShellCheck (scripts)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Collect shell scripts
+        id: collect
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(
+            git ls-files 'scripts/**' | while IFS= read -r f; do
+              [[ -f "$f" ]] || continue
+              head -n1 "$f" | grep -Eq '^#!.*(ba)?sh' && echo "$f"
+            done
+          )
+
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "No shell scripts found under scripts/."
+            exit 0
+          fi
+
+          printf '%s\n' "${files[@]}" > shellcheck-files.txt
+          echo "Found ${#files[@]} shell scripts"
+
+      - name: Run ShellCheck (error gate)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < shellcheck-files.txt
+          shellcheck -x -P scripts --severity=error "${files[@]}"
+
+      - name: Run ShellCheck (warning report)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < shellcheck-files.txt
+          shellcheck -x -P scripts --severity=warning "${files[@]}" || true

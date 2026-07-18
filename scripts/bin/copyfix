@@ -93,7 +93,6 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
 
-readonly EXIT_SUCCESS=0
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_OPERATION_FAILED=2
 readonly EXIT_CONFIG_ERROR=3
@@ -103,11 +102,12 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "Invalid option or argument. See usage above for details." >&2
+  echo "$message. See usage above for details." >&2
   exit "$EXIT_INVALID_ARGUMENT"
 }
 
 # Default options
+# shellcheck disable=SC2034  # Reserved for future custom-message behavior.
 CUSTOM_MESSAGE=""
 VERBOSE=false
 CONTINUE_MODE=false
@@ -180,6 +180,7 @@ while [[ $# -gt 0 ]]; do
       if [[ $# -lt 2 ]]; then
         usage_error "Option -m requires a message argument"
       fi
+      # shellcheck disable=SC2034  # Parsed and reserved for future behavior.
       CUSTOM_MESSAGE="$2"
       shift 2
       ;;
@@ -236,8 +237,9 @@ bt_info "Fetching latest from remote..."
 git fetch origin 2>/dev/null || bt_warn "Failed to fetch from origin"
 
 # Propagate repository history from remote if available
-bt_propagate_repository_history
-case $? in
+history_status=0
+bt_propagate_repository_history || history_status=$?
+case "$history_status" in
   0) ;;
   1) bt_info "Updated repository history from remote" ;;
   *) ;;

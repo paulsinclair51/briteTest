@@ -98,8 +98,8 @@ Examples:
   lsbranch -a -r
   lsbranch "*" -r
 
-  # Check feature branches (both local and remote)
-  lsbranch "feature/*"
+  # Check development branches (both local and remote)
+  lsbranch "dev/*"
 
   # Check branches matching pattern (both local and remote)
   lsbranch "*auth*"
@@ -121,14 +121,13 @@ Exit codes:
   0   Success.
   1   Argument or validation error.
   2   Required branch/repository state not found (for example,
-      requested branch ref is missing).
+      requested branch reference is missing).
   4   Branches found that violate naming rules if option -i
       specified.
   200 Git/report persistence operation failed.
 EOF
 }
 
-readonly EXIT_SUCCESS=0
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NOT_FOUND=2
 readonly EXIT_OPERATION_FAILED=200
@@ -139,18 +138,21 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "Invalid option or argument. See usage above for details." >&2
+  echo "$message. See usage above for details." >&2
   exit "$EXIT_INVALID_ARGUMENT"
 }
 
 # High-Level Flow:
-# - Parses query scope (current branch, exact branch, or glob pattern) and
-#   resolves local/remote branch candidates.
-# - Collects branch status, sync deltas, parent inference, and optional PR
-#   metadata with per-field fallbacks so report generation continues on
-#   errors.
-# - Writes a markdown branch report, including diagnostics warnings when
-#   metadata collection degrades.
+# 1. Validate arguments and parse options (-a, -l, -r, -v, -b, -i, -x).
+# 2. Resolve query scope: current branch, exact branch, or glob pattern.
+# 3. Set up report directory and capture initial repository state.
+# 4. Ensure remote refs are up-to-date (with timeout and fallback).
+# 5. For each candidate branch:
+#    - Collect status, sync metrics, PR count with per-field error fallbacks.
+#    - Append row to markdown report table.
+#    - Print compact status to stdout.
+# 6. Persist report (commit and optionally push to remote).
+# 7. Log warnings for degraded data collection; exit with appropriate code.
 
 set -euo pipefail
 
@@ -179,7 +181,6 @@ BRANCH_PATTERN=""
 EXCLUDE_PATTERN=""
 TARGET_BRANCH=""
 VERBOSE=false
-BRANCH_ERRORS=0
 INVALID_BRANCHES_FOUND=0
 ALL_BRANCHES=false
 INCLUDE_LOCAL_FLAG=false
@@ -189,7 +190,7 @@ COLOR_OUTPUT=true
 NO_ARG_MODE=false
 FETCH_ATTEMPTED=false
 FETCH_FAILED=false
-WARNINGS_FILE="$(mktemp)"
+WARNINGS_FILE=""
 AUTO_STASH_INDEX_READY=false
 INITIAL_STATUS_PORCELAIN=""
 declare -A AUTO_STASH_COUNTS=()
@@ -198,8 +199,15 @@ COLOR_RESET=$'\033[0m'
 COLOR_BOLD_GREEN=$'\033[1;92m'
 COLOR_BOLD_RED=$'\033[1;31m'
 
+# Validate temporary file creation for diagnostics
+if ! WARNINGS_FILE="$(mktemp)"; then
+  echo "Error: Failed to create temporary file for warnings." >&2
+  exit "$EXIT_RUNTIME_ERROR"
+fi
+
 cleanup_runtime_files() {
-  rm -f "$WARNINGS_FILE"
+  # Suppress errors during cleanup to ensure trap always completes
+  rm -f "$WARNINGS_FILE" 2>/dev/null || true
 }
 
 trap cleanup_runtime_files EXIT
@@ -207,9 +215,11 @@ trap cleanup_runtime_files EXIT
 matches_glob() {
   local text="$1"
   local pattern="$2"
+  # shellcheck disable=SC2053  # pattern is intentionally treated as glob.
   [[ "$text" == $pattern ]]
 }
 
+# Branch existence checks
 has_local_branch() {
   local branch="$1"
   git show-ref --verify --quiet "refs/heads/$branch"
@@ -221,9 +231,16 @@ has_remote_branch() {
 }
 
 capture_initial_worktree_status() {
+  # Snapshot git status before mutations to report files for accurate stdout/report
+  # Use --no-optional-locks to prevent git index refresh and opportunistic locking
   INITIAL_STATUS_PORCELAIN="$(git --no-optional-locks status --porcelain 2>/dev/null || true)"
 }
 
+# Branch naming rule validators
+# Main:  main
+# Version: v#.#.# (e.g., v1.0.0, v10.5.9)
+# Targeted: (dev|fix)/<desc>-v#.#.# (e.g., dev/auth-fix-v1.0.0)
+# Contributor: [<type>/]<desc> (e.g., feature/new-login, jsmith/bug-fix)
 is_version_branch() {
   local branch="$1"
   [[ "$branch" =~ ^v([1-9][0-9]?)\.([0-9]|[1-9][0-9]?)\.([0-9]|[1-9][0-9]?)$ ]]
@@ -320,18 +337,32 @@ capture_command_output() {
   local stdout_file
   local stderr_file
   local rc
-  stdout_file=$(mktemp)
-  stderr_file=$(mktemp)
+  
+  # Create temporary files for captured output
+  if ! stdout_file=$(mktemp); then
+    printf -v "$stdout_var" '%s' ""
+    printf -v "$stderr_var" '%s' "mktemp failed for stdout"
+    return 1
+  fi
+  if ! stderr_file=$(mktemp); then
+    rm -f "$stdout_file"
+    printf -v "$stdout_var" '%s' ""
+    printf -v "$stderr_var" '%s' "mktemp failed for stderr"
+    return 1
+  fi
 
+  # Execute command and capture output; preserve exit code
   set +e
   "$@" >"$stdout_file" 2>"$stderr_file"
   rc=$?
   set -e
 
+  # Read captured output into variables
   printf -v "$stdout_var" '%s' "$(<"$stdout_file")"
   printf -v "$stderr_var" '%s' "$(<"$stderr_file")"
 
-  rm -f "$stdout_file" "$stderr_file"
+  # Clean up temporary files
+  rm -f "$stdout_file" "$stderr_file" || true
   return "$rc"
 }
 
@@ -553,16 +584,16 @@ persist_report_changes() {
   report_filename="$(basename "$OUTPUT_FILE")"
   current_branch="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
   if [[ -z "$current_branch" ]]; then
-    bt_error_exit "$EXIT_OPERATION_FAILED" "Cannot persist lsbranch report from detached HEAD"
+    bt_error_exit "$EXIT_OPERATION_FAILED" "Cannot save report. Check out a branch and try again."
   fi
 
   if ! GIT_BYPASS_HOOKS=true git add -A -- reports/branch \
       >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_OPERATION_FAILED" "Failed to stage report."
+    bt_error_exit "$EXIT_OPERATION_FAILED" "Failed to prepare report for commit."
   fi
 
   if git diff --cached --quiet -- reports/branch; then
-    bt_info "No report updates to persist"
+    bt_info "No changes to report."
     return 0
   fi
 
@@ -574,13 +605,13 @@ persist_report_changes() {
   fi
 
   if ! git remote get-url origin >/dev/null 2>&1; then
-    bt_warn "Remote not configured"
+    bt_warn "No remote repository configured"
     bt_success "Report $report_filename committed."
     return 0
   fi
 
   if ! git ls-remote --heads origin >/dev/null 2>&1; then
-    bt_warn "Remote unreachable"
+    bt_warn "Cannot connect to remote repository"
     bt_success "Report $report_filename committed."
     return 0
   fi
@@ -722,6 +753,7 @@ get_pending_pr_count() {
 }
 
 ensure_remote_refs_fetched() {
+  # shellcheck disable=SC2034  # capture_command_output populates by name.
   local fetch_output=""
   local fetch_error=""
 
@@ -917,6 +949,7 @@ get_branch_base_reference() {
   echo "$best_base"
 }
 
+# Report generation and output formatting
 generate_report_header() {
   local report_header_cols
 
@@ -943,7 +976,7 @@ append_report_note_about_stale_remote() {
         ("$INCLUDE_LOCAL_FLAG" == false && "$INCLUDE_REMOTE_FLAG" == false) ]]; then
     cat >> "$OUTPUT_FILE" << EOF
 
-**Note:** Remote is unconnected or unreachable. Remote branch status is based on your last connection.
+**Note:** Cannot connect to remote repository. Remote branch status is based on your last update.
 EOF
   fi
 }
@@ -1011,19 +1044,24 @@ format_ratio_or_blank() {
 
 cleanup_old_reports() {
   local old_report
-  # Guard on OUTPUT_FILE path being set, not file existence — this function is
-  # called before the new report is created so the file does not exist yet.
-  [[ -n "$OUTPUT_FILE" ]] || return
+  
+  # Validate that OUTPUT_FILE path is set (file is created after cleanup)
+  [[ -n "$OUTPUT_FILE" ]] || return 0
+  
+  # Verify reports directory exists before attempting cleanup
+  [[ -d "$branch_reports_dir" ]] || return 0
+  
+  # Remove all prior branch reports except the new one being generated
+  # Silently skip if removal fails — don't block report generation
   for old_report in "$branch_reports_dir"/branch-*.md; do
-    [[ "$old_report" == "$OUTPUT_FILE" ]] && continue
-    [[ -e "$old_report" ]] || continue
-    rm -f "$old_report" || true
+    [[ "$old_report" == "$OUTPUT_FILE" ]] && continue    # Skip current report
+    [[ -e "$old_report" ]] || continue                    # Skip if already removed
+    rm -f "$old_report" 2>/dev/null || true               # Suppress errors
   done
 }
 
 check_branch_status() {
   local branch="$1"
-  local report_file="$2"
   local is_current="${3:-false}"
   local include_local_rows="${4:-true}"
   local include_remote_rows="${5:-true}"
@@ -1254,7 +1292,6 @@ check_branch_status() {
 
 check_remote_branch_status() {
   local branch="$1"
-  local report_file="$2"
 
   if [[ "$INVALID_ONLY" == true ]] &&
     ! branch_violates_naming_rules "$branch"; then
@@ -1414,19 +1451,26 @@ build_report_command
 # reflects repository state at invocation time.
 capture_initial_worktree_status
 
-# Validate reports directory and set output path
-mkdir -p "$branch_reports_dir"
+# Validate reports directory exists (should be part of repository structure)
+if [[ ! -d "$branch_reports_dir" ]]; then
+  bt_error_exit "$EXIT_OPERATION_FAILED" "$branch_reports_dir directory not found. Repository may be corrupted; run 'fixrepo' to verify."
+fi
+
+if [[ ! -w "$branch_reports_dir" ]]; then
+  bt_error_exit "$EXIT_OPERATION_FAILED" "$branch_reports_dir directory not writable."
+fi
+
 OUTPUT_FILE="$branch_reports_dir/branch-${RUN_TS_FILE}.md"
 
 # Get current branch to restore later
 ORIGINAL_BRANCH=$(bt_get_current_branch ||
-  bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
+  bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch.")
 
 # Determine branches to check
 if [[ -n "$TARGET_BRANCH" ]]; then
   if ! has_local_branch "$TARGET_BRANCH" &&
     ! has_remote_branch "$TARGET_BRANCH"; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Branch does not exist: $TARGET_BRANCH"
+    bt_error_exit "$EXIT_NOT_FOUND" "$TARGET_BRANCH branch does not exist."
   fi
 
   BRANCHES_TO_CHECK=""
@@ -1446,7 +1490,7 @@ elif [[ -z "$BRANCH_PATTERN" ]]; then
   # Default scope is current branch; remote scope is current tracked branch,
   # if any.
   if ! has_local_branch "$ORIGINAL_BRANCH"; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Current branch ref not found locally: $ORIGINAL_BRANCH"
+    bt_error_exit "$EXIT_NOT_FOUND" "Current branch $ORIGINAL_BRANCH not found locally."
   fi
 
   BRANCHES_TO_CHECK="$ORIGINAL_BRANCH"
@@ -1494,7 +1538,7 @@ generate_report_header
 if [[ "$FETCH_FAILED" == true ]] && 
    [[ "$INCLUDE_REMOTE_FLAG" == true || 
       ("$INCLUDE_LOCAL_FLAG" == false && "$INCLUDE_REMOTE_FLAG" == false) ]]; then
-  bt_warn "Remote is unconnected or unreachable"
+  bt_warn "Cannot connect to remote repository. Branch status is from your last update."
 fi
 
 # No-argument invocation shows exactly one row for the current branch, using

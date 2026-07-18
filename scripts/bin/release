@@ -93,7 +93,7 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "Invalid option or argument. See usage above for details." >&2
+  echo "$message. See usage above for details." >&2
   exit "$EXIT_INVALID_ARGUMENT"
 }
 

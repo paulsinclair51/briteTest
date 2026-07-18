@@ -187,7 +187,7 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "Invalid option or argument. See usage above for details." >&2
+  echo "$message. See usage above for details." >&2
   exit 1
 }
 
@@ -415,15 +415,12 @@ fi
 case "$MODE" in
   local)
     info "Removing local branch '$BRANCHNAME'..."
-    MODE_DESC="local"
     ;;
   remote)
     info "Removing branch '$BRANCHNAME' from remote..."
-    MODE_DESC="remote"
     ;;
   both)
     info "Removing branch '$BRANCHNAME' from local and remote..."
-    MODE_DESC="local and remote"
     ;;
 esac
 
@@ -474,7 +471,6 @@ if is_protected_branch "$BRANCHNAME"; then
       REMOTE_PROTECTED_SKIPPED=true
     fi
     MODE="local"
-    MODE_DESC="local"
   fi
 fi
 

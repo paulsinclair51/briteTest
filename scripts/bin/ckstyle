@@ -46,7 +46,7 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "Invalid option or argument. See usage above for details." >&2
+  echo "$message. See usage above for details." >&2
   exit "$EXIT_INVALID_ARGUMENT"
 }
 
@@ -785,6 +785,7 @@ entry_matches_file() {
   fi
 
   if [[ "$entry" == *'*'* ]]; then
+    # shellcheck disable=SC2053  # entry is an intentional glob pattern.
     [[ "$file" == $entry ]]
     return
   fi
@@ -1189,7 +1190,7 @@ source_semver() {
 
 run_versions_checks() {
   local expected_major expected_major_minor
-  local file semver major_minor current_branch branch_type
+  local file semver current_branch branch_type
   local -A versions=()
   local -a main_versions=()
   local entry main_semver current_semver

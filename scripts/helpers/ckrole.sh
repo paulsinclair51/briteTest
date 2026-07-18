@@ -106,7 +106,7 @@ while IFS= read -r line; do
   [[ "$line" =~ ^[[:space:]]*-[[:space:]] ]] || continue
 
   entry="${line#- }"
-  IFS=',' read -r raw_login raw_role raw_email _extra <<< "$entry"
+  IFS=',' read -r raw_login raw_role _raw_email _extra <<< "$entry"
 
   login="$(trim "${raw_login:-}")"
   role_code="$(trim "${raw_role:-}")"

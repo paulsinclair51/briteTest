@@ -104,7 +104,7 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "Invalid option or argument. See usage above for details." >&2
+  echo "$message. See usage above for details." >&2
   exit "$EXIT_INVALID_ARGUMENT"
 }
 
@@ -127,7 +127,8 @@ log_undo_to_history() {
   local current_branch
   current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
   [[ "$current_branch" == "HEAD" ]] && current_branch="main"
-  local history_file="$REPO_ROOT/$(bt_branch_to_history_file "$current_branch")"
+  local history_file
+  history_file="$REPO_ROOT/$(bt_branch_to_history_file "$current_branch")"
   local timestamp
   timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
@@ -219,8 +220,7 @@ undo_merge() {
 }
 
 undo_release() {
-  local current_user
-  current_user=$(get_current_user)
+  get_current_user >/dev/null
 
   bt_info "Checking for recent release tags..."
 

@@ -212,6 +212,7 @@ match_any_pattern() {
   local regex
 
   for pattern in "$@"; do
+    # shellcheck disable=SC2053  # pattern is intentionally treated as glob.
     if [[ $segment_glob -eq 1 ]]; then
       regex=$(glob_to_regex_segment "$pattern")
       if [[ "$text" =~ $regex ]]; then
@@ -2015,8 +2016,6 @@ if [[ $recursive -eq 1 || $keep_structure -eq 1 ||
   log_error "-g, -k, -r, -i, and -x are only allowed in directory mode."
   exit 1
 fi
-
-input_name=${infile##*/}
 
 if [[ "$infile" == *.md ]]; then
   source_file=$infile
