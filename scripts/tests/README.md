@@ -35,6 +35,12 @@ and high-signal output contracts.
   disconnected-remote push handling.
   Included automatically by `test_scripts.sh`.
 
+- **test_report_helpers.sh**: Focused tests for
+  `<repo>/scripts/helpers/report_helpers.sh` covering exact deleted-report
+  tracking, read-only enforcement, exact staged-path persistence, and
+  local-only fallback when push is unavailable.
+  Included automatically by `test_scripts.sh`.
+
 - **test_scripts.sh**: Script-test orchestrator that runs all `test_*.sh`
   scripts in this directory (except itself), with stop-on-failure and
   continue-on-failure modes.
@@ -54,6 +60,7 @@ make test-lsbranch
 make test-gendocs
 make test-fixrepo
 make test-mkbranch
+make test-report-helpers
 make test-all-scripts
 ```
 
@@ -65,5 +72,6 @@ bash ./scripts/tests/test_gendocs.sh
 bash ./scripts/tests/test_fixrepo.sh
 bash ./scripts/tests/test_mkbranch.sh
 bash ./scripts/tests/test_commit.sh
+bash ./scripts/tests/test_report_helpers.sh
 bash ./scripts/tests/test_scripts.sh
 ```

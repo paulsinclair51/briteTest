@@ -89,6 +89,9 @@ test-lsbranch:
 test-mkbranch:
 	bash ./scripts/tests/test_mkbranch.sh
 
+test-report-helpers:
+	bash ./scripts/tests/test_report_helpers.sh
+
 test-all-scripts:
 	bash ./scripts/tests/test_scripts.sh
 
@@ -101,4 +104,4 @@ genpngs:
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run lint-md check-doc test-gendocs test-fixrepo test-lsbranch test-mkbranch test-all-scripts gendocs genpngs clean
+.PHONY: all run lint-md check-doc test-gendocs test-fixrepo test-lsbranch test-mkbranch test-report-helpers test-all-scripts gendocs genpngs clean
