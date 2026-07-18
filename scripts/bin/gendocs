@@ -9,7 +9,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see '<repo>/LICENSE'.
 
-
 usage() {
   cat <<'EOF'
 Simple Usage:
@@ -53,49 +52,33 @@ Option values:
              available backend for each conversion.
              Use 'all' with -t to validate all md-pdf or pdf-docx
              backends. 'all' is not valid unless -t is specified.
-  <pattern>  Bash glob pattern for relative paths:
-             - * or ** matches any characters, including '/'
-             - ? matches one character, including '/'
-             - [abc] matches one character from a set/range
-             - any other character matches itself
-             Note: this differs from common path-segment glob
-             expectations, where * and ? do not match '/'. Use -g to
-             enable * and ? not matching '/'.
 
 Options:
   -b  Force conversion backend instead of auto-detecting.
       Useful for diagnostics and testing.
   -c  Convert details/summary lines to PDF-friendly form instead of
       removing details/summary lines. Default is to remove them.
-  -d  Output only .docx files. If source is .md, a temporary .pdf
-      is generated for intermediate conversion and then discarded.
+  -d  Dry-run shoeing planned conversions without writing output files.
   -f  Force regeneration even if the source is in docs/md/ and has
       not changed since the last time its .pdf was generated.
-  -g  Use segment-style glob matching for -i/-x patterns:
-      * and ? do not match '/'; ** matches across '/'.
   -h, --help  Output this help to stdout and exit (other options
               and arguments are ignored).
-  -i  Include only files whose relative path matches "<pattern>".
-  -k  Keep directory structure under output directory (useful with -r).
-  -n  Show planned conversions without writing output files.
   -p  Output only .pdf files. For validation, a temporary .docx is
       generated from each .pdf and then discarded.
   -q  Quiet mode: suppress informational messages to stdout.
       Help and diagnostics are not affected.
       There is no output to stdout in quiet mode when successful.
-  -r  When the source is a directory, include matching source files
-      in all subdirectories (except README.md files). Default is only
-      files directly in that directory.
   -t  Tool check: report backends (see -b option) status and exit.
       When -t is used, no options other than -b are allowed.
   -v  Verbose mode: print backend diagnostics to stderr.
-  -x  Exclude files whose relative path matches "<pattern>".
+  -x  Output only .docx files. If source is .md, a temporary .pdf
+      is generated for intermediate conversion and then discarded.
 
 Arguments:
   <document>[.md|.pdf]: Optional specification of source file(s):
     - If not specified, default is repository root docs/md/*.md.
     - Default extension is '.md' and '.pdf' is only allowed if option
-      '-d' is specified.
+      '-x' is specified.
     - If '.pdf' is specified, <source> is <document>.pdf; otherwise,
       <source> is <document>.md
     - <source> must be one of the following:
