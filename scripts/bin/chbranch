@@ -11,7 +11,7 @@
 usage() {
   cat <<'EOF'
 Usage:
-  chbranch [-f] [-r] BRANCH
+  chbranch [-f] [-r] [-o] BRANCH
   chbranch {-h | --help}
 
 Change current branch to BRANCH.
@@ -26,6 +26,7 @@ Options:
   -f          Discard all uncommitted tracked and untracked changes before
               changing to BRANCH, but only when branch-change prechecks
               succeed.
+  -o          Owner override for branches blocked by policy.
 
 Rules:
   - By default, local BRANCH is used when it exists.
@@ -39,12 +40,18 @@ Rules:
     discarded before changing the branch.
   - Changing branch is blocked when the current branch is dirty,
     unless -f is specified.
+  - With -o, BRANCH is still required and normal local/remote selection
+    rules still apply.
+  - If BRANCH is policy-blocked for normal users, -o allows switching only
+    when the caller is the repository owner.
 
 Examples:
   chbranch dev/my-feature-v1.0.0
   chbranch -f dev/my-feature-v1.0.0
   chbranch -r dev/my-feature-v1.0.0
   chbranch -f -r dev/my-feature-v1.0.0
+  chbranch -o main
+  chbranch -o -r v1.0.0
   chbranch v1.0.0
 
 Outputs:
@@ -58,6 +65,8 @@ Exit codes:
   5   Current branch is dirty; commit/undo changes first or resubmit
       with -f to discard all the uncommitted changes.
   6   Remote branch is not connected/reachable.
+  8   Owner override (-o) denied (caller is not repository owner or
+      owner could not be determined).
   200 Git switch command failed (e.g., corrupted index, merge conflicts,
       permissions, or other git-level errors preventing branch change).
 EOF
@@ -85,8 +94,12 @@ source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 readonly EXIT_ARG_ERROR=1
 readonly EXIT_NOT_GIT_REPO=2
+readonly EXIT_NO_CHANGE=2
+readonly EXIT_BRANCH_NOT_FOUND=3
+readonly EXIT_REMOTE_NOT_FOUND=4
 readonly EXIT_DIRTY_WORKTREE=5
 readonly EXIT_REMOTE_UNREACHABLE=6
+readonly EXIT_OWNER_REQUIRED=8
 readonly EXIT_CHANGE_FAILED=200
 
 usage_error() {
@@ -232,6 +245,7 @@ switch_remote() {
 parse_args() {
   FORCE_REMOTE=false
   FORCE_DISCARD=false
+  FORCE_OWNER_OVERRIDE=false
   BRANCH_ARG=""
 
   if [[ $# -eq 0 ]]; then
@@ -249,6 +263,9 @@ parse_args() {
         ;;
       -f)
         FORCE_DISCARD=true
+        ;;
+      -o)
+        FORCE_OWNER_OVERRIDE=true
         ;;
       --*)
         usage_error "Unknown option: $arg"
@@ -270,8 +287,53 @@ parse_args() {
   fi
 }
 
+resolve_repo_owner_login_or_empty() {
+  local repo_slug="${GITHUB_REPOSITORY:-}"
+  local remote_url=""
+  local owner=""
+
+  if [[ -n "$repo_slug" && "$repo_slug" == */* ]]; then
+    owner="${repo_slug%%/*}"
+  fi
+
+  if [[ -z "$owner" ]]; then
+    remote_url="$(git remote get-url origin 2>/dev/null || true)"
+    if [[ "$remote_url" =~ ^git@github\.com:([^/]+)/([^/]+)(\.git)?$ ]]; then
+      owner="${BASH_REMATCH[1]}"
+    elif [[ "$remote_url" =~ ^https://github\.com/([^/]+)/([^/]+)(\.git)?$ ]]; then
+      owner="${BASH_REMATCH[1]}"
+    elif [[ "$remote_url" =~ ^ssh://git@github\.com/([^/]+)/([^/]+)(\.git)?$ ]]; then
+      owner="${BASH_REMATCH[1]}"
+    fi
+  fi
+
+  bt_normalize_login "$owner"
+}
+
+ensure_repo_owner_for_override() {
+  local actor_lc=""
+  local repo_owner_lc=""
+
+  if ! actor_lc="$(bt_require_login)"; then
+    bt_error_exit "$EXIT_OWNER_REQUIRED" \
+      "Owner override (-o) requires a resolvable caller identity"
+  fi
+
+  repo_owner_lc="$(resolve_repo_owner_login_or_empty)"
+  if [[ -z "$repo_owner_lc" ]]; then
+    bt_error_exit "$EXIT_OWNER_REQUIRED" \
+      "Owner override (-o) requires repository owner identity (set GITHUB_REPOSITORY or configure origin GitHub URL)"
+  fi
+
+  if [[ "$actor_lc" != "$repo_owner_lc" ]]; then
+    bt_error_exit "$EXIT_OWNER_REQUIRED" \
+      "Owner override (-o) denied: caller '$actor_lc' is not repository owner '$repo_owner_lc'"
+  fi
+}
+
 validate_target_branch() {
   local branch="$1"
+  local owner_override="${2:-false}"
   local msg=""
 
   if [[ "$branch" == origin/* ]]; then
@@ -282,10 +344,14 @@ validate_target_branch() {
   fi
 
   if [[ "$branch" == "main" ]]; then
-    msg="Switching to 'main' is blocked by policy. Use contributor/targeted "
-    msg+="branches, or a local version branch."
-    bt_error_exit "$EXIT_ARG_ERROR" \
-      "$msg"
+    if [[ "$owner_override" == true ]]; then
+      ensure_repo_owner_for_override
+    else
+      msg="Switching to 'main' is blocked by policy. Repository owner can "
+      msg+="override with -o."
+      bt_error_exit "$EXIT_ARG_ERROR" \
+        "$msg"
+    fi
   fi
 
   if ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
@@ -330,7 +396,7 @@ main() {
   parse_args "$@"
 
   TARGET_BRANCH="$BRANCH_ARG"
-  validate_target_branch "$TARGET_BRANCH"
+  validate_target_branch "$TARGET_BRANCH" "$FORCE_OWNER_OVERRIDE"
 
   if branch_exists_local "$TARGET_BRANCH"; then
     has_local=true
