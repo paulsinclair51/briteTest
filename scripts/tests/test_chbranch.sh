@@ -123,13 +123,13 @@ assert_contains "Remote branch 'origin/dev/local-only' does not exist" \
   "$TMPDIR/remote-missing.out"
 pass "remote missing exit code"
 
-# 6) Dirty worktree without -f -> exit 6
+# 6) Dirty worktree without -f -> exit 5
 (
   cd "$WORK"
   echo "dirty" >> README.md
 )
 rc=$(run_in_work_capture "$TMPDIR/dirty.out" dev/target)
-[[ "$rc" -eq 6 ]] || fail "dirty worktree should exit 6 (got $rc)"
+[[ "$rc" -eq 5 ]] || fail "dirty worktree should exit 5 (got $rc)"
 assert_contains "has uncommitted changes" "$TMPDIR/dirty.out"
 (
   cd "$WORK"
@@ -193,15 +193,65 @@ assert_contains "README.md" "$TMPDIR/status-after-fr.txt"
 )
 pass "-f -r preserves changes when remote missing"
 
-# 10) Remote unreachable/not configured -> exit 7
+# 10) Remote unreachable/not configured -> exit 6
 (
   cd "$WORK"
   git remote remove origin
 )
 rc=$(run_in_work_capture "$TMPDIR/remote-unreachable.out" -r dev/target)
-[[ "$rc" -eq 7 ]] || fail "remote unreachable should exit 7 (got $rc)"
+[[ "$rc" -eq 6 ]] || fail "remote unreachable should exit 6 (got $rc)"
 assert_contains "Remote branch is not connected/reachable" \
   "$TMPDIR/remote-unreachable.out"
 pass "remote unreachable exit code"
+
+# Re-add origin for owner-mode checks.
+(
+  cd "$WORK"
+  git remote add origin "$ORIGIN"
+)
+
+# 11) -o on non-restricted branch has no effect for non-owner -> exit 0
+rc=$(
+  GITHUB_ACTOR="not-owner" GITHUB_REPOSITORY="owner/repo" \
+  run_in_work_capture "$TMPDIR/o-nonrestricted.out" -o dev/target
+)
+[[ "$rc" -eq 0 ]] || fail "-o on non-restricted branch should exit 0 (got $rc)"
+assert_contains "Current branch is now local 'dev/target'" \
+  "$TMPDIR/o-nonrestricted.out"
+pass "-o non-restricted branch unaffected for non-owner"
+
+# 12) -o main denied for non-owner -> exit 8
+rc=$(
+  GITHUB_ACTOR="not-owner" GITHUB_REPOSITORY="owner/repo" \
+  run_in_work_capture "$TMPDIR/o-main-denied.out" -o main
+)
+[[ "$rc" -eq 8 ]] || fail "-o main non-owner should exit 8 (got $rc)"
+assert_contains "Owner override (-o) denied" "$TMPDIR/o-main-denied.out"
+pass "-o main denied for non-owner"
+
+# 13) -o main for owner -> exit 0
+rc=$(
+  GITHUB_ACTOR="owner" GITHUB_REPOSITORY="owner/repo" \
+  run_in_work_capture "$TMPDIR/owner-main.out" -o main
+)
+[[ "$rc" -eq 0 ]] || fail "-o owner switch should exit 0 (got $rc)"
+(
+  cd "$WORK"
+  current_local="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+  [[ "$current_local" == "main" ]] || \
+    fail "expected current local branch main after -o, got '$current_local'"
+)
+assert_contains "Current branch is now local 'main'" "$TMPDIR/owner-main.out"
+pass "-o owner switches to main"
+
+# 14) -o can be combined with -r for allowed branches -> exit 0
+rc=$(
+  GITHUB_ACTOR="not-owner" GITHUB_REPOSITORY="owner/repo" \
+  run_in_work_capture "$TMPDIR/o-r-success.out" -o -r dev/target
+)
+[[ "$rc" -eq 0 ]] || fail "-o -r on allowed branch should exit 0 (got $rc)"
+assert_contains "Current branch is now remote 'origin/dev/target'" \
+  "$TMPDIR/o-r-success.out"
+pass "-o -r works for allowed branch"
 
 echo "All chbranch smoke tests passed."
