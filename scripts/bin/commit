@@ -13,7 +13,7 @@
 usage() {
   cat <<'EOF'
 Usage:
-  commit [OPTIONS] [-- TOKENS]
+  commit [OPTIONS] [-- TOKEN...]
   commit {-h | --help}
 
 Commit changes to the current local branch in briteTest with
@@ -35,50 +35,50 @@ Arguments:
 Options:
   -h, --help         Output this help to stdout and exit (other options
                      and arguments are ignored).
-  -d                 Dry run for the branch commit/push workflow. The script
+  -c TOKEN           Commit comment as a single token.
+  -- TOKEN...        Commit comment with 'TOKEN...' indicating one or more tokens.
+  -d                 Dry-run for the branch commit/push workflow. The script
                      does not create or push the primary code commit, but it
                      still generates the report and may delete stale dry-run
-                     reports and persist report updates.
-  -m TOKEN           Commit message.
-  --message TOKEN    Commit message.
-  -- TOKEN...        Commit message.
+                     reports.
   -v                 Verbose output. Shows detailed progress lines.
 
-  For commit message options '-m TOKEN', '--message TOKEN', and '-- TOKEN...':
-    - These are mutually exclusive.
-    - One is required if one or more commits are to be made.
+  For commit comment options '-c TOKEN' and '-- TOKEN...':
+    - These options are mutually exclusive.
+    - One of these options is required if one or more commits are to be made.
     - Ignored if no changes need to be committed.
-    - Not required if only pushing existing local commits to remote.
-    - In dry-run mode (-d), message requirements are still validated when a
+    - Neither of these options are required if only pushing existing local commits
+      to remote.
+    - In dry-run mode (-d), commit comment requirements are still validated when a
       commit would be created.
     - For '-- TOKEN...', '--' must be a separate token, followed by at least
       one or more tokens. Leading/trailing whitespace is not preserved
       and whitespace between tokens is reduced to a single space.
     - For a quoted token, whitespace is preserved and the quotes are
       removed.
-    - For example, the following both have the same commit message:
-        commit -- do "  keep   this spacing  " for commit message.
-        commit -m "do   keep   this spacing   for commit message."
-    - The resulting commit message from TOKEN/TOKENS must include at least
+    - For example, the following both have the same commit comment:
+        commit -- do "  keep   this spacing  " for commit comment.
+        commit -c "do   keep   this spacing   for commit comment."
+    - The resulting commit comment from TOKEN or TOKEN... must include at least
       one non-whitespace character.
-    - Always ensure that the commit message accurately reflects the changes
+    - Always ensure that the commit comment accurately reflects the changes
       being committed.
 
 Examples:
   Commit all changes (auto-pushes when corresponding remote exists):
-    commit -m "Fix authentication bug in login module."
+    commit -c "Fix authentication bug in login module."
 
   Commit all changes (auto-pushes when corresponding remote exists):
-    commit -m "Add new feature."
+    commit -c "Add new feature."
 
-  '-- TOKEN...' commit message:
+  '-- TOKEN...' commit comment:
     commit -- Fix critical memory leak.
 
 Outputs:
   - By default (without -v), output to stdout is:
-    - Current branch line.
-    - Final status line includes counts based on mode:
-      - Commit: <n> (no corresponding remote or  not connected)
+    - Current branch.
+    - Final status includes counts based on mode:
+      - Commit: <n> (no corresponding remote or not connected)
       - Commit/Push: <c>, Push: <p> (connected with a corresponding remote)
       - Push: <p> (local commits are pending to be pushed)
       - No commits / No commits or pushes when no work was done.
@@ -104,6 +104,7 @@ Exit codes:
   5   Not authorized for commit. Request authorization from an approver.
   6   Could not inspect working tree. Run `fixrepo` or request an approver
       to help resolve repository health and permissions issues.
+  7   Commit comment is missing/empty when changes require a commit.
   200 Failed to commit. Run `fixrepo`;
       if the issue persists, contact an approver to resolve file/state issues.
   201 Could not push to remote (git push failed). Verify remote access and
@@ -132,12 +133,15 @@ RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 REPORT_FILE=""
 ORIGINAL_ARGS=("$@")
 DRY_RUN_REPORT_DELETIONS=()
+BRANCH_REPORTS_DIR_UNLOCKED=false
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/report_helpers.sh
+source "$SCRIPT_DIR/../helpers/report_helpers.sh"
 
 # history_log.sh is optional in minimal or isolated test environments.
 # If unavailable, provide a no-op fallback used by divergence handling.
@@ -155,8 +159,16 @@ readonly EXIT_BRANCH_DIVERGED=3
 readonly EXIT_REMOTE_UNREACHABLE=4
 readonly EXIT_NOT_AUTHORIZED=5
 readonly EXIT_WORKTREE_INSPECTION_FAILED=6
+readonly EXIT_MESSAGE_REQUIRED=6
+readonly EXIT_MESSAGE_EMPTY=7
 readonly EXIT_STAGE_COMMIT_FAILED=200
 readonly EXIT_PUSH_FAILED=201
+
+# Aliases for branch/config/login failure paths used below.
+readonly EXIT_NOT_ON_BRANCH=1
+readonly EXIT_NOT_ON_LOCAL_BRANCH=1
+readonly EXIT_CONFIG_NOT_FOUND=6
+readonly EXIT_LOGIN_UNKNOWN=5
 
 usage_error() {
   local message="$1"
@@ -297,10 +309,26 @@ PREPUSH_NOTES_FILE="$(mktemp)"
 
 cleanup_runtime_files() {
   # shellcheck disable=SC2317  # Invoked by trap cleanup_runtime_files EXIT.
+  if [[ "$BRANCH_REPORTS_DIR_UNLOCKED" == true ]]; then
+    bt_report_dir_disable_writes "$BRANCH_REPORTS_DIR" "$EXIT_STAGE_COMMIT_FAILED" || true
+    BRANCH_REPORTS_DIR_UNLOCKED=false
+  fi
   rm -f "$COMMIT_STATS_FILE" "$PREPUSH_STATS_FILE" "$PREPUSH_NOTES_FILE"
 }
 
 trap cleanup_runtime_files EXIT
+
+enable_branch_reports_write_access() {
+  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_STAGE_COMMIT_FAILED"
+  BRANCH_REPORTS_DIR_UNLOCKED=true
+}
+
+disable_branch_reports_write_access() {
+  if [[ "$BRANCH_REPORTS_DIR_UNLOCKED" == true ]]; then
+    bt_report_dir_disable_writes "$BRANCH_REPORTS_DIR" "$EXIT_STAGE_COMMIT_FAILED"
+    BRANCH_REPORTS_DIR_UNLOCKED=false
+  fi
+}
 
 is_contributor_or_higher() {
   local login="$1"
@@ -728,7 +756,7 @@ generate_commit_report() {
   local push_commit_hash=""
   local push_commit_comment=""
 
-  mkdir -p "$BRANCH_REPORTS_DIR"
+  enable_branch_reports_write_access
 
   if [[ "$NEEDS_COMMIT" == true && "$DRY_RUN" == false ]]; then
     commit_hash="$(git rev-parse --short HEAD 2>/dev/null || true)"
@@ -891,12 +919,12 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    -m | --message)
+    -c)
       if [[ $# -lt 2 ]]; then
-        usage_error "Option -m requires a message argument"
+        usage_error "Option -c requires a comment token"
       fi
       if [[ -n "$COMMIT_MESSAGE" ]]; then
-        usage_error "Cannot use both -m and -- for message"
+        usage_error "Cannot use both -c and -- for comment"
       fi
       COMMIT_MESSAGE="$2"
       shift 2
@@ -913,7 +941,10 @@ while [[ $# -gt 0 ]]; do
       # Unix-style message: everything after -- is the message
       shift
       if [[ -n "$COMMIT_MESSAGE" ]]; then
-        usage_error "Cannot use both -m and -- for message"
+        usage_error "Cannot use both -c and -- for the commit comment"
+      fi
+      if [[ $# -eq 0 ]]; then
+        usage_error "Option -- requires one or more tokens for the commit comment"
       fi
       COMMIT_MESSAGE="$*"
       break
@@ -974,7 +1005,7 @@ else
 fi
 
 # Determine commit candidates before validating message so push-only mode works
-# without requiring TOKEN/TOKENS.
+# without requiring '-c TOKEN' or '-- TOKEN...'
 collect_commit_candidate_files
 if [[ -n "$COMMIT_FILE_LIST" ]]; then
   NEEDS_COMMIT=true
@@ -997,14 +1028,14 @@ fi
 # Validate commit message only when a commit is actually needed.
 if [[ "$NEEDS_COMMIT" == true ]]; then
   if [[ -z "$COMMIT_MESSAGE" ]]; then
-    bt_error_exit "$EXIT_MESSAGE_REQUIRED" "Commit message is required (-m/--message or -- TOKENS) when there are changes to commit"
+    bt_error_exit "$EXIT_MESSAGE_REQUIRED" "Commit comment is required (-c TOKEN or -- TOKENS) when there are changes to commit"
   fi
 
   COMMIT_MESSAGE_TRIMMED="$COMMIT_MESSAGE"
   COMMIT_MESSAGE_TRIMMED="${COMMIT_MESSAGE_TRIMMED#"${COMMIT_MESSAGE_TRIMMED%%[![:space:]]*}"}"
   COMMIT_MESSAGE_TRIMMED="${COMMIT_MESSAGE_TRIMMED%"${COMMIT_MESSAGE_TRIMMED##*[![:space:]]}"}"
   if [[ -z "$COMMIT_MESSAGE_TRIMMED" ]]; then
-    bt_error_exit "$EXIT_MESSAGE_EMPTY" "Commit message must include at least one non-whitespace character when there are changes to commit"
+    bt_error_exit "$EXIT_MESSAGE_EMPTY" "Commit comment must include at least one non-whitespace character when there are changes to commit"
   fi
 fi
 
@@ -1140,6 +1171,7 @@ fi
 if [[ "$COMMITTED_FILES" -gt 0 || "$PUSHED_COMMITS" -gt 0 ]]; then
   generate_commit_report
   persist_report_changes
+  disable_branch_reports_write_access
   if [[ "$DRY_RUN" == true ]]; then
     emit_final_status "Commit/Push: ${COMMITTED_FILES}. Dry-run" true
   elif [[ "$COMMITTED_FILES" -gt 0 && "$PUSHED_COMMITS" -gt 0 ]]; then

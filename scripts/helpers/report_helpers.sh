@@ -51,6 +51,39 @@ bt_report_mark_read_only() {
   fi
 }
 
+bt_report_dir_enable_writes() {
+  local report_dir="$1"
+  local exit_code="$2"
+
+  if ! mkdir -p "$report_dir" 2>/dev/null; then
+    bt_report_error_exit "$exit_code" "Failed to create report directory: $report_dir"
+  fi
+
+  if ! chmod u+rwx "$report_dir" 2>/dev/null; then
+    bt_report_error_exit "$exit_code" "Failed to enable writes for report directory: $report_dir"
+  fi
+}
+
+bt_report_dir_disable_writes() {
+  local report_dir="$1"
+  local exit_code="$2"
+  local report_file
+
+  [[ -d "$report_dir" ]] || return 0
+
+  # Normalize report files to read-only before locking the directory.
+  for report_file in "$report_dir"/*.md; do
+    [[ -e "$report_file" ]] || continue
+    if ! chmod a-w "$report_file" 2>/dev/null; then
+      bt_report_warn "Could not mark report read-only: ${report_file}"
+    fi
+  done
+
+  if ! chmod a-w "$report_dir" 2>/dev/null; then
+    bt_report_error_exit "$exit_code" "Failed to disable writes for report directory: $report_dir"
+  fi
+}
+
 bt_report_remove_and_record() {
   local repo_root="$1"
   local deleted_array_name="$2"

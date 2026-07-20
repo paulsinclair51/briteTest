@@ -162,20 +162,38 @@ Options:
   -m "MSG"          Attach a commit message/comment to the operation
                     Usage: mkbranch dev/feature-a-v2.0.0 v2.0.0 -m \
                       "Implement new feature a."
-  --message "MSG"   Attach a commit message/comment to the operation
+  --message "MSG"   Attach a commit message to the operation
                     Usage: mkbranch fix/memory-leak-v1.0.0 v1.0.0 \
                       --message "Fix critical memory leak."
   -r                Push to remote (default if the new branch is a
                     'version' branch).
   -v                Verbose output.
-  -- MSG            Attach commit message/comment (everything after
+  -- MSG            Attach commit message (everything after
                     -- is the comment)
                     Usage: mkbranch fix/login-bug-v1.0.0 v1.0.0 --
                       Fix critical memory leak
                     Note: No quotes needed, captures all remaining
                       arguments.
 
-   Note: -m "MSG", --message "MSG", -- MSG are mutually exclusive.
+  For commit message options '-m TOKEN', '--message TOKEN', and '-- TOKEN...':
+    - These are mutually exclusive.
+    - One is required if one or more commits are to be made.
+    - Ignored if no changes need to be committed.
+    - Not required if only pushing existing local commits to remote.
+    - In dry-run mode (-d), message requirements are still validated when a
+      commit would be created.
+    - For '-- TOKEN...', '--' must be a separate token, followed by at least
+      one or more tokens. Leading/trailing whitespace is not preserved
+      and whitespace between tokens is reduced to a single space.
+    - For a quoted token, whitespace is preserved and the quotes are
+      removed.
+    - For example, the following both have the same commit message:
+        commit -- do "  keep   this spacing  " for commit message.
+        commit -m "do   keep   this spacing   for commit message."
+    - The resulting commit message from TOKEN/TOKENS must include at least
+      one non-whitespace character.
+    - Always ensure that the commit message accurately reflects the changes
+      being committed.
 
 Local branch:
   - If the parent branch doesn't exist locally, fail with error that

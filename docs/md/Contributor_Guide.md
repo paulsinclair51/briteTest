@@ -148,11 +148,23 @@ Contributors should read this document before submitting changes, reviewing, or 
 ### 1.1. Scripts (scripts/bin)
 
 A script-based workflow is required. Direct use of git commands that modify the
-repository is not allowed accept by the owner. A script validates the action,
-enforces policy, issues the git commands needed to completed the action,
+repository is not allowed for users, contributors, reviewers, or approvers.
+These roles must use project scripts for repository-modifying actions. A script validates the action,
+enforces policy, issues the git commands needed to complete the action,
 generates informational output, and, for some scripts, a report. This simplifies the
 workflow for contributors, reviewers, and approvers while maintaining integrity in
-the repostory.
+the repository.
+
+Repository owner behavior:
+- By default, repository owner is still restricted by the role assigned in
+  `config/contributors.md`.
+- For scripts that support `-o`, owner may run one command with temporary
+  elevated override.
+- Repository owner can explicitly toggle unrestricted local-clone mode using:
+  `override on` and `override off`.
+- Unrestricted mode affects direct command restrictions enforced by local hooks
+  and related local mechanisms; it does not disable script-level policy checks
+  or role gating.
 
 The current executable script set is maintained in `scripts/bin/README.md`.
 
@@ -160,6 +172,7 @@ The current executable script set is maintained in `scripts/bin/README.md`.
 - **Document/brand:** `ckstyle`, `gendocs`, `genpngs`, `replacephrases`, `updatebrand`
 - **Repository/fork/clone:** `mkfork`, `mkclone`, `rmclone`, `fixrepo`
 - **Branch/workflow:** `ckbranch_history`, `chcurrent`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `mkfeedback`, `mergetoparent`, `mkpullrequest`, `chtarget`, `mkrelease`, `syncfromremote`, `syncfromparent`, `undo`, `rmbranch`
+- **Owner controls:** `override` (toggle repository-owner unrestricted mode for this clone)
 </details>
 </details>
 
@@ -184,6 +197,35 @@ This repository uses a release-oriented branching model with four branch types:
 - targeted -> version (required PR/review by reviewers, mrgup by an approver)
 - version -> `origin/main` (no PR, mrgup by an approver)
 - main -> any (not allowed)
+
+**Branch Presence Rules (Local/Remote):**
+- `main`: remote-only by policy (`origin/main`). A local `main` branch is not required.
+- `v<M>.<m>.0` version branches: remote branch required; local branch optional.
+- targeted (`dev/...`, `fix/...`) branches: local and remote branches are required for merge workflows.
+- contributor branches: local branch required; remote branch optional while developing,
+  but required before remote-reviewed workflows (for example PR-required merge paths).
+
+**Merge-Up Safety Preconditions (`mrgup`):**
+- remote must be connected/reachable.
+- current local branch must be in sync with its remote when a remote branch exists.
+- current branch must not be behind its parent.
+- parent local/remote must be in sync when both parent refs exist.
+
+Role naming used in this guide is: users, contributors, reviewers, approvers,
+and repository owner.
+
+Repository owner role model:
+- Protected operations (for example merge-up to protected branches and releases)
+  are approver responsibilities.
+- The repository owner is not required to be an approver.
+- By default, the repository owner follows the role assigned in
+  `config/contributors.md`.
+- For scripts that support `-o`, repository owner may explicitly enable a
+  temporary, operation-scoped override for that command run only.
+- When the command exits, override is no longer active and normal role
+  restrictions apply again.
+- `override on/off` is separate from script `-o`: it controls local direct
+  command restrictions enforced by hooks and similar local mechanisms.
 </details>
 
 <details>
@@ -525,7 +567,7 @@ briteTest uses a six-tier access model for public repository safety:
 | **CONTRIBUTOR (C)** | Create branches, commit, open PRs, run contributor scripts | Cannot merge/release/protected-script operations |
 | **REVIEWER (R)** | All contributor actions plus review/rebase workflows | Cannot run approver-only scripts |
 | **APPROVER (A)** | Merge, release, run protected scripts with override confirmation | Must follow audit and override controls |
-| **MAINTAINER** | Repository admin and access management | Responsible for governance and audits |
+| **REPOSITORY OWNER (O)** | Repository admin and access management | Responsible for governance and audits |
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;5.1. File Access Matrix</summary>
@@ -537,6 +579,8 @@ briteTest uses a six-tier access model for public repository safety:
 | `config/contributors.md`, governance/policy docs | R | R | RW | RW | RW* | RW |
 
 **Write access is script-controlled** (`mkbranch`, `commit`, `mkpullrequest`, `mergetoparent`, `chtarget`, `mkrelease`) rather than direct protected-branch git operations.
+Direct user git commands that modify repository state are blocked by hooks for
+users, contributors, reviewers, and approvers.
 </details>
 
 <details>
@@ -624,7 +668,7 @@ If identity cannot be resolved, role checks fail by design.
 
 #### APPROVER (A)
 
-**Who:** Maintainers responsible for merges, releases, and protected operations
+**Who:** Approvers responsible for merges, releases, and protected operations
 
 **Inherits:** All Reviewer and Contributor capabilities
 
@@ -639,7 +683,7 @@ If identity cannot be resolved, role checks fail by design.
 - Must follow audit trail and approval controls
 - Responsible for release integrity and repository governance
 
-#### MAINTAINER
+#### REPOSITORY OWNER (O)
 
 **Who:** Repository owner
 
@@ -648,7 +692,13 @@ If identity cannot be resolved, role checks fail by design.
 - Add/remove collaborators and change access levels
 - Modify branch protection rules
 - Change repository configuration and secrets
-- All approver capabilities
+
+**Script Policy Behavior:**
+- Repository owner is not automatically treated as approver.
+- Repository owner follows the role assigned in `config/contributors.md`
+  unless an explicit owner override is requested.
+- In scripts that support `-o`, owner override is temporary and applies only
+  to that command invocation.
 
 ---
 </details>

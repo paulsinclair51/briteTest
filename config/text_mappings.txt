@@ -1,7 +1,0 @@
-# Text replacement rules for scripts/bin/replacetext
-#
-# Format:
-# old_text = new_text
-#
-# Example:
-# old brand = new brand

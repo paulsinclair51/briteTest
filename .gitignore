@@ -64,3 +64,6 @@ __pycache__/
 # tests/
 tests/tmp/*
 !tests/tmp/README.md
+
+# Local-only lsbranch reports
+reports/branch/branch-*.md

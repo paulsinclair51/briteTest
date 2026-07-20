@@ -33,7 +33,7 @@ run_capture() {
 
 extract_report_path() {
   local infile="$1"
-  awk -F': ' '/^Report generated: /{print $2}' "$infile" | tail -n 1
+  sed -n -E 's/^Report (branch-[^ ]+\.md) committed(\/pushed)?\.$/reports\/branch\/\1/p' "$infile" | tail -n 1
 }
 
 AUTO_STASH_LABEL=""
@@ -84,7 +84,7 @@ remote_only_branch=$(git branch -r | sed 's|^..origin/||' | \
   fi
 done)
 if [[ -n "$remote_only_branch" ]]; then
-  grep -Fx "$remote_only_branch [remote]" "$TMPDIR/remote.out" >/dev/null || \
+  grep -E "^${remote_only_branch} \[remote\]( .*)?$" "$TMPDIR/remote.out" >/dev/null || \
     fail "remote-only branch should be present in -a -r output"
 fi
 pass "-a -r includes remote rows"
@@ -115,11 +115,11 @@ grep -Eq "\\| ${current_branch}(\\*|<span[^>]*>\\*</span>) \\| local \\|" "$repo
   report row"
 pass "current branch report marker"
 
-# 5) BRANCH mode allows only -v/-b/-n; local/remote filters are
+# 5) BRANCH mode allows only -v/-b; local/remote filters are
 # invalid in BRANCH mode
 rc=$(run_capture "$TMPDIR/branch_mode_invalid.out" "$LSBRANCH" "v1.0.0" -l)
 [[ "$rc" -eq 1 ]] || fail "lsbranch 'v1.0.0' -l should exit 1"
-grep -q 'only -v, -b, and -n are allowed' "$TMPDIR/branch_mode_invalid.out" || \
+grep -q 'only -v and -b are allowed' "$TMPDIR/branch_mode_invalid.out" || \
   fail "BRANCH mode should reject -l/-r/-i/-x"
 pass "BRANCH mode option restrictions"
 
@@ -226,8 +226,7 @@ rc=$(run_capture "$TMPDIR/degraded.out" env PATH="$FAKEBIN:$PATH" \
   "$LSBRANCH" -a -r -v)
 [[ "$rc" -eq 0 ]] || \
   fail "lsbranch -a -r -v should tolerate degraded fetch/PR helpers"
-grep -q "Warning: Failed to fetch 'origin'; remote status may be \
-stale in this report." "$TMPDIR/degraded.out" || \
+grep -q "Warning: Failed to fetch remote; remote status may use cached refs from your last successful remote update." "$TMPDIR/degraded.out" || \
   fail "verbose output should include fetch diagnostics"
 grep -q "Warning: Failed to query pull requests for 'main'; PR column shown as N/A." "$TMPDIR/degraded.out" || \
   fail "verbose output should include PR diagnostics"
@@ -237,31 +236,10 @@ degraded_report_rel=$(extract_report_path "$TMPDIR/degraded.out")
 degraded_report_path="$SCRIPT_DIR/../../$degraded_report_rel"
 grep -q '^## Warnings$' "$degraded_report_path" || \
   fail "report should include a warnings section when helpers degrade"
-grep -q "Failed to fetch 'origin'; remote status may be stale in this report." "$degraded_report_path" || \
+grep -q "Failed to fetch remote; remote status may use cached refs from your last successful remote update." "$degraded_report_path" || \
   fail "report should include fetch warning"
 grep -q "Failed to query pull requests for 'main'; PR column shown as N/A." "$degraded_report_path" || \
   fail "report should include PR warning"
 pass "degraded helper diagnostics"
-
-# 10) -n should skip fetch attempts and suppress fetch-failure warnings
-cat > "$FAKEBIN/git" <<EOF
-#!/usr/bin/env bash
-if [[ "\$1" == "fetch" && "\${2:-}" == "origin" ]]; then
-  echo "fetch should not be called under -n" >&2
-  exit 99
-fi
-exec "$REAL_GIT" "\$@"
-EOF
-chmod +x "$FAKEBIN/git"
-rm -f "$FAKEBIN/gh"
-
-rc=$(run_capture "$TMPDIR/nofetch.out" env PATH="$FAKEBIN:$PATH" \
-  "$LSBRANCH" -a -r -n -v)
-[[ "$rc" -eq 0 ]] || \
-  fail "lsbranch -a -r -n -v should succeed without attempting fetch"
-if grep -q "Failed to fetch 'origin'" "$TMPDIR/nofetch.out"; then
-  fail "-n should suppress fetch-failure warnings"
-fi
-pass "no-fetch mode"
 
 echo "All lsbranch smoke tests passed."

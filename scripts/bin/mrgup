@@ -22,6 +22,7 @@ requires the current user to be an approver (an entry with A specified for
 their role in '<repo>/config/contributors.md').
 
 Before merging:
+  - Ensures remote origin is connected/reachable.
   - Verifies current user is an approver if merging to a protected branch.
   - Ensures the current branch's local and remote are in sync, and that no
     uncommitted changes exist.
@@ -48,6 +49,9 @@ Features:
 Options:
   -h, --help           Output this help to stdout and exit (other options
                        and arguments are ignored).
+  -o                   Owner override. Allows repository owner to bypass
+                       approver and PR-required checks for this command run
+                       only; normal role restrictions apply again after exit.
   -d                   Dry-run mode. Show what would be done without making
                        any changes.
   -m TOKEN             Commit message (GitHub style, requires quotes if
@@ -141,6 +145,8 @@ source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NOT_FOUND=2
+readonly EXIT_OPERATION_FAILED=3
+readonly EXIT_CONFIG_ERROR=4
 readonly EXIT_INTERNAL_ERROR=100
 
 usage_error() {
@@ -155,12 +161,167 @@ usage_error() {
 CUSTOM_MESSAGE=""
 VERBOSE=false
 DRY_RUN=false
+OWNER_OVERRIDE=false
+OWNER_OVERRIDE_ACTIVE=false
 MESSAGE_SOURCE=""
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 CURRENT_IS_LOCAL=true
 CURRENT_SOURCE_REF=""
 TEMP_PARENT_BRANCH_CREATED=false
 TEMP_PARENT_BRANCH_NAME=""
+PARENT_CHECKOUT_ACTIVE=false
+REPORTS_BRANCH_DIR_UNLOCKED=false
+
+# Keep informational logs quiet unless verbose mode is requested.
+bt_info() {
+  if [[ "$VERBOSE" == true ]]; then
+    echo "$1"
+  fi
+}
+
+bt_run_cmd() {
+  if [[ "$VERBOSE" == true ]]; then
+    "$@"
+  else
+    "$@" >/dev/null 2>&1
+  fi
+}
+
+print_merge_change_summary() {
+  local commit_sha="$1"
+  local updated_count=0
+  local new_count=0
+  local deleted_count=0
+  local status=""
+
+  while IFS=$'\t' read -r status _; do
+    case "$status" in
+      M|R*|C*)
+        updated_count=$((updated_count + 1))
+        ;;
+      A)
+        new_count=$((new_count + 1))
+        ;;
+      D)
+        deleted_count=$((deleted_count + 1))
+        ;;
+      *)
+        ;;
+    esac
+  done < <(git show --pretty=format: --name-status "$commit_sha" 2>/dev/null || true)
+
+  bt_success "$updated_count files updated, $new_count new files, and $deleted_count files deleted."
+}
+
+unlock_reports_branch_dir_for_merge() {
+  local reports_dir="reports/branch"
+
+  [[ -d "$reports_dir" ]] || return 0
+
+  if chmod u+w "$reports_dir" >/dev/null 2>&1; then
+    REPORTS_BRANCH_DIR_UNLOCKED=true
+  fi
+}
+
+relock_reports_branch_dir_after_merge() {
+  local reports_dir="reports/branch"
+
+  if [[ "$REPORTS_BRANCH_DIR_UNLOCKED" == true ]]; then
+    chmod a-w "$reports_dir" >/dev/null 2>&1 || true
+    REPORTS_BRANCH_DIR_UNLOCKED=false
+  fi
+}
+
+restore_current_branch_on_failure() {
+  local exit_code="$1"
+  local restored=false
+  local now_branch=""
+
+  # Recover only when a failure occurs after switching to parent.
+  if [[ "$exit_code" -eq 0 || "$PARENT_CHECKOUT_ACTIVE" != true ]]; then
+    return 0
+  fi
+
+  if [[ "$CURRENT_IS_LOCAL" == true ]]; then
+    git switch "$CURRENT_BRANCH" >/dev/null 2>&1 || true
+
+    now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+    if [[ "$now_branch" == "$CURRENT_BRANCH" ]]; then
+      restored=true
+    else
+      git switch -f "$CURRENT_BRANCH" >/dev/null 2>&1 || true
+      now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+      if [[ "$now_branch" == "$CURRENT_BRANCH" ]]; then
+        restored=true
+      fi
+    fi
+
+    if [[ "$restored" == true ]]; then
+      bt_warn "mrgup failed; restored working branch to '$CURRENT_BRANCH'"
+    else
+      bt_warn "mrgup failed and could not restore branch '$CURRENT_BRANCH' automatically"
+    fi
+  else
+    git switch --detach "origin/$CURRENT_BRANCH" >/dev/null 2>&1 || true
+
+    now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+    if [[ "$now_branch" == "HEAD" ]]; then
+      restored=true
+    else
+      git switch -f --detach "origin/$CURRENT_BRANCH" >/dev/null 2>&1 || true
+      now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+      if [[ "$now_branch" == "HEAD" ]]; then
+        restored=true
+      fi
+    fi
+
+    if [[ "$restored" == true ]]; then
+      bt_warn "mrgup failed; restored detached branch to origin/$CURRENT_BRANCH"
+    else
+      bt_warn "mrgup failed and could not restore detached branch origin/$CURRENT_BRANCH automatically"
+    fi
+  fi
+}
+
+on_exit_restore_branch_if_needed() {
+  local exit_code=$?
+  restore_current_branch_on_failure "$exit_code" || true
+  relock_reports_branch_dir_after_merge || true
+}
+
+trap on_exit_restore_branch_if_needed EXIT
+
+get_repository_owner_login() {
+  local origin_url=""
+  local owner=""
+
+  origin_url="$(git remote get-url origin 2>/dev/null || true)"
+  [[ -n "$origin_url" ]] || {
+    echo ""
+    return 0
+  }
+
+  if [[ "$origin_url" =~ ^git@github\.com:([^/]+)/[^/]+(\.git)?$ ]]; then
+    owner="${BASH_REMATCH[1]}"
+  elif [[ "$origin_url" =~ ^https://github\.com/([^/]+)/[^/]+(\.git)?$ ]]; then
+    owner="${BASH_REMATCH[1]}"
+  elif [[ "$origin_url" =~ ^ssh://git@github\.com/([^/]+)/[^/]+(\.git)?$ ]]; then
+    owner="${BASH_REMATCH[1]}"
+  fi
+
+  owner="$(bt_normalize_login "$owner")"
+  echo "$owner"
+}
+
+is_repository_owner() {
+  local user_name="$1"
+  local repo_owner=""
+
+  repo_owner="$(get_repository_owner_login)"
+  [[ -n "$repo_owner" ]] || return 1
+
+  [[ "$(bt_normalize_login "$user_name")" == "$repo_owner" ]]
+}
 
 
 get_current_user() {
@@ -452,6 +613,7 @@ cleanup_merged_branch_files() {
   local current_branch="$1"
   local parent_branch="$2"
   local parent_slug="${parent_branch//\//.}"
+  local current_slug="${current_branch//\//.}"
 
   local report_files
   mapfile -t report_files < <(
@@ -466,7 +628,8 @@ cleanup_merged_branch_files() {
   mapfile -t history_files < <(
     git ls-files -- 'logs/' \
       | grep '_history\.md$' \
-      | grep -Fv "logs/${parent_slug}_history.md"
+      | grep -Fv "logs/${parent_slug}_history.md" \
+      | grep -Fv "logs/${current_slug}_history.md"
   )
   if [[ ${#history_files[@]} -gt 0 ]]; then
     git rm -f --ignore-unmatch -- "${history_files[@]}" >/dev/null 2>&1 || true
@@ -477,6 +640,40 @@ cleanup_merged_branch_files() {
   fi
 }
 
+cleanup_untracked_branch_reports_for_merge() {
+  local reports_dir="reports/branch"
+  local report_file
+  local rel_path
+  local removed_count=0
+
+  [[ -d "$reports_dir" ]] || return 0
+
+  # Allow temporary cleanup in report directory when directory lock is active.
+  chmod u+w "$reports_dir" >/dev/null 2>&1 || true
+
+  while IFS= read -r report_file; do
+    [[ -n "$report_file" ]] || continue
+    rel_path="${report_file#./}"
+
+    # Keep README and merge summary artifacts; remove only generated run reports.
+    case "$rel_path" in
+      reports/branch/README.md|reports/branch/mergeto-*.md)
+        continue
+        ;;
+    esac
+
+    if rm -f -- "$rel_path" >/dev/null 2>&1; then
+      removed_count=$((removed_count + 1))
+    fi
+  done < <(git ls-files --others --exclude-standard -- "$reports_dir"/*.md 2>/dev/null || true)
+
+  chmod a-w "$reports_dir" >/dev/null 2>&1 || true
+
+  if [[ "$VERBOSE" == true && "$removed_count" -gt 0 ]]; then
+    bt_info "Removed $removed_count untracked report artifact(s) before merge"
+  fi
+}
+
 checkout_parent_branch() {
   local parent_branch="$1"
 
@@ -484,6 +681,7 @@ checkout_parent_branch() {
     if ! git switch --detach "origin/$parent_branch" >/dev/null 2>&1; then
       bt_error_exit "$EXIT_NOT_FOUND" "Failed to switch to remote parent branch '$parent_branch'"
     fi
+    PARENT_CHECKOUT_ACTIVE=true
     return 0
   fi
 
@@ -491,12 +689,14 @@ checkout_parent_branch() {
     if ! git switch "$parent_branch" >/dev/null 2>&1; then
       bt_error_exit "$EXIT_NOT_FOUND" "Failed to switch to parent branch '$parent_branch'"
     fi
+    PARENT_CHECKOUT_ACTIVE=true
   else
     if ! git switch -c "$parent_branch" --track "origin/$parent_branch" >/dev/null 2>&1; then
       bt_error_exit "$EXIT_NOT_FOUND" "Failed to create local parent branch '$parent_branch'"
     fi
     TEMP_PARENT_BRANCH_CREATED=true
     TEMP_PARENT_BRANCH_NAME="$parent_branch"
+    PARENT_CHECKOUT_ACTIVE=true
   fi
 }
 
@@ -557,6 +757,21 @@ get_pr_status_check() {
     || echo "UNKNOWN"
 }
 
+check_pr_approval() {
+  local pr_number="$1"
+  local review_decision=""
+
+  review_decision=$(gh pr view "$pr_number" --json reviewDecision --jq '.reviewDecision' 2>/dev/null || echo "UNKNOWN")
+
+  if [[ "$review_decision" != "APPROVED" ]]; then
+    bt_error_exit "$EXIT_OPERATION_FAILED" "Pull request #$pr_number is not approved"
+  fi
+
+  if [[ "$VERBOSE" == true ]]; then
+    bt_success "Pull request #$pr_number is approved"
+  fi
+}
+
 check_status_checks() {
   local pr_number="$1"
   
@@ -585,7 +800,9 @@ check_status_checks() {
     bt_error_exit "$EXIT_INTERNAL_ERROR" "Unknown status check state detected"
   fi
 
-  bt_success "All status checks passed"
+  if [[ "$VERBOSE" == true ]]; then
+    bt_success "All status checks passed"
+  fi
 }
 
 ensure_clean_worktree() {
@@ -635,71 +852,6 @@ build_history_entry() {
   printf '%s' "- [$RUN_TS_DISPLAY] [$approver] Merged [$branch] to [$target_branch]: $message"
 }
 
-sync_history_to_current_branch() {
-  local current_branch="$1"
-  local history_entry="$2"
-  local parent_branch="$3"
-  local current_is_local="$4"
-  local history_file
-  history_file="$(branch_to_history_file "$current_branch")"
-
-  if [[ "$current_is_local" == true ]]; then
-    if ! git switch "$current_branch" >/dev/null 2>&1; then
-      bt_error_exit "$EXIT_NOT_FOUND" "Merged successfully, but failed to switch back to '$current_branch'"
-    fi
-  else
-    if ! git switch --detach "origin/$current_branch" >/dev/null 2>&1; then
-      bt_error_exit "$EXIT_NOT_FOUND" "Merged successfully, but failed to switch to origin/$current_branch for history sync"
-    fi
-  fi
-
-  mkdir -p "$(dirname "$history_file")"
-
-  if [[ ! -f "$history_file" ]]; then
-    cat > "$history_file" << 'EOF'
-# Branch History
-
-Copyright (c) 2026 Paul Sinclair  
-SPDX-License-Identifier: MIT  
-For license details, see `LICENSE` in the repository root.
-
-See `README.md` in the root directory for an introduction to the project.
-
-## Merge Log
-
-EOF
-  fi
-
-  if ! grep -Fxq "$history_entry" "$history_file" 2>/dev/null; then
-    printf '%s\n' "$history_entry" >> "$history_file"
-  fi
-
-  GIT_BYPASS_HOOKS=true git add "$history_file" 2>/dev/null || true
-
-  if git diff --cached --quiet; then
-    bt_info "Current branch '$current_branch' history log already in sync"
-    return 0
-  fi
-
-  local sync_message
-  sync_message="chore: sync history log after merge to $parent_branch"
-  if ! GIT_BYPASS_HOOKS=true git commit -m "$sync_message" >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to commit history log sync on '$current_branch'"
-  fi
-
-  if has_remote_branch "$current_branch"; then
-    if [[ "$current_is_local" == true ]]; then
-      if ! GIT_BYPASS_HOOKS=true git push origin "$current_branch" >/dev/null 2>&1; then
-        bt_error_exit "$EXIT_NOT_FOUND" "Failed to push synced history log to origin/$current_branch"
-      fi
-    else
-      if ! GIT_BYPASS_HOOKS=true git push origin HEAD:"$current_branch" >/dev/null 2>&1; then
-        bt_error_exit "$EXIT_NOT_FOUND" "Failed to push synced history log to origin/$current_branch"
-      fi
-    fi
-  fi
-}
-
 preflight_current_history_sync_push() {
   local current_branch="$1"
 
@@ -708,21 +860,91 @@ preflight_current_history_sync_push() {
     return 0
   fi
 
-  # Current protected branches are likely to reject direct push updates used
-  # for history-log sync; fail early to avoid partial success after parent push.
+  # mrgup no longer pushes a history-only sync commit to protected current
+  # branches. Skip preflight because no post-merge push is attempted.
   if bt_is_protected_branch "$current_branch"; then
-    bt_error_exit "$EXIT_NOT_FOUND" \
-      "Preflight failed: syncing history log to origin/$current_branch is likely disallowed because '$current_branch' is protected"
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Preflight: protected current branch '$current_branch'; no post-merge current-branch push required"
+    fi
+    return 0
   fi
 
-  # Verify push capability before any merge mutation starts.
-  if ! GIT_BYPASS_HOOKS=true git push --dry-run origin "HEAD:$current_branch" >/dev/null 2>&1; then
+  # Non-protected current branches are force-aligned to parent tip after
+  # successful merge; verify force-with-lease capability before mutation.
+  if ! GIT_BYPASS_HOOKS=true git push --dry-run --force-with-lease origin "HEAD:$current_branch" >/dev/null 2>&1; then
     bt_error_exit "$EXIT_NOT_FOUND" \
-      "Preflight failed: unable to verify push access for origin/$current_branch required for history-log sync"
+      "Preflight failed: unable to verify force-with-lease push access for origin/$current_branch required for post-merge alignment"
   fi
 
   if [[ "$VERBOSE" == true ]]; then
-    bt_info "Preflight: history-log sync push check passed for origin/$current_branch"
+    bt_info "Preflight: post-merge alignment push check passed for origin/$current_branch"
+  fi
+}
+
+align_current_branch_to_parent_tip() {
+  local current_branch="$1"
+  local parent_branch="$2"
+  local current_is_local="$3"
+
+  if bt_is_protected_branch "$current_branch"; then
+    if [[ "$current_is_local" == true ]]; then
+      if ! git switch "$current_branch" >/dev/null 2>&1; then
+        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to switch back to protected source branch '$current_branch'"
+      fi
+    else
+      if ! git switch --detach "origin/$current_branch" >/dev/null 2>&1; then
+        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to switch back to protected source branch origin/$current_branch"
+      fi
+    fi
+
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Protected source branch '$current_branch' kept unchanged after merge"
+    fi
+    PARENT_CHECKOUT_ACTIVE=false
+    return 0
+  fi
+
+  # HEAD is on the merged parent tip at this point; reuse that exact commit
+  # for source-branch alignment.
+  local parent_tip
+  parent_tip="$(git rev-parse HEAD 2>/dev/null || true)"
+  if [[ -z "$parent_tip" ]]; then
+    bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to resolve merged parent tip"
+  fi
+
+  if ! git branch -f "$current_branch" "$parent_tip" >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to align '$current_branch' to merged parent '$parent_branch'"
+  fi
+
+  if [[ "$current_is_local" == true ]]; then
+    if ! git switch "$current_branch" >/dev/null 2>&1; then
+      bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to switch back to '$current_branch'"
+    fi
+  else
+    if ! git switch --detach "$parent_tip" >/dev/null 2>&1; then
+      bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to switch to aligned detached tip for '$current_branch'"
+    fi
+  fi
+
+  if has_remote_branch "$current_branch"; then
+    if [[ "$current_is_local" == true ]]; then
+      if ! GIT_BYPASS_HOOKS=true git push --force-with-lease origin "$current_branch" >/dev/null 2>&1; then
+        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to push aligned source branch to origin/$current_branch"
+      fi
+    else
+      if ! GIT_BYPASS_HOOKS=true git push --force-with-lease origin "$parent_tip:$current_branch" >/dev/null 2>&1; then
+        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to push aligned detached source tip to origin/$current_branch"
+      fi
+      if ! git switch --detach "origin/$current_branch" >/dev/null 2>&1; then
+        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to refresh detached checkout to origin/$current_branch"
+      fi
+    fi
+  fi
+
+  PARENT_CHECKOUT_ACTIVE=false
+
+  if [[ "$VERBOSE" == true ]]; then
+    bt_info "Aligned source branch '$current_branch' to merged parent tip"
   fi
 }
 
@@ -746,6 +968,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -d)
       DRY_RUN=true
+      shift
+      ;;
+    -o)
+      OWNER_OVERRIDE=true
       shift
       ;;
     -v | --verbose)
@@ -786,9 +1012,12 @@ fi
 
 git fetch origin >/dev/null 2>&1 || bt_error_exit "$EXIT_INTERNAL_ERROR" "Failed to fetch from remote 'origin'"
 
-# Propagate repository history from remote if available
-bt_propagate_repository_history
-case $? in
+# Propagate repository history from remote if available.
+# Under set -e, capture non-zero statuses explicitly because status 2 is a
+# documented non-fatal outcome (offline/file unavailable/fetch skipped).
+history_sync_rc=0
+bt_propagate_repository_history || history_sync_rc=$?
+case "$history_sync_rc" in
   0) ;;
   1) bt_info "Updated repository history from remote" ;;
   *) ;;
@@ -833,6 +1062,15 @@ fi
 CURRENT_USER=$(get_current_user)
 bt_info "Current user: $CURRENT_USER"
 
+if [[ "$OWNER_OVERRIDE" == true ]]; then
+  if is_repository_owner "$CURRENT_USER"; then
+    OWNER_OVERRIDE_ACTIVE=true
+    bt_info "Owner override enabled for repository owner '$CURRENT_USER'"
+  else
+    bt_error_exit "$EXIT_OPERATION_FAILED" "Option -o is allowed only for the repository owner"
+  fi
+fi
+
 # Determine parent branch
 bt_info "Determining parent branch..."
 PARENT_BRANCH=$(get_parent_branch "$CURRENT_BRANCH")
@@ -853,7 +1091,7 @@ if bt_is_protected_branch "$CURRENT_BRANCH"; then
       "Current branch '$CURRENT_BRANCH' is protected. Run mrgup from a non-protected branch."
   fi
 
-  if ! is_approver "$CURRENT_USER"; then
+  if [[ "$OWNER_OVERRIDE_ACTIVE" != true ]] && ! is_approver "$CURRENT_USER"; then
     bt_error_exit "$EXIT_OPERATION_FAILED" "User '$CURRENT_USER' is not an approver. Only approvers can merge protected branches to origin/main."
   fi
 fi
@@ -879,17 +1117,28 @@ if bt_is_protected_branch "$PARENT_BRANCH"; then
   bt_info "Parent branch is protected"
   
   # Verify current user is an approver
-  if ! is_approver "$CURRENT_USER"; then
+  if [[ "$OWNER_OVERRIDE_ACTIVE" != true ]] && ! is_approver "$CURRENT_USER"; then
     bt_error_exit "$EXIT_OPERATION_FAILED" "User '$CURRENT_USER' is not an approver. Only approvers can merge to protected branches."
   fi
-  bt_success "User '$CURRENT_USER' is an approver"
+  if [[ "$OWNER_OVERRIDE_ACTIVE" == true ]]; then
+    if [[ "$VERBOSE" == true ]]; then
+      bt_success "User '$CURRENT_USER' is repository owner (approver check bypassed with -o)"
+    fi
+  else
+    if [[ "$VERBOSE" == true ]]; then
+      bt_success "User '$CURRENT_USER' is an approver"
+    fi
+  fi
 else
   bt_info "Parent branch is not protected"
 fi
 
 # Determine whether a PR is required for this merge path.
 PR_REQUIRED=true
-if is_pr_required "$CURRENT_BRANCH" "$PARENT_BRANCH"; then
+if [[ "$OWNER_OVERRIDE_ACTIVE" == true ]]; then
+  PR_REQUIRED=false
+  bt_info "Owner override enabled: PR is not required for this merge"
+elif is_pr_required "$CURRENT_BRANCH" "$PARENT_BRANCH"; then
   PR_REQUIRED=true
 else
   PR_REQUIRED=false
@@ -903,6 +1152,9 @@ if [[ "$PR_REQUIRED" == true ]]; then
   fi
   bt_info "Found PR #$PR_NUMBER"
 
+  # PR-required paths validate review approval before status checks.
+  check_pr_approval "$PR_NUMBER"
+
   # Check status checks pass
   check_status_checks "$PR_NUMBER"
 else
@@ -911,6 +1163,7 @@ else
   PR_NUMBER=$(get_existing_pr_number "$CURRENT_BRANCH")
   if [[ -n "$PR_NUMBER" ]]; then
     bt_info "Found PR #$PR_NUMBER; validating status checks"
+    check_pr_approval "$PR_NUMBER"
     check_status_checks "$PR_NUMBER"
   else
     if [[ "$VERBOSE" == true ]]; then
@@ -940,24 +1193,11 @@ fi
 HISTORY_FILE=$(branch_to_history_file "$PARENT_BRANCH")
 HISTORY_ENTRY=$(build_history_entry \
   "$CURRENT_BRANCH" "$PARENT_BRANCH" "$CURRENT_USER" "$COMMIT_MESSAGE")
+CURRENT_HISTORY_FILE=$(branch_to_history_file "$CURRENT_BRANCH")
 
 if [[ "$DRY_RUN" == true ]]; then
-  bt_info "Dry run: would merge '$CURRENT_BRANCH' into '$PARENT_BRANCH'"
-  bt_info "Dry run: would log merge to '$HISTORY_FILE' on parent branch"
-  bt_info "Dry run: would log merge to '$(branch_to_history_file "$CURRENT_BRANCH")' on current branch"
-  bt_info "Dry run: would commit message '$COMMIT_MESSAGE'"
-
-  if [[ "$PARENT_BRANCH" == "main" || $(has_remote_branch "$PARENT_BRANCH" && echo true || echo false) == true ]]; then
-    bt_info "Dry run: would push merge result to origin/$PARENT_BRANCH"
-  else
-    bt_info "Dry run: parent branch '$PARENT_BRANCH' has no remote branch; no push would be performed"
-  fi
-
-  if has_remote_branch "$CURRENT_BRANCH"; then
-    bt_info "Dry run: would push synced history log to origin/$CURRENT_BRANCH"
-  fi
-
-  bt_success "Dry run complete"
+  bt_success "0 files updated, 0 new files, and 0 files deleted."
+  bt_success "Branch '$CURRENT_BRANCH' merged to '$PARENT_BRANCH' (dry run)."
   exit 0
 fi
 
@@ -966,13 +1206,16 @@ bt_info "Performing squash merge..."
 
 checkout_parent_branch "$PARENT_BRANCH"
 
+cleanup_untracked_branch_reports_for_merge
+unlock_reports_branch_dir_for_merge
+
 if [[ "$PARENT_BRANCH" != "main" && $(has_remote_branch "$PARENT_BRANCH" && echo true || echo false) == true ]]; then
-  if ! git pull --ff-only origin "$PARENT_BRANCH" 2>&1; then
+  if ! bt_run_cmd git pull --ff-only origin "$PARENT_BRANCH"; then
     bt_error_exit "$EXIT_NOT_FOUND" "Failed to fast-forward parent branch '$PARENT_BRANCH'"
   fi
 fi
 
-if ! git merge --squash --no-commit "$CURRENT_SOURCE_REF" 2>&1; then
+if ! bt_run_cmd git merge --squash --no-commit "$CURRENT_SOURCE_REF"; then
   bt_error_exit "$EXIT_NOT_FOUND" "Failed to squash merge '$CURRENT_BRANCH' into '$PARENT_BRANCH'"
 fi
 
@@ -984,20 +1227,31 @@ log_merge_to_history "$CURRENT_BRANCH" "$PARENT_BRANCH" \
   "$CURRENT_USER" "$COMMIT_MESSAGE" "$HISTORY_FILE" "$HISTORY_ENTRY"
 GIT_BYPASS_HOOKS=true git add "$HISTORY_FILE" 2>/dev/null || true
 
+if [[ "$CURRENT_HISTORY_FILE" != "$HISTORY_FILE" ]]; then
+  log_merge_to_history "$CURRENT_BRANCH" "$PARENT_BRANCH" \
+    "$CURRENT_USER" "$COMMIT_MESSAGE" "$CURRENT_HISTORY_FILE" "$HISTORY_ENTRY"
+  GIT_BYPASS_HOOKS=true git add "$CURRENT_HISTORY_FILE" 2>/dev/null || true
+fi
+
 # Create commit with message
-if ! GIT_BYPASS_HOOKS=true git commit -m "$COMMIT_MESSAGE" 2>&1; then
+if ! GIT_BYPASS_HOOKS=true bt_run_cmd git commit -m "$COMMIT_MESSAGE"; then
   bt_error_exit "$EXIT_NOT_FOUND" "Failed to create commit"
+fi
+
+MERGE_COMMIT_SHA="$(git rev-parse HEAD 2>/dev/null || true)"
+if [[ -z "$MERGE_COMMIT_SHA" ]]; then
+  bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to resolve merge commit"
 fi
 
 # Push to remote
 if [[ "$PARENT_BRANCH" == "main" || $(has_remote_branch "$PARENT_BRANCH" && echo true || echo false) == true ]]; then
   bt_info "Pushing parent branch..."
   if [[ "$PARENT_BRANCH" == "main" ]]; then
-    if ! GIT_BYPASS_HOOKS=true git push origin HEAD:"$PARENT_BRANCH" 2>&1; then
+    if ! GIT_BYPASS_HOOKS=true bt_run_cmd git push origin HEAD:"$PARENT_BRANCH"; then
       bt_error_exit "$EXIT_NOT_FOUND" "Failed to push remote parent branch"
     fi
   else
-    if ! GIT_BYPASS_HOOKS=true git push origin "$PARENT_BRANCH" 2>&1; then
+    if ! GIT_BYPASS_HOOKS=true bt_run_cmd git push origin "$PARENT_BRANCH"; then
       bt_error_exit "$EXIT_NOT_FOUND" "Failed to push parent branch"
     fi
   fi
@@ -1005,8 +1259,9 @@ else
   bt_info "Parent branch '$PARENT_BRANCH' has no remote branch; skipping push"
 fi
 
-sync_history_to_current_branch "$CURRENT_BRANCH" "$HISTORY_ENTRY" "$PARENT_BRANCH" "$CURRENT_IS_LOCAL"
+align_current_branch_to_parent_tip "$CURRENT_BRANCH" "$PARENT_BRANCH" "$CURRENT_IS_LOCAL"
 cleanup_temporary_parent_branch
+relock_reports_branch_dir_after_merge
 
 # Show verbose output if requested
 if [[ "$VERBOSE" == true ]]; then
@@ -1018,6 +1273,6 @@ if [[ "$VERBOSE" == true ]]; then
   echo "  Message: $COMMIT_MESSAGE"
 fi
 
-bt_success "Branch '$CURRENT_BRANCH' merged to '$PARENT_BRANCH'"
-bt_success "Done"
+print_merge_change_summary "$MERGE_COMMIT_SHA"
+bt_success "Branch '$CURRENT_BRANCH' merged to '$PARENT_BRANCH'."
 exit 0

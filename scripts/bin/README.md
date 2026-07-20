@@ -57,6 +57,9 @@ See `<repo>/README.md` for an introduction to briteTest.
 - **mrgdown**: Merge parent branch into current branch.
 - **mrgbranch**: Fetch and pull latest changes from remote into
   local branch
+- **override**: Repository owner only. Toggle unrestricted mode for this
+   local clone (`override on` / `override off`) for direct hook-enforced
+   repository actions. Does not disable script-level role/policy checks.
 - **undo**: Undo recent merge/release/commit operations.
 
 ### README Directory Guide

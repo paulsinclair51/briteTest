@@ -26,7 +26,9 @@ Options:
   -f          Discard all uncommitted tracked and untracked changes before
               changing to BRANCH, but only when branch-change prechecks
               succeed.
-  -o          Owner override for branches blocked by policy.
+  -o          Owner override for branches blocked by policy, for this
+              command run only; normal role restrictions apply again
+              after exit.
 
 Rules:
   - By default, local BRANCH is used when it exists.

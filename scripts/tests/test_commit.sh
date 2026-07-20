@@ -4,7 +4,7 @@
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
-# For license details, see LICENSE in the repository root.
+# For license details, '<repo>/LICENSE'.
 
 set -euo pipefail
 export LC_ALL=C
@@ -40,6 +40,14 @@ assert_contains() {
   grep -Fq -- "$text" "$file" || fail "expected '$text' in $file"
 }
 
+extract_report_hash() {
+  local label="$1"
+  local file="$2"
+
+  grep -E "^\*\*${label}:\*\* [0-9a-f]+" "$file" | \
+    sed -E "s/^\*\*${label}:\*\* ([0-9a-f]+).*$/\1/" | head -n 1
+}
+
 latest_report() {
   local repo="$1"
   find "$repo/reports/branch" -maxdepth 1 -type f -name 'commit*.md' | sort | tail -n 1
@@ -55,6 +63,10 @@ done
 
 TMPDIR="$(mktemp -d)"
 cleanup() {
+  if [[ "${KEEP_TMPDIR:-0}" == "1" ]]; then
+    echo "KEEP_TMPDIR=1 preserving test artifacts at: $TMPDIR" >&2
+    return 0
+  fi
   rm -rf "$TMPDIR"
 }
 trap cleanup EXIT
@@ -97,14 +109,14 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./scripts/bin/c
 assert_contains "Usage:" "$TMPDIR/help.out"
 pass "help output"
 
-# 2) Unauthorized user should be blocked with exit 10
+# 2) Unauthorized user should be blocked with exit 5
 printf '\nunauthorized role test\n' >> "$WORK/README.md"
 (
   cd "$WORK"
   git config user.email "outsider@example.com"
 )
-rc=$(run_capture "$TMPDIR/unauth.out" env GITHUB_ACTOR=outsider bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -m 'test unauthorized'")
-[[ "$rc" -eq 10 ]] || fail "unauthorized user should exit 10 (got $rc)"
+rc=$(run_capture "$TMPDIR/unauth.out" env GITHUB_ACTOR=outsider bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -c 'test unauthorized'")
+[[ "$rc" -eq 5 ]] || fail "unauthorized user should exit 5 (got $rc)"
 assert_contains "is not authorized to run commit" "$TMPDIR/unauth.out"
 (
   cd "$WORK"
@@ -113,7 +125,7 @@ assert_contains "is not authorized to run commit" "$TMPDIR/unauth.out"
 pass "role validation"
 
 # 3) Dry-run commit should succeed for contributor and generate report
-rc=$(run_capture "$TMPDIR/dry.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -m 'dry run commit'")
+rc=$(run_capture "$TMPDIR/dry.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -c 'dry run commit'")
 [[ "$rc" -eq 0 ]] || fail "dry-run commit should exit 0 (got $rc)"
 dry_report="$(latest_report "$WORK")"
 [[ -f "$dry_report" ]] || fail "expected dry-run commit report"
@@ -128,24 +140,24 @@ pass "dry-run commit"
 printf '\nmessage required test\n' >> "$WORK/README.md"
 rc=$(run_capture "$TMPDIR/missing-message.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit")
 [[ "$rc" -eq 6 ]] || fail "missing message should exit 6 (got $rc)"
-assert_contains "Commit message is required" "$TMPDIR/missing-message.out"
+assert_contains "Commit comment is required" "$TMPDIR/missing-message.out"
 pass "missing message handling"
 
 # 5) Empty message when changes exist should fail with exit 7
 printf '\nempty message test\n' >> "$WORK/README.md"
-rc=$(run_capture "$TMPDIR/empty-message.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -m '   '")
+rc=$(run_capture "$TMPDIR/empty-message.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -c '   '")
 [[ "$rc" -eq 7 ]] || fail "empty message should exit 7 (got $rc)"
 assert_contains "must include at least one non-whitespace character" "$TMPDIR/empty-message.out"
 pass "empty message handling"
 
 # 6) -p should be rejected (auto-push is now implicit)
-rc=$(run_capture "$TMPDIR/p_option.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -p -m 'invalid option test'")
+rc=$(run_capture "$TMPDIR/p_option.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -p -c 'invalid option test'")
 [[ "$rc" -eq 1 ]] || fail "commit -p should exit 1 (got $rc)"
 assert_contains "Unknown option: -p" "$TMPDIR/p_option.out"
 pass "-p option rejection"
 
 # 7) Positional file arguments should be rejected
-rc=$(run_capture "$TMPDIR/positional.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit README.md -m 'invalid positional arg test'")
+rc=$(run_capture "$TMPDIR/positional.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit README.md -c 'invalid positional arg test'")
 [[ "$rc" -eq 1 ]] || fail "commit with positional file argument should exit 1 (got $rc)"
 assert_contains "Unexpected argument: README.md" "$TMPDIR/positional.out"
 pass "positional file argument rejection"
@@ -167,16 +179,21 @@ git clone "$ORIGIN" "$PEER" >/dev/null 2>&1
   git fetch origin dev/commit-tests-v1.0.0 >/dev/null 2>&1
 )
 echo "local diverged change" > LOCAL_ONLY.md
-rc=$(run_capture "$TMPDIR/diverged.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -m 'local diverged change'")
+rc=$(run_capture "$TMPDIR/diverged.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -c 'local diverged change'")
 [[ "$rc" -eq 0 ]] || fail "diverged branch auto-resolve should exit 0 (got $rc)"
 assert_contains "auto-resolved" "$TMPDIR/diverged.out"
 assert_contains "review resolved code" "$TMPDIR/diverged.out"
 diverged_report="$(latest_report "$WORK")"
 [[ -f "$diverged_report" ]] || fail "expected diverged commit report"
 assert_contains "**Commit Hash**" "$diverged_report"
-diverged_hash="$(cd "$WORK" && git rev-parse --short HEAD)"
-assert_contains "$diverged_hash" "$diverged_report"
-assert_contains "**Pushed Commit Hash:** $diverged_hash" "$diverged_report"
+diverged_pushed_hash="$(extract_report_hash "Pushed Commit Hash" "$diverged_report")"
+[[ "$diverged_pushed_hash" =~ ^[0-9a-f]+$ ]] || fail "expected pushed commit hash in diverged report"
+if ! (cd "$WORK" && git cat-file -e "${diverged_pushed_hash}^{commit}" >/dev/null 2>&1); then
+  fail "pushed commit hash from report does not resolve to a commit"
+fi
+if ! (cd "$WORK" && git merge-base --is-ancestor "$diverged_pushed_hash" HEAD >/dev/null 2>&1); then
+  fail "pushed code commit hash should be an ancestor of final HEAD"
+fi
 assert_contains "**Commit Comment:** local diverged change" "$diverged_report"
 assert_contains "local diverged change" "$diverged_report"
 if grep -q '^## Commit Entries Selected For Push' "$diverged_report"; then
@@ -191,12 +208,12 @@ printf '\npending push direct commit\n' >> "$WORK/README.md"
   git add README.md
   git commit -m "manual pending push" >/dev/null 2>&1
 )
-rc=$(run_capture "$TMPDIR/pending-push.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -m 'pending push dry run'")
+pending_hash_before_run="$(cd "$WORK" && git rev-parse --short HEAD)"
+rc=$(run_capture "$TMPDIR/pending-push.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -c 'pending push dry run'")
 [[ "$rc" -eq 0 ]] || fail "commit -d with pending local push should exit 0 (got $rc)"
 pending_report="$(latest_report "$WORK")"
 [[ -f "$pending_report" ]] || fail "expected pending-push commit report"
-pending_hash="$(cd "$WORK" && git rev-parse --short HEAD)"
-assert_contains "**Commit Selected for Push Hash:** $pending_hash" "$pending_report"
+assert_contains "**Commit Selected for Push Hash:** $pending_hash_before_run" "$pending_report"
 assert_contains "**Commit Comment:** manual pending push" "$pending_report"
 if grep -q '^\*\*Pushed Commit Hash:\*\*' "$pending_report"; then
   fail "pending-push report should not use pushed-commit label"
@@ -209,7 +226,7 @@ pass "pending push label"
   git checkout -b local-only-commit-test >/dev/null 2>&1
 )
 printf '\nlocal only branch change\n' >> "$WORK/README.md"
-rc=$(run_capture "$TMPDIR/no-remote.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -m 'local only dry run'")
+rc=$(run_capture "$TMPDIR/no-remote.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -c 'local only dry run'")
 [[ "$rc" -eq 0 ]] || fail "commit -d on local-only branch should exit 0 (got $rc)"
 no_remote_report="$(latest_report "$WORK")"
 [[ -f "$no_remote_report" ]] || fail "expected local-only commit report"

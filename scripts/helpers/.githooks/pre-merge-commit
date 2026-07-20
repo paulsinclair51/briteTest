@@ -23,25 +23,12 @@ if [[ -f "$ORCHESTRATOR" ]]; then
   source "$ORCHESTRATOR" 2>/dev/null || true
 fi
 
-# Check if bypass flag is set by authorized script
-if [[ "${GIT_BYPASS_HOOKS:-false}" == "true" ]]; then
+# Check if bypass is set by authorized script or owner unrestricted mode
+if declare -F check_bypass >/dev/null 2>&1; then
+  if check_bypass "git merge" "merge"; then
+    exit 0
+  fi
+elif [[ "${GIT_BYPASS_HOOKS:-false}" == "true" ]]; then
   exit 0
 fi
-
-# Block the operation with helpful guidance
-cat >&2 << 'EOF'
-
-❌ Error: Direct git merge operations are not allowed.
-
-   Use the 'merge' script instead:
-   
-     merge [branch]        # Merge current branch to parent
-     merge -s              # Merge with squash
-     merge -ff             # Merge with fast-forward
-   
-   For help:
-     merge -h
-
-EOF
-
 exit 1

@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+
+# override - Toggle repository-owner unrestricted mode on or off.
+#
+# See usage below for details, or run: override -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  override {on|off}
+  override {-h | --help}
+
+Toggle repository-owner unrestricted mode for this local clone.
+
+Behavior:
+  - Only the repository owner may run this command.
+  - 'on' enables unrestricted mode in this clone, allowing direct git
+    modifying commands that are normally blocked by hooks.
+  - 'on' also allows repository actions blocked by local hook-based
+    enforcement mechanisms in this clone.
+  - 'off' disables unrestricted mode and restores normal role restrictions.
+  - Does not change script-level policy enforcement or role checks; scripts
+    continue enforcing their own rules unless invoked with their own explicit
+    options (for example, -o where supported).
+  - Applies to this local repository clone only.
+
+Arguments:
+  on|off   Required; case-insensitive.
+
+Examples:
+  override on
+  override off
+
+Outputs:
+  - Writes help text, status messages, and results to stdout.
+  - Writes errors to stderr.
+
+Exit codes:
+  0   Success.
+  1   Argument or validation error.
+  3   Caller is not repository owner.
+  4   Configuration or identity resolution failed.
+EOF
+}
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_OWNER=3
+readonly EXIT_CONFIG_ERROR=4
+readonly OWNER_OVERRIDE_KEY="brite.ownerOverride"
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "$message. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
+resolve_repo_owner_login_or_empty() {
+  local repo_slug="${GITHUB_REPOSITORY:-}"
+  local remote_url=""
+  local owner=""
+
+  if [[ -n "$repo_slug" && "$repo_slug" == */* ]]; then
+    owner="${repo_slug%%/*}"
+  fi
+
+  if [[ -z "$owner" ]]; then
+    remote_url="$(git remote get-url origin 2>/dev/null || true)"
+    if [[ "$remote_url" =~ ^git@github\.com:([^/]+)/([^/]+)(\.git)?$ ]]; then
+      owner="${BASH_REMATCH[1]}"
+    elif [[ "$remote_url" =~ ^https://github\.com/([^/]+)/([^/]+)(\.git)?$ ]]; then
+      owner="${BASH_REMATCH[1]}"
+    elif [[ "$remote_url" =~ ^ssh://git@github\.com/([^/]+)/([^/]+)(\.git)?$ ]]; then
+      owner="${BASH_REMATCH[1]}"
+    fi
+  fi
+
+  bt_normalize_login "$owner"
+}
+
+ensure_repository_owner() {
+  local actor_lc=""
+  local repo_owner_lc=""
+
+  if ! actor_lc="$(bt_require_login)"; then
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "Owner override requires a resolvable caller identity"
+  fi
+
+  repo_owner_lc="$(resolve_repo_owner_login_or_empty)"
+  if [[ -z "$repo_owner_lc" ]]; then
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "Owner override requires repository owner identity (set GITHUB_REPOSITORY or configure origin GitHub URL)"
+  fi
+
+  if [[ "$actor_lc" != "$repo_owner_lc" ]]; then
+    bt_error_exit "$EXIT_NOT_OWNER" \
+      "Owner override denied: caller '$actor_lc' is not repository owner '$repo_owner_lc'"
+  fi
+}
+
+normalize_state() {
+  local value="$1"
+  value="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
+  case "$value" in
+    on|off)
+      printf '%s' "$value"
+      ;;
+    *)
+      usage_error "Argument must be 'on' or 'off'"
+      ;;
+  esac
+}
+
+main() {
+  local arg="${1:-}"
+  local state=""
+
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+
+  if [[ -z "$arg" || $# -ne 1 ]]; then
+    usage_error "Exactly one argument is required"
+  fi
+
+  if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Must be run inside a Git repository"
+  fi
+
+  ensure_repository_owner
+  state="$(normalize_state "$arg")"
+
+  if [[ "$state" == "on" ]]; then
+    if ! git config --local "$OWNER_OVERRIDE_KEY" true; then
+      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to enable owner override"
+    fi
+    bt_success "Owner unrestricted mode is ON for this clone"
+  else
+    if ! git config --local "$OWNER_OVERRIDE_KEY" false; then
+      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to disable owner override"
+    fi
+    bt_success "Owner unrestricted mode is OFF for this clone"
+  fi
+}
+
+main "$@"

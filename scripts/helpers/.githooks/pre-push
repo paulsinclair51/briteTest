@@ -23,30 +23,12 @@ if [[ -f "$ORCHESTRATOR" ]]; then
   source "$ORCHESTRATOR" 2>/dev/null || true
 fi
 
-# Check if bypass flag is set by authorized script
-if [[ "${GIT_BYPASS_HOOKS:-false}" == "true" ]]; then
+# Check if bypass is set by authorized script or owner unrestricted mode
+if declare -F check_bypass >/dev/null 2>&1; then
+  if check_bypass "git push"; then
+    exit 0
+  fi
+elif [[ "${GIT_BYPASS_HOOKS:-false}" == "true" ]]; then
   exit 0
 fi
-
-# Block the operation with helpful guidance
-cat >&2 << 'EOF'
-
-❌ Error: Direct git push operations are not allowed.
-
-   Use the appropriate script instead:
-   
-   For committing and pushing:
-     commit -m "Your message" -p
-   
-   For pushing after merge:
-     merge [branch]
-   
-   For deleting remote branches:
-     rmbranch <branch> -r
-   
-   For help:
-     commit -h, merge -h, rmbranch -h
-
-EOF
-
 exit 1

@@ -11,13 +11,13 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mrgbranch [OPTIONS] [-- TOKENS]
+  mrgbranch [OPTIONS] [-- TOKEN...]
   mrgbranch {-h | --help}
 
-If local branch is behind its remote branch, mrgbranch fetches and
-pulls the latest changes from the remote branch into the local
-branch when it is safe to do so so that the local branch is
-synchronized with its remote branch.
+If current local branch is behind its remote branch, mrgbranch fetches
+and pulls the latest changes from the remote branch into the local branch
+when it is safe to do so so that the local branch is synchronized with
+its remote branch.
 
 If local and remote branches have diverged, mrgbranch attempts to
 automatically resolve the divergence via rebase when it is safe to
@@ -38,20 +38,35 @@ Options:
                     rebase, or branch update is performed, but the script
                     still generates the report and may delete stale dry-run
                     reports and persist report updates.
-  -m TOKEN          Add a note to the report (requires quotes if TOKEN
-                    contains spaces).
-  --message TOKEN   Add a note to the report (requires quotes if TOKEN
-                    contains spaces).
-  -- TOKENS         Add a note to the report (Unix style, the tokens
-                    after -- form the note). Captures all remaining
-                    tokens as the note. There must be at least one token
-                    after --. Whitespace between tokens is replaced with
-                    a single space. For a quoted token, the quotes are
-                    removed and whitespace within the token is preserved.
+  -n TOKEN          Add notes to the report.
+  -- TOKEN...       Add notes to the report.
+  -o                Owner override. Allows repository owner to continue
+                     when user-policy checks would otherwise skip execution,
+                     for this command run only; normal role restrictions
+                     apply again after exit.
   -v                Show detailed change and diagnostic information.
 
-  Options -m TOKEN, --message TOKEN, and -- TOKENS are mutually exclusive.
-  Only one may be specified.
+  For notes options '-n TOKEN' and '-- TOKEN...':
+    - These options are mutually exclusive and notes are optional.
+    - For '-- TOKEN...', '--' must be a separate token, followed by at least
+      one or more tokens. Leading/trailing whitespace is not preserved
+      and whitespace between tokens is reduced to a single space.
+    - For a quoted token, whitespace is preserved and the quotes are
+      removed.
+    - For example, the following both have the same notes:
+        mrgbranch -- do "  keep   this spacing  " for notes.
+        mrgbranch -n "do   keep   this spacing   for note."
+    - The resulting note from TOKEN/TOKENS must include at least
+      one non-whitespace character.
+    - Notes may contain \n for line breaks between notes
+      and following the notes.
+
+Examples:
+  Add notes to the report:
+    mrgbranch -n "Note: Getting latest changes before \nstarting feature work.\n"
+
+  Alternate option for report note:
+    mrgbranch -- Note: Getting latest changes before \nstarting feature work.\n
 
 Examples:
   # Sync current branch only
@@ -64,10 +79,10 @@ Examples:
   mrgbranch -d
 
   # Sync with report note
-  mrgbranch -m "Getting latest before starting feature work."
+  mrgbranch -n "Getting latest changes before starting feature work.\n"
 
-  # Unix-style report note
-  mrgbranch -- Getting latest changes.
+  # Alternate option for report note
+  mrgbranch -- Getting latest changes before starting feature work.\n
 
 Outputs:
   - Writes help text, status messages, and results or summaries
@@ -132,6 +147,7 @@ RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 REPORT_FILE=""
 ORIGINAL_ARGS=("$@")
+BRANCH_REPORTS_DIR_UNLOCKED=false
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
@@ -159,6 +175,8 @@ usage_error() {
 VERBOSE=false
 COMMENT=""
 DRY_RUN=false
+OWNER_OVERRIDE=false
+OWNER_OVERRIDE_ACTIVE=false
 
 CURRENT_BRANCH=""
 REBASE_IN_PROGRESS_AT_START=false
@@ -177,6 +195,60 @@ declare -a DIVERGENCE_FILES=()
 declare -a DIVERGENCE_GUIDANCE=()
 # shellcheck disable=SC2034  # Consumed indirectly by shared report helper.
 DRY_RUN_REPORT_DELETIONS=()
+
+cleanup_runtime_files() {
+  # shellcheck disable=SC2317  # Invoked by trap cleanup_runtime_files EXIT.
+  if [[ "$BRANCH_REPORTS_DIR_UNLOCKED" == true ]]; then
+    bt_report_dir_disable_writes "$BRANCH_REPORTS_DIR" "$EXIT_CONFIG_ERROR" || true
+    BRANCH_REPORTS_DIR_UNLOCKED=false
+  fi
+}
+
+trap cleanup_runtime_files EXIT
+
+enable_branch_reports_write_access() {
+  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_CONFIG_ERROR"
+  BRANCH_REPORTS_DIR_UNLOCKED=true
+}
+
+disable_branch_reports_write_access() {
+  if [[ "$BRANCH_REPORTS_DIR_UNLOCKED" == true ]]; then
+    bt_report_dir_disable_writes "$BRANCH_REPORTS_DIR" "$EXIT_CONFIG_ERROR"
+    BRANCH_REPORTS_DIR_UNLOCKED=false
+  fi
+}
+
+get_repository_owner_login() {
+  local origin_url=""
+  local owner=""
+
+  origin_url="$(git remote get-url origin 2>/dev/null || true)"
+  [[ -n "$origin_url" ]] || {
+    echo ""
+    return 0
+  }
+
+  if [[ "$origin_url" =~ ^git@github\.com:([^/]+)/[^/]+(\.git)?$ ]]; then
+    owner="${BASH_REMATCH[1]}"
+  elif [[ "$origin_url" =~ ^https://github\.com/([^/]+)/[^/]+(\.git)?$ ]]; then
+    owner="${BASH_REMATCH[1]}"
+  elif [[ "$origin_url" =~ ^ssh://git@github\.com/([^/]+)/[^/]+(\.git)?$ ]]; then
+    owner="${BASH_REMATCH[1]}"
+  fi
+
+  owner="$(bt_normalize_login "$owner")"
+  echo "$owner"
+}
+
+is_repository_owner() {
+  local user_name="$1"
+  local repo_owner=""
+
+  repo_owner="$(get_repository_owner_login)"
+  [[ -n "$repo_owner" ]] || return 1
+
+  [[ "$(bt_normalize_login "$user_name")" == "$repo_owner" ]]
+}
 
 
 format_command_line() {
@@ -554,7 +626,7 @@ generate_report() {
   command_text="$(format_command_line)"
   branch_scope="$CURRENT_BRANCH"
 
-  mkdir -p "$BRANCH_REPORTS_DIR"
+  enable_branch_reports_write_access
 
   cat > "$REPORT_FILE" <<EOF
 # Sync From Remote Report ${RUN_TS_DISPLAY}
@@ -633,6 +705,10 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
+    -o)
+      OWNER_OVERRIDE=true
+      shift
+      ;;
     -v | --verbose)
       VERBOSE=true
       shift
@@ -689,6 +765,19 @@ fi
 
 bt_info "Current branch: $CURRENT_BRANCH"
 
+if [[ "$OWNER_OVERRIDE" == true ]]; then
+  CURRENT_USER="$(bt_require_login || true)"
+  if [[ -z "$CURRENT_USER" ]]; then
+    bt_error_exit "$EXIT_NOT_FOUND" "Option -o requires a resolvable GitHub login"
+  fi
+  if is_repository_owner "$CURRENT_USER"; then
+    OWNER_OVERRIDE_ACTIVE=true
+    bt_info "Owner override enabled for repository owner '$CURRENT_USER'"
+  else
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Option -o is allowed only for the repository owner"
+  fi
+fi
+
 if [[ -n "$COMMENT" ]]; then
   bt_info "Note: $COMMENT"
 fi
@@ -704,7 +793,11 @@ else
 fi
 
 if [[ "$REBASE_IN_PROGRESS_AT_START" == false ]] && current_branch_has_uncommitted_changes; then
-  GLOBAL_SKIP_REASON="current branch '$CURRENT_BRANCH' has uncommitted or untracked changes."
+  if [[ "$OWNER_OVERRIDE_ACTIVE" == true ]]; then
+    bt_warn "Owner override enabled: proceeding despite uncommitted or untracked changes on '$CURRENT_BRANCH'."
+  else
+    GLOBAL_SKIP_REASON="current branch '$CURRENT_BRANCH' has uncommitted or untracked changes."
+  fi
 fi
 
 if [[ -n "$GLOBAL_SKIP_REASON" ]]; then
@@ -743,6 +836,7 @@ done
 initialize_report_file
 generate_report
 persist_report_changes
+disable_branch_reports_write_access
 
 bt_info "Summary: synchronized=$SYNCED_COUNT, skipped=$SKIPPED_COUNT, total=$EVALUATED_COUNT"
 bt_success "${REPORT_FILE#"${REPO_ROOT}"/} generated."
