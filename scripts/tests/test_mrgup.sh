@@ -5,10 +5,13 @@
 # Exercises:
 #   1. Help output includes -o.
 #   2. -o rejected when current user is not the repository owner.
-#   3. -o by owner, no open PR → dry-run succeeds without any PR validation.
+#   3. -o by owner, no open PR → dry-run succeeds with compact summary output.
 #   4. -o by owner, PR exists but NOT approved → blocked with "not approved" error.
-#   5. -o by owner, PR IS approved, status checks pass → dry-run succeeds, PR title used.
+#   5. -o by owner, PR IS approved, status checks pass → dry-run succeeds.
 #   6. Normal path (no -o), user is approver, PR required, PR NOT approved → blocked.
+#   7. Non-verbose dry-run output stays compact (no info-level chatter).
+#   8. One-time post-merge verification mismatch triggers targeted auto-repair
+#      and completes successfully.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -71,6 +74,18 @@ if [[ "\$#" -eq 3 && "\$1" == "remote" && "\$2" == "get-url" && "\$3" == "origin
   echo "https://github.com/\${FAKE_REPO_OWNER:-testowner}/testrepo.git"
   exit 0
 fi
+
+# Optional one-shot rev-parse fault injection for post-merge verification tests.
+if [[ "\$1" == "rev-parse" && "\$#" -eq 2 && -n "\${FAKE_REVPARSE_ONCE_REF:-}" && "\$2" == "\${FAKE_REVPARSE_ONCE_REF}" ]]; then
+  marker="\${FAKE_REVPARSE_ONCE_MARKER:-}"
+  if [[ -n "\$marker" && ! -f "\$marker" ]]; then
+    mkdir -p "$(dirname "\$marker")" 2>/dev/null || true
+    : > "\$marker"
+    echo "0000000000000000000000000000000000000001"
+    exit 0
+  fi
+fi
+
 exec "$REAL_GIT" "\$@"
 GITEOF
 chmod +x "$FAKEBIN/git"
@@ -223,11 +238,12 @@ rc=$(run_mrgup "$TMPDIR/owner-nopr.out" \
   echo "--- output ---"; cat "$TMPDIR/owner-nopr.out"
   fail "-o owner, no PR: dry-run should exit 0 (got $rc)"
 }
-assert_contains "Dry run complete" "$TMPDIR/owner-nopr.out"
-assert_contains "PR is not required" "$TMPDIR/owner-nopr.out"
-assert_contains "Using custom message: Owner override no PR" "$TMPDIR/owner-nopr.out"
+assert_contains "0 files updated, 0 new files, and 0 files deleted." "$TMPDIR/owner-nopr.out"
+assert_contains "(dry run)." "$TMPDIR/owner-nopr.out"
+assert_not_contains "PR is not required" "$TMPDIR/owner-nopr.out"
+assert_not_contains "Using custom message:" "$TMPDIR/owner-nopr.out"
 assert_not_contains "is not approved" "$TMPDIR/owner-nopr.out"
-pass "-o owner, no PR: dry-run succeeds without PR check"
+pass "-o owner, no PR: dry-run succeeds with compact output"
 
 # ---------------------------------------------------------------------------
 # Test 4: -o by owner, PR exists but NOT approved → fails
@@ -250,10 +266,11 @@ rc=$(run_mrgup "$TMPDIR/owner-pr-approved.out" \
   echo "--- output ---"; cat "$TMPDIR/owner-pr-approved.out"
   fail "-o owner, approved PR: dry-run should exit 0 (got $rc)"
 }
-assert_contains "Dry run complete" "$TMPDIR/owner-pr-approved.out"
-assert_contains "is approved" "$TMPDIR/owner-pr-approved.out"
-assert_contains "My approved PR" "$TMPDIR/owner-pr-approved.out"
-pass "-o owner, approved PR: dry-run succeeds, uses PR title"
+assert_contains "0 files updated, 0 new files, and 0 files deleted." "$TMPDIR/owner-pr-approved.out"
+assert_contains "(dry run)." "$TMPDIR/owner-pr-approved.out"
+assert_not_contains "is approved" "$TMPDIR/owner-pr-approved.out"
+assert_not_contains "My approved PR" "$TMPDIR/owner-pr-approved.out"
+pass "-o owner, approved PR: dry-run succeeds with compact output"
 
 # ---------------------------------------------------------------------------
 # Test 6: Normal path (no -o), user is approver, PR NOT approved → fails
@@ -264,5 +281,43 @@ rc=$(run_mrgup "$TMPDIR/normal-pr-unapproved.out" \
 [[ "$rc" -ne 0 ]] || fail "normal path with unapproved PR should fail (got exit 0)"
 assert_contains "is not approved" "$TMPDIR/normal-pr-unapproved.out"
 pass "normal path, PR required but not approved: merge correctly blocked"
+
+# ---------------------------------------------------------------------------
+# Test 7: Non-verbose dry-run remains compact (no info chatter)
+# ---------------------------------------------------------------------------
+rc=$(run_mrgup "$TMPDIR/quiet-dryrun.out" \
+  "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
+  "FAKE_GH_PR_NUMBER=" -- -o -d -m "Quiet dry-run")
+[[ "$rc" -eq 0 ]] || fail "non-verbose dry-run should succeed (got $rc)"
+assert_not_contains "Current branch:" "$TMPDIR/quiet-dryrun.out"
+assert_not_contains "Determining parent branch" "$TMPDIR/quiet-dryrun.out"
+assert_not_contains "Parent branch:" "$TMPDIR/quiet-dryrun.out"
+assert_contains "0 files updated, 0 new files, and 0 files deleted." "$TMPDIR/quiet-dryrun.out"
+pass "non-verbose dry-run output stays compact"
+
+# ---------------------------------------------------------------------------
+# Test 8: One-time verification mismatch auto-repairs and succeeds
+# ---------------------------------------------------------------------------
+VERIFY_MARKER="$TMPDIR/revparse-once.marker"
+rc=$(run_mrgup "$TMPDIR/verify-repair.out" \
+  "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
+  "FAKE_GH_PR_NUMBER=" \
+  "FAKE_REVPARSE_ONCE_REF=origin/v1.0.0" \
+  "FAKE_REVPARSE_ONCE_MARKER=$VERIFY_MARKER" -- -o -m "verify repair path")
+[[ "$rc" -eq 0 ]] || {
+  echo "--- output ---"; cat "$TMPDIR/verify-repair.out"
+  fail "one-time verification mismatch should auto-repair and succeed (got $rc)"
+}
+assert_contains "Post-merge sync verification failed:" "$TMPDIR/verify-repair.out"
+assert_contains "Failure kind: remote_parent_ref" "$TMPDIR/verify-repair.out"
+assert_contains "Branch 'dev/feat-v1.0.0' merged to 'v1.0.0'." "$TMPDIR/verify-repair.out"
+
+ab=$(
+  cd "$WORK"
+  "$REAL_GIT" fetch origin >/dev/null 2>&1
+  "$REAL_GIT" rev-list --left-right --count origin/v1.0.0...origin/dev/feat-v1.0.0
+)
+[[ "$ab" == $'0\t0' ]] || fail "expected origin/v1.0.0 and origin/dev/feat-v1.0.0 synced after auto-repair (got $ab)"
+pass "targeted one-shot post-merge auto-repair succeeds"
 
 echo "All mrgup owner-override and PR-approval smoke tests passed."

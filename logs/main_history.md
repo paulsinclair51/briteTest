@@ -8,4 +8,4 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Merge Log
 
-- [2026-07-20 01:46:11] [paulsinclair51] Merged [v1.0.0] to [main]: to main
+- [2026-07-20 03:45:08] [paulsinclair51] Merged [v1.0.0] to [main]: main

@@ -171,6 +171,8 @@ TEMP_PARENT_BRANCH_CREATED=false
 TEMP_PARENT_BRANCH_NAME=""
 PARENT_CHECKOUT_ACTIVE=false
 REPORTS_BRANCH_DIR_UNLOCKED=false
+VERIFY_LAST_ERROR=""
+VERIFY_FAILURE_KIND=""
 
 # Keep informational logs quiet unless verbose mode is requested.
 bt_info() {
@@ -358,6 +360,196 @@ has_local_branch() {
 has_remote_branch() {
   local branch="$1"
   git show-ref --verify --quiet "refs/remotes/origin/$branch"
+}
+
+parent_has_remote_push_target() {
+  local parent_branch="$1"
+
+  if [[ "$parent_branch" == "main" ]]; then
+    return 0
+  fi
+
+  has_remote_branch "$parent_branch"
+}
+
+set_verify_failure() {
+  local failure_kind="$1"
+  local message="$2"
+
+  VERIFY_FAILURE_KIND="$failure_kind"
+  VERIFY_LAST_ERROR="$message"
+}
+
+verify_ref_at_commit() {
+  local ref_name="$1"
+  local expected_sha="$2"
+  local label="$3"
+  local failure_kind="$4"
+  local actual_sha=""
+
+  actual_sha="$(git rev-parse "$ref_name" 2>/dev/null || true)"
+  if [[ -z "$actual_sha" ]]; then
+    set_verify_failure "$failure_kind" "unable to resolve $label ($ref_name)"
+    return 1
+  fi
+
+  if [[ "$actual_sha" != "$expected_sha" ]]; then
+    set_verify_failure "$failure_kind" "$label is at $actual_sha, expected $expected_sha"
+    return 1
+  fi
+
+  return 0
+}
+
+verify_post_merge_sync() {
+  local current_branch="$1"
+  local parent_branch="$2"
+  local current_is_local="$3"
+  local expected_tip="$4"
+  local now_branch=""
+
+  VERIFY_LAST_ERROR=""
+  VERIFY_FAILURE_KIND=""
+
+  # Refresh remote refs before asserting final state.
+  git fetch origin "$current_branch" >/dev/null 2>&1 || true
+  if parent_has_remote_push_target "$parent_branch"; then
+    git fetch origin "$parent_branch" >/dev/null 2>&1 || true
+  fi
+
+  verify_ref_at_commit "$current_branch" "$expected_tip" "local current branch '$current_branch'" "local_current_ref" || return 1
+
+  if has_local_branch "$parent_branch"; then
+    verify_ref_at_commit "$parent_branch" "$expected_tip" "local parent branch '$parent_branch'" "local_parent_ref" || return 1
+  fi
+
+  if has_remote_branch "$current_branch"; then
+    verify_ref_at_commit "origin/$current_branch" "$expected_tip" "remote current branch origin/$current_branch" "remote_current_ref" || return 1
+  fi
+
+  if parent_has_remote_push_target "$parent_branch"; then
+    verify_ref_at_commit "origin/$parent_branch" "$expected_tip" "remote parent branch origin/$parent_branch" "remote_parent_ref" || return 1
+  fi
+
+  now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  if [[ "$current_is_local" == true && "$now_branch" != "$current_branch" ]]; then
+    set_verify_failure "checked_out_branch" "expected current branch '$current_branch', found '$now_branch'"
+    return 1
+  fi
+
+  if bt_is_worktree_dirty; then
+    set_verify_failure "worktree_dirty" "worktree is dirty after mrgup"
+    return 1
+  fi
+
+  if [[ "$VERBOSE" == true ]]; then
+    bt_info "Post-merge sync verification passed"
+  fi
+
+  return 0
+}
+
+attempt_post_merge_sync_repair() {
+  local current_branch="$1"
+  local parent_branch="$2"
+  local current_is_local="$3"
+  local expected_tip="$4"
+  local failure_kind="$5"
+  local now_branch=""
+
+  case "$failure_kind" in
+    local_current_ref)
+      if ! git branch -f "$current_branch" "$expected_tip" >/dev/null 2>&1; then
+        set_verify_failure "$failure_kind" "failed to align local current branch '$current_branch' to expected merge tip"
+        return 1
+      fi
+      ;;
+    local_parent_ref)
+      if has_local_branch "$parent_branch"; then
+        now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+        if [[ "$now_branch" == "$parent_branch" ]]; then
+          set_verify_failure "$failure_kind" "cannot force-align local parent branch '$parent_branch' while it is checked out"
+          return 1
+        fi
+        if ! git branch -f "$parent_branch" "$expected_tip" >/dev/null 2>&1; then
+          set_verify_failure "$failure_kind" "failed to align local parent branch '$parent_branch' to expected merge tip"
+          return 1
+        fi
+      fi
+      ;;
+    remote_current_ref)
+      if has_remote_branch "$current_branch"; then
+        if ! GIT_BYPASS_HOOKS=true git push --force-with-lease origin "$expected_tip:$current_branch" >/dev/null 2>&1; then
+          set_verify_failure "$failure_kind" "failed to align remote current branch origin/$current_branch"
+          return 1
+        fi
+      fi
+      ;;
+    remote_parent_ref)
+      if parent_has_remote_push_target "$parent_branch"; then
+        if ! GIT_BYPASS_HOOKS=true git push origin "$expected_tip:$parent_branch" >/dev/null 2>&1; then
+          set_verify_failure "$failure_kind" "failed to align remote parent branch origin/$parent_branch"
+          return 1
+        fi
+      fi
+      ;;
+    checked_out_branch)
+      if [[ "$current_is_local" == true ]]; then
+        if ! git switch "$current_branch" >/dev/null 2>&1; then
+          set_verify_failure "$failure_kind" "failed to restore current branch '$current_branch' after repair"
+          return 1
+        fi
+      else
+        if has_remote_branch "$current_branch"; then
+          if ! git switch --detach "origin/$current_branch" >/dev/null 2>&1; then
+            set_verify_failure "$failure_kind" "failed to restore detached branch origin/$current_branch after repair"
+            return 1
+          fi
+        elif ! git switch --detach "$expected_tip" >/dev/null 2>&1; then
+          set_verify_failure "$failure_kind" "failed to restore detached expected merge tip after repair"
+          return 1
+        fi
+      fi
+      ;;
+    worktree_dirty)
+      set_verify_failure "$failure_kind" "worktree became dirty after merge; auto-repair is intentionally disabled for this condition"
+      return 1
+      ;;
+    *)
+      set_verify_failure "$failure_kind" "no targeted repair rule for verification failure kind '$failure_kind'"
+      return 1
+      ;;
+  esac
+
+  return 0
+}
+
+ensure_post_merge_sync_or_repair() {
+  local current_branch="$1"
+  local parent_branch="$2"
+  local current_is_local="$3"
+  local expected_tip="$4"
+
+  if verify_post_merge_sync "$current_branch" "$parent_branch" "$current_is_local" "$expected_tip"; then
+    return 0
+  fi
+
+  bt_warn "Post-merge sync verification failed: $VERIFY_LAST_ERROR"
+  bt_warn "Failure kind: ${VERIFY_FAILURE_KIND:-unknown}"
+  bt_warn "Attempting automatic repair and retrying verification once"
+
+  if ! attempt_post_merge_sync_repair "$current_branch" "$parent_branch" "$current_is_local" "$expected_tip" "$VERIFY_FAILURE_KIND"; then
+    bt_error_exit "$EXIT_NOT_FOUND" "Post-merge sync auto-repair failed: $VERIFY_LAST_ERROR"
+  fi
+
+  if verify_post_merge_sync "$current_branch" "$parent_branch" "$current_is_local" "$expected_tip"; then
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Post-merge sync verification passed after one automatic repair attempt"
+    fi
+    return 0
+  fi
+
+  bt_error_exit "$EXIT_NOT_FOUND" "Post-merge verification failed after one repair attempt: $VERIFY_LAST_ERROR"
 }
 
 resolve_detached_current_remote_branch() {
@@ -860,17 +1052,8 @@ preflight_current_history_sync_push() {
     return 0
   fi
 
-  # mrgup no longer pushes a history-only sync commit to protected current
-  # branches. Skip preflight because no post-merge push is attempted.
-  if bt_is_protected_branch "$current_branch"; then
-    if [[ "$VERBOSE" == true ]]; then
-      bt_info "Preflight: protected current branch '$current_branch'; no post-merge current-branch push required"
-    fi
-    return 0
-  fi
-
-  # Non-protected current branches are force-aligned to parent tip after
-  # successful merge; verify force-with-lease capability before mutation.
+  # Current branches are aligned to parent tip after successful merge;
+  # verify force-with-lease capability before mutation.
   if ! GIT_BYPASS_HOOKS=true git push --dry-run --force-with-lease origin "HEAD:$current_branch" >/dev/null 2>&1; then
     bt_error_exit "$EXIT_NOT_FOUND" \
       "Preflight failed: unable to verify force-with-lease push access for origin/$current_branch required for post-merge alignment"
@@ -881,28 +1064,35 @@ preflight_current_history_sync_push() {
   fi
 }
 
+sync_local_parent_branch_ref() {
+  local parent_branch="$1"
+  local parent_tip="$2"
+  local now_branch=""
+
+  if ! has_local_branch "$parent_branch"; then
+    return 0
+  fi
+
+  # If the parent branch is currently checked out, it is already at parent_tip
+  # during this phase of mrgup and cannot be force-updated with git branch -f.
+  now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  if [[ "$now_branch" == "$parent_branch" ]]; then
+    return 0
+  fi
+
+  if ! git branch -f "$parent_branch" "$parent_tip" >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to align local parent branch '$parent_branch'"
+  fi
+
+  if [[ "$VERBOSE" == true ]]; then
+    bt_info "Aligned local parent branch '$parent_branch' to merged parent tip"
+  fi
+}
+
 align_current_branch_to_parent_tip() {
   local current_branch="$1"
   local parent_branch="$2"
   local current_is_local="$3"
-
-  if bt_is_protected_branch "$current_branch"; then
-    if [[ "$current_is_local" == true ]]; then
-      if ! git switch "$current_branch" >/dev/null 2>&1; then
-        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to switch back to protected source branch '$current_branch'"
-      fi
-    else
-      if ! git switch --detach "origin/$current_branch" >/dev/null 2>&1; then
-        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to switch back to protected source branch origin/$current_branch"
-      fi
-    fi
-
-    if [[ "$VERBOSE" == true ]]; then
-      bt_info "Protected source branch '$current_branch' kept unchanged after merge"
-    fi
-    PARENT_CHECKOUT_ACTIVE=false
-    return 0
-  fi
 
   # HEAD is on the merged parent tip at this point; reuse that exact commit
   # for source-branch alignment.
@@ -911,6 +1101,8 @@ align_current_branch_to_parent_tip() {
   if [[ -z "$parent_tip" ]]; then
     bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to resolve merged parent tip"
   fi
+
+  sync_local_parent_branch_ref "$parent_branch" "$parent_tip"
 
   if ! git branch -f "$current_branch" "$parent_tip" >/dev/null 2>&1; then
     bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to align '$current_branch' to merged parent '$parent_branch'"
@@ -1209,7 +1401,7 @@ checkout_parent_branch "$PARENT_BRANCH"
 cleanup_untracked_branch_reports_for_merge
 unlock_reports_branch_dir_for_merge
 
-if [[ "$PARENT_BRANCH" != "main" && $(has_remote_branch "$PARENT_BRANCH" && echo true || echo false) == true ]]; then
+if [[ "$PARENT_BRANCH" != "main" ]] && parent_has_remote_push_target "$PARENT_BRANCH"; then
   if ! bt_run_cmd git pull --ff-only origin "$PARENT_BRANCH"; then
     bt_error_exit "$EXIT_NOT_FOUND" "Failed to fast-forward parent branch '$PARENT_BRANCH'"
   fi
@@ -1244,7 +1436,7 @@ if [[ -z "$MERGE_COMMIT_SHA" ]]; then
 fi
 
 # Push to remote
-if [[ "$PARENT_BRANCH" == "main" || $(has_remote_branch "$PARENT_BRANCH" && echo true || echo false) == true ]]; then
+if parent_has_remote_push_target "$PARENT_BRANCH"; then
   bt_info "Pushing parent branch..."
   if [[ "$PARENT_BRANCH" == "main" ]]; then
     if ! GIT_BYPASS_HOOKS=true bt_run_cmd git push origin HEAD:"$PARENT_BRANCH"; then
@@ -1262,6 +1454,7 @@ fi
 align_current_branch_to_parent_tip "$CURRENT_BRANCH" "$PARENT_BRANCH" "$CURRENT_IS_LOCAL"
 cleanup_temporary_parent_branch
 relock_reports_branch_dir_after_merge
+ensure_post_merge_sync_or_repair "$CURRENT_BRANCH" "$PARENT_BRANCH" "$CURRENT_IS_LOCAL" "$MERGE_COMMIT_SHA"
 
 # Show verbose output if requested
 if [[ "$VERBOSE" == true ]]; then
