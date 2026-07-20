@@ -742,6 +742,67 @@ ensure_current_up_to_date_with_parent() {
   fi
 }
 
+warn_downstream_targeted_branches_behind_version() {
+  local version_branch="$1"
+  local version_ref="$1"
+  local version_regex=""
+  local branch=""
+  local branch_ref=""
+  local counts=""
+  local behind=""
+  local ahead=""
+  local -a behind_branches=()
+
+  if ! bt_is_version_branch "$version_branch"; then
+    return 0
+  fi
+
+  if ! has_local_branch "$version_branch" && has_remote_branch "$version_branch"; then
+    version_ref="origin/$version_branch"
+  fi
+
+  version_regex="${version_branch//./\\.}"
+
+  while IFS= read -r branch; do
+    [[ -n "$branch" ]] || continue
+    [[ "$branch" == "$version_branch" ]] && continue
+
+    if [[ ! "$branch" =~ ^(dev|fix)/.+-${version_regex}$ ]]; then
+      continue
+    fi
+
+    branch_ref="$branch"
+    if ! has_local_branch "$branch" && has_remote_branch "$branch"; then
+      branch_ref="origin/$branch"
+    elif ! has_local_branch "$branch" && ! has_remote_branch "$branch"; then
+      continue
+    fi
+
+    counts="$(git rev-list --left-right --count "$version_ref...$branch_ref" 2>/dev/null || true)"
+    [[ -n "$counts" ]] || continue
+
+    behind="${counts%%$'\t'*}"
+    ahead="${counts##*$'\t'}"
+    if [[ "$behind" =~ ^[0-9]+$ && "$ahead" =~ ^[0-9]+$ && "$behind" -gt 0 ]]; then
+      behind_branches+=("$branch")
+    fi
+  done < <(
+    {
+      git for-each-ref --format='%(refname:short)' refs/heads
+      git for-each-ref --format='%(refname:short)' refs/remotes/origin
+    } | sed 's#^origin/##' | sort -u
+  )
+
+  if [[ ${#behind_branches[@]} -gt 0 ]]; then
+    bt_warn "Downstream sync needed: ${#behind_branches[@]} targeted branch(es) are now behind '$version_branch'. Run mrgdown on each affected branch."
+    if [[ "$VERBOSE" == true ]]; then
+      for branch in "${behind_branches[@]}"; do
+        bt_info "  behind: $branch"
+      done
+    fi
+  fi
+}
+
 is_targeted_branch() {
   local branch="$1"
   [[ "$branch" =~ ^(dev|fix)/.+-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]
@@ -1455,6 +1516,10 @@ align_current_branch_to_parent_tip "$CURRENT_BRANCH" "$PARENT_BRANCH" "$CURRENT_
 cleanup_temporary_parent_branch
 relock_reports_branch_dir_after_merge
 ensure_post_merge_sync_or_repair "$CURRENT_BRANCH" "$PARENT_BRANCH" "$CURRENT_IS_LOCAL" "$MERGE_COMMIT_SHA"
+
+if bt_is_version_branch "$CURRENT_BRANCH" && [[ "$PARENT_BRANCH" == "main" ]]; then
+  warn_downstream_targeted_branches_behind_version "$CURRENT_BRANCH"
+fi
 
 # Show verbose output if requested
 if [[ "$VERBOSE" == true ]]; then

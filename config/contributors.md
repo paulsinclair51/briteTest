@@ -21,6 +21,12 @@ contributor's role.
 See `<repo>/docs/md/Contributor_Guide.md` for additional information, including
 handling the case that there are no approvers.
 
+# Users and Contributors
+
+Users have a github login and can access this repository as read-only but
+cannot modify the repository unless they are listed in this file
+as a contributor.
+
 ## Contributor Roles and Responsibilities
 
 Contributors are categorized by their roles and permissions:

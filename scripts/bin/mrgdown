@@ -155,6 +155,38 @@ ensure_clean_worktree() {
   fi
 }
 
+auto_resolve_history_log_conflicts() {
+  local conflicted_files="$1"
+  local file=""
+  local remaining_conflicts=""
+
+  [[ -n "$conflicted_files" ]] || return 1
+
+  # Only auto-resolve known mrgup/mrgdown history artifacts.
+  while IFS= read -r file; do
+    [[ -n "$file" ]] || continue
+    if [[ ! "$file" =~ ^logs/.+_history\.md$ ]]; then
+      return 1
+    fi
+  done <<< "$conflicted_files"
+
+  while IFS= read -r file; do
+    [[ -n "$file" ]] || continue
+    if ! git checkout --theirs -- "$file" >/dev/null 2>&1; then
+      if ! git checkout --ours -- "$file" >/dev/null 2>&1; then
+        return 1
+      fi
+    fi
+
+    if ! git add "$file" >/dev/null 2>&1; then
+      return 1
+    fi
+  done <<< "$conflicted_files"
+
+  remaining_conflicts="$(git diff --name-only --diff-filter=U 2>/dev/null || true)"
+  [[ -z "$remaining_conflicts" ]]
+}
+
 get_repository_owner_login() {
   local origin_url=""
   local owner=""
@@ -322,6 +354,9 @@ if ! git merge --no-commit --no-ff "origin/$PARENT_BRANCH" >/dev/null 2>&1; then
   # Check if merge failed due to conflicts
   conflicted_files=$(git diff --name-only --diff-filter=U)
   if [[ -n "$conflicted_files" ]]; then
+    if auto_resolve_history_log_conflicts "$conflicted_files"; then
+      bt_warn "Auto-resolved history log conflicts from parent branch"
+    else
     bt_warn "Merge conflicts detected"
     bt_info "Complex conflicts require manual resolution"
     bt_info "Conflicted files:"
@@ -333,6 +368,7 @@ if ! git merge --no-commit --no-ff "origin/$PARENT_BRANCH" >/dev/null 2>&1; then
     echo "  2. Stage resolved files: git add <files>"
     echo "  3. Complete merge: git commit"
     bt_error_exit "$EXIT_OPERATION_FAILED" "Merge stopped - manual conflict resolution needed"
+    fi
   else
     bt_error_exit "$EXIT_NOT_FOUND" "Failed to merge $PARENT_BRANCH into $CURRENT_BRANCH"
   fi

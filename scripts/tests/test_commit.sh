@@ -14,6 +14,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 COMMIT_SRC="$REPO_ROOT/scripts/bin/commit"
 COMMON_HELPER_SRC="$REPO_ROOT/scripts/helpers/common.sh"
 GIT_HELPER_SRC="$REPO_ROOT/scripts/helpers/git_helpers.sh"
+REPORT_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_helpers.sh"
 
 pass() {
   echo "PASS: $1"
@@ -50,7 +51,7 @@ extract_report_hash() {
 
 latest_report() {
   local repo="$1"
-  find "$repo/reports/branch" -maxdepth 1 -type f -name 'commit*.md' | sort | tail -n 1
+  find "$repo/reports/branch" -maxdepth 1 -type f -name 'commit*.md' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
 }
 
 for dep in bash find git grep mktemp; do
@@ -60,6 +61,7 @@ done
 [[ -f "$COMMIT_SRC" ]] || fail "missing script: $COMMIT_SRC"
 [[ -f "$COMMON_HELPER_SRC" ]] || fail "missing helper: $COMMON_HELPER_SRC"
 [[ -f "$GIT_HELPER_SRC" ]] || fail "missing helper: $GIT_HELPER_SRC"
+[[ -f "$REPORT_HELPER_SRC" ]] || fail "missing helper: $REPORT_HELPER_SRC"
 
 TMPDIR="$(mktemp -d)"
 cleanup() {
@@ -67,6 +69,7 @@ cleanup() {
     echo "KEEP_TMPDIR=1 preserving test artifacts at: $TMPDIR" >&2
     return 0
   fi
+  chmod -R u+w "$TMPDIR" 2>/dev/null || true
   rm -rf "$TMPDIR"
 }
 trap cleanup EXIT
@@ -82,6 +85,7 @@ mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/config" "$WORK/repor
 cp "$COMMIT_SRC" "$WORK/scripts/bin/commit"
 cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
 cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
+cp "$REPORT_HELPER_SRC" "$WORK/scripts/helpers/report_helpers.sh"
 chmod +x "$WORK/scripts/bin/commit"
 
 cat > "$WORK/config/contributors.md" <<'EOF'
@@ -129,7 +133,8 @@ rc=$(run_capture "$TMPDIR/dry.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK
 [[ "$rc" -eq 0 ]] || fail "dry-run commit should exit 0 (got $rc)"
 dry_report="$(latest_report "$WORK")"
 [[ -f "$dry_report" ]] || fail "expected dry-run commit report"
-assert_contains "Report generated:" "$TMPDIR/dry.out"
+assert_contains "See reports/branch/commit-d-" "$TMPDIR/dry.out"
+[[ "$(basename "$dry_report")" == commit-d-* ]] || fail "expected dry-run report filename"
 assert_contains "**Commit Hash**" "$dry_report"
 if grep -Fq -- "| n/a |" "$dry_report"; then
   fail "dry-run commit report should leave Commit Hash blank"

@@ -8,11 +8,6 @@ See `README.md` in the root directory for an introduction to the project.
 
 ## Merge Log
 
-- [2026-07-19 22:09:47] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: cleanup branches.
-- [2026-07-19 22:16:58] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: Merge dev/release-v1.0.0 into v1.0.0 to sync branches
-- [2026-07-19 22:49:20] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: Merge dev/release-v1.0.0 into v1.0.0 after mrgup stdout fix
-- [2026-07-19 23:33:52] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: cleanup.
-- [2026-07-19 23:53:05] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: Sync dev/release-v1.0.0 and v1.0.0
 - [2026-07-20 00:03:12] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: cleanup branches.
 - [2026-07-20 01:05:28] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: move up
 - [2026-07-20 01:17:05] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: merge up.
@@ -23,5 +18,4 @@ See `README.md` in the root directory for an introduction to the project.
 - [2026-07-20 02:47:18] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: do
 - [2026-07-20 02:50:25] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: do
 - [2026-07-20 03:43:38] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: up.
-- [2026-07-20 03:45:08] [paulsinclair51] Merged [v1.0.0] to [main]: main
 - [2026-07-20 15:30:23] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: do it
