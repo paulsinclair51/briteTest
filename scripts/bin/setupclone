@@ -20,6 +20,7 @@ Make all scripts in /scripts/bin/ executable, add to PATH, and configure Git hoo
 This script:
   - Makes all scripts in /scripts/bin/ executable (chmod +x).
   - Adds /scripts/bin/ to PATH in ~/.bashrc if not already present.
+  - Configures ~/.inputrc to make command completion more discoverable.
   - Configures Git to use hooks from scripts/helpers/.githooks/ via core.hooksPath.
   - Loads the updated configuration so scripts are available immediately.
 
@@ -49,6 +50,7 @@ Outputs:
   - Writes help text, status messages, and results to stdout.
   - Writes errors and diagnostics to stderr.
   - Modifies ~/.bashrc to add /scripts/bin/ to PATH.
+  - Modifies ~/.inputrc to configure completion visibility settings.
 
 Exit codes:
   0  Success
@@ -93,7 +95,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
 if [[ -f "$HISTORY_HELPER" ]]; then
   if source "$HISTORY_HELPER" 2>/dev/null; then
-    bt_propagate_repository_history >/dev/null 2>&1
+    bt_propagate_repository_history >/dev/null 2>&1 || true
   fi
 fi
 
@@ -130,6 +132,38 @@ else
   echo "  ✓ Added to ~/.bashrc"
 fi
 
+# Configure ~/.inputrc for more discoverable completion behavior
+echo ""
+echo "Configuring Bash completion visibility..."
+
+inputrc_file="$HOME/.inputrc"
+completion_setting_lines=(
+  "set show-all-if-ambiguous on"
+  "set menu-complete-display-prefix on"
+  "set colored-completion-prefix on"
+  "set colored-stats on"
+  "\"\\en\": menu-complete"
+  "\"\\ep\": menu-complete-backward"
+)
+
+if [[ ! -f "$inputrc_file" ]]; then
+  touch "$inputrc_file"
+fi
+
+inputrc_updated=false
+for setting_line in "${completion_setting_lines[@]}"; do
+  if ! grep -qxF "$setting_line" "$inputrc_file"; then
+    echo "$setting_line" >> "$inputrc_file"
+    inputrc_updated=true
+  fi
+done
+
+if [[ "$inputrc_updated" == true ]]; then
+  echo "  ✓ Updated ~/.inputrc"
+else
+  echo "  → Already configured in ~/.inputrc"
+fi
+
 # Install Git hooks
 echo ""
 echo "Installing Git hooks for workflow protection..."
@@ -151,7 +185,11 @@ echo ""
 echo "Loading updated configuration..."
 if ! source ~/.bashrc 2>/dev/null; then
   echo "Warning: Failed to load configuration, but changes have been made" >&2
-  exit "$EXIT_NOT_FOUND"
+  echo "Run 'source ~/.bashrc' or start a new shell session." >&2
+else
+  if [[ -f "$inputrc_file" ]]; then
+    bind -f "$inputrc_file" 2>/dev/null || true
+  fi
 fi
 
 echo ""
@@ -167,3 +205,4 @@ echo "  - Active immediately"
 echo "  - Will run on checkout and other git operations"
 echo ""
 echo "You can now run scripts by name, e.g.: lsbranch -h"
+echo "For this already-open terminal, run: bind -f ~/.inputrc"

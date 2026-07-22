@@ -39,7 +39,7 @@ Pre-merge checks:
   - Current branch must not be behind its parent branch to avoid conflicts.
   - CI/CD results are included in the report.
   - If CI or CD fails, parent is a version branch, and -o is not specified,
-    mrgup behaves as dry-run (-d): merge to the parent version branch is
+    mrgup behaves as a dry-run (-d): merge to the parent version branch is
     skipped.
   - CI/CD exit codes: if only CI fails then 19, if only CD fails then 20,
     or if both fail then 21.
@@ -55,6 +55,8 @@ Options:
                      not commit or push the primary code commit. It still
                      generates a dry-run report and deletes stale dry-run
                      reports (see Output below for details).
+                     Dry-run runs pre-merge checks and returns exit
+                     codes for failures.
   -h                 Output this help to stdout and exit (other options
                      and arguments are ignored).
   --help             Output this help to stdout and exit (other options
@@ -91,8 +93,8 @@ If a commit comment is not specified:
       contributor branch:
         "<branch> merged to <parent> by contributor <user>."
 
-Example: Merge targeted branch to its parent version branch 
-         PR title as commit message.
+Example: When current branch is a targeted branch, merge the branch
+up to its parent version branch using the PR title as the commit comment.
   mrgup
 
 Example: Merge with '-c' commit comment.
@@ -339,10 +341,10 @@ acquire_run_lock() {
   existing_pid="$(cat "$LOCK_FILE" 2>/dev/null || true)"
   if [[ "$existing_pid" =~ ^[0-9]+$ ]]; then
     bt_error_exit "$EXIT_INVALID_ARGUMENT" \
-      "Another mrgup run appears active (pid $existing_pid). Retry after it completes"
+      "Another mrgup run appears active (pid $existing_pid). Verify with 'ps -p $existing_pid -o comm='. If no mrgup process is running, remove stale lock '.git/mrgup.run.lock' and rerun mrgup"
   fi
 
-  bt_error_exit "$EXIT_INVALID_ARGUMENT" "Another mrgup run appears active. Retry after it completes"
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" "Another mrgup run appears active. If no run is active, remove stale lock '.git/mrgup.run.lock' and rerun mrgup"
 }
 
 release_run_lock() {

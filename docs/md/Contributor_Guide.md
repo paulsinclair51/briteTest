@@ -149,11 +149,10 @@ Contributors should read this document before submitting changes, reviewing, or 
 
 A script-based workflow is required. Direct use of git commands that modify the
 repository is not allowed for users, contributors, reviewers, or approvers.
-These roles must use project scripts for repository-modifying actions. A script validates the action,
-enforces policy, issues the git commands needed to complete the action,
-generates informational output, and, for some scripts, a report. This simplifies the
-workflow for contributors, reviewers, and approvers while maintaining integrity in
-the repository.
+These roles must use project scripts for repository-modifying actions. A script validates the action, enforces policy, issues the git commands needed to complete
+the action, generates informational output, and, for some scripts, a report. This
+simplifies the workflow for contributors, reviewers, and approvers while
+maintaining integrity in the repository.
 
 Repository owner behavior:
 - By default, repository owner is still restricted by the role assigned in
@@ -167,6 +166,9 @@ Repository owner behavior:
   or role gating.
 
 The current executable script set is maintained in `scripts/bin/README.md`.
+After `setupclone`, run `bind -f ~/.inputrc` in an already-open terminal.
+Then type a leading command prefix and press Tab to list choices; use
+Alt+n and Alt+p to cycle forward and backward through those choices.
 
 - **Setup/installation:** `setupclone`
 - **Document/brand:** `ckstyle`, `gendocs`, `genpngs`, `replacephrases`, `updatebrand`
@@ -233,7 +235,7 @@ Repository owner role model:
 
 ## 3. Validation Workflows
 
-briteTest uses 15 automated GitHub Actions workflows providing defense-in-depth
+15 automated GitHub Actions workflows are provided for defense-in-depth
 validation across all git operations.
 
 <details>
@@ -373,9 +375,12 @@ changes.
 - Commit often
 
 `scripts/bin/commit` behavior summary:
-- Automatically pushes when `origin` is connected and `origin/<current-branch>` exists.
-- Does not push when remote is disconnected or no corresponding remote branch exists.
-- Uses report naming: `reports/branch/commit-<datetime>.md` (or `commit-d-<datetime>.md` in dry-run).
+- Automatically pushes when `origin` is connected and `origin/<current-branch>`
+  exists.
+- Does not push when remote is disconnected or no corresponding remote branch
+  exists.
+- Uses report naming: `reports/branch/commit-<datetime>.md` (or
+  `commit-d-<datetime>.md` in dry-run).
 </details>
 
 <details>
