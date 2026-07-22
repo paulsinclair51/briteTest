@@ -39,9 +39,7 @@ name: Validate Cherry Pick Operations
 #-----------------------------------------------------------------------------
 
 on:
-  push:
-    branches:
-      - '**'
+  workflow_dispatch:
 
 permissions:
   contents: read

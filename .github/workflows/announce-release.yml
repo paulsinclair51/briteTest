@@ -1,8 +1,13 @@
 name: Announce Release
 
+# Define the GitHub workflow for announce release.
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read

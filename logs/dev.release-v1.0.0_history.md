@@ -19,3 +19,4 @@ See `README.md` in the root directory for an introduction to the project.
 - [2026-07-20 02:50:25] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: do
 - [2026-07-20 03:43:38] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: up.
 - [2026-07-20 15:30:23] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: do it
+- [2026-07-22 03:39:53] [paulsinclair51] Merged [dev/release-v1.0.0] to [v1.0.0]: merge up.

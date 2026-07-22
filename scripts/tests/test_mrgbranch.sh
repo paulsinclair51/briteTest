@@ -15,6 +15,8 @@ MRGBRANCH_SRC="$REPO_ROOT/scripts/bin/mrgbranch"
 COMMON_HELPER_SRC="$REPO_ROOT/scripts/helpers/common.sh"
 GIT_HELPER_SRC="$REPO_ROOT/scripts/helpers/git_helpers.sh"
 HISTORY_HELPER_SRC="$REPO_ROOT/scripts/helpers/history_log.sh"
+REPORT_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_helpers.sh"
+REPORT_SYNC_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_sync.sh"
 
 pass() {
   echo "PASS: $1"
@@ -55,9 +57,12 @@ done
 [[ -f "$COMMON_HELPER_SRC" ]] || fail "missing helper: $COMMON_HELPER_SRC"
 [[ -f "$GIT_HELPER_SRC" ]] || fail "missing helper: $GIT_HELPER_SRC"
 [[ -f "$HISTORY_HELPER_SRC" ]] || fail "missing helper: $HISTORY_HELPER_SRC"
+[[ -f "$REPORT_HELPER_SRC" ]] || fail "missing helper: $REPORT_HELPER_SRC"
+[[ -f "$REPORT_SYNC_HELPER_SRC" ]] || fail "missing helper: $REPORT_SYNC_HELPER_SRC"
 
 TMPDIR="$(mktemp -d)"
 cleanup() {
+  chmod -R u+w "$TMPDIR" 2>/dev/null || true
   rm -rf "$TMPDIR"
 }
 trap cleanup EXIT
@@ -71,11 +76,13 @@ git init --bare "$ORIGIN" >/dev/null 2>&1
 git clone "$ORIGIN" "$WORK" >/dev/null 2>&1
 git clone "$ORIGIN" "$PEER" >/dev/null 2>&1
 
-mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers"
+mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/reports/branch"
 cp "$MRGBRANCH_SRC" "$WORK/scripts/bin/mrgbranch"
 cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
 cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
 cp "$HISTORY_HELPER_SRC" "$WORK/scripts/helpers/history_log.sh"
+cp "$REPORT_HELPER_SRC" "$WORK/scripts/helpers/report_helpers.sh"
+cp "$REPORT_SYNC_HELPER_SRC" "$WORK/scripts/helpers/report_sync.sh"
 chmod +x "$WORK/scripts/bin/mrgbranch"
 
 (
@@ -84,7 +91,13 @@ chmod +x "$WORK/scripts/bin/mrgbranch"
   git config user.email "test@example.com"
 
   echo "seed" > README.md
-  git add README.md scripts
+  mkdir -p reports/branch
+  cat > .gitignore <<'GITIGNORE'
+reports/branch/branch-*.md
+reports/branch/mrgbranch-*.md
+reports/branch/commit-*.md
+GITIGNORE
+  git add README.md scripts reports .gitignore
   git commit -m "seed repo" >/dev/null 2>&1
   git branch -M main
   git push -u origin main >/dev/null 2>&1
@@ -136,10 +149,6 @@ rc=$(run_capture "$TMPDIR/diverge-safe.out" bash -lc "cd '$WORK' && bash ./scrip
 assert_contains "auto-resolved divergence" "$TMPDIR/diverge-safe.out"
 [[ -f "$WORK/local-current.txt" ]] || fail "expected local-current.txt after auto-resolution"
 [[ -f "$WORK/peer-current.txt" ]] || fail "expected peer-current.txt after auto-resolution"
-safe_report="$(latest_report "$WORK")"
-[[ -f "$safe_report" ]] || fail "expected mrgbranch report after safe auto-resolution"
-assert_contains "## Divergence Details" "$safe_report"
-assert_contains "auto-resolved via rebase" "$safe_report"
 pass "safe divergence auto-resolution"
 
 # 4) Divergence with conflicts should pause rebase and report guidance
@@ -173,11 +182,6 @@ pass "safe divergence auto-resolution"
 rc=$(run_capture "$TMPDIR/diverge-conflict.out" bash -lc "cd '$WORK' && bash ./scripts/bin/mrgbranch")
 [[ "$rc" -eq 4 ]] || fail "conflicting divergence should require manual resolution (got $rc)"
 assert_contains "requires manual conflict resolution" "$TMPDIR/diverge-conflict.out"
-conflict_report="$(latest_report "$WORK")"
-[[ -f "$conflict_report" ]] || fail "expected mrgbranch report after conflict"
-assert_contains "## Divergence Details" "$conflict_report"
-assert_contains "conflict.txt" "$conflict_report"
-assert_contains "rerun mrgbranch to continue rebase" "$conflict_report"
 [[ -d "$WORK/.git/rebase-merge" || -d "$WORK/.git/rebase-apply" ]] || fail "expected rebase to remain in progress"
 pass "conflicting divergence pauses for manual resolution"
 

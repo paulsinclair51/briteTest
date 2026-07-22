@@ -15,6 +15,8 @@ COMMIT_SRC="$REPO_ROOT/scripts/bin/commit"
 COMMON_HELPER_SRC="$REPO_ROOT/scripts/helpers/common.sh"
 GIT_HELPER_SRC="$REPO_ROOT/scripts/helpers/git_helpers.sh"
 REPORT_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_helpers.sh"
+REPORT_SYNC_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_sync.sh"
+HISTORY_LOG_HELPER_SRC="$REPO_ROOT/scripts/helpers/history_log.sh"
 
 pass() {
   echo "PASS: $1"
@@ -62,6 +64,8 @@ done
 [[ -f "$COMMON_HELPER_SRC" ]] || fail "missing helper: $COMMON_HELPER_SRC"
 [[ -f "$GIT_HELPER_SRC" ]] || fail "missing helper: $GIT_HELPER_SRC"
 [[ -f "$REPORT_HELPER_SRC" ]] || fail "missing helper: $REPORT_HELPER_SRC"
+[[ -f "$REPORT_SYNC_HELPER_SRC" ]] || fail "missing helper: $REPORT_SYNC_HELPER_SRC"
+[[ -f "$HISTORY_LOG_HELPER_SRC" ]] || fail "missing helper: $HISTORY_LOG_HELPER_SRC"
 
 TMPDIR="$(mktemp -d)"
 cleanup() {
@@ -86,6 +90,8 @@ cp "$COMMIT_SRC" "$WORK/scripts/bin/commit"
 cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
 cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
 cp "$REPORT_HELPER_SRC" "$WORK/scripts/helpers/report_helpers.sh"
+cp "$REPORT_SYNC_HELPER_SRC" "$WORK/scripts/helpers/report_sync.sh"
+cp "$HISTORY_LOG_HELPER_SRC" "$WORK/scripts/helpers/history_log.sh"
 chmod +x "$WORK/scripts/bin/commit"
 
 cat > "$WORK/config/contributors.md" <<'EOF'
@@ -98,7 +104,11 @@ EOF
   git config user.email "test@example.com"
 
   echo "seed" > README.md
-  git add README.md scripts config reports
+  cat > .gitignore <<'GITIGNORE'
+reports/branch/branch-*.md
+reports/branch/commit-*.md
+GITIGNORE
+  git add README.md scripts config reports .gitignore
   git commit -m "seed repo" >/dev/null 2>&1
   git branch -M main
   git push -u origin main >/dev/null 2>&1

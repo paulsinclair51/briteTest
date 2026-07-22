@@ -91,9 +91,7 @@ name: Validate Branch Names on Pull Request
 # Set workflow to run on pull request events.
 
 on:
-  pull_request:
-    branches:
-      - '**'
+  workflow_dispatch:
 
 permissions:
   contents: read

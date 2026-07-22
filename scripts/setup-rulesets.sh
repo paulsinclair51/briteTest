@@ -8,7 +8,7 @@
 
 # Usage:
 #
-#   ./scripts/setup-rulesets.sh [owner/repo]
+#   <repo>/scripts/setup-rulesets.sh [<owner>/<reponame>]
 #
 # Idempotent GitHub ruleset setup with auto-cleanup (create-or-update by ruleset name)
 #

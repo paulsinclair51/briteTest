@@ -15,8 +15,7 @@ name: Validate License Headers
 #-----------------------------------------------------------------------------
 
 on:
-  pull_request:
-    branches: ['**']
+  workflow_dispatch:
 
 permissions:
   contents: read

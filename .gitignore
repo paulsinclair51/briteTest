@@ -67,3 +67,6 @@ tests/tmp/*
 
 # Local-only lsbranch reports
 reports/branch/branch-*.md
+
+# Local-only commit reports
+reports/branch/commit-*.md

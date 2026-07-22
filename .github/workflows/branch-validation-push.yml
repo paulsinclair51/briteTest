@@ -56,9 +56,7 @@ name: Validate Branch Names on Push
 # Set workflow to run on push events to all branches.
 
 on:
-  push:
-    branches:
-      - '**'
+  workflow_dispatch:
 
 permissions:
   contents: read

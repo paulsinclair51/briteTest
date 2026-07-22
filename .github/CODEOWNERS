@@ -1,14 +1,19 @@
 # CODEOWNERS
 
-# Copyright (c) 2026 Paul Sinclair  
-# SPDX-License-Identifier: MIT  
-# For license details, see `<repo>/LICENSE`.
+## Copyright (c) 2026 Paul Sinclair  
+## SPDX-License-Identifier: MIT  
+### For license details, see `<repo>/LICENSE`.
 
-# Owners for the entire repository:
+## See `<repo>/README.md` for an introduction to briteTest.
+
+## See '\<repo\>/config/contributors.md for a list of contibutors and their roles (contributor-only), reviewer, or approver.
+
+
+## Owners for the entire repository:
 * @paulsinclair51
 
-# Owners for subsets of the repository:
-# Currently, none.
+## Owners for subsets of the repository:
+### Currently, none.
 
 # Entries:
 #   <owns> @<owner> [ @<owner>]...

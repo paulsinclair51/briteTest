@@ -12,6 +12,8 @@
 #   7. Non-verbose dry-run output stays compact (no info-level chatter).
 #   8. One-time post-merge verification mismatch triggers targeted auto-repair
 #      and completes successfully.
+#   9. Local run lock blocks overlapping mrgup invocation.
+#  10. Merge-time git failure emits recovery guidance (resolve + rerun).
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -86,6 +88,12 @@ if [[ "\$1" == "rev-parse" && "\$#" -eq 2 && -n "\${FAKE_REVPARSE_ONCE_REF:-}" &
   fi
 fi
 
+# Optional failure injection for merge conflict/error guidance coverage.
+if [[ "\${FAKE_GIT_FAIL_MERGE_SQUASH:-0}" == "1" && "\$1" == "merge" && "\$2" == "--squash" ]]; then
+  echo "simulated merge failure" >&2
+  exit 1
+fi
+
 exec "$REAL_GIT" "\$@"
 GITEOF
 chmod +x "$FAKEBIN/git"
@@ -97,6 +105,11 @@ chmod +x "$FAKEBIN/git"
 #   FAKE_GH_REVIEW_DECISION — APPROVED | CHANGES_REQUESTED | ...
 #   FAKE_GH_STATUS_CHECKS   — SUCCESS | FAILURE | PENDING
 #   FAKE_GH_PR_TITLE        — commit message when PR title is used
+#   FAKE_GH_PR_STATE         — OPEN | CLOSED | MERGED
+#   FAKE_GH_PR_DRAFT         — true | false
+#   FAKE_GH_PR_HEAD          — expected PR head branch
+#   FAKE_GH_PR_BASE          — expected PR base branch
+#   FAKE_GH_PR_MERGED_AT     — non-empty indicates merged
 # ---------------------------------------------------------------------------
 cat > "$FAKEBIN/gh" << 'GHEOF'
 #!/usr/bin/env bash
@@ -111,7 +124,12 @@ if [[ "$args" == *"pr list"* ]]; then
   echo "${FAKE_GH_PR_NUMBER:-}"
   exit 0
 fi
-# PR review decision (check_pr_approval)
+# PR metadata validation (validate_pr_for_merge)
+if [[ "$args" == *"state,isDraft,headRefName,baseRefName,reviewDecision,mergedAt"* ]]; then
+  echo -e "${FAKE_GH_PR_STATE:-OPEN}\t${FAKE_GH_PR_DRAFT:-false}\t${FAKE_GH_PR_HEAD:-dev/feat-v1.0.0}\t${FAKE_GH_PR_BASE:-v1.0.0}\t${FAKE_GH_REVIEW_DECISION:-APPROVED}\t${FAKE_GH_PR_MERGED_AT:-}"
+  exit 0
+fi
+# PR review decision (legacy query compatibility)
 if [[ "$args" == *"reviewDecision"* ]]; then
   echo "${FAKE_GH_REVIEW_DECISION:-APPROVED}"
   exit 0
@@ -233,7 +251,7 @@ pass "-o rejected for non-owner"
 # ---------------------------------------------------------------------------
 rc=$(run_mrgup "$TMPDIR/owner-nopr.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
-  "FAKE_GH_PR_NUMBER=" -- -o -d -m "Owner override no PR")
+  "FAKE_GH_PR_NUMBER=" -- -o -d -c "Owner override no PR")
 [[ "$rc" -eq 0 ]] || {
   echo "--- output ---"; cat "$TMPDIR/owner-nopr.out"
   fail "-o owner, no PR: dry-run should exit 0 (got $rc)"
@@ -252,7 +270,8 @@ rc=$(run_mrgup "$TMPDIR/owner-pr-unapproved.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
   "FAKE_GH_PR_NUMBER=42" "FAKE_GH_REVIEW_DECISION=CHANGES_REQUESTED" -- -o -d)
 [[ "$rc" -ne 0 ]] || fail "-o owner with unapproved PR should fail (got exit 0)"
-assert_contains "is not approved" "$TMPDIR/owner-pr-unapproved.out"
+assert_contains "outstanding changes requested" "$TMPDIR/owner-pr-unapproved.out"
+assert_contains "Guidance: fix PR state/approval" "$TMPDIR/owner-pr-unapproved.out"
 pass "-o owner, PR not approved: merge correctly blocked"
 
 # ---------------------------------------------------------------------------
@@ -279,7 +298,7 @@ rc=$(run_mrgup "$TMPDIR/normal-pr-unapproved.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
   "FAKE_GH_PR_NUMBER=42" "FAKE_GH_REVIEW_DECISION=CHANGES_REQUESTED" -- -d)
 [[ "$rc" -ne 0 ]] || fail "normal path with unapproved PR should fail (got exit 0)"
-assert_contains "is not approved" "$TMPDIR/normal-pr-unapproved.out"
+assert_contains "outstanding changes requested" "$TMPDIR/normal-pr-unapproved.out"
 pass "normal path, PR required but not approved: merge correctly blocked"
 
 # ---------------------------------------------------------------------------
@@ -287,7 +306,7 @@ pass "normal path, PR required but not approved: merge correctly blocked"
 # ---------------------------------------------------------------------------
 rc=$(run_mrgup "$TMPDIR/quiet-dryrun.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
-  "FAKE_GH_PR_NUMBER=" -- -o -d -m "Quiet dry-run")
+  "FAKE_GH_PR_NUMBER=" -- -o -d -c "Quiet dry-run")
 [[ "$rc" -eq 0 ]] || fail "non-verbose dry-run should succeed (got $rc)"
 assert_not_contains "Current branch:" "$TMPDIR/quiet-dryrun.out"
 assert_not_contains "Determining parent branch" "$TMPDIR/quiet-dryrun.out"
@@ -303,7 +322,7 @@ rc=$(run_mrgup "$TMPDIR/verify-repair.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
   "FAKE_GH_PR_NUMBER=" \
   "FAKE_REVPARSE_ONCE_REF=origin/v1.0.0" \
-  "FAKE_REVPARSE_ONCE_MARKER=$VERIFY_MARKER" -- -o -m "verify repair path")
+  "FAKE_REVPARSE_ONCE_MARKER=$VERIFY_MARKER" -- -o -c "verify repair path")
 [[ "$rc" -eq 0 ]] || {
   echo "--- output ---"; cat "$TMPDIR/verify-repair.out"
   fail "one-time verification mismatch should auto-repair and succeed (got $rc)"
@@ -319,5 +338,30 @@ ab=$(
 )
 [[ "$ab" == $'0\t0' ]] || fail "expected origin/v1.0.0 and origin/dev/feat-v1.0.0 synced after auto-repair (got $ab)"
 pass "targeted one-shot post-merge auto-repair succeeds"
+
+# ---------------------------------------------------------------------------
+# Test 9: Local run lock blocks overlapping invocation
+# ---------------------------------------------------------------------------
+echo "$$" > "$WORK/.git/mrgup.run.lock"
+rc=$(run_mrgup "$TMPDIR/lock-blocked.out" \
+  "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
+  "FAKE_GH_PR_NUMBER=" -- -o -d -c "lock blocked")
+rm -f "$WORK/.git/mrgup.run.lock"
+[[ "$rc" -ne 0 ]] || fail "expected mrgup lock contention to fail (got exit 0)"
+assert_contains "Another mrgup run appears active" "$TMPDIR/lock-blocked.out"
+assert_contains "Guidance:" "$TMPDIR/lock-blocked.out"
+pass "local run lock blocks overlapping invocation"
+
+# ---------------------------------------------------------------------------
+# Test 10: Merge-time git failure emits resolve-and-rerun guidance
+# ---------------------------------------------------------------------------
+rc=$(run_mrgup "$TMPDIR/merge-fail-guidance.out" \
+  "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
+  "FAKE_GH_PR_NUMBER=" "FAKE_GIT_FAIL_MERGE_SQUASH=1" -- -o -c "fail guidance")
+[[ "$rc" -eq 200 ]] || fail "expected git-operation failure exit 200 (got $rc)"
+assert_contains "Failed to squash merge" "$TMPDIR/merge-fail-guidance.out"
+assert_contains "Guidance: if merge conflicts occurred" "$TMPDIR/merge-fail-guidance.out"
+assert_contains "rerun mrgup" "$TMPDIR/merge-fail-guidance.out"
+pass "merge-time git failure emits resolve-and-rerun guidance"
 
 echo "All mrgup owner-override and PR-approval smoke tests passed."

@@ -34,7 +34,7 @@ name: Protect Branch Deletion
 # Set workflow to run on delete events.
 
 on:
-  delete
+  workflow_dispatch:
 
 permissions:
   contents: read

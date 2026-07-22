@@ -17,115 +17,143 @@ Usage:
 
 Merge the current branch to its parent branch.
 
-Merging to a protected parent branch (remote-only main or a version branch)
-requires the current user to be an approver (an entry with A specified for
-their role in '<repo>/config/contributors.md').
+Pre-merge checks:
+  - Remote origin must be connected/reachable.
+  - If -o option is specified, the user must be the repository owner.
+  - For merges up to a protected branch: user must be an approver or
+    the -o option must be specified.
+  - PR requirements:
+    - With -o: PR is optional for merges up to a version branch.
+    - Without -o: PR is required for merges up to a version branch.
+    - PR is not required for merges up to a contributor branch,
+      targeted branch, or main branch.
+  - If a PR exists, it must be open, not draft, head=current branch,
+    base=parent branch, have no outstanding Changes Requested,
+    be approved, and not already be merged.
+  - Current branch must have all changes committed.
+  - If current branch has both local and remote branches, current must be
+    checked out locally and local/remote must be synchronized to avoid conflicts.
+  - Parent branch must have all changes committed.
+  - If parent branch has both local and remote branches, local/remote must
+    be synchronized to avoid conflicts.
+  - Current branch must not be behind its parent branch to avoid conflicts.
+  - CI/CD results are included in the report.
+  - If CI or CD fails, parent is a version branch, and -o is not specified,
+    mrgup behaves as dry-run (-d): merge to the parent version branch is
+    skipped.
+  - CI/CD exit codes: if only CI fails then 19, if only CD fails then 20,
+    or if both fail then 21.
 
-Before merging:
-  - Ensures remote origin is connected/reachable.
-  - Verifies current user is an approver if merging to a protected branch.
-  - Ensures the current branch's local and remote are in sync, and that no
-    uncommitted changes exist.
-  - Ensures the parent branch's local and remote are in sync when both local
-    and remote parent branches exist, and that no uncommitted changes exist.
-  - Ensures that the current branch is up-to-date with its parent branch.
-  - Checks that all status checks and CI/CD pass.
-  - Uses the specified commit message, PR title, or default message as the commit message.
-  - Logs merge to '<repo>/logs/<parent>_history.md' on the parent branch
-    (e.g. 'logs/v1.0.0_history.md') and '<repo>/logs/<current>_history.md'
-    on the current branch. Branch name '/' separators are replaced with '.'
-    in the filename. The log update is kept in sync across the current
-    branch's local and remote. It is then pushed to the parent branch's
-    remote and local branches when those branches exist.
-
-Features:
+Merge behavior:
   - Combines changes into a single commit on the parent branch.
-  - Approval verification for protected branches.
-  - Status check validation.
-  - Merge logging to '<repo>/logs/<branch>_history.md' (branch name with
-    '/' replaced by '.') for both the parent and current branches.
   - No branch cleanup (branches remain after merge).
 
 Options:
-  -h, --help           Output this help to stdout and exit (other options
-                       and arguments are ignored).
-  -o                   Owner override. Allows repository owner to bypass
-                       approver and PR-required checks for this command run
-                       only; normal role restrictions apply again after exit.
-  -d                   Dry-run mode. Show what would be done without making
-                       any changes.
-  -m TOKEN             Commit message (GitHub style, requires quotes if
-                       spaces).
-                       Usage: mrgup -m "Merge parser fixes"
-  --message TOKEN      Commit message (GitHub style, requires quotes if
-                       spaces).
-                       Usage: mrgup --message "Merge parser fixes"
-  -- TOKENS            Commit message (Unix-style): all tokens after '--'
-                       are the message text.
-                       Usage: mrgup -- Merge parser fixes
-                       Note: '--' must be a separate token, followed by at
-                       least one token. Leading/trailing whitespace is not
-                       preserved and whitespace between tokens is reduced
-                       to a single space.
-                       In quoted tokens, whitespace is preserved and the
-                       quotes are removed, for example:
-                       mrgup -- keep "  exact   spacing  " here
-                       is the same as:
-                       mrgup -m "keep   exact   spacing   here"
-  -v                   Show detailed information and progress in stdout for
-                       diagnostic purposes.
+  -c TOKEN           Set commit comment from one token.
+  -- TOKEN...        Set commit comment from one or more tokens.
+  -d                 Dry-run for branch commit/push workflow. Script does
+                     not commit or push the primary code commit. It still
+                     generates a dry-run report and deletes stale dry-run
+                     reports (see Output below for details).
+  -h                 Output this help to stdout and exit (other options
+                     and arguments are ignored).
+  --help             Output this help to stdout and exit (other options
+                     and arguments are ignored).
+  -o                 Owner override for repository owner. Allows this run on
+                     branches normally blocked by workflow policy. Normal
+                     role restrictions apply again after exit.
+  -v                 Show detailed merge information.
 
--m TOKEN, --message TOKEN, -- TOKENS are mutually exclusive. Only one may
-be specified.
+  For commit comment options '-c TOKEN' and '-- TOKEN...':
+    - These options are mutually exclusive.
+    - For '-- TOKEN...', '--' must be a separate token.
+    - Commit comment is built by joining tokens with a single space.
+    - For a quoted token, whitespace in the token is preserved and the
+      quotes are removed.
+    - For example, the following both have the same commit comment:
+        mrgup -- do "  keep   this spacing  " for commit comment.
+        mrgup -c "do   keep   this spacing   for commit comment."
+    - The resulting commit comment from TOKEN or TOKEN... must include at least
+      one non-whitespace character.
+    - Always ensure that the commit comment accurately reflects the changes
+      being committed to the parent branch.
 
-The resulting commit message from TOKEN/TOKENS must include at least
-one non-whitespace character.
+If a commit comment is not specified:
 
-If a commit message is not specified:
-
-  - The associated PR title is used as the commit message, or
-  - When a PR is not required, a default message is used:
-    - Approver merging a version branch to origin/main:
+  - The associated PR title is used as the commit comment or,
+    when a PR is not required, a default commit comment is used:
+    - mrgup with -o option merging a targeted branch up to its
+      corresponding parent version branch:
+        "<targeted_branch> merged to v<M>.<m>.0 by owner <user>."
+    - Approver merging a version branch up to origin/main:
         "v<M>.<m>.0 merged to origin/main by approver <user>."
-    - Contributor merging a contributor branch to a targeted or contributor
-      branch:
+    - Contributor merging a contributor branch up to a targeted or
+      contributor branch:
         "<branch> merged to <parent> by contributor <user>."
 
-Examples:
-  # Merge targeted branch to its parent version branch with PR title as commit message
+Example: Merge targeted branch to its parent version branch 
+         PR title as commit message.
   mrgup
 
-  # Merge with commit message
-  mrgup -m "My commit message."
+Example: Merge with '-c' commit comment.
+  mrgup -c "My commit comment."
 
-  # Unix-style commit message
-  mrgup -- Merge parser fixes.
+Example: Merge with '--' commit comment.
+  mrgup -- "Merge parser fixes."
 
-  # Merge with verbose output
+Example: Merge with verbose output.
   mrgup -v
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
+  - For a non-dry-run mrgup:
+    - Writes an untracked report to the current and parent branches to:
+          <repo>/reports/branch/commit-<datetime>-<pid>.md
+    - The report is copied (untracked) to the remote current and parent
+      branch so both local and remote have the same reports for audit
+      trail continuity.
+  - A dry-run report is written (untracked) to the current branch to: 
+        <repo>/reports/branch/commit-d-<datetime>.md
+  - Report files are made read-only after generation.
 
 Exit codes:
-  0   Success.
-  1   Argument or validation error.
-  2   Git operation failed.
-  3   User is not an approver (required when parent is a protected branch).
-  4   GitHub API error.
-  5   Remote is not connected.
-  6   Status checks not passing.
-  7   When a PR is required, the PR is not found or is in an invalid state.
+  0    Success.
+  1    Argument or validation error.
+  2    Commit comment is specified but it is empty.
+  3    User is not an approver.
+  4    User is not the repository owner.
+  5    Missing pull request (PR).
+  6    Pull request (PR) is not open.
+  7    Pull request (PR) is a draft.
+  8    Pull request (PR) is not for the current branch.
+  9    Pull request (PR) target is not the parent branch.
+  10   Pull request (PR) has outstanding changes requested.
+  11   Pull request (PR) is not approved.
+  12   Pull request (PR) indicates already merged.
+  13   Remote is not connected/reachable.
+  14   Uncommitted changes in the current branch.
+  15   Current branch local and remote are not synchronized.
+  16   Parent branch does not exist.
+  17   Parent branch local and remote are not synchronized.
+  18   Current branch is behind its parent branch.
+  19   CI failed.
+  20   CD failed.
+  21   Both CI and CD failed.
+  200  Git operation failed.
 EOF
 }
 
 # High-Level Flow:
-# - Merges the current branch into its parent branch with pre-merge safety
-#   validations.
-# - Applies workflow policy checks and optional history logging around the merge
-#   action.
-# - Reports merge outcomes and next-step guidance.
+# - Parse options and determine current branch, parent branch, and actor context.
+# - Acquire an exclusive local run lock so only one mrgup run mutates this
+#   repository at a time.
+# - Run pre-merge policy gates (role, PR, branch sync, CI/CD) with
+#   usage-defined exit codes.
+# - If eligible to merge, perform squash merge, update history, push, and
+#   verify post-merge synchronization.
+# - If CI/CD fails under usage-defined fallback conditions, skip merge and
+#   complete as dry-run with CI/CD exit semantics.
 
 set -euo pipefail
 
@@ -144,10 +172,27 @@ source "$SCRIPT_DIR/../helpers/validation-helpers.sh"
 source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 readonly EXIT_INVALID_ARGUMENT=1
-readonly EXIT_NOT_FOUND=2
-readonly EXIT_OPERATION_FAILED=3
-readonly EXIT_CONFIG_ERROR=4
-readonly EXIT_INTERNAL_ERROR=100
+readonly EXIT_EMPTY_COMMIT_COMMENT=2
+readonly EXIT_NOT_APPROVER=3
+readonly EXIT_NOT_REPOSITORY_OWNER=4
+readonly EXIT_PR_MISSING=5
+readonly EXIT_PR_NOT_OPEN=6
+readonly EXIT_PR_DRAFT=7
+readonly EXIT_PR_HEAD_MISMATCH=8
+readonly EXIT_PR_BASE_MISMATCH=9
+readonly EXIT_PR_HAS_CHANGES_REQUESTED=10
+readonly EXIT_PR_NOT_APPROVED=11
+readonly EXIT_PR_ALREADY_MERGED=12
+readonly EXIT_REMOTE_UNREACHABLE=13
+readonly EXIT_CURRENT_UNCOMMITTED=14
+readonly EXIT_CURRENT_NOT_SYNCED=15
+readonly EXIT_PARENT_MISSING=16
+readonly EXIT_PARENT_NOT_SYNCED=17
+readonly EXIT_CURRENT_BEHIND_PARENT=18
+readonly EXIT_CI_FAILED=19
+readonly EXIT_CD_FAILED=20
+readonly EXIT_CI_AND_CD_FAILED=21
+readonly EXIT_GIT_OPERATION_FAILED=200
 
 usage_error() {
   local message="$1"
@@ -173,12 +218,46 @@ PARENT_CHECKOUT_ACTIVE=false
 REPORTS_BRANCH_DIR_UNLOCKED=false
 VERIFY_LAST_ERROR=""
 VERIFY_FAILURE_KIND=""
+CI_CD_DRY_RUN_EXIT=0
+LOCK_FILE=""
+LOCK_HELD=false
+
+ensure_trailing_period() {
+  local message="$1"
+
+  if [[ -z "$message" ]]; then
+    printf '.'
+    return 0
+  fi
+
+  if [[ "$message" == *"." ]]; then
+    printf '%s' "$message"
+  else
+    printf '%s.' "$message"
+  fi
+}
 
 # Keep informational logs quiet unless verbose mode is requested.
 bt_info() {
   if [[ "$VERBOSE" == true ]]; then
-    echo "$1"
+    echo "$(ensure_trailing_period "$1")"
   fi
+}
+
+bt_success() {
+  echo "$(ensure_trailing_period "$1")"
+}
+
+bt_warn() {
+  echo "$(ensure_trailing_period "$1")"
+}
+
+bt_error_exit() {
+  local code="$1"
+  local message="$2"
+
+  echo "Error: $(ensure_trailing_period "$message")" >&2
+  exit "$code"
 }
 
 bt_run_cmd() {
@@ -232,6 +311,73 @@ relock_reports_branch_dir_after_merge() {
     chmod a-w "$reports_dir" >/dev/null 2>&1 || true
     REPORTS_BRANCH_DIR_UNLOCKED=false
   fi
+}
+
+acquire_run_lock() {
+  local lock_path=""
+  local existing_pid=""
+
+  lock_path="$(git rev-parse --git-path mrgup.run.lock 2>/dev/null || true)"
+  if [[ -z "$lock_path" ]]; then
+    bt_error_exit "$EXIT_INVALID_ARGUMENT" "Unable to resolve repository lock path for mrgup"
+  fi
+
+  LOCK_FILE="$lock_path"
+
+  if [[ -f "$LOCK_FILE" ]]; then
+    existing_pid="$(cat "$LOCK_FILE" 2>/dev/null || true)"
+    if [[ "$existing_pid" =~ ^[0-9]+$ ]] && ! kill -0 "$existing_pid" >/dev/null 2>&1; then
+      rm -f "$LOCK_FILE" >/dev/null 2>&1 || true
+    fi
+  fi
+
+  if ( set -o noclobber; printf '%s\n' "$$" > "$LOCK_FILE" ) 2>/dev/null; then
+    LOCK_HELD=true
+    return 0
+  fi
+
+  existing_pid="$(cat "$LOCK_FILE" 2>/dev/null || true)"
+  if [[ "$existing_pid" =~ ^[0-9]+$ ]]; then
+    bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+      "Another mrgup run appears active (pid $existing_pid). Retry after it completes"
+  fi
+
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" "Another mrgup run appears active. Retry after it completes"
+}
+
+release_run_lock() {
+  if [[ "$LOCK_HELD" == true && -n "$LOCK_FILE" ]]; then
+    rm -f "$LOCK_FILE" >/dev/null 2>&1 || true
+    LOCK_HELD=false
+  fi
+}
+
+print_failure_guidance() {
+  local exit_code="$1"
+
+  case "$exit_code" in
+    "$EXIT_PR_MISSING"|"$EXIT_PR_NOT_OPEN"|"$EXIT_PR_DRAFT"|"$EXIT_PR_HEAD_MISMATCH"|"$EXIT_PR_BASE_MISMATCH"|"$EXIT_PR_HAS_CHANGES_REQUESTED"|"$EXIT_PR_NOT_APPROVED"|"$EXIT_PR_ALREADY_MERGED")
+      bt_warn "Guidance: fix PR state/approval for this branch and rerun mrgup"
+      ;;
+    "$EXIT_CURRENT_UNCOMMITTED")
+      bt_warn "Guidance: commit or discard local changes, then rerun mrgup"
+      ;;
+    "$EXIT_CURRENT_NOT_SYNCED"|"$EXIT_PARENT_NOT_SYNCED"|"$EXIT_CURRENT_BEHIND_PARENT")
+      bt_warn "Guidance: sync branches (fetch/rebase or merge parent as needed), resolve divergence, then rerun mrgup"
+      ;;
+    "$EXIT_REMOTE_UNREACHABLE")
+      bt_warn "Guidance: restore remote connectivity (origin) and rerun mrgup"
+      ;;
+    "$EXIT_CI_FAILED"|"$EXIT_CD_FAILED"|"$EXIT_CI_AND_CD_FAILED")
+      bt_warn "Guidance: fix failing CI/CD checks, then rerun mrgup"
+      ;;
+    "$EXIT_GIT_OPERATION_FAILED")
+      bt_warn "Guidance: if merge conflicts occurred, resolve conflicts, ensure a clean branch state, then rerun mrgup"
+      ;;
+    *)
+      bt_warn "Guidance: review the error above, correct the reported issue, then rerun mrgup"
+      ;;
+  esac
 }
 
 restore_current_branch_on_failure() {
@@ -289,6 +435,11 @@ on_exit_restore_branch_if_needed() {
   local exit_code=$?
   restore_current_branch_on_failure "$exit_code" || true
   relock_reports_branch_dir_after_merge || true
+  release_run_lock || true
+
+  if [[ "$exit_code" -ne 0 ]]; then
+    print_failure_guidance "$exit_code" || true
+  fi
 }
 
 trap on_exit_restore_branch_if_needed EXIT
@@ -330,7 +481,7 @@ get_current_user() {
   local user_name
 
   if ! user_name="$(bt_require_login)"; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Unable to determine GitHub login identity for role checks"
+    bt_error_exit "$EXIT_INVALID_ARGUMENT" "Unable to determine GitHub login identity for role checks"
   fi
 
   echo "$user_name"
@@ -342,7 +493,7 @@ get_parent_branch() {
   local parent_branch
   parent_branch=$(bt_resolve_parent_branch \
     "$current_branch" "main") || {
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine parent branch"
+    bt_error_exit "$EXIT_PARENT_MISSING" "Failed to determine parent branch"
   }
 
   echo "$parent_branch"
@@ -539,7 +690,7 @@ ensure_post_merge_sync_or_repair() {
   bt_warn "Attempting automatic repair and retrying verification once"
 
   if ! attempt_post_merge_sync_repair "$current_branch" "$parent_branch" "$current_is_local" "$expected_tip" "$VERIFY_FAILURE_KIND"; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Post-merge sync auto-repair failed: $VERIFY_LAST_ERROR"
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Post-merge sync auto-repair failed: $VERIFY_LAST_ERROR"
   fi
 
   if verify_post_merge_sync "$current_branch" "$parent_branch" "$current_is_local" "$expected_tip"; then
@@ -549,7 +700,7 @@ ensure_post_merge_sync_or_repair() {
     return 0
   fi
 
-  bt_error_exit "$EXIT_NOT_FOUND" "Post-merge verification failed after one repair attempt: $VERIFY_LAST_ERROR"
+  bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Post-merge verification failed after one repair attempt: $VERIFY_LAST_ERROR"
 }
 
 resolve_detached_current_remote_branch() {
@@ -657,7 +808,7 @@ resolve_detached_current_remote_branch() {
         return 0
       fi
 
-      bt_error_exit "$EXIT_NOT_FOUND" \
+      bt_error_exit "$EXIT_INVALID_ARGUMENT" \
         "Detached HEAD matches multiple remote branches with different parent/merge behavior"
     fi
 
@@ -679,9 +830,10 @@ trim_whitespace() {
 ensure_branch_synced_with_remote() {
   local branch="$1"
   local label="$2"
+  local exit_code="$3"
 
   if ! has_remote_branch "$branch"; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "$label branch '$branch' has no origin/$branch reference"
+    bt_error_exit "$exit_code" "$label branch '$branch' has no origin/$branch reference"
   fi
 
   local ahead_behind
@@ -692,11 +844,11 @@ ensure_branch_synced_with_remote() {
   behind="${ahead_behind##*$'\t'}"
 
   if [[ ! "$ahead" =~ ^[0-9]+$ || ! "$behind" =~ ^[0-9]+$ ]]; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Unable to determine $label branch sync state for '$branch'"
+    bt_error_exit "$exit_code" "Unable to determine $label branch sync state for '$branch'"
   fi
 
   if [[ "$ahead" -ne 0 || "$behind" -ne 0 ]]; then
-    bt_error_exit "$EXIT_NOT_FOUND" "$label branch '$branch' is not in sync with origin/$branch"
+    bt_error_exit "$exit_code" "$label branch '$branch' is not in sync with origin/$branch"
   fi
 }
 
@@ -718,7 +870,7 @@ resolve_parent_reference() {
     return 0
   fi
 
-  bt_error_exit "$EXIT_NOT_FOUND" "Unable to resolve parent branch reference for '$parent_branch'"
+  bt_error_exit "$EXIT_PARENT_MISSING" "Unable to resolve parent branch reference for '$parent_branch'"
 }
 
 ensure_current_up_to_date_with_parent() {
@@ -733,12 +885,12 @@ ensure_current_up_to_date_with_parent() {
     if has_remote_branch "$current_branch"; then
       current_ref="origin/$current_branch"
     else
-      bt_error_exit "$EXIT_NOT_FOUND" "Unable to resolve current branch reference for '$current_branch'"
+      bt_error_exit "$EXIT_CURRENT_NOT_SYNCED" "Unable to resolve current branch reference for '$current_branch'"
     fi
   fi
 
   if ! git merge-base --is-ancestor "$parent_ref" "$current_ref" >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Current branch '$current_branch' is not up-to-date with parent '$parent_branch'"
+    bt_error_exit "$EXIT_CURRENT_BEHIND_PARENT" "Current branch '$current_branch' is not up-to-date with parent '$parent_branch'"
   fi
 }
 
@@ -822,16 +974,13 @@ is_pr_required() {
   local current_branch="$1"
   local parent_branch="$2"
 
-  if bt_is_version_branch "$current_branch" && [[ "$parent_branch" == "main" ]]; then
-    return 1
+  # Usage contract: PR is required when merging up to a version branch
+  # unless owner override is active.
+  if bt_is_version_branch "$parent_branch"; then
+    return 0
   fi
 
-  if is_contributor_branch "$current_branch" && \
-    (is_targeted_branch "$parent_branch" || is_contributor_branch "$parent_branch"); then
-    return 1
-  fi
-
-  return 0
+  return 1
 }
 
 build_default_commit_message() {
@@ -844,13 +993,18 @@ build_default_commit_message() {
     return 0
   fi
 
+  if is_targeted_branch "$current_branch" && bt_is_version_branch "$parent_branch"; then
+    echo "$current_branch merged to $parent_branch by owner $actor."
+    return 0
+  fi
+
   if is_contributor_branch "$current_branch" && \
     (is_targeted_branch "$parent_branch" || is_contributor_branch "$parent_branch"); then
     echo "$current_branch merged to $parent_branch by contributor $actor."
     return 0
   fi
 
-  bt_error_exit "$EXIT_INTERNAL_ERROR" "No default commit message rule applies for '$current_branch' -> '$parent_branch'"
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" "No default commit message rule applies for '$current_branch' -> '$parent_branch'"
 }
 
 branch_to_history_file() {
@@ -932,7 +1086,7 @@ checkout_parent_branch() {
 
   if [[ "$parent_branch" == "main" ]]; then
     if ! git switch --detach "origin/$parent_branch" >/dev/null 2>&1; then
-      bt_error_exit "$EXIT_NOT_FOUND" "Failed to switch to remote parent branch '$parent_branch'"
+      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to switch to remote parent branch '$parent_branch'"
     fi
     PARENT_CHECKOUT_ACTIVE=true
     return 0
@@ -940,12 +1094,12 @@ checkout_parent_branch() {
 
   if git show-ref --verify --quiet "refs/heads/$parent_branch"; then
     if ! git switch "$parent_branch" >/dev/null 2>&1; then
-      bt_error_exit "$EXIT_NOT_FOUND" "Failed to switch to parent branch '$parent_branch'"
+      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to switch to parent branch '$parent_branch'"
     fi
     PARENT_CHECKOUT_ACTIVE=true
   else
     if ! git switch -c "$parent_branch" --track "origin/$parent_branch" >/dev/null 2>&1; then
-      bt_error_exit "$EXIT_NOT_FOUND" "Failed to create local parent branch '$parent_branch'"
+      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to create local parent branch '$parent_branch'"
     fi
     TEMP_PARENT_BRANCH_CREATED=true
     TEMP_PARENT_BRANCH_NAME="$parent_branch"
@@ -964,17 +1118,17 @@ cleanup_temporary_parent_branch() {
   if [[ "$now_branch" == "$TEMP_PARENT_BRANCH_NAME" ]]; then
     if [[ "$CURRENT_IS_LOCAL" == true ]]; then
       if ! git switch "$CURRENT_BRANCH" >/dev/null 2>&1; then
-        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to leave temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Merge completed, but failed to leave temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
       fi
     else
       if ! git switch --detach "origin/$CURRENT_BRANCH" >/dev/null 2>&1; then
-        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to leave temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Merge completed, but failed to leave temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
       fi
     fi
   fi
 
   if ! git branch -D "$TEMP_PARENT_BRANCH_NAME" >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to remove temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Merge completed, but failed to remove temporary parent branch '$TEMP_PARENT_BRANCH_NAME'"
   fi
 
   bt_info "Removed temporary local parent branch '$TEMP_PARENT_BRANCH_NAME'"
@@ -1001,66 +1155,158 @@ get_pr_title() {
   gh pr view "$pr_number" --json title --jq '.title' 2>/dev/null || echo ""
 }
 
-get_pr_status_check() {
+get_pr_validation_fields() {
   local pr_number="$1"
-  
-  # Get PR status check state
-  gh pr view "$pr_number" --json statusCheckRollup \
-    --jq '.statusCheckRollup[].state' 2>/dev/null | sort | uniq \
-    || echo "UNKNOWN"
+
+  gh pr view "$pr_number" \
+    --json state,isDraft,headRefName,baseRefName,reviewDecision,mergedAt \
+    --jq '[.state, (.isDraft|tostring), .headRefName, .baseRefName, .reviewDecision, (.mergedAt // "")] | @tsv' \
+    2>/dev/null || echo ""
 }
 
-check_pr_approval() {
+validate_pr_for_merge() {
   local pr_number="$1"
+  local current_branch="$2"
+  local parent_branch="$3"
+  local fields=""
+  local state=""
+  local is_draft=""
+  local head_ref=""
+  local base_ref=""
   local review_decision=""
+  local merged_at=""
 
-  review_decision=$(gh pr view "$pr_number" --json reviewDecision --jq '.reviewDecision' 2>/dev/null || echo "UNKNOWN")
+  fields="$(get_pr_validation_fields "$pr_number")"
+  if [[ -z "$fields" ]]; then
+    bt_error_exit "$EXIT_INVALID_ARGUMENT" "Pull request #$pr_number is missing required metadata"
+  fi
+
+  IFS=$'\t' read -r state is_draft head_ref base_ref review_decision merged_at <<< "$fields"
+
+  if [[ -n "$merged_at" || "$state" == "MERGED" ]]; then
+    bt_error_exit "$EXIT_PR_ALREADY_MERGED" "Pull request #$pr_number indicates already merged"
+  fi
+
+  if [[ "$state" != "OPEN" ]]; then
+    bt_error_exit "$EXIT_PR_NOT_OPEN" "Pull request #$pr_number is not open"
+  fi
+
+  if [[ "$is_draft" == "true" ]]; then
+    bt_error_exit "$EXIT_PR_DRAFT" "Pull request #$pr_number is a draft"
+  fi
+
+  if [[ "$head_ref" != "$current_branch" ]]; then
+    bt_error_exit "$EXIT_PR_HEAD_MISMATCH" "Pull request #$pr_number head is not current branch '$current_branch'"
+  fi
+
+  if [[ "$base_ref" != "$parent_branch" ]]; then
+    bt_error_exit "$EXIT_PR_BASE_MISMATCH" "Pull request #$pr_number base is not parent branch '$parent_branch'"
+  fi
+
+  if [[ "$review_decision" == "CHANGES_REQUESTED" ]]; then
+    bt_error_exit "$EXIT_PR_HAS_CHANGES_REQUESTED" "Pull request #$pr_number has outstanding changes requested"
+  fi
 
   if [[ "$review_decision" != "APPROVED" ]]; then
-    bt_error_exit "$EXIT_OPERATION_FAILED" "Pull request #$pr_number is not approved"
-  fi
-
-  if [[ "$VERBOSE" == true ]]; then
-    bt_success "Pull request #$pr_number is approved"
+    bt_error_exit "$EXIT_PR_NOT_APPROVED" "Pull request #$pr_number is not approved"
   fi
 }
 
-check_status_checks() {
-  local pr_number="$1"
-  
-  bt_info "Checking status checks and CI/CD..."
-  
-  # Get the status check state
-  local status_states
-  status_states=$(gh pr view "$pr_number" --json statusCheckRollup \
-    --jq '.statusCheckRollup[].state' 2>/dev/null || true)
+is_ci_or_cd_check_line_failure() {
+  local check_state="$1"
 
-  if [[ -z "$status_states" ]]; then
-    # No checks found
-    bt_info "No status checks found"
+  case "$check_state" in
+    FAILURE|ERROR|CANCELLED|TIMED_OUT|ACTION_REQUIRED|EXPECTED|PENDING)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+check_ci_cd_statuses() {
+  local pr_number="$1"
+  local checks_text=""
+  local line=""
+  local check_name=""
+  local check_state=""
+  local ci_failed=false
+  local cd_failed=false
+
+  bt_info "Checking CI/CD statuses..."
+
+  checks_text="$(gh pr view "$pr_number" --json statusCheckRollup \
+    --jq '.statusCheckRollup[]? | "\((.name // .context // .workflowName // "")|ascii_downcase)\t\((.state // .conclusion // "")|ascii_upcase)"' \
+    2>/dev/null || true)"
+
+  # When no checks are present, do not block merge.
+  if [[ -z "$checks_text" ]]; then
+    bt_info "No CI/CD checks found"
     return 0
   fi
 
-  if echo "$status_states" | grep -Eq '^(PENDING|EXPECTED|ACTION_REQUIRED)$'; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Status checks still pending"
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+
+    if [[ "$line" == *$'\t'* ]]; then
+      check_name="${line%%$'\t'*}"
+      check_state="${line##*$'\t'}"
+    else
+      # Compatibility fallback for simple state-only output.
+      check_name=""
+      check_state="$line"
+    fi
+
+    check_state="${check_state^^}"
+    if ! is_ci_or_cd_check_line_failure "$check_state"; then
+      case "$check_state" in
+        SUCCESS|SKIPPED|NEUTRAL)
+          continue
+          ;;
+        *)
+          # Unknown states are treated as blocking.
+          check_state="ERROR"
+          ;;
+      esac
+    fi
+
+    if [[ -z "$check_name" ]]; then
+      ci_failed=true
+      cd_failed=true
+      continue
+    fi
+
+    if [[ "$check_name" == *"ci"* ]]; then
+      ci_failed=true
+    fi
+    if [[ "$check_name" == *"cd"* ]]; then
+      cd_failed=true
+    fi
+
+    # For non-labeled checks, conservatively block both signals.
+    if [[ "$check_name" != *"ci"* && "$check_name" != *"cd"* ]]; then
+      ci_failed=true
+      cd_failed=true
+    fi
+  done <<< "$checks_text"
+
+  if [[ "$ci_failed" == true && "$cd_failed" == true ]]; then
+    return "$EXIT_CI_AND_CD_FAILED"
+  fi
+  if [[ "$ci_failed" == true ]]; then
+    return "$EXIT_CI_FAILED"
+  fi
+  if [[ "$cd_failed" == true ]]; then
+    return "$EXIT_CD_FAILED"
   fi
 
-  if echo "$status_states" | grep -Eq '^(FAILURE|ERROR|CANCELLED|TIMED_OUT)$'; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Status checks failed"
-  fi
-
-  if echo "$status_states" | grep -Ev '^(SUCCESS|SKIPPED|NEUTRAL)$' >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Unknown status check state detected"
-  fi
-
-  if [[ "$VERBOSE" == true ]]; then
-    bt_success "All status checks passed"
-  fi
+  return 0
 }
 
 ensure_clean_worktree() {
   if bt_is_worktree_dirty; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Current branch has uncommitted changes. Commit first before running mrgup"
+    bt_error_exit "$EXIT_CURRENT_UNCOMMITTED" "Current branch has uncommitted changes. Commit first before running mrgup"
   fi
 }
 
@@ -1116,7 +1362,7 @@ preflight_current_history_sync_push() {
   # Current branches are aligned to parent tip after successful merge;
   # verify force-with-lease capability before mutation.
   if ! GIT_BYPASS_HOOKS=true git push --dry-run --force-with-lease origin "HEAD:$current_branch" >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_NOT_FOUND" \
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
       "Preflight failed: unable to verify force-with-lease push access for origin/$current_branch required for post-merge alignment"
   fi
 
@@ -1142,7 +1388,7 @@ sync_local_parent_branch_ref() {
   fi
 
   if ! git branch -f "$parent_branch" "$parent_tip" >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to align local parent branch '$parent_branch'"
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Merge completed, but failed to align local parent branch '$parent_branch'"
   fi
 
   if [[ "$VERBOSE" == true ]]; then
@@ -1160,36 +1406,36 @@ align_current_branch_to_parent_tip() {
   local parent_tip
   parent_tip="$(git rev-parse HEAD 2>/dev/null || true)"
   if [[ -z "$parent_tip" ]]; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to resolve merged parent tip"
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Merge completed, but failed to resolve merged parent tip"
   fi
 
   sync_local_parent_branch_ref "$parent_branch" "$parent_tip"
 
   if ! git branch -f "$current_branch" "$parent_tip" >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to align '$current_branch' to merged parent '$parent_branch'"
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Merge completed, but failed to align '$current_branch' to merged parent '$parent_branch'"
   fi
 
   if [[ "$current_is_local" == true ]]; then
     if ! git switch "$current_branch" >/dev/null 2>&1; then
-      bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to switch back to '$current_branch'"
+      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Merge completed, but failed to switch back to '$current_branch'"
     fi
   else
     if ! git switch --detach "$parent_tip" >/dev/null 2>&1; then
-      bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to switch to aligned detached tip for '$current_branch'"
+      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Merge completed, but failed to switch to aligned detached tip for '$current_branch'"
     fi
   fi
 
   if has_remote_branch "$current_branch"; then
     if [[ "$current_is_local" == true ]]; then
       if ! GIT_BYPASS_HOOKS=true git push --force-with-lease origin "$current_branch" >/dev/null 2>&1; then
-        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to push aligned source branch to origin/$current_branch"
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Merge completed, but failed to push aligned source branch to origin/$current_branch"
       fi
     else
       if ! GIT_BYPASS_HOOKS=true git push --force-with-lease origin "$parent_tip:$current_branch" >/dev/null 2>&1; then
-        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to push aligned detached source tip to origin/$current_branch"
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Merge completed, but failed to push aligned detached source tip to origin/$current_branch"
       fi
       if ! git switch --detach "origin/$current_branch" >/dev/null 2>&1; then
-        bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to refresh detached checkout to origin/$current_branch"
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Merge completed, but failed to refresh detached checkout to origin/$current_branch"
       fi
     fi
   fi
@@ -1208,12 +1454,12 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    -m | --message)
+    -c)
       if [[ $# -lt 2 ]]; then
-        usage_error "Option -m requires a message argument"
+        usage_error "Option -c requires a commit comment token"
       fi
       if [[ -n "$MESSAGE_SOURCE" ]]; then
-        usage_error "-m TOKEN, --message TOKEN, and -- TOKENS are mutually exclusive"
+        usage_error "-c TOKEN and -- TOKENS are mutually exclusive"
       fi
       CUSTOM_MESSAGE="$2"
       MESSAGE_SOURCE="option"
@@ -1237,7 +1483,7 @@ while [[ $# -gt 0 ]]; do
         usage_error "'-- TOKENS' requires at least one token"
       fi
       if [[ -n "$MESSAGE_SOURCE" ]]; then
-        usage_error "-m TOKEN, --message TOKEN, and -- TOKENS are mutually exclusive"
+        usage_error "-c TOKEN and -- TOKENS are mutually exclusive"
       fi
       CUSTOM_MESSAGE="$*"
       MESSAGE_SOURCE="tokens"
@@ -1255,15 +1501,19 @@ done
 if [[ -n "$MESSAGE_SOURCE" ]]; then
   CUSTOM_MESSAGE="$(trim_whitespace "$CUSTOM_MESSAGE")"
   if [[ -z "$CUSTOM_MESSAGE" ]]; then
-    usage_error "Normalized TOKEN/TOKENS must include at least one non-whitespace character"
+    bt_error_exit "$EXIT_EMPTY_COMMIT_COMMENT" \
+      "Commit comment is specified but it is empty after normalization"
   fi
 fi
 
+# Lock after argument parsing. Help/usage exits do not require repository lock.
+acquire_run_lock
+
 if ! is_remote_connected; then
-  bt_error_exit "$EXIT_INTERNAL_ERROR" "Remote 'origin' is not connected"
+  bt_error_exit "$EXIT_REMOTE_UNREACHABLE" "Remote 'origin' is not connected"
 fi
 
-git fetch origin >/dev/null 2>&1 || bt_error_exit "$EXIT_INTERNAL_ERROR" "Failed to fetch from remote 'origin'"
+git fetch origin >/dev/null 2>&1 || bt_error_exit "$EXIT_REMOTE_UNREACHABLE" "Failed to fetch from remote 'origin'"
 
 # Propagate repository history from remote if available.
 # Under set -e, capture non-zero statuses explicitly because status 2 is a
@@ -1278,7 +1528,7 @@ esac
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
-  bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" "Failed to determine current branch")
 
 if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
   DETACHED_REMOTE_BRANCH="$(resolve_detached_current_remote_branch || true)"
@@ -1300,7 +1550,7 @@ if [[ "$CURRENT_IS_LOCAL" == true ]]; then
       CURRENT_IS_LOCAL=false
       CURRENT_SOURCE_REF="origin/$CURRENT_BRANCH"
     else
-      bt_error_exit "$EXIT_NOT_FOUND" "Current branch '$CURRENT_BRANCH' is not resolvable locally or remotely"
+      bt_error_exit "$EXIT_INVALID_ARGUMENT" "Current branch '$CURRENT_BRANCH' is not resolvable locally or remotely"
     fi
   else
     CURRENT_SOURCE_REF="$CURRENT_BRANCH"
@@ -1320,7 +1570,7 @@ if [[ "$OWNER_OVERRIDE" == true ]]; then
     OWNER_OVERRIDE_ACTIVE=true
     bt_info "Owner override enabled for repository owner '$CURRENT_USER'"
   else
-    bt_error_exit "$EXIT_OPERATION_FAILED" "Option -o is allowed only for the repository owner"
+    bt_error_exit "$EXIT_NOT_REPOSITORY_OWNER" "Option -o is allowed only for the repository owner"
   fi
 fi
 
@@ -1345,21 +1595,21 @@ if bt_is_protected_branch "$CURRENT_BRANCH"; then
   fi
 
   if [[ "$OWNER_OVERRIDE_ACTIVE" != true ]] && ! is_approver "$CURRENT_USER"; then
-    bt_error_exit "$EXIT_OPERATION_FAILED" "User '$CURRENT_USER' is not an approver. Only approvers can merge protected branches to origin/main."
+    bt_error_exit "$EXIT_NOT_APPROVER" "User '$CURRENT_USER' is not an approver. Only approvers can merge protected branches to origin/main."
   fi
 fi
 
 ensure_clean_worktree
 if [[ "$CURRENT_IS_LOCAL" == true ]]; then
-  ensure_branch_synced_with_remote "$CURRENT_BRANCH" "Current"
+  ensure_branch_synced_with_remote "$CURRENT_BRANCH" "Current" "$EXIT_CURRENT_NOT_SYNCED"
 else
   if ! has_remote_branch "$CURRENT_BRANCH"; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Current branch '$CURRENT_BRANCH' has no origin/$CURRENT_BRANCH reference"
+    bt_error_exit "$EXIT_CURRENT_NOT_SYNCED" "Current branch '$CURRENT_BRANCH' has no origin/$CURRENT_BRANCH reference"
   fi
 fi
 
 if has_local_branch "$PARENT_BRANCH" && has_remote_branch "$PARENT_BRANCH"; then
-  ensure_branch_synced_with_remote "$PARENT_BRANCH" "Parent"
+  ensure_branch_synced_with_remote "$PARENT_BRANCH" "Parent" "$EXIT_PARENT_NOT_SYNCED"
 fi
 
 ensure_current_up_to_date_with_parent "$CURRENT_BRANCH" "$PARENT_BRANCH"
@@ -1371,7 +1621,7 @@ if bt_is_protected_branch "$PARENT_BRANCH"; then
   
   # Verify current user is an approver
   if [[ "$OWNER_OVERRIDE_ACTIVE" != true ]] && ! is_approver "$CURRENT_USER"; then
-    bt_error_exit "$EXIT_OPERATION_FAILED" "User '$CURRENT_USER' is not an approver. Only approvers can merge to protected branches."
+    bt_error_exit "$EXIT_NOT_APPROVER" "User '$CURRENT_USER' is not an approver. Only approvers can merge to protected branches."
   fi
   if [[ "$OWNER_OVERRIDE_ACTIVE" == true ]]; then
     if [[ "$VERBOSE" == true ]]; then
@@ -1401,26 +1651,37 @@ PR_NUMBER=""
 if [[ "$PR_REQUIRED" == true ]]; then
   PR_NUMBER=$(get_existing_pr_number "$CURRENT_BRANCH")
   if [[ -z "$PR_NUMBER" ]]; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "No open PR found for branch '$CURRENT_BRANCH'"
+    bt_error_exit "$EXIT_PR_MISSING" "No open PR found for branch '$CURRENT_BRANCH'"
   fi
   bt_info "Found PR #$PR_NUMBER"
 
-  # PR-required paths validate review approval before status checks.
-  check_pr_approval "$PR_NUMBER"
-
-  # Check status checks pass
-  check_status_checks "$PR_NUMBER"
+  validate_pr_for_merge "$PR_NUMBER" "$CURRENT_BRANCH" "$PARENT_BRANCH"
 else
   bt_info "PR not required for '$CURRENT_BRANCH' -> '$PARENT_BRANCH'"
 
   PR_NUMBER=$(get_existing_pr_number "$CURRENT_BRANCH")
   if [[ -n "$PR_NUMBER" ]]; then
-    bt_info "Found PR #$PR_NUMBER; validating status checks"
-    check_pr_approval "$PR_NUMBER"
-    check_status_checks "$PR_NUMBER"
+    bt_info "Found PR #$PR_NUMBER; validating PR state"
+    validate_pr_for_merge "$PR_NUMBER" "$CURRENT_BRANCH" "$PARENT_BRANCH"
   else
     if [[ "$VERBOSE" == true ]]; then
-      bt_info "PR-based status check skipped (a PR does not exist and is not required)"
+      bt_info "PR validation skipped (a PR does not exist and is not required)"
+    fi
+  fi
+fi
+
+# CI/CD checks are evaluated only when a PR exists.
+if [[ -n "$PR_NUMBER" ]]; then
+  ci_cd_exit=0
+  check_ci_cd_statuses "$PR_NUMBER" || ci_cd_exit=$?
+
+  if [[ "$ci_cd_exit" -ne 0 ]]; then
+    if bt_is_version_branch "$PARENT_BRANCH" && [[ "$OWNER_OVERRIDE_ACTIVE" != true ]]; then
+      CI_CD_DRY_RUN_EXIT="$ci_cd_exit"
+      DRY_RUN=true
+      bt_warn "CI/CD checks failed for PR #$PR_NUMBER; proceeding as dry run due to version-branch fallback policy"
+    else
+      bt_error_exit "$ci_cd_exit" "CI/CD checks failed for PR #$PR_NUMBER"
     fi
   fi
 fi
@@ -1433,7 +1694,7 @@ else
   if [[ -n "$PR_NUMBER" ]]; then
     COMMIT_MESSAGE=$(get_pr_title "$PR_NUMBER")
     if [[ -z "$COMMIT_MESSAGE" ]]; then
-      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to get PR title"
+      bt_error_exit "$EXIT_INVALID_ARGUMENT" "Failed to get PR title"
     fi
     bt_info "Using PR title as message: $COMMIT_MESSAGE"
   else
@@ -1451,6 +1712,11 @@ CURRENT_HISTORY_FILE=$(branch_to_history_file "$CURRENT_BRANCH")
 if [[ "$DRY_RUN" == true ]]; then
   bt_success "0 files updated, 0 new files, and 0 files deleted."
   bt_success "Branch '$CURRENT_BRANCH' merged to '$PARENT_BRANCH' (dry run)."
+
+  if [[ "$CI_CD_DRY_RUN_EXIT" -ne 0 ]]; then
+    exit "$CI_CD_DRY_RUN_EXIT"
+  fi
+
   exit 0
 fi
 
@@ -1464,12 +1730,12 @@ unlock_reports_branch_dir_for_merge
 
 if [[ "$PARENT_BRANCH" != "main" ]] && parent_has_remote_push_target "$PARENT_BRANCH"; then
   if ! bt_run_cmd git pull --ff-only origin "$PARENT_BRANCH"; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to fast-forward parent branch '$PARENT_BRANCH'"
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to fast-forward parent branch '$PARENT_BRANCH'"
   fi
 fi
 
 if ! bt_run_cmd git merge --squash --no-commit "$CURRENT_SOURCE_REF"; then
-  bt_error_exit "$EXIT_NOT_FOUND" "Failed to squash merge '$CURRENT_BRANCH' into '$PARENT_BRANCH'"
+  bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to squash merge '$CURRENT_BRANCH' into '$PARENT_BRANCH'"
 fi
 
 # Remove branch-specific files that should not carry over to the parent branch.
@@ -1488,12 +1754,12 @@ fi
 
 # Create commit with message
 if ! GIT_BYPASS_HOOKS=true bt_run_cmd git commit -m "$COMMIT_MESSAGE"; then
-  bt_error_exit "$EXIT_NOT_FOUND" "Failed to create commit"
+  bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to create commit"
 fi
 
 MERGE_COMMIT_SHA="$(git rev-parse HEAD 2>/dev/null || true)"
 if [[ -z "$MERGE_COMMIT_SHA" ]]; then
-  bt_error_exit "$EXIT_NOT_FOUND" "Merge completed, but failed to resolve merge commit"
+  bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Merge completed, but failed to resolve merge commit"
 fi
 
 # Push to remote
@@ -1501,11 +1767,11 @@ if parent_has_remote_push_target "$PARENT_BRANCH"; then
   bt_info "Pushing parent branch..."
   if [[ "$PARENT_BRANCH" == "main" ]]; then
     if ! GIT_BYPASS_HOOKS=true bt_run_cmd git push origin HEAD:"$PARENT_BRANCH"; then
-      bt_error_exit "$EXIT_NOT_FOUND" "Failed to push remote parent branch"
+      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to push remote parent branch"
     fi
   else
     if ! GIT_BYPASS_HOOKS=true bt_run_cmd git push origin "$PARENT_BRANCH"; then
-      bt_error_exit "$EXIT_NOT_FOUND" "Failed to push parent branch"
+      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to push parent branch"
     fi
   fi
 else
@@ -1524,11 +1790,11 @@ fi
 # Show verbose output if requested
 if [[ "$VERBOSE" == true ]]; then
   bt_info "Merge details:"
-  echo "  Branch: $CURRENT_BRANCH"
-  echo "  Parent: $PARENT_BRANCH"
-  echo "  Actor: $CURRENT_USER"
-  echo "  PR: #$PR_NUMBER"
-  echo "  Message: $COMMIT_MESSAGE"
+  echo "  Branch: $CURRENT_BRANCH."
+  echo "  Parent: $PARENT_BRANCH."
+  echo "  Actor: $CURRENT_USER."
+  echo "  PR: #$PR_NUMBER."
+  echo "  Message: $COMMIT_MESSAGE."
 fi
 
 print_merge_change_summary "$MERGE_COMMIT_SHA"

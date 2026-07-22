@@ -10,9 +10,13 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **branch-name-validation.yml**: GitHub branch name validation workflow.
+- **announce-release.yml**: GitHub announce release workflow.
+
+- **\<branch_name\>-validation.yml**: GitHub branch name validation workflow.
 
 - **ci.yml**: GitHub CI workflow.
+
+- **shellcheck.yml**: GitHub shell check workflow.
 
 - **README.md**: This directory guide.
 

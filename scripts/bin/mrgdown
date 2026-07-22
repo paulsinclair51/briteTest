@@ -24,14 +24,14 @@ instructions for complex ones.
 
 Before merging:
   - The current branch must have no untracked or uncommitted changes.
-  - If there are local changes, use the commit or undo workflow first.
+  - If there are changes, use the commit or undo workflow first.
 
 Protected branches (cannot run mrgdown):
   - main
-  - v<M>.<m>.<p> release branches created from main
+  - v<M>.<m>.<p> version branches created from main.
 
 Allowed branches (can use mrgdown):
-  - Unprotected branches with an identified parent branch
+  - Unprotected branches with an identified parent branch.
 
 Features:
   - Automatically determines parent branch
@@ -41,72 +41,46 @@ Features:
   - Optional force mode to skip confirmations
 
 Options:
-  -c TOKEN           Commit comment as a single token.
-  -- TOKEN...        Commit comment with 'TOKEN...' indicating one or more tokens.
-  -h, --help         Output this help to stdout and exit (other options
+  -d                 Dry-run for the branch commit/push workflow. The script
+                     does not create or push the primary code commit, but it
+                     still generates the report and may delete stale dry-run
+                     reports.
+  -h                 Output this help to stdout and exit (other options
+                     and arguments are ignored).
+  --help             Output this help to stdout and exit (other options
                      and arguments are ignored).
   -o                 Owner override. Allows repository owner to run even
-                     on branches normally blocked by user policy for this
-                     command run only; normal role restrictions apply again
-                     after exit.
-  -v                 Show detailed merge information.
+                     on version branches normally blocked by user policy
+                     for this command run only; normal role restrictions
+                     apply again after exit.
+  -v                Show detailed merge information.
 
-For commit comment options '-c TOKEN' and '-- TOKEN...':
-    - These options are mutually exclusive.
-    - One of these options is required if one or more commits are to be made.
-    - Ignored if no changes need to be committed.
-    - None of these options are required if only pushing existing local commits
-      to remote.
-    - In dry-run mode (-d), commit comment requirements are still validated when a
-      commit would be created.
-    - For '-- TOKEN...', '--' must be a separate token, followed by at least
-      one or more tokens. Leading/trailing whitespace is not preserved
-      and whitespace between tokens is reduced to a single space.
-    - For a quoted token, whitespace is preserved and the quotes are
-      removed.
-    - For example, the following both have the same commit comment:
-        commit -- do "  keep   this spacing  " for commit comment.
-        commit -c "do   keep   this spacing   for commit comment."
-    - The resulting commit comment from TOKEN/TOKENS must include at least
-      one non-whitespace character.
-    - Always ensure that the commit comment accurately reflects the changes
-      being committed.
-
-Commit Comment Options (mutually exclusive):
-  -c, --comment TOKEN  Set custom commit comment (requires quotes if spaces)
-  -- TOKEN...           Unix-style comment (everything after -- is the comment)
-  (default)             "Merge <parent-branch> into <current-branch>"
-
-Examples:
-  # Sync up with confirmations
+Example: Merge down.
   mrgdown
 
-  # Force merge and push (no confirmations)
-  mrgdown -f
-
-  # Custom merge message
-  mrgdown -m "Sync with latest parent branch for bug fix"
-
-  # Verbose output
+Example: Merge down with verbose output.
   mrgdown -v
-
-  # Unix-style message with force
-  mrgdown -f -- Sync up with latest changes
-
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented
-    output locations.
+  - For a non-dry-run mrgup:
+    - Writes an untracked report in the current branch to:
+          <repo>/reports/branch/commit-<datetime>-<pid>.md
+    - The report is copied (untracked) to the remote current branch
+      so both local and remote have the same reports for audit
+      trail continuity.
+  - A dry-run report is written (untracked) to the current branch to: 
+        <repo>/reports/branch/commit-d-<datetime>.md
+  - Report files are made read-only after generation.
 
 Exit codes:
-  0   Success
-  1   Argument or validation error
-  2   Git merge or push failed
-  3   Conflicts detected (user must resolve)
-  4   Branch is protected (cannot sync up)
-  5   Failed to determine parent branch
+    0   Success.
+    1   Argument or validation error.
+    2   Conflicts detected (user must resolve).
+    3   Branch is protected (cannot sync up).
+  200   Failed to determine parent branch.
+  201   Git merge or push failed.
 EOF
 }
 
@@ -119,6 +93,13 @@ EOF
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+BRANCH_REPORTS_DIR="$REPO_ROOT/reports/branch"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+REPORT_FILE=""
+ORIGINAL_ARGS=("$@")
+BRANCH_REPORTS_DIR_UNLOCKED=false
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
@@ -127,12 +108,99 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 source "$SCRIPT_DIR/../helpers/history_log.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/report_helpers.sh
+source "$SCRIPT_DIR/../helpers/report_helpers.sh"
+# shellcheck source=helpers/report_sync.sh
+source "$SCRIPT_DIR/../helpers/report_sync.sh"
 
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NOT_FOUND=2
 readonly EXIT_OPERATION_FAILED=3
 readonly EXIT_CONFIG_ERROR=4
 readonly EXIT_INTERNAL_ERROR=100
+
+cleanup_runtime_files() {
+  # shellcheck disable=SC2317  # Invoked by trap cleanup_runtime_files EXIT.
+  if [[ "$BRANCH_REPORTS_DIR_UNLOCKED" == true ]]; then
+    bt_report_dir_disable_writes "$BRANCH_REPORTS_DIR" "$EXIT_CONFIG_ERROR" || true
+    BRANCH_REPORTS_DIR_UNLOCKED=false
+  fi
+}
+
+trap cleanup_runtime_files EXIT
+
+enable_branch_reports_write_access() {
+  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_CONFIG_ERROR"
+  BRANCH_REPORTS_DIR_UNLOCKED=true
+}
+
+disable_branch_reports_write_access() {
+  if [[ "$BRANCH_REPORTS_DIR_UNLOCKED" == true ]]; then
+    bt_report_dir_disable_writes "$BRANCH_REPORTS_DIR" "$EXIT_CONFIG_ERROR"
+    BRANCH_REPORTS_DIR_UNLOCKED=false
+  fi
+}
+
+mark_report_read_only() {
+  local report_path="$1"
+
+  if ! chmod a-w "$report_path" 2>/dev/null; then
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to mark report read-only: $report_path"
+  fi
+}
+
+generate_merge_report() {
+  local parent_branch="$1"
+  local merge_message="$2"
+  local merge_hash="$3"
+  local commits_merged="$4"
+  local command_text
+  local push_summary_line
+
+  command_text="$(format_command_line)"
+  if [[ "$DID_PUSH_REMOTE" == true ]]; then
+    push_summary_line="**Pushed Commit Hash:** ${merge_hash}"
+  else
+    push_summary_line="**Commit Selected for Push Hash:** ${merge_hash}"
+  fi
+
+  enable_branch_reports_write_access
+
+  REPORT_FILE="$BRANCH_REPORTS_DIR/commit-${RUN_TS_FILE}-$$.md"
+
+  cat > "$REPORT_FILE" <<EOF
+# Commit Report ${RUN_TS_DISPLAY}
+
+**Command:** \`${command_text}\`
+
+**Branch:** \`${CURRENT_BRANCH}\`
+
+${push_summary_line}
+
+**Commit Comment:** ${merge_message}
+
+**Commit/Push:** $([[ "$DID_PUSH_REMOTE" == true ]] && echo 1 || echo 0)<br>
+**Commit:** $([[ "$DID_PUSH_REMOTE" == true ]] && echo 0 || echo 1)<br>
+**Push:** $([[ "$DID_PUSH_REMOTE" == true ]] && echo 0 || echo 1)<br>
+**Total:** 1
+
+## Commit
+
+| Branch | Parent Branch | Parent Commits Integrated | Merge Commit Hash |
+| --- | --- | --- | --- |
+| ${CURRENT_BRANCH} | ${parent_branch} | ${commits_merged} | ${merge_hash} |
+
+## Merge Details
+
+- **Status:** Parent branch merged into current branch.
+- **Method:** Merge commit (`--no-ff`) created by mrgdown.
+- **Guidance:** Review merged changes and run tests before sharing.
+
+EOF
+
+  mark_report_read_only "$REPORT_FILE"
+  disable_branch_reports_write_access
+}
 
 usage_error() {
   local message="$1"
@@ -142,12 +210,59 @@ usage_error() {
   exit "$EXIT_INVALID_ARGUMENT"
 }
 
+ensure_trailing_period() {
+  local message="$1"
+
+  if [[ -z "$message" ]]; then
+    printf '.'
+    return 0
+  fi
+
+  if [[ "$message" == *"." ]]; then
+    printf '%s' "$message"
+  else
+    printf '%s.' "$message"
+  fi
+}
+
+bt_info() {
+  echo "$(ensure_trailing_period "$1")"
+}
+
+bt_success() {
+  echo "$(ensure_trailing_period "$1")"
+}
+
+bt_warn() {
+  echo "$(ensure_trailing_period "$1")"
+}
+
+bt_error_exit() {
+  local code="$1"
+  local message="$2"
+
+  echo "Error: $(ensure_trailing_period "$message")" >&2
+  exit "$code"
+}
+
+format_command_line() {
+  local formatted="mrgdown"
+  local arg
+
+  for arg in "${ORIGINAL_ARGS[@]}"; do
+    printf -v formatted '%s %q' "$formatted" "$arg"
+  done
+
+  printf '%s\n' "$formatted"
+}
+
 # Default options
 FORCE=false
 VERBOSE=false
 CUSTOM_MESSAGE=""
 OWNER_OVERRIDE=false
 OWNER_OVERRIDE_ACTIVE=false
+DID_PUSH_REMOTE=false
 
 ensure_clean_worktree() {
   if bt_is_worktree_dirty; then
@@ -238,21 +353,21 @@ while [[ $# -gt 0 ]]; do
       VERBOSE=true
       shift
       ;;
-    -m | --message)
+    -c | -m | --message)
       if [[ $# -lt 2 ]]; then
-        usage_error "Option -m requires a message argument"
+        usage_error "Option $1 requires a commit comment argument"
       fi
       if [[ -n "$CUSTOM_MESSAGE" ]]; then
-        usage_error "Cannot use both -m and -- for message"
+        usage_error "Cannot use both single-token comment option and -- for commit comment"
       fi
       CUSTOM_MESSAGE="$2"
       shift 2
       ;;
     --)
-      # Unix-style message: everything after -- is the message
+      # '-- TOKEN...' commit comment
       shift
       if [[ -n "$CUSTOM_MESSAGE" ]]; then
-        usage_error "Cannot use both -m and -- for message"
+        usage_error "Cannot use both single-token comment option and -- for commit comment."
       fi
       CUSTOM_MESSAGE="$*"
       break
@@ -391,7 +506,17 @@ if [[ "$FORCE" == false ]]; then
   echo -n "Push merge to remote? (y/n): "
   read -r response
   if [[ ! "$response" =~ ^[Yy]$ ]]; then
+    DID_PUSH_REMOTE=false
+    MERGE_COMMIT_HASH="$(git rev-parse --short HEAD 2>/dev/null || true)"
+    generate_merge_report "$PARENT_BRANCH" "$MERGE_MESSAGE" "$MERGE_COMMIT_HASH" "$commits_to_merge"
+    if git remote get-url origin >/dev/null 2>&1; then
+      bt_report_copy_to_remote "$REPO_ROOT" "$BRANCH_REPORTS_DIR" "commit*.md" || true
+    fi
     bt_warn "Push skipped - merge committed locally"
+    if [[ -n "$REPORT_FILE" ]]; then
+      report_rel="${REPORT_FILE#"${REPO_ROOT}"/}"
+      bt_success "See ${report_rel} for details."
+    fi
     exit 0
   fi
 fi
@@ -401,7 +526,18 @@ bt_info "Pushing merge commit to remote..."
 if ! GIT_BYPASS_HOOKS=true git push origin "$CURRENT_BRANCH" 2>&1; then
   bt_error_exit "$EXIT_NOT_FOUND" "Failed to push merge commit to remote"
 fi
+DID_PUSH_REMOTE=true
+
+MERGE_COMMIT_HASH="$(git rev-parse --short HEAD 2>/dev/null || true)"
+generate_merge_report "$PARENT_BRANCH" "$MERGE_MESSAGE" "$MERGE_COMMIT_HASH" "$commits_to_merge"
+if git remote get-url origin >/dev/null 2>&1; then
+  bt_report_copy_to_remote "$REPO_ROOT" "$BRANCH_REPORTS_DIR" "commit*.md" || true
+fi
 
 bt_success "Pushed merge commit"
 bt_success "Sync up complete"
+if [[ -n "$REPORT_FILE" ]]; then
+  report_rel="${REPORT_FILE#"${REPO_ROOT}"/}"
+  bt_success "See ${report_rel} for details."
+fi
 exit 0
