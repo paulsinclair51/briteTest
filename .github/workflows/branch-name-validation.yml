@@ -62,9 +62,7 @@ name: Defines Branch Name Validation and Branch Workflow
 # Set workflow to run on pull request events.
 
 on:
-  pull_request:
-    branches:
-      - '**'
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -30,6 +30,10 @@ and high-signal output contracts.
   help output, mode-specific parent checks, split exit codes, and graceful
   failures for missing helper/remote interfaces.
 
+- **test_mrgdown.sh**: Smoke tests for `<repo>/scripts/bin/mrgdown` covering
+  help output, protected-branch gate behavior, merge report generation,
+  read-only report enforcement, and remote report copy semantics.
+
 - **test_commit.sh**: Smoke tests for `<repo>/scripts/bin/commit` covering
   help output, role validation, message validation, dry-run reporting, and
   disconnected-remote push handling.
@@ -60,6 +64,7 @@ make test-lsbranch
 make test-gendocs
 make test-fixrepo
 make test-mkbranch
+make test-mrgdown
 make test-report-helpers
 make test-all-scripts
 ```
@@ -71,6 +76,7 @@ bash ./scripts/tests/test_lsbranch.sh
 bash ./scripts/tests/test_gendocs.sh
 bash ./scripts/tests/test_fixrepo.sh
 bash ./scripts/tests/test_mkbranch.sh
+bash ./scripts/tests/test_mrgdown.sh
 bash ./scripts/tests/test_commit.sh
 bash ./scripts/tests/test_report_helpers.sh
 bash ./scripts/tests/test_scripts.sh

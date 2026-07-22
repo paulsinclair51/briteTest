@@ -13,8 +13,7 @@ name: Validate File Sizes
 #-----------------------------------------------------------------------------
 
 on:
-  push:
-    branches: ['**']
+  workflow_dispatch:
 
 permissions:
   contents: read

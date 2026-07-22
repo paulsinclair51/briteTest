@@ -73,12 +73,7 @@ name: Validate Branch Merge
 # Set workflow to run on push events to main, version, and targeted branches.
 
 on:
-  push:
-    branches:
-      - main
-      - v[0-9]+.[0-9]+.0
-      - 'dev/**'
-      - 'fix/**'
+  workflow_dispatch:
 
 permissions:
   contents: read

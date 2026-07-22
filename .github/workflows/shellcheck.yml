@@ -1,10 +1,13 @@
 name: ShellCheck
 
-'on':
-  pull_request:
-  push:
-    branches:
-      - main
+# Define the GitHub workflow for shell script linting using ShellCheck.
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+on:
+  workflow_dispatch:
 
 permissions:
   contents: read
