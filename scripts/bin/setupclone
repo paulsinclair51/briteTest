@@ -21,6 +21,7 @@ This script:
   - Makes all scripts in /scripts/bin/ executable (chmod +x).
   - Adds /scripts/bin/ to PATH in ~/.bashrc if not already present.
   - Configures ~/.inputrc to make command completion more discoverable.
+  - Adds a ~/.bashrc hook to auto-load ~/.inputrc in interactive shells.
   - Configures Git to use hooks from scripts/helpers/.githooks/ via core.hooksPath.
   - Loads the updated configuration so scripts are available immediately.
 
@@ -50,6 +51,7 @@ Outputs:
   - Writes help text, status messages, and results to stdout.
   - Writes errors and diagnostics to stderr.
   - Modifies ~/.bashrc to add /scripts/bin/ to PATH.
+  - Modifies ~/.bashrc to auto-load ~/.inputrc for interactive shells.
   - Modifies ~/.inputrc to configure completion visibility settings.
 
 Exit codes:
@@ -132,6 +134,14 @@ else
   echo "  ✓ Added to ~/.bashrc"
 fi
 
+bind_hook_line='if [[ $- == *i* ]] && [[ -f "$HOME/.inputrc" ]]; then bind -f "$HOME/.inputrc" >/dev/null 2>&1 || true; fi'
+if grep -qxF "$bind_hook_line" ~/.bashrc 2>/dev/null; then
+  echo "  → ~/.bashrc already auto-loads ~/.inputrc"
+else
+  echo "$bind_hook_line" >> ~/.bashrc
+  echo "  ✓ Added ~/.bashrc hook to auto-load ~/.inputrc"
+fi
+
 # Configure ~/.inputrc for more discoverable completion behavior
 echo ""
 echo "Configuring Bash completion visibility..."
@@ -205,4 +215,5 @@ echo "  - Active immediately"
 echo "  - Will run on checkout and other git operations"
 echo ""
 echo "You can now run scripts by name, e.g.: lsbranch -h"
+echo "New interactive terminals now auto-load ~/.inputrc"
 echo "For this already-open terminal, run: bind -f ~/.inputrc"
