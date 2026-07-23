@@ -79,7 +79,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 ### Installation
 
 - **`install-git-hooks.sh`**: Hook installer script.
-  - Copies hooks from `.githooks/` to `.git/hooks/`
+  - Configures `core.hooksPath` to `scripts/helpers/.githooks/`
   - Makes hooks executable
   - Idempotent (safe to run multiple times)
   - Called automatically by `setupclone` and `mkclone`
@@ -139,7 +139,7 @@ Error: Direct git commit/add operations are not allowed.
 Use the 'commit' script instead:
   commit -m "your message"
 
-For more information, see docs/GIT_HOOKS_WORKFLOW.md
+For workflow usage details, see docs/md/Contributor_Guide.md and docs/md/Contributor_Reference.md
 ```
 
 ---
@@ -169,7 +169,10 @@ bash scripts/helpers/install-git-hooks.sh
 ### Verify Installation
 
 ```bash
-ls -la .git/hooks/
+git config core.hooksPath
+# Should output: scripts/helpers/.githooks
+
+ls -la scripts/helpers/.githooks/
 # Should show: orchestrator.sh, pre-commit, pre-push, pre-merge-commit, post-checkout
 ```
 
@@ -248,7 +251,7 @@ unset GIT_BYPASS_HOOKS
 ## Documentation
 
 - **Setup Guide:** [`docs/SETUP_FIRST_CLONE.md`](../../docs/SETUP_FIRST_CLONE.md)
-- **Workflow Guide:** [`docs/GIT_HOOKS_WORKFLOW.md`](../../docs/GIT_HOOKS_WORKFLOW.md)
 - **Contributing:** [`docs/md/Contributor_Guide.md`](../../docs/md/Contributor_Guide.md)
+- **Contributor Reference:** [`docs/md/Contributor_Reference.md`](../../docs/md/Contributor_Reference.md)
 - **Hook Details:** [`.githooks/README.md`](./.githooks/README.md)
 - **Implementation Plan:** [`docs/IMPLEMENTATION_PLAN_GIT_HOOKS.md`](../../docs/IMPLEMENTATION_PLAN_GIT_HOOKS.md)

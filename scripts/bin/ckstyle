@@ -113,7 +113,7 @@ HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
 if [[ -f "$HISTORY_HELPER" ]]; then
     # shellcheck source=helpers/history_log.sh
   if source "$HISTORY_HELPER" 2>/dev/null; then
-    bt_propagate_repository_history >/dev/null 2>&1
+    bt_propagate_repository_history >/dev/null 2>&1 || true
   fi
 fi
 

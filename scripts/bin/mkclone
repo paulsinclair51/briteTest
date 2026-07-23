@@ -255,13 +255,13 @@ info "Cloned to: ./$TARGET_DIR"
 
 # Install scripts and Git hooks
 info "Setting up scripts and Git hooks..."
-if bash "$TARGET_DIR/scripts/bin/installscripts" >/dev/null 2>&1; then
+if bash "$TARGET_DIR/scripts/bin/setupclone" >/dev/null 2>&1; then
   success "Scripts and Git hooks installed successfully"
 else
   warn "Warning: Failed to install scripts or Git hooks"
   info "You can install them manually by running:"
   info "  cd $TARGET_DIR"
-  info "  bash scripts/bin/installscripts"
+  info "  bash scripts/bin/setupclone"
 fi
 
 # Enforce policy: do not leave a local 'main' branch in the clone.
