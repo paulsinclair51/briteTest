@@ -1,5 +1,17 @@
 # Release v1.0.0
 
+<details>
+<summary><strong>Table of Contents</strong></summary>
+
+## Table of Contents
+
+1. [Release Summary](#release-summary)<br>
+2. [What's New in v1.0.0](#whats-new-in-v100)<br>
+3. [Known Issues in v1.0.0](#known-issues-in-v100)<br>
+4. [Obtaining v1.0.0](#obtaining-v100)<br>
+5. [Verification and Testing](#verification-and-testing)
+</details>
+
 ## Release Summary
 
 v1.0.0 marks the inaugural stable release of briteTest. This release represents the completion of the core framework, comprehensive documentation infrastructure, and full CI/CD pipeline setup. briteTest is now production-ready for testing automation workflows.
