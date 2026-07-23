@@ -11,41 +11,46 @@
 usage() {
   cat <<'EOF'
 Usage:
-  chbranch [-f] [-r] [-o] BRANCH
+  chbranch [-f] [-r] [-o] [BRANCH]
   chbranch {-h | --help}
 
 Change current branch to BRANCH.
 
 Arguments:
-  BRANCH      Name of the branch to change to.
-
+  BRANCH      Name of the branch to change to. If not specified,
+              changes to the local or remote branch for the current
+              branch, if it exists, based on the options specified.
+              If already on the branch, shows the current branch
+              name and whether it is local or remote.
+            
 Options:
-  -h, --help  Output this help to stdout and exit (other options
-              and arguments are ignored).
-  -r          Change to remote (origin) BRANCH even when local BRANCH exists.
   -f          Discard all uncommitted tracked and untracked changes before
               changing to BRANCH, but only when branch-change prechecks
               succeed.
+  -h          Output this help to stdout and exit (other options
+              and arguments are ignored).
+  --help      Output this help to stdout and exit (other options
+              and arguments are ignored).
   -o          Owner override for branches blocked by policy, for this
               command run only; normal role restrictions apply again
-              after exit.
+              after exit. The user must be the repository owner to use
+              this option.
+  -r          Change to remote (origin) BRANCH even when local BRANCH exists.
 
 Rules:
   - By default, local BRANCH is used when it exists.
   - If local BRANCH does not exist and remote (origin) BRANCH exists, changes to
     remote BRANCH (a local branch is not created).
   - With -r, changes to remote (origin) BRANCH even when a local BRANCH exists.
-  - If -r is used and remote (origin) BRANCH does not exist or is not
-    connected/reachable, exits with error and preserves uncommitted changes
+  - If -r is used and remote (origin) BRANCH does not exist or is
+    unconnected/unreachable, exits with error and preserves uncommitted changes
     (-f is ignored).
   - With -f, all uncommitted tracked and untracked changes are
     discarded before changing the branch.
   - Changing branch is blocked when the current branch is dirty,
     unless -f is specified.
-  - With -o, BRANCH is still required and normal local/remote selection
-    rules still apply.
-  - If BRANCH is policy-blocked for normal users, -o allows switching only
-    when the caller is the repository owner.
+  - With -o, BRANCH is required and must be a protected branch.
+    Normal local/remote selection rules still apply.
 
 Examples:
   chbranch dev/my-feature-v1.0.0

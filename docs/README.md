@@ -9,7 +9,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Documentation Lifecycle Policy
 
-- Adding new files under `<repo>/docs/md/` requires approver approval.
+- Adding new files under `<repo>/docs/md/` requires approval by an approver.
 
 ## Files
 
