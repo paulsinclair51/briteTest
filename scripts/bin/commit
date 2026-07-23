@@ -153,7 +153,6 @@ fi
 
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NOT_AUTHORIZED=2
-readonly EXIT_COMMENT_REQUIRED=3
 readonly EXIT_COMMENT_EMPTY=3
 readonly EXIT_NOT_LOCAL_BRANCH=4
 readonly EXIT_PROTECTED_BRANCH=5
@@ -288,7 +287,6 @@ mark_report_read_only() {
     bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Failed to mark report read-only: $report_path"
   fi
 }
-  cleanup_old_dry_run_reports
 
 persist_report_changes() {
   local current_branch
@@ -423,22 +421,22 @@ print_summary() {
   bt_info "Summary: committed files=$COMMITTED_FILES"
 }
 
-emit_final_status() {
-  local completion_text="$1"
-  local report_generated="$2"
-  local report_rel=""
-  local final_text="$completion_text"
+emit_file_count_status() {
+  local count="$1"
+  local mode="$2"
 
-  if [[ "$report_generated" == true ]]; then
-    report_rel="${REPORT_FILE#"${REPO_ROOT}"/}"
-  fi
-
-  bt_success "$final_text"
-
-  if [[ "$report_generated" == true ]]; then
-    bt_success "See ${report_rel} for details."
+  if [[ "$mode" == "dry-run" ]]; then
+    if [[ "$count" -eq 1 ]]; then
+      bt_success "1 file to commit"
+    else
+      bt_success "$count files to commit"
+    fi
   else
-    bt_success "Report not generated."
+    if [[ "$count" -eq 1 ]]; then
+      bt_success "1 file committed"
+    else
+      bt_success "$count files committed"
+    fi
   fi
 }
 
@@ -739,7 +737,7 @@ done
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit "$EXIT_NOT_ON_BRANCH" "Failed to determine current branch")
-bt_info "Current branch: $CURRENT_BRANCH"
+bt_success "Current local branch: $CURRENT_BRANCH"
 initialize_report_file
 
 # Disallow commits from detached HEAD (for example, origin/main or origin/v*).
@@ -836,12 +834,14 @@ fi
 if [[ "$COMMITTED_FILES" -gt 0 ]]; then
   generate_commit_report
   disable_branch_reports_write_access
+  report_rel="${REPORT_FILE#"${REPO_ROOT}"/}"
   if [[ "$DRY_RUN" == true ]]; then
-    emit_final_status "Commit: ${COMMITTED_FILES}. Dry-run" true
+    emit_file_count_status "$COMMITTED_FILES" "dry-run"
   else
-    emit_final_status "Commit: ${COMMITTED_FILES}" true
+    emit_file_count_status "$COMMITTED_FILES" "commit"
   fi
+  bt_success "See ${report_rel} for details"
 else
-  emit_final_status "No commits" false
+  bt_success "No files to commit"
 fi
 exit 0
