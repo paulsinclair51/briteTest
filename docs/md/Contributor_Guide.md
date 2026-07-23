@@ -496,10 +496,10 @@ Scripts automatically bypass hook enforcement by setting an environment variable
 commit -m "my change"
 
 # The script internally does:
-export BRITETEST_BYPASS_HOOKS=true
+export GIT_BYPASS_HOOKS=true
 git add <files>
 git commit -m "my change"
-unset BRITETEST_BYPASS_HOOKS
+unset GIT_BYPASS_HOOKS
 ```
 
 This is transparent - you don't need to do anything. The script handles the details.
@@ -578,6 +578,8 @@ briteTest uses a six-tier access model for public repository safety:
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;5.1. File Access Matrix</summary>
 
 ### 5.1. File Access Matrix
+| Area | Public | Users | Contributor (C) | Reviewer (R) | Approver (A) | Repository Owner (O) |
+|------|--------|-------|-----------------|--------------|--------------|----------------------|
 | `docs/md/`, `docs/branding/`, `src/`, `include/`, `examples/` | R | R | RW | RW | RW | RW |
 | `scripts/bin/`, `scripts/helpers/` | R | R | RW | RW | RW* | RW |
 | `.github/workflows/`, branch-protection settings | R | R | - | - | RW* | RW |
@@ -717,11 +719,17 @@ If identity cannot be resolved, role checks fail by design.
 Security controls expected for contributor workflows:
 
 - **Branch protection:** `main` and `v*.0` require PRs, reviews, and status checks.
+  Required settings include at least one approval, stale-review dismissal on new commits, and branch-up-to-date enforcement before merge.
 - **Secret prevention:** never commit credentials, tokens, or keys; use repository secret scanning and validation workflows.
 - **Critical file protection:** avoid direct changes to protected areas (`.github/workflows/`, policy/security files) unless explicitly required and approved.
 - **Signed provenance:** use GPG signing for protected-branch commits.
 - **Vulnerability reporting:** report security concerns via the repository security policy (`.github/SECURITY.md`) rather than public issue disclosure.
 - **Auditability:** approver-level actions and protected operations must remain traceable through workflow/script logs.
+
+If a secret is exposed in a commit or PR, treat it as compromised immediately:
+- Rotate/revoke the secret before any merge activity.
+- Remove the secret from current changes and coordinate with approvers for any required history cleanup.
+- Document the incident and remediation path in repository audit records.
 
 Keep this section aligned with repository policy whenever workflows or branch protections change.
 </details>
@@ -1261,15 +1269,16 @@ If you clone manually instead of using `mkclone`:
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;19.2. First Contribution</summary>
 
 ### 19.2. First Contribution
+- [ ] **Create a contributor branch**
   ```bash
-  scripts/bin/mkbranch -r mywork/description main
+  mkbranch -r mywork/description main
   ```
-- Make changes
+- [ ] **Switch to your branch and make changes**
   ```bash
   git checkout mywork/description
   # Edit files...
   ```
-- Test locally
+- [ ] **Run tests locally**
   ```bash
   make run  # Ensure all tests pass
   ```
@@ -1280,13 +1289,14 @@ If you clone manually instead of using `mkclone`:
   ```
 - [ ] **Commit with conventional format**
   ```bash
-  git add .
-  git commit -m "feat: add new feature"
+  commit -m "feat: add new feature"
   # Will be GPG signed automatically
   ```
 - [ ] **Push your branch**
   ```bash
-  git push origin mywork/description
+  push
+  # Or commit and push together:
+  commit -m "feat: add new feature" -p
   ```
 - [ ] **Open a Pull Request on GitHub**
   - Go to https://github.com/paulsinclair51/briteTest
@@ -1320,17 +1330,16 @@ If you clone manually instead of using `mkclone`:
 Common commands:
 ```bash
 # Create branch
-scripts/bin/mkbranch -r mywork/feature main
+mkbranch -r mywork/feature main
 
 # Switch to branch
 git checkout mywork/feature
 
 # Make changes and commit
-git add .
-git commit -m "feat: description"
+commit -m "feat: description"
 
 # Push to GitHub
-git push origin mywork/feature
+push
 
 # Validate branch name
 bash scripts/helpers/ckbranchname.sh mywork/feature
@@ -1339,7 +1348,7 @@ bash scripts/helpers/ckbranchname.sh mywork/feature
 make run
 
 # Delete branch
-scripts/bin/rmbranch mywork/feature
+rmbranch mywork/feature
 ```
 </details>
 

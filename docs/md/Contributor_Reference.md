@@ -959,7 +959,7 @@ commit -m "Message" -p             # [OK] Commit + push
 
 **How to bypass (scripts only):**
 
-Scripts automatically set `BRITETEST_BYPASS_HOOKS=true` before git operations.
+Scripts automatically set `GIT_BYPASS_HOOKS=true` before git operations.
 
 **Error message shown:**
 
@@ -997,7 +997,8 @@ git push origin --delete <branch>  # [ERROR] BLOCKED
 
 ```bash
 commit -m "msg" -p                 # [OK] Commit + push
-merge [branch]                     # [OK] Merge to parent
+push                               # [OK] Push current branch
+mrgup                              # [OK] Merge-up workflow
 rmbranch <branch> -r               # [OK] Delete remote branch
 ```
 
@@ -1031,8 +1032,8 @@ git merge --no-ff            # [ERROR] BLOCKED
 **What to use instead:**
 
 ```bash
-merge [branch]               # [OK] Merge to parent branch
-merge -s                     # [OK] Merge with squash
+mrgdown                      # [OK] Merge parent branch into current branch
+mrgup                        # [OK] Merge current branch up to parent workflow
 ```
 
 **Error message shown:**
@@ -1040,7 +1041,7 @@ merge -s                     # [OK] Merge with squash
 ```
 [ERROR] Direct git merge operations are not allowed.
 
-   Use the 'merge' script instead:
+  Use the 'mrgdown' script instead:
    ...
 ```
 </details>
@@ -1057,7 +1058,7 @@ merge -s                     # [OK] Merge with squash
 Sourced by other hooks, not called directly:
 
 ```bash
-source "$(git rev-parse --git-dir)/hooks/orchestrator.sh"
+source "scripts/helpers/.githooks/orchestrator.sh"
 check_bypass "git commit" "commit"
 ```
 
@@ -1069,7 +1070,7 @@ check_bypass "git commit" "commit"
 
 **How it works:**
 
-1. Checks `BRITETEST_BYPASS_HOOKS` environment variable
+1. Checks `GIT_BYPASS_HOOKS` environment variable
 2. If set to `true`, allows operation (script is running)
 3. If not set, blocks operation and shows error guidance
 
@@ -1077,15 +1078,15 @@ check_bypass "git commit" "commit"
 
 ```bash
 # Scripts use this pattern:
-export BRITETEST_BYPASS_HOOKS=true
+export GIT_BYPASS_HOOKS=true
 git add files...
 git commit -m "msg"
-unset BRITETEST_BYPASS_HOOKS
+unset GIT_BYPASS_HOOKS
 ```
 
 **Security model:**
 
-- Only scripts can set `BRITETEST_BYPASS_HOOKS`
+- Only scripts can set `GIT_BYPASS_HOOKS`
 - Environment variable is unset immediately after operation
 - Direct user git commands cannot bypass hooks
 </details>
@@ -1166,7 +1167,7 @@ replacetext       - Replace text globally across repo (requires override)
 mrgup
 
 # Script will fail:
-[ERROR] This operation requires Reviewer role or higher
+[ERROR] This operation requires Approver role
 ```
 
 #### Protected Script Override
@@ -1179,7 +1180,9 @@ SCRIPT_OVERRIDE_CONFIRMED=true release v1.0.0
 SCRIPT_OVERRIDE_CONFIRMED=true fixrepo
 ```
 
-Without override flag, execution fails by design as safety measure.
+Without override flag, execution fails by design as a safety control.
+Role checks are evaluated first; override confirmation does not grant
+non-approver users additional access.
 </details>
 
 <details>

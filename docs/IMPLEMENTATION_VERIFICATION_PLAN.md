@@ -1,7 +1,7 @@
 # Implementation Verification and Consolidation Plan
 
-#### Date: 2026-07-16
-#### Scope: docs/*.md temporary documents (no deletions in this pass)
+#### Date: 2026-07-23
+#### Scope: docs/*.md temporary documents and consolidation tracking
 
 SPDX-License-Identifier: MIT
 
@@ -36,11 +36,11 @@ Implementation checks were validated against current repository artifacts:
 
 | Source Document(s) | Implementation Reality (Verified) | Keep/Implement Decision | Canonical Doc Target(s) | Planned Action |
 |---|---|---|---|---|
-| `docs/ACCESS_CONTROL_TIERS.md` | Access tiers and role concepts exist in policy/docs. Role checks exist in scripts (for example `scripts/helpers/ckrole.sh`, role-gated flows in `scripts/bin/mrgup`). | Keep concept; consolidate content into canonical docs. | `docs/md/Contributor_Guide.md`, `docs/md/Contributor_Reference.md` | Create merged access-control section updates, then archive root doc later. |
-| `docs/PUBLIC_REPO_SECURITY.md` | Security and branch-protection concepts are reflected in guides/workflows. | Keep concept; consolidate normative policy text into canonical docs. | `docs/md/Contributor_Guide.md` | Extract enforceable policy statements and move to canonical sections. |
-| `docs/SCRIPT_ACCESS_CONTROL.md` | Script RBAC is implemented in helper/script behavior (`ckrole.sh`, protected merge checks, review behavior). | Keep concept; consolidate script-level reference details. | `docs/md/Contributor_Reference.md` (primary), `docs/md/Contributor_Guide.md` (summary) | Merge command-level role tables and examples into reference doc. |
-| `docs/GIT_HOOKS_WORKFLOW.md` | Hook workflow is only partially implemented versus historical claims. `scripts/bin/installscripts` still references `scripts/helpers/install-git-hooks.sh`, but that installer file is currently missing; only `.githooks/post-checkout` exists under `scripts/helpers/.githooks/`. | Needs decision: either (A) implement full hook system as documented, or (B) downgrade docs to current behavior. | `docs/md/Contributor_Guide.md`, `docs/md/Contributor_Reference.md` | Open decision record and choose A or B before canonical integration. |
-| `docs/SETUP_FIRST_CLONE.md` | `scripts/bin/mkclone` calls `installscripts`, which attempts hook setup and warns if installer missing. Script install path exists; hook installation is not fully verifiable with current files. | Keep onboarding flow, but correct hook expectations to match actual behavior unless full hook implementation is restored. | `docs/md/Guide.md`, `docs/md/Contributor_Guide.md`, `docs/md/Contributor_Reference.md` | Update onboarding text to describe real current setup behavior and warnings. |
+| `obsolete/ACCESS_CONTROL_TIERS.md` | Access tiers and role concepts exist in policy/docs. Role checks exist in scripts (for example `scripts/helpers/ckrole.sh`, role-gated flows in `scripts/bin/mrgup`). | Keep concept; consolidate content into canonical docs. | `docs/md/Contributor_Guide.md`, `docs/md/Contributor_Reference.md` | Create merged access-control section updates, then archive or retire obsolete source doc. |
+| `obsolete/PUBLIC_REPO_SECURITY.md` | Security and branch-protection concepts are reflected in guides/workflows. | Keep concept; consolidate normative policy text into canonical docs. | `docs/md/Contributor_Guide.md` | Extract enforceable policy statements and move to canonical sections. |
+| `obsolete/SCRIPT_ACCESS_CONTROL.md` | Script RBAC is implemented in helper/script behavior (`ckrole.sh`, protected merge checks, review behavior). | Keep concept; consolidate script-level reference details. | `docs/md/Contributor_Reference.md` (primary), `docs/md/Contributor_Guide.md` (summary) | Merge command-level role tables and examples into reference doc. |
+| `docs/GIT_HOOKS_WORKFLOW.md` | Redundant after canonical hook/workflow coverage was completed in `docs/md/Contributor_Guide.md` and `docs/md/Contributor_Reference.md`. | Retire redundant doc. | `docs/md/Contributor_Guide.md`, `docs/md/Contributor_Reference.md` | Completed: consolidated and removed redundant workflow document. |
+| `obsolete/SETUP_FIRST_CLONE.md` | Onboarding guidance exists but has drift from current scripts. Current implementation uses `setupclone` and `scripts/helpers/install-git-hooks.sh` with `core.hooksPath`; `mkclone` now invokes `setupclone` directly. | Keep concept; reconcile onboarding docs with script behavior. | `docs/md/Guide.md`, `docs/md/Contributor_Guide.md`, `docs/md/Contributor_Reference.md` | Update canonical onboarding text to describe current setup behavior and retire obsolete onboarding guidance. |
 | `docs/IMPLEMENTATION_PLAN_GIT_HOOKS.md` | Historical implementation plan document; not canonical runtime behavior spec. | Keep as temporary planning artifact. | Optional summary in `docs/md/Contributor_Reference.md` if still relevant | Mark as historical/plan and avoid treating as current truth source. |
 | `docs/PHASE_4_TESTING_CHECKLIST.md` | Historical test checklist; may not represent current test harness layout/coverage exactly. | Keep as temporary test artifact. | `docs/md/Contributor_Reference.md` (if test workflows need canonical summary) | Validate checklist against current test scripts before migration. |
 | `docs/IMPLEMENTATION_COMPLETE.md` | Historical completion report with formatting artifacts and point-in-time claims. | Keep temporarily only for traceability; do not use as normative documentation. | None required; optionally archive summary in reports/history docs | Replace with concise status note or archive later. |
@@ -52,19 +52,17 @@ Implementation checks were validated against current repository artifacts:
 
 ## Key Gaps Requiring Decision
 
-### 1) Git hooks documentation vs. repository state
+### 1) Onboarding script/docs drift
 
-Current evidence indicates documentation references a fuller hook installer/wrapper set than currently present:
+Current evidence shows onboarding flow needed a command-path alignment:
 
-- Missing: `scripts/helpers/install-git-hooks.sh`
-- Missing wrappers in `scripts/helpers/.githooks/`: `orchestrator.sh`, `pre-commit`, `pre-push`, `pre-merge-commit`
-- Present: `scripts/helpers/.githooks/post-checkout`
-- `scripts/bin/installscripts` still attempts to call the missing installer and warns when absent.
+- `setupclone` is present and documents hook setup via `core.hooksPath`.
+- `scripts/helpers/install-git-hooks.sh` exists and configures versioned hooks.
+- `mkclone` now runs `scripts/bin/setupclone`, aligning clone setup with the canonical setup command.
 
-Decision needed:
+Decision resolution:
 
-- Option A: restore full hook implementation to match docs
-- Option B: revise docs to match current implementation and warnings
+- Implemented: `mkclone` invokes `setupclone` directly.
 
 ### 2) Canonical scope boundary
 
@@ -77,17 +75,16 @@ Top-level `docs/*.md` files remain temporary until each item is verified and eit
 
 1. Access and security consolidation
 - Merge approved, non-duplicative policy text from:
-  - `ACCESS_CONTROL_TIERS.md`
-  - `PUBLIC_REPO_SECURITY.md`
-  - `SCRIPT_ACCESS_CONTROL.md`
+  - `obsolete/ACCESS_CONTROL_TIERS.md`
+  - `obsolete/PUBLIC_REPO_SECURITY.md`
+  - `obsolete/SCRIPT_ACCESS_CONTROL.md`
 - Targets:
   - `docs/md/Contributor_Guide.md` (policy summary)
   - `docs/md/Contributor_Reference.md` (script details)
 
 2. Onboarding and workflow consolidation
 - Reconcile:
-  - `SETUP_FIRST_CLONE.md`
-  - `GIT_HOOKS_WORKFLOW.md`
+  - `obsolete/SETUP_FIRST_CLONE.md`
 - Targets:
   - `docs/md/Guide.md`
   - `docs/md/Contributor_Guide.md`
@@ -120,9 +117,16 @@ Top-level `docs/*.md` files remain temporary until each item is verified and eit
   - `docs/md/Contributor_Guide.md` - Section 4.5 expanded to 8 subsections
   - `docs/md/Contributor_Reference.md` - Section 2.5 with comprehensive reference
   
-- ✅ Renamed `installscripts` → `setupclone` for clarity
+- ✅ `setupclone` established as the canonical setup command
 - ✅ Verified all hooks syntax-valid and configured via `core.hooksPath`
 - ✅ Archived 4 temporary docs to `obsolete/`
+
+**Follow-up verification (2026-07-23):**
+
+- ✅ Hook path/orchestrator resolution updated for `core.hooksPath` runtime.
+- ✅ Canonical docs updated to `GIT_BYPASS_HOOKS` terminology.
+- ✅ Redundant `docs/GIT_HOOKS_WORKFLOW.md` removed after consolidation.
+- ✅ `scripts/bin/mkclone` now invokes `scripts/bin/setupclone` directly.
 
 ### Remaining Consolidation Items
 
@@ -148,8 +152,9 @@ The following documentation areas still require consolidation into canonical doc
 
 **PENDING:**
 - [ ] Run docs QA/style checks (can verify all links and formatting are correct).
-- [ ] Consolidate remaining items from `ACCESS_CONTROL_TIERS.md`, `PUBLIC_REPO_SECURITY.md`, `SCRIPT_ACCESS_CONTROL.md` into canonical docs.
-- [ ] Consolidate onboarding guidance from `SETUP_FIRST_CLONE.md` and `GIT_HOOKS_WORKFLOW.md`.
+- [ ] Consolidate remaining items from `obsolete/ACCESS_CONTROL_TIERS.md`, `obsolete/PUBLIC_REPO_SECURITY.md`, `obsolete/SCRIPT_ACCESS_CONTROL.md` into canonical docs.
+- [ ] Consolidate remaining onboarding guidance from `obsolete/SETUP_FIRST_CLONE.md` into canonical docs.
+- [x] Resolve onboarding script drift: `mkclone` now invokes `scripts/bin/setupclone`.
 - [ ] Approver sign-off before enforcing strict no-root-docs policy.
 
 ---
@@ -158,6 +163,6 @@ The following documentation areas still require consolidation into canonical doc
 
 **Git Hooks Infrastructure:** Fully implemented and documented. All enforcement hooks active. Developers can no longer bypass script-based workflow via direct git commands.
 
-**Documentation:** Transition from temporary implementation docs to canonical long-lived guides is 50% complete (git hooks done, access control/security/RBAC consolidation pending).
+**Documentation:** Transition from temporary implementation docs to canonical long-lived guides is in-progress (git hooks consolidated; access control/security/RBAC and onboarding consolidation pending).
 
-**Next Phase:** Consolidate remaining security and access control documentation, then enforce archival of root-level `docs/*.md` files except those retained for reference.
+**Next Phase:** Resolve onboarding script drift, consolidate remaining security/access-control/onboarding documentation, then complete approver sign-off.
