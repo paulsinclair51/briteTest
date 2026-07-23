@@ -36,11 +36,11 @@ Implementation checks were validated against current repository artifacts:
 
 | Source Document(s) | Implementation Reality (Verified) | Keep/Implement Decision | Canonical Doc Target(s) | Planned Action |
 |---|---|---|---|---|
-| `obsolete/ACCESS_CONTROL_TIERS.md` | Access tiers and role concepts exist in policy/docs. Role checks exist in scripts (for example `scripts/helpers/ckrole.sh`, role-gated flows in `scripts/bin/mrgup`). | Keep concept; consolidate content into canonical docs. | `docs/md/Contributor_Guide.md`, `docs/md/Contributor_Reference.md` | Create merged access-control section updates, then archive or retire obsolete source doc. |
-| `obsolete/PUBLIC_REPO_SECURITY.md` | Security and branch-protection concepts are reflected in guides/workflows. | Keep concept; consolidate normative policy text into canonical docs. | `docs/md/Contributor_Guide.md` | Extract enforceable policy statements and move to canonical sections. |
-| `obsolete/SCRIPT_ACCESS_CONTROL.md` | Script RBAC is implemented in helper/script behavior (`ckrole.sh`, protected merge checks, review behavior). | Keep concept; consolidate script-level reference details. | `docs/md/Contributor_Reference.md` (primary), `docs/md/Contributor_Guide.md` (summary) | Merge command-level role tables and examples into reference doc. |
+| `obsolete/ACCESS_CONTROL_TIERS.md` | Access tiers and role concepts exist in policy/docs. Role checks exist in scripts (for example `scripts/helpers/ckrole.sh`, role-gated flows in `scripts/bin/mrgup`). | Keep concept; consolidate content into canonical docs. | `docs/md/Contributor_Guide.md`, `docs/md/Contributor_Reference.md` | Completed: consolidated into canonical contributor docs and removed stale examples/terminology drift. |
+| `obsolete/PUBLIC_REPO_SECURITY.md` | Security and branch-protection concepts are reflected in guides/workflows. | Keep concept; consolidate normative policy text into canonical docs. | `docs/md/Contributor_Guide.md` | Completed: enforceable policy statements migrated to canonical security section. |
+| `obsolete/SCRIPT_ACCESS_CONTROL.md` | Script RBAC is implemented in helper/script behavior (`ckrole.sh`, protected merge checks, review behavior). | Keep concept; consolidate script-level reference details. | `docs/md/Contributor_Reference.md` (primary), `docs/md/Contributor_Guide.md` (summary) | Completed: role examples and protected-script controls merged into canonical reference/guide sections. |
 | `docs/GIT_HOOKS_WORKFLOW.md` | Redundant after canonical hook/workflow coverage was completed in `docs/md/Contributor_Guide.md` and `docs/md/Contributor_Reference.md`. | Retire redundant doc. | `docs/md/Contributor_Guide.md`, `docs/md/Contributor_Reference.md` | Completed: consolidated and removed redundant workflow document. |
-| `obsolete/SETUP_FIRST_CLONE.md` | Onboarding guidance exists but has drift from current scripts. Current implementation uses `setupclone` and `scripts/helpers/install-git-hooks.sh` with `core.hooksPath`; `mkclone` now invokes `setupclone` directly. | Keep concept; reconcile onboarding docs with script behavior. | `docs/md/Guide.md`, `docs/md/Contributor_Guide.md`, `docs/md/Contributor_Reference.md` | Update canonical onboarding text to describe current setup behavior and retire obsolete onboarding guidance. |
+| `obsolete/SETUP_FIRST_CLONE.md` | Onboarding guidance exists but has drift from current scripts. Current implementation uses `setupclone` and `scripts/helpers/install-git-hooks.sh` with `core.hooksPath`; `mkclone` now invokes `setupclone` directly. | Keep concept; reconcile onboarding docs with script behavior. | `docs/md/Contributor_Guide.md`, `docs/md/Contributor_Reference.md` | Completed: onboarding/checklist command flow aligned to script-based workflow and current setup behavior. |
 | `docs/IMPLEMENTATION_PLAN_GIT_HOOKS.md` | Historical implementation plan document; not canonical runtime behavior spec. | Keep as temporary planning artifact. | Optional summary in `docs/md/Contributor_Reference.md` if still relevant | Mark as historical/plan and avoid treating as current truth source. |
 | `docs/PHASE_4_TESTING_CHECKLIST.md` | Historical test checklist; may not represent current test harness layout/coverage exactly. | Keep as temporary test artifact. | `docs/md/Contributor_Reference.md` (if test workflows need canonical summary) | Validate checklist against current test scripts before migration. |
 | `docs/IMPLEMENTATION_COMPLETE.md` | Historical completion report with formatting artifacts and point-in-time claims. | Keep temporarily only for traceability; do not use as normative documentation. | None required; optionally archive summary in reports/history docs | Replace with concise status note or archive later. |
@@ -100,7 +100,7 @@ Top-level `docs/*.md` files remain temporary until each item is verified and eit
 
 ---
 
-## Implementation Status (Updated: 2026-07-17)
+## Implementation Status (Updated: 2026-07-23)
 
 ### Git Hooks Item - ✅ FULLY RESOLVED
 
@@ -134,10 +134,10 @@ The following documentation areas still require consolidation into canonical doc
 
 | Item | Status | Priority |
 |------|--------|----------|
-| Access control tiers | Not started | Medium |
-| Public repo security | Not started | Medium |
-| Script access control (RBAC) | Not started | Medium |
-| Setup/first clone workflows | Not started | Low |
+| Access control tiers | Completed | Medium |
+| Public repo security | Completed | Medium |
+| Script access control (RBAC) | Completed | Medium |
+| Setup/first clone workflows | Completed | Low |
 | Workflow architecture | Not started | Low |
 
 ---
@@ -151,11 +151,18 @@ The following documentation areas still require consolidation into canonical doc
 - [x] Archive temporary implementation documents to `obsolete/`.
 
 **PENDING:**
-- [ ] Run docs QA/style checks (can verify all links and formatting are correct).
-- [ ] Consolidate remaining items from `obsolete/ACCESS_CONTROL_TIERS.md`, `obsolete/PUBLIC_REPO_SECURITY.md`, `obsolete/SCRIPT_ACCESS_CONTROL.md` into canonical docs.
-- [ ] Consolidate remaining onboarding guidance from `obsolete/SETUP_FIRST_CLONE.md` into canonical docs.
+- [x] Run docs QA/style checks (executed; report captured with remediation backlog).
+- [x] Consolidate remaining items from `obsolete/ACCESS_CONTROL_TIERS.md`, `obsolete/PUBLIC_REPO_SECURITY.md`, `obsolete/SCRIPT_ACCESS_CONTROL.md` into canonical docs.
+- [x] Consolidate remaining onboarding guidance from `obsolete/SETUP_FIRST_CLONE.md` into canonical docs.
 - [x] Resolve onboarding script drift: `mkclone` now invokes `scripts/bin/setupclone`.
 - [ ] Approver sign-off before enforcing strict no-root-docs policy.
+
+### QA Run Result (2026-07-23)
+
+- Command run: `scripts/bin/ckstyle`
+- Outcome: failed with 231 issues across 30 files.
+- Report: `reports/guidelines/ckstyle-20260723-232432.md`
+- Note: `ckstyle` auto-committed and pushed the generated report.
 
 ---
 
@@ -163,6 +170,6 @@ The following documentation areas still require consolidation into canonical doc
 
 **Git Hooks Infrastructure:** Fully implemented and documented. All enforcement hooks active. Developers can no longer bypass script-based workflow via direct git commands.
 
-**Documentation:** Transition from temporary implementation docs to canonical long-lived guides is in-progress (git hooks consolidated; access control/security/RBAC and onboarding consolidation pending).
+**Documentation:** Canonical consolidation is substantially complete for git hooks, access control/security/RBAC, and onboarding behavior alignment.
 
-**Next Phase:** Resolve onboarding script drift, consolidate remaining security/access-control/onboarding documentation, then complete approver sign-off.
+**Next Phase:** Run docs QA/style checks, complete approver sign-off, then archive/retire remaining historical top-level docs according to policy.
