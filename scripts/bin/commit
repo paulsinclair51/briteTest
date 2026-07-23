@@ -64,9 +64,11 @@ Outputs:
   - Output to stdout includes for a completed commit:
       Current local branch: <branch>.
       1 file committed. or <n> files committed.
-  - Output to stdout includes for a completed dry-run commit:
+      See reports/branch/commit-<datetime>-<pid>.md for details.
+  Output to stdout includes for a completed dry-run commit:
       Current local branch: <branch>.
       1 file to commit. or <n> files to commit.
+      See reports/branch/commit-d-<datetime>.md for details.
   - Output to stdout includes when there are no files to commit:
       Current local branch: <branch>.
       No files to commit.
