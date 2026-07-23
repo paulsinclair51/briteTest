@@ -14,7 +14,14 @@
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-GIT_HOOKS_DIR="$REPO_ROOT/.git/hooks"
+HOOKS_PATH="$(git config --get core.hooksPath 2>/dev/null || true)"
+if [[ -z "$HOOKS_PATH" ]]; then
+  GIT_HOOKS_DIR="$REPO_ROOT/.git/hooks"
+elif [[ "$HOOKS_PATH" = /* ]]; then
+  GIT_HOOKS_DIR="$HOOKS_PATH"
+else
+  GIT_HOOKS_DIR="$REPO_ROOT/$HOOKS_PATH"
+fi
 
 # Check if all required hooks are installed
 REQUIRED_HOOKS=("pre-commit" "pre-push" "pre-merge-commit" "orchestrator.sh")

@@ -18,7 +18,13 @@
 set -euo pipefail
 
 # Source orchestrator for common functions
-ORCHESTRATOR="$(git rev-parse --git-dir)/hooks/orchestrator.sh"
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ORCHESTRATOR="$HOOK_DIR/orchestrator.sh"
+
+# Fallback for legacy installs that still run from .git/hooks.
+if [[ ! -f "$ORCHESTRATOR" ]]; then
+  ORCHESTRATOR="$(git rev-parse --git-dir)/hooks/orchestrator.sh"
+fi
 if [[ -f "$ORCHESTRATOR" ]]; then
   source "$ORCHESTRATOR" 2>/dev/null || true
 fi
