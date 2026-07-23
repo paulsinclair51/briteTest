@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# mrgbranch - Fetch and pull latest changes from remote.
+# pull - Fetch and pull latest changes from remote or parent.
 #
-# See usage below for details, or run: mrgbranch -h
+# See usage below for details, or run: pull -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,18 +11,18 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mrgbranch [OPTIONS]
-  mrgbranch {-h | --help}
+  pull [OPTIONS] [PARENT]
+  pull {-h | --help}
 
-If current local branch is behind its remote branch, mrgbranch fetches
+If current local branch is behind its remote branch, pull fetches
 and pulls the latest changes from the remote branch into the local branch
 when it is safe to do so so that the local branch is synchronized with
 its remote branch.
 
-If local and remote branches have diverged, mrgbranch attempts to
+If local and remote branches have diverged, pull attempts to
 automatically resolve the divergence via rebase when it is safe to
 do so. If unresolved conflicts occur, the rebase is left in progress
-for manual resolution. After resolving conflicts, rerun mrgbranch.
+for manual resolution. After resolving conflicts, rerun pull.
 
 Non-dry-run commit reports are synchronized between local and remote
 repositories. This ensures commit reports from other scripts are
@@ -30,34 +30,54 @@ available in both locations for a complete audit trail of commits to
 the branch.
 
 The merge is skipped when the current local branch has uncommitted
-or untracked changes. Commit or undo them before running mrgbranch.
+or untracked changes. Commit or undo them before running pull.
+
+Arguments:
+  PARENT            If specified, the -p option must be specified.
+                    This indicates the parent branch to pull from (see
+                    also, -p, -l, and -r options).
 
 Options:
-  -d                Dry-run for the branch sync workflow. No fetch, pull,
-                    rebase, or branch update is performed.
+  -d                Dry-run for the pull operation. No fetch, pull,
+                    rebase, or branch modification for the current
+                    branch is performed.
   -h                Output this help to stdout and exit (other options
                     and arguments are ignored).
   --help            Output this help to stdout and exit (other options
                     and arguments are ignored).
+  -l                Pull from the local branch. Option -l is not allowed
+                    if -p is not specified.
+  -p                Pull from the specified PARENT or default parent branch.
+                    If current branch is targeted branch, the default parent
+                    is the version branch of the targeted branch; otherwise,
+                    PARENT argument must be specified.
+  -r                If -p is not specified, pull from the corresponding
+                    remote branch for current branch. If -p is not
+                    specified, the default is -r.
+                    If -p is specified, pull from the remote parent branch.
   -o                Owner override. Allows repository owner to run even
                     on version branches normally blocked by user policy
                     for this command run only; normal role restrictions
                     apply again after exit.
   -v                Show detailed change and diagnostic information.
 
-Example: Merge branch for current branch.
-  mrgbranch
+Example: Pull for current branch which must be local.
+  pull
 
-Example: Merge branch with verbose output.
-  mrgbranch -v
+Example: Pull branch with verbose output.
+  pull -v
 
-Example: Preview merge branch (dry run).
-  mrgbranch -d
+Example: Preview pull (dry run).
+  pull -d
 
 Outputs:
   - Writes help text, status messages, and results or summaries
     to stdout.
   - Writes errors and diagnostics to stderr.
+  - For non-dry-run, writes a report to:
+        '<repo>/branch/pull-{remote/parent}-<datetime>-<pid>.md'
+  - For a dry-run, writes a report to:
+        '<repo>/branch/pull-{remote/parent}-d-<datetime>.md' 
 
 Exit codes:
   0   Success (operation completed for current branch scope;
@@ -76,7 +96,7 @@ If a branch is skipped because local and remote have diverged:
   3. If divergence remains, use one possible script workflow
      (for example, copy fixes to a clean branch):
        copyfix SOURCE_BRANCH
-  4. Run mrgbranch again.
+  4. Run pull again.
 EOF
 }
 
@@ -234,7 +254,7 @@ is_repository_owner() {
 
 
 format_command_line() {
-  local formatted="mrgbranch"
+  local formatted="pull"
   local arg
 
   for arg in "${ORIGINAL_ARGS[@]}"; do
@@ -245,19 +265,19 @@ format_command_line() {
 }
 
 initialize_report_file() {
-  # No longer used; reports from mrgbranch are not generated
+  # No longer used; reports from pull are not generated
   # This function is kept for reference only
   return 0
 }
 
 cleanup_old_dry_run_reports() {
-  # No longer used; reports from mrgbranch are not generated
+  # No longer used; reports from pull are not generated
   # This function is kept for reference only
   return 0
 }
 
 persist_report_changes() {
-  # No longer used; reports from mrgbranch are not generated
+  # No longer used; reports from pull are not generated
   # This function is kept for reference only
   return 0
 }
@@ -329,7 +349,7 @@ continue_rebase_if_in_progress() {
         "$branch" \
         "rebase paused for manual conflict resolution" \
         "$conflict_files" \
-        "Resolve conflicts, stage files, rerun mrgbranch to continue. Use git rebase --abort to cancel."
+        "Resolve conflicts, stage files, rerun pull to continue. Use git rebase --abort to cancel."
       bt_warn "Skipped '$branch': rebase is paused for manual conflict resolution."
       return 0
     fi
@@ -345,7 +365,7 @@ continue_rebase_if_in_progress() {
           "$branch" \
           "rebase paused for manual conflict resolution" \
           "$conflict_files" \
-          "Resolve conflicts, stage files, rerun mrgbranch to continue. Use git rebase --abort to cancel."
+          "Resolve conflicts, stage files, rerun pull to continue. Use git rebase --abort to cancel."
         bt_warn "Skipped '$branch': rebase paused again due to conflicts."
         return 0
       fi
@@ -453,7 +473,7 @@ attempt_auto_resolve_divergence() {
       "$branch" \
       "dry-run only; auto-resolution not executed" \
       "" \
-      "Run mrgbranch without -d to attempt automatic rebase, or run git rebase origin/$branch and resolve conflicts manually."
+      "Run pull without -d to attempt automatic rebase, or run git rebase origin/$branch and resolve conflicts manually."
     bt_warn "Skipped '$branch': local and remote have diverged (dry run)"
     return 0
   fi
@@ -482,7 +502,7 @@ attempt_auto_resolve_divergence() {
     "$branch" \
     "rebase paused for manual conflict resolution" \
     "$conflict_files" \
-    "Resolve conflicts in listed files, stage them, and rerun mrgbranch to continue rebase. Use git rebase --abort to cancel."
+    "Resolve conflicts in listed files, stage them, and rerun pull to continue rebase. Use git rebase --abort to cancel."
   bt_warn "Skipped '$branch': diverged and requires manual conflict resolution."
 }
 
@@ -588,7 +608,7 @@ evaluate_branch() {
 }
 
 generate_report() {
-  # No longer used; reports from mrgbranch are not generated
+  # No longer used; reports from pull are not generated
   # This function is kept for reference only
   return 0
 }
@@ -712,7 +732,7 @@ if is_remote_connected; then
   if [[ "$DRY_RUN" == true ]]; then
     bt_info "Dry run: syncing commit reports with remote (no branch changes)"
   fi
-  bt_report_sync_bidirectional "$REPO_ROOT" "$BRANCH_REPORTS_DIR" "commit*.md" || true
+  bt_report_sync_bidirectional "$REPO_ROOT" "$BRANCH_REPORTS_DIR" "merge*.md" || true
 fi
 
 bt_info "Summary: synchronized=$SYNCED_COUNT, skipped=$SKIPPED_COUNT, total=$EVALUATED_COUNT"

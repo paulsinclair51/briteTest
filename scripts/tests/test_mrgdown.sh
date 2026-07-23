@@ -108,7 +108,7 @@ chmod +x "$WORK/scripts/bin/mrgdown"
   cat > .gitignore <<'GITIGNORE'
 reports/branch/branch-*.md
 reports/branch/commit-*.md
-reports/branch/mrgbranch-*.md
+reports/branch/pull-*.md
 GITIGNORE
   git add README.md scripts reports .gitignore
   git commit -m "seed repo" >/dev/null 2>&1

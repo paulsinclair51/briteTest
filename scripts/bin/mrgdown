@@ -66,12 +66,12 @@ Outputs:
   - Writes errors and diagnostics to stderr.
   - For a non-dry-run mrgup:
     - Writes an untracked report in the current branch to:
-          <repo>/reports/branch/commit-<datetime>-<pid>.md
+          <repo>/reports/branch/merge-<datetime>-<pid>.md
     - The report is copied (untracked) to the remote current branch
       so both local and remote have the same reports for audit
       trail continuity.
   - A dry-run report is written (untracked) to the current branch to: 
-        <repo>/reports/branch/commit-d-<datetime>.md
+        <repo>/reports/branch/merge-d-<datetime>.md
   - Report files are made read-only after generation.
 
 Exit codes:
@@ -166,7 +166,7 @@ generate_merge_report() {
 
   enable_branch_reports_write_access
 
-  REPORT_FILE="$BRANCH_REPORTS_DIR/commit-${RUN_TS_FILE}-$$.md"
+  REPORT_FILE="$BRANCH_REPORTS_DIR/merge-${RUN_TS_FILE}-$$.md"
 
   cat > "$REPORT_FILE" <<EOF
 # Commit Report ${RUN_TS_DISPLAY}
@@ -510,7 +510,7 @@ if [[ "$FORCE" == false ]]; then
     MERGE_COMMIT_HASH="$(git rev-parse --short HEAD 2>/dev/null || true)"
     generate_merge_report "$PARENT_BRANCH" "$MERGE_MESSAGE" "$MERGE_COMMIT_HASH" "$commits_to_merge"
     if git remote get-url origin >/dev/null 2>&1; then
-      bt_report_copy_to_remote "$REPO_ROOT" "$BRANCH_REPORTS_DIR" "commit*.md" || true
+      bt_report_copy_to_remote "$REPO_ROOT" "$BRANCH_REPORTS_DIR" "merge*.md" || true
     fi
     bt_warn "Push skipped - merge committed locally"
     if [[ -n "$REPORT_FILE" ]]; then
@@ -531,7 +531,7 @@ DID_PUSH_REMOTE=true
 MERGE_COMMIT_HASH="$(git rev-parse --short HEAD 2>/dev/null || true)"
 generate_merge_report "$PARENT_BRANCH" "$MERGE_MESSAGE" "$MERGE_COMMIT_HASH" "$commits_to_merge"
 if git remote get-url origin >/dev/null 2>&1; then
-  bt_report_copy_to_remote "$REPO_ROOT" "$BRANCH_REPORTS_DIR" "commit*.md" || true
+  bt_report_copy_to_remote "$REPO_ROOT" "$BRANCH_REPORTS_DIR" "merge*.md" || true
 fi
 
 bt_success "Pushed merge commit"

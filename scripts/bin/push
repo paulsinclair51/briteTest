@@ -1,0 +1,235 @@
+#!/usr/bin/env bash
+
+# push - Push local branch commits to remote.
+#
+# See usage below for details, or run: push -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  push [OPTIONS]
+  push {-h | --help}
+
+Push commits on the current local branch to its remote counterpart.
+
+Before pushing:
+  - The current branch must have no untracked or uncommitted changes.
+  - If there are changes, use the commit or undo workflow first.
+  - The local branch must be ahead of the remote branch. If local and
+    remote have diverged, run pull to synchronize first.
+
+Protected branches (cannot run push):
+  - main
+  - v<M>.<m>.<p> version branches created from main.
+
+Allowed branches (can use push):
+  - Unprotected branches with a corresponding remote branch.
+
+Options:
+  -d                Dry-run. Validates preconditions and reports what
+                    would be pushed, but does not push.
+  -f                Force. Skip confirmation prompt before pushing.
+  -h                Output this help to stdout and exit (other options
+                    and arguments are ignored).
+  --help            Output this help to stdout and exit (other options
+                    and arguments are ignored).
+  -v                Show detailed push information.
+
+Example: Push local commits to remote.
+  push
+
+Example: Push without confirmation prompt.
+  push -f
+
+Example: Preview what would be pushed (dry run).
+  push -d
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+
+Exit codes:
+  0   Success.
+  1   Argument or validation error.
+  2   Remote disconnected or branch not found on remote.
+  3   Push failed.
+  4   Branch is protected (cannot push via push).
+EOF
+}
+
+# High-Level Flow:
+# - Validates that the working tree is clean and the local branch is ahead
+#   of its remote counterpart.
+# - Pushes local commits to the remote branch.
+# - Reports push outcomes and required follow-up actions.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ORIGINAL_ARGS=("$@")
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_REMOTE_ERROR=2
+readonly EXIT_PUSH_FAILED=3
+readonly EXIT_PROTECTED=4
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "$message. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
+ensure_trailing_period() {
+  local message="$1"
+
+  if [[ -z "$message" ]]; then
+    printf '.'
+    return 0
+  fi
+
+  if [[ "$message" == *"." ]]; then
+    printf '%s' "$message"
+  else
+    printf '%s.' "$message"
+  fi
+}
+
+bt_info() {
+  echo "$(ensure_trailing_period "$1")"
+}
+
+bt_success() {
+  echo "$(ensure_trailing_period "$1")"
+}
+
+bt_warn() {
+  echo "$(ensure_trailing_period "$1")"
+}
+
+bt_error_exit() {
+  local code="$1"
+  local message="$2"
+
+  echo "Error: $(ensure_trailing_period "$message")" >&2
+  exit "$code"
+}
+
+# Default options
+DRY_RUN=false
+FORCE=false
+VERBOSE=false
+
+# Parse options and arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -d)
+      DRY_RUN=true
+      shift
+      ;;
+    -f | --force)
+      FORCE=true
+      shift
+      ;;
+    -v | --verbose)
+      VERBOSE=true
+      shift
+      ;;
+    -*)
+      usage_error "Unknown option: $1"
+      ;;
+    *)
+      usage_error "Unknown argument: $1"
+      ;;
+  esac
+done
+
+# Get current branch
+CURRENT_BRANCH=$(bt_get_current_branch || \
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" "Failed to determine current branch")
+bt_info "Current branch: $CURRENT_BRANCH"
+
+# Check if branch is protected
+if bt_is_protected_branch "$CURRENT_BRANCH"; then
+  bt_error_exit "$EXIT_PROTECTED" \
+    "Cannot push protected branch '$CURRENT_BRANCH' via push. Use the standard release workflow."
+fi
+
+# Require clean working tree
+if bt_is_worktree_dirty; then
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+    "Current branch has uncommitted or untracked changes. Commit or undo them before running push"
+fi
+
+# Verify remote is reachable
+if ! git remote get-url origin >/dev/null 2>&1; then
+  bt_error_exit "$EXIT_REMOTE_ERROR" "No remote 'origin' configured"
+fi
+
+bt_info "Fetching remote state..."
+if ! git fetch origin "$CURRENT_BRANCH" >/dev/null 2>&1; then
+  bt_error_exit "$EXIT_REMOTE_ERROR" \
+    "Failed to fetch remote branch '$CURRENT_BRANCH'. Ensure the remote branch exists"
+fi
+
+# Count commits local is ahead of remote
+COMMITS_AHEAD=$(git rev-list --count "origin/$CURRENT_BRANCH..HEAD" 2>/dev/null || echo "0")
+
+if [[ "$COMMITS_AHEAD" == "0" ]]; then
+  bt_success "Nothing to push: local branch is already up to date with remote."
+  exit 0
+fi
+
+# Detect divergence (remote has commits local does not)
+COMMITS_BEHIND=$(git rev-list --count "HEAD..origin/$CURRENT_BRANCH" 2>/dev/null || echo "0")
+if [[ "$COMMITS_BEHIND" != "0" ]]; then
+  bt_error_exit "$EXIT_REMOTE_ERROR" \
+    "Local and remote branches have diverged ($COMMITS_AHEAD ahead, $COMMITS_BEHIND behind). Run pull to synchronize first"
+fi
+
+bt_info "Commits to push: $COMMITS_AHEAD"
+
+if [[ "$VERBOSE" == true ]]; then
+  bt_info "Commits that will be pushed:"
+  git log --oneline "origin/$CURRENT_BRANCH..HEAD" | sed 's/^/  /'
+fi
+
+if [[ "$DRY_RUN" == true ]]; then
+  bt_success "Dry run: $COMMITS_AHEAD commit(s) would be pushed to remote '$CURRENT_BRANCH'."
+  exit 0
+fi
+
+# Confirm before pushing
+if [[ "$FORCE" == false ]]; then
+  echo -n "Push $COMMITS_AHEAD commit(s) to remote '$CURRENT_BRANCH'? (y/n): "
+  read -r response
+  if [[ ! "$response" =~ ^[Yy]$ ]]; then
+    bt_warn "Push cancelled."
+    exit 0
+  fi
+fi
+
+# Push
+bt_info "Pushing to remote '$CURRENT_BRANCH'..."
+if ! GIT_BYPASS_HOOKS=true git push origin "$CURRENT_BRANCH" 2>&1; then
+  bt_error_exit "$EXIT_PUSH_FAILED" "Failed to push branch '$CURRENT_BRANCH' to remote"
+fi
+
+bt_success "Pushed $COMMITS_AHEAD commit(s) to remote '$CURRENT_BRANCH'."
+exit 0

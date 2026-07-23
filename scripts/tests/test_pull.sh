@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# test_mrgbranch.sh - smoke tests for scripts/bin/mrgbranch
+# test_pull.sh - smoke tests for scripts/bin/pull
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,7 +11,7 @@ export LC_ALL=C
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-MRGBRANCH_SRC="$REPO_ROOT/scripts/bin/mrgbranch"
+MRGBRANCH_SRC="$REPO_ROOT/scripts/bin/pull"
 COMMON_HELPER_SRC="$REPO_ROOT/scripts/helpers/common.sh"
 GIT_HELPER_SRC="$REPO_ROOT/scripts/helpers/git_helpers.sh"
 HISTORY_HELPER_SRC="$REPO_ROOT/scripts/helpers/history_log.sh"
@@ -46,7 +46,7 @@ assert_contains() {
 
 latest_report() {
   local repo_root="$1"
-  ls -1t "$repo_root"/reports/branch/mrgbranch-*.md 2>/dev/null | head -n1
+  ls -1t "$repo_root"/reports/branch/pull-*.md 2>/dev/null | head -n1
 }
 
 for dep in bash git grep mktemp; do
@@ -77,13 +77,13 @@ git clone "$ORIGIN" "$WORK" >/dev/null 2>&1
 git clone "$ORIGIN" "$PEER" >/dev/null 2>&1
 
 mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/reports/branch"
-cp "$MRGBRANCH_SRC" "$WORK/scripts/bin/mrgbranch"
+cp "$MRGBRANCH_SRC" "$WORK/scripts/bin/pull"
 cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
 cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
 cp "$HISTORY_HELPER_SRC" "$WORK/scripts/helpers/history_log.sh"
 cp "$REPORT_HELPER_SRC" "$WORK/scripts/helpers/report_helpers.sh"
 cp "$REPORT_SYNC_HELPER_SRC" "$WORK/scripts/helpers/report_sync.sh"
-chmod +x "$WORK/scripts/bin/mrgbranch"
+chmod +x "$WORK/scripts/bin/pull"
 
 (
   cd "$WORK"
@@ -94,7 +94,7 @@ chmod +x "$WORK/scripts/bin/mrgbranch"
   mkdir -p reports/branch
   cat > .gitignore <<'GITIGNORE'
 reports/branch/branch-*.md
-reports/branch/mrgbranch-*.md
+reports/branch/pull-*.md
 reports/branch/commit-*.md
 GITIGNORE
   git add README.md scripts reports .gitignore
@@ -116,13 +116,13 @@ GITIGNORE
 )
 
 # 1) Help output
-rc=$(run_capture "$TMPDIR/help.out" bash "$WORK/scripts/bin/mrgbranch" -h)
-[[ "$rc" -eq 0 ]] || fail "mrgbranch -h should exit 0"
+rc=$(run_capture "$TMPDIR/help.out" bash "$WORK/scripts/bin/pull" -h)
+[[ "$rc" -eq 0 ]] || fail "pull -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
 pass "help output"
 
 # 2) Positional branch argument should be rejected
-rc=$(run_capture "$TMPDIR/arg-reject.out" bash -lc "cd '$WORK' && bash ./scripts/bin/mrgbranch dev/current-v1.0.0")
+rc=$(run_capture "$TMPDIR/arg-reject.out" bash -lc "cd '$WORK' && bash ./scripts/bin/pull dev/current-v1.0.0")
 [[ "$rc" -eq 1 ]] || fail "positional branch argument should exit 1 (got $rc)"
 assert_contains "Unexpected argument: dev/current-v1.0.0" "$TMPDIR/arg-reject.out"
 pass "positional argument rejected"
@@ -144,7 +144,7 @@ pass "positional argument rejected"
   git add local-current.txt
   git commit -m "local current update" >/dev/null 2>&1
 )
-rc=$(run_capture "$TMPDIR/diverge-safe.out" bash -lc "cd '$WORK' && bash ./scripts/bin/mrgbranch")
+rc=$(run_capture "$TMPDIR/diverge-safe.out" bash -lc "cd '$WORK' && bash ./scripts/bin/pull")
 [[ "$rc" -eq 0 ]] || fail "safe divergence should auto-resolve (got $rc)"
 assert_contains "auto-resolved divergence" "$TMPDIR/diverge-safe.out"
 [[ -f "$WORK/local-current.txt" ]] || fail "expected local-current.txt after auto-resolution"
@@ -179,7 +179,7 @@ pass "safe divergence auto-resolution"
   git add conflict.txt
   git commit -m "local conflict edit" >/dev/null 2>&1
 )
-rc=$(run_capture "$TMPDIR/diverge-conflict.out" bash -lc "cd '$WORK' && bash ./scripts/bin/mrgbranch")
+rc=$(run_capture "$TMPDIR/diverge-conflict.out" bash -lc "cd '$WORK' && bash ./scripts/bin/pull")
 [[ "$rc" -eq 4 ]] || fail "conflicting divergence should require manual resolution (got $rc)"
 assert_contains "requires manual conflict resolution" "$TMPDIR/diverge-conflict.out"
 [[ -d "$WORK/.git/rebase-merge" || -d "$WORK/.git/rebase-apply" ]] || fail "expected rebase to remain in progress"
@@ -191,7 +191,7 @@ pass "conflicting divergence pauses for manual resolution"
   printf 'peer\nlocal\n' > conflict.txt
   git add conflict.txt
 )
-rc=$(run_capture "$TMPDIR/rebase-rerun.out" bash -lc "cd '$WORK' && bash ./scripts/bin/mrgbranch")
+rc=$(run_capture "$TMPDIR/rebase-rerun.out" bash -lc "cd '$WORK' && bash ./scripts/bin/pull")
 [[ "$rc" -eq 0 ]] || fail "rerun after manual conflict resolution should complete sync (got $rc)"
 assert_contains "Completed in-progress rebase" "$TMPDIR/rebase-rerun.out"
 [[ ! -d "$WORK/.git/rebase-merge" && ! -d "$WORK/.git/rebase-apply" ]] || fail "expected rebase to be completed"
@@ -205,7 +205,7 @@ pass "rerun completes paused rebase"
   git checkout dev/current-v1.0.0 >/dev/null 2>&1
   echo "dirty" >> README.md
 )
-rc=$(run_capture "$TMPDIR/dirty-current.out" bash -lc "cd '$WORK' && bash ./scripts/bin/mrgbranch")
+rc=$(run_capture "$TMPDIR/dirty-current.out" bash -lc "cd '$WORK' && bash ./scripts/bin/pull")
 [[ "$rc" -eq 4 ]] || fail "dirty current branch should result in no-sync exit 4 (got $rc)"
 assert_contains "current branch 'dev/current-v1.0.0' has uncommitted or untracked changes" "$TMPDIR/dirty-current.out"
 pass "dirty current branch gate"
@@ -218,9 +218,9 @@ pass "dirty current branch gate"
   git clean -fd >/dev/null 2>&1
   git checkout -b local-only-current >/dev/null 2>&1
 )
-rc=$(run_capture "$TMPDIR/no-remote-gate.out" bash -lc "cd '$WORK' && bash ./scripts/bin/mrgbranch")
+rc=$(run_capture "$TMPDIR/no-remote-gate.out" bash -lc "cd '$WORK' && bash ./scripts/bin/pull")
 [[ "$rc" -eq 4 ]] || fail "current branch without remote should result in no-sync exit 4 (got $rc)"
 assert_contains "current branch 'local-only-current' has no corresponding remote branch" "$TMPDIR/no-remote-gate.out"
 pass "current branch remote gate"
 
-echo "All mrgbranch smoke tests passed."
+echo "All pull smoke tests passed."

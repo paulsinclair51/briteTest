@@ -394,7 +394,7 @@ not be any untracked or uncommitted changes for the local branch
 
 ```bash
 scripts/bin/chcurrent BRANCH
-scripts/bin/mrgremote
+scripts/bin/push
 ```
 
 BRANCH is the contributor branch or targeted branch to merge.
@@ -403,8 +403,8 @@ If no unsresolved conflicts, then done.
 
 Otherwise, resolve conflicts (see merge remote report) and then repeat
 above. Iterate this workflow until there are no more conflicts (in most
-cases, conflicts are automatically resolved in one execution of mrgremote
-or two executions of mrgremote if there unresolved conflicts).
+cases, conflicts are automatically resolved in one execution of push
+or two executions of push if there unresolved conflicts).
 </details>
 
 <details>
@@ -644,7 +644,7 @@ If identity cannot be resolved, role checks fail by design.
 - Create feature branches from main/version branches
 - Create commits and sign them
 - Submit pull requests for review
-- Run contributor-tier scripts (`mkbranch`, `commit`, `copyfix`, `mrgbranch`, etc.)
+- Run contributor-tier scripts (`mkbranch`, `commit`, `copyfix`, `pull`, etc.)
 - Cherry-pick fixes between branches
 - Access all scripts/code for reading
 

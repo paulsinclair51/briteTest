@@ -68,7 +68,7 @@ For contribution policies, branching rules, and workflows, see
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.5. [lsbranch](#115-lsbranch)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.6. [lsbranchlog](#116-lsbranchlog)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.7. [mkbranch](#117-mkbranch)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. [mrgbranch](#118-mrgbranch)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. [pull](#118-pull)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.9. [mrgdown](#119-mrgdown)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.10. [mrgup](#1110-mrgup)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.11. [retarget](#1111-retarget)<br>
@@ -281,16 +281,16 @@ mkbranch -r BRANCH [PARENTBRANCH]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. mrgbranch</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. pull</summary>
 
-#### 1.1.8. mrgbranch
+#### 1.1.8. pull
 
 **Purpose:** Fetch and pull latest changes from remote into local branch.
 
 **Usage:**
 
 ```bash
-mrgbranch [BRANCHNAME]
+pull [BRANCHNAME]
 ```
 </details>
 
@@ -1123,7 +1123,7 @@ mkbranch          - Create new feature branches from parent
 mkclone           - Clone the repository
 commit            - Create and sign commits with optional push (-p)
 copyfix           - Cherry-pick fix commits between branches
-mrgbranch         - Sync with remote repository
+pull         - Sync with remote repository
 mrgdown           - Sync down from main branch
 undo              - Undo uncommitted changes
 lsbranchlog       - Check branch history

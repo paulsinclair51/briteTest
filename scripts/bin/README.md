@@ -55,8 +55,9 @@ See `<repo>/README.md` for an introduction to briteTest.
 - **release**: Create and publish releases.
 - **rmbranch**: Remove local and/or remote branches.
 - **mrgdown**: Merge parent branch into current branch.
-- **mrgbranch**: Fetch and pull latest changes from remote into
+- **pull**: Fetch and pull latest changes from remote into
   local branch
+- **push**: Push local branch commits to remote.
 - **override**: Repository owner only. Toggle unrestricted mode for this
    local clone (`override on` / `override off`) for direct hook-enforced
    repository actions. Does not disable script-level role/policy checks.

@@ -111,12 +111,12 @@ Outputs:
   - Writes errors and diagnostics to stderr.
   - For a non-dry-run mrgup:
     - Writes an untracked report to the current and parent branches to:
-          <repo>/reports/branch/commit-<datetime>-<pid>.md
+          <repo>/reports/branch/merge-<datetime>-<pid>.md
     - The report is copied (untracked) to the remote current and parent
       branch so both local and remote have the same reports for audit
       trail continuity.
   - A dry-run report is written (untracked) to the current branch to: 
-        <repo>/reports/branch/commit-d-<datetime>.md
+        <repo>/reports/branch/merge-d-<datetime>.md
   - Report files are made read-only after generation.
 
 Exit codes:

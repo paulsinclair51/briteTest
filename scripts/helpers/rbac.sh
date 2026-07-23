@@ -9,7 +9,7 @@
 #          Roles are hierarchical: Approver > Reviewer > Contributor
 #
 # Note: Command-name mappings were updated to renamed scripts (mrgup,
-# mrgdown, mrgbranch, review). End-to-end RBAC enforcement integration
+# mrgdown, pull, review). End-to-end RBAC enforcement integration
 # requires a separate full review and is intentionally deferred.
 #
 # Role Hierarchy:
@@ -40,7 +40,8 @@ readonly CONTRIBUTOR_SCRIPTS=(
   "rmclone"            # Remove local clone safely
   "commit"           # Create commits
   "copyfix"            # Cherry-pick fixes between branches
-  "mrgbranch"       # Sync with remote
+  "pull"       # Sync with remote
+  "push"              # Push local commits to remote
   "mrgdown"           # Sync current branch with parent branch
   "undo"             # Undo changes
   "lsbranchlog"   # Check branch history
