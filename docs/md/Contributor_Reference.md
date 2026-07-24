@@ -1170,19 +1170,18 @@ mrgup
 [ERROR] This operation requires Approver role
 ```
 
-#### Protected Script Override
+#### Protected Operations and Overrides
 
-Approver-only scripts require explicit override confirmation:
+Role checks are enforced by script-level policy gates and shared role helpers.
+Current enforcement patterns include:
 
-```bash
-SCRIPT_OVERRIDE_CONFIRMED=true mrgup
-SCRIPT_OVERRIDE_CONFIRMED=true release v1.0.0
-SCRIPT_OVERRIDE_CONFIRMED=true fixrepo
-```
+- Approver checks for protected merge/release paths (for example in `mrgup`).
+- Contributor-role checks for branch mutation operations (for example in `rmbranch`).
+- Repository-owner override controls where supported (for example `-o`,
+  and local override mode via `override on/off`).
 
-Without override flag, execution fails by design as a safety control.
-Role checks are evaluated first; override confirmation does not grant
-non-approver users additional access.
+Role checks are evaluated before operation-specific controls. Override options
+do not grant non-owner/non-approver users additional access.
 </details>
 
 <details>
@@ -1190,15 +1189,20 @@ non-approver users additional access.
 
 ### 3.2. Protected Script Rule
 
-Approver-only scripts require explicit override confirmation:
+Protected operations must pass role-gate checks, and some commands add
+operation-specific approval controls.
+
+Use script help for exact current behavior:
 
 ```bash
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mrgup
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/release v1.0.0
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepo
+mrgup -h
+release -h
+fixrepo -h
+rmbranch -h
 ```
 
-If override confirmation is missing, execution must fail by design.
+Repository owner override controls are explicit and local to the invoking
+command/clone; they are not a general permission bypass.
 </details>
 </details>
 

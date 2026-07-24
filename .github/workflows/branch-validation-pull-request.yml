@@ -88,9 +88,13 @@ name: Validate Branch Names on Pull Request
 # used by GitHub Actions.
 #-----------------------------------------------------------------------------
 
-# Set workflow to run on pull request events.
+# Set workflow to run automatically on pull request events,
+# while still allowing manual runs for troubleshooting.
 
 on:
+  pull_request:
+    branches:
+      - '**'
   workflow_dispatch:
 
 permissions:

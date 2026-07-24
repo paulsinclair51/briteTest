@@ -250,8 +250,7 @@ unset GIT_BYPASS_HOOKS
 
 ## Documentation
 
-- **Setup Guide:** [`docs/SETUP_FIRST_CLONE.md`](../../docs/SETUP_FIRST_CLONE.md)
+- **Setup and onboarding:** [`docs/md/Contributor_Guide.md`](../../docs/md/Contributor_Guide.md)
 - **Contributing:** [`docs/md/Contributor_Guide.md`](../../docs/md/Contributor_Guide.md)
 - **Contributor Reference:** [`docs/md/Contributor_Reference.md`](../../docs/md/Contributor_Reference.md)
 - **Hook Details:** [`.githooks/README.md`](./.githooks/README.md)
-- **Implementation Plan:** [`docs/IMPLEMENTATION_PLAN_GIT_HOOKS.md`](../../docs/IMPLEMENTATION_PLAN_GIT_HOOKS.md)

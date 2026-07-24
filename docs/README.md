@@ -15,9 +15,6 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 - **README.md**: This directory guide.
 
-- **IMPLEMENTATION_VERIFICATION_PLAN.md**: Consolidated verification and
-  planning tracker for temporary top-level `docs/*.md` documents.
-
 ## Subdirectories
 
 - **branding/**: Monograms, logos, and document logos as `*.svg` files and `*.png*`

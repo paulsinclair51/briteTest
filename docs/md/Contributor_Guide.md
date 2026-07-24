@@ -42,7 +42,8 @@ on enhancing and maintaining briteTest.
 
 For detailed script reference information, see the [Contributor_Reference.md](./Contributor_Reference.md).
 
-For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md).
+SCM architecture status, workflow coverage, and current remediation priorities
+are integrated into Section 3 of this guide.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
@@ -51,6 +52,9 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
+| v1.0.3 | 2026-07-24 | Integrated workflow architecture and validation extension guidance from retired legacy artifact. | Paul Sinclair |
+| v1.0.2 | 2026-07-24 | Removed SCM review artifact dependency after canonical integration cleanup. | Paul Sinclair |
+| v1.0.1 | 2026-07-24 | Integrated SCM review status and workflow inventory into canonical contributor guidance. | Paul Sinclair |
 | v1.0.0 | 2026-07-09 | Initial verison. | Paul Sinclair |
 </details><br>
 </details>
@@ -70,6 +74,9 @@ For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md
    3.2. [Primary Prevention Layer](#32-primary-prevention-layer)<br>
    3.3. [Secondary Audit Layer](#33-secondary-audit-layer)<br>
    3.4. [Handling Validation Failures](#34-handling-validation-failures)<br>
+  3.5. [Operational Status and Priorities](#35-operational-status-and-priorities)<br>
+  3.6. [Workflow Architecture Principles](#36-workflow-architecture-principles)<br>
+  3.7. [Adding a New Validation Workflow](#37-adding-a-new-validation-workflow)<br>
 
 4. [Branch Management](#4-branch-management)<br>
    4.1. [Creating Branches](#41-creating-branches)<br>
@@ -235,8 +242,8 @@ Repository owner role model:
 
 ## 3. Validation Workflows
 
-15 automated GitHub Actions workflows are provided for defense-in-depth
-validation across all git operations.
+This repository currently uses 21 workflow files overall, including 18
+validation workflows, for defense-in-depth checks across git operations.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Workflow Summary Dashboard</summary>
@@ -245,6 +252,7 @@ validation across all git operations.
 
 | Workflow | Purpose | Trigger | When Blocks |
 |----------|---------|---------|------------|
+| branch-name-validation.yml | Validates branch naming conventions | PR events | Invalid branch name |
 | branch-validation-pull-request.yml | Validates branch relationships, naming, roles | PR events | Invalid merge path |
 | branch-validation-merge.yml | Post-merge compliance audit logging | Push to protected | Audit trail only |
 | branch-validation-commit-message.yml | Enforces conventional commit format | PR events | Invalid format |
@@ -259,6 +267,8 @@ validation across all git operations.
 | branch-validation-workflow.yml | Validates GitHub workflow syntax | PR modifying workflows | Invalid syntax |
 | branch-validation-license-headers.yml | Ensures MIT license headers | PR events | Missing headers |
 | branch-validation-code-quality.yml | Runs linting and format checks | PR events | Formatting issues |
+| branch-validation-push.yml | Push-event compliance logging | Push events | Audit trail only |
+| branch-validation-delete.yml | Branch delete-event compliance logging | Delete events | Audit trail only |
 | branch-validation-tags.yml | Validates tag naming conventions | Tag creation | Invalid tag format |
 </details>
 
@@ -268,6 +278,8 @@ validation across all git operations.
 ### 3.2. Primary Prevention Layer
 
 These workflows run **BEFORE merge up** to prevent problems:
+
+**Current prevention coverage:** 11 workflows
 
 PASS: **Valid commits:** Allowed to proceed
 BLOCKED: **Invalid commits:** PR blocked until fixed
@@ -286,6 +298,8 @@ BLOCKED: **Invalid commits:** PR blocked until fixed
 ### 3.3. Secondary Audit Layer
 
 These workflows run **AFTER merge up** for compliance logging:
+
+**Current audit coverage:** 7 workflows
 
 **Purpose:** Audit trail, monitoring, compliance
 **Note:** Cannot prevent already-merged up changes, but logs violations
@@ -308,6 +322,69 @@ These workflows run **AFTER merge up** for compliance logging:
 2. **Fix locally** - Make the required changes
 3. **Re-push** - GitHub automatically re-runs validations
 4. **Verify passing** - Green checkmark on PR before requesting review
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.5. Operational Status and Priorities</summary>
+
+### 3.5. Operational Status and Priorities
+
+Current SCM state is operationally strong: branch policy, role enforcement,
+and hook-based local protections are implemented and active.
+
+Active priorities from the latest SCM review and plan verification are:
+
+1. Resolve documentation/style conformance backlog tracked by `ckstyle`.
+2. Maintain strict no-root-docs enforcement in `docs/` (README-only at top
+  level).
+3. Keep long-lived policy and process guidance in `docs/md/` and retire
+  temporary top-level review artifacts after sign-off.
+
+Use this guide as the canonical contributor source of truth; treat top-level
+review artifacts as temporary analysis context.
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.6. Workflow Architecture Principles</summary>
+
+### 3.6. Workflow Architecture Principles
+
+The workflow system follows a defense-in-depth architecture:
+
+- **Prevention layer:** pull-request workflows block invalid changes before
+  merge.
+- **Audit layer:** push/delete/tag workflows record compliance events after
+  protected-branch operations.
+
+Design principles used for workflow maintenance:
+
+1. Keep workflow files focused on orchestration and event wiring.
+2. Keep reusable validation logic in helper scripts under `scripts/helpers/`.
+3. Fail fast on validation errors and provide actionable messages.
+4. Minimize duplicate git calls and reuse computed results where practical.
+5. Preserve clear ownership boundaries between policy checks, role checks, and
+   reporting.
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.7. Adding a New Validation Workflow</summary>
+
+### 3.7. Adding a New Validation Workflow
+
+Recommended implementation sequence:
+
+1. Add or extend validation logic in `scripts/helpers/validation-helpers.sh`
+   when behavior is reusable.
+2. Create a focused workflow in `.github/workflows/` using existing workflow
+   naming conventions.
+3. Source shared helpers (`common-utils.sh`, `validation-helpers.sh`) from the
+   workflow run step.
+4. Ensure explicit pass/fail output and non-zero exit on violation.
+5. Add the workflow to protected-branch required checks where applicable.
+6. Validate on a branch, then merge through the normal PR process.
+
+Use `Contributor_Reference.md` section 7 for architecture-level details and
+examples when implementing or extending workflow checks.
 </details>
 </details>
 
@@ -686,7 +763,10 @@ If identity cannot be resolved, role checks fail by design.
 - Modify repository configuration (with override)
 
 **Requirements:**
-- Protected scripts require explicit `SCRIPT_OVERRIDE_CONFIRMED=true` confirmation
+- Protected operations are role-gated and enforced by script-level checks
+  using contributor-role identity resolution (for example via `ckrole.sh`).
+- Some scripts support explicit repository-owner override controls (for
+  example `-o` or `override on/off`) as documented in each script's usage.
 - Must follow audit trail and approval controls
 - Responsible for release integrity and repository governance
 
@@ -1306,7 +1386,7 @@ If you clone manually instead of using `mkclone`:
   - Fill in title and description
   - Submit
 - [ ] **Wait for validation**
-  - GitHub runs 15+ workflows automatically
+  - GitHub runs 18 validation workflows automatically
   - All should pass with green checkmarks
   - If any fail, fix locally and re-push
 - [ ] **Request review**
@@ -1359,7 +1439,7 @@ rmbranch mywork/feature
 
 - **This guide:** `docs/md/Contributor_Guide.md`
 - **Script reference:** `docs/md/Contributor_Reference.md`
-- **SCM deep dive:** `docs/SCM_REVIEW.md`
+- **Implementation tracking (historical):** `obsolete/TODO.md`
 - **Issue:** Open an issue on GitHub
 - **Question:** Start a discussion on GitHub Discussions
 </details>
@@ -1371,7 +1451,7 @@ rmbranch mywork/feature
 ## Related Documents
 
 - [Contributor_Reference.md](./Contributor_Reference.md) - Script reference and tools
-- [SCM_REVIEW.md](../SCM_REVIEW.md) - Detailed SCM system analysis
+- [TODO.md](../../obsolete/TODO.md) - Forward plan for remaining required and optional work
 - [README.md](../../README.md) - Project overview
 </details>
 

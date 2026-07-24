@@ -3,7 +3,7 @@
 # setupclone - Make all scripts in /scripts/bin/ executable, add to PATH,
 #              and configure Git hooks using core.hooksPath.
 #
-# See usage below for details, or run: bash /scripts/bin/setupclone -h
+# See usage below for details, or run: bash scripts/bin/setupclone -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -12,8 +12,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  bash /scripts/bin/setupclone
-  bash /scripts/bin/setupclone {-h | --help}
+  bash scripts/bin/setupclone
+  bash scripts/bin/setupclone {-h | --help}
 
 Make all scripts in /scripts/bin/ executable, add to PATH, and configure Git hooks.
 
@@ -41,10 +41,10 @@ Options:
 
 Examples:
   # Setup clone environment
-  bash /scripts/bin/setupclone
+  bash scripts/bin/setupclone
 
   # Show help
-  bash /scripts/bin/setupclone -h
+  bash scripts/bin/setupclone -h
 
 
 Outputs:
