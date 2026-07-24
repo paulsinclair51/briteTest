@@ -1,9 +1,14 @@
 # `<repo>/reports/guidelines/`
 
-Directory for guideline/style/wording conformance reports.
+Directory containing rebrand and style report files.
 
-Examples:
-- `ckstyle-<datetime>.md` from `scripts/bin/ckstyle`
+# Files
+- `style-<datetime>.md` from `scripts/bin/ckstyle`
+
 - `rebrand[-dry-run]-<datetime>.md` from `scripts/bin/rebrand`
 
-Reserved for future guideline report outputs (for example, `replacetext` if report generation is added).
+- `replace[-dry-run]-<datetime>.md` from `scripts/bin/rebrand`
+
+## Subdirectories
+
+None.

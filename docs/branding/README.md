@@ -10,16 +10,18 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **`*.png`**: generated `.png` files corresponding to branding SVG assets.
+- **`*.png`**: generated `.png` for corresponding SVG branding asset files
+  in this directory.
 
-- **`<doctitle>.svg`**: monogram, brand name, and doctitle (for a document in
-  `docs`) with transparent background.
+- **`<doctitle>.png`**: monogram, brand name, and doctitle (for a document in
+  `<repo>/docs/md`) with transparent background.
 
 - **`Logo_with_BrandName.svg`**: monogram and brand name with transparent
   background.
 
 - **`Logo_with_Tagline.svg`**: monogram, brand name, and tagline
-  "Catch it before it breaks." with transparent background.
+  "Catch it before it breaks." with transparent background. Used also as
+  SVG template for creating `<doctitle>.png` files.
 
 - **`Monogram.svg`**: Monogram-only `bT` with canary accent perched on T in a
   rounded-square.
@@ -41,12 +43,13 @@ the `Logo_with_Brandname.png` generated from `Logo_with_BrandName.svg`.
 
 ## Generation
 
-Use `../../scripts/bin/genpngs` to regenerate the PNG exports from the SVG sources.
+Use `../../scripts/bin/genpngs` to regenerate the PNG (PNG file is only
+overwritten if it differs).
 
 Source-of-truth policy:
 
 - `*.svg` files are the authoritative source for branding artwork.
-- `*.png` files are generated artifacts converted from the SVG files.
+- `*.png` files are generated artifacts converted from SVG files.
 - Do not edit PNG files directly; edit the corresponding SVG file and
   regenerate PNGs.
 

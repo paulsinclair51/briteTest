@@ -21,4 +21,4 @@ optionally manually removed if leftover after an unsuccessful build.
 
 ## Subdirectories
 
-- None.
+None.

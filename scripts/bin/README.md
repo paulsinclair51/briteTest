@@ -69,7 +69,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Subdirectories
 
-- None.
+None.
 
 ## Getting Started
 

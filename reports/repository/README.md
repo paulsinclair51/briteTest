@@ -1,8 +1,18 @@
 # `<repo>/reports/repository/`
 
-Directory for repository/fork/clone report files.
+Directory for clone, fork, and repository report files.
 
-Examples:
+
+## Files
+
+- `clone-<datetime>.md` from `scripts/bin/fixrepo`
+
+- `fork-<datetime>.md` from `scripts/bin/fixrepo`
+
 - `repository-<datetime>.md` from `scripts/bin/fixrepo`
 
-Reserved for future reports from clone/fork lifecycle scripts.
+- **README.md**: This directory guide.
+
+## Subdirectories
+
+None.

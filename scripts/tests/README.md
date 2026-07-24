@@ -68,7 +68,7 @@ and high-signal output contracts.
 
 ## Subdirectories
 
-- None.
+None.
 
 ## Running Tests
 
