@@ -1853,10 +1853,10 @@ done
 if [[ $TOTAL_ISSUES -gt 0 ]]; then
   echo "Validation found $TOTAL_ISSUES issue(s) across" \
     "${#ISSUE_FILES[@]} file(s)."
-  echo "$(display_repo_path "$REPORT_FILE") created."
+  echo "See $(display_repo_path "$REPORT_FILE") for details."
   exit "$EXIT_VALIDATION_FAILED"
 fi
 
 echo "INFO: all selected validations passed."
-echo "$(display_repo_path "$REPORT_FILE") created."
+echo "See $(display_repo_path "$REPORT_FILE") for details."
 exit "$EXIT_SUCCESS"
