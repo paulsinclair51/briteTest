@@ -1,4 +1,4 @@
-![briteTest Release v1.0.0](/docs/branding/Release-v1.0.0.png)
+![briteTest Release v1.0.0](/docs/branding/Release_v1.0.0.png)
 
 #### Version: v1.0.0
 

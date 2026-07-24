@@ -12,9 +12,9 @@ export LC_ALL=C
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 CKSTYLE_SRC="$REPO_ROOT/scripts/bin/ckstyle"
-RELEASE_DOC_SRC="$REPO_ROOT/docs/md/Release-v1.0.0.md"
-RELEASE_BANNER_SRC="$REPO_ROOT/docs/branding/Release-v1.0.0.svg"
-TEST_GUIDE_BANNER_SRC="$REPO_ROOT/docs/branding/Test_Guide.svg"
+RELEASE_DOC_SRC="$REPO_ROOT/docs/md/Release_v1.0.0.md"
+TEST_GUIDE_DOC_SRC="$REPO_ROOT/docs/md/Test_Guide.md"
+RELEASE_BANNER_TEMPLATE_SRC="$REPO_ROOT/docs/branding/Logo_with_Tagline.svg"
 RUNNER_HEADER_SRC="$REPO_ROOT/include/runnerapi.h"
 RUNNER_SOURCE_SRC="$REPO_ROOT/src/runnerapi.c"
 
@@ -65,9 +65,10 @@ make_fixture_repo() {
     "$repo/include" "$repo/src"
 
   cp "$CKSTYLE_SRC" "$repo/scripts/bin/ckstyle"
-  cp "$RELEASE_DOC_SRC" "$repo/docs/md/Release-v1.0.0.md"
-  cp "$RELEASE_BANNER_SRC" "$repo/docs/branding/Release-v1.0.0.svg"
-  cp "$TEST_GUIDE_BANNER_SRC" "$repo/docs/branding/Test_Guide.svg"
+  cp "$RELEASE_DOC_SRC" "$repo/docs/md/Release_v1.0.0.md"
+  cp "$TEST_GUIDE_DOC_SRC" "$repo/docs/md/Test_Guide.md"
+  cp "$RELEASE_BANNER_TEMPLATE_SRC" "$repo/docs/branding/Release_v1.0.0.svg"
+  cp "$RELEASE_BANNER_TEMPLATE_SRC" "$repo/docs/branding/Test_Guide.svg"
   cp "$RUNNER_HEADER_SRC" "$repo/include/runnerapi.h"
   cp "$RUNNER_SOURCE_SRC" "$repo/src/runnerapi.c"
   chmod +x "$repo/scripts/bin/ckstyle"
@@ -77,8 +78,10 @@ make_fixture_repo() {
   git -C "$repo" config user.email "test@example.com"
   git -C "$repo" branch -M main
   git -C "$repo" add \
-    docs/md/Release-v1.0.0.md \
-    docs/branding/Release-v1.0.0.svg \
+    docs/md/Release_v1.0.0.md \
+    docs/md/Test_Guide.md \
+    docs/branding/Release_v1.0.0.svg \
+    docs/branding/Test_Guide.svg \
     include/runnerapi.h \
     src/runnerapi.c
   git -C "$repo" commit -q -m "seed ckstyle fixture"
@@ -92,8 +95,8 @@ done
 
 [[ -f "$CKSTYLE_SRC" ]] || fail "missing script: $CKSTYLE_SRC"
 [[ -f "$RELEASE_DOC_SRC" ]] || fail "missing fixture source: $RELEASE_DOC_SRC"
-[[ -f "$RELEASE_BANNER_SRC" ]] || fail "missing fixture source: $RELEASE_BANNER_SRC"
-[[ -f "$TEST_GUIDE_BANNER_SRC" ]] || fail "missing fixture source: $TEST_GUIDE_BANNER_SRC"
+[[ -f "$TEST_GUIDE_DOC_SRC" ]] || fail "missing fixture source: $TEST_GUIDE_DOC_SRC"
+[[ -f "$RELEASE_BANNER_TEMPLATE_SRC" ]] || fail "missing fixture source: $RELEASE_BANNER_TEMPLATE_SRC"
 [[ -f "$RUNNER_HEADER_SRC" ]] || fail "missing fixture source: $RUNNER_HEADER_SRC"
 [[ -f "$RUNNER_SOURCE_SRC" ]] || fail "missing fixture source: $RUNNER_SOURCE_SRC"
 
@@ -130,7 +133,7 @@ assert_contains "No issues found." "$default_report"
 pass "default validation run"
 
 # 3) -v should emit verbose diagnostics to stderr.
-rc=$(run_capture "$TMPDIR/verbose.out" bash -lc "cd '$WORK' && bash ./scripts/bin/ckstyle -v docs/md/Release-v1.0.0.md include/runnerapi.h src/runnerapi.c")
+rc=$(run_capture "$TMPDIR/verbose.out" bash -lc "cd '$WORK' && bash ./scripts/bin/ckstyle -v docs/md/Release_v1.0.0.md include/runnerapi.h src/runnerapi.c")
 [[ "$rc" -eq 0 ]] || fail "ckstyle -v should exit 0 on clean selected files (got $rc)"
 assert_contains "VERBOSE: selected files:" "$TMPDIR/verbose.out"
 assert_contains "VERBOSE: running document checks" "$TMPDIR/verbose.out"
@@ -147,14 +150,14 @@ pass "long option rejection"
 rm -rf "$WORK/reports/guidelines"
 mkdir -p "$WORK/reports"
 printf 'blocked by test\n' > "$WORK/reports/guidelines"
-rc=$(run_capture "$TMPDIR/report-io.out" bash -lc "cd '$WORK' && bash ./scripts/bin/ckstyle -m docs/md/Release-v1.0.0.md")
+rc=$(run_capture "$TMPDIR/report-io.out" bash -lc "cd '$WORK' && bash ./scripts/bin/ckstyle -m docs/md/Release_v1.0.0.md")
 [[ "$rc" -eq 200 ]] || fail "ckstyle report I/O failure should exit 200 (got $rc)"
 assert_contains "unable to create report directory" "$TMPDIR/report-io.out"
 pass "report I/O failure"
 
 # 6) Bare filenames should select tracked files by basename.
 reset_report_dir "$WORK"
-rc=$(run_capture "$TMPDIR/basename.out" bash -lc "cd '$WORK' && bash ./scripts/bin/ckstyle Release-v1.0.0.md")
+rc=$(run_capture "$TMPDIR/basename.out" bash -lc "cd '$WORK' && bash ./scripts/bin/ckstyle Release_v1.0.0.md")
 [[ "$rc" -eq 0 ]] || fail "ckstyle basename selection should exit 0 (got $rc)"
 assert_contains "INFO: all selected validations passed." "$TMPDIR/basename.out"
 basename_report="$(latest_report "$WORK")"
@@ -174,8 +177,8 @@ pass "header basename selection"
 
 # 8) A modified doc fixture should fail validation with exit 2.
 sed -i 's/SPDX-License-Identifier: MIT/SPDX-License-Identifier: Apache-2.0/' \
-  "$WORK/docs/md/Release-v1.0.0.md"
-rc=$(run_capture "$TMPDIR/invalid-doc.out" bash -lc "cd '$WORK' && bash ./scripts/bin/ckstyle -m docs/md/Release-v1.0.0.md")
+  "$WORK/docs/md/Release_v1.0.0.md"
+rc=$(run_capture "$TMPDIR/invalid-doc.out" bash -lc "cd '$WORK' && bash ./scripts/bin/ckstyle -m docs/md/Release_v1.0.0.md")
 [[ "$rc" -eq 2 ]] || fail "ckstyle validation failure should exit 2 (got $rc)"
 assert_contains "Validation found" "$TMPDIR/invalid-doc.out"
 assert_contains "<repo>/reports/guidelines/ckstyle-" "$TMPDIR/invalid-doc.out"

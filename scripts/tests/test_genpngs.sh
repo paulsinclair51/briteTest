@@ -69,7 +69,7 @@ EOF
 # docs/md
 EOF
 
-  cat > "$repo/docs/md/Release-v1.0.0.md" <<'EOF'
+  cat > "$repo/docs/md/Release_v1.0.0.md" <<'EOF'
 # Release v1.0.0
 EOF
 
@@ -98,7 +98,7 @@ WORK="$(make_fixture_repo)"
 rc=$(run_capture "$TMPDIR/first.out" bash -lc "cd '$WORK' && bash ./scripts/bin/genpngs")
 [[ "$rc" -eq 0 ]] || fail "first genpngs run should exit 0 (got $rc)"
 assert_contains "new and 0 changed PNG files." "$TMPDIR/first.out"
-assert_file_exists "$WORK/docs/branding/Release-v1.0.0.png"
+assert_file_exists "$WORK/docs/branding/Release_v1.0.0.png"
 assert_file_exists "$WORK/docs/branding/Guide.png"
 assert_file_exists "$WORK/docs/branding/Monogram.png"
 pass "initial generation"
