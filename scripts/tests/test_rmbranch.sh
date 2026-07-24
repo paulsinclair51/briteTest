@@ -1,0 +1,228 @@
+#!/usr/bin/env bash
+
+# test_rmbranch.sh - smoke tests for scripts/bin/rmbranch
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+
+set -euo pipefail
+export LC_ALL=C
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+RMBRANCH_SRC="$REPO_ROOT/scripts/bin/rmbranch"
+COMMON_HELPER_SRC="$REPO_ROOT/scripts/helpers/common.sh"
+GIT_HELPER_SRC="$REPO_ROOT/scripts/helpers/git_helpers.sh"
+HISTORY_HELPER_SRC="$REPO_ROOT/scripts/helpers/history_log.sh"
+CKROLE_HELPER_SRC="$REPO_ROOT/scripts/helpers/ckrole.sh"
+
+pass() {
+  echo "PASS: $1"
+}
+
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
+
+run_capture() {
+  local outfile="$1"
+  shift
+  set +e
+  "$@" >"$outfile" 2>&1
+  local rc=$?
+  set -e
+  echo "$rc"
+}
+
+assert_contains() {
+  local text="$1"
+  local file="$2"
+  grep -Fq -- "$text" "$file" || fail "expected '$text' in $file"
+}
+
+for dep in bash git grep mktemp; do
+  command -v "$dep" >/dev/null 2>&1 || fail "missing required command: $dep"
+done
+
+[[ -f "$RMBRANCH_SRC" ]] || fail "missing script: $RMBRANCH_SRC"
+[[ -f "$COMMON_HELPER_SRC" ]] || fail "missing helper: $COMMON_HELPER_SRC"
+[[ -f "$GIT_HELPER_SRC" ]] || fail "missing helper: $GIT_HELPER_SRC"
+[[ -f "$HISTORY_HELPER_SRC" ]] || fail "missing helper: $HISTORY_HELPER_SRC"
+[[ -f "$CKROLE_HELPER_SRC" ]] || fail "missing helper: $CKROLE_HELPER_SRC"
+
+TMPDIR="$(mktemp -d)"
+cleanup() {
+  rm -rf "$TMPDIR"
+}
+trap cleanup EXIT
+
+ORIGIN="$TMPDIR/origin.git"
+WORK="$TMPDIR/work"
+
+git init --bare "$ORIGIN" >/dev/null 2>&1
+git clone "$ORIGIN" "$WORK" >/dev/null 2>&1
+
+mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/config"
+cp "$RMBRANCH_SRC" "$WORK/scripts/bin/rmbranch"
+cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
+cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
+cp "$HISTORY_HELPER_SRC" "$WORK/scripts/helpers/history_log.sh"
+cp "$CKROLE_HELPER_SRC" "$WORK/scripts/helpers/ckrole.sh"
+chmod +x "$WORK/scripts/bin/rmbranch"
+
+cat > "$WORK/config/contributors.md" <<'EOF'
+- testuser,C,test@example.com
+EOF
+
+(
+  cd "$WORK"
+  git config user.name "testuser"
+  git config user.email "test@example.com"
+
+  cat > README.md <<'EOF'
+# rmbranch fixture
+EOF
+
+  git add README.md scripts config
+  git commit -m "seed repo" >/dev/null 2>&1
+  git branch -M main
+  git push -u origin main >/dev/null 2>&1
+
+  # Create local+remote branch with intentionally non-conforming name.
+  git checkout -b "Bad.Branch_Name" >/dev/null 2>&1
+  echo "branch payload" > payload.txt
+  git add payload.txt
+  git commit -m "payload" >/dev/null 2>&1
+  git push -u origin "Bad.Branch_Name" >/dev/null 2>&1
+  git checkout main >/dev/null 2>&1
+
+  # Create remote-only branch for remote deletion tests.
+  git checkout -b "remote-only-delete" >/dev/null 2>&1
+  echo "remote only" > remote_only.txt
+  git add remote_only.txt
+  git commit -m "remote only payload" >/dev/null 2>&1
+  git push -u origin "remote-only-delete" >/dev/null 2>&1
+  git checkout main >/dev/null 2>&1
+  git branch -D "remote-only-delete" >/dev/null 2>&1
+)
+
+# 1) Help output
+rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./scripts/bin/rmbranch -h")
+[[ "$rc" -eq 0 ]] || fail "rmbranch -h should exit 0"
+assert_contains "Usage:" "$TMPDIR/help.out"
+pass "help output"
+
+# 2) Non-conforming branch names should still be removable.
+rc=$(run_capture "$TMPDIR/nonconforming.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/rmbranch -a -f 'Bad.Branch_Name'")
+[[ "$rc" -eq 0 ]] || fail "rmbranch should delete non-conforming branch names (got $rc)"
+if (cd "$WORK" && git show-ref --verify --quiet refs/heads/Bad.Branch_Name); then
+  fail "local Bad.Branch_Name should be deleted"
+fi
+if (cd "$WORK" && git ls-remote --heads origin Bad.Branch_Name | grep -q 'Bad.Branch_Name'); then
+  fail "remote Bad.Branch_Name should be deleted"
+fi
+pass "non-conforming branch deletion"
+
+# 3) History propagation soft-fail should not abort remote deletion.
+# logs/repository_history.md is intentionally absent in this fixture.
+rc=$(run_capture "$TMPDIR/history-soft-fail.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/rmbranch -r 'remote-only-delete'")
+[[ "$rc" -eq 0 ]] || fail "rmbranch -r should succeed when history propagation is unavailable (got $rc)"
+if (cd "$WORK" && git ls-remote --heads origin remote-only-delete | grep -q 'remote-only-delete'); then
+  fail "remote-only-delete should be deleted from origin"
+fi
+pass "history propagation soft-fail"
+
+# 4) Unauthorized user should be blocked.
+rc=$(run_capture "$TMPDIR/unauthorized.out" env GITHUB_ACTOR=outsider bash -lc "cd '$WORK' && bash ./scripts/bin/rmbranch -r 'main'")
+[[ "$rc" -eq 7 ]] || fail "unauthorized rmbranch call should exit 7 (got $rc)"
+assert_contains "is not authorized to run rmbranch" "$TMPDIR/unauthorized.out"
+pass "authorization enforcement"
+
+# 5) Protected remote branch delete should fail with exit 5.
+rc=$(run_capture "$TMPDIR/protected.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/rmbranch -r 'main'")
+[[ "$rc" -eq 5 ]] || fail "rmbranch -r main should exit 5 (got $rc)"
+assert_contains "is protected and cannot be removed" "$TMPDIR/protected.out"
+pass "protected remote branch guard"
+
+# 6) Local deletion should be blocked on dirty working tree.
+(
+  cd "$WORK"
+  git checkout -b "dirty-local-delete" >/dev/null 2>&1
+  echo "dirty target" > dirty_target.txt
+  git add dirty_target.txt
+  git commit -m "dirty target" >/dev/null 2>&1
+  git checkout main >/dev/null 2>&1
+)
+printf '\nlocal dirty marker\n' >> "$WORK/README.md"
+rc=$(run_capture "$TMPDIR/dirty-local.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/rmbranch -l 'dirty-local-delete'")
+[[ "$rc" -eq 8 ]] || fail "rmbranch -l should exit 8 when worktree is dirty (got $rc)"
+assert_contains "Working tree must be clean" "$TMPDIR/dirty-local.out"
+(
+  cd "$WORK"
+  git checkout -- README.md >/dev/null 2>&1
+)
+pass "dirty worktree local deletion block"
+
+REAL_GIT="$(command -v git)"
+FAKEBIN="$TMPDIR/fakebin"
+mkdir -p "$FAKEBIN"
+
+# 7) Fetch failures should return actionable diagnostics.
+cat > "$FAKEBIN/git" <<EOF
+#!/usr/bin/env bash
+if [[ "\$1" == "fetch" && "\${2:-}" == "origin" ]]; then
+  echo "simulated fetch failure" >&2
+  exit 1
+fi
+exec "$REAL_GIT" "\$@"
+EOF
+chmod +x "$FAKEBIN/git"
+
+# Ensure a remote branch exists for this run.
+(
+  cd "$WORK"
+  git checkout -b "fetch-fail-target" >/dev/null 2>&1
+  echo "fetch fail target" > fetch_target.txt
+  git add fetch_target.txt
+  git commit -m "fetch target" >/dev/null 2>&1
+  git push -u origin "fetch-fail-target" >/dev/null 2>&1
+  git checkout main >/dev/null 2>&1
+  git branch -D "fetch-fail-target" >/dev/null 2>&1
+)
+
+rc=$(run_capture "$TMPDIR/fetch-fail.out" env PATH="$FAKEBIN:$PATH" GITHUB_ACTOR=testuser bash -c "cd '$WORK' && bash ./scripts/bin/rmbranch -r 'fetch-fail-target'")
+[[ "$rc" -eq 2 ]] || fail "rmbranch should exit 2 on fetch failure (got $rc)"
+assert_contains "Failed to fetch from remote: simulated fetch failure" "$TMPDIR/fetch-fail.out"
+pass "fetch failure diagnostics"
+
+# 8) Remote delete failures should return actionable diagnostics.
+cat > "$FAKEBIN/git" <<EOF
+#!/usr/bin/env bash
+if [[ "\$1" == "push" && "\${2:-}" == "origin" && "\${3:-}" == "--delete" ]]; then
+  echo "simulated remote delete failure" >&2
+  exit 1
+fi
+exec "$REAL_GIT" "\$@"
+EOF
+chmod +x "$FAKEBIN/git"
+
+# Ensure target exists remotely.
+(
+  cd "$WORK"
+  git checkout -b "push-fail-target" >/dev/null 2>&1
+  echo "push fail target" > push_target.txt
+  git add push_target.txt
+  git commit -m "push target" >/dev/null 2>&1
+  git push -u origin "push-fail-target" >/dev/null 2>&1
+  git checkout main >/dev/null 2>&1
+  git branch -D "push-fail-target" >/dev/null 2>&1
+)
+
+rc=$(run_capture "$TMPDIR/push-fail.out" env PATH="$FAKEBIN:$PATH" GITHUB_ACTOR=testuser bash -c "cd '$WORK' && bash ./scripts/bin/rmbranch -r 'push-fail-target'")
+[[ "$rc" -eq 2 ]] || fail "rmbranch should exit 2 on remote delete failure (got $rc)"
+assert_contains "Failed to delete remote branch 'push-fail-target': simulated remote delete failure" "$TMPDIR/push-fail.out"
+pass "remote delete diagnostics"
+
+echo "All rmbranch smoke tests passed."

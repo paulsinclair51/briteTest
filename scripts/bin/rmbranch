@@ -119,10 +119,13 @@ EOF
 }
 
 # High-Level Flow:
-# - Deletes branches locally and optionally on remote with
-#   protected-branch safeguards.
-# - Validates branch existence, current-branch constraints, and deletion scope.
-# - Reports deletion results and skipped/protected targets.
+# 1) Parse flags and determine requested scope (local/remote/both).
+# 2) Validate repo context and contributor-or-higher authorization.
+# 3) Refresh remote refs for remote-involved operations.
+# 4) Resolve branch presence and enforce protected-branch policy.
+# 5) Enforce local safety preconditions (clean tree, no pending auto-stash).
+# 6) Execute local and/or remote deletion with actionable diagnostics.
+# 7) Write operation history and emit final status/exit code.
 
 set -euo pipefail
 
@@ -130,77 +133,73 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 _LOG_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 [[ "$_LOG_BRANCH" == "HEAD" ]] && _LOG_BRANCH="main"
+
 COMMON_HELPER="$SCRIPT_DIR/../helpers/common.sh"
 HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
+GIT_HELPER="$SCRIPT_DIR/../helpers/git_helpers.sh"
 CKROLE_HELPER="$SCRIPT_DIR/../helpers/ckrole.sh"
 
-# Shared helpers
-if [[ ! -f "$COMMON_HELPER" ]]; then
-  echo "Error: Required helper not found: $COMMON_HELPER" >&2
-  exit 2
-fi
-if [[ ! -f "$HISTORY_HELPER" ]]; then
-  _msg="Error: Required helper not found: $HISTORY_HELPER"
-  echo "$_msg" >&2
-  exit 2
-fi
-if [[ ! -f "$CKROLE_HELPER" ]]; then
-  _msg="Error: Required helper not found: $CKROLE_HELPER"
-  echo "$_msg" >&2
-  exit 2
-fi
+# Exit codes used by this script.
+E_ARGS=1
+E_GIT=2
+E_NOT_FOUND=3
+E_REMOTE_PROTECTED_SKIPPED=4
+E_REMOTE_PROTECTED=5
+E_UNMERGED=6
+E_UNAUTHORIZED=7
+E_LOCAL_BLOCKED=8
 
-# shellcheck source=helpers/common.sh
-if ! source "$COMMON_HELPER"; then
-  _msg="Error: Failed to load helper: $COMMON_HELPER"
-  echo "$_msg" >&2
-  exit 2
-fi
-# shellcheck source=helpers/history_log.sh
-if ! source "$HISTORY_HELPER"; then
-  _msg="Error: Failed to load helper: $HISTORY_HELPER"
-  echo "$_msg" >&2
-  exit 2
-fi
-# shellcheck source=helpers/validation-helpers.sh
-VALIDATION_HELPER="$SCRIPT_DIR/../helpers/validation-helpers.sh"
-if ! source "$VALIDATION_HELPER"; then
-  _msg="Error: Failed to load helper: $VALIDATION_HELPER"
-  echo "$_msg" >&2
-  exit 2
-fi
-GIT_HELPER="$SCRIPT_DIR/../helpers/git_helpers.sh"
-if [[ ! -f "$GIT_HELPER" ]]; then
-  echo "Error: Required helper not found: $GIT_HELPER" >&2
-  exit 2
-fi
-# shellcheck source=helpers/git_helpers.sh
-if ! source "$GIT_HELPER"; then
-  _msg="Error: Failed to load helper: $GIT_HELPER"
-  echo "$_msg" >&2
-  exit 2
-fi
-
-LOG_FILE="$REPO_ROOT/$(bt_branch_to_history_file "$_LOG_BRANCH")"
+# Operation state.
+MODE="both" # local, remote, both
+FORCE=false
+COMMENT=""
+INCLUDE_LOCAL_FLAG=false
+INCLUDE_REMOTE_FLAG=false
+REMOTE_PROTECTED_SKIPPED=false
+BRANCHNAME=""
+LOCAL_EXISTS=false
+REMOTE_EXISTS=false
+LOG_FILE=""
 
 usage_error() {
   local message="$1"
   usage
   echo >&2
   echo "$message. See usage above for details." >&2
-  exit 1
+  exit "$E_ARGS"
 }
 
-# Default options
-MODE="both"  # local, remote, or both
-FORCE=false
-COMMENT=""
-INCLUDE_LOCAL_FLAG=false
-INCLUDE_REMOTE_FLAG=false
-REMOTE_PROTECTED_SKIPPED=false
+require_file() {
+  local path="$1"
+  if [[ ! -f "$path" ]]; then
+    echo "Error: Required helper not found: $path" >&2
+    exit "$E_GIT"
+  fi
+}
 
-# Protected branch references for remote deletion checks
-PROTECTED_BRANCHES=("main")
+source_or_die() {
+  local path="$1"
+  if ! source "$path"; then
+    echo "Error: Failed to load helper: $path" >&2
+    exit "$E_GIT"
+  fi
+}
+
+initialize_helpers() {
+  require_file "$COMMON_HELPER"
+  require_file "$HISTORY_HELPER"
+  require_file "$GIT_HELPER"
+  require_file "$CKROLE_HELPER"
+
+  # shellcheck source=helpers/common.sh
+  source_or_die "$COMMON_HELPER"
+  # shellcheck source=helpers/history_log.sh
+  source_or_die "$HISTORY_HELPER"
+  # shellcheck source=helpers/git_helpers.sh
+  source_or_die "$GIT_HELPER"
+
+  LOG_FILE="$REPO_ROOT/$(bt_branch_to_history_file "$_LOG_BRANCH")"
+}
 
 append_log_entry() {
   local log_file="$1"
@@ -209,11 +208,9 @@ append_log_entry() {
   local message="$4"
   local comment="${5:-}"
 
-  # status/branchname retained for compatibility with
-  # existing callers.
+  # status/branchname retained for compatibility with existing callers.
   : "$status" "$branchname"
-  if ! bt_append_history_log "$log_file" "$message" \
-      "$comment"; then
+  if ! bt_append_history_log "$log_file" "$message" "$comment"; then
     echo "Warning: Failed to append history log: $log_file" >&2
   fi
 }
@@ -236,13 +233,11 @@ error_exit() {
   local comment="${4:-}"
 
   echo "Error: $message" >&2
-
   if [[ -n "$branchname" ]]; then
-    _log_msg="Branch \`$branchname\` deletion failed" 
-    log_operation "FAILED" "$branchname" \
-        "$_log_msg - $message" "$comment"
+    local log_msg
+    log_msg="Branch \`$branchname\` deletion failed"
+    log_operation "FAILED" "$branchname" "$log_msg - $message" "$comment"
   fi
-
   exit "$code"
 }
 
@@ -258,23 +253,6 @@ warn() {
   bt_warn "$1"
 }
 
-is_protected_branch() {
-  local branch="$1"
-  local protected
-  
-  for protected in "${PROTECTED_BRANCHES[@]}"; do
-    if [[ "$branch" == "$protected" ]]; then
-      return 0
-    fi
-  done
-  if [[ "$branch" =~ ^v([1-9][0-9]?)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$ ]]; then
-    return 0
-  fi
-  return 1
-}
-
-# Use exact ref lookups rather than generic revision parsing so branch-like
-# names that are invalid by local policy can still be removed when refs exist.
 local_branch_exists() {
   local branch="$1"
   git show-ref --verify --quiet "refs/heads/$branch"
@@ -294,281 +272,311 @@ find_branch_auto_stash_ref() {
     awk -F '\t' -v p="$prefix" 'index($2, p) { print $1; exit }'
 }
 
-# Parse options and arguments
-POSITIONAL_ARGS=()
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    -h | --help)
-      usage
-      exit 0
-      ;;
-    -l)
-      INCLUDE_LOCAL_FLAG=true
-      shift
-      ;;
-    -r)
-      INCLUDE_REMOTE_FLAG=true
-      shift
-      ;;
-    -a)
-      INCLUDE_LOCAL_FLAG=true
-      INCLUDE_REMOTE_FLAG=true
-      shift
-      ;;
-    -f)
-      FORCE=true
-      shift
-      ;;
-    -m | --message)
-      if [[ $# -lt 2 ]]; then
-        usage_error "Option -m requires a message argument" "" ""
-      fi
-      if [[ -n "$COMMENT" ]]; then
-      _msg="Cannot use both -m and -- for comment"
-      usage_error "$_msg" "" ""
-      fi
-      COMMENT="$2"
-      shift 2
-      ;;
-    --)
-      # Unix-style comment: everything after -- is the comment
-      shift
-      if [[ -n "$COMMENT" ]]; then
-        usage_error "Cannot use both -m and -- for comment" "" ""
-      fi
-      COMMENT="$*"
-      break
-      ;;
-    -*)
-      usage_error "Unknown option: $1" "" ""
-      ;;
-    *)
-      # Positional argument
-      POSITIONAL_ARGS+=("$1")
-      shift
-      ;;
+parse_args() {
+  local positional_args=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      -l)
+        INCLUDE_LOCAL_FLAG=true
+        shift
+        ;;
+      -r)
+        INCLUDE_REMOTE_FLAG=true
+        shift
+        ;;
+      -a)
+        INCLUDE_LOCAL_FLAG=true
+        INCLUDE_REMOTE_FLAG=true
+        shift
+        ;;
+      -f)
+        FORCE=true
+        shift
+        ;;
+      -m | --message)
+        if [[ $# -lt 2 ]]; then
+          usage_error "Option -m requires a message argument"
+        fi
+        if [[ -n "$COMMENT" ]]; then
+          usage_error "Cannot use both -m and -- for comment"
+        fi
+        COMMENT="$2"
+        shift 2
+        ;;
+      --)
+        shift
+        if [[ -n "$COMMENT" ]]; then
+          usage_error "Cannot use both -m and -- for comment"
+        fi
+        COMMENT="$*"
+        break
+        ;;
+      -*)
+        usage_error "Unknown option: $1"
+        ;;
+      *)
+        positional_args+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  if [[ "$INCLUDE_LOCAL_FLAG" == false && "$INCLUDE_REMOTE_FLAG" == false ]]; then
+    MODE="both"
+  elif [[ "$INCLUDE_LOCAL_FLAG" == true && "$INCLUDE_REMOTE_FLAG" == true ]]; then
+    MODE="both"
+  elif [[ "$INCLUDE_LOCAL_FLAG" == true ]]; then
+    MODE="local"
+  else
+    MODE="remote"
+  fi
+
+  set -- "${positional_args[@]}"
+  if [[ $# -ne 1 ]]; then
+    usage_error "Expected 1 argument (branchname), got $#"
+  fi
+
+  BRANCHNAME="$1"
+  if [[ -z "$BRANCHNAME" ]]; then
+    usage_error "Branch name cannot be empty"
+  fi
+}
+
+validate_runtime_context() {
+  cd "$REPO_ROOT"
+
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    error_exit "$E_GIT" "Repository root '$REPO_ROOT' is not a Git working tree" "$BRANCHNAME" "$COMMENT"
+  fi
+
+  if ! bash "$CKROLE_HELPER" contributor >/dev/null 2>&1; then
+    local actor_login
+    actor_login="$(bt_resolve_login_or_empty)"
+    if [[ -z "$actor_login" ]]; then
+      actor_login="<unknown>"
+    fi
+    error_exit "$E_UNAUTHORIZED" "User '$actor_login' is not authorized to run rmbranch (requires contributor role or higher)" "$BRANCHNAME" "$COMMENT"
+  fi
+
+  if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
+    if ! git remote get-url origin >/dev/null 2>&1; then
+      error_exit "$E_GIT" "Remote 'origin' is not configured" "$BRANCHNAME" "$COMMENT"
+    fi
+  fi
+}
+
+describe_operation() {
+  case "$MODE" in
+    local) info "Removing local branch '$BRANCHNAME'..." ;;
+    remote) info "Removing branch '$BRANCHNAME' from remote..." ;;
+    both) info "Removing branch '$BRANCHNAME' from local and remote..." ;;
   esac
-done
+}
 
-# Resolve deletion scope: if neither -l nor -r is provided, default to both.
-if [[ "$INCLUDE_LOCAL_FLAG" == false && "$INCLUDE_REMOTE_FLAG" == false ]]; then
-  INCLUDE_LOCAL=true
-  INCLUDE_REMOTE=true
-else
-  INCLUDE_LOCAL="$INCLUDE_LOCAL_FLAG"
-  INCLUDE_REMOTE="$INCLUDE_REMOTE_FLAG"
-fi
-
-if [[ "$INCLUDE_LOCAL" == true && "$INCLUDE_REMOTE" == true ]]; then
-  MODE="both"
-elif [[ "$INCLUDE_LOCAL" == true ]]; then
-  MODE="local"
-else
-  MODE="remote"
-fi
-
-# Restore positional arguments
-set -- "${POSITIONAL_ARGS[@]}"
-
-# Check that we have exactly 1 positional argument
-if [[ $# -ne 1 ]]; then
-  usage_error "Expected 1 argument (branchname), got $#" ""
-fi
-
-BRANCHNAME="$1"
-
-# Validate branch name
-if [[ -z "$BRANCHNAME" ]]; then
-  usage_error "Branch name cannot be empty" ""
-fi
-
-# Validate branch name conforms to naming conventions
-if ! validate_branch_name "$BRANCHNAME" "branch to delete"; then
-  usage_error "Branch does not conform to naming conventions" "$BRANCHNAME"
-fi
-
-# Change to repo root
-cd "$REPO_ROOT"
-
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  _msg="Repository root '$REPO_ROOT' is not a Git"
-  error_exit 2 "$_msg working tree" "$BRANCHNAME" \
-      "$COMMENT"
-fi
-
-# Require contributor role (or higher) for branch deletion operations.
-if ! bash "$CKROLE_HELPER" contributor >/dev/null 2>&1; then
-  ACTOR_LOGIN="$(bt_resolve_login_or_empty)"
-  if [[ -z "$ACTOR_LOGIN" ]]; then
-    ACTOR_LOGIN="<unknown>"
+sync_remote_state_if_needed() {
+  if [[ "$MODE" != "remote" && "$MODE" != "both" ]]; then
+    return 0
   fi
-  error_exit 7 "User '$ACTOR_LOGIN' is not authorized to run rmbranch (requires contributor role or higher)" "$BRANCHNAME" "$COMMENT"
-fi
 
-if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
-  if ! git remote get-url origin >/dev/null 2>&1; then
-    error_exit 2 "Remote 'origin' is not configured" "$BRANCHNAME" "$COMMENT"
-  fi
-fi
-
-# Determine operation description
-case "$MODE" in
-  local)
-    info "Removing local branch '$BRANCHNAME'..."
-    ;;
-  remote)
-    info "Removing branch '$BRANCHNAME' from remote..."
-    ;;
-  both)
-    info "Removing branch '$BRANCHNAME' from local and remote..."
-    ;;
-esac
-
-# Fetch latest refs from remote
-if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
   info "Fetching latest refs from remote..."
-  if ! git fetch origin >/dev/null 2>&1; then
-    error_exit 2 "Failed to fetch from remote" "$BRANCHNAME" "$COMMENT"
+
+  local fetch_err
+  if ! fetch_err=$(git fetch origin 2>&1); then
+    error_exit "$E_GIT" "Failed to fetch from remote: $fetch_err" "$BRANCHNAME" "$COMMENT"
   fi
-  
-  # Propagate repository history from remote if available
+
+  # Repository history propagation is best-effort. It should not block branch
+  # deletion when remote metadata is unavailable.
+  set +e
   bt_propagate_repository_history
-  case $? in
-    0) ;;
+  local propagate_rc=$?
+  set -e
+  case "$propagate_rc" in
     1) info "Updated repository history from remote" ;;
     *) ;;
   esac
-fi
+}
 
-# Check if branch exists (local or remote)
-LOCAL_EXISTS=false
-REMOTE_EXISTS=false
+refresh_branch_presence() {
+  LOCAL_EXISTS=false
+  REMOTE_EXISTS=false
 
-if local_branch_exists "$BRANCHNAME"; then
-  LOCAL_EXISTS=true
-fi
+  if local_branch_exists "$BRANCHNAME"; then
+    LOCAL_EXISTS=true
+  fi
+  if remote_branch_exists "$BRANCHNAME"; then
+    REMOTE_EXISTS=true
+  fi
+}
 
-if remote_branch_exists "$BRANCHNAME"; then
-  REMOTE_EXISTS=true
-fi
+apply_protected_branch_policy() {
+  if ! bt_is_protected_branch "$BRANCHNAME"; then
+    return 0
+  fi
 
-# Protected branches are never removed from remote. If user requested both,
-# degrade to local-only so local cleanup of protected artifacts is possible.
-if is_protected_branch "$BRANCHNAME"; then
   if [[ "$MODE" == "remote" ]]; then
-    error_exit 5 "Remote branch '$BRANCHNAME' is protected and cannot be removed" \
-      "$BRANCHNAME" "$COMMENT"
+    error_exit "$E_REMOTE_PROTECTED" "Remote branch '$BRANCHNAME' is protected and cannot be removed" "$BRANCHNAME" "$COMMENT"
   fi
 
   if [[ "$MODE" == "both" ]]; then
     if [[ "$LOCAL_EXISTS" == false && "$REMOTE_EXISTS" == true ]]; then
-      error_exit 5 "Remote branch '$BRANCHNAME' is protected and local branch '$BRANCHNAME' does not exist; nothing was removed" \
-        "$BRANCHNAME" "$COMMENT"
+      error_exit "$E_REMOTE_PROTECTED" "Remote branch '$BRANCHNAME' is protected and local branch '$BRANCHNAME' does not exist; nothing was removed" "$BRANCHNAME" "$COMMENT"
     fi
-
     warn "Branch '$BRANCHNAME' is protected; skipping remote deletion and continuing with local deletion only"
     if [[ "$REMOTE_EXISTS" == true ]]; then
       REMOTE_PROTECTED_SKIPPED=true
     fi
     MODE="local"
   fi
-fi
+}
 
-# Verify branch exists in the requested mode
-if [[ "$MODE" == "local" && "$LOCAL_EXISTS" == false ]]; then
-  _msg="Local branch '$BRANCHNAME' does not exist"
-  error_exit 3 "$_msg" "$BRANCHNAME" "$COMMENT"
-elif [[ "$MODE" == "remote" && "$REMOTE_EXISTS" == false ]]; then
-  _msg="Remote branch '$BRANCHNAME' does not exist"
-  error_exit 3 "$_msg" "$BRANCHNAME" "$COMMENT"
-elif [[ "$MODE" == "both" && "$LOCAL_EXISTS" == false && \
-    "$REMOTE_EXISTS" == false ]]; then
-  _msg="Branch '$BRANCHNAME' does not exist locally" 
-  error_exit 3 "$_msg or remotely" "$BRANCHNAME" \
-      "$COMMENT"
-fi
-
-# Additional preconditions for local deletion.
-if [[ "$MODE" == "local" || "$MODE" == "both" ]]; then
-  if [[ "$LOCAL_EXISTS" == true ]]; then
-    if bt_is_worktree_dirty; then
-      error_exit 8 "Working tree must be clean before deleting local branch '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
-    fi
-
-    BRANCH_AUTO_STASH_REF="$(find_branch_auto_stash_ref "$BRANCHNAME")"
-    if [[ -n "$BRANCH_AUTO_STASH_REF" ]]; then
-      error_exit 8 "Pending auto-stash '$BRANCH_AUTO_STASH_REF' exists for '$BRANCHNAME'; switch to '$BRANCHNAME' to recover it (or drop it explicitly) before deletion" "$BRANCHNAME" "$COMMENT"
-    fi
+ensure_requested_refs_exist() {
+  if [[ "$MODE" == "local" && "$LOCAL_EXISTS" == false ]]; then
+    error_exit "$E_NOT_FOUND" "Local branch '$BRANCHNAME' does not exist" "$BRANCHNAME" "$COMMENT"
   fi
-fi
 
-# Delete local branch if needed
-if [[ "$MODE" == "local" || "$MODE" == "both" ]]; then
-  if [[ "$LOCAL_EXISTS" == true ]]; then
-    info "Deleting local branch..."
-    
-    # Check if we're currently on the branch
-    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-    if [[ "$CURRENT_BRANCH" == "$BRANCHNAME" ]]; then
-      info "Switching away from '$BRANCHNAME' before deletion..."
-      if [[ "$BRANCHNAME" != "main" ]] && local_branch_exists "main"; then
-        if ! git switch main >/dev/null 2>&1; then
-          _msg="Failed to switch away from branch"
-          error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
-        fi
-      elif remote_branch_exists "main"; then
-        if ! git switch --detach "origin/main" >/dev/null 2>&1; then
-          _msg="Failed to switch away from branch"
-          error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
-        fi
-      else
-        _msg="Failed to switch away from branch"
-        error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
+  if [[ "$MODE" == "remote" && "$REMOTE_EXISTS" == false ]]; then
+    error_exit "$E_NOT_FOUND" "Remote branch '$BRANCHNAME' does not exist" "$BRANCHNAME" "$COMMENT"
+  fi
+
+  if [[ "$MODE" == "both" && "$LOCAL_EXISTS" == false && "$REMOTE_EXISTS" == false ]]; then
+    error_exit "$E_NOT_FOUND" "Branch '$BRANCHNAME' does not exist locally or remotely" "$BRANCHNAME" "$COMMENT"
+  fi
+}
+
+check_local_deletion_preconditions() {
+  if [[ "$MODE" != "local" && "$MODE" != "both" ]]; then
+    return 0
+  fi
+
+  if [[ "$LOCAL_EXISTS" != true ]]; then
+    return 0
+  fi
+
+  if bt_is_worktree_dirty; then
+    error_exit "$E_LOCAL_BLOCKED" "Working tree must be clean before deleting local branch '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
+  fi
+
+  # Do not allow deletion while a branch-specific auto-stash recovery marker is
+  # present, to avoid silently orphaning user recovery state.
+  local branch_auto_stash_ref
+  branch_auto_stash_ref="$(find_branch_auto_stash_ref "$BRANCHNAME")"
+  if [[ -n "$branch_auto_stash_ref" ]]; then
+    error_exit "$E_LOCAL_BLOCKED" "Pending auto-stash '$branch_auto_stash_ref' exists for '$BRANCHNAME'; switch to '$BRANCHNAME' to recover it (or drop it explicitly) before deletion" "$BRANCHNAME" "$COMMENT"
+  fi
+}
+
+switch_away_from_target_if_current() {
+  local current_branch
+  current_branch="$(git rev-parse --abbrev-ref HEAD)"
+  if [[ "$current_branch" != "$BRANCHNAME" ]]; then
+    return 0
+  fi
+
+  info "Switching away from '$BRANCHNAME' before deletion..."
+
+  local switch_err
+  if [[ "$BRANCHNAME" != "main" ]] && local_branch_exists "main"; then
+    if ! switch_err=$(git switch main 2>&1); then
+      error_exit "$E_GIT" "Failed to switch away from branch '$BRANCHNAME': $switch_err" "$BRANCHNAME" "$COMMENT"
+    fi
+    return 0
+  fi
+
+  if remote_branch_exists "main"; then
+    if ! switch_err=$(git switch --detach "origin/main" 2>&1); then
+      error_exit "$E_GIT" "Failed to switch away from branch '$BRANCHNAME': $switch_err" "$BRANCHNAME" "$COMMENT"
+    fi
+    return 0
+  fi
+
+  if ! switch_err=$(git switch --detach HEAD 2>&1); then
+    error_exit "$E_GIT" "Failed to switch away from branch '$BRANCHNAME': $switch_err" "$BRANCHNAME" "$COMMENT"
+  fi
+}
+
+delete_local_if_needed() {
+  if [[ "$MODE" != "local" && "$MODE" != "both" ]]; then
+    return 0
+  fi
+  if [[ "$LOCAL_EXISTS" != true ]]; then
+    return 0
+  fi
+
+  info "Deleting local branch..."
+  switch_away_from_target_if_current
+
+  local local_delete_err
+  if ! local_delete_err=$(git branch -d "$BRANCHNAME" 2>&1); then
+    if [[ "$FORCE" == true ]]; then
+      warn "Local branch has unmerged commits, forcing deletion..."
+      local force_delete_err
+      if ! force_delete_err=$(git branch -D "$BRANCHNAME" 2>&1); then
+        error_exit "$E_GIT" "Failed to delete local branch '$BRANCHNAME': $force_delete_err" "$BRANCHNAME" "$COMMENT"
       fi
-    fi
-    
-    if ! git branch -d "$BRANCHNAME" >/dev/null 2>&1; then
-      if [[ "$FORCE" == true ]]; then
-        _msg="Local branch has unmerged commits, forcing"
-        warn "$_msg deletion..."
-        if ! git branch -D "$BRANCHNAME" >/dev/null 2>&1; then
-          _msg="Failed to delete local branch"
-          error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" \
-              "$COMMENT"
-        fi
-      else
-        error_exit 6 "Local branch '$BRANCHNAME' has unmerged commits; use -f option to force removal" "$BRANCHNAME" "$COMMENT"
+    else
+      if grep -qi "not fully merged" <<< "$local_delete_err"; then
+        error_exit "$E_UNMERGED" "Local branch '$BRANCHNAME' has unmerged commits; use -f option to force removal" "$BRANCHNAME" "$COMMENT"
       fi
+      error_exit "$E_GIT" "Failed to delete local branch '$BRANCHNAME': $local_delete_err" "$BRANCHNAME" "$COMMENT"
     fi
-    
-    success "Local branch '$BRANCHNAME' deleted"
   fi
-fi
 
-# Delete remote branch if needed
-if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
-  if [[ "$REMOTE_EXISTS" == true ]]; then
-    info "Deleting remote branch..."
-    if ! GIT_BYPASS_HOOKS=true git push origin --delete "$BRANCHNAME" >/dev/null 2>&1; then
-    _msg="Failed to delete remote branch" 
-    error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" \
-        "$COMMENT"
-    fi
-    
-    success "Remote branch '$BRANCHNAME' deleted"
+  success "Local branch '$BRANCHNAME' deleted"
+}
+
+delete_remote_if_needed() {
+  if [[ "$MODE" != "remote" && "$MODE" != "both" ]]; then
+    return 0
   fi
-fi
+  if [[ "$REMOTE_EXISTS" != true ]]; then
+    return 0
+  fi
 
-# Log successful operation
-_log_msg="Branch \`$BRANCHNAME\` deleted."
-log_operation "SUCCESS" "$BRANCHNAME" "$_log_msg" \
-    "$COMMENT"
+  info "Deleting remote branch..."
 
-if [[ "$REMOTE_PROTECTED_SKIPPED" == true ]]; then
-  warn "Local branch '$BRANCHNAME' deleted, but remote branch is protected and was not deleted"
-  exit 4
-fi
+  local push_delete_err
+  if ! push_delete_err=$(GIT_BYPASS_HOOKS=true git push origin --delete "$BRANCHNAME" 2>&1); then
+    error_exit "$E_GIT" "Failed to delete remote branch '$BRANCHNAME': $push_delete_err" "$BRANCHNAME" "$COMMENT"
+  fi
 
-success "Branch '$BRANCHNAME' successfully removed"
+  success "Remote branch '$BRANCHNAME' deleted"
+}
 
+finalize_success() {
+  local log_msg
+  log_msg="Branch \`$BRANCHNAME\` deleted."
+  log_operation "SUCCESS" "$BRANCHNAME" "$log_msg" "$COMMENT"
+
+  if [[ "$REMOTE_PROTECTED_SKIPPED" == true ]]; then
+    warn "Local branch '$BRANCHNAME' deleted, but remote branch is protected and was not deleted"
+    exit "$E_REMOTE_PROTECTED_SKIPPED"
+  fi
+
+  success "Branch '$BRANCHNAME' successfully removed"
+}
+
+main() {
+  initialize_helpers
+  parse_args "$@"
+  # Intentionally no naming-policy validation: rmbranch is used for ref cleanup
+  # of legacy/non-conforming branch names as well.
+  validate_runtime_context
+  describe_operation
+  sync_remote_state_if_needed
+  refresh_branch_presence
+  apply_protected_branch_policy
+  ensure_requested_refs_exist
+  check_local_deletion_preconditions
+  delete_local_if_needed
+  delete_remote_if_needed
+  finalize_success
+}
+
+main "$@"
 exit 0

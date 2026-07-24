@@ -50,6 +50,11 @@ and high-signal output contracts.
   rejection, and report I/O failure handling.
   Included automatically by `test_scripts.sh`.
 
+- **test_rmbranch.sh**: Smoke tests for `<repo>/scripts/bin/rmbranch` covering
+  non-conforming branch deletion support, non-fatal history propagation,
+  and actionable fetch/remote-delete error diagnostics.
+  Included automatically by `test_scripts.sh`.
+
 - **test_genpngs.sh**: Smoke tests for `<repo>/scripts/bin/genpngs` covering
   document-derived PNG generation and second-pass repeatability (must report
   0 new and 0 changed PNG files).
@@ -92,6 +97,7 @@ bash ./scripts/tests/test_mrgdown.sh
 bash ./scripts/tests/test_commit.sh
 bash ./scripts/tests/test_report_helpers.sh
 bash ./scripts/tests/test_ckstyle.sh
+bash ./scripts/tests/test_rmbranch.sh
 bash ./scripts/tests/test_genpngs.sh
 bash ./scripts/tests/test_scripts.sh
 ```
