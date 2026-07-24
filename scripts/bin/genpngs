@@ -233,7 +233,7 @@ generate_pngs() {
     base="$(basename "$md_file" .md)"
     doc_title="${base//_/ }"
     dst="$branding_dir/$base.png"
-    temp_svg="$(mktemp --tmpdir genpngs-"${base}"-XXXXXX.svg)"
+    temp_svg="$branding_dir/.genpngs-${base}.svg"
     temp_rel="${temp_svg#"${repo_root}"/}"
 
     cp "$doc_svg_template" "$temp_svg"
