@@ -1625,6 +1625,17 @@ resolve_main_baseline_ref() {
   printf '%s\n' ""
 }
 
+display_repo_path() {
+  local path="$1"
+
+  if [[ "$path" == "$repo_root"/* ]]; then
+    printf '<repo>/%s\n' "${path#"$repo_root"/}"
+    return
+  fi
+
+  printf '%s\n' "$path"
+}
+
 run_versions_checks() {
   local expected_major expected_major_minor
   local file semver current_branch branch_type baseline_ref
@@ -1840,12 +1851,12 @@ for old_report in "$GUIDELINES_REPORTS_DIR"/ckstyle-*.md; do
 done
 
 if [[ $TOTAL_ISSUES -gt 0 ]]; then
-  echo "ERROR: validation failed with $TOTAL_ISSUES issue(s) across" \
-    "${#ISSUE_FILES[@]} file(s)." >&2
-  echo "INFO: report written to $REPORT_FILE" >&2
+  echo "Validation found $TOTAL_ISSUES issue(s) across" \
+    "${#ISSUE_FILES[@]} file(s)."
+  echo "$(display_repo_path "$REPORT_FILE") created."
   exit "$EXIT_VALIDATION_FAILED"
 fi
 
 echo "INFO: all selected validations passed."
-echo "INFO: report written to $REPORT_FILE"
+echo "$(display_repo_path "$REPORT_FILE") created."
 exit "$EXIT_SUCCESS"
