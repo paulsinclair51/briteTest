@@ -45,6 +45,11 @@ and high-signal output contracts.
   local-only fallback when push is unavailable.
   Included automatically by `test_scripts.sh`.
 
+- **test_ckstyle.sh**: Smoke tests for `<repo>/scripts/bin/ckstyle` covering
+  help output, clean-report generation, verbose diagnostics, long-option
+  rejection, and report I/O failure handling.
+  Included automatically by `test_scripts.sh`.
+
 - **test_scripts.sh**: Script-test orchestrator that runs all `test_*.sh`
   scripts in this directory (except itself), with stop-on-failure and
   continue-on-failure modes.
@@ -66,6 +71,7 @@ make test-fixrepo
 make test-mkbranch
 make test-mrgdown
 make test-report-helpers
+make test-ckstyle
 make test-all-scripts
 ```
 
@@ -79,5 +85,6 @@ bash ./scripts/tests/test_mkbranch.sh
 bash ./scripts/tests/test_mrgdown.sh
 bash ./scripts/tests/test_commit.sh
 bash ./scripts/tests/test_report_helpers.sh
+bash ./scripts/tests/test_ckstyle.sh
 bash ./scripts/tests/test_scripts.sh
 ```

@@ -68,11 +68,11 @@ serves as the canonical release note reference for v1.0.0.
    3.1. [Framework Limitations](#31-framework-limitations)<br>
    3.2. [Execution Constraints](#32-execution-constraints)<br>
    3.3. [Platform Limitations](#33-platform-limitations)<br>
-4. [4. Obtaining v1.0.0](#4-obtaining-v100)<br>
+4. [Obtaining v1.0.0](#4-obtaining-v100)<br>
    4.1. [GitHub Repository](#41-github-repository)<br>
    4.2. [Releases Page](#42-releases-page)<br>
    4.3. [Git Tags and Branches](#43-git-tags-and-branches)<br>
-5. [5. Verification and Testing](#5-verification-and-testing)<br>
+5. [Verification and Testing](#5-verification-and-testing)<br>
    5.1. [Self-Test Suite](#51-self-test-suite)<br>
    5.2. [CI Validation](#52-ci-validation)<br>
    5.3. [Documentation Verification](#53-documentation-verification)
@@ -86,7 +86,6 @@ serves as the canonical release note reference for v1.0.0.
 v1.0.0 marks the inaugural stable release of briteTest. This release represents
 the completion of the core framework, comprehensive documentation infrastructure
 , and full CI/CD pipeline setup. briteTest is now production-ready for testing automation workflows.
-
 </details>
 
 <details>
@@ -102,7 +101,6 @@ the completion of the core framework, comprehensive documentation infrastructure
 - Full test execution engine with support for multiple test types
 - Comprehensive assertion library and test utilities
 - Runner system for distributed test execution
-
 </details>
 
 <details>
@@ -115,7 +113,6 @@ the completion of the core framework, comprehensive documentation infrastructure
 - Internal guides and references for framework architecture
 - Glossary and terminology reference
 - Documentation standardization and metadata system
-
 </details>
 
 <details>
@@ -127,7 +124,6 @@ the completion of the core framework, comprehensive documentation infrastructure
 - Shell script checking and code quality workflows
 - Git hooks support and pre-commit infrastructure
 - Release automation and versioning system
-
 </details>
 
 <details>
@@ -137,9 +133,7 @@ the completion of the core framework, comprehensive documentation infrastructure
 - Cross-platform compatibility (Linux, macOS, Windows)
 - Multiple runner environments and configurations
 - Shell script compatibility across platforms
-
 </details>
-
 </details>
 
 <details>
@@ -154,7 +148,6 @@ the completion of the core framework, comprehensive documentation infrastructure
 - Test execution is currently limited to synchronous workflows
 - Parallel test execution requires explicit runner configuration
 - Some advanced mocking features are in beta
-
 </details>
 
 <details>
@@ -164,7 +157,6 @@ the completion of the core framework, comprehensive documentation infrastructure
 - Maximum test suite size recommendations: 500 tests per suite
 - Memory constraints for large dataset testing
 - Timeout configurations may need tuning for slower environments
-
 </details>
 
 <details>
@@ -174,9 +166,7 @@ the completion of the core framework, comprehensive documentation infrastructure
 - Windows runner requires WSL2 for full compatibility
 - macOS runners require Xcode command-line tools
 - Some shell features may differ between bash versions
-
 </details>
-
 </details>
 
 <details>
@@ -192,7 +182,6 @@ Access the v1.0.0 release directly from the main repository:
 ```
 https://github.com/paulsinclair51/briteTest
 ```
-
 </details>
 
 <details>
@@ -203,7 +192,6 @@ Navigate to the releases page for binary downloads and release notes:
 ```
 https://github.com/paulsinclair51/briteTest/releases/tag/v1.0.0
 ```
-
 </details>
 
 <details>
@@ -220,9 +208,7 @@ Or use the development release branch:
 ```bash
 git checkout dev/release-v1.0.0
 ```
-
 </details>
-
 </details>
 
 <details>
@@ -243,7 +229,6 @@ This validates:
 - Framework core functionality
 - Test runner operations
 - Basic assertion library functions
-
 </details>
 
 <details>
@@ -255,7 +240,6 @@ All code is validated through GitHub Actions:
 - Shell script validation
 - Documentation verification
 - Cross-platform compatibility checks
-
 </details>
 
 <details>
@@ -274,7 +258,5 @@ Verify that all reference guides exist:
 - Glossary_Reference.md
 - Runner_Guide.md
 - Test_Guide.md
-
 </details>
-
 </details>

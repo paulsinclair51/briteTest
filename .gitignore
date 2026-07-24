@@ -70,3 +70,6 @@ reports/branch/branch-*.md
 
 # Local-only commit reports
 reports/branch/commit-*.md
+
+# Local-only ckstyle reports
+reports/guidelines/ckstyle-*.md
