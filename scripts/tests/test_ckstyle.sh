@@ -14,7 +14,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 CKSTYLE_SRC="$REPO_ROOT/scripts/bin/ckstyle"
 RELEASE_DOC_SRC="$REPO_ROOT/docs/md/Release_v1.0.0.md"
 TEST_GUIDE_DOC_SRC="$REPO_ROOT/docs/md/Test_Guide.md"
-RELEASE_BANNER_TEMPLATE_SRC="$REPO_ROOT/docs/branding/Logo_with_Tagline.svg"
+LOGO_PNG_SRC="$REPO_ROOT/docs/branding/Logo_with_Tagline.png"
 RUNNER_HEADER_SRC="$REPO_ROOT/include/runnerapi.h"
 RUNNER_SOURCE_SRC="$REPO_ROOT/src/runnerapi.c"
 
@@ -67,8 +67,8 @@ make_fixture_repo() {
   cp "$CKSTYLE_SRC" "$repo/scripts/bin/ckstyle"
   cp "$RELEASE_DOC_SRC" "$repo/docs/md/Release_v1.0.0.md"
   cp "$TEST_GUIDE_DOC_SRC" "$repo/docs/md/Test_Guide.md"
-  cp "$RELEASE_BANNER_TEMPLATE_SRC" "$repo/docs/branding/Release_v1.0.0.svg"
-  cp "$RELEASE_BANNER_TEMPLATE_SRC" "$repo/docs/branding/Test_Guide.svg"
+  cp "$LOGO_PNG_SRC" "$repo/docs/branding/Release_v1.0.0.png"
+  cp "$LOGO_PNG_SRC" "$repo/docs/branding/Test_Guide.png"
   cp "$RUNNER_HEADER_SRC" "$repo/include/runnerapi.h"
   cp "$RUNNER_SOURCE_SRC" "$repo/src/runnerapi.c"
   chmod +x "$repo/scripts/bin/ckstyle"
@@ -80,8 +80,8 @@ make_fixture_repo() {
   git -C "$repo" add \
     docs/md/Release_v1.0.0.md \
     docs/md/Test_Guide.md \
-    docs/branding/Release_v1.0.0.svg \
-    docs/branding/Test_Guide.svg \
+    docs/branding/Release_v1.0.0.png \
+    docs/branding/Test_Guide.png \
     include/runnerapi.h \
     src/runnerapi.c
   git -C "$repo" commit -q -m "seed ckstyle fixture"
@@ -96,7 +96,7 @@ done
 [[ -f "$CKSTYLE_SRC" ]] || fail "missing script: $CKSTYLE_SRC"
 [[ -f "$RELEASE_DOC_SRC" ]] || fail "missing fixture source: $RELEASE_DOC_SRC"
 [[ -f "$TEST_GUIDE_DOC_SRC" ]] || fail "missing fixture source: $TEST_GUIDE_DOC_SRC"
-[[ -f "$RELEASE_BANNER_TEMPLATE_SRC" ]] || fail "missing fixture source: $RELEASE_BANNER_TEMPLATE_SRC"
+[[ -f "$LOGO_PNG_SRC" ]] || fail "missing fixture source: $LOGO_PNG_SRC"
 [[ -f "$RUNNER_HEADER_SRC" ]] || fail "missing fixture source: $RUNNER_HEADER_SRC"
 [[ -f "$RUNNER_SOURCE_SRC" ]] || fail "missing fixture source: $RUNNER_SOURCE_SRC"
 
@@ -175,7 +175,18 @@ header_basename_report="$(latest_report "$WORK")"
 assert_contains "- Selected files: 1" "$header_basename_report"
 pass "header basename selection"
 
-# 8) A modified doc fixture should fail validation with exit 2.
+# 8) Missing corresponding branding PNG should fail validation with exit 2.
+rm -f "$WORK/docs/branding/Release_v1.0.0.png"
+rc=$(run_capture "$TMPDIR/missing-png.out" bash -lc "cd '$WORK' && bash ./scripts/bin/ckstyle -m docs/md/Release_v1.0.0.md")
+[[ "$rc" -eq 2 ]] || fail "ckstyle missing-PNG failure should exit 2 (got $rc)"
+assert_contains "Validation found" "$TMPDIR/missing-png.out"
+missing_png_report="$(latest_report "$WORK")"
+[[ -f "$missing_png_report" ]] || fail "expected missing-PNG report to be created"
+assert_contains "missing PNG matching docs/md/Release_v1.0.0.md" "$missing_png_report"
+pass "missing matching PNG"
+
+# 9) A modified doc fixture should fail validation with exit 2.
+cp "$LOGO_PNG_SRC" "$WORK/docs/branding/Release_v1.0.0.png"
 sed -i 's/SPDX-License-Identifier: MIT/SPDX-License-Identifier: Apache-2.0/' \
   "$WORK/docs/md/Release_v1.0.0.md"
 rc=$(run_capture "$TMPDIR/invalid-doc.out" bash -lc "cd '$WORK' && bash ./scripts/bin/ckstyle -m docs/md/Release_v1.0.0.md")

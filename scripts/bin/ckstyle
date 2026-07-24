@@ -772,41 +772,24 @@ PY
 run_documents_checks() {
   local docs_dir="$repo_root/docs/md"
   local branding_dir="$repo_root/docs/branding"
-  local svg_template="$branding_dir/Test_Guide.svg"
-  local file rel base summaries svg_file expected_name found
+  local file rel summaries
+  local base
   local md_files=()
-  local expected_svgs=()
-  local branding_svgs=()
 
   if [[ ! -d "$docs_dir" ]]; then
     add_issue "docs/md" "missing directory"
     return
   fi
 
-  if [[ ! -d "$branding_dir" ]]; then
-    add_issue "docs/branding" "missing directory"
-  fi
-
-  if [[ ! -f "$svg_template" ]]; then
-    add_issue "docs/branding/Test_Guide.svg" "missing SVG template used for "\
-  "guide consistency"
-  fi
-
   for rel in "${SELECTED_FILES_REL[@]}"; do
     if [[ "$rel" == docs/md/*.md && "$(basename "$rel")" != "README.md" ]]; then
       md_files+=("$repo_root/$rel")
     fi
-    if [[ "$rel" == docs/branding/*.svg ]]; then
-      branding_svgs+=("$repo_root/$rel")
-    fi
   done
 
   mapfile -t md_files < <(printf '%s\n' "${md_files[@]}" | sed '/^$/d' | sort)
-  mapfile -t branding_svgs < <(printf '%s\n' "${branding_svgs[@]}" | sed '/^$/d' | sort)
 
   for file in "${md_files[@]}"; do
-    base="$(basename "$file")"
-
     if ! ensure_file_readable "$file" "read"; then
       continue
     fi
@@ -851,36 +834,13 @@ $toc_summary" ]]; then
     DOC_VERSION_FILES+=("$file")
     DOC_VERSION_SEMVERS["$file"]="$semver"
 
-    # Ensure matching SVG exists (report only, no mutation).
+    # Require document branding PNG artifacts, but do not require SVGs.
     base="$(basename "$file" .md)"
-    expected_svgs+=("${base}.svg")
-    if [[ ! -f "$branding_dir/${base}.svg" ]]; then
-      add_issue "docs/branding/${base}.svg" "missing SVG matching "\
-    "docs/md/${base}.md"
+    if [[ ! -f "$branding_dir/${base}.png" ]]; then
+      add_issue "docs/branding/${base}.png" \
+        "missing PNG matching docs/md/${base}.md"
     fi
-  done
 
-  for svg_file in "${branding_svgs[@]}"; do
-    base="$(basename "$svg_file")"
-    case "$base" in
-      canary-live.svg|canary.svg|Monogram.svg|Logo_with_BrandName.svg|\
-      Logo_with_Tagline.svg)
-        continue
-        ;;
-    esac
-
-    found=0
-    for expected_name in "${expected_svgs[@]}"; do
-      if [[ "$base" == "$expected_name" ]]; then
-        found=1
-        break
-      fi
-    done
-
-    if [[ "$found" -eq 0 ]]; then
-      add_issue "$svg_file" "unexpected SVG (does not correspond to a "\
-    "document in docs/md/)"
-    fi
   done
 }
 
