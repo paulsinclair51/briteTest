@@ -97,8 +97,7 @@ WORK="$(make_fixture_repo)"
 # 1) Initial run should create document-derived and source-derived PNG files.
 rc=$(run_capture "$TMPDIR/first.out" bash -lc "cd '$WORK' && bash ./scripts/bin/genpngs")
 [[ "$rc" -eq 0 ]] || fail "first genpngs run should exit 0 (got $rc)"
-assert_contains "New PNG files:" "$TMPDIR/first.out"
-assert_contains "Changed PNG files: 0" "$TMPDIR/first.out"
+assert_contains "new and 0 changed PNG files." "$TMPDIR/first.out"
 assert_file_exists "$WORK/docs/branding/Release-v1.0.0.png"
 assert_file_exists "$WORK/docs/branding/Guide.png"
 assert_file_exists "$WORK/docs/branding/Monogram.png"
@@ -107,8 +106,7 @@ pass "initial generation"
 # 2) Second run must be repeatable with no additional PNG churn.
 rc=$(run_capture "$TMPDIR/second.out" bash -lc "cd '$WORK' && bash ./scripts/bin/genpngs")
 [[ "$rc" -eq 0 ]] || fail "second genpngs run should exit 0 (got $rc)"
-assert_contains "New PNG files: 0" "$TMPDIR/second.out"
-assert_contains "Changed PNG files: 0" "$TMPDIR/second.out"
+assert_contains "0 new and 0 changed PNG files." "$TMPDIR/second.out"
 pass "repeatability second-pass 0/0"
 
 echo "All genpngs tests passed."

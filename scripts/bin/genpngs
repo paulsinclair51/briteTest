@@ -248,9 +248,7 @@ generate_pngs() {
 
 print_summary() {
   log_verbose "generation complete"
-  echo "New PNG files: $new_png_count"
-  echo "Changed PNG files: $changed_png_count"
-  echo "Output directory: $branding_dir"
+  echo "$new_png_count new and $changed_png_count changed PNG files."
   if [[ "$new_png_count" -gt 0 || "$changed_png_count" -gt 0 ]]; then
     echo "If PNG files were added or updated, run: commit -c \"Update branding PNG files.\""
   fi
