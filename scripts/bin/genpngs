@@ -11,134 +11,138 @@
 usage() {
   cat <<'EOF'
 Usage:
-  genpngs *[.svg]
-  genpngs <name>[.svg]
-  genpngs -d *[.svg]
-  genpngs -d <name>[.svg]
+  genpngs
   genpngs {-h | --help}
 
-Generates branding PNGs from all SVG sources in docs/branding/
-or from a specified SVG file in docs/branding/.
+Generates PNG branding assets in <repo>/docs/branding/ for the current branch.
 
-Arguments:
-  *[.svg]               Generate PNGs for all SVGs in docs/branding/.
-                        Quote wildcard arguments in shells if needed.
-  <name>[.svg]          Generate only the specified SVG's PNG.
-                        The file must exist in docs/branding/.
+The command:
+  - Generates PNGs from SVG sources in <repo>/docs/branding/.
+  - Generates one PNG for each file in <repo>/docs/md/, except the
+    README.md directory guide.
+  - Does not overwrite an existing PNG when the generated PNG content is
+    unchanged, so the script can be run repeatedly without unnecessary
+    file changes.
+
+For each document-derived PNG:
+  - A temporary SVG with the document's base name is created from
+    <repo>/docs/branding/Logo_with_Tagline.svg.
+  - The template tagline is replaced with the document title.
+  - The document title is derived from the .md file name by stripping
+    the .md suffix and replacing each _ with a space.
+  - A PNG with the same base name is generated from that temporary SVG.
+  - The temporary SVG is then deleted.
 
 Options:
-  -d                    Dry-run showing what would be generated without writing files.
-  -h, --help            Output this help to stdout and exit (other options
-                        and arguments are ignored).
+  -v            Enable verbose diagnostics to stderr.
+  -h            Output this help to stdout and exit (other options
+                and arguments are ignored).
+  --help        Output this help to stdout and exit (other options
+                and arguments are ignored).
 
 Exit Codes:
   0  Success (includes help output).
-  1  Invalid argument.
+  1  Invalid option or argument.
   2  Missing dependency (rsvg-convert).
-  3  Requested SVG was not found in docs/branding/.
-  4  No SVG files found in docs/branding/ for *[.svg].
-  5  PNG generation command failed.
+  3  PNG generation command failed.
 
-Outputs:
-  docs/branding/*.png      (from docs/branding/*.svg when using *[.svg])
-  docs/branding/<name>.png (from docs/branding/<name>.svg)
+Outputs (if new PNG is not the same or there is no existing PNG):
+  - <repo>/docs/branding/*.png   From SVG sources in
+                                 <repo>/docs/branding/
+  - <repo>/docs/branding/*.png   One per .md file in
+                                 <repo>/docs/md/
+                                 (other than README.md)
+  - For success, outputs to stdout the number of new PNGs and the
+    number of changed PNGs.
+  - If PNG files were added or updated, run the commit script to commit
+    those changes.
 
 Examples:
-  genpngs "*.svg"
-  genpngs briteTest
-  genpngs briteTest.svg
-  genpngs -d "*.svg"
-  genpngs -d briteTest
+  genpngs
+  genpngs -h
+  genpngs --help
 EOF
 }
 
 # High-Level Flow:
-# - Parses required positional input as either *[.svg] (all) or <name>[.svg]
-#   (single file).
-# - Validates converter dependency and resolves eligible SVG input files in
-#   docs/branding.
-# - Generates PNG outputs (or prints planned actions with -d) and returns
-#   explicit exit codes.
+# - Parses options; only -v/-h/--help are accepted.
+# - Validates converter dependency and resolves eligible inputs.
+# - Generates PNGs from docs/branding/*.svg and docs/md/*.md (except README.md).
+# - Writes PNG files only when output differs from current content.
 
 set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
-if [[ -f "$HISTORY_HELPER" ]]; then
-  if source "$HISTORY_HELPER" 2>/dev/null; then
-    bt_propagate_repository_history >/dev/null 2>&1
-  fi
-fi
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 branding_dir="$repo_root/docs/branding"
+docs_md_dir="$repo_root/docs/md"
+doc_svg_template="$branding_dir/Logo_with_Tagline.svg"
 
 EXIT_SUCCESS=0
 EXIT_INVALID_ARGUMENT=1
 EXIT_MISSING_DEPENDENCY=2
-EXIT_SVG_NOT_FOUND=3
-EXIT_NO_SVGS_FOUND=4
-EXIT_COMMAND_FAILED=5
+EXIT_COMMAND_FAILED=3
 
 error_exit() {
   local code="$1"
-  local message="$2"
+  shift
 
-  echo "Error: $message" >&2
+  if [[ "$code" -eq "$EXIT_INVALID_ARGUMENT" ]]; then
+    usage
+    echo
+    echo "Error: $*"
+    exit "$code"
+  fi
+
+  echo "Error: $*" >&2
   exit "$code"
 }
 
 
 # Summary of argument handling and execution behavior:
-# - One positional argument is required: either *[.svg] or <name>[.svg].
-# - *.svg (or *) means process all SVGs under docs/branding.
-# - <name> accepts an optional .svg suffix and resolves to
-#   docs/branding/<name>.svg.
-# - -d prints planned PNG outputs without invoking rsvg-convert.
+# - No positional arguments are accepted.
+# - Accepted options: -v, -h, --help.
 
-target_svg=""
-generate_all=0
-dry_run=0
 declare -a svg_files=()
+declare -a md_files=()
+VERBOSE=0
+new_png_count=0
+changed_png_count=0
 
-parse_args() {
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      -h|--help)
-        usage
-        exit "$EXIT_SUCCESS"
-        ;;
-      -d)
-        dry_run=1
-        ;;
-      -*)
-        error_exit "$EXIT_INVALID_ARGUMENT" "unknown option: $1"
-        ;;
-      *)
-        if [[ -n "$target_svg" ]]; then
-          error_exit "$EXIT_INVALID_ARGUMENT" "exactly one argument is required"
-        fi
-        target_svg="$1"
-        ;;
-    esac
-    shift
-  done
+log_verbose() {
+  local message="$1"
 
-  if [[ -z "$target_svg" ]]; then
-    error_exit "$EXIT_INVALID_ARGUMENT" "exactly one argument is required"
-  fi
-
-  if [[ "$target_svg" == */* ]]; then
-    error_exit "$EXIT_INVALID_ARGUMENT" \
-      "expected a file name in docs/branding, not a path: $target_svg"
-  fi
-
-  if [[ "$target_svg" == "*" || "$target_svg" == "*.svg" ]]; then
-    generate_all=1
-  elif [[ "$target_svg" != *.svg ]]; then
-    target_svg="${target_svg}.svg"
+  if [[ "$VERBOSE" -eq 1 ]]; then
+    echo "VERBOSE: $message" >&2
   fi
 }
 
+parse_args() {
+  local arg
+
+  for arg in "$@"; do
+    if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+      usage
+      exit "$EXIT_SUCCESS"
+    fi
+  done
+
+  for arg in "$@"; do
+    case "$arg" in
+      -v)
+        VERBOSE=1
+        ;;
+      -* )
+        error_exit "$EXIT_INVALID_ARGUMENT" "unknown option: $arg"
+        ;;
+      *)
+        error_exit "$EXIT_INVALID_ARGUMENT" \
+          "positional arguments are not supported: $arg"
+        ;;
+    esac
+  done
+}
+
 ensure_dependency() {
+  log_verbose "checking dependency: rsvg-convert"
   if ! command -v rsvg-convert >/dev/null 2>&1; then
     error_exit "$EXIT_MISSING_DEPENDENCY" \
       "missing required command: rsvg-convert"
@@ -146,64 +150,115 @@ ensure_dependency() {
 }
 
 collect_svg_files() {
-  local src
-
-  if [[ "$generate_all" -eq 0 ]]; then
-    src="$branding_dir/$target_svg"
-    if [[ ! -f "$src" ]]; then
-      error_exit "$EXIT_SVG_NOT_FOUND" \
-        "SVG not found in docs/branding: $target_svg"
-    fi
-    svg_files=("$src")
-  else
-    mapfile -t svg_files < <(find "$branding_dir" -maxdepth 1 \
-      -type f -name '*.svg' | sort)
-  fi
+  log_verbose "collecting SVG files from docs/branding"
+  mapfile -t svg_files < <(find "$branding_dir" -maxdepth 1 \
+    -type f -name '*.svg' | sort)
 
   if [[ ${#svg_files[@]} -eq 0 ]]; then
-    error_exit "$EXIT_NO_SVGS_FOUND" \
-      "no docs/branding/*.svg files found for wildcard input (*[.svg])"
+    error_exit "$EXIT_COMMAND_FAILED" \
+      "no docs/branding/*.svg files found"
   fi
+}
+
+collect_md_files() {
+  log_verbose "collecting Markdown files from docs/md"
+
+  if [[ ! -d "$docs_md_dir" ]]; then
+    error_exit "$EXIT_COMMAND_FAILED" "missing directory: docs/md"
+  fi
+
+  mapfile -t md_files < <(find "$docs_md_dir" -maxdepth 1 \
+    -type f -name '*.md' ! -name 'README.md' | sort)
+
+  if [[ ${#md_files[@]} -eq 0 ]]; then
+    error_exit "$EXIT_COMMAND_FAILED" \
+      "no docs/md/*.md files found (excluding README.md)"
+  fi
+
+  if [[ ! -f "$doc_svg_template" ]]; then
+    error_exit "$EXIT_COMMAND_FAILED" \
+      "missing SVG template: ${doc_svg_template#"${repo_root}"/}"
+  fi
+}
+
+write_png_if_changed() {
+  local src_svg="$1"
+  local dst_png="$2"
+  local temp_png
+
+  temp_png="$(mktemp --tmpdir genpngs-XXXXXX.png)"
+
+  if ! rsvg-convert "$src_svg" -o "$temp_png"; then
+    rm -f "$temp_png"
+    error_exit "$EXIT_COMMAND_FAILED" \
+      "failed to generate ${dst_png#"${repo_root}"/} from ${src_svg#"${repo_root}"/}"
+  fi
+
+  if [[ -f "$dst_png" ]]; then
+    if cmp -s "$temp_png" "$dst_png"; then
+      log_verbose "unchanged: ${dst_png#"${repo_root}"/}"
+      rm -f "$temp_png"
+      return
+    fi
+
+    mv -f "$temp_png" "$dst_png"
+    changed_png_count=$((changed_png_count + 1))
+    log_verbose "updated: ${dst_png#"${repo_root}"/}"
+    return
+  fi
+
+  mv -f "$temp_png" "$dst_png"
+  new_png_count=$((new_png_count + 1))
+  log_verbose "created: ${dst_png#"${repo_root}"/}"
 }
 
 generate_pngs() {
   local src
   local dst
+  local md_file
+  local base
+  local doc_title
+  local temp_svg
+  local temp_rel
+
+  log_verbose "generating PNG files"
 
   for src in "${svg_files[@]}"; do
     dst="${src%.svg}.png"
-    if [[ "$dry_run" -eq 1 ]]; then
-      echo "[DRY RUN] Would generate ${dst#${repo_root}/}" \
-        "from ${src#${repo_root}/}"
-      continue
-    fi
+    log_verbose "converting ${src#"${repo_root}"/} -> ${dst#"${repo_root}"/}"
+    write_png_if_changed "$src" "$dst"
+  done
 
-    if ! rsvg-convert "$src" -o "$dst"; then
-      error_exit "$EXIT_COMMAND_FAILED" \
-        "failed to generate ${dst#${repo_root}/}" \
-        "from ${src#${repo_root}/}"
-    fi
+  for md_file in "${md_files[@]}"; do
+    base="$(basename "$md_file" .md)"
+    doc_title="${base//_/ }"
+    dst="$branding_dir/$base.png"
+    temp_svg="$(mktemp --tmpdir genpngs-"${base}"-XXXXXX.svg)"
+    temp_rel="${temp_svg#"${repo_root}"/}"
+
+    cp "$doc_svg_template" "$temp_svg"
+    DOC_TITLE="$doc_title" perl -i -pe \
+      's/Catch it before it breaks\./$ENV{DOC_TITLE}/g' "$temp_svg"
+
+    log_verbose "converting ${temp_rel} -> ${dst#"${repo_root}"/}"
+    write_png_if_changed "$temp_svg" "$dst"
+    rm -f "$temp_svg"
   done
 }
 
 print_summary() {
-  if [[ "$generate_all" -eq 0 ]]; then
-    if [[ "$dry_run" -eq 0 ]]; then
-      echo "Generated docs/branding/${target_svg%.svg}.png" \
-        "from docs/branding/$target_svg"
-    fi
-  else
-    if [[ "$dry_run" -eq 1 ]]; then
-      echo "[DRY RUN] Would generate ${#svg_files[@]} PNG file(s)" \
-        "in $branding_dir"
-    else
-      echo "Generated ${#svg_files[@]} PNG file(s) in $branding_dir"
-    fi
+  log_verbose "generation complete"
+  echo "New PNG files: $new_png_count"
+  echo "Changed PNG files: $changed_png_count"
+  echo "Output directory: $branding_dir"
+  if [[ "$new_png_count" -gt 0 || "$changed_png_count" -gt 0 ]]; then
+    echo "If PNG files were added or updated, run: commit -c \"Update branding PNG files.\""
   fi
 }
 
 parse_args "$@"
 ensure_dependency
 collect_svg_files
+collect_md_files
 generate_pngs
 print_summary
