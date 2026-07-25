@@ -17,7 +17,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ### Document and Brand Management
 
-- **ckstyle**: Check style quidelines for documention, code, scripts,
+- **ckstyle**: Check style guidelines for documentation, code, scripts,
    directory guides, versions etc. for the current branch.
    See Contributor Guide for guidelines.
 - **gendocs**: Generate PDF and DOCX documentation.
@@ -25,10 +25,14 @@ See `<repo>/README.md` for an introduction to briteTest.
 - **replacetext**: Apply configured text replacements in markdown files.
 - **rebrand**: Update branding text and regenerate related assets.
 
-### Repository and Fork Management
+### Repository, Clone, and Fork Management
 
-- **fixrepo**: Verify repository/clone integrity, run safe cleanup fixes,
-  rerun affected post-cleanup checks, and generate a health report.
+- **fixremote**: Recover a corrupted remote/origin from a clean local clone
+   (owner-only), verify integrity after recovery, and generate a
+   recovery report.
+- **fixrepo**: Check repository/clone integrity, apply safe local
+   cleanup fixes, rerun affected verification checks, and generate a
+   diagnostic report.
 - **mkclone**: Clone the repository with optional target naming.
 - **mkfork**: Create a fork of the repository and optionally configure it
   with upstream remote and user as approver.
@@ -105,7 +109,7 @@ If a script is not executable in your environment, you can:
 1. Run or rerun `<repo>/scripts/bin/setupclone` (see Getting
    Started above).
 
-3. Manually fix individual scripts:
+2. Manually fix individual scripts:
 
    ```sh
    chmod +x `<repo>/scripts/bin/<script_name>`
@@ -116,7 +120,7 @@ If a script is not executable in your environment, you can:
 1. Run or rerun `<repo>/scripts/bin/setupclone` (see Getting
    Started above).
 
-3. Manually update the PATH configuration:
+2. Manually update the PATH configuration:
 
    - Add this line to ~/.bashrc:
 

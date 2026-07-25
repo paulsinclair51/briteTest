@@ -77,7 +77,7 @@ For contribution policies, branching rules, and workflows, see
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.14. [undo](#1114-undo)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.15. [release](#1115-release)<br>
    1.2. [Repository and Clone Management](#12-repository-and-clone-management)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. [fixlocal](#121-fixlocal)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. [fixrepo](#121-fixrepo)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. [fixremote](#122-fixremote)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. [setupclone](#123-setupclone)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. [mkclone](#124-mkclone)<br>
@@ -420,16 +420,16 @@ undo [OPTIONS]
 ### 1.2. Repository and Clone Management
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. fixlocal</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. fixrepo</summary>
 
-#### 1.2.1. fixlocal
+#### 1.2.1. fixrepo
 
 **Purpose:** Check local repository for corruption/issues and safely repair what can be repaired.
 
 **Usage:**
 
 ```bash
-fixlocal [OPTIONS]
+fixrepo [OPTIONS]
 ```
 
 **Functions:**
@@ -1192,7 +1192,7 @@ review            - Create/update pull requests for review
 ```
 mrgup             - Merge branches to parent/protected branches (requires override)
 release           - Create releases and version tags (requires override)
-fixlocal, fixremote - Repair repository state (requires override)
+fixrepo, fixremote - Repair repository state (requires override)
 rebrand           - Update branding across repository (requires override)
 replacetext       - Replace text globally across repo (requires override)
 ```
@@ -1244,7 +1244,7 @@ Use script help for exact current behavior:
 ```bash
 mrgup -h
 release -h
-fixlocal -h
+fixrepo -h
 rmbranch -h
 ```
 

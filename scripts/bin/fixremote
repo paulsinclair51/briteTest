@@ -14,18 +14,18 @@ Usage:
 
 Recover a corrupted origin/main branch by reconstructing it from a clean
 local clone. This script is typically run by the repository owner after
-fixlocal detects origin corruption and documents recovery steps in its report.
+fixrepo detects origin corruption and documents recovery steps in its report.
 
 Pre-requisites:
   - User must be the repository owner (checked via config/contributors.md).
   - The specified clone-path must be a clean, verified clone of the same
-    repository (typically output from a successful fixlocal run).
+    repository (typically output from a successful fixrepo run).
   - Origin must be accessible via git remote commands.
 
 Arguments:
   <clone-path>      Path to a clean, verified local clone to use as recovery
                     source. This clone should have been checked and fixed by
-                    fixlocal before running this recovery.
+                    fixrepo before running this recovery.
   -h, --help        Output this help to stdout and exit.
 
 What This Script Does:
