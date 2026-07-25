@@ -1,4 +1,5 @@
 # `<repo>/examples/`
+
 Directory containing usage examples.
 
 Copyright (c) 2026 Paul Sinclair  
@@ -13,4 +14,4 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Subdirectories
 
-- None.
+None.

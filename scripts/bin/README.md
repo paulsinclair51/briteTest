@@ -12,7 +12,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ### Setup and Installation
 
-- **setupclone**: Setup clone environment
+- **setupclone**: Setup clone environment and add
    `<repo>/scripts/bin/` to PATH.
 
 ### Document and Brand Management
@@ -30,37 +30,34 @@ See `<repo>/README.md` for an introduction to briteTest.
 - **fixrepo**: Verify repository/clone integrity, run safe cleanup fixes,
   rerun affected post-cleanup checks, and generate a health report.
 - **mkclone**: Clone the repository with optional target naming.
-- **mkfork**: Create a fork of the repository and optionally configure it with
-  upstream remote and user as approver.
-- **rmclone**: Safely remove a local clone with validation checks and optional
+- **mkfork**: Create a fork of the repository and optionally configure it
+  with upstream remote and user as approver.
+- **override**: Repository owner only. Toggle unrestricted mode for this
+   local clone (`override on` / `override off`) for direct hook-enforced
+   repository actions. Does not disable script-level role/policy checks.
+- **rmclone**: Remove a local clone with validation checks and optional
    override.
 
 ### Branch and Workflow Management
 
-- **chbranch**: Change to specified local branch as current branch
-  (blocks `main` which is not allowed to have a local branch).
-  When local branch doesn't exist, creates local tracking branch from
-  origin/<branch>` if it exists and is available.
-  List can include cached remote-only branches.
-- **retarget**: Retarget a targeted branch to a different version branch.
-  targeted branch is renamed to have its version as the specified version.
-- **lsbranchlog**: Query branch history log entries.
+- **chbranch**: Change to specified branch as the current branch.
 - **commit**: Commit and optionally push changes to remote.
 - **copyfix**: Cherry-pick/copy fix commits from another branch.
-- **lsbranch**: List a branch or branches and their status.
-- **mkbranch**: Create branches with policy validation.
 - **feedback**: View/respond to PR feedback workflows.
-- **mrgup**: Merge current branch to its parent branch.
-- **review**: Create or update a pull request.
-- **release**: Create and publish releases.
-- **rmbranch**: Remove local and/or remote branches.
+- **lsbranch**: List a branch or branches and their status.
+- **lsbranchlog**: Query branch history log entries.
+- **mkbranch**: Create branch with policy validation.
 - **mrgdown**: Merge parent branch into current branch.
+- **mrgup**: Merge current branch to its parent branch.
+
 - **pull**: Fetch and pull latest changes from remote into
   local branch
 - **push**: Push local branch commits to remote.
-- **override**: Repository owner only. Toggle unrestricted mode for this
-   local clone (`override on` / `override off`) for direct hook-enforced
-   repository actions. Does not disable script-level role/policy checks.
+- **release**: Create and publish releases.
+- **retarget**: Retarget a targeted branch to a different version branch.
+  targeted branch is renamed to have its version as the specified version.
+- **review**: Create or update a pull request.
+- **rmbranch**: Remove local and/or remote branches.
 - **undo**: Undo recent merge/release/commit operations.
 
 ### README Directory Guide

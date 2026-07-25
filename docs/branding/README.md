@@ -1,6 +1,6 @@
 # `<repo>/docs/branding/`
 
-Directory containing assets for the brand name and monogram.
+Directory containing branding assets.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
@@ -10,41 +10,38 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **`*.png`**: generated `.png` for corresponding SVG branding asset files
-  in this directory.
+- **`*.png`**: generated `.png` file for corresponding SVG branding
+  asset files in this directory.
 
-- **`<doctitle>.png`**: monogram, brand name, and doctitle (for a document in
-  `<repo>/docs/md`) with transparent background.
+- **`<doctitle>.png`**: generated `.png' file with monogram, brand name, and
+  doctitle (for a document in `<repo>/docs/md`) using a transparent background.
 
-- **`Logo_with_BrandName.svg`**: monogram and brand name with transparent
+- **`Logo_with_BrandName.svg`**: monogram and brand name using a transparent
   background.
 
 - **`Logo_with_Tagline.svg`**: monogram, brand name, and tagline
-  "Catch it before it breaks." with transparent background. Used also as
+  "Catch it before it breaks." using a transparent background. Used also as
   SVG template for creating `<doctitle>.png` files.
 
 - **`Monogram.svg`**: Monogram-only `bT` with canary accent perched on T in a
   rounded-square.
 
-- **`canary-live.svg`**: photo of a yellow canary with transparent background
-  perched on partially removed branch.
+- **`canary-live.svg`**: photo of a yellow canary perched on partially
+  removed branch using a transparent background.
 
 - **`canary.svg`**: Canary accent: traced from canary-live.svg with canary
   yellow fill, added black dot eye, and overlaid triangle for beak.
 
 - **README.md**: This directory guide.
 
-Note: The root `README.md` is a link to `docs/md\/<brandname\>.md` that uses
-the `Logo_with_Brandname.png` generated from `Logo_with_BrandName.svg`.
-
 ## Subdirectories
 
-- None.
+None.
 
-## Generation
+## PNG File Generation
 
-Use `../../scripts/bin/genpngs` to regenerate the PNG (PNG file is only
-overwritten if it differs).
+Use `../../scripts/bin/genpngs` to generate/regenerate PNG files 
+(a PNG file is only overwritten if it differs).
 
 Source-of-truth policy:
 
@@ -53,7 +50,7 @@ Source-of-truth policy:
 - Do not edit PNG files directly; edit the corresponding SVG file and
   regenerate PNGs.
 
-## Palette
+## Monogram Palette
 
 - Charcoal: `#1F2430` (monogram rounded-square background)
 - Canary Yellow: `#FFEB66` (canary body, `b` in the monogram)
@@ -61,7 +58,7 @@ Source-of-truth policy:
 - Black: `#000000` (eye)
 - Beak: `#F4A300` (natural canary horn)
 
-## Tracking Note
+## Tracking Notes
 
 On 2026-06-20, the project owner selected the canary monogram as the preferred
 logo, requested deleting alternate drafts, and requested a brighter yellow.

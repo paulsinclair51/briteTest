@@ -77,11 +77,12 @@ For contribution policies, branching rules, and workflows, see
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.14. [undo](#1114-undo)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.15. [release](#1115-release)<br>
    1.2. [Repository and Clone Management](#12-repository-and-clone-management)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. [fixrepo](#121-fixrepo)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. [setupclone](#122-setupclone)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. [mkclone](#123-mkclone)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. [mkfork](#124-mkfork)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. [rmclone](#125-rmclone)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. [fixlocal](#121-fixlocal)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. [fixremote](#122-fixremote)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. [setupclone](#123-setupclone)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. [mkclone](#124-mkclone)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. [mkfork](#125-mkfork)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.6. [rmclone](#126-rmclone)<br>
    1.3. [Documentation and Branding](#13-documentation-and-branding)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.1. [ckstyle](#131-ckstyle)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.2. [gendocs](#132-gendocs)<br>
@@ -419,29 +420,75 @@ undo [OPTIONS]
 ### 1.2. Repository and Clone Management
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. fixrepo</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. fixlocal</summary>
 
-#### 1.2.1. fixrepo
+#### 1.2.1. fixlocal
 
-**Purpose:** Verify repository/clone integrity and run safe cleanup fixes.
+**Purpose:** Check local repository for corruption/issues and safely repair what can be repaired.
 
 **Usage:**
 
 ```bash
-fixrepo [OPTIONS]
+fixlocal [OPTIONS]
 ```
 
 **Functions:**
 
-- Verify repository structure
-- Run post-cleanup checks
-- Generate health report
+- Verify git object database integrity (`git fsck --full`)
+- Verify working tree cleanliness
+- Check remote connectivity/tracking status
+- Run safe cleanup (`git gc --prune=now`)
+- Generate diagnostic report
+- Distinguish fixable vs. non-fixable issues
+
+**Exit Codes:**
+
+- 0: Success - no issues or all issues fixed
+- 1: Invalid option or argument
+- 2: User is not authorized (requires contributor role or higher)
+- 3: Issues detected - one or more were not fixable
+- 100: Missing required helper files, dependencies, or configuration
+
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. setupclone</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. fixremote</summary>
 
-#### 1.2.2. setupclone
+#### 1.2.2. fixremote
+
+**Purpose:** Recover corrupted origin/main branch from a clean local clone (owner-only operation).
+
+**Usage:**
+
+```bash
+fixremote <clone-path>
+```
+
+**Functions:**
+
+- Verify user is repository owner (requires "O" role)
+- Validate source clone is clean and matches origin
+- Fetch objects and refs from clean clone to origin
+- Reconstruct corrupted refs on origin
+- Verify origin integrity after recovery (`git fsck`)
+- Generate recovery report
+- Clear corruption flag
+
+**Exit Codes:**
+
+- 0: Success - origin recovered and verified clean
+- 1: Invalid option or argument
+- 2: User is not authorized - only repository owner can run fixremote
+- 3: Recovery failed - see report for details
+- 100: Missing required dependencies or configuration files
+- 200: Git operation failed during recovery
+
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. setupclone</summary>
+
+#### 1.2.3. setupclone
 
 **Purpose:** Setup clone environment - install scripts, add to PATH, and configure Git hooks.
 
@@ -460,9 +507,9 @@ bash scripts/bin/setupclone [OPTIONS]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. mkclone</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. mkclone</summary>
 
-#### 1.2.3. mkclone
+#### 1.2.4. mkclone
 
 **Purpose:** Clone the repository with optional target naming.
 
@@ -474,9 +521,9 @@ mkclone [<target_name>]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. mkfork</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. mkfork</summary>
 
-#### 1.2.4. mkfork
+#### 1.2.5. mkfork
 
 **Purpose:** Create a fork of the repository and optionally configure upstream.
 
@@ -493,9 +540,9 @@ mkfork [OPTIONS]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. rmclone</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.6. rmclone</summary>
 
-#### 1.2.5. rmclone
+#### 1.2.6. rmclone
 
 **Purpose:** Safely remove a local clone with validation checks.
 
@@ -1145,7 +1192,7 @@ review            - Create/update pull requests for review
 ```
 mrgup             - Merge branches to parent/protected branches (requires override)
 release           - Create releases and version tags (requires override)
-fixrepo           - Repair repository state (requires override)
+fixlocal, fixremote - Repair repository state (requires override)
 rebrand           - Update branding across repository (requires override)
 replacetext       - Replace text globally across repo (requires override)
 ```
@@ -1197,7 +1244,7 @@ Use script help for exact current behavior:
 ```bash
 mrgup -h
 release -h
-fixrepo -h
+fixlocal -h
 rmbranch -h
 ```
 

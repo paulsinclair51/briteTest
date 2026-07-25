@@ -688,6 +688,57 @@ EOF
   rm -f "$commit_only_rows_tmp"
 }
 
+validate_no_protected_deletions() {
+  local status_tmp
+  local record=""
+  local status=""
+  local path=""
+  local deleted_protected_files=()
+  
+  # Patterns for protected files that should never be accidentally deleted
+  local -a protected_patterns=(
+    "scripts/tests/*.sh"
+    "tests/*.sh"
+  )
+
+  status_tmp="$(mktemp)"
+  if ! git status --porcelain -z >"$status_tmp" 2>/dev/null; then
+    rm -f "$status_tmp"
+    return 0
+  fi
+
+  exec 3<"$status_tmp"
+  while IFS= read -r -d '' record <&3; do
+    [[ ${#record} -ge 3 ]] || continue
+    status="${record:0:2}"
+    path="${record:3}"
+    
+    # Check if this is a deletion (D in first or second position of status)
+    if [[ "${status:0:1}" == "D" || "${status:1:1}" == "D" ]]; then
+      # Check if it matches any protected patterns
+      for pattern in "${protected_patterns[@]}"; do
+        if [[ "$path" == $pattern ]]; then
+          deleted_protected_files+=("$path")
+          break
+        fi
+      done
+    fi
+  done
+  exec 3<&-
+  rm -f "$status_tmp"
+
+  if [[ ${#deleted_protected_files[@]} -gt 0 ]]; then
+    bt_warn "WARNING: The following protected test files would be deleted:"
+    printf '%s\n' "${deleted_protected_files[@]}" | sed 's/^/  - /'
+    echo ""
+    echo "Deleting test files may indicate accidental removal. If this is intentional," >&2
+    echo "please restore the file(s) and commit separately with a detailed explanation," >&2
+    echo "or contact repository owner/approver for guidance." >&2
+    return 1
+  fi
+  return 0
+}
+
 # Parse options and arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -795,6 +846,11 @@ fi
 
 # Commit flow
 if [[ "$NEEDS_COMMIT" == true ]]; then
+  # Validate that no protected files (like test files) are being accidentally deleted
+  if ! validate_no_protected_deletions; then
+    bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Commit aborted to prevent accidental deletion of protected files."
+  fi
+
   if [[ "$DRY_RUN" == true ]]; then
     if [[ "$VERBOSE" == true ]]; then
       bt_info "Dry run: would create commit with $COMMITTED_FILES file(s)"

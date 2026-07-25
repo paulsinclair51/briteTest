@@ -179,7 +179,7 @@ Alt+n and Alt+p to cycle forward and backward through those choices.
 
 - **Setup/installation:** `setupclone`
 - **Document/brand:** `ckstyle`, `gendocs`, `genpngs`, `replacephrases`, `updatebrand`
-- **Repository/fork/clone:** `mkfork`, `mkclone`, `rmclone`, `fixrepo`
+- **Repository/fork/clone:** `mkfork`, `mkclone`, `rmclone`, `fixlocal`, `fixremote`
 - **Branch/workflow:** `ckbranch_history`, `chcurrent`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `mkfeedback`, `mergetoparent`, `mkpullrequest`, `chtarget`, `mkrelease`, `syncfromremote`, `syncfromparent`, `undo`, `rmbranch`
 - **Owner controls:** `override` (toggle repository-owner unrestricted mode for this clone)
 </details>
@@ -730,7 +730,7 @@ If identity cannot be resolved, role checks fail by design.
 **Cannot:**
 - Merge to main or version branches
 - Create releases
-- Run approver-only scripts (`mrgup`, `release`, `fixrepo`)
+- Run approver-only scripts (`mrgup`, `release`, `fixlocal`, `fixremote`)
 - Modify workflow/security configuration
 
 #### REVIEWER (R)
@@ -759,7 +759,7 @@ If identity cannot be resolved, role checks fail by design.
 **Additional:**
 - Merge PRs to main and version branches
 - Create official releases and version tags
-- Run approver-only scripts (`mrgup`, `release`, `fixrepo`, `rebrand`, `replacetext`)
+- Run approver-only scripts (`mrgup`, `release`, `fixlocal`, `fixremote`, `rebrand`, `replacetext`)
 - Modify repository configuration (with override)
 
 **Requirements:**

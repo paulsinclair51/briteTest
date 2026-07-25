@@ -1,6 +1,7 @@
-# `<repo>/reports/`
+# `<repo>/obsolete/`
 
-Directory containing script-generated report files.
+Directory containing obsolete files retained temporarily for
+historical reference.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
@@ -10,10 +11,10 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
+- Obsolete files.
+
 - **README.md**: This directory guide.
 
 ## Subdirectories
 
-- **branch/**: Branch reports.
-- **repository/**: Clone, fork, and repository reports.
-- **guidelines/**: Guideline and style reports.
+None.

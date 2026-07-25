@@ -68,8 +68,17 @@ tests/tmp/*
 # Local-only lsbranch reports
 reports/branch/branch-*.md
 
-# Local-only commit reports
+# Commit reports
 reports/branch/commit-*.md
 
 # Local-only ckstyle reports
 reports/guidelines/ckstyle-*.md
+
+# Repository reports
+reports/repository/clone-*.md
+
+# Repository reports
+reports/repository/fork-*.md
+
+# Repository reports
+reports/repository/repository-*.md

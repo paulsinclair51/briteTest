@@ -1,4 +1,5 @@
 # `<repo>/src/`
+
 Directory containing `.c` files and internal `.h` headers.
 
 Copyright (c) 2026 Paul Sinclair  
@@ -19,4 +20,4 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Subdirectories
 
-- None.
+None.

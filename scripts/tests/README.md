@@ -8,7 +8,7 @@ For license details, see `<repo>/LICENSE`.
 
 See `<repo>/README.md` for an introduction to briteTest.
 
-This directory stores tests for user-facing commands in `<repo>/scripts/bin/`.
+This directory stores tests for the user-facing commands in `<repo>/scripts/bin/`.
 These tests are intended to quickly verify key CLI behavior, exit codes,
 and high-signal output contracts.
 
@@ -77,7 +77,6 @@ From repository root:
 ```sh
 make test-lsbranch
 make test-gendocs
-make test-fixrepo
 make test-mkbranch
 make test-mrgdown
 make test-report-helpers
@@ -91,7 +90,6 @@ Or run directly:
 ```sh
 bash ./scripts/tests/test_lsbranch.sh
 bash ./scripts/tests/test_gendocs.sh
-bash ./scripts/tests/test_fixrepo.sh
 bash ./scripts/tests/test_mkbranch.sh
 bash ./scripts/tests/test_mrgdown.sh
 bash ./scripts/tests/test_commit.sh

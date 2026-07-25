@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+
+# fixremote - Recover corrupted origin repository from a clean local clone.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  fixremote <clone-path>
+  fixremote {-h | --help}
+
+Recover a corrupted origin/main branch by reconstructing it from a clean
+local clone. This script is typically run by the repository owner after
+fixlocal detects origin corruption and documents recovery steps in its report.
+
+Pre-requisites:
+  - User must be the repository owner (checked via config/contributors.md).
+  - The specified clone-path must be a clean, verified clone of the same
+    repository (typically output from a successful fixlocal run).
+  - Origin must be accessible via git remote commands.
+
+Arguments:
+  <clone-path>      Path to a clean, verified local clone to use as recovery
+                    source. This clone should have been checked and fixed by
+                    fixlocal before running this recovery.
+  -h, --help        Output this help to stdout and exit.
+
+What This Script Does:
+  1. Verifies user is the repository owner (requires "O" role in contributors.md).
+  2. Validates the source clone is clean and matches origin's repository.
+  3. Fetches objects from the clean clone to origin.
+  4. Reconstructs corrupted refs on origin from the clean clone.
+  5. Runs fsck on origin to verify integrity after recovery.
+  6. Generates a recovery report.
+  7. Clears the origin corruption flag (if using flag system).
+
+What Gets Recovered:
+  - Missing or corrupted objects in origin's object database.
+  - Broken or missing branch/tag refs.
+  - Inconsistent ref state between local and origin.
+
+What Does NOT Get Recovered:
+  - Commits that exist only on origin but were lost (no local has them).
+  - History before first clone was made (if not present in clean clone).
+
+Outputs:
+  - Writes help text, status, and progress to stdout.
+  - Writes errors and diagnostics to stderr.
+  - Writes a recovery report to:
+      <repo>/reports/repository/recovery-<date>-<time>-<pid>.md
+  - Report includes recovery steps taken, issues resolved, and verification
+    results.
+  - Returns to original branch on the recovery machine after completion.
+
+Common Run:
+  fixremote /path/to/clean-clone
+    Recover origin using objects and refs from the specified clean clone.
+
+Exit codes:
+  0   Success - origin recovered and verified clean.
+  1   Invalid option or argument.
+  2   User is not authorized - only repository owner can run fixremote.
+  3   Recovery failed - see report for details and manual intervention steps.
+  100 Missing required dependencies or configuration files.
+  200 Git operation failed during recovery (fetch, push, fsck, etc.).
+EOF
+}
+
+# High-Level Flow:
+# - Verify user is repository owner.
+# - Validate source clone is clean and from the same repository.
+# - Fetch objects and refs from clean clone to origin.
+# - Verify origin integrity after recovery.
+# - Document recovery steps and results in report.
+# - Clear corruption flag if recovery successful.
+
+# Fast-path help handling before any helper sourcing/network/git side effects.
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+done
+
+set -euo pipefail
+
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_UNAUTHORIZED=2
+readonly EXIT_RECOVERY_FAILED=3
+readonly EXIT_MISSING_DEPENDENCIES=100
+readonly EXIT_GIT_OPERATION_FAILED=200
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd -P)"
+RECOVERY_REPORTS_DIR="$REPO_ROOT/reports/repository"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+REPORT_FILE=""
+CLONE_PATH=""
+CLONE_ABS=""
+
+# Validate required helpers exist
+if [[ ! -f "$SCRIPT_DIR/../helpers/common.sh" ]]; then
+  echo "Error: Required helper not found: $SCRIPT_DIR/../helpers/common.sh" >&2
+  exit "$EXIT_MISSING_DEPENDENCIES"
+fi
+
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+
+# Parse arguments
+if [[ $# -eq 0 ]]; then
+  usage
+  echo >&2
+  echo "Error: clone-path argument is required. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+fi
+
+CLONE_PATH="$1"
+
+# Resolve and validate clone path
+if [[ ! -d "$CLONE_PATH" ]]; then
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" "Clone path not found or not a directory: $CLONE_PATH"
+fi
+
+CLONE_ABS="$(cd "$CLONE_PATH" && pwd -P)"
+
+# Validate source clone is a git repository
+if ! git -C "$CLONE_ABS" rev-parse --git-dir >/dev/null 2>&1; then
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" "Clone path is not a git repository: $CLONE_ABS"
+fi
+
+# TODO: Verify user is repository owner
+# TODO: Validate source clone matches origin
+# TODO: Implement origin recovery from clean clone
+# TODO: Generate recovery report
+# TODO: Clear corruption flag
+
+bt_success "fixremote placeholder - implementation pending."
+exit 0
