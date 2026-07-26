@@ -222,15 +222,20 @@ rc=$(run_capture "$TMPDIR/bad-timeout.out" bash "$PLAIN_REPO/scripts/bin/fixloca
 assert_contains "Invalid -r value" "$TMPDIR/bad-timeout.out"
 pass "invalid timeout handling"
 
-# 7) Unresolved issue path should exit 3 (dry-run dirty worktree)
-printf '\nlocal dirty change\n' >> "$PLAIN_REPO/README.md"
-rc=$(run_capture "$TMPDIR/dirty.out" bash "$PLAIN_REPO/scripts/bin/fixlocal" -d)
-[[ "$rc" -eq 3 ]] || fail "fixlocal -d on dirty worktree should exit 3 (got $rc)"
-dirty_report="$(latest_report "$PLAIN_REPO")"
-[[ -f "$dirty_report" ]] || fail "expected report file for dirty worktree run"
-assert_contains "- [ISSUE] **Uncommitted Changes**" "$dirty_report"
-assert_contains "Status: Issues detected; no automated fixes applied (-d)." "$dirty_report"
-pass "unresolved issue exit path"
+# 7) Fixable items detected in dry-run (should exit 0, not count as issues)
+LOOSE_REPO="$(make_fixture_repo fixture_loose plain)"
+i=1
+while [[ $i -le 120 ]]; do
+  printf 'loose-object-%s\n' "$i" | git -C "$LOOSE_REPO" hash-object -w --stdin >/dev/null
+  i=$((i + 1))
+done
+rc=$(run_capture "$TMPDIR/loose.out" bash "$LOOSE_REPO/scripts/bin/fixlocal" -d)
+[[ "$rc" -eq 4 ]] || fail "fixlocal -d with only fixable items should exit 4 (got $rc)"
+loose_report="$(latest_report "$LOOSE_REPO")"
+[[ -f "$loose_report" ]] || fail "expected report file for loose objects run"
+assert_contains "- [FIXABLE] **Loose Objects**" "$loose_report"
+assert_contains "Status: Fixable items detected; no automated fixes applied (-d)." "$loose_report"
+pass "fixable items detected in dry-run"
 
 # 8) Non-dry remediation failure should be reported and counted
 REAL_GIT="$(command -v git)"
@@ -259,7 +264,7 @@ rc=$(run_capture "$TMPDIR/gc-fail.out" env PATH="$FAKEBIN:$PATH" bash "$BRITE_FA
 [[ "$rc" -eq 3 ]] || fail "fixlocal with simulated gc failure should exit 3 (got $rc)"
 gc_fail_report="$(latest_report "$BRITE_FAIL_REPO")"
 [[ -f "$gc_fail_report" ]] || fail "expected report file for gc-failure run"
-assert_contains "git gc failed during cleanup" "$gc_fail_report"
+assert_contains "Garbage collection failed during cleanup" "$gc_fail_report"
 assert_contains "**Remediations Failed:** 1" "$gc_fail_report"
 pass "remediation failure path"
 

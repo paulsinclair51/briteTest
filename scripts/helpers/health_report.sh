@@ -15,9 +15,9 @@ bt_hr_append_section() {
   local report_file="$1"
   local section_title="$2"
 
-  echo "
-### $section_title
-" >> "$report_file"
+  echo "" >> "$report_file"
+  echo "### $section_title" >> "$report_file"
+  echo "" >> "$report_file"
 }
 
 # bt_hr_append_check
@@ -25,7 +25,7 @@ bt_hr_append_section() {
 # Args:
 #   $1 report file path
 #   $2 check title
-#   $3 status: PASS | ISSUE | FIXED | ERROR
+#   $3 status: PASS | ISSUE | FIXABLE | FIXED | ERROR
 #   $4 detail text (may be empty)
 #   $5 issue counter variable name (optional)
 #   $6 fixed counter variable name (optional)
@@ -46,6 +46,9 @@ bt_hr_append_check() {
       if [[ -n "$issue_counter_var" ]]; then
         bt_hr_increment_counter "$issue_counter_var"
       fi
+      ;;
+    FIXABLE)
+      echo "- [FIXABLE] **$check_name**" >> "$report_file"
       ;;
     FIXED)
       echo "- [FIXED] **$check_name**" >> "$report_file"

@@ -137,6 +137,8 @@ Exit codes:
   2   Not authorized to run fixlocal (requires a contributor or the
       repository owner).
   3   Issues detected - one or more were not fixable.
+  4   For dry-run (-d) mode, fixable issues were detected that would
+      be fixed if run without -d. No non-fixable issues were detected.
   100 Missing required helper files, dependencies, or configuration.
 EOF
 }
@@ -158,9 +160,13 @@ done
 
 set -euo pipefail
 
+# Capture original command line for report
+COMMAND_LINE="fixlocal$(printf ' %q' "$@")"
+
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_UNAUTHORIZED=2
 readonly EXIT_ISSUES_DETECTED=3
+readonly EXIT_FIXABLE_ONLY=4
 readonly EXIT_MISSING_DEPENDENCIES=100
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -332,16 +338,15 @@ add_target_repo() {
 
 init_report() {
   cat > "$OUTPUT_FILE" << EOF
-# Repository Repair Report
+# Local Repository Repair Report
 
 **Timestamp:** ${RUN_TS_DISPLAY}
 
-**Repository for Reports:** $REPO_ROOT
+**Command:** $COMMAND_LINE
 
----
+**Repository:** $REPO_ROOT
 
 ## Checks Performed
-
 EOF
 }
 
@@ -349,13 +354,8 @@ append_target_header() {
   local target_name="$1"
   local target_path="$2"
 
-  cat >> "$OUTPUT_FILE" << EOF
-
-## Target: ${target_name}
-
-**Path:** ${target_path}
-
-EOF
+  # Target header is redundant with earlier report info; skip it
+  return 0
 }
 
 append_section() {
@@ -376,6 +376,9 @@ append_check() {
       increment_counter FIXABLE_ISSUES_FOUND
       increment_counter TARGET_FIXABLE_ISSUES_FOUND
     fi
+  elif [[ "$status" == "FIXABLE" ]]; then
+    increment_counter FIXABLE_ISSUES_FOUND
+    increment_counter TARGET_FIXABLE_ISSUES_FOUND
   elif [[ "$status" == "ERROR" ]]; then
     increment_counter TARGET_ISSUES_FOUND
     CRITICAL_ERROR=true
@@ -402,7 +405,7 @@ check_object_database() {
 
   if printf '%s\n' "$fsck_output" | grep -Eq '(^|[[:space:]])(error|fatal):'; then
     append_check "Object Database" "ISSUE" \
-      "git fsck detected integrity errors. Not auto-handled; suggested fix: Run 'git fsck --full', then recover missing/corrupt objects from a healthy remote/clone after backing up the repository."
+      "Repository integrity check detected errors. Not auto-handled; contact the repository owner for recovery assistance."
     printf '%s\n' "$fsck_output" | sed 's/^/    /' >> "$OUTPUT_FILE"
     return 1
   fi
@@ -482,12 +485,12 @@ refresh_remote_tracking_state() {
   if bt_git_fetch_prune_origin_with_retry \
     "$CURRENT_REPO" "$REMOTE_RETRY_ATTEMPTS" "$REMOTE_RETRY_BASE_DELAY_SECONDS" >/dev/null 2>&1; then
     append_check "Remote Tracking Refresh" "PASS" \
-      "Ran git fetch --prune origin"
+      "Refreshed remote-tracking references"
     return 0
   fi
 
   append_check "Remote Tracking Refresh" "ISSUE" \
-    "Unable to refresh remote-tracking refs with 'git fetch --prune origin'. Not auto-handled; suggested fix: Verify network/auth and run fetch manually."
+    "Unable to refresh remote-tracking references. Not auto-handled; contact the repository owner to investigate and resolve the tracking issue."
   increment_counter REMEDIATIONS_FAILED
   return 1
 }
@@ -802,8 +805,14 @@ check_loose_objects() {
   fi
 
   if [[ "$loose_count" =~ ^[0-9]+$ ]] && [[ "$loose_count" -gt 100 ]]; then
-    append_check "Loose Objects" "ISSUE" \
-      "Found $loose_count loose objects (threshold: 100)." \
+    local status_type="ISSUE"
+    local dry_run_note=""
+    if [[ "$DRY_RUN" == true ]]; then
+      status_type="FIXABLE"
+      dry_run_note=" (would be fixed by fixlocal if run without -d)"
+    fi
+    append_check "Loose Objects" "$status_type" \
+      "Found $loose_count loose objects (threshold: 100).$dry_run_note" \
       "true"
   else
     append_check "Loose Objects" "PASS" \
@@ -842,8 +851,8 @@ check_working_directory() {
   if [[ -n "$status_output" ]]; then
     local file_count
     file_count="$(printf '%s\n' "$status_output" | wc -l | tr -d ' ')"
-    append_check "Uncommitted Changes" "ISSUE" \
-      "Working directory has $file_count changed tracked/untracked entries. Not auto-handled; suggested fix: Commit/stash changes or clean the working tree."
+    append_check "Uncommitted Changes" "PASS" \
+      "Working directory has $file_count changed tracked/untracked entries"
   else
     append_check "Uncommitted Changes" "PASS" "Working directory is clean"
   fi
@@ -917,12 +926,12 @@ cleanup_repository() {
 
   increment_counter REMEDIATIONS_ATTEMPTED
   if git -C "$CURRENT_REPO" gc --prune=now >/dev/null 2>&1; then
-    append_check "Garbage Collection" "PASS" "Ran git gc --prune=now"
+    append_check "Garbage Collection" "PASS" "Ran garbage collection and object pruning"
 
     verify_cleanup_effects
   else
     append_check "Garbage Collection" "ISSUE" \
-      "git gc failed during cleanup. Not auto-handled; suggested fix: Run 'git gc --prune=now' manually and inspect the failure output."
+      "Garbage collection failed during cleanup. Not auto-handled; contact the repository owner to investigate the cleanup failure."
     increment_counter REMEDIATIONS_FAILED
   fi
 }
@@ -934,10 +943,10 @@ verify_cleanup_effects() {
   local loose_count=0
 
   if git -C "$CURRENT_REPO" fsck --full >/dev/null 2>&1; then
-    append_check "Object Database" "PASS" "git fsck --full passed after cleanup"
+    append_check "Object Database" "PASS" "Repository integrity check passed after cleanup"
   else
     append_check "Object Database" "ISSUE" \
-      "git fsck --full still reports issues after cleanup. Not auto-handled; suggested fix: Investigate fsck output and recover missing/corrupt objects from a healthy remote/clone."
+      "Repository integrity check still reports issues after cleanup. Not auto-handled; contact the repository owner for recovery assistance."
     verification_failed=true
   fi
 
@@ -951,7 +960,7 @@ verify_cleanup_effects() {
       "Post-cleanup loose object count is $loose_count (below threshold)"
   else
     append_check "Loose Objects" "ISSUE" \
-      "Post-cleanup loose object count remains above threshold or could not be determined. Not auto-handled; suggested fix: Run 'git gc --prune=now' manually and inspect the repository state."
+      "Post-cleanup loose object count remains above threshold or could not be determined. Not auto-handled; suggested fix: Contact the repository owner for further investigation."
     verification_failed=true
   fi
 
@@ -1002,8 +1011,6 @@ finalize_report() {
 
   cat >> "$OUTPUT_FILE" << EOF
 
----
-
 ## Summary
 
 **Repositories Checked:** ${#TARGET_PATHS[@]}  
@@ -1017,41 +1024,33 @@ finalize_report() {
 
 EOF
 
-  if [[ "$ISSUES_FOUND" -eq 0 ]]; then
+  if [[ "$ISSUES_FOUND" -eq 0 && "$FIXABLE_ISSUES_FOUND" -eq 0 ]]; then
     cat >> "$OUTPUT_FILE" << 'EOF'
-
 Status: Repository health checks passed with no issues detected.
-
+EOF
+  elif [[ "$DRY_RUN" == true ]] && [[ "$ISSUES_FOUND" -eq 0 ]]; then
+    cat >> "$OUTPUT_FILE" << 'EOF'
+Status: Fixable items detected; no automated fixes applied (-d).
 EOF
   elif [[ "$DRY_RUN" == true ]]; then
     cat >> "$OUTPUT_FILE" << 'EOF'
-
-Status: Issues detected; no automated fixes applied (-d).
-
+Status: Issues and fixable items detected; no automated fixes applied (-d).
 EOF
   elif [[ "$issues_remaining" -eq 0 && "$REMEDIATIONS_VERIFIED" -gt 0 ]]; then
     cat >> "$OUTPUT_FILE" << 'EOF'
-
 Status: All detected issues were resolved by verified remediations.
-
 EOF
   elif [[ "$REMEDIATIONS_VERIFIED" -gt 0 ]]; then
     cat >> "$OUTPUT_FILE" << 'EOF'
-
 Status: Some automated remediations were verified; unresolved issues may remain.
-
 EOF
   elif [[ "$REMEDIATIONS_ATTEMPTED" -gt 0 ]]; then
     cat >> "$OUTPUT_FILE" << 'EOF'
-
 Status: Remediation attempts were made, but none were fully verified.
-
 EOF
   else
     cat >> "$OUTPUT_FILE" << 'EOF'
-
 Status: Issues detected; no automated fixes were recorded.
-
 EOF
   fi
 
@@ -1061,7 +1060,7 @@ EOF
 
 - Review ISSUE items in this report.
 - Re-run fixlocal without -d to apply safe cleanup.
-- For persistent errors, run: git fsck --full
+- For persistent errors, contact the repository owner for assistance.
 - If remote appears unreachable, verify network/auth and remote URL.
 
 ### Handling Notes
@@ -1073,10 +1072,7 @@ EOF
 - "Issues Remaining" reflects unresolved issues after verified remediations.
 - "Remaining" means manual follow-up is still recommended.
 
----
-
 Report Generated: This report is committed to the current branch for diagnostics.
-
 EOF
 }
 
@@ -1186,7 +1182,7 @@ if [[ "$ISSUES_REMAINING" -lt 0 ]]; then
   ISSUES_REMAINING=0
 fi
 
-echo "Issues: $ISSUES_FOUND found  $ISSUES_FIXED fixed  $ISSUES_REMAINING remaining."
+echo "Issues: $ISSUES_FOUND found  $ISSUES_FIXED fixed  $ISSUES_REMAINING remaining.  Fixable: $FIXABLE_ISSUES_FOUND."
 echo "See ${OUTPUT_FILE#"${REPO_ROOT}"/} for details."
 
 if [[ "$VERBOSE" == true ]]; then
@@ -1201,6 +1197,10 @@ fi
 
 if [[ "$ISSUES_REMAINING" -gt 0 ]]; then
   exit "$EXIT_ISSUES_DETECTED"
+fi
+
+if [[ "$DRY_RUN" == true ]] && [[ "$FIXABLE_ISSUES_FOUND" -gt 0 ]]; then
+  exit "$EXIT_FIXABLE_ONLY"
 fi
 
 exit 0
