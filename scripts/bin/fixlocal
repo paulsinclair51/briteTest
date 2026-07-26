@@ -415,8 +415,8 @@ check_object_database() {
   local dangling_count
   dangling_count="$(printf '%s\n' "$fsck_output" | grep -c '^dangling ' || true)"
   if [[ "$dangling_count" =~ ^[0-9]+$ ]] && [[ "$dangling_count" -gt 0 ]]; then
-    append_check "Dangling Objects" "PASS" \
-      "Found $dangling_count dangling objects (normal in many repos)"
+    append_check "Dangling Objects" "FIXABLE" \
+      "Found $dangling_count dangling objects; will be pruned by garbage collection."
   fi
 
   return 0
@@ -939,8 +939,11 @@ verify_cleanup_effects() {
 
   local verification_failed=false
   local loose_count=0
+  local fsck_output
 
-  if git -C "$CURRENT_REPO" fsck --full >/dev/null 2>&1; then
+  fsck_output="$(git -C "$CURRENT_REPO" fsck --full 2>&1 || true)"
+
+  if ! printf '%s\n' "$fsck_output" | grep -Eq '(^|[[:space:]])(error|fatal):'; then
     append_check "Object Database" "PASS" "Repository integrity check passed after cleanup"
   else
     append_check "Object Database" "ISSUE" \
@@ -960,6 +963,14 @@ verify_cleanup_effects() {
     append_check "Loose Objects" "ISSUE" \
       "Post-cleanup loose object count remains above threshold or could not be determined. Not auto-handled; suggested fix: Contact the repository owner for further investigation."
     verification_failed=true
+  fi
+
+  local dangling_count
+  dangling_count="$(printf '%s\n' "$fsck_output" | grep -c '^dangling ' || true)"
+  if [[ "$dangling_count" =~ ^[0-9]+$ ]] && [[ "$dangling_count" -eq 0 ]]; then
+    append_check "Dangling Objects" "FIXED" "All dangling objects pruned"
+  else
+    append_check "Dangling Objects" "PASS" "$dangling_count dangling objects remain (normal)"
   fi
 
   if [[ "$verification_failed" == false ]]; then
