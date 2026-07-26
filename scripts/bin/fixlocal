@@ -806,13 +806,11 @@ check_loose_objects() {
 
   if [[ "$loose_count" =~ ^[0-9]+$ ]] && [[ "$loose_count" -gt 100 ]]; then
     local status_type="ISSUE"
-    local dry_run_note=""
     if [[ "$DRY_RUN" == true ]]; then
       status_type="FIXABLE"
-      dry_run_note=" (would be fixed by fixlocal if run without -d)"
     fi
     append_check "Loose Objects" "$status_type" \
-      "Found $loose_count loose objects (threshold: 100).$dry_run_note" \
+      "Found $loose_count loose objects (threshold: 100)." \
       "true"
   else
     append_check "Loose Objects" "PASS" \
@@ -1054,14 +1052,27 @@ Status: Issues detected; no automated fixes were recorded.
 EOF
   fi
 
+  # Dynamic recommendations based on what was found
+  local recs=""
+  if [[ "$ISSUES_FOUND" -gt 0 ]]; then
+    recs+="- Review ISSUE items in this report.\n"
+  fi
+  if [[ "$FIXABLE_ISSUES_FOUND" -gt 0 && "$DRY_RUN" == true ]]; then
+    recs+="- Re-run fixlocal without -d to apply safe cleanup.\n"
+  fi
+  if grep -q '\[ISSUE\] \*\*Origin Reachability\*\*' "$OUTPUT_FILE" 2>/dev/null; then
+    recs+="- If remote appears unreachable, verify network/auth and remote URL.\n"
+  fi
+  if [[ "$REMEDIATIONS_FAILED" -gt 0 ]] || [[ "$CRITICAL_ERROR" == true ]]; then
+    recs+="- For persistent errors, contact the repository owner for assistance.\n"
+  fi
+
+  if [[ -n "$recs" ]]; then
+    printf '\n### Recommendations\n\n' >> "$OUTPUT_FILE"
+    printf '%b' "$recs" >> "$OUTPUT_FILE"
+  fi
+
   cat >> "$OUTPUT_FILE" << 'EOF'
-
-### Recommendations
-
-- Review ISSUE items in this report.
-- Re-run fixlocal without -d to apply safe cleanup.
-- For persistent errors, contact the repository owner for assistance.
-- If remote appears unreachable, verify network/auth and remote URL.
 
 ### Handling Notes
 
