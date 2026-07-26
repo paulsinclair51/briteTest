@@ -1011,7 +1011,6 @@ finalize_report() {
 
 ## Summary
 
-**Repositories Checked:** ${#TARGET_PATHS[@]}  
 **Issues Detected:** $ISSUES_FOUND  
 **Fixable Issues Detected:** $FIXABLE_ISSUES_FOUND  
 **Auto-Handled Attempts:** $REMEDIATIONS_ATTEMPTED  
