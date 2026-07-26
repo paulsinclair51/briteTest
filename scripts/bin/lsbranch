@@ -1732,7 +1732,7 @@ capture_initial_worktree_status
 
 # Validate reports directory exists (should be part of repository structure)
 if [[ ! -d "$branch_reports_dir" ]]; then
-  bt_error_exit "$EXIT_OPERATION_FAILED" "$branch_reports_dir directory not found. Repository may be corrupted; run 'fixrepo' to verify."
+  bt_error_exit "$EXIT_OPERATION_FAILED" "$branch_reports_dir directory not found. Repository may be corrupted; run 'fixlocal' to verify."
 fi
 
 enable_branch_reports_write_access

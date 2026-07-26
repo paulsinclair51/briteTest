@@ -27,11 +27,11 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ### Repository, Clone, and Fork Management
 
-- **fixremote**: Recover a corrupted remote/origin from a clean local clone
-   (owner-only), verify integrity after recovery, and generate a
-   recovery report.
-- **fixrepo**: Check repository/clone integrity, apply safe local
-   cleanup fixes, rerun affected verification checks, and generate a
+- **fixremote**: Approver-only origin recovery workflow that runs
+   preflight validation by default and executes guarded remote recovery with
+   `-x` using a clean local clone; generates a recovery report.
+- **fixlocal**: Check local repository integrity, apply safe local cleanup and
+   guarded tracking remediations, rerun verification checks, and generate a
    diagnostic report.
 - **mkclone**: Clone the repository with optional target naming.
 - **mkfork**: Create a fork of the repository and optionally configure it

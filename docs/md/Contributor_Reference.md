@@ -77,7 +77,7 @@ For contribution policies, branching rules, and workflows, see
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.14. [undo](#1114-undo)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.15. [release](#1115-release)<br>
    1.2. [Repository and Clone Management](#12-repository-and-clone-management)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. [fixrepo](#121-fixrepo)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. [fixlocal](#121-fixlocal)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. [fixremote](#122-fixremote)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. [setupclone](#123-setupclone)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. [mkclone](#124-mkclone)<br>
@@ -420,26 +420,27 @@ undo [OPTIONS]
 ### 1.2. Repository and Clone Management
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. fixrepo</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. fixlocal</summary>
 
-#### 1.2.1. fixrepo
+#### 1.2.1. fixlocal
 
-**Purpose:** Check local repository for corruption/issues and safely repair what can be repaired.
+**Purpose:** Check local repository health, apply guarded local remediations, and produce a diagnostic report.
 
 **Usage:**
 
 ```bash
-fixrepo [OPTIONS]
+fixlocal [OPTIONS]
 ```
 
 **Functions:**
 
 - Verify git object database integrity (`git fsck --full`)
 - Verify working tree cleanliness
-- Check remote connectivity/tracking status
+- Check remote connectivity and per-branch tracking status
+- Attempt guarded current-branch synchronization from upstream
 - Run safe cleanup (`git gc --prune=now`)
-- Generate diagnostic report
-- Distinguish fixable vs. non-fixable issues
+- Continue on non-critical check/fix failures and record them in report
+- Distinguish fixable vs. non-fixable issues and verified vs. unverified remediation
 
 **Exit Codes:**
 
@@ -456,29 +457,28 @@ fixrepo [OPTIONS]
 
 #### 1.2.2. fixremote
 
-**Purpose:** Recover corrupted origin/main branch from a clean local clone (owner-only operation).
+**Purpose:** Run owner/approver-only origin recovery workflow from a clean local clone.
 
 **Usage:**
 
 ```bash
-fixremote <clone-path>
+fixremote [OPTIONS] <clone-path>
 ```
 
 **Functions:**
 
-- Verify user is repository owner (requires "O" role)
-- Validate source clone is clean and matches origin
-- Fetch objects and refs from clean clone to origin
-- Reconstruct corrupted refs on origin
-- Verify origin integrity after recovery (`git fsck`)
-- Generate recovery report
-- Clear corruption flag
+- Verify user is approver/owner
+- Run preflight validation (clone integrity/cleanliness, origin URL/reachability)
+- Execute recovery only with `-x` (safe default is preflight-only)
+- Push branch/tag refs from clean clone to origin during execution mode
+- Verify post-recovery origin/main parity with source clone
+- Generate recovery report with actionable follow-up details
 
 **Exit Codes:**
 
-- 0: Success - origin recovered and verified clean
+- 0: Success - checks passed and no unresolved issues
 - 1: Invalid option or argument
-- 2: User is not authorized - only repository owner can run fixremote
+- 2: User is not authorized - only approver/owner can run fixremote
 - 3: Recovery failed - see report for details
 - 100: Missing required dependencies or configuration files
 - 200: Git operation failed during recovery
@@ -1192,7 +1192,7 @@ review            - Create/update pull requests for review
 ```
 mrgup             - Merge branches to parent/protected branches (requires override)
 release           - Create releases and version tags (requires override)
-fixrepo, fixremote - Repair repository state (requires override)
+fixlocal, fixremote - Repair repository state (requires override)
 rebrand           - Update branding across repository (requires override)
 replacetext       - Replace text globally across repo (requires override)
 ```
@@ -1244,7 +1244,7 @@ Use script help for exact current behavior:
 ```bash
 mrgup -h
 release -h
-fixrepo -h
+fixlocal -h
 rmbranch -h
 ```
 

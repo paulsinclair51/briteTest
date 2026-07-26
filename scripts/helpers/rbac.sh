@@ -20,7 +20,7 @@
 # Protected Scripts (require approver override):
 #   - mrgup - Merge branches to protected branches
 #   - release     - Create releases and tags
-#   - fixrepo - Repair repository state
+#   - fixlocal - Repair local repository state
 
 set -euo pipefail
 
@@ -60,7 +60,7 @@ readonly APPROVER_SCRIPTS=(
   "mrgup"    # Merge branches (protected)
   "retarget"           # Retarget targeted branch to another version parent
   "release"          # Create releases (protected)
-  "fixrepo"            # Fix repository issues (protected)
+  "fixlocal"            # Fix local repository issues (protected)
   "rebrand"        # Update branding
   "replacetext"     # Replace text globally
 )
@@ -78,7 +78,7 @@ readonly PROTECTED_SCRIPTS=(
   "mrgup"
   "retarget"
   "release"
-  "fixrepo"
+  "fixlocal"
 )
 
 #####################################################################

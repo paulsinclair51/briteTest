@@ -16,6 +16,82 @@ bt_get_current_branch() {
   git rev-parse --abbrev-ref HEAD 2>/dev/null
 }
 
+bt_git_is_repository() {
+  local repo_path="$1"
+  git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1
+}
+
+bt_git_get_origin_url_or_empty() {
+  local repo_path="$1"
+  git -C "$repo_path" remote get-url origin 2>/dev/null || true
+}
+
+bt_git_has_origin() {
+  local repo_path="$1"
+  [[ -n "$(bt_git_get_origin_url_or_empty "$repo_path")" ]]
+}
+
+bt_git_ls_remote_origin_with_timeout() {
+  local repo_path="$1"
+  local timeout_seconds="$2"
+
+  if [[ "$timeout_seconds" =~ ^[0-9]+$ ]] && [[ "$timeout_seconds" -gt 0 ]] && command -v timeout >/dev/null 2>&1; then
+    timeout "${timeout_seconds}s" \
+      git -C "$repo_path" ls-remote --exit-code origin HEAD >/dev/null 2>&1
+    return $?
+  fi
+
+  git -C "$repo_path" ls-remote --exit-code origin HEAD >/dev/null 2>&1
+}
+
+bt_git_run_with_retry() {
+  local attempts="$1"
+  local base_delay_seconds="$2"
+  shift 2
+
+  local attempt=1
+  local delay="$base_delay_seconds"
+  local rc=0
+
+  while [[ "$attempt" -le "$attempts" ]]; do
+    "$@"
+    rc=$?
+    if [[ "$rc" -eq 0 ]]; then
+      return 0
+    fi
+
+    if [[ "$attempt" -ge "$attempts" ]]; then
+      return "$rc"
+    fi
+
+    # Exponential backoff to smooth over transient remote/network failures.
+    sleep "$delay"
+    delay=$((delay * 2))
+    attempt=$((attempt + 1))
+  done
+
+  return "$rc"
+}
+
+bt_git_ls_remote_origin_with_timeout_and_retry() {
+  local repo_path="$1"
+  local timeout_seconds="$2"
+  local attempts="$3"
+  local base_delay_seconds="$4"
+
+  bt_git_run_with_retry "$attempts" "$base_delay_seconds" \
+    bt_git_ls_remote_origin_with_timeout "$repo_path" "$timeout_seconds"
+}
+
+bt_git_fetch_prune_origin_with_retry() {
+  local repo_path="$1"
+  local attempts="$2"
+  local base_delay_seconds="$3"
+
+  bt_git_run_with_retry "$attempts" "$base_delay_seconds" \
+    git -C "$repo_path" fetch --prune origin
+}
+
 # bt_is_worktree_dirty
 #
 # Returns 0 (true) if the working tree has any uncommitted changes:

@@ -7,6 +7,18 @@ name: ShellCheck
 # For license details, see '<repo>/LICENSE'.
 
 on:
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/shellcheck.yml'
+  push:
+    branches:
+      - main
+      - dev/**
+      - fix/**
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/shellcheck.yml'
   workflow_dispatch:
 
 permissions:

@@ -14,9 +14,13 @@ and high-signal output contracts.
 
 ## Files
 
-- **test_fixrepo.sh**: Smoke tests for `<repo>/scripts/bin/fixrepo`
+- **test_fixlocal.sh**: Smoke tests for `<repo>/scripts/bin/fixlocal`
   covering help output, verified cleanup, report summaries, and briteTest
   layout skip behavior.
+
+- **test_fixremote.sh**: Smoke tests for `<repo>/scripts/bin/fixremote`
+  covering help output, authorization and argument validation, preflight
+  behavior, guarded recovery execution checks, and parity verification.
 
 - **test_gendocs.sh**: Validation tests for `<repo>/scripts/bin/gendocs`
   and its helper scripts `<repo>/scripts/helpers/genpdf.sh` and
@@ -77,6 +81,8 @@ From repository root:
 ```sh
 make test-lsbranch
 make test-gendocs
+make test-fixlocal
+make test-fixremote
 make test-mkbranch
 make test-mrgdown
 make test-report-helpers
@@ -90,6 +96,8 @@ Or run directly:
 ```sh
 bash ./scripts/tests/test_lsbranch.sh
 bash ./scripts/tests/test_gendocs.sh
+bash ./scripts/tests/test_fixlocal.sh
+bash ./scripts/tests/test_fixremote.sh
 bash ./scripts/tests/test_mkbranch.sh
 bash ./scripts/tests/test_mrgdown.sh
 bash ./scripts/tests/test_commit.sh

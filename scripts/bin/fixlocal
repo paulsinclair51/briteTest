@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# fixrepo - Check this repository for corruption and issues,
+# fixlocal - Check this local repository for corruption and issues,
 # apply safe cleanup/fixes, and generate a report.
 #
 # Copyright (c) 2026 Paul Sinclair
@@ -10,90 +10,90 @@
 usage() {
   cat <<'EOF'
 Usage:
-  fixrepo [OPTIONS]
-  fixrepo {-h | --help}
+  fixlocal [OPTIONS]
+  fixlocal {-h | --help}
 
-Check this repository for corruption and issues, apply safe cleanup/fixes,
-and generate a report.
+Check this local repository for integrity and maintenance issues, apply safe
+local remediations when enabled, and generate a diagnostic report.
 
 Scope:
-  - "This repository" means the local git working copy (for example: clone checkout
-    or equivalent local repository checkout) that contains the script invoked
-    by this command: <repo>/scripts/bin/fixrepo -> <repo>.
-  - For this local working copy, fixrepo checks all local branches for
-    remote-tracking ahead/behind status and attempts safe tracking remediation
-    when needed.
-  - All checks and fixes are limited to this local working copy.
-  - If remote (origin) is connected/reachable, fixrepo checks and reports remote
-    connectivity/tracking status and may run safe local tracking refresh
-    (`git fetch --prune origin`). It does not modify remote/origin state.
-  - This script does not run directly on the hosted GitHub remote.
+  - Operates on the local working copy: <repo>/scripts/bin/fixlocal -> <repo>.
+  - Checks local integrity, worktree state, layout, branch tracking, and remote
+    reachability (origin) when enabled.
+  - Applies only local, guarded remediations. It never modifies hosted remote
+    state directly.
 
 Pre-requisites:
-  - Remote (origin) connectivity is required only for remote checks and
-    remote-tracking fixes. Local integrity checks and fixes still
-    run without it.
-  - User must be a contributor (checked via `<repo>/config/contributors.md`)
-    or the repository owner.
+  - User must be a contributor (listed in <repo>/config/contributors.md) or
+    repository owner.
+  - Make sure the remote (origin) is connected and reachable if you want
+    remote/tracking checks and remote-tracking refresh for the local
+    repository or you specify the -f option.
 
 Features:
   - Validates git object database integrity (`git fsck --full`).
-  - Verifies working tree cleanliness and repository structure.
+  - Verifies working tree cleanliness and repository structure/layout.
   - Checks remote connectivity/tracking status.
-  - Iterates through all local branches to evaluate
-    remote-tracking ahead/behind status.
+  - Iterates all local branches to evaluate upstream ahead/behind status.
   - Attempts safe remote-tracking refresh (`git fetch --prune origin`) when
     tracking metrics cannot be computed.
   - Attempts guarded remote synchronization of the current local branch from
-    its configured remote-tracking branch (disable with `-n`).
+    its configured remote-tracking branch (use `-r 0` to skip remote checks).
   - Optional force mode (`-f`) can discard local-only divergence/working-tree
     changes (after creating a backup ref) to converge this local branch to
-    remote (origin) branch for stabilization (with potential local loss
+    remote branch for stabilization (with potential local loss
     of recent changes).
   - Runs safe cleanup (`git gc --prune=now`) and reruns affected verification
     checks after cleanup.
-  - Generates a detailed markdown report if issues are found.
-  - Distinguishes fixable vs. non-fixable issues.
+  - Continues through remaining checks when non-critical checks/fixes fail and
+    records all failures in the report.
+  - Distinguishes fixable vs non-fixable issues and verified vs. unverified
+    remediations.
 
 Options:
   -d                Dry-run mode: report issues only, do not attempt repairs.
   -f                Force local stabilization: allow discarding local dirty
-                    changes and local-ahead commits during guarded remote
-                    sync (backup ref created first).
+                    changes and local-ahead commits during guarded remote sync
+                    (backup ref created first). Requires remote connectivity.
   -h                Output this help to stdout and exit (other options ignored).
   --help            Output this help to stdout and exit (other options ignored).
-  -n                No remote synchronization: disable guarded
-                    current-branch remote synchronization.
-                    Cannot be combined with `-f`.
   -r SEC            Remote reachability timeout in seconds (default: 10).
                     Use 0 to skip remote connectivity/tracking checks.
-  -v                Show progress/diagnostic messages to stdout.
+  -v                Verbose mode: add per-step progress detail to stdout.
 
 Common runs:
-  fixrepo              Full checks with safe auto-fixes.
-  fixrepo -d           Full checks in report-only mode.
-  fixrepo -f           Full checks with forced local stabilization safeguards.
-  fixrepo -n           Full checks without guarded current-branch remote synchronization.
-
-Issues Detected:
-  - fsck detected corruption
-  - Dirty worktree
-  - Remote/local-branch tracking issues
+  fixlocal             Full checks with safe auto-fixes and remote checks/
+                       tracking refresh if the connection to the remote occurs
+                       within the default timeout of 10 seconds.
+  fixlocal -d          Full checks in report-only mode.
+  fixlocal -f          Full checks with safe auto-fixes and remote checks/
+                       tracking refresh plus forced local stabilization
+                       safeguards if needed. Requires connection to the
+                       remote within the default timeout of 10 seconds.
+  fixlocal -r 0        Full checks without accessing remote (no remote checks).
+  fixlocal -r 4        Full checks with safe auto-fixes and remote checks/
+                       tracking refresh if the connection to the remote occurs
+                       within the specified timeout of 4 seconds.
+  fixlocal -v          Full checks with safe auto-fixes and remote checks/
+                       tracking refresh if the connection to the remote occurs
+                       within the default timeout of 10 seconds and per-step
+                       verbose detail.
 
 Outputs:
-  - Writes help text, summaries, and verbose output to stdout.
+  - Prints issue counts and report path to stdout; per-step detail with -v.
   - Writes errors and diagnostics to stderr.
-  - Writes a repository diagnostic report to the main branch with fallback chain:
-      1. <repo>/reports/repository/repository-<date>-<time>-<pid>.md (preferred)
-      2. <repo>/repository-<date>-<time>-<pid>.md (root of main, if directory missing
-         or unwritable)
-      3. stdout (if main branch cannot be written to)
-  - Copies the report to the original current branch at the same relative location
-    if that directory exists and is writable.
+  - Writes a repository diagnostic report to local main with fallback chain:
+      1. <repo>/reports/repository/repository-<date>-<time>-<pid>.md
+         (local main branch; preferred)
+      2. <repo>/repository-<date>-<time>-<pid>.md (root of local main,
+         if directory missing or unwritable)
+      3. stdout (if local main branch cannot be written to)
+  - Copies the report to the original current branch at the same
+    relative location if that directory exists and is writable.
   - The report is listed in .gitignore and remains an untracked artifact.
   - Returns to the original branch after writing the report.
-  - Branch iteration for tracking checks does not require manual branch switching.
-  - Report includes: 
+  - Branch tracking checks do not require manual branch switching.
+  - Report includes:
       - Timestamp of the run.
       - User and machine information.
       - Repository path.
@@ -110,40 +110,43 @@ Outputs:
           - Git checkout or branch operation failed.
           - Missing or invalid configuration file.
       - Report location failures:
-          - report/repository/ directory in main branch does not exist
-            or is not writable.
-          - Fallback to root of main branch is not writable.
+          - report/repository/ directory in local main branch does not
+            exist or is not writable.
+          - Fallback to root of local main branch is not writable.
       - Remote corruption warnings (if detected):
-          - If origin/main branch has corruption, the report documents it.
-          - Local clone pushes are blocked until origin is verified clean.
-          - Repository owner should use fixremote script to recover origin
-            from this clean local clone.
+          - If remote (origin) main branch has corruption, the report
+            documents it.
+          - Local clone pushes are blocked until remote is verified clean.
+          - Contact the repository owner to use fixremote script or
+            manually recover the remote.
 
 Recovery Workflow:
-  If fixrepo detects origin corruption while local clone is clean:
-  1. fixrepo fixes local clone and documents origin issues in the report.
-  2. Pushes from this clone are blocked (to prevent spreading corruption).
-  3. Repository owner runs: fixremote <path-to-this-clean-clone>
-  4. fixremote recovers origin from the clean clone objects and refs.
-  5. Once origin is verified clean, owner clears the corruption flag.
-  6. Contributors can then push to origin normally.
+  If fixlocal detects remote corruption while local clone is clean:
+    1. fixlocal fixes local clone and documents remote issues in the report.
+    2. Pushes from this clone are blocked (to prevent spreading corruption).
+    3. Repository owner runs: fixremote <path-to-this-clean-clone>
+    4. fixremote recovers remote from the clean clone objects and refs.
+    5. If there are still issues, the owner can attempt to manually recover
+       remote.
+    6. Once remote is verified clean, owner clears the corruption flag.
+    7. Contributors can then push to remote normally.
 
 Exit codes:
   0   Success - no issues or all issues fixed.
   1   Invalid option or argument.
-  2   User is not authorized to run fixrepo (requires contributor role or higher).
+  2   Not authorized to run fixlocal (requires a contributor or the
+      repository owner).
   3   Issues detected - one or more were not fixable.
   100 Missing required helper files, dependencies, or configuration.
 EOF
 }
 
 # High-Level Flow:
-# - Resolve exactly one target repository: this repository.
-# - Run integrity, connectivity, structure, and working-state checks for that
-#   target.
-# - Apply only safe cleanup operations when enabled.
-# - Produce a report in this repository describing detected vs auto-handled
-#   issues.
+# 1. Validate prerequisites, helper availability, and caller authorization.
+# 2. Run local integrity/worktree/layout checks and optional remote checks.
+# 3. Attempt guarded local remediations for fixable findings (unless -d).
+# 4. Continue on recoverable failures and record outcomes in the report.
+# 5. Emit summary and exit with status reflecting remaining issues.
 
 # Fast-path help handling before any helper sourcing/network/git side effects.
 for arg in "$@"; do
@@ -174,6 +177,18 @@ if [[ ! -f "$SCRIPT_DIR/../helpers/git_helpers.sh" ]]; then
   echo "Error: Required helper not found: $SCRIPT_DIR/../helpers/git_helpers.sh" >&2
   exit "$EXIT_INVALID_ARGUMENT"
 fi
+if [[ ! -f "$SCRIPT_DIR/../helpers/report_helpers.sh" ]]; then
+  echo "Error: Required helper not found: $SCRIPT_DIR/../helpers/report_helpers.sh" >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+fi
+if [[ ! -f "$SCRIPT_DIR/../helpers/health_report.sh" ]]; then
+  echo "Error: Required helper not found: $SCRIPT_DIR/../helpers/health_report.sh" >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+fi
+if [[ ! -f "$SCRIPT_DIR/../helpers/ckrole.sh" ]]; then
+  echo "Error: Required helper not found: $SCRIPT_DIR/../helpers/ckrole.sh" >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+fi
 
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/../helpers/common.sh"
@@ -181,6 +196,8 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/report_helpers.sh
 source "$SCRIPT_DIR/../helpers/report_helpers.sh"
+# shellcheck source=helpers/health_report.sh
+source "$SCRIPT_DIR/../helpers/health_report.sh"
 
 # history_log.sh is optional in isolated test fixtures.
 # If unavailable, provide a no-op fallback used at startup.
@@ -206,7 +223,17 @@ usage_error() {
   exit "$EXIT_INVALID_ARGUMENT"
 }
 
+require_contributor_role() {
+  if bash "$SCRIPT_DIR/../helpers/ckrole.sh" contributor >/dev/null 2>&1; then
+    return 0
+  fi
+
+  bt_error_exit "$EXIT_UNAUTHORIZED" \
+    "User is not authorized to run fixlocal (requires contributor role or higher)."
+}
+
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_ID="${RUN_TS_FILE}-${BASHPID}"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 
 OUTPUT_FILE=""
@@ -215,8 +242,9 @@ REPOSITORY_REPORT_DELETIONS=()
 VERBOSE=false
 DRY_RUN=false
 FORCE_LOCAL_STABILIZATION=false
-SYNC_FROM_ORIGIN_SAFE=true
 REMOTE_TIMEOUT_SECONDS=10
+readonly REMOTE_RETRY_ATTEMPTS=3
+readonly REMOTE_RETRY_BASE_DELAY_SECONDS=1
 
 ISSUES_FOUND=0
 ISSUES_FIXED=0
@@ -240,6 +268,13 @@ increment_counter() {
   printf -v "$var_name" '%d' "$(( ${!var_name} + 1 ))"
 }
 
+# log_verbose: printed only when -v (verbose mode).
+# Use for per-step progress detail inside check functions.
+log_verbose() {
+  [[ "$VERBOSE" == true ]] || return 0
+  bt_info "$1"
+}
+
 safe_trim_spaces() {
   # Normalize mixed whitespace to single spaces for robust token parsing.
   printf '%s' "$1" | tr '\t' ' ' | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//'
@@ -254,7 +289,7 @@ filtered_status_output() {
     status_output="$(printf '%s\n' "$status_output" | awk '
       {
         path = substr($0, 4)
-        if (path ~ /^reports\/repository\/repository-[0-9]{8}-[0-9]{6}\.md$/) {
+        if (path ~ /^reports\/repository\/repository-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md$/) {
           next
         }
         print
@@ -267,17 +302,6 @@ filtered_status_output() {
 
 is_valid_timeout_seconds() {
   [[ "$1" =~ ^[0-9]+$ ]]
-}
-
-git_ls_remote_with_timeout() {
-  local repo_path="$1"
-
-  if command -v timeout >/dev/null 2>&1; then
-    timeout "${REMOTE_TIMEOUT_SECONDS}s" \
-      git -C "$repo_path" ls-remote --exit-code origin HEAD >/dev/null 2>&1
-  else
-    git -C "$repo_path" ls-remote --exit-code origin HEAD >/dev/null 2>&1
-  fi
 }
 
 has_required_api_files() {
@@ -335,10 +359,7 @@ EOF
 }
 
 append_section() {
-  local section_title="$1"
-  echo "
-### $section_title
-" >> "$OUTPUT_FILE"
+  bt_hr_append_section "$OUTPUT_FILE" "$1"
 }
 
 append_check() {
@@ -347,35 +368,24 @@ append_check() {
   local details="$3"
   local fixable="${4:-false}"
 
-  if [[ "$status" == "PASS" ]]; then
-    echo "- [PASS] **$check_name**" >> "$OUTPUT_FILE"
-  elif [[ "$status" == "ISSUE" ]]; then
-    echo "- [ISSUE] **$check_name**" >> "$OUTPUT_FILE"
-    increment_counter ISSUES_FOUND
+  bt_hr_append_check "$OUTPUT_FILE" "$check_name" "$status" "$details" ISSUES_FOUND ISSUES_FIXED
+
+  if [[ "$status" == "ISSUE" ]]; then
     increment_counter TARGET_ISSUES_FOUND
     if [[ "$fixable" == "true" ]]; then
       increment_counter FIXABLE_ISSUES_FOUND
       increment_counter TARGET_FIXABLE_ISSUES_FOUND
     fi
-  elif [[ "$status" == "FIXED" ]]; then
-    echo "- [FIXED] **$check_name**" >> "$OUTPUT_FILE"
-    increment_counter ISSUES_FIXED
   elif [[ "$status" == "ERROR" ]]; then
-    echo "- [ERROR] **$check_name**" >> "$OUTPUT_FILE"
-    increment_counter ISSUES_FOUND
     increment_counter TARGET_ISSUES_FOUND
     CRITICAL_ERROR=true
-  fi
-
-  if [[ -n "$details" ]]; then
-    echo "  - $details" >> "$OUTPUT_FILE"
   fi
 }
 
 check_git_validity() {
   append_section "Git Repository Validity"
 
-  if ! git -C "$CURRENT_REPO" rev-parse --git-dir >/dev/null 2>&1; then
+  if ! bt_git_is_repository "$CURRENT_REPO"; then
     append_check "Git Directory" "ERROR" "Not a valid git repository"
     return 1
   fi
@@ -430,7 +440,9 @@ check_remote_connectivity() {
     return 0
   fi
 
-  if git_ls_remote_with_timeout "$CURRENT_REPO"; then
+  if bt_git_ls_remote_origin_with_timeout_and_retry \
+    "$CURRENT_REPO" "$REMOTE_TIMEOUT_SECONDS" \
+    "$REMOTE_RETRY_ATTEMPTS" "$REMOTE_RETRY_BASE_DELAY_SECONDS"; then
     append_check "Origin Reachability" "PASS" "Remote is reachable"
   else
     append_check "Origin Reachability" "ISSUE" \
@@ -467,7 +479,8 @@ refresh_remote_tracking_state() {
   append_section "Remote Tracking Remediation"
 
   increment_counter REMEDIATIONS_ATTEMPTED
-  if git -C "$CURRENT_REPO" fetch --prune origin >/dev/null 2>&1; then
+  if bt_git_fetch_prune_origin_with_retry \
+    "$CURRENT_REPO" "$REMOTE_RETRY_ATTEMPTS" "$REMOTE_RETRY_BASE_DELAY_SECONDS" >/dev/null 2>&1; then
     append_check "Remote Tracking Refresh" "PASS" \
       "Ran git fetch --prune origin"
     return 0
@@ -579,16 +592,6 @@ check_all_local_branch_tracking() {
 safe_sync_current_branch_from_upstream() {
   append_section "Safe Remote Synchronization"
 
-  if [[ "$SYNC_FROM_ORIGIN_SAFE" == false ]]; then
-    append_check "Current Branch Remote Synchronization" "PASS" \
-      "Disabled by -n"
-    if [[ "$FORCE_LOCAL_STABILIZATION" == true ]]; then
-      append_check "Current Branch Remote Synchronization" "PASS" \
-        "-f requested but not applied because remote synchronization is disabled by -n"
-    fi
-    return 0
-  fi
-
   if [[ "$DRY_RUN" == true ]]; then
     append_check "Current Branch Remote Synchronization" "PASS" \
       "Skipped in dry-run mode (-d)"
@@ -610,7 +613,9 @@ safe_sync_current_branch_from_upstream() {
     return 0
   fi
 
-  if ! git_ls_remote_with_timeout "$CURRENT_REPO"; then
+  if ! bt_git_ls_remote_origin_with_timeout_and_retry \
+    "$CURRENT_REPO" "$REMOTE_TIMEOUT_SECONDS" \
+    "$REMOTE_RETRY_ATTEMPTS" "$REMOTE_RETRY_BASE_DELAY_SECONDS"; then
     append_check "Current Branch Remote Synchronization" "ISSUE" \
       "Origin is not reachable (timeout: ${REMOTE_TIMEOUT_SECONDS}s). Safe remote synchronization skipped." \
       "true"
@@ -709,7 +714,7 @@ safe_sync_current_branch_from_upstream() {
   fi
 
   local backup_ref=""
-  backup_ref="refs/briteTest/backups/fixrepo/${current_branch//\//-}-${RUN_TS_FILE}"
+  backup_ref="refs/briteTest/backups/fixlocal/${current_branch//\//-}-${RUN_ID}"
   if ! git -C "$CURRENT_REPO" update-ref "$backup_ref" "$current_commit" >/dev/null 2>&1; then
     append_check "Current Branch Remote Synchronization" "ISSUE" \
       "Unable to create backup ref '$backup_ref'. Sync aborted to preserve safety."
@@ -908,7 +913,7 @@ cleanup_repository() {
   fi
 
   append_section "Cleanup Operations"
-  bt_info "Performing safe cleanup for $CURRENT_TARGET_NAME..."
+  log_verbose "Performing safe cleanup for $CURRENT_TARGET_NAME..."
 
   increment_counter REMEDIATIONS_ATTEMPTED
   if git -C "$CURRENT_REPO" gc --prune=now >/dev/null 2>&1; then
@@ -970,7 +975,7 @@ run_target_checks() {
   TARGET_ISSUES_FOUND=0
   TARGET_FIXABLE_ISSUES_FOUND=0
 
-  bt_info "Checking ${CURRENT_TARGET_NAME}: ${CURRENT_REPO}"
+  log_verbose "Checking ${CURRENT_TARGET_NAME}: ${CURRENT_REPO}"
 
   append_target_header "$CURRENT_TARGET_NAME" "$CURRENT_REPO"
 
@@ -1055,7 +1060,7 @@ EOF
 ### Recommendations
 
 - Review ISSUE items in this report.
-- Re-run fixrepo without -d to apply safe cleanup.
+- Re-run fixlocal without -d to apply safe cleanup.
 - For persistent errors, run: git fsck --full
 - If remote appears unreachable, verify network/auth and remote URL.
 
@@ -1127,10 +1132,6 @@ while [[ $# -gt 0 ]]; do
       FORCE_LOCAL_STABILIZATION=true
       shift
       ;;
-    -n)
-      SYNC_FROM_ORIGIN_SAFE=false
-      shift
-      ;;
     -r)
       [[ $# -ge 2 ]] || usage_error "Missing value for $1"
       REMOTE_TIMEOUT_SECONDS="$2"
@@ -1150,10 +1151,6 @@ if [[ "${#POSITIONAL[@]}" -gt 0 ]]; then
   usage_error "Unexpected argument(s): ${POSITIONAL[*]}"
 fi
 
-if [[ "$FORCE_LOCAL_STABILIZATION" == true && "$SYNC_FROM_ORIGIN_SAFE" == false ]]; then
-  usage_error "Options -f and -n cannot be used together"
-fi
-
 if ! is_valid_timeout_seconds "$REMOTE_TIMEOUT_SECONDS"; then
   usage_error "Invalid -r value: $REMOTE_TIMEOUT_SECONDS (expected integer >= 0)"
 fi
@@ -1162,18 +1159,15 @@ if [[ ! -d "$REPO_ROOT/reports" ]]; then
   bt_error_exit "$EXIT_MISSING_DEPENDENCIES" "Reports directory not found: $REPO_ROOT/reports"
 fi
 
+require_contributor_role
+
 if ! mkdir -p "$REPOSITORY_REPORTS_DIR"; then
   bt_error_exit "$EXIT_MISSING_DEPENDENCIES" "Unable to create reports directory: $REPOSITORY_REPORTS_DIR"
 fi
 
-OUTPUT_FILE="$REPOSITORY_REPORTS_DIR/repository-${RUN_TS_FILE}.md"
+OUTPUT_FILE="$REPOSITORY_REPORTS_DIR/repository-${RUN_ID}.md"
 
 add_target_repo "This Repository" "$REPO_ROOT"
-
-bt_info "Starting repository integrity checks..."
-if [[ "$DRY_RUN" == true ]]; then
-  bt_info "Running in DRY-RUN mode (report only; no fixes)"
-fi
 
 init_report
 
@@ -1187,21 +1181,22 @@ finalize_report
 cleanup_old_reports
 bt_report_mark_read_only "$OUTPUT_FILE" "$EXIT_MISSING_DEPENDENCIES"
 
-bt_success "Repository check complete. Report: ${OUTPUT_FILE#"${REPO_ROOT}"/}"
+ISSUES_REMAINING=$((ISSUES_FOUND - REMEDIATIONS_VERIFIED))
+if [[ "$ISSUES_REMAINING" -lt 0 ]]; then
+  ISSUES_REMAINING=0
+fi
+
+echo "Issues: $ISSUES_FOUND found  $ISSUES_FIXED fixed  $ISSUES_REMAINING remaining."
+echo "See ${OUTPUT_FILE#"${REPO_ROOT}"/} for details."
 
 if [[ "$VERBOSE" == true ]]; then
   echo ""
-  bt_info "Report contents:"
+  echo "Report contents:"
   sed 's/^/  /' "$OUTPUT_FILE"
 fi
 
 if [[ "$CRITICAL_ERROR" == true ]]; then
   exit "$EXIT_MISSING_DEPENDENCIES"
-fi
-
-ISSUES_REMAINING=$((ISSUES_FOUND - REMEDIATIONS_VERIFIED))
-if [[ "$ISSUES_REMAINING" -lt 0 ]]; then
-  ISSUES_REMAINING=0
 fi
 
 if [[ "$ISSUES_REMAINING" -gt 0 ]]; then

@@ -98,10 +98,10 @@ Exit codes:
   3   Commit comment is missing or empty.
   4   Current branch is not local.
   5   Current branch is a protected branch.
-  200 Could not inspect working tree. Run `fixrepo`; if the issue
+  200 Could not inspect working tree. Run `fixlocal`; if the issue
       persists, contact an approver or repository owner to resolve
       file/state/permission issues.
-  201 Failed to commit. Run `fixrepo`; if the issue persists, contact
+  201 Failed to commit. Run `fixlocal`; if the issue persists, contact
       an approver or repository owner to resolve file/state/permission
       issues.
 EOF
@@ -242,7 +242,7 @@ EOF
 
 fail_commit_and_exit() {
   generate_failed_commit_report
-  bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Failed to commit. Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
+  bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Failed to commit. Run 'fixlocal'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
 }
 
 run_git_command() {
