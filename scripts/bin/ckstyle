@@ -2,6 +2,8 @@
 
 # ckstyle - Validate consistent style in repository files.
 #
+# See usage below for details, or run: ckstyle -h
+#
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see '<repo>/LICENSE'.

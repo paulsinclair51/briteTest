@@ -2,7 +2,8 @@
 
 # fixlocal - Checks this local repository for integrity and issues,
 # applies safe cleanup/fixes, and generates a diagnostic report. See
-# Usage below for details.
+#
+# See usage below for details, or run: fixlocal -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
