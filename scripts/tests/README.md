@@ -50,10 +50,19 @@ and high-signal output contracts.
   help output, protected-branch gate behavior, merge report generation,
   read-only report enforcement, and remote report copy semantics.
 
-- **test_commit.sh**: Smoke tests for `<repo>/scripts/bin/commit` covering
-  help output, role validation, message validation, dry-run reporting, and
-  disconnected-remote push handling.
-  Included automatically by `test_scripts.sh`.
+- **test_commit.sh**: Orchestrator for split `commit` smoke tests.
+
+- **test_commit_core.sh**: Core smoke tests for `<repo>/scripts/bin/commit`
+  covering help output, role and argument validation, message validation,
+  and dry-run reporting.
+
+- **test_commit_history.sh**: History/push semantics smoke tests for
+  `<repo>/scripts/bin/commit` covering divergence auto-resolution,
+  selected-for-push labeling, and local-only branch behavior.
+
+- **test_commit_reports.sh**: Report-retention and permissions smoke tests for
+  `<repo>/scripts/bin/commit` covering stale report cleanup and read-only
+  report enforcement.
 
 - **test_report_helpers.sh**: Focused tests for
   `<repo>/scripts/helpers/report_helpers.sh` covering exact deleted-report
@@ -79,7 +88,8 @@ and high-signal output contracts.
 - **test_scripts.sh**: Script-test orchestrator that runs all `test_*.sh`
   scripts in this directory (except itself), with stop-on-failure and
   continue-on-failure modes. When split `fixlocal` test files are present,
-  it skips `test_fixlocal.sh` to avoid duplicate execution.
+  it skips `test_fixlocal.sh` to avoid duplicate execution. Likewise, when
+  split `commit` test files are present, it skips `test_commit.sh`.
 
 - **README.md**: This directory guide.
 
@@ -117,6 +127,9 @@ bash ./scripts/tests/test_fixremote.sh
 bash ./scripts/tests/test_mkbranch.sh
 bash ./scripts/tests/test_mrgdown.sh
 bash ./scripts/tests/test_commit.sh
+bash ./scripts/tests/test_commit_core.sh
+bash ./scripts/tests/test_commit_history.sh
+bash ./scripts/tests/test_commit_reports.sh
 bash ./scripts/tests/test_report_helpers.sh
 bash ./scripts/tests/test_ckstyle.sh
 bash ./scripts/tests/test_rmbranch.sh

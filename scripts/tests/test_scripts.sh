@@ -76,6 +76,18 @@ if find "$SCRIPT_DIR" -maxdepth 1 -type f -name 'test_fixlocal_*.sh' | grep -q .
   test_files=("${filtered[@]}")
 fi
 
+# If split commit test files are present, skip the commit orchestrator to
+# avoid running the same suite twice in this global runner.
+if find "$SCRIPT_DIR" -maxdepth 1 -type f -name 'test_commit_*.sh' | grep -q .; then
+  filtered=()
+  for test_file in "${test_files[@]}"; do
+    if [[ "$test_file" != "$SCRIPT_DIR/test_commit.sh" ]]; then
+      filtered+=("$test_file")
+    fi
+  done
+  test_files=("${filtered[@]}")
+fi
+
 # Prioritize chbranch regression tests when present.
 chbranch_test="$SCRIPT_DIR/test_chbranch.sh"
 if [[ -f "$chbranch_test" ]]; then
