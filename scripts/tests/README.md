@@ -14,9 +14,21 @@ and high-signal output contracts.
 
 ## Files
 
-- **test_fixlocal.sh**: Smoke tests for `<repo>/scripts/bin/fixlocal`
-  covering help output, verified cleanup, report summaries, and briteTest
-  layout skip behavior.
+- **test_fixlocal.sh**: Orchestrator for split `fixlocal` smoke tests.
+
+- **test_fixlocal_core.sh**: Core smoke tests for `<repo>/scripts/bin/fixlocal`
+  covering help output, verified cleanup, report summaries, layout skip
+  behavior, argument/authorization handling, and dependency/report-path
+  hard-failure handling.
+
+- **test_fixlocal_remote.sh**: Remote-state smoke tests for
+  `<repo>/scripts/bin/fixlocal` covering unreachable origin,
+  remote-tracking refresh failure classification, and timeout
+  classification exit codes.
+
+- **test_fixlocal_retention.sh**: Report-retention smoke tests for
+  `<repo>/scripts/bin/fixlocal` covering dry-run and non-dry retention
+  deletion behavior.
 
 - **test_fixremote.sh**: Smoke tests for `<repo>/scripts/bin/fixremote`
   covering help output, authorization and argument validation, preflight
@@ -66,7 +78,8 @@ and high-signal output contracts.
 
 - **test_scripts.sh**: Script-test orchestrator that runs all `test_*.sh`
   scripts in this directory (except itself), with stop-on-failure and
-  continue-on-failure modes.
+  continue-on-failure modes. When split `fixlocal` test files are present,
+  it skips `test_fixlocal.sh` to avoid duplicate execution.
 
 - **README.md**: This directory guide.
 
@@ -97,6 +110,9 @@ Or run directly:
 bash ./scripts/tests/test_lsbranch.sh
 bash ./scripts/tests/test_gendocs.sh
 bash ./scripts/tests/test_fixlocal.sh
+bash ./scripts/tests/test_fixlocal_core.sh
+bash ./scripts/tests/test_fixlocal_remote.sh
+bash ./scripts/tests/test_fixlocal_retention.sh
 bash ./scripts/tests/test_fixremote.sh
 bash ./scripts/tests/test_mkbranch.sh
 bash ./scripts/tests/test_mrgdown.sh
