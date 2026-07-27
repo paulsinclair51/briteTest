@@ -14,36 +14,41 @@ Usage:
   push [OPTIONS]
   push {-h | --help}
 
-Push commits on the current local branch to its remote counterpart.
+Push commits on the current local branch to its corresponding remote.
 
-Before pushing:
+push validates preconditions, pushes local commits to the remote branch,
+and writes a report under <repo>/reports/branch/.
+
+Prerequisites:
+  - User must be a contributor (listed in <repo>/config/contributors.md).
+  - The remote (origin) must be connected and reachable.
+  - The current branch must be a local branch.
+  - The current branch must be a targeted or contributor branch, and
+    must not be the main or a version branch.
   - The current branch must have no untracked or uncommitted changes.
-  - If there are changes, use the commit or undo workflow first.
-  - The local branch must be ahead of the remote branch. If local and
-    remote have diverged, run pull to synchronize first.
+    - If there are changes, run the commit or undo script first.
 
-Protected branches (cannot run push):
-  - main
-  - v<M>.<m>.<p> version branches created from main.
-
-Allowed branches (can use push):
-  - Unprotected branches with a corresponding remote branch.
+Remote state requirements:
+  - The remote branch must exist.
+  - The current branch must be ahead of the remote branch (that is,
+    there must be unpushed committed changes).
+  - The current branch and its remote must not have diverged.
+    - If they have diverged, run pull to synchronize first.
 
 Options:
   -d                Dry-run. Validates preconditions and reports what
                     would be pushed, but does not push.
-  -f                Force. Skip confirmation prompt before pushing.
   -h                Output this help to stdout and exit (other options
                     and arguments are ignored).
   --help            Output this help to stdout and exit (other options
                     and arguments are ignored).
-  -v                Show detailed push information.
+  -r SEC            Remote reachability timeout in seconds (default: 10).
+                    Exit code is 1 if SEC is not an integer greater than 0.
+  -v                Show detailed progress, push and diagnostic information
+                    to stdout.
 
 Example: Push local commits to remote.
   push
-
-Example: Push without confirmation prompt.
-  push -f
 
 Example: Preview what would be pushed (dry run).
   push -d
@@ -51,38 +56,115 @@ Example: Preview what would be pushed (dry run).
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
+  - Reports are written only when prerequisites and remote state
+    requirements are satisfied and there are commits to push.
+  - For a non-dry-run that successfully pushes, writes a non-tracked report
+    for the current branch and for the remote branch to:
+       '<repo>/reports/branch/push-YYYYMMDD-HHMMSS-<pid>.md'
+  - For a non-dry-run that fails to successfully push all the files in the
+    push operation, writes a non-tracked
+    report for the current branch to:
+       '<repo>/reports/branch/push-e-YYYYMMDD-HHMMSS.md'       
+  - For a dry-run, writes a non-tracked report for the current branch to:
+       '<repo>/reports/branch/push-d-YYYYMMDD-HHMMSS.md'
+  - If a report (non-dry-run or dry-run) is written, older dry-run (-d)
+    and error (-e) reports for the current branch are deleted.
+
+Successful Push Report:
+  - Includes timestamp, command, branch, mode (push), and commit count.
+  - Lists files included in this push with number of lines added, deleted,
+    net changed lines, and total lines.
+
+Unsuccessful Push Report:
+  - Includes timestamp, command, branch, mode (push failed),
+    commit count, and atomic push guarantee.
+  - Lists files included in this push and identifies file-specific issue
+    attribution when detectable from push output; otherwise marks
+    the failure as group-level.
+  - Includes corrective guidance when detectable and raw push error output.
+
+Dry-Run Report:
+  - Includes timestamp, command, branch, mode (dry-run), and commit count.
+  - Lists files included in this push.
 
 Exit codes:
-  0   Success.
-  1   Argument or validation error.
-  2   Remote disconnected or branch not found on remote.
-  3   Push failed.
-  4   Branch is protected (cannot push via push).
+  0    Success.
+  1    Argument or validation error.
+  2    User is not a contributor.
+  3    Current branch is main or a version branch and is protected.
+  4    Remote is unconnected (origin is not configured).
+  5    Remote is unreachable (connection failed before timeout).
+  6    Remote connectivity check timed out.
+  7    Remote branch for the current branch not found.
+  8    Report write lock timed out; try again.
+  200  Push failed.
+  201  Failed to write report.
 EOF
 }
 
 # High-Level Flow:
-# - Validates that the working tree is clean and the local branch is ahead
-#   of its remote counterpart.
-# - Pushes local commits to the remote branch.
-# - Reports push outcomes and required follow-up actions.
+# - Parse options and validate branch/role/worktree/remote prerequisites.
+# - Compute commits/files included in this push and ensure local and remote are
+#   non-diverged.
+# - Preflight report runtime requirements before any push action.
+# - For dry-run: generate local dry-run report and exit.
+# - For non-dry-run: attempt push, generate success/failure report, and copy
+#   successful report to remote branch report directory.
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+if [[ "$SCRIPT_PATH" == */* ]]; then
+  SCRIPT_DIR="$(cd "${SCRIPT_PATH%/*}" && pwd)"
+else
+  SCRIPT_DIR="$PWD"
+fi
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+BRANCH_REPORTS_DIR="$REPO_ROOT/reports/branch"
+RUN_TS_FILE=""
+RUN_TS_DISPLAY=""
+REPORT_FILE=""
 ORIGINAL_ARGS=("$@")
+BRANCH_REPORTS_DIR_UNLOCKED=false
+PUSH_ERROR_OUTPUT=""
+PUSH_INCLUDED_FILES=""
+REPORT_WRITE_LOCK_FD=""
+REPORT_WRITE_LOCK_HELD=false
+REPORT_WRITE_LOCK_FILE=""
+REPORT_WRITE_LOCK_TIMEOUT_SECONDS="${BT_PUSH_REPORT_LOCK_TIMEOUT_SECONDS:-60}"
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/report_helpers.sh
+source "$SCRIPT_DIR/../helpers/report_helpers.sh"
+# shellcheck source=helpers/report_sync.sh
+source "$SCRIPT_DIR/../helpers/report_sync.sh"
 
 readonly EXIT_INVALID_ARGUMENT=1
-readonly EXIT_REMOTE_ERROR=2
-readonly EXIT_PUSH_FAILED=3
-readonly EXIT_PROTECTED=4
+readonly EXIT_NOT_AUTHORIZED=2
+readonly EXIT_PROTECTED=3
+readonly EXIT_REMOTE_UNCONNECTED=4
+readonly EXIT_REMOTE_UNREACHABLE=5
+readonly EXIT_REMOTE_TIMED_OUT=6
+readonly EXIT_REMOTE_BRANCH_NOT_FOUND=7
+readonly EXIT_REPORT_LOCK_TIMED_OUT=8
+readonly EXIT_PUSH_FAILED=200
+readonly EXIT_REPORT_FAILED=201
+
+cleanup_runtime_files() {
+  # shellcheck disable=SC2317  # Invoked by trap cleanup_runtime_files EXIT.
+  if [[ "$BRANCH_REPORTS_DIR_UNLOCKED" == true ]]; then
+    bt_report_dir_disable_writes "$BRANCH_REPORTS_DIR" "$EXIT_REPORT_FAILED" || true
+    BRANCH_REPORTS_DIR_UNLOCKED=false
+  fi
+
+  release_report_write_lock
+}
+
+trap cleanup_runtime_files EXIT
 
 usage_error() {
   local message="$1"
@@ -127,9 +209,373 @@ bt_error_exit() {
   exit "$code"
 }
 
+preflight_toolchain_requirements() {
+  local required_tool
+  local missing_tools=()
+
+  for required_tool in git awk sed grep wc cksum flock chmod rm mkdir head date; do
+    if ! command -v "$required_tool" >/dev/null 2>&1; then
+      missing_tools+=("$required_tool")
+    fi
+  done
+
+  if [[ ${#missing_tools[@]} -gt 0 ]]; then
+    bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+      "Missing required tool(s): ${missing_tools[*]}. Run push in a standard repository shell environment and try again"
+  fi
+}
+
+is_targeted_branch() {
+  local branch="$1"
+  [[ "$branch" =~ ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]
+}
+
+is_contributor_branch() {
+  local branch="$1"
+  local desc='[a-z0-9]+(-[a-z0-9]+)*'
+  local type='[a-z][a-z]{0,29}'
+
+  if [[ "$branch" == "main" ]]; then
+    return 1
+  fi
+  if bt_is_version_branch "$branch"; then
+    return 1
+  fi
+  if is_targeted_branch "$branch"; then
+    return 1
+  fi
+
+  [[ "$branch" =~ ^((${type}/)?${desc})$ ]]
+}
+
+worktree_has_blocking_changes() {
+  local status_lines
+  local remaining
+
+  status_lines="$(git --no-optional-locks status --porcelain --untracked-files=all 2>/dev/null || true)"
+  [[ -n "$status_lines" ]] || return 1
+
+  remaining="$(printf '%s\n' "$status_lines" | \
+    grep -Ev '^\?\? reports/branch/push(-(d|e))?-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md$' || true)"
+
+  [[ -n "$remaining" ]]
+}
+
+format_command_line() {
+  local formatted="push"
+  local arg
+
+  for arg in "${ORIGINAL_ARGS[@]}"; do
+    printf -v formatted '%s %q' "$formatted" "$arg"
+  done
+
+  printf '%s\n' "$formatted"
+}
+
+enable_branch_reports_write_access() {
+  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_REPORT_FAILED"
+  BRANCH_REPORTS_DIR_UNLOCKED=true
+}
+
+disable_branch_reports_write_access() {
+  if [[ "$BRANCH_REPORTS_DIR_UNLOCKED" == true ]]; then
+    bt_report_dir_disable_writes "$BRANCH_REPORTS_DIR" "$EXIT_REPORT_FAILED"
+    BRANCH_REPORTS_DIR_UNLOCKED=false
+  fi
+}
+
+mark_report_read_only() {
+  local report_path="$1"
+  bt_report_mark_read_only "$report_path" "$EXIT_REPORT_FAILED"
+}
+
+init_report_write_lock_file() {
+  local repo_hash
+
+  repo_hash="$(printf '%s' "$REPO_ROOT" | cksum | awk '{print $1}')"
+  REPORT_WRITE_LOCK_FILE="/tmp/briteTest-push-report-${repo_hash}.lock"
+}
+
+preflight_report_runtime_requirements() {
+  local lock_fd
+
+  if ! command -v flock >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_REPORT_FAILED" "Missing required 'flock' command for report write locking"
+  fi
+
+  if [[ -z "$REPORT_WRITE_LOCK_FILE" ]]; then
+    init_report_write_lock_file
+  fi
+
+  if [[ ! "$REPORT_WRITE_LOCK_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || [[ "$REPORT_WRITE_LOCK_TIMEOUT_SECONDS" -le 0 ]]; then
+    bt_error_exit "$EXIT_REPORT_FAILED" \
+      "Invalid report lock timeout '${REPORT_WRITE_LOCK_TIMEOUT_SECONDS}'. Set BT_PUSH_REPORT_LOCK_TIMEOUT_SECONDS to an integer greater than 0"
+  fi
+
+  # Validate lock-file openability before any push side effects occur.
+  if ! exec {lock_fd}>"$REPORT_WRITE_LOCK_FILE"; then
+    bt_error_exit "$EXIT_REPORT_FAILED" "Failed to open report write lock file: $REPORT_WRITE_LOCK_FILE"
+  fi
+  exec {lock_fd}>&-
+}
+
+acquire_report_write_lock() {
+  if [[ "$REPORT_WRITE_LOCK_HELD" == true ]]; then
+    return 0
+  fi
+
+  if [[ -z "$REPORT_WRITE_LOCK_FILE" ]]; then
+    init_report_write_lock_file
+  fi
+
+  if ! command -v flock >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_REPORT_FAILED" "Missing required 'flock' command for report write locking"
+  fi
+
+  if ! exec {REPORT_WRITE_LOCK_FD}>"$REPORT_WRITE_LOCK_FILE"; then
+    bt_error_exit "$EXIT_REPORT_FAILED" "Failed to open report write lock file: $REPORT_WRITE_LOCK_FILE"
+  fi
+
+  if ! flock -w "$REPORT_WRITE_LOCK_TIMEOUT_SECONDS" "$REPORT_WRITE_LOCK_FD"; then
+    exec {REPORT_WRITE_LOCK_FD}>&-
+    REPORT_WRITE_LOCK_FD=""
+    bt_error_exit "$EXIT_REPORT_LOCK_TIMED_OUT" \
+      "Timed out waiting ${REPORT_WRITE_LOCK_TIMEOUT_SECONDS}s for report write lock. Another push may still be generating a report; try again"
+  fi
+
+  REPORT_WRITE_LOCK_HELD=true
+}
+
+release_report_write_lock() {
+  if [[ "$REPORT_WRITE_LOCK_HELD" == true ]]; then
+    flock -u "$REPORT_WRITE_LOCK_FD" 2>/dev/null || true
+    exec {REPORT_WRITE_LOCK_FD}>&-
+    REPORT_WRITE_LOCK_FD=""
+    REPORT_WRITE_LOCK_HELD=false
+  fi
+}
+
+prepare_report_file() {
+  local report_path="$1"
+
+  REPORT_FILE="$report_path"
+  acquire_report_write_lock
+  enable_branch_reports_write_access
+
+  if [[ -f "$REPORT_FILE" ]]; then
+    chmod u+w "$REPORT_FILE" 2>/dev/null || true
+  fi
+}
+
+finalize_report_file() {
+  cleanup_old_transient_reports
+  mark_report_read_only "$REPORT_FILE"
+  disable_branch_reports_write_access
+  release_report_write_lock
+}
+
+cleanup_old_transient_reports() {
+  local old_report
+  local report_branch
+  local pattern
+
+  for pattern in "push-d-*.md" "push-e-*.md"; do
+    for old_report in "$BRANCH_REPORTS_DIR"/$pattern; do
+      [[ -e "$old_report" ]] || continue
+      [[ "$old_report" == "$REPORT_FILE" ]] && continue
+
+      # Transient reports are local-only artifacts; only prune those generated
+      # for the current branch.
+      report_branch="$(grep -E '^\*\*Branch:\*\* ' "$old_report" 2>/dev/null | sed -E 's/^\*\*Branch:\*\* `(.+)`$/\1/' | head -n 1 || true)"
+      if [[ -z "$report_branch" || "$report_branch" != "$CURRENT_BRANCH" ]]; then
+        continue
+      fi
+
+      rm -f "$old_report" 2>/dev/null || \
+        bt_warn "Could not remove stale transient report: ${old_report#"${REPO_ROOT}"/}"
+    done
+  done
+}
+
+normalize_numstat_value() {
+  local value="$1"
+
+  # git numstat uses '-' for binary deltas; normalize to zero for arithmetic.
+  if [[ "$value" =~ ^[0-9]+$ ]]; then
+    printf '%s' "$value"
+  else
+    printf '0'
+  fi
+}
+
+append_files_included_summary() {
+  local report_path="$1"
+  local rel_path
+  local added_raw deleted_raw
+  local added deleted net total_lines
+  local has_rows=false
+
+  {
+    echo "## Files Included in This Push"
+    echo
+    echo "| File | Added | Deleted | Net | Total Lines |"
+    echo "| --- | ---: | ---: | ---: | ---: |"
+  } >> "$report_path"
+
+  while IFS=$'\t' read -r added_raw deleted_raw rel_path; do
+    [[ -n "$rel_path" ]] || continue
+
+    added="$(normalize_numstat_value "$added_raw")"
+    deleted="$(normalize_numstat_value "$deleted_raw")"
+    net=$((added - deleted))
+
+    total_lines=0
+    if [[ -f "$REPO_ROOT/$rel_path" ]]; then
+      total_lines="$(wc -l < "$REPO_ROOT/$rel_path" 2>/dev/null || echo 0)"
+    fi
+
+    printf '| `%s` | %s | %s | %s | %s |\n' \
+      "$rel_path" "$added" "$deleted" "$net" "$total_lines" >> "$report_path"
+    has_rows=true
+  done < <(git diff --numstat "${REMOTE_BRANCH_TIP}..HEAD" 2>/dev/null || true)
+
+  if [[ "$has_rows" == false ]]; then
+    echo '| None | 0 | 0 | 0 | 0 |' >> "$report_path"
+  fi
+
+  echo >> "$report_path"
+}
+
+generate_push_report() {
+  local command_text mode_label
+  local report_path
+
+  command_text="$(format_command_line)"
+  if [[ "$DRY_RUN" == true ]]; then
+    report_path="$BRANCH_REPORTS_DIR/push-d-${RUN_TS_FILE}.md"
+    mode_label="dry-run"
+  else
+    report_path="$BRANCH_REPORTS_DIR/push-${RUN_TS_FILE}-${BASHPID}.md"
+    mode_label="push"
+  fi
+
+  prepare_report_file "$report_path"
+
+  cat > "$REPORT_FILE" <<EOF
+# Push Report ${RUN_TS_DISPLAY}
+
+**Command:** \`${command_text}\`
+
+**Branch:** \`${CURRENT_BRANCH}\`
+
+**Mode:** ${mode_label}
+
+**Commits:** ${COMMITS_AHEAD}
+
+EOF
+
+  append_files_included_summary "$REPORT_FILE"
+
+  finalize_report_file
+}
+
+generate_push_error_report() {
+  local command_text
+  local issue_files
+  local has_issue_files=false
+  local line
+
+  command_text="$(format_command_line)"
+  prepare_report_file "$BRANCH_REPORTS_DIR/push-e-${RUN_TS_FILE}.md"
+
+  cat > "$REPORT_FILE" <<EOF
+# Push Report ${RUN_TS_DISPLAY}
+
+**Status:** Failed
+
+**Command:** \`${command_text}\`
+
+**Branch:** \`${CURRENT_BRANCH}\`
+
+**Mode:** push failed
+
+**Commits:** ${COMMITS_AHEAD}
+
+**Atomic Push Guarantee:** Yes (single branch ref update). If push fails, no files from this push are pushed.
+
+EOF
+
+  {
+    echo "## Files Included in This Push"
+    echo
+    if [[ -n "$PUSH_INCLUDED_FILES" ]]; then
+      printf '%s\n' "$PUSH_INCLUDED_FILES" | sed 's/^/- /'
+    else
+      echo "- None identified."
+    fi
+    echo
+  } >> "$REPORT_FILE"
+
+  issue_files=""
+  if [[ -n "$PUSH_INCLUDED_FILES" && -n "$PUSH_ERROR_OUTPUT" ]]; then
+    while IFS= read -r line; do
+      [[ -n "$line" ]] || continue
+      # Best-effort attribution: map push output text back to push file list.
+      if grep -Fq -- "$line" <<<"$PUSH_ERROR_OUTPUT"; then
+        issue_files+="$line"$'\n'
+        has_issue_files=true
+      fi
+    done <<<"$PUSH_INCLUDED_FILES"
+  fi
+
+  {
+    echo "## Push Issue Attribution"
+    echo
+    if [[ "$has_issue_files" == true ]]; then
+      echo "Push output references the following file(s):"
+      echo
+      printf '%s' "$issue_files" | sed '/^$/d; s/^/- /'
+    else
+      echo "Push failed as a group-level operation. No specific file could be identified from push output as the cause."
+    fi
+    echo
+  } >> "$REPORT_FILE"
+
+  {
+    echo "## Guidance"
+    echo
+    echo "- This report is generated only after prerequisite and remote state checks have passed for this run."
+    if grep -qi 'non-fast-forward\|fetch first\|rejected.*non-fast-forward' <<<"$PUSH_ERROR_OUTPUT"; then
+      echo "- Local branch is behind or diverged from remote. Run pull to synchronize, resolve conflicts if needed, then rerun push."
+    fi
+    if grep -qi 'hook declined\|pre-receive hook declined\|rejected by test hook\|policy' <<<"$PUSH_ERROR_OUTPUT"; then
+      echo "- Remote policy/hook rejected this push. Review the push error output above, correct the policy violations, commit fixes, then rerun push."
+    fi
+    if grep -qi 'Permission denied\|403\|not permitted\|access denied\|authentication failed' <<<"$PUSH_ERROR_OUTPUT"; then
+      echo "- Authentication or authorization failed. Verify your Git credentials and contributor access, then rerun push."
+    fi
+    echo "- If the cause is unclear, run fixlocal to verify local repository state, then rerun push."
+    echo "- Push is atomic for this branch update: either all files included in this push are represented on remote after success, or none are when push fails."
+    echo
+  } >> "$REPORT_FILE"
+
+  if [[ -n "$PUSH_ERROR_OUTPUT" ]]; then
+    {
+      echo "## Push Error Output"
+      echo
+      echo '```text'
+      printf '%s\n' "$PUSH_ERROR_OUTPUT"
+      echo '```'
+      echo
+    } >> "$REPORT_FILE"
+  fi
+
+  finalize_report_file
+}
+
 # Default options
 DRY_RUN=false
-FORCE=false
+REMOTE_TIMEOUT_SECONDS=10
 VERBOSE=false
 
 # Parse options and arguments
@@ -143,9 +589,15 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
-    -f | --force)
-      FORCE=true
-      shift
+    -r)
+      if [[ $# -lt 2 ]]; then
+        usage_error "Option -r requires a timeout in seconds"
+      fi
+      if [[ ! "$2" =~ ^[0-9]+$ ]] || [[ "$2" -le 0 ]]; then
+        usage_error "Option -r requires an integer greater than 0"
+      fi
+      REMOTE_TIMEOUT_SECONDS="$2"
+      shift 2
       ;;
     -v | --verbose)
       VERBOSE=true
@@ -160,10 +612,29 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+preflight_toolchain_requirements
+
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit "$EXIT_INVALID_ARGUMENT" "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
+
+if [[ "$CURRENT_BRANCH" == "HEAD" || -z "$CURRENT_BRANCH" ]]; then
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+    "Not on a local branch. Use 'chbranch' to switch to a local non-protected branch, then retry."
+fi
+
+if ! git show-ref --verify --quiet "refs/heads/$CURRENT_BRANCH"; then
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+    "Not on a local branch. Use 'chbranch' to switch to a local non-protected branch, then retry."
+fi
+
+if ! bash "$SCRIPT_DIR/../helpers/ckrole.sh" contributor >/dev/null 2>&1; then
+  bt_error_exit "$EXIT_NOT_AUTHORIZED" "User is not a contributor"
+fi
 
 # Check if branch is protected
 if bt_is_protected_branch "$CURRENT_BRANCH"; then
@@ -171,65 +642,102 @@ if bt_is_protected_branch "$CURRENT_BRANCH"; then
     "Cannot push protected branch '$CURRENT_BRANCH' via push. Use the standard release workflow."
 fi
 
-# Require clean working tree
-if bt_is_worktree_dirty; then
+if ! is_targeted_branch "$CURRENT_BRANCH" && ! is_contributor_branch "$CURRENT_BRANCH"; then
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+    "Current branch must be a targeted or contributor branch. Use chbranch or mkbranch to switch to a supported local branch, then retry."
+fi
+
+# Require clean working tree (ignoring push report artifacts generated by
+# prior dry-runs/non-dry runs).
+if worktree_has_blocking_changes; then
   bt_error_exit "$EXIT_INVALID_ARGUMENT" \
     "Current branch has uncommitted or untracked changes. Commit or undo them before running push"
 fi
 
 # Verify remote is reachable
 if ! git remote get-url origin >/dev/null 2>&1; then
-  bt_error_exit "$EXIT_REMOTE_ERROR" "No remote 'origin' configured"
+  bt_error_exit "$EXIT_REMOTE_UNCONNECTED" "No remote 'origin' configured"
 fi
 
-bt_info "Fetching remote state..."
-if ! git fetch origin "$CURRENT_BRANCH" >/dev/null 2>&1; then
-  bt_error_exit "$EXIT_REMOTE_ERROR" \
-    "Failed to fetch remote branch '$CURRENT_BRANCH'. Ensure the remote branch exists"
+bt_info "Checking remote connectivity..."
+set +e
+bt_git_ls_remote_origin_with_timeout "$REPO_ROOT" "$REMOTE_TIMEOUT_SECONDS"
+remote_probe_rc=$?
+set -e
+if [[ "$remote_probe_rc" -eq 124 ]]; then
+  bt_error_exit "$EXIT_REMOTE_TIMED_OUT" \
+    "Remote connectivity check timed out after ${REMOTE_TIMEOUT_SECONDS}s"
+elif [[ "$remote_probe_rc" -ne 0 ]]; then
+  bt_error_exit "$EXIT_REMOTE_UNREACHABLE" \
+    "Remote is unreachable before timeout"
 fi
 
-# Count commits local is ahead of remote
-COMMITS_AHEAD=$(git rev-list --count "origin/$CURRENT_BRANCH..HEAD" 2>/dev/null || echo "0")
+REMOTE_BRANCH_TIP="$(git ls-remote --exit-code origin "refs/heads/$CURRENT_BRANCH" 2>/dev/null | awk 'NR==1 { print $1 }')"
+if [[ -z "$REMOTE_BRANCH_TIP" ]]; then
+  bt_error_exit "$EXIT_REMOTE_BRANCH_NOT_FOUND" \
+    "Remote branch '$CURRENT_BRANCH' not found on origin"
+fi
+
+# Count commits local is ahead of remote.
+COMMITS_AHEAD=$(git rev-list --count "${REMOTE_BRANCH_TIP}..HEAD" 2>/dev/null || echo "0")
 
 if [[ "$COMMITS_AHEAD" == "0" ]]; then
   bt_success "Nothing to push: local branch is already up to date with remote."
   exit 0
 fi
 
+# File list represented by commits included in this push (remote tip..HEAD).
+PUSH_INCLUDED_FILES="$(git diff --name-only "${REMOTE_BRANCH_TIP}..HEAD" 2>/dev/null || true)"
+
 # Detect divergence (remote has commits local does not)
-COMMITS_BEHIND=$(git rev-list --count "HEAD..origin/$CURRENT_BRANCH" 2>/dev/null || echo "0")
+COMMITS_BEHIND=$(git rev-list --count "HEAD..${REMOTE_BRANCH_TIP}" 2>/dev/null || echo "0")
 if [[ "$COMMITS_BEHIND" != "0" ]]; then
-  bt_error_exit "$EXIT_REMOTE_ERROR" \
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" \
     "Local and remote branches have diverged ($COMMITS_AHEAD ahead, $COMMITS_BEHIND behind). Run pull to synchronize first"
 fi
+
+preflight_report_runtime_requirements
 
 bt_info "Commits to push: $COMMITS_AHEAD"
 
 if [[ "$VERBOSE" == true ]]; then
   bt_info "Commits that will be pushed:"
-  git log --oneline "origin/$CURRENT_BRANCH..HEAD" | sed 's/^/  /'
+  git log --oneline "${REMOTE_BRANCH_TIP}..HEAD" | sed 's/^/  /'
 fi
 
 if [[ "$DRY_RUN" == true ]]; then
+  generate_push_report
   bt_success "Dry run: $COMMITS_AHEAD commit(s) would be pushed to remote '$CURRENT_BRANCH'."
+  bt_success "See ${REPORT_FILE#"${REPO_ROOT}"/} for details"
   exit 0
 fi
 
-# Confirm before pushing
-if [[ "$FORCE" == false ]]; then
-  echo -n "Push $COMMITS_AHEAD commit(s) to remote '$CURRENT_BRANCH'? (y/n): "
-  read -r response
-  if [[ ! "$response" =~ ^[Yy]$ ]]; then
-    bt_warn "Push cancelled."
-    exit 0
-  fi
-fi
-
 # Push
+# Invariant: push executes only after all preconditions, remote-state checks,
+# and report runtime preflight checks have passed.
 bt_info "Pushing to remote '$CURRENT_BRANCH'..."
-if ! GIT_BYPASS_HOOKS=true git push origin "$CURRENT_BRANCH" 2>&1; then
+set +e
+PUSH_ERROR_OUTPUT="$(GIT_BYPASS_HOOKS=true git push origin "$CURRENT_BRANCH" 2>&1)"
+push_rc=$?
+set -e
+
+if [[ "$push_rc" -ne 0 ]]; then
+  if [[ -n "$PUSH_ERROR_OUTPUT" ]]; then
+    printf '%s\n' "$PUSH_ERROR_OUTPUT" >&2
+  fi
+  generate_push_error_report
   bt_error_exit "$EXIT_PUSH_FAILED" "Failed to push branch '$CURRENT_BRANCH' to remote"
 fi
 
+if [[ -n "$PUSH_ERROR_OUTPUT" ]]; then
+  printf '%s\n' "$PUSH_ERROR_OUTPUT"
+fi
+
+generate_push_report
+if ! bt_report_copy_to_remote "$REPO_ROOT" "$BRANCH_REPORTS_DIR" "$(basename "$REPORT_FILE")" >/dev/null 2>&1; then
+  bt_error_exit "$EXIT_REPORT_FAILED" "Failed to write push report to remote branch report directory"
+fi
+
 bt_success "Pushed $COMMITS_AHEAD commit(s) to remote '$CURRENT_BRANCH'."
+bt_success "See ${REPORT_FILE#"${REPO_ROOT}"/} for details"
 exit 0
