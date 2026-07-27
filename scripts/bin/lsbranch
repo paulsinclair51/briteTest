@@ -632,7 +632,7 @@ persist_report_changes() {
 
   report_filename="$(basename "$OUTPUT_FILE")"
   report_rel="${OUTPUT_FILE#"${repo_root}"/}"
-  bt_success "Report generated locally: $report_rel"
+  bt_success "See $report_rel for details."
 }
 
 build_auto_stash_index() {
