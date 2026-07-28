@@ -18,8 +18,9 @@ Change current branch to BRANCH.
 
 Arguments:
   BRANCH      Name of the branch to change to. If BRANCH is omitted,
-              defaults to the name of the current branch (use -l or -r
-              to change to the local or remote branch, respectively).
+              defaults to the name of the current branch. If current
+              branch name cannot be resolved (detached/ambiguous), falls
+              back to the last successful branch name.
 
 Options:
   -h          Output this help to stdout and exit (other options
@@ -42,6 +43,10 @@ Rules:
   - By default (neither -l nor -r specified), changes to local BRANCH
     when it exists; otherwise, remote branch if it exists and is connected
     and reachable within the specified or default timeout.
+  - Mode flags are strict:
+      * -l forces local mode.
+      * -r forces remote mode.
+      * -l and -r together are invalid.
   - For targeted/contributor branches in remote mode:
       * If a corresponding local branch exists, remote is read-only.
       * If no corresponding local branch exists, remote is read/write by
@@ -71,8 +76,8 @@ EOF
 
 # High-Level Flow:
 # 1. Parse options and resolve BRANCH.
-#    - If BRANCH is omitted, use last successful branch name from local
-#      config; otherwise derive from current local/detached state.
+#    - If BRANCH is omitted, use current local/detached state; if unresolved,
+#      fall back to last successful branch name from local config.
 # 2. Validate branch name and policy constraints.
 # 3. Determine desired checkout mode.
 #    - Default: local when BRANCH exists locally; otherwise remote.
@@ -418,9 +423,9 @@ parse_args() {
   fi
 
   if [[ -z "$BRANCH_ARG" ]]; then
-    BRANCH_ARG="$(last_branch_or_empty)"
+    BRANCH_ARG="$(current_branch_name_or_empty)"
     if [[ -z "$BRANCH_ARG" ]]; then
-      BRANCH_ARG="$(current_branch_name_or_empty)"
+      BRANCH_ARG="$(last_branch_or_empty)"
     fi
     if [[ -z "$BRANCH_ARG" ]]; then
       arg_error "BRANCH is required when current branch name cannot be resolved"
@@ -548,10 +553,16 @@ main() {
   ensure_clean_or_discard "$curr_branch"
 
   if [[ "$read_only_mode" == true ]]; then
-    if [[ "$has_remote" == true ]]; then
+    # Respect explicit mode flags first.
+    if [[ "$FORCE_LOCAL" == true ]]; then
+      switch_local_read_only "$TARGET_BRANCH"
+    elif [[ "$FORCE_REMOTE" == true ]]; then
       switch_remote "$TARGET_BRANCH"
+    # Default mode for protected branches remains local-first, then remote.
     elif [[ "$has_local" == true ]]; then
       switch_local_read_only "$TARGET_BRANCH"
+    elif [[ "$has_remote" == true ]]; then
+      switch_remote "$TARGET_BRANCH"
     else
       bt_error_exit "$EXIT_BRANCH_NOT_FOUND" \
         "Branch '$TARGET_BRANCH' was not found locally or on origin"
