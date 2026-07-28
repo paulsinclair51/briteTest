@@ -209,6 +209,16 @@ bt_error_exit() {
   exit "$code"
 }
 
+bt_git_ls_remote_origin_with_timeout() {
+  local repo_root="$1"
+  local timeout_seconds="$2"
+
+  (
+    cd "$repo_root" || exit 1
+    timeout "$timeout_seconds" git ls-remote --heads origin >/dev/null 2>&1
+  )
+}
+
 preflight_toolchain_requirements() {
   local required_tool
   local missing_tools=()
