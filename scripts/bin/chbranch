@@ -11,73 +11,82 @@
 usage() {
   cat <<'EOF'
 Usage:
-  chbranch [-f] [-r] [-o] BRANCH
+  chbranch [-l | -r] [-t SEC] [-v] [BRANCH]
   chbranch {-h | --help}
 
 Change current branch to BRANCH.
 
 Arguments:
-  BRANCH      Name of the branch to change to.
+  BRANCH      Name of the branch to change to. If BRANCH is omitted,
+              defaults to the name of the current branch (use -l or -r
+              to change to the local or remote branch, respectively).
 
 Options:
-  -h, --help  Output this help to stdout and exit (other options
+  -h          Output this help to stdout and exit (other options
               and arguments are ignored).
-  -r          Change to remote (origin) BRANCH even when local BRANCH exists.
-  -f          Discard all uncommitted tracked and untracked changes before
-              changing to BRANCH, but only when branch-change prechecks
-              succeed.
-  -o          Owner override for branches blocked by policy, for this
-              command run only; normal role restrictions apply again
-              after exit.
+  --help      Output this help to stdout and exit (other options
+              and arguments are ignored).
+  -l          Change to local BRANCH.
+  -r          Change to remote (origin) BRANCH if it exists and is
+              connected and reachable within the specified or default
+              timeout.
+  -t SEC      Timeout in seconds for accessing remote branch (default
+              10 seconds).
+              SEC must be an integer greater than 0.
+  -v          Output verbose progress and diagnostics to stdout.
 
 Rules:
-  - By default, local BRANCH is used when it exists.
-  - If local BRANCH does not exist and remote (origin) BRANCH exists, changes to
-    remote BRANCH (a local branch is not created).
-  - With -r, changes to remote (origin) BRANCH even when a local BRANCH exists.
-  - If -r is used and remote (origin) BRANCH does not exist or is not
-    connected/reachable, exits with error and preserves uncommitted changes
-    (-f is ignored).
-  - With -f, all uncommitted tracked and untracked changes are
-    discarded before changing the branch.
-  - Changing branch is blocked when the current branch is dirty,
-    unless -f is specified.
-  - With -o, BRANCH is still required and normal local/remote selection
-    rules still apply.
-  - If BRANCH is policy-blocked for normal users, -o allows switching only
-    when the caller is the repository owner.
+  - Changing branch is blocked when the current branch is dirty; use the commit
+    script or undo script, and then rerun chbranch.
+  - Protected branches (main and v<M>.<m>.<p>) are always read-only.
+  - By default (neither -l nor -r specified), changes to local BRANCH
+    when it exists; otherwise, remote branch if it exists and is connected
+    and reachable within the specified or default timeout.
+  - For targeted/contributor branches in remote mode:
+      * If a corresponding local branch exists, remote is read-only.
+      * If no corresponding local branch exists, remote is read/write by
+        creating a local tracking branch.
 
 Examples:
   chbranch dev/my-feature-v1.0.0
-  chbranch -f dev/my-feature-v1.0.0
   chbranch -r dev/my-feature-v1.0.0
-  chbranch -f -r dev/my-feature-v1.0.0
-  chbranch -o main
-  chbranch -o -r v1.0.0
-  chbranch v1.0.0
 
 Outputs:
-  - Writes help text and status messages to stdout.
+  - Writes help text, status message, and verbose output to stdout.
   - Writes errors and diagnostics to stderr.
 
 Exit codes:
   0   Success.
   1   Invalid option or argument.
-  2   Not in a git repository.
-  5   Current branch is dirty; commit/undo changes first or resubmit
-      with -f to discard all the uncommitted changes.
+  2   Current branch is dirty; commit/undo changes and then rerun.
+  3   Branch not found (when neither -l nor -r specified).
+  4   Local branch not found when -l specified.
+  5   Remote branch not found when -r specified.
   6   Remote branch is not connected/reachable.
-  8   Owner override (-o) denied (caller is not repository owner or
-      owner could not be determined).
+  7   Timeout waiting for remote branch to be reachable.
   200 Git switch command failed (e.g., corrupted index, merge conflicts,
       permissions, or other git-level errors preventing branch change).
 EOF
 }
 
 # High-Level Flow:
-# - Parses branch selection for local/remote checkout mode.
-# - Optionally discards uncommitted tracked/untracked changes with -f.
-# - Uses local branch by default, with optional remote branch checkout.
+# 1. Parse options and resolve BRANCH.
+#    - If BRANCH is omitted, use last successful branch name from local
+#      config; otherwise derive from current local/detached state.
+# 2. Validate branch name and policy constraints.
+# 3. Determine desired checkout mode.
+#    - Default: local when BRANCH exists locally; otherwise remote.
+#    - Explicit: -l forces local mode, -r forces remote mode.
+# 4. Apply branch policy.
+#    - main/version branches are always read-only.
+#    - Remote targeted/contributor branches are read-only only when a
+#      corresponding local branch exists.
+# 5. Validate target availability.
+#    - Local mode: local ref must exist.
+#    - Remote mode: remote ref must exist and be reachable within timeout.
+# 6. Ensure worktree is clean.
+# 7. Switch to local/read-write, or detached read-only target.
+# 8. Persist the branch name for future no-BRANCH invocations.
 
 set -euo pipefail
 
@@ -95,21 +104,42 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 readonly EXIT_ARG_ERROR=1
-readonly EXIT_NOT_GIT_REPO=2
-readonly EXIT_NO_CHANGE=2
+readonly EXIT_NOT_GIT_REPO=200
+readonly EXIT_DIRTY_WORKTREE=2
 readonly EXIT_BRANCH_NOT_FOUND=3
-readonly EXIT_REMOTE_NOT_FOUND=4
-readonly EXIT_DIRTY_WORKTREE=5
+readonly EXIT_LOCAL_NOT_FOUND=4
+readonly EXIT_REMOTE_NOT_FOUND=5
 readonly EXIT_REMOTE_UNREACHABLE=6
-readonly EXIT_OWNER_REQUIRED=8
+readonly EXIT_REMOTE_TIMEOUT=7
 readonly EXIT_CHANGE_FAILED=200
+
+VERBOSE=false
+FORCE_LOCAL=false
+REMOTE_TIMEOUT_SECONDS=10
+readonly LAST_BRANCH_KEY="chbranch.lastBranch"
 
 usage_error() {
   local message="$1"
   usage
-  echo >&2
-  echo "$message. See usage above for details." >&2
+  echo "$message" >&2
   exit "$EXIT_ARG_ERROR"
+}
+
+arg_error() {
+  usage_error "$1"
+}
+
+verbose_info() {
+  local message="$1"
+  if [[ "$VERBOSE" == true ]]; then
+    bt_info "$message"
+  fi
+}
+
+emit_success_changed() {
+  local mode="$1"
+  local branch="$2"
+  echo "Changed to $mode $branch branch."
 }
 
 ensure_git_repository() {
@@ -133,19 +163,66 @@ current_local_branch() {
   git symbolic-ref -q --short HEAD 2>/dev/null || true
 }
 
-discard_uncommitted_changes() {
-  bt_warn "Force mode enabled: discarding all uncommitted changes"
+remember_last_branch() {
+  local branch="$1"
 
-  if ! git reset --hard >/dev/null 2>&1; then
-    bt_error_exit 5 \
-      "Failed to discard tracked changes (git reset --hard failed)"
+  [[ -n "$branch" ]] || return 0
+  git config --local "$LAST_BRANCH_KEY" "$branch" >/dev/null 2>&1 || true
+}
+
+last_branch_or_empty() {
+  local branch=""
+
+  branch="$(git config --local --get "$LAST_BRANCH_KEY" 2>/dev/null || true)"
+  if [[ -n "$branch" ]] && git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+    echo "$branch"
+    return 0
   fi
 
-  if ! git clean -fd >/dev/null 2>&1; then
-    bt_error_exit 5 "Failed to discard untracked changes (git clean -fd failed)"
+  echo ""
+}
+
+current_branch_name_or_empty() {
+  local local_branch
+  local remote_branches
+  local first_remote
+  local remote_count
+  local remembered_branch
+
+  local_branch="$(current_local_branch)"
+  if [[ -n "$local_branch" ]]; then
+    echo "$local_branch"
+    return 0
   fi
 
-  bt_success "Discarded uncommitted tracked and untracked changes"
+  remote_branches="$(git for-each-ref --format='%(refname:short)' --points-at HEAD refs/remotes/origin 2>/dev/null | grep -v '^origin/HEAD$' || true)"
+  remote_count="$(printf '%s\n' "$remote_branches" | sed '/^$/d' | wc -l | tr -d ' ')"
+  remembered_branch="$(last_branch_or_empty)"
+
+  if [[ "$remote_count" == "1" ]]; then
+    first_remote="$(printf '%s\n' "$remote_branches" | sed '/^$/d' | head -n 1)"
+    first_remote="${first_remote#origin/}"
+    remember_last_branch "$first_remote"
+    echo "$first_remote"
+    return 0
+  fi
+
+  # If HEAD points at multiple remote branches, prefer the remembered branch
+  # when it is still one of the candidates.
+  if [[ "$remote_count" -gt 1 && -n "$remembered_branch" ]] &&
+    printf '%s\n' "$remote_branches" | grep -Fxq "origin/$remembered_branch"; then
+    echo "$remembered_branch"
+    return 0
+  fi
+
+  # If HEAD no longer maps to a unique remote ref, fall back to the remembered
+  # branch name from the last successful switch.
+  if [[ -n "$remembered_branch" ]]; then
+    echo "$remembered_branch"
+    return 0
+  fi
+
+  echo ""
 }
 
 # refresh_remote_branch_ref
@@ -153,11 +230,27 @@ discard_uncommitted_changes() {
 #   0 = remote branch exists and local remote-tracking ref is available
 #   1 = remote branch not found
 #   2 = remote unreachable or remote query/fetch failed
+#   3 = timeout while waiting for remote response
 refresh_remote_branch_ref() {
   local branch="$1"
   local ls_output=""
+  local rc=0
 
-  if ! ls_output="$(git ls-remote --heads origin "$branch" 2>/dev/null)"; then
+  if ! command -v timeout >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_REMOTE_UNREACHABLE" \
+      "Required command 'timeout' is not available"
+  fi
+
+  set +e
+  ls_output="$(timeout "$REMOTE_TIMEOUT_SECONDS" git ls-remote --heads origin "$branch" 2>/dev/null)"
+  rc=$?
+  set -e
+
+  if [[ "$rc" -eq 124 ]]; then
+    return 3
+  fi
+
+  if [[ "$rc" -ne 0 ]]; then
     return 2
   fi
 
@@ -165,7 +258,7 @@ refresh_remote_branch_ref() {
     return 1
   fi
 
-  bt_info "Found origin/$branch. Fetching branch metadata..."
+  verbose_info "Found origin/$branch. Fetching branch metadata..."
   if ! git fetch origin "$branch:refs/remotes/origin/$branch" \
     >/dev/null 2>&1; then
     return 2
@@ -174,7 +267,7 @@ refresh_remote_branch_ref() {
   bt_propagate_repository_history
   case $? in
     0) ;;
-    1) bt_info "Updated repository history from remote" ;;
+    1) verbose_info "Updated repository history from remote" ;;
     *) ;;
   esac
 
@@ -195,6 +288,10 @@ ensure_remote_ref_available() {
   case $? in
     0) return 0 ;;
     1) return 1 ;;
+    3)
+      bt_error_exit "$EXIT_REMOTE_TIMEOUT" \
+        "Timeout waiting for remote branch '$branch' to be reachable"
+      ;;
     2)
       msg="Remote branch is not connected/reachable while checking '$branch' "
       msg+="(offline or auth issue)."
@@ -225,139 +322,124 @@ is_current_remote_branch() {
 switch_local() {
   local branch="$1"
 
-  bt_info "Switching to local branch '$branch'..."
+  verbose_info "Switching to local branch '$branch'"
   if ! git switch "$branch" >/dev/null 2>&1; then
     bt_error_exit "$EXIT_CHANGE_FAILED" \
       "Failed to switch to local branch '$branch'"
   fi
-  bt_success "Current branch is now local '$branch'"
+  remember_last_branch "$branch"
+  emit_success_changed "local" "$branch"
 }
 
 switch_remote() {
   local branch="$1"
 
-  bt_info "Switching to remote branch 'origin/$branch'..."
+  verbose_info "Switching to remote branch 'origin/$branch'"
   if ! git switch --detach "origin/$branch" >/dev/null 2>&1; then
     bt_error_exit "$EXIT_CHANGE_FAILED" \
       "Failed to switch to remote branch 'origin/$branch'"
   fi
-  bt_success "Current branch is now remote 'origin/$branch'"
+  remember_last_branch "$branch"
+  emit_success_changed "remote" "$branch"
+}
+
+switch_local_tracking_from_remote() {
+  local branch="$1"
+
+  verbose_info "Creating local tracking branch '$branch' from origin/$branch"
+  if ! git switch --track -c "$branch" "origin/$branch" >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_CHANGE_FAILED" \
+      "Failed to create local tracking branch '$branch' from 'origin/$branch'"
+  fi
+  remember_last_branch "$branch"
+  emit_success_changed "local" "$branch"
+}
+
+switch_local_read_only() {
+  local branch="$1"
+
+  verbose_info "Switching to read-only local branch '$branch'"
+  if ! git switch --detach "$branch" >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_CHANGE_FAILED" \
+      "Failed to switch to read-only local branch '$branch'"
+  fi
+  remember_last_branch "$branch"
+  emit_success_changed "local" "$branch"
 }
 
 parse_args() {
   FORCE_REMOTE=false
-  FORCE_DISCARD=false
-  FORCE_OWNER_OVERRIDE=false
+  FORCE_LOCAL=false
   BRANCH_ARG=""
 
-  if [[ $# -eq 0 ]]; then
-    usage_error "Branch name is required"
-  fi
-
-  for arg in "$@"; do
-    case "$arg" in
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
       -h | --help)
         usage
         exit 0
         ;;
+      -l)
+        FORCE_LOCAL=true
+        ;;
       -r)
         FORCE_REMOTE=true
         ;;
-      -f)
-        FORCE_DISCARD=true
+      -t)
+        shift
+        if [[ -z "${1:-}" ]]; then
+          arg_error "Option -t requires SEC"
+        fi
+        if [[ ! "$1" =~ ^[1-9][0-9]*$ ]]; then
+          arg_error "SEC for -t must be an integer greater than 0"
+        fi
+        REMOTE_TIMEOUT_SECONDS="$1"
         ;;
-      -o)
-        FORCE_OWNER_OVERRIDE=true
+      -v)
+        VERBOSE=true
         ;;
       --*)
-        usage_error "Unknown option: $arg"
+        arg_error "Unknown option: $1"
         ;;
       -*)
-        usage_error "Unknown option: $arg"
+        arg_error "Unknown option: $1"
         ;;
       *)
         if [[ -n "$BRANCH_ARG" ]]; then
-          usage_error "Exactly one branch name is required"
+          arg_error "Exactly one branch name is required"
         fi
-        BRANCH_ARG="$arg"
+        BRANCH_ARG="$1"
         ;;
     esac
+    shift
   done
 
+  if [[ "$FORCE_LOCAL" == true && "$FORCE_REMOTE" == true ]]; then
+    arg_error "Options -l and -r are mutually exclusive"
+  fi
+
   if [[ -z "$BRANCH_ARG" ]]; then
-    usage_error "Branch name is required"
-  fi
-}
-
-resolve_repo_owner_login_or_empty() {
-  local repo_slug="${GITHUB_REPOSITORY:-}"
-  local remote_url=""
-  local owner=""
-
-  if [[ -n "$repo_slug" && "$repo_slug" == */* ]]; then
-    owner="${repo_slug%%/*}"
-  fi
-
-  if [[ -z "$owner" ]]; then
-    remote_url="$(git remote get-url origin 2>/dev/null || true)"
-    if [[ "$remote_url" =~ ^git@github\.com:([^/]+)/([^/]+)(\.git)?$ ]]; then
-      owner="${BASH_REMATCH[1]}"
-    elif [[ "$remote_url" =~ ^https://github\.com/([^/]+)/([^/]+)(\.git)?$ ]]; then
-      owner="${BASH_REMATCH[1]}"
-    elif [[ "$remote_url" =~ ^ssh://git@github\.com/([^/]+)/([^/]+)(\.git)?$ ]]; then
-      owner="${BASH_REMATCH[1]}"
+    BRANCH_ARG="$(last_branch_or_empty)"
+    if [[ -z "$BRANCH_ARG" ]]; then
+      BRANCH_ARG="$(current_branch_name_or_empty)"
     fi
-  fi
-
-  bt_normalize_login "$owner"
-}
-
-ensure_repo_owner_for_override() {
-  local actor_lc=""
-  local repo_owner_lc=""
-
-  if ! actor_lc="$(bt_require_login)"; then
-    bt_error_exit "$EXIT_OWNER_REQUIRED" \
-      "Owner override (-o) requires a resolvable caller identity"
-  fi
-
-  repo_owner_lc="$(resolve_repo_owner_login_or_empty)"
-  if [[ -z "$repo_owner_lc" ]]; then
-    bt_error_exit "$EXIT_OWNER_REQUIRED" \
-      "Owner override (-o) requires repository owner identity (set GITHUB_REPOSITORY or configure origin GitHub URL)"
-  fi
-
-  if [[ "$actor_lc" != "$repo_owner_lc" ]]; then
-    bt_error_exit "$EXIT_OWNER_REQUIRED" \
-      "Owner override (-o) denied: caller '$actor_lc' is not repository owner '$repo_owner_lc'"
+    if [[ -z "$BRANCH_ARG" ]]; then
+      arg_error "BRANCH is required when current branch name cannot be resolved"
+    fi
   fi
 }
 
 validate_target_branch() {
   local branch="$1"
-  local owner_override="${2:-false}"
   local msg=""
 
   if [[ "$branch" == origin/* ]]; then
     msg="Remote branch input '$branch' is not allowed. Create a local "
     msg+="tracking branch first."
-    bt_error_exit "$EXIT_ARG_ERROR" \
-      "$msg"
-  fi
-
-  if [[ "$branch" == "main" ]]; then
-    if [[ "$owner_override" == true ]]; then
-      ensure_repo_owner_for_override
-    else
-      msg="Switching to 'main' is blocked by policy. Repository owner can "
-      msg+="override with -o."
-      bt_error_exit "$EXIT_ARG_ERROR" \
-        "$msg"
-    fi
+    arg_error "$msg"
   fi
 
   if ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_ARG_ERROR" "Invalid branch name: '$branch'"
+    arg_error "Invalid branch name: '$branch'"
   fi
 }
 
@@ -367,11 +449,6 @@ ensure_clean_or_discard() {
 
   if ! bt_is_worktree_dirty; then
     return 0
-  fi
-
-  if [[ "$FORCE_DISCARD" == true ]]; then
-    discard_uncommitted_changes
-    return
   fi
 
   if [[ -n "$curr_branch" ]]; then
@@ -389,6 +466,9 @@ ensure_clean_or_discard() {
 
 main() {
   local has_local=false
+  local has_remote=false
+  local protected_branch=false
+  local read_only_mode=false
   local desired_mode="local"
   local require_fresh_remote=false
   local curr_branch
@@ -398,20 +478,38 @@ main() {
   parse_args "$@"
 
   TARGET_BRANCH="$BRANCH_ARG"
-  validate_target_branch "$TARGET_BRANCH" "$FORCE_OWNER_OVERRIDE"
+  validate_target_branch "$TARGET_BRANCH"
+
+  if bt_is_protected_branch "$TARGET_BRANCH"; then
+    protected_branch=true
+    read_only_mode=true
+  fi
 
   if branch_exists_local "$TARGET_BRANCH"; then
     has_local=true
   fi
 
-  if [[ "$FORCE_REMOTE" == true || "$has_local" == false ]]; then
+  if [[ "$FORCE_LOCAL" == true ]]; then
+    desired_mode="local"
+  elif [[ "$FORCE_REMOTE" == true || "$has_local" == false ]]; then
     desired_mode="remote"
+  fi
+
+  # Protected branches are always read-only. Keep local mode for no-local
+  # fallback detection but enforce detached checkout below.
+  if [[ "$protected_branch" == true && "$FORCE_LOCAL" == true ]]; then
+    read_only_mode=true
   fi
 
   # For explicit -r, always validate against the current remote state rather
   # than relying on a possibly stale local remote-tracking ref.
   if [[ "$FORCE_REMOTE" == true ]]; then
     require_fresh_remote=true
+  fi
+
+  if [[ "$FORCE_LOCAL" == true && "$has_local" == false ]]; then
+    bt_error_exit "$EXIT_LOCAL_NOT_FOUND" \
+      "Local branch '$TARGET_BRANCH' does not exist"
   fi
 
   if [[ "$desired_mode" == "remote" ]]; then
@@ -425,29 +523,50 @@ main() {
       bt_error_exit "$EXIT_BRANCH_NOT_FOUND" \
         "$msg"
     fi
+    has_remote=true
+  else
+    if branch_exists_cached_remote "$TARGET_BRANCH"; then
+      has_remote=true
+    fi
   fi
 
   curr_branch="$(current_local_branch)"
-  if [[ "$desired_mode" == "local" && \
+  if [[ "$desired_mode" == "local" && "$read_only_mode" == false && \
     "$curr_branch" == "$TARGET_BRANCH" ]]; then
-    bt_info "Current branch already local '$TARGET_BRANCH'; no change needed"
-    exit "$EXIT_NO_CHANGE"
+    remember_last_branch "$TARGET_BRANCH"
+    emit_success_changed "local" "$TARGET_BRANCH"
+    exit 0
   fi
 
   if [[ "$desired_mode" == "remote" ]] && \
     is_current_remote_branch "$TARGET_BRANCH"; then
-    bt_info \
-      "Current branch already remote 'origin/$TARGET_BRANCH'; no change needed"
-    exit "$EXIT_NO_CHANGE"
+    remember_last_branch "$TARGET_BRANCH"
+    emit_success_changed "remote" "$TARGET_BRANCH"
+    exit 0
   fi
 
-  # Force-discard is applied only after branch-target prechecks succeed.
   ensure_clean_or_discard "$curr_branch"
 
-  if [[ "$desired_mode" == "local" ]]; then
+  if [[ "$read_only_mode" == true ]]; then
+    if [[ "$has_remote" == true ]]; then
+      switch_remote "$TARGET_BRANCH"
+    elif [[ "$has_local" == true ]]; then
+      switch_local_read_only "$TARGET_BRANCH"
+    else
+      bt_error_exit "$EXIT_BRANCH_NOT_FOUND" \
+        "Branch '$TARGET_BRANCH' was not found locally or on origin"
+    fi
+  elif [[ "$desired_mode" == "local" ]]; then
     switch_local "$TARGET_BRANCH"
   else
-    switch_remote "$TARGET_BRANCH"
+    # Remote targeted/contributor policy:
+    # - local exists => remote is read-only
+    # - no local => remote is read/write (create tracking local branch)
+    if [[ "$has_local" == true ]]; then
+      switch_remote "$TARGET_BRANCH"
+    else
+      switch_local_tracking_from_remote "$TARGET_BRANCH"
+    fi
   fi
 }
 
