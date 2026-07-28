@@ -1,5 +1,4 @@
 # `<repo>/build/`
-
 Directory containing build artifacts (mainly `.o` files).
 
 Copyright (c) 2026 Paul Sinclair  
@@ -22,4 +21,4 @@ optionally manually removed if leftover after an unsuccessful build.
 
 ## Subdirectories
 
-None.
+- None.

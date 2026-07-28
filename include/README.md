@@ -1,5 +1,4 @@
 # `<repo>/include/`
-
 Directory containing public header files (including API declarations).
 
 Copyright (c) 2026 Paul Sinclair  
@@ -20,4 +19,4 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Subdirectories
 
-None.
+- None.

@@ -12,12 +12,12 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ### Setup and Installation
 
-- **setupclone**: Setup clone environment and add
+- **setupclone**: Setup clone environment
    `<repo>/scripts/bin/` to PATH.
 
 ### Document and Brand Management
 
-- **ckstyle**: Check style guidelines for documentation, code, scripts,
+- **ckstyle**: Check style quidelines for documention, code, scripts,
    directory guides, versions etc. for the current branch.
    See Contributor Guide for guidelines.
 - **gendocs**: Generate PDF and DOCX documentation.
@@ -25,43 +25,41 @@ See `<repo>/README.md` for an introduction to briteTest.
 - **replacetext**: Apply configured text replacements in markdown files.
 - **rebrand**: Update branding text and regenerate related assets.
 
-### Repository, Clone, and Fork Management
+### Repository and Fork Management
 
-- **fixremote**: Approver-only origin recovery workflow that runs
-   preflight validation by default and executes guarded remote recovery with
-   `-x` using a clean local clone; generates a recovery report.
-- **fixlocal**: Check local repository integrity, apply safe local cleanup and
-   guarded tracking remediations, rerun verification checks, and generate a
-   diagnostic report.
+- **fixrepo**: Verify repository/clone integrity, run safe cleanup fixes,
+  rerun affected post-cleanup checks, and generate a health report.
 - **mkclone**: Clone the repository with optional target naming.
-- **mkfork**: Create a fork of the repository and optionally configure it
-  with upstream remote and user as approver.
-- **override**: Repository owner only. Toggle unrestricted mode for this
-   local clone (`override on` / `override off`) for direct hook-enforced
-   repository actions. Does not disable script-level role/policy checks.
-- **rmclone**: Remove a local clone with validation checks and optional
+- **mkfork**: Create a fork of the repository and optionally configure it with
+  upstream remote and user as approver.
+- **rmclone**: Safely remove a local clone with validation checks and optional
    override.
 
 ### Branch and Workflow Management
 
-- **chbranch**: Change to specified branch as the current branch.
-- **commit**: Commit and optionally push changes to remote.
-- **copyfix**: Cherry-pick/copy fix commits from another branch.
-- **feedback**: View/respond to PR feedback workflows.
-- **lsbranch**: List a branch or branches and their status.
-- **lsbranchlog**: Query branch history log entries.
-- **mkbranch**: Create branch with policy validation.
-- **mrgdown**: Merge parent branch into current branch.
-- **mrgup**: Merge current branch to its parent branch.
-
-- **pull**: Fetch and pull latest changes from remote into
-  local branch
-- **push**: Push local branch commits to remote.
-- **release**: Create and publish releases.
+- **chbranch**: Change to specified local branch as current branch
+  (blocks `main` which is not allowed to have a local branch).
+  When local branch doesn't exist, creates local tracking branch from
+  origin/<branch>` if it exists and is available.
+  List can include cached remote-only branches.
 - **retarget**: Retarget a targeted branch to a different version branch.
   targeted branch is renamed to have its version as the specified version.
+- **lsbranchlog**: Query branch history log entries.
+- **commit**: Commit and optionally push changes to remote.
+- **copyfix**: Cherry-pick/copy fix commits from another branch.
+- **lsbranch**: List a branch or branches and their status.
+- **mkbranch**: Create branches with policy validation.
+- **feedback**: View/respond to PR feedback workflows.
+- **mrgup**: Merge current branch to its parent branch.
 - **review**: Create or update a pull request.
+- **release**: Create and publish releases.
 - **rmbranch**: Remove local and/or remote branches.
+- **mrgdown**: Merge parent branch into current branch.
+- **mrgbranch**: Fetch and pull latest changes from remote into
+  local branch
+- **override**: Repository owner only. Toggle unrestricted mode for this
+   local clone (`override on` / `override off`) for direct hook-enforced
+   repository actions. Does not disable script-level role/policy checks.
 - **undo**: Undo recent merge/release/commit operations.
 
 ### README Directory Guide
@@ -70,7 +68,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Subdirectories
 
-None.
+- None.
 
 ## Getting Started
 
@@ -109,7 +107,7 @@ If a script is not executable in your environment, you can:
 1. Run or rerun `<repo>/scripts/bin/setupclone` (see Getting
    Started above).
 
-2. Manually fix individual scripts:
+3. Manually fix individual scripts:
 
    ```sh
    chmod +x `<repo>/scripts/bin/<script_name>`
@@ -120,7 +118,7 @@ If a script is not executable in your environment, you can:
 1. Run or rerun `<repo>/scripts/bin/setupclone` (see Getting
    Started above).
 
-2. Manually update the PATH configuration:
+3. Manually update the PATH configuration:
 
    - Add this line to ~/.bashrc:
 

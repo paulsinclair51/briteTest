@@ -1,25 +1,9 @@
 # `<repo>/reports/guidelines/`
 
-Directory containing rebrand and style report files.
+Directory for guideline/style/wording conformance reports.
 
-Copyright (c) 2026 Paul Sinclair  
-SPDX-License-Identifier: MIT  
-For license details, see `<repo>/LICENSE`.
+Examples:
+- `ckstyle-<datetime>.md` from `scripts/bin/ckstyle`
+- `rebrand[-dry-run]-<datetime>.md` from `scripts/bin/rebrand`
 
-`<date>-<time>` has the form `YYYYMMDD-HHMMSS`. Older reports
-may be removed by the generating script after successful report
-creation. Reports are not tracked by Git.
-
-See `<repo>/README.md` for an introduction to briteTest.
-
-# Files
-
-- `style-<date>-<time>.md` from `scripts/bin/ckstyle`
-
-- `rebrand[-dry-run]-<date>-<time>.md` from `scripts/bin/rebrand`
-
-- `replace[-dry-run]-<date>-<time>.md` from `scripts/bin/rebrand`
-
-## Subdirectories
-
-None.
+Reserved for future guideline report outputs (for example, `replacetext` if report generation is added).

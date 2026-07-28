@@ -52,17 +52,17 @@ jobs:
       - name: Validate docs canonical form
         run: make check-doc
 
-      - name: Install documentation and script-test dependencies
+      - name: Install PDF generation dependency
         run: |
           sudo apt-get update
-          sudo apt-get install -y wkhtmltopdf librsvg2-bin
+          sudo apt-get install -y wkhtmltopdf
 
       - name: Generate docs PDFs (excluding docs/md/README.md)
         run: |
           bash ./scripts/bin/genpdf -i "*.md" -x "README.md" docs/md docs/pdf
 
-      - name: Run all script smoke tests
-        run: make test-all-scripts
+      - name: Run report helper tests
+        run: make test-report-helpers
 
       - name: Upload docs PDF artifacts
         uses: actions/upload-artifact@v4

@@ -1,5 +1,4 @@
 # `<repo>/scripts/`
-
 Directory containing script assets.
 
 Copyright (c) 2026 Paul Sinclair  
@@ -10,8 +9,7 @@ See `<repo>/README.md` for a guide to briteTest.
 
 ## Files
 
-- **setup-rulesets.sh**: Setup result sets for approvers, reviewers,
-  and contributors.
+- **setup-rulesets.sh**: Setup result sets for approvers, reviewers, and contributors.
 
 - **README.md**: This directory guide.
 
@@ -19,8 +17,7 @@ See `<repo>/README.md` for a guide to briteTest.
 
 - **bin/**: Contributor command scripts.
 
-- **helpers/**: Internal use shared shell helper modules used by
-  scripts in the bin/ and tests/ subdirectories, or by workflow
-  .yml files.
+- **helpers/**: Shared shell helper modules used by scripts in the `<repo>/scripts/bin/`
+  subdirectory.
 
 - **tests/**: Script tests.

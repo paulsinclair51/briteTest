@@ -10,8 +10,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **brand_history.md**: log of a new brand and current and previous
-   brands and taglines.
+- **brand_history.md**: log of a new brand and current and previous brands and taglines.
 
 - **fork_history.md**: log of the forks made of this repository using
   `<repo>/scripts/bin/mkfork`.
@@ -24,4 +23,4 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Subdirectories
 
-None.
+- None.

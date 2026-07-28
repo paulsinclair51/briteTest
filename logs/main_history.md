@@ -1,6 +1,11 @@
-# Branch History Log
+# Branch History
 
+Copyright (c) 2026 Paul Sinclair  
+SPDX-License-Identifier: MIT  
+For license details, see `LICENSE` in the repository root.
 
-**2026-07-24 19:59:14**: Branch `zz-local-exit6` deleted.
+See `README.md` in the root directory for an introduction to the project.
 
-**2026-07-24 19:59:59**: Branch `mywork/pr-trigger-smoke` deletion failed - Working tree must be clean before deleting local branch 'mywork/pr-trigger-smoke'
+## Merge Log
+
+- [2026-07-22 05:28:35] [paulsinclair51] Merged [v1.0.0] to [main]: up main.

@@ -68,7 +68,7 @@ For contribution policies, branching rules, and workflows, see
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.5. [lsbranch](#115-lsbranch)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.6. [lsbranchlog](#116-lsbranchlog)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.7. [mkbranch](#117-mkbranch)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. [pull](#118-pull)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. [mrgbranch](#118-mrgbranch)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.9. [mrgdown](#119-mrgdown)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.10. [mrgup](#1110-mrgup)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.11. [retarget](#1111-retarget)<br>
@@ -77,12 +77,11 @@ For contribution policies, branching rules, and workflows, see
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.14. [undo](#1114-undo)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.15. [release](#1115-release)<br>
    1.2. [Repository and Clone Management](#12-repository-and-clone-management)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. [fixlocal](#121-fixlocal)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. [fixremote](#122-fixremote)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. [setupclone](#123-setupclone)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. [mkclone](#124-mkclone)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. [mkfork](#125-mkfork)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.6. [rmclone](#126-rmclone)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. [fixrepo](#121-fixrepo)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. [setupclone](#122-setupclone)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. [mkclone](#123-mkclone)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. [mkfork](#124-mkfork)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. [rmclone](#125-rmclone)<br>
    1.3. [Documentation and Branding](#13-documentation-and-branding)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.1. [ckstyle](#131-ckstyle)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.2. [gendocs](#132-gendocs)<br>
@@ -282,16 +281,16 @@ mkbranch -r BRANCH [PARENTBRANCH]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. pull</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. mrgbranch</summary>
 
-#### 1.1.8. pull
+#### 1.1.8. mrgbranch
 
 **Purpose:** Fetch and pull latest changes from remote into local branch.
 
 **Usage:**
 
 ```bash
-pull [BRANCHNAME]
+mrgbranch [BRANCHNAME]
 ```
 </details>
 
@@ -420,75 +419,29 @@ undo [OPTIONS]
 ### 1.2. Repository and Clone Management
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. fixlocal</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. fixrepo</summary>
 
-#### 1.2.1. fixlocal
+#### 1.2.1. fixrepo
 
-**Purpose:** Check local repository health, apply guarded local remediations, and produce a diagnostic report.
-
-**Usage:**
-
-```bash
-fixlocal [OPTIONS]
-```
-
-**Functions:**
-
-- Verify git object database integrity (`git fsck --full`)
-- Verify working tree cleanliness
-- Check remote connectivity and per-branch tracking status
-- Attempt guarded current-branch synchronization from upstream
-- Run safe cleanup (`git gc --prune=now`)
-- Continue on non-critical check/fix failures and record them in report
-- Distinguish fixable vs. non-fixable issues and verified vs. unverified remediation
-
-**Exit Codes:**
-
-- 0: Success - no issues or all issues fixed
-- 1: Invalid option or argument
-- 2: User is not authorized (requires contributor role or higher)
-- 3: Issues detected - one or more were not fixable
-- 100: Missing required helper files, dependencies, or configuration
-
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. fixremote</summary>
-
-#### 1.2.2. fixremote
-
-**Purpose:** Run owner/approver-only origin recovery workflow from a clean local clone.
+**Purpose:** Verify repository/clone integrity and run safe cleanup fixes.
 
 **Usage:**
 
 ```bash
-fixremote [OPTIONS] <clone-path>
+fixrepo [OPTIONS]
 ```
 
 **Functions:**
 
-- Verify user is approver/owner
-- Run preflight validation (clone integrity/cleanliness, origin URL/reachability)
-- Execute recovery only with `-x` (safe default is preflight-only)
-- Push branch/tag refs from clean clone to origin during execution mode
-- Verify post-recovery origin/main parity with source clone
-- Generate recovery report with actionable follow-up details
-
-**Exit Codes:**
-
-- 0: Success - checks passed and no unresolved issues
-- 1: Invalid option or argument
-- 2: User is not authorized - only approver/owner can run fixremote
-- 3: Recovery failed - see report for details
-- 100: Missing required dependencies or configuration files
-- 200: Git operation failed during recovery
-
+- Verify repository structure
+- Run post-cleanup checks
+- Generate health report
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. setupclone</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. setupclone</summary>
 
-#### 1.2.3. setupclone
+#### 1.2.2. setupclone
 
 **Purpose:** Setup clone environment - install scripts, add to PATH, and configure Git hooks.
 
@@ -507,9 +460,9 @@ bash scripts/bin/setupclone [OPTIONS]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. mkclone</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. mkclone</summary>
 
-#### 1.2.4. mkclone
+#### 1.2.3. mkclone
 
 **Purpose:** Clone the repository with optional target naming.
 
@@ -521,9 +474,9 @@ mkclone [<target_name>]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. mkfork</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. mkfork</summary>
 
-#### 1.2.5. mkfork
+#### 1.2.4. mkfork
 
 **Purpose:** Create a fork of the repository and optionally configure upstream.
 
@@ -540,9 +493,9 @@ mkfork [OPTIONS]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.6. rmclone</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. rmclone</summary>
 
-#### 1.2.6. rmclone
+#### 1.2.5. rmclone
 
 **Purpose:** Safely remove a local clone with validation checks.
 
@@ -1006,7 +959,7 @@ commit -m "Message" -p             # [OK] Commit + push
 
 **How to bypass (scripts only):**
 
-Scripts automatically set `GIT_BYPASS_HOOKS=true` before git operations.
+Scripts automatically set `BRITETEST_BYPASS_HOOKS=true` before git operations.
 
 **Error message shown:**
 
@@ -1044,8 +997,7 @@ git push origin --delete <branch>  # [ERROR] BLOCKED
 
 ```bash
 commit -m "msg" -p                 # [OK] Commit + push
-push                               # [OK] Push current branch
-mrgup                              # [OK] Merge-up workflow
+merge [branch]                     # [OK] Merge to parent
 rmbranch <branch> -r               # [OK] Delete remote branch
 ```
 
@@ -1079,8 +1031,8 @@ git merge --no-ff            # [ERROR] BLOCKED
 **What to use instead:**
 
 ```bash
-mrgdown                      # [OK] Merge parent branch into current branch
-mrgup                        # [OK] Merge current branch up to parent workflow
+merge [branch]               # [OK] Merge to parent branch
+merge -s                     # [OK] Merge with squash
 ```
 
 **Error message shown:**
@@ -1088,7 +1040,7 @@ mrgup                        # [OK] Merge current branch up to parent workflow
 ```
 [ERROR] Direct git merge operations are not allowed.
 
-  Use the 'mrgdown' script instead:
+   Use the 'merge' script instead:
    ...
 ```
 </details>
@@ -1105,7 +1057,7 @@ mrgup                        # [OK] Merge current branch up to parent workflow
 Sourced by other hooks, not called directly:
 
 ```bash
-source "scripts/helpers/.githooks/orchestrator.sh"
+source "$(git rev-parse --git-dir)/hooks/orchestrator.sh"
 check_bypass "git commit" "commit"
 ```
 
@@ -1117,7 +1069,7 @@ check_bypass "git commit" "commit"
 
 **How it works:**
 
-1. Checks `GIT_BYPASS_HOOKS` environment variable
+1. Checks `BRITETEST_BYPASS_HOOKS` environment variable
 2. If set to `true`, allows operation (script is running)
 3. If not set, blocks operation and shows error guidance
 
@@ -1125,15 +1077,15 @@ check_bypass "git commit" "commit"
 
 ```bash
 # Scripts use this pattern:
-export GIT_BYPASS_HOOKS=true
+export BRITETEST_BYPASS_HOOKS=true
 git add files...
 git commit -m "msg"
-unset GIT_BYPASS_HOOKS
+unset BRITETEST_BYPASS_HOOKS
 ```
 
 **Security model:**
 
-- Only scripts can set `GIT_BYPASS_HOOKS`
+- Only scripts can set `BRITETEST_BYPASS_HOOKS`
 - Environment variable is unset immediately after operation
 - Direct user git commands cannot bypass hooks
 </details>
@@ -1171,7 +1123,7 @@ mkbranch          - Create new feature branches from parent
 mkclone           - Clone the repository
 commit            - Create and sign commits with optional push (-p)
 copyfix           - Cherry-pick fix commits between branches
-pull         - Sync with remote repository
+mrgbranch         - Sync with remote repository
 mrgdown           - Sync down from main branch
 undo              - Undo uncommitted changes
 lsbranchlog       - Check branch history
@@ -1192,7 +1144,7 @@ review            - Create/update pull requests for review
 ```
 mrgup             - Merge branches to parent/protected branches (requires override)
 release           - Create releases and version tags (requires override)
-fixlocal, fixremote - Repair repository state (requires override)
+fixrepo           - Repair repository state (requires override)
 rebrand           - Update branding across repository (requires override)
 replacetext       - Replace text globally across repo (requires override)
 ```
@@ -1214,21 +1166,20 @@ replacetext       - Replace text globally across repo (requires override)
 mrgup
 
 # Script will fail:
-[ERROR] This operation requires Approver role
+[ERROR] This operation requires Reviewer role or higher
 ```
 
-#### Protected Operations and Overrides
+#### Protected Script Override
 
-Role checks are enforced by script-level policy gates and shared role helpers.
-Current enforcement patterns include:
+Approver-only scripts require explicit override confirmation:
 
-- Approver checks for protected merge/release paths (for example in `mrgup`).
-- Contributor-role checks for branch mutation operations (for example in `rmbranch`).
-- Repository-owner override controls where supported (for example `-o`,
-  and local override mode via `override on/off`).
+```bash
+SCRIPT_OVERRIDE_CONFIRMED=true mrgup
+SCRIPT_OVERRIDE_CONFIRMED=true release v1.0.0
+SCRIPT_OVERRIDE_CONFIRMED=true fixrepo
+```
 
-Role checks are evaluated before operation-specific controls. Override options
-do not grant non-owner/non-approver users additional access.
+Without override flag, execution fails by design as safety measure.
 </details>
 
 <details>
@@ -1236,20 +1187,15 @@ do not grant non-owner/non-approver users additional access.
 
 ### 3.2. Protected Script Rule
 
-Protected operations must pass role-gate checks, and some commands add
-operation-specific approval controls.
-
-Use script help for exact current behavior:
+Approver-only scripts require explicit override confirmation:
 
 ```bash
-mrgup -h
-release -h
-fixlocal -h
-rmbranch -h
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mrgup
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/release v1.0.0
+SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepo
 ```
 
-Repository owner override controls are explicit and local to the invoking
-command/clone; they are not a general permission bypass.
+If override confirmation is missing, execution must fail by design.
 </details>
 </details>
 

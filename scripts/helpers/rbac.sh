@@ -9,7 +9,7 @@
 #          Roles are hierarchical: Approver > Reviewer > Contributor
 #
 # Note: Command-name mappings were updated to renamed scripts (mrgup,
-# mrgdown, pull, review). End-to-end RBAC enforcement integration
+# mrgdown, mrgbranch, review). End-to-end RBAC enforcement integration
 # requires a separate full review and is intentionally deferred.
 #
 # Role Hierarchy:
@@ -20,7 +20,7 @@
 # Protected Scripts (require approver override):
 #   - mrgup - Merge branches to protected branches
 #   - release     - Create releases and tags
-#   - fixlocal - Repair local repository state
+#   - fixrepo - Repair repository state
 
 set -euo pipefail
 
@@ -40,8 +40,7 @@ readonly CONTRIBUTOR_SCRIPTS=(
   "rmclone"            # Remove local clone safely
   "commit"           # Create commits
   "copyfix"            # Cherry-pick fixes between branches
-  "pull"       # Sync with remote
-  "push"              # Push local commits to remote
+  "mrgbranch"       # Sync with remote
   "mrgdown"           # Sync current branch with parent branch
   "undo"             # Undo changes
   "lsbranchlog"   # Check branch history
@@ -60,7 +59,7 @@ readonly APPROVER_SCRIPTS=(
   "mrgup"    # Merge branches (protected)
   "retarget"           # Retarget targeted branch to another version parent
   "release"          # Create releases (protected)
-  "fixlocal"            # Fix local repository issues (protected)
+  "fixrepo"            # Fix repository issues (protected)
   "rebrand"        # Update branding
   "replacetext"     # Replace text globally
 )
@@ -78,7 +77,7 @@ readonly PROTECTED_SCRIPTS=(
   "mrgup"
   "retarget"
   "release"
-  "fixlocal"
+  "fixrepo"
 )
 
 #####################################################################

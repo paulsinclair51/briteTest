@@ -80,11 +80,8 @@ check-doc:
 test-gendocs:
 	bash ./scripts/tests/test_gendocs.sh
 
-test-fixlocal:
-	bash ./scripts/tests/test_fixlocal.sh
-
-test-fixremote:
-	bash ./scripts/tests/test_fixremote.sh
+test-fixrepo:
+	bash ./scripts/tests/test_fixrepo.sh
 
 test-lsbranch:
 	bash ./scripts/tests/test_lsbranch.sh
@@ -98,12 +95,6 @@ test-mrgdown:
 test-report-helpers:
 	bash ./scripts/tests/test_report_helpers.sh
 
-test-ckstyle:
-	bash ./scripts/tests/test_ckstyle.sh
-
-test-genpngs:
-	bash ./scripts/tests/test_genpngs.sh
-
 test-all-scripts:
 	bash ./scripts/tests/test_scripts.sh
 
@@ -116,4 +107,4 @@ genpngs:
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run lint-md check-doc test-gendocs test-fixlocal test-fixremote test-lsbranch test-mkbranch test-mrgdown test-report-helpers test-ckstyle test-genpngs test-all-scripts gendocs genpngs clean
+.PHONY: all run lint-md check-doc test-gendocs test-fixrepo test-lsbranch test-mkbranch test-mrgdown test-report-helpers test-all-scripts gendocs genpngs clean

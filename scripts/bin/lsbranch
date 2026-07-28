@@ -632,7 +632,7 @@ persist_report_changes() {
 
   report_filename="$(basename "$OUTPUT_FILE")"
   report_rel="${OUTPUT_FILE#"${repo_root}"/}"
-  bt_success "See $report_rel for details."
+  bt_success "Report generated locally: $report_rel"
 }
 
 build_auto_stash_index() {
@@ -1732,7 +1732,7 @@ capture_initial_worktree_status
 
 # Validate reports directory exists (should be part of repository structure)
 if [[ ! -d "$branch_reports_dir" ]]; then
-  bt_error_exit "$EXIT_OPERATION_FAILED" "$branch_reports_dir directory not found. Repository may be corrupted; run 'fixlocal' to verify."
+  bt_error_exit "$EXIT_OPERATION_FAILED" "$branch_reports_dir directory not found. Repository may be corrupted; run 'fixrepo' to verify."
 fi
 
 enable_branch_reports_write_access

@@ -17,7 +17,7 @@ Usage:
 Clone the BriteTest repository to a local directory with automatic setup.
 
 Requirements:
-  - Must be run on a machine with bash and git installed
+  - Must be run on a machine with bash, git, and curl installed
   - Network access to GitHub (https://github.com)
   - Can be run from ANY directory on your local machine
   - NO prior clone or local repository needed
@@ -79,7 +79,7 @@ Exit codes:
   2   Git clone failed
   3   Target directory already exists
   4   Failed to install scripts or hooks
-  5   Missing required tools (git, bash)
+  5   Missing required tools (git, bash, curl)
 EOF
 }
 
@@ -255,13 +255,13 @@ info "Cloned to: ./$TARGET_DIR"
 
 # Install scripts and Git hooks
 info "Setting up scripts and Git hooks..."
-if bash "$TARGET_DIR/scripts/bin/setupclone" >/dev/null 2>&1; then
+if bash "$TARGET_DIR/scripts/bin/installscripts" >/dev/null 2>&1; then
   success "Scripts and Git hooks installed successfully"
 else
   warn "Warning: Failed to install scripts or Git hooks"
   info "You can install them manually by running:"
   info "  cd $TARGET_DIR"
-  info "  bash scripts/bin/setupclone"
+  info "  bash scripts/bin/installscripts"
 fi
 
 # Enforce policy: do not leave a local 'main' branch in the clone.

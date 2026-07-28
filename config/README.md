@@ -22,7 +22,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Subdirectories
 
-None.
+- None.
 
 ## Settings for Markdown lint (`markdownlint.json`)
 

@@ -59,8 +59,7 @@ name: Defines Branch Name Validation and Branch Workflow
 # used by GitHub Actions.
 #-----------------------------------------------------------------------------
 
-# Manual-only branch validation workflow.
-# Automatic PR validation is handled by branch-validation-pull-request.yml.
+# Set workflow to run on pull request events.
 
 on:
   workflow_dispatch:

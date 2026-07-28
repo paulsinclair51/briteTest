@@ -1,5 +1,4 @@
 # `<repo>/.vscode/`
-
 Directory containing VS Code workspace configuration files.
 
 Copyright (c) 2026 Paul Sinclair  
@@ -17,7 +16,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Subdirectories
 
-None.
+- None.
 
 ## `settings.json`
 

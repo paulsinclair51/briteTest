@@ -17,4 +17,4 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Subdirectories
 
-NOne.
+- None.
