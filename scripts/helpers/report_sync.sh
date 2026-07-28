@@ -15,15 +15,8 @@ bt_report_copy_to_remote() {
   local remote_url
   local remote_host
   local remote_path
-  local remote_reports_dir
-  local -a source_reports=()
 
   [[ -d "$reports_dir" ]] || return 0
-
-  # Resolve concrete source files before attempting copy.
-  # shellcheck disable=SC2206  # Intentional word splitting for glob expansion.
-  source_reports=("$reports_dir"/$report_pattern)
-  [[ -e "${source_reports[0]}" ]] || return 1
 
   remote_url="$(git remote get-url origin 2>/dev/null || true)"
   [[ -n "$remote_url" ]] || return 0
@@ -33,14 +26,9 @@ bt_report_copy_to_remote() {
     remote_host="${BASH_REMATCH[1]}"
     remote_path="${BASH_REMATCH[2]}"
     [[ "$remote_path" == *.git ]] && remote_path="${remote_path%.git}"
-    remote_reports_dir="${remote_path}/reports/branch"
-
-    if ! ssh -o BatchMode=yes -o ConnectTimeout=10 "git@${remote_host}" "mkdir -p '${remote_reports_dir}'" >/dev/null 2>&1; then
-      return 1
-    fi
 
     # Copy reports to remote bare repo
-    if ! scp -q "${source_reports[@]}" "git@${remote_host}:${remote_reports_dir}/" 2>/dev/null; then
+    if ! scp -q "$reports_dir"/$report_pattern "git@${remote_host}:${remote_path}/reports/branch/" 2>/dev/null; then
       return 1
     fi
     return 0
@@ -49,13 +37,10 @@ bt_report_copy_to_remote() {
   # Extract path from file:// URL
   if [[ "$remote_url" =~ ^file://(.+) ]]; then
     remote_path="${BASH_REMATCH[1]}"
-    remote_reports_dir="$remote_path/reports/branch"
-    if ! mkdir -p "$remote_reports_dir" 2>/dev/null; then
-      return 1
+    if [[ -d "$remote_path/reports/branch" ]]; then
+      cp -f "$reports_dir"/$report_pattern "$remote_path/reports/branch/" 2>/dev/null || return 1
+      return 0
     fi
-
-    cp -f "${source_reports[@]}" "$remote_reports_dir/" 2>/dev/null || return 1
-    return 0
   fi
 
   return 1

@@ -324,7 +324,7 @@ assert_contains "policy rejection without file context" "$push_error_report_grou
 rm -f "$ORIGIN/hooks/pre-receive"
 pass "group-level failed push attribution"
 
-# 13) Non-dry push should recreate missing remote report directory and succeed.
+# 13) Non-dry push should fail with 201 when remote report write fails.
 (
   cd "$WORK"
   echo "push report failure path" >> README.md
@@ -333,12 +333,9 @@ pass "group-level failed push attribution"
 )
 rm -rf "$ORIGIN/reports/branch"
 rc=$(run_capture "$TMPDIR/report-fail.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/push -r 5")
-[[ "$rc" -eq 0 ]] || fail "push should recreate remote report directory and exit 0 (got $rc)"
-assert_contains "Pushed " "$TMPDIR/report-fail.out"
-assert_contains "commit(s) to remote 'dev/push-tests-v1.0.0'" "$TMPDIR/report-fail.out"
-report_recovery_push="$(latest_report "$WORK" 'push-*.md')"
-[[ -f "$ORIGIN/reports/branch/$(basename "$report_recovery_push")" ]] || fail "expected push report copied after recreating remote report directory"
-pass "remote report directory recovery"
+[[ "$rc" -eq 201 ]] || fail "push should exit 201 when remote report write fails (got $rc)"
+assert_contains "Failed to write push report to remote branch report directory" "$TMPDIR/report-fail.out"
+pass "remote report write failure"
 
 # 14) Dry-run report should handle unusual file deltas (rename/delete/binary)
 # in file summary output.
