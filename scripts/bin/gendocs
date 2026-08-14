@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# gendocs - Generate 'pdf' files from '.md' files and 'docx' files 
-#           from '.pdf' files. See usage below for details, or run:
+# gendocs - Generate 'pdf' files from '.md' files and 'docx' files
+#           from '.pdf' files.
 #
 # See usage below for details, or run: gendocs -h
 #
@@ -26,7 +26,7 @@ Complete Usage:
   gendocs [<options>] [<document>[.md]] [<pdf_dir> <docx_dir>]
   gendocs [<options>] -p [<document>[.md]] [<pdf_dir>]
   gendocs [<options>] -d [<document>[.md|.pdf]] [<docx_dir>]
-  gendocs [-b <backend>] -t
+  gendocs [-b <backend>] -T
   gendocs {-h | --help}
 
 Generates .pdf files from .md source files, and .docx files directly from
@@ -40,39 +40,14 @@ By default, when converting an .md file to a .pdf file,
 <details>/<summary> lines are skipped and not converted. Use the -c
 option to convert details/summary lines to a PDF-friendly form.
 
-<options>:
-  [-b <backend>] [-c] [-f] [-g] [-k] [-n] [-q] [-r] [-v]
-  [-i "<pattern>"]... [-x "<pattern>"]...
-
-Option values:
-  <backend>  <md-pdf>/<pdf-docx> where:
-               <md-pdf>: auto, all, pandoc, wkhtmltopdf, weasyprint
-               <pdf-docx>: auto, all, python, libreoffice
-             Default is 'auto/auto', which auto-detects the best
-             available backend for each conversion.
-             Use 'all' with -t to validate all md-pdf or pdf-docx
-             backends. 'all' is not valid unless -t is specified.
-
-Options:
-  -b  Force conversion backend instead of auto-detecting.
-      Useful for diagnostics and testing.
-  -c  Convert details/summary lines to PDF-friendly form instead of
-      removing details/summary lines. Default is to remove them.
-  -d  Dry-run shoeing planned conversions without writing output files.
-  -f  Force regeneration even if the source is in docs/md/ and has
-      not changed since the last time its .pdf was generated.
-  -h, --help  Output this help to stdout and exit (other options
-              and arguments are ignored).
-  -p  Output only .pdf files. For validation, a temporary .docx is
-      generated from each .pdf and then discarded.
-  -q  Quiet mode: suppress informational messages to stdout.
-      Help and diagnostics are not affected.
-      There is no output to stdout in quiet mode when successful.
-  -t  Tool check: report backends (see -b option) status and exit.
-      When -t is used, no options other than -b are allowed.
-  -v  Verbose mode: print backend diagnostics to stderr.
-  -x  Output only .docx files. If source is .md, a temporary .pdf
-      is generated for intermediate conversion and then discarded.
+Prerequisites:
+  - The user must be a contributor, reviewer, or approver (listed in
+    <repo>/config/contributors.md).
+  - The current branch must be a local branch.
+  - The current branch must be a targeted or contributor branch (not
+    main or a version branch).
+  - The current branch must have no untracked or uncommitted changes.
+    - If there are changes, run the commit or undo script first.
 
 Arguments:
   <document>[.md|.pdf]: Optional specification of source file(s):
@@ -105,13 +80,46 @@ Arguments:
               from repository root docs/md/ or docs/pdf/ and,
               otherwise, ./ (current directory).
 
+<options>:
+  [-b <backend>] [-c] [-f] [-g] [-k] [-n] [-q] [-r] [-v]
+  [-i "<pattern>"]... [-x "<pattern>"]...
+
+Option values:
+  <backend>  <md-pdf>/<pdf-docx> where:
+               <md-pdf>: auto, all, pandoc, wkhtmltopdf, weasyprint
+               <pdf-docx>: auto, all, python, libreoffice
+             Default is 'auto/auto', which auto-detects the best
+             available backend for each conversion.
+             Use 'all' with -T to validate all md-pdf or pdf-docx
+             backends. 'all' is not valid unless -T is specified.
+
+Options:
+  -b  Force conversion backend instead of auto-detecting.
+      Useful for diagnostics and testing.
+  -c  Convert details/summary lines to PDF-friendly form instead of
+      removing details/summary lines. Default is to remove them.
+  -d  Dry-run showing planned conversions without writing output files.
+  -f  Force regeneration even if the source is in docs/md/ and has
+      not changed since the last time its .pdf was generated.
+  -h  Output this help to stdout and exit (other options
+      and arguments are ignored).
+  --help  Output this help to stdout and exit (other options
+          and arguments are ignored).
+  -p  Output only .pdf files. For validation, a temporary .docx is
+      generated from each .pdf and then discarded.
+  -T  Tool check: report backends (see -b option) status and exit.
+      When -T is used, no options other than -b are allowed.
+  -v  Verbose mode: print backend diagnostics to stderr.
+  -x  Output only .docx files. If source is .md, a temporary .pdf
+      is generated for intermediate conversion and then discarded.
+
 Notes:
   - Change detection for a source '.md' in repository root docs/md/
     uses the file name with line count, character count, and
     SHA-256 fingerprint, and stores this metadata in
     repository root docs/md/.md_metadata with one line per file.
 
-Exit Codes:
+Exit codes:
   0   Success.
   1   Invalid option or argument.
   2   Input not found.
@@ -145,7 +153,7 @@ EOF
 
 # High-Level Flow:
 # - Parses CLI options, validates mode/backend constraints, and runs tool-check
-#   mode (-t) early when requested.
+#   mode (-T) early when requested.
 # - Resolves and filters source files, then derives output paths with recursive
 #   and keep-structure behavior as needed.
 # - Converts Markdown to PDF and PDF to DOCX by invoking helper scripts/tools
@@ -154,14 +162,26 @@ EOF
 #   outputs, persists metadata, and exits through a single status/exit-code
 #   path.
 
+# shellcheck disable=SC2317  # Trap handlers can appear unreachable to static
+# analysis.
+
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
+GIT_HELPER="$SCRIPT_DIR/../helpers/git_helpers.sh"
+COMMON_HELPER="$SCRIPT_DIR/../helpers/common.sh"
 if [[ -f "$HISTORY_HELPER" ]]; then
-  if source "$HISTORY_HELPER" 2>/dev/null; then
-    bt_propagate_repository_history >/dev/null 2>&1
-  fi
+  # shellcheck disable=SC1090  # Repository-relative helper path.
+  source "$HISTORY_HELPER" 2>/dev/null || true
+fi
+if [[ -f "$GIT_HELPER" ]]; then
+  # shellcheck disable=SC1090  # Repository-relative helper path.
+  source "$GIT_HELPER" 2>/dev/null || true
+fi
+if [[ -f "$COMMON_HELPER" ]]; then
+  # shellcheck disable=SC1090  # Repository-relative helper path.
+  source "$COMMON_HELPER" 2>/dev/null || true
 fi
 
 usage_error() {
@@ -196,6 +216,7 @@ keep_structure=0
 segment_glob=0
 convert_details=0
 tool_check=0
+remote_timeout_seconds=10
 
 backend_md_pdf='auto'
 backend_pdf_docx='auto'
@@ -226,20 +247,20 @@ declare -a VALID_TOOLCHECK_BACKENDS=(auto all pandoc \
 status_message_for_code() {
   local code=$1
   case "$code" in
-    $EXIT_SUCCESS) echo "STATUS[0]: success" ;;
-    $EXIT_INVALID_ARGUMENT) echo "STATUS[1]: usage error" ;;
-    $EXIT_INPUT_NOT_FOUND) echo "STATUS[2]: input not found" ;;
-    $EXIT_INPUT_EMPTY) echo "STATUS[3]: no source files to process" ;;
-    $EXIT_INTERNAL_HELPER_MISSING)
+    "$EXIT_SUCCESS") echo "STATUS[0]: success" ;;
+    "$EXIT_INVALID_ARGUMENT") echo "STATUS[1]: usage error" ;;
+    "$EXIT_INPUT_NOT_FOUND") echo "STATUS[2]: input not found" ;;
+    "$EXIT_INPUT_EMPTY") echo "STATUS[3]: no source files to process" ;;
+    "$EXIT_INTERNAL_HELPER_MISSING")
       echo "STATUS[100]: internal setup error (helper script missing)"
       ;;
-    $EXIT_INTERNAL_TOOLCHECK_FAILED) echo "STATUS[110]: " \
+    "$EXIT_INTERNAL_TOOLCHECK_FAILED") echo "STATUS[110]: " \
       "internal helper/toolchain check failed" ;;
-    $EXIT_INTERNAL_GENPDF_FAILED) echo "STATUS[111]: " \
+    "$EXIT_INTERNAL_GENPDF_FAILED") echo "STATUS[111]: " \
       "internal helper failure (genpdf)" ;;
-    $EXIT_INTERNAL_GENDOCX_FAILED) echo "STATUS[112]: " \
+    "$EXIT_INTERNAL_GENDOCX_FAILED") echo "STATUS[112]: " \
       "internal helper failure (gendocx)" ;;
-    $EXIT_SYSTEM_RUNTIME_ERROR) echo "STATUS[249]: " \
+    "$EXIT_SYSTEM_RUNTIME_ERROR") echo "STATUS[249]: " \
       "system/runtime call failure" ;;
     *) echo "STATUS[$code]: unclassified exit" ;;
   esac
@@ -248,7 +269,7 @@ status_message_for_code() {
 exit_with() {
   local code=$1
   local detail=${2:-}
-  [[ -n "$detail" ]] && echo "Error: $detail" >&2
+  [[ -n "$detail" ]] && bt_emit_error "$detail"
   [[ $quiet -eq 0 ]] && status_message_for_code "$code"
   exit "$code"
 }
@@ -487,8 +508,12 @@ convert_markdown_to_docx() {
   local doc_title
 
   source_dir=$(cd "$(dirname "$3")" && pwd)
-  branding_dir=$(cd "$(dirname "$source_dir")/branding" && \
-    pwd 2>/dev/null || true)
+  if branding_dir=$(cd "$(dirname "$source_dir")/branding" && \
+    pwd 2>/dev/null); then
+    :
+  else
+    branding_dir=""
+  fi
   resource_path="$source_dir"
   if [[ -n "$branding_dir" ]]; then
     resource_path="$resource_path:$branding_dir"
@@ -518,7 +543,14 @@ while [[ $# -gt 0 ]]; do
     -k) keep_structure=1 ;;
     -g) segment_glob=1 ;;
     -c) convert_details=1 ;;
-    -t) tool_check=1 ;;
+    -T) tool_check=1 ;;
+    -t)
+      shift
+      [[ $# -gt 0 && "$1" =~ ^[1-9][0-9]*$ ]] || \
+        exit_with "$EXIT_INVALID_ARGUMENT" \
+          "-t requires an integer greater than 0."
+      remote_timeout_seconds="$1"
+      ;;
     -i)
       shift
       [[ $# -gt 0 ]] || exit_with "$EXIT_INVALID_ARGUMENT" \
@@ -549,24 +581,30 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+export BT_REMOTE_TIMEOUT_SECONDS="$remote_timeout_seconds"
+if declare -F bt_propagate_repository_history >/dev/null 2>&1; then
+  bt_propagate_repository_history >/dev/null 2>&1 || true
+fi
+
 [[ $pdf_only -eq 1 && $docx_only -eq 1 ]] && \
   exit_with "$EXIT_INVALID_ARGUMENT" "-p and -d are mutually exclusive."
 
 if [[ $tool_check -eq 1 ]]; then
-  # With -t, only -b is allowed. All other options/args are invalid.
+  # With -T, only -b is allowed. All other options/args are invalid.
   if has_disallowed_toolcheck_args; then
-    exit_with "$EXIT_INVALID_ARGUMENT" "With -t, only -b is allowed."
+    exit_with "$EXIT_INVALID_ARGUMENT" "With -T, only -b is allowed."
   fi
 
   validate_toolcheck_backends "$backend_md_pdf" "$backend_pdf_docx" || \
     exit_with "$EXIT_INVALID_ARGUMENT" \
-      "Invalid backend selection for -t: $backend_md_pdf/$backend_pdf_docx"
+      "Invalid backend selection for -T: $backend_md_pdf/$backend_pdf_docx"
 else
   validate_backend_combo "$backend_md_pdf" "$backend_pdf_docx" || \
     exit_with "$EXIT_INVALID_ARGUMENT" \
       "Invalid backend selection: $backend_md_pdf/$backend_pdf_docx"
   [[ "$backend_md_pdf" != "all" && "$backend_pdf_docx" != "all" ]] || \
-    exit_with "$EXIT_INVALID_ARGUMENT" "Backend token 'all' is only valid with -t."
+    exit_with "$EXIT_INVALID_ARGUMENT" \
+      "Backend token 'all' is only valid with -T."
 fi
 
 [[ -f "$genpdf_script" ]] || \

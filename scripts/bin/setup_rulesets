@@ -1,0 +1,269 @@
+#!/usr/bin/env bash
+
+# setup_rulesets - Setup result sets for approvers, reviewers, and contributors.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+# Usage:
+#
+#   <repo>/scripts/bin/setup_rulesets [--check] [<owner>/<reponame>]
+#
+# Idempotent GitHub ruleset setup with auto-cleanup (create-or-update by ruleset name)
+#
+# Example:
+#   ./scripts/bin/setup_rulesets paulsinclair51/briteTest
+#
+# Requirements:
+#   - gh CLI authenticated (gh auth status)
+#   - jq installed
+#   - repo admin permissions
+#
+# These rulesets enforce properties GitHub can verify from a ref update:
+# protected refs cannot be deleted or rewritten. Conditional PR, role, and
+# source/target merge requirements remain authoritative in mrgup because
+# GitHub cannot determine which local wrapper initiated a user-authenticated
+# push.
+
+set -euo pipefail
+
+MODE="apply"
+if [[ "${1:-}" == "--check" ]]; then
+  MODE="check"
+  shift
+fi
+if [[ $# -gt 1 ]]; then
+  echo "Usage: $0 [--check] [<owner>/<reponame>]" >&2
+  exit 1
+fi
+
+REPO="${1:-paulsinclair51/briteTest}"
+API_ROOT="/repos/${REPO}/rulesets"
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "Error: required command not found: $1" >&2
+    exit 1
+  }
+}
+
+need_cmd gh
+need_cmd jq
+
+if [[ "$MODE" == "check" ]]; then
+  echo "Checking rulesets for ${REPO} ..."
+else
+  echo "Configuring rulesets for ${REPO} ..."
+fi
+
+list_rulesets() {
+  gh api --paginate -H "Accept: application/vnd.github+json" "${API_ROOT}"
+}
+
+# -------------------------------
+# Helper: cleanup duplicates by name
+# -------------------------------
+cleanup_duplicates() {
+  local name="$1"
+  local keep_id="$2"
+
+  # Find all rulesets with this name
+  local all_ids
+  all_ids="$(
+    list_rulesets \
+      | jq -r --arg NAME "$name" '.[] | select(.name == $NAME) | .id'
+  )"
+
+  # Delete all except the one we want to keep
+  while IFS= read -r id; do
+    if [[ "${id}" != "${keep_id}" ]]; then
+      echo "  Removing duplicate: ${name} (id=${id})"
+      gh api \
+        --method DELETE \
+        -H "Accept: application/vnd.github+json" \
+        "${API_ROOT}/${id}" >/dev/null
+    fi
+  done <<< "$all_ids"
+}
+
+# -------------------------------
+# Helper: upsert ruleset by name
+# -------------------------------
+upsert_ruleset() {
+  local json_file="$1"
+  local name
+  name="$(jq -r '.name' "$json_file")"
+
+  # Find existing ruleset id by exact name (prefer first match)
+  local existing_id
+  existing_id="$(
+    list_rulesets \
+      | jq -r --arg NAME "$name" '.[] | select(.name == $NAME) | .id' \
+      | head -n1
+  )"
+
+  if [[ -n "${existing_id:-}" && "${existing_id}" != "null" ]]; then
+    echo "Updating ruleset: ${name} (id=${existing_id})"
+    
+    # Cleanup any other duplicates with same name
+    cleanup_duplicates "$name" "$existing_id"
+    
+    gh api \
+      --method PUT \
+      -H "Accept: application/vnd.github+json" \
+      "${API_ROOT}/${existing_id}" \
+      --input "$json_file" >/dev/null
+    echo "✔ Updated: ${name}"
+  else
+    echo "Creating ruleset: ${name}"
+    gh api \
+      --method POST \
+      -H "Accept: application/vnd.github+json" \
+      "${API_ROOT}" \
+      --input "$json_file" >/dev/null
+    echo "✔ Created: ${name}"
+  fi
+}
+
+delete_rulesets_by_name() {
+  local name="$1"
+  local id
+
+  while IFS= read -r id; do
+    [[ -n "$id" ]] || continue
+    echo "Removing obsolete ruleset: ${name} (id=${id})"
+    gh api --method DELETE -H "Accept: application/vnd.github+json" \
+      "${API_ROOT}/${id}" >/dev/null
+  done < <(list_rulesets | jq -r --arg NAME "$name" \
+    '.[] | select(.name == $NAME) | .id')
+}
+
+check_ruleset() {
+  local json_file="$1"
+  local name
+  local id
+  local expected
+  local actual
+
+  name="$(jq -r '.name' "$json_file")"
+  id="$(list_rulesets | jq -r --arg NAME "$name" \
+    '[.[] | select(.name == $NAME) | .id] | if length == 1 then .[0] else empty end')"
+  if [[ -z "$id" ]]; then
+    echo "ERROR: expected exactly one active ruleset named '${name}'" >&2
+    return 1
+  fi
+
+  expected="$(jq -S -c \
+    '{name,target,enforcement,conditions,rules,bypass_actors}' "$json_file")"
+  actual="$(gh api -H "Accept: application/vnd.github+json" \
+    "${API_ROOT}/${id}" | jq -S -c \
+    '{name,target,enforcement,conditions,rules,bypass_actors}')"
+  if [[ "$actual" != "$expected" ]]; then
+    echo "ERROR: ruleset '${name}' differs from repository policy" >&2
+    return 1
+  fi
+
+  echo "Verified: ${name}"
+}
+
+check_ruleset_absent() {
+  local name="$1"
+
+  if list_rulesets | jq -e --arg NAME "$name" \
+    '.[] | select(.name == $NAME)' >/dev/null; then
+    echo "ERROR: obsolete ruleset '${name}' is still installed" >&2
+    return 1
+  fi
+
+  echo "Verified absent: ${name}"
+}
+
+# -------------------------------
+# JSON payloads
+# -------------------------------
+
+cat > "$TMP_DIR/ruleset-main.json" <<'JSON'
+{
+  "name": "main protection",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["~DEFAULT_BRANCH"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" }
+  ],
+  "bypass_actors": []
+}
+JSON
+
+cat > "$TMP_DIR/ruleset-version.json" <<'JSON'
+{
+  "name": "version branch protection",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/heads/v*.*.0"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" }
+  ],
+  "bypass_actors": []
+}
+JSON
+
+cat > "$TMP_DIR/ruleset-targeted.json" <<'JSON'
+{
+  "name": "targeted branch protection",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/heads/*"],
+      "exclude": ["refs/heads/main", "refs/heads/v*.*.0"]
+    }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" }
+  ],
+  "bypass_actors": []
+}
+JSON
+
+# -------------------------------
+# Apply
+# -------------------------------
+if [[ "$MODE" == "check" ]]; then
+  check_ruleset "$TMP_DIR/ruleset-main.json"
+  check_ruleset "$TMP_DIR/ruleset-version.json"
+  check_ruleset "$TMP_DIR/ruleset-targeted.json"
+  echo "Rulesets match repository policy."
+  exit 0
+fi
+
+upsert_ruleset "$TMP_DIR/ruleset-main.json"
+upsert_ruleset "$TMP_DIR/ruleset-version.json"
+upsert_ruleset "$TMP_DIR/ruleset-targeted.json"
+
+check_ruleset "$TMP_DIR/ruleset-main.json"
+check_ruleset "$TMP_DIR/ruleset-version.json"
+check_ruleset "$TMP_DIR/ruleset-targeted.json"
+
+echo
+echo "Done. Verify at: https://github.com/${REPO}/settings/rules"
+
+echo
+echo "Done."
+echo "Review in: https://github.com/${REPO}/settings/rules"

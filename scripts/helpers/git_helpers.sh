@@ -12,8 +12,96 @@
 # - Encapsulates repeated Git command patterns used by scripts/bin workflows.
 # - Standardizes error handling and output for Git-related helper calls.
 
+bt_is_valid_remote_timeout() {
+  [[ "$1" =~ ^[0-9]+$ ]] && [[ "$1" -gt 0 ]]
+}
+
+bt_run_remote_command() {
+  local timeout_seconds="${BT_REMOTE_TIMEOUT_SECONDS:-10}"
+
+  bt_is_valid_remote_timeout "$timeout_seconds" || return 125
+
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "${timeout_seconds}s" "$@"
+    return $?
+  fi
+
+  "$@"
+}
+
 bt_get_current_branch() {
   git rev-parse --abbrev-ref HEAD 2>/dev/null
+}
+
+bt_git_is_repository() {
+  local repo_path="$1"
+  git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1
+}
+
+bt_git_get_origin_url_or_empty() {
+  local repo_path="$1"
+  git -C "$repo_path" remote get-url origin 2>/dev/null || true
+}
+
+bt_git_has_origin() {
+  local repo_path="$1"
+  [[ -n "$(bt_git_get_origin_url_or_empty "$repo_path")" ]]
+}
+
+bt_git_ls_remote_origin_with_timeout() {
+  local repo_path="$1"
+  local timeout_seconds="$2"
+
+  BT_REMOTE_TIMEOUT_SECONDS="$timeout_seconds" bt_run_remote_command \
+    git -C "$repo_path" ls-remote --exit-code origin HEAD >/dev/null 2>&1
+}
+
+bt_git_run_with_retry() {
+  local attempts="$1"
+  local base_delay_seconds="$2"
+  shift 2
+
+  local attempt=1
+  local delay="$base_delay_seconds"
+  local rc=0
+
+  while [[ "$attempt" -le "$attempts" ]]; do
+    "$@"
+    rc=$?
+    if [[ "$rc" -eq 0 ]]; then
+      return 0
+    fi
+
+    if [[ "$attempt" -ge "$attempts" ]]; then
+      return "$rc"
+    fi
+
+    # Exponential backoff to smooth over transient remote/network failures.
+    sleep "$delay"
+    delay=$((delay * 2))
+    attempt=$((attempt + 1))
+  done
+
+  return "$rc"
+}
+
+bt_git_ls_remote_origin_with_timeout_and_retry() {
+  local repo_path="$1"
+  local timeout_seconds="$2"
+  local attempts="$3"
+  local base_delay_seconds="$4"
+
+  bt_git_run_with_retry "$attempts" "$base_delay_seconds" \
+    bt_git_ls_remote_origin_with_timeout "$repo_path" "$timeout_seconds"
+}
+
+bt_git_fetch_prune_origin_with_retry() {
+  local repo_path="$1"
+  local attempts="$2"
+  local base_delay_seconds="$3"
+
+  bt_git_run_with_retry "$attempts" "$base_delay_seconds" \
+    git -C "$repo_path" fetch --prune origin
 }
 
 # bt_is_worktree_dirty
@@ -40,13 +128,45 @@ bt_is_worktree_dirty() {
 bt_is_version_branch() {
   local branch="$1"
 
-  [[ "$branch" =~ ^v([1-9][0-9]?)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$ ]]
+  [[ "$branch" =~ ^v([1-9][0-9]?)\.(0|[1-9][0-9]?)\.0$ ]]
+}
+
+bt_is_targeted_branch() {
+  local branch="$1"
+
+  [[ "$branch" =~ ^(dev|fix)/[a-z0-9]+(-[a-z0-9]+)*-v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$ ]]
+}
+
+bt_is_contributor_branch() {
+  local branch="$1"
+  local desc='[a-z0-9]+(-[a-z0-9]+)*'
+  local type='[a-z][a-z]{0,29}'
+
+  [[ "$branch" != "main" ]] &&
+    ! bt_is_version_branch "$branch" &&
+    ! bt_is_targeted_branch "$branch" &&
+    [[ "$branch" =~ ^((${type}/)?${desc})$ ]]
+}
+
+bt_is_valid_branch_name() {
+  local branch="$1"
+
+  [[ "$branch" == "main" ]] ||
+    bt_is_version_branch "$branch" ||
+    bt_is_targeted_branch "$branch" ||
+    bt_is_contributor_branch "$branch"
 }
 
 bt_is_protected_branch() {
   local branch="$1"
 
   [[ "$branch" == "main" ]] || bt_is_version_branch "$branch"
+}
+
+bt_is_read_only_branch() {
+  local branch="$1"
+
+  bt_is_protected_branch "$branch" || ! bt_is_valid_branch_name "$branch"
 }
 
 bt_resolve_parent_branch() {
@@ -63,7 +183,7 @@ bt_resolve_parent_branch() {
     return 0
   fi
 
-  if [[ "$current_branch" =~ ^(dev|fix)/.+-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]; then
+  if [[ "$current_branch" =~ ^(dev|fix)/.+-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0)$ ]]; then
     echo "${BASH_REMATCH[2]}"
     return 0
   fi

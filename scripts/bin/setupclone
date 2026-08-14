@@ -12,17 +12,19 @@
 usage() {
   cat <<'EOF'
 Usage:
-  bash /scripts/bin/setupclone
+  bash /scripts/bin/setupclone [-t SEC]
   bash /scripts/bin/setupclone {-h | --help}
 
-Make all scripts in /scripts/bin/ executable, add to PATH, and configure Git hooks.
+Make all scripts in /scripts/bin/ executable, add to PATH, and configure Git
+hooks.
 
 This script:
   - Makes all scripts in /scripts/bin/ executable (chmod +x).
   - Adds /scripts/bin/ to PATH in ~/.bashrc if not already present.
   - Configures ~/.inputrc to make command completion more discoverable.
   - Adds a ~/.bashrc hook to auto-load ~/.inputrc in interactive shells.
-  - Configures Git to use hooks from scripts/helpers/.githooks/ via core.hooksPath.
+  - Configures Git to use hooks from scripts/helpers/.githooks/ via
+  core.hooksPath.
   - Loads the updated configuration so scripts are available immediately.
 
 After running, scripts in /scripts/bin/ will be:
@@ -38,6 +40,8 @@ Git hooks will be:
 Options:
   -h, --help  Output this help to stdout and exit (other options
               and arguments are ignored).
+  -t SEC      Remote operation timeout in seconds (default: 10).
+              SEC must be an integer greater than 0.
 
 Examples:
   # Setup clone environment
@@ -45,7 +49,6 @@ Examples:
 
   # Show help
   bash /scripts/bin/setupclone -h
-
 
 Outputs:
   - Writes help text, status messages, and results to stdout.
@@ -60,15 +63,25 @@ Exit codes:
 EOF
 }
 
+# High-Level Flow:
+# - Parse options and resolve repository root and helper availability.
+# - Ensure scripts/bin exists and make scripts executable.
+# - Update shell startup files for PATH and completion behavior.
+# - Configure repository hooks path and load updated shell configuration.
+
 set -euo pipefail
 
 readonly EXIT_INVALID_ARGUMENT=1
+
+bt_emit_error() {
+  printf 'Error: %s\n' "$1" >&2
+}
 
 usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "$message. See usage above for details." >&2
+  bt_emit_error "$message. See usage above for details."
   exit "$EXIT_INVALID_ARGUMENT"
 }
 
@@ -80,10 +93,19 @@ for arg in "$@"; do
   fi
 done
 
-# Reject any other arguments
-if [[ $# -gt 0 ]]; then
-  usage_error "Unknown argument: $1"
-fi
+REMOTE_TIMEOUT_SECONDS=10
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t)
+      [[ $# -ge 2 && "$2" =~ ^[1-9][0-9]*$ ]] || \
+        usage_error "Option -t requires an integer greater than 0"
+      REMOTE_TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
+    *) usage_error "Unknown argument: $1" ;;
+  esac
+done
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
 
 # Determine repository root from git or from this script's location
 if git rev-parse --git-dir > /dev/null 2>&1; then
@@ -95,8 +117,12 @@ fi
 # Propagate repository history from remote if available
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
+GIT_HELPER="$SCRIPT_DIR/../helpers/git_helpers.sh"
 if [[ -f "$HISTORY_HELPER" ]]; then
+  # shellcheck disable=SC1090  # Repository-relative helper path.
   if source "$HISTORY_HELPER" 2>/dev/null; then
+    # shellcheck disable=SC1090  # Repository-relative helper path.
+    source "$GIT_HELPER" 2>/dev/null || true
     bt_propagate_repository_history >/dev/null 2>&1 || true
   fi
 fi
@@ -105,7 +131,7 @@ scripts_bin="$repo_root/scripts/bin"
 
 # Verify the scripts/bin directory exists
 if [[ ! -d "$scripts_bin" ]]; then
-  echo "Error: scripts/bin directory not found at $scripts_bin" >&2
+  bt_emit_error "scripts/bin directory not found at $scripts_bin"
   exit "$EXIT_INVALID_ARGUMENT"
 fi
 
@@ -134,7 +160,8 @@ else
   echo "  ✓ Added to ~/.bashrc"
 fi
 
-bind_hook_line='if [[ $- == *i* ]] && [[ -f "$HOME/.inputrc" ]]; then bind -f "$HOME/.inputrc" >/dev/null 2>&1 || true; fi'
+bind_hook_line="if [[ \$- == *i* ]] && [[ -f \"\$HOME/.inputrc\" ]]; then "\
+"bind -f \"\$HOME/.inputrc\" >/dev/null 2>&1 || true; fi"
 if grep -qxF "$bind_hook_line" ~/.bashrc 2>/dev/null; then
   echo "  → ~/.bashrc already auto-loads ~/.inputrc"
 else
@@ -177,7 +204,7 @@ fi
 # Install Git hooks
 echo ""
 echo "Installing Git hooks for workflow protection..."
-hook_installer="$repo_root/scripts/helpers/install-git-hooks.sh"
+hook_installer="$repo_root/scripts/helpers/install_git_hooks.sh"
 
 if [[ -f "$hook_installer" ]]; then
   if bash "$hook_installer"; then
@@ -193,6 +220,7 @@ fi
 # Load the updated configuration
 echo ""
 echo "Loading updated configuration..."
+# shellcheck disable=SC1090  # Intentional user shell profile source.
 if ! source ~/.bashrc 2>/dev/null; then
   echo "Warning: Failed to load configuration, but changes have been made" >&2
   echo "Run 'source ~/.bashrc' or start a new shell session." >&2
@@ -210,7 +238,8 @@ echo "  - Executable"
 echo "  - Available in PATH for current and future sessions"
 echo ""
 echo "Git hooks are now:"
-echo "  - Configured to use versioned hooks directory (scripts/helpers/.githooks/)"
+echo "  - Configured to use versioned hooks directory" \
+     "(scripts/helpers/.githooks/)"
 echo "  - Active immediately"
 echo "  - Will run on checkout and other git operations"
 echo ""

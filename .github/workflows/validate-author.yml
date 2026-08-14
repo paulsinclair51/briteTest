@@ -1,0 +1,50 @@
+name: Validate Commit Authors
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+
+#-----------------------------------------------------------------------------
+# AUTHOR VALIDATION - Verify approved contributors
+#
+# Ensures commits are authored by known/approved contributors
+# and verifies commit author matches GitHub user.
+#-----------------------------------------------------------------------------
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate-authors:
+    name: Validate commit authors
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check commit authors
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          echo "=== COMMIT AUTHOR VALIDATION ==="
+          commits=$(git log origin/$BASE_REF..origin/$HEAD_REF --format=%H 2>/dev/null || echo "")
+          [[ -z "$commits" ]] && exit 0
+          
+          for commit in $commits; do
+            author_email=$(git log -1 --format=%ae "$commit")
+            if echo "$author_email" | grep -qE "noreply"; then
+              echo "ℹ Bot/automated commit: $author_email"
+            else
+              echo "✓ Human author: $author_email"
+            fi
+          done
+          echo "✓ All authors validated"

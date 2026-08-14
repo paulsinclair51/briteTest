@@ -10,19 +10,19 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **file_compare_tests.c**: Tests for file-compare functionality.
+**file_compare_tests.c**: Tests for file-compare functionality.
 
-- **guard1_tests.c**: Part 1 tests for guard framework behavior.
+**guard1_tests.c**: Part 1 tests for guard framework behavior.
 
-- **guard2_tests.c**: Part 2 tests for guard framework behavior.
+**guard2_tests.c**: Part 2 tests for guard framework behavior.
 
-- **orchestrator_tests.c**: Tests for orchestrator API behavior.
+**orchestrator_tests.c**: Tests for orchestrator API behavior.
 
-- **test_runner.c**: Orchestrator (`main`) module for running test
-  groups and test expressions.
+**test_runner.c**: Orchestrator (`main`) module for running test
+groups and test expressions.
 
-- **README.md**: This directory guide.
+**README.md**: This directory guide.
 
 ## Subdirectories
 
-- None.
+None.

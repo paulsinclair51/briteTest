@@ -1,4 +1,5 @@
 # `<repo>/.vscode/`
+
 Directory containing VS Code workspace configuration files.
 
 Copyright (c) 2026 Paul Sinclair  
@@ -9,14 +10,14 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **settings.json**: Workspace-level settings that override user-level VS Code
-  settings.
+**settings.json**: Workspace-level settings that override user-level VS Code
+settings.
 
-- **README.md**: This directory guide.
+**README.md**: This directory guide.
 
 ## Subdirectories
 
-- None.
+None.
 
 ## `settings.json`
 
@@ -35,8 +36,6 @@ settings:
 Additional VS Code configuration files may be added here as needed:
 
 - **launch.json**: Debug configurations for running and debugging the project.
-
-- **tasks.json**: Custom build and test tasks.
 
 - **extensions.json**: Recommended VS Code extensions for this project.
 

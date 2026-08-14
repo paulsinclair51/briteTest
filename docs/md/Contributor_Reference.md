@@ -40,8 +40,11 @@ SOFTWARE.
 This document is for contributors, reviewers, and approvers who need
 script-level details for workflow, validation, and role-based operations.
 
-For contribution policies, branching rules, and workflows, see
+For public contribution policies, branching rules, and workflows, see
 [Contributor_Guide.md](./Contributor_Guide.md).
+For owner override rules, protected branch policy, and remote repair procedures,
+see [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) and
+[Contributor_Internal_Reference.md](./Contributor_Internal_Reference.md).
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
@@ -66,9 +69,9 @@ For contribution policies, branching rules, and workflows, see
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.3. [copyfix](#113-copyfix)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.4. [feedback](#114-feedback)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.5. [lsbranch](#115-lsbranch)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.6. [lsbranchlog](#116-lsbranchlog)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.6. [report](#116-report)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.7. [mkbranch](#117-mkbranch)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. [mrgbranch](#118-mrgbranch)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. [pull](#118-pull)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.9. [mrgdown](#119-mrgdown)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.10. [mrgup](#1110-mrgup)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.11. [retarget](#1111-retarget)<br>
@@ -77,11 +80,12 @@ For contribution policies, branching rules, and workflows, see
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.14. [undo](#1114-undo)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.15. [release](#1115-release)<br>
    1.2. [Repository and Clone Management](#12-repository-and-clone-management)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. [fixrepo](#121-fixrepo)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. [setupclone](#122-setupclone)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. [mkclone](#123-mkclone)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. [mkfork](#124-mkfork)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. [rmclone](#125-rmclone)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. [fixlocal](#121-fixlocal)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. [fixremote](#122-fixremote)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. [setupclone](#123-setupclone)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. [mkclone](#124-mkclone)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. [mkfork](#125-mkfork)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.6. [rmclone](#126-rmclone)<br>
    1.3. [Documentation and Branding](#13-documentation-and-branding)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.1. [ckstyle](#131-ckstyle)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.2. [gendocs](#132-gendocs)<br>
@@ -94,24 +98,24 @@ For contribution policies, branching rules, and workflows, see
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.1. [ckbranchname.sh](#211-ckbranchnamesh)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.2. [ckrole.sh](#212-ckrolesh)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.3. [rbac.sh](#213-rbacsh)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.4. [validation-helpers.sh](#214-validation-helperssh)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.4. [validation_helpers.sh](#214-validation_helperssh)<br>
    2.2. [Git and GitHub Helpers](#22-git-and-github-helpers)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.1. [git_helpers.sh](#221-git_helperssh)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.2. [github_helpers.sh](#222-github_helperssh)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.3. [history_log.sh](#223-history_logsh)<br>
    2.3. [Core Utilities](#23-core-utilities)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3.1. [common.sh](#231-commonsh)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3.2. [common-utils.sh](#232-common-utilssh)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3.2. [common_utils.sh](#232-common_utilssh)<br>
    2.4. [Documentation Generators](#24-documentation-generators)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.4.1. [gendocx.sh](#241-gendocxsh)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.4.2. [genpdf.sh](#242-genpdfsh)<br>
    2.5. [Git Hooks Infrastructure](#25-git-hooks-infrastructure)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.1. [install-git-hooks.sh](#251-install-git-hookssh)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.1. [install_git_hooks.sh](#251-install_git_hookssh)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.2. [post-checkout](#252-post-checkout)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.3. [pre-commit](#253-pre-commit)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.4. [pre-push](#254-pre-push)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.5. [pre-merge-commit](#255-pre-merge-commit)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.6. [orchestrator.sh](#256-orchestratorsh)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.6. [githook_helper.sh](#256-githook_helpersh)<br>
 
 3. [Script-Based Access Control](#3-script-based-access-control)<br>
    3.1. [Role Permissions Matrix](#31-role-permissions-matrix)<br>
@@ -197,13 +201,27 @@ commit [OPTIONS]
 
 #### 1.1.3. copyfix
 
-**Purpose:** Cherry-pick fix commits from another branch into current branch.
+**Purpose:** Copy commits from a local source fix branch into the current local
+target branch.
+
+The command updates the target through a temporary worktree and leaves the
+current worktree on the target branch.
 
 **Usage:**
 
 ```bash
-copyfix <source_branch> [<commit_hash>]
+copyfix [OPTIONS] SOURCE_BRANCH [-- TOKEN...]
+copyfix --continue [OPTIONS]
 ```
+
+Use `-c TOKEN` or `-- TOKEN...` to replace the comment on each copied fix
+commit. Without either option, copied commits retain their original comments.
+
+Use `-d` to preview the copy without changing the target. Successful copies
+write `copyfix-<datetime>-<pid>.md` for the target branch. Dry runs and
+operation errors write `copyfix-d-<datetime>-<pid>.md` and
+`copyfix-e-<datetime>-<pid>.md` for the current target branch. Reports are
+untracked files in `reports/branch`.
 </details>
 
 <details>
@@ -216,8 +234,15 @@ copyfix <source_branch> [<commit_hash>]
 **Usage:**
 
 ```bash
-feedback [OPTIONS]
+feedback [ACTION] [OPTIONS] [-- TOKEN...]
 ```
+
+**Notes:**
+
+- `feedback view` lists review comments with IDs.
+- `feedback respond -i <id> -c <text>` replies to a specific review comment.
+- `feedback resolve -i <id>` resolves the matching review thread.
+- `feedback approve` and `feedback disapprove` submit final approval decisions.
 </details>
 
 <details>
@@ -239,16 +264,16 @@ lsbranch [<pattern>]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.6. lsbranchlog</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.6. report</summary>
 
-#### 1.1.6. lsbranchlog
+#### 1.1.6. report
 
 **Purpose:** Query branch history log entries.
 
 **Usage:**
 
 ```bash
-lsbranchlog [OPTIONS] [<pattern>]
+report [OPTIONS]
 ```
 </details>
 
@@ -281,16 +306,16 @@ mkbranch -r BRANCH [PARENTBRANCH]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. mrgbranch</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. pull</summary>
 
-#### 1.1.8. mrgbranch
+#### 1.1.8. pull
 
 **Purpose:** Fetch and pull latest changes from remote into local branch.
 
 **Usage:**
 
 ```bash
-mrgbranch [BRANCHNAME]
+pull [BRANCHNAME]
 ```
 </details>
 
@@ -370,13 +395,22 @@ retarget <branch_name> <new_version>
 
 #### 1.1.13. review
 
-**Purpose:** Create or update a pull request for code review.
+**Purpose:** Manage draft pull requests and start code review.
 
 **Usage:**
 
 ```bash
-review [OPTIONS]
+review [OPTIONS] [-- TOKEN...]
 ```
+
+**Notes:**
+
+- By default, `review` creates a draft PR (or updates an existing draft PR).
+- `review -s` starts review: create a non-draft PR, or convert an existing draft PR to ready-for-review and request reviewers/approvers.
+- `review --delete` deletes the current draft PR. Use only when a draft PR exists.
+- `-b` opens the PR in the GitHub UI after completion and cannot be combined with `--delete`.
+- `-l` replaces existing labels when updating a draft PR.
+- Use `feedback` (not `review`) to respond, resolve, approve, or disapprove review comments.
 </details>
 
 <details>
@@ -419,29 +453,75 @@ undo [OPTIONS]
 ### 1.2. Repository and Clone Management
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. fixrepo</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. fixlocal</summary>
 
-#### 1.2.1. fixrepo
+#### 1.2.1. fixlocal
 
-**Purpose:** Verify repository/clone integrity and run safe cleanup fixes.
+**Purpose:** Check local repository health, apply guarded local remediations, and produce a diagnostic report.
 
 **Usage:**
 
 ```bash
-fixrepo [OPTIONS]
+fixlocal [OPTIONS]
 ```
 
 **Functions:**
 
-- Verify repository structure
-- Run post-cleanup checks
-- Generate health report
+- Verify git object database integrity (`git fsck --full`)
+- Verify working tree cleanliness
+- Check remote connectivity and per-branch tracking status
+- Attempt guarded current-branch synchronization from upstream
+- Run safe cleanup (`git gc --prune=now`)
+- Continue on non-critical check/fix failures and record them in report
+- Distinguish fixable vs. non-fixable issues and verified vs. unverified remediation
+
+**Exit Codes:**
+
+- 0: Success - no issues or all issues fixed
+- 1: Invalid option or argument
+- 2: User is not authorized (requires contributor role or higher)
+- 3: Issues detected - one or more were not fixable
+- 100: Missing required helper files, dependencies, or configuration
+
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. setupclone</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. fixremote</summary>
 
-#### 1.2.2. setupclone
+#### 1.2.2. fixremote
+
+**Purpose:** Run owner/approver-only origin recovery workflow from a clean local clone.
+
+**Usage:**
+
+```bash
+fixremote [OPTIONS] <clone-path>
+```
+
+**Functions:**
+
+- Verify user is approver/owner
+- Run preflight validation (clone integrity/cleanliness, origin URL/reachability)
+- Execute recovery only with `-x` (safe default is preflight-only)
+- Push branch/tag refs from clean clone to origin during execution mode
+- Verify post-recovery origin/main parity with source clone
+- Generate recovery report with actionable follow-up details
+
+**Exit Codes:**
+
+- 0: Success - checks passed and no unresolved issues
+- 1: Invalid option or argument
+- 2: User is not authorized - only approver/owner can run fixremote
+- 3: Recovery failed - see report for details
+- 100: Missing required dependencies or configuration files
+- 200: Git operation failed during recovery
+
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. setupclone</summary>
+
+#### 1.2.3. setupclone
 
 **Purpose:** Setup clone environment - install scripts, add to PATH, and configure Git hooks.
 
@@ -460,9 +540,9 @@ bash scripts/bin/setupclone [OPTIONS]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. mkclone</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. mkclone</summary>
 
-#### 1.2.3. mkclone
+#### 1.2.4. mkclone
 
 **Purpose:** Clone the repository with optional target naming.
 
@@ -474,9 +554,9 @@ mkclone [<target_name>]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. mkfork</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. mkfork</summary>
 
-#### 1.2.4. mkfork
+#### 1.2.5. mkfork
 
 **Purpose:** Create a fork of the repository and optionally configure upstream.
 
@@ -493,9 +573,9 @@ mkfork [OPTIONS]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. rmclone</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.6. rmclone</summary>
 
-#### 1.2.5. rmclone
+#### 1.2.6. rmclone
 
 **Purpose:** Safely remove a local clone with validation checks.
 
@@ -714,9 +794,9 @@ bash scripts/helpers/ckrole.sh "<role>"
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.4. validation-helpers.sh</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.4. validation_helpers.sh</summary>
 
-### 2.1.4. validation-helpers.sh
+### 2.1.4. validation_helpers.sh
 
 **Purpose:** General validation utility functions for scripts.
 
@@ -800,9 +880,9 @@ bash scripts/helpers/ckrole.sh "<role>"
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3.2. common-utils.sh</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3.2. common_utils.sh</summary>
 
-#### 2.3.2. common-utils.sh
+#### 2.3.2. common_utils.sh
 
 **Purpose:** Common utility functions shared across scripts.
 
@@ -862,19 +942,19 @@ bash scripts/helpers/genpdf.sh <markdown_file> [<output_file>]
 
 ### 2.5. Git Hooks Infrastructure
 
-Git hooks automate configuration and enforce the script-based workflow. All hooks are versioned in `scripts/helpers/.githooks/` and configured via Git's `core.hooksPath` mechanism.
+Git hooks automate configuration and enforce the script-based workflow. All hooks are versioned in `scripts/helpers/.githooks/` and configured via Git's `core.hooksPath` mechanism. The hook entrypoints keep the canonical Git hook names without `.sh` because Git resolves those names directly; shared logic can still live in `.sh` helpers such as `githook_helper.sh`.
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.1. install-git-hooks.sh</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.1. install_git_hooks.sh</summary>
 
-#### 2.5.1. install-git-hooks.sh
+#### 2.5.1. install_git_hooks.sh
 
 **Purpose:** Configure Git to use hooks from the versioned `.githooks/` directory via `core.hooksPath`.
 
 **Usage:**
 
 ```bash
-bash scripts/helpers/install-git-hooks.sh [--silent]
+bash scripts/helpers/install_git_hooks.sh [--silent]
 ```
 
 **Options:**
@@ -959,7 +1039,7 @@ commit -m "Message" -p             # [OK] Commit + push
 
 **How to bypass (scripts only):**
 
-Scripts automatically set `BRITETEST_BYPASS_HOOKS=true` before git operations.
+Scripts automatically set `GIT_BYPASS_HOOKS=true` before git operations.
 
 **Error message shown:**
 
@@ -997,7 +1077,8 @@ git push origin --delete <branch>  # [ERROR] BLOCKED
 
 ```bash
 commit -m "msg" -p                 # [OK] Commit + push
-merge [branch]                     # [OK] Merge to parent
+push                               # [OK] Push current branch
+mrgup                              # [OK] Merge-up workflow
 rmbranch <branch> -r               # [OK] Delete remote branch
 ```
 
@@ -1031,8 +1112,8 @@ git merge --no-ff            # [ERROR] BLOCKED
 **What to use instead:**
 
 ```bash
-merge [branch]               # [OK] Merge to parent branch
-merge -s                     # [OK] Merge with squash
+mrgdown                      # [OK] Merge parent branch into current branch
+mrgup                        # [OK] Merge current branch up to parent workflow
 ```
 
 **Error message shown:**
@@ -1040,15 +1121,15 @@ merge -s                     # [OK] Merge with squash
 ```
 [ERROR] Direct git merge operations are not allowed.
 
-   Use the 'merge' script instead:
+  Use the 'mrgdown' script instead:
    ...
 ```
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.6. orchestrator.sh</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.6. githook_helper.sh</summary>
 
-#### 2.5.6. orchestrator.sh
+#### 2.5.6. githook_helper.sh
 
 **Purpose:** Provide common enforcement logic shared by all Git hooks.
 
@@ -1057,7 +1138,7 @@ merge -s                     # [OK] Merge with squash
 Sourced by other hooks, not called directly:
 
 ```bash
-source "$(git rev-parse --git-dir)/hooks/orchestrator.sh"
+source "scripts/helpers/.githooks/githook_helper.sh"
 check_bypass "git commit" "commit"
 ```
 
@@ -1069,7 +1150,7 @@ check_bypass "git commit" "commit"
 
 **How it works:**
 
-1. Checks `BRITETEST_BYPASS_HOOKS` environment variable
+1. Checks `GIT_BYPASS_HOOKS` environment variable
 2. If set to `true`, allows operation (script is running)
 3. If not set, blocks operation and shows error guidance
 
@@ -1077,15 +1158,15 @@ check_bypass "git commit" "commit"
 
 ```bash
 # Scripts use this pattern:
-export BRITETEST_BYPASS_HOOKS=true
+export GIT_BYPASS_HOOKS=true
 git add files...
 git commit -m "msg"
-unset BRITETEST_BYPASS_HOOKS
+unset GIT_BYPASS_HOOKS
 ```
 
 **Security model:**
 
-- Only scripts can set `BRITETEST_BYPASS_HOOKS`
+- Only scripts can set `GIT_BYPASS_HOOKS`
 - Environment variable is unset immediately after operation
 - Direct user git commands cannot bypass hooks
 </details>
@@ -1122,11 +1203,11 @@ briteTest implements hierarchical role-based access control: **Approver (A)** > 
 mkbranch          - Create new feature branches from parent
 mkclone           - Clone the repository
 commit            - Create and sign commits with optional push (-p)
-copyfix           - Cherry-pick fix commits between branches
-mrgbranch         - Sync with remote repository
+copyfix           - Copy fix commits between branches
+pull         - Sync with remote repository
 mrgdown           - Sync down from main branch
 undo              - Undo uncommitted changes
-lsbranchlog       - Check branch history
+report            - Check branch history
 lsbranch          - List branches and status
 ckstyle           - Check code style compliance
 gendocs           - Generate PDF/DOCX documentation
@@ -1137,14 +1218,14 @@ setupclone        - Setup clone environment
 **Reviewer (R) Scripts** - Inherits all Contributor scripts, plus:
 ```
 feedback          - Provide code review feedback on PRs
-review            - Create/update pull requests for review
+review            - Create/update draft PRs and start review (`-s`)
 ```
 
 **Approver (A) Scripts** - Inherits all Reviewer + Contributor scripts, plus:
 ```
 mrgup             - Merge branches to parent/protected branches (requires override)
 release           - Create releases and version tags (requires override)
-fixrepo           - Repair repository state (requires override)
+fixlocal, fixremote - Repair repository state (requires override)
 rebrand           - Update branding across repository (requires override)
 replacetext       - Replace text globally across repo (requires override)
 ```
@@ -1166,20 +1247,21 @@ replacetext       - Replace text globally across repo (requires override)
 mrgup
 
 # Script will fail:
-[ERROR] This operation requires Reviewer role or higher
+[ERROR] This operation requires Approver role
 ```
 
-#### Protected Script Override
+#### Protected Operations and Overrides
 
-Approver-only scripts require explicit override confirmation:
+Role checks are enforced by script-level policy gates and shared role helpers.
+Current enforcement patterns include:
 
-```bash
-SCRIPT_OVERRIDE_CONFIRMED=true mrgup
-SCRIPT_OVERRIDE_CONFIRMED=true release v1.0.0
-SCRIPT_OVERRIDE_CONFIRMED=true fixrepo
-```
+- Approver checks for protected merge/release paths (for example in `mrgup`).
+- Contributor-role checks for branch mutation operations (for example in `rmbranch`).
+- Repository-owner override controls where supported (for example `-o`,
+  and local override mode via `override on/off`).
 
-Without override flag, execution fails by design as safety measure.
+Role checks are evaluated before operation-specific controls. Override options
+do not grant non-owner/non-approver users additional access.
 </details>
 
 <details>
@@ -1187,15 +1269,20 @@ Without override flag, execution fails by design as safety measure.
 
 ### 3.2. Protected Script Rule
 
-Approver-only scripts require explicit override confirmation:
+Protected operations must pass role-gate checks, and some commands add
+operation-specific approval controls.
+
+Use script help for exact current behavior:
 
 ```bash
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/mrgup
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/release v1.0.0
-SCRIPT_OVERRIDE_CONFIRMED=true scripts/bin/fixrepo
+mrgup -h
+release -h
+fixlocal -h
+rmbranch -h
 ```
 
-If override confirmation is missing, execution must fail by design.
+Repository owner override controls are explicit and local to the invoking
+command/clone; they are not a general permission bypass.
 </details>
 </details>
 
@@ -1425,19 +1512,19 @@ chmod +x scripts/bin/* scripts/helpers/*
 briteTest uses a **defense-in-depth** validation approach with two layers of GitHub Actions workflows:
 
 **Primary Layer (Prevention)** - Blocks invalid PRs before merge
-- `branch-validation-pull-request.yml` - PR content validation
-- `branch-validation-commit-message.yml` - Commit message format
-- `branch-validation-gpg-signature.yml` - Signed commits required
-- `branch-validation-file-changes.yml` - Protected file changes blocked
-- `branch-validation-secrets.yml` - Secret scanning
-- `branch-validation-code-quality.yml` - Code standards
+- `validate-pull-request.yml` - PR content validation
+- `validate-commit-message.yml` - Commit message format
+- `validate-gpg-signature.yml` - Signed commits required
+- `validate-file-changes.yml` - Protected file changes blocked
+- `validate-secrets.yml` - Secret scanning
+- `validate-code-quality.yml` - Code standards
 - `+4 more prevention workflows` - Specialized validation (license headers, file size, workflows, authors)
 
 **Secondary Layer (Audit)** - Creates compliance log after merge
-- `branch-validation-merge.yml` - Log merge operations
-- `branch-validation-rebase.yml` - Log rebase operations  
-- `branch-validation-force-push.yml` - Log force push operations
-- `branch-validation-cherry-pick.yml` - Log cherry-pick operations
+- `validate-merge.yml` - Log merge operations
+- `validate-rebase.yml` - Log rebase operations  
+- `validate-force-push.yml` - Log force push operations
+- `validate-cherry-pick.yml` - Log cherry-pick operations
 - `+1 more audit workflow` - Tag operations logging
 
 ### 7.2. Layered Validation Approach
@@ -1477,7 +1564,7 @@ Workflows use centralized helper scripts to reduce duplication and share validat
 
 ```
 scripts/helpers/
-+-- common-utils.sh
++-- common_utils.sh
 |   +-- log_info, log_error, log_section
 |   +-- assert_set, assert_file_exists
 |   +-- timer_start, timer_end
@@ -1486,7 +1573,7 @@ scripts/helpers/
 |   +-- git_log_range, git_changed_files
 |   +-- print_success, print_failure
 |
-+-- validation-helpers.sh
++-- validation_helpers.sh
 |   +-- validate_commit_message() - Check commit format
 |   +-- validate_all_commit_messages() - Check PR commits
 |   +-- scan_for_secrets() - Pattern matching for secrets
@@ -1513,7 +1600,7 @@ scripts/helpers/
 
 To add a new validation workflow:
 
-**1. Implement validation function** in `scripts/helpers/validation-helpers.sh`:
+**1. Implement validation function** in `scripts/helpers/validation_helpers.sh`:
 
 ```bash
 # validate_my_check: Description of what is validated
@@ -1533,7 +1620,7 @@ validate_my_check() {
 }
 ```
 
-**2. Create workflow file** `.github/workflows/branch-validation-mycheck.yml`:
+**2. Create workflow file** `.github/workflows/validate-mycheck.yml`:
 
 ```yaml
 name: Validate My Check
@@ -1553,8 +1640,8 @@ jobs:
 
       - name: Source helpers
         run: |
-          source scripts/helpers/common-utils.sh
-          source scripts/helpers/validation-helpers.sh
+          source scripts/helpers/common_utils.sh
+          source scripts/helpers/validation_helpers.sh
 
       - name: Run validation
         run: |

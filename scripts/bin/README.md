@@ -12,63 +12,110 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ### Setup and Installation
 
-- **setupclone**: Setup clone environment
-   `<repo>/scripts/bin/` to PATH.
+**setupclone**: Setup clone environment `<repo>/scripts/bin/` to PATH.
 
 ### Document and Brand Management
 
-- **ckstyle**: Check style quidelines for documention, code, scripts,
-   directory guides, versions etc. for the current branch.
-   See Contributor Guide for guidelines.
-- **gendocs**: Generate PDF and DOCX documentation.
-- **genpngs**: Generate branding PNG images from SVG files.
-- **replacetext**: Apply configured text replacements in markdown files.
-- **rebrand**: Update branding text and regenerate related assets.
+**ckstyle**: Check style quidelines for documention, code, scripts,
+directory guides, versions etc. for the current branch.
+See Contributor Guide for guidelines.
+
+**gendocs**: Generate PDF and DOCX documentation.
+
+**genpngs**: Generate branding PNG images from SVG files.
+
+**rebrand**: Update branding text and regenerate related assets.
+
+**replacetext**: Apply configured text replacements in markdown files.
 
 ### Repository and Fork Management
 
-- **fixrepo**: Verify repository/clone integrity, run safe cleanup fixes,
-  rerun affected post-cleanup checks, and generate a health report.
-- **mkclone**: Clone the repository with optional target naming.
-- **mkfork**: Create a fork of the repository and optionally configure it with
-  upstream remote and user as approver.
-- **rmclone**: Safely remove a local clone with validation checks and optional
-   override.
+**fixlocal**: Start here for local working-copy, branch-tracking, or local repo
+integrity issues. It validates the current clone and applies only safe local
+repairs.
+
+**fixrepo**: Broader repository-wide validation across the current repo and an
+optional second clone. Use after fixlocal if the issue may extend beyond the
+current working copy.
+
+**fixremote**: Remote-recovery workflow. Use only when the error is in the remote
+(origin) repository or when a protected ref/object must be recovered from a
+known-clean clone.
+
+**mkclone**: Clone the repository with optional target naming.
+
+**mkfork**: Create a fork of the repository and optionally configure it with
+upstream remote and user as approver.
+
+**rmclone**: Safely remove a local clone with validation checks and optional
+override.
 
 ### Branch and Workflow Management
 
-- **chbranch**: Change to specified local branch as current branch
-  (blocks `main` which is not allowed to have a local branch).
-  When local branch doesn't exist, creates local tracking branch from
-  origin/<branch>` if it exists and is available.
-  List can include cached remote-only branches.
-- **retarget**: Retarget a targeted branch to a different version branch.
-  targeted branch is renamed to have its version as the specified version.
-- **lsbranchlog**: Query branch history log entries.
-- **commit**: Commit and optionally push changes to remote.
-- **copyfix**: Cherry-pick/copy fix commits from another branch.
-- **lsbranch**: List a branch or branches and their status.
-- **mkbranch**: Create branches with policy validation.
-- **feedback**: View/respond to PR feedback workflows.
-- **mrgup**: Merge current branch to its parent branch.
-- **review**: Create or update a pull request.
-- **release**: Create and publish releases.
-- **rmbranch**: Remove local and/or remote branches.
-- **mrgdown**: Merge parent branch into current branch.
-- **mrgbranch**: Fetch and pull latest changes from remote into
-  local branch
-- **override**: Repository owner only. Toggle unrestricted mode for this
-   local clone (`override on` / `override off`) for direct hook-enforced
-   repository actions. Does not disable script-level role/policy checks.
-- **undo**: Undo recent merge/release/commit operations.
+**chbranch**: Change to specified local branch as current branch
+(blocks `main` which is not allowed to have a local branch).
+When local branch doesn't exist, creates local tracking branch from
+origin/<branch>` if it exists and is available.
+List can include cached remote-only branches.
+
+**commit**: Commit and optionally push changes to remote.
+
+**copyfix**: Copy fix commits from a source fix branch into
+the current branch.
+
+**feedback**: View/respond to PR feedback workflows.
+
+**lsbranch**: List a branch or branches and their status.
+
+**report**: Generate and query workflow history report entries.
+
+**mkbranch**: Create branches with policy validation.
+
+**mrgdown**: Merge parent branch into current branch.
+
+**mrgup**: Merge current branch to its parent branch.
+
+**override**: Repository owner only. Toggle local or remote-repair authorization
+for this clone (`override on` / `override off`, and `override -r on`). Use
+`override off` to clear both local and remote override modes. Local override is
+for exceptional local recovery; remote repair mode is only a temporary
+owner-admin workflow marker and does not bypass GitHub rulesets or branch
+protection.
+
+**pull**: Pull from remote to current branch (which must be local).
+
+**push**: Push from current branch (which must be local) to its
+corresponding remote branch.
+
+**release**: Create and publish releases.
+
+**retarget**: Retarget a targeted branch to a different version branch.
+targeted branch is renamed to have its version as the specified version.
+
+**review**: Create or update a pull request.
+
+**rmbranch**: Remove local and/or remote branches.
+
+**undo**: Undo recent merge/release/commit operations.
 
 ### README Directory Guide
 
-- **README.md**: This directory guide.
+**README.md**: This directory guide.
 
 ## Subdirectories
 
-- None.
+None.
+
+## Recommended repair order
+
+Use the repair scripts in this order when more than one layer is involved:
+
+1. `fixlocal` for the current local clone/worktree/state issues
+   (default starting point for fixing the current local repository)
+2. `fixrepo` for broader repo-level local checks
+3. `fixremote` for remote-origin recovery from a clean clone
+4. `override -r` only as the temporary owner-admin repair authorization step
+   while GitHub-side admin controls restore a protected remote ref
 
 ## Getting Started
 

@@ -11,7 +11,7 @@
 usage() {
   cat <<'EOF'
 Usage:
-  retarget [OPTIONS] <targeted-branch> <new-parent-version>
+  retarget [OPTIONS] <targeted-branch> <new-parent-version> [-- TOKEN...]
   retarget {-h | --help}
 
 Retarget a targeted branch to a different version parent and rebase it.
@@ -22,16 +22,28 @@ an earlier version).
 
 Arguments:
   <targeted-branch>     Targeted branch to retarget.
-                        Must be: dev/<desc>-v<M>.<m>.<p> or
-                                 fix/<desc>-v<M>.<m>.<p>
-  <new-parent-version>  New parent version branch (v<M>.<m>.<p>)
+                        Must be: dev/<desc>-v<M>.<m>.0 or
+                                 fix/<desc>-v<M>.<m>.0
+  <new-parent-version>  New parent version branch (v<M>.<m>.0)
 
 Options:
-  -d, --dry-run         Validate only. Do not rebase or push.
+  -d                    Validate only. Do not rebase or push.
   -h, --help            Output this help to stdout and exit.
-  -m, --message MSG     Attach reason/comment (GitHub style).
-  -- TEXT               Attach reason/comment (Unix style).
-  -v, --verbose         Verbose output.
+  -c TOKEN              Retarget comment from TOKEN.
+  -- TOKEN...           Retarget comment from one or more tokens.
+  -t SEC                Remote operation timeout in seconds (default: 10).
+                        SEC must be an integer greater than 0.
+  -v                    Verbose output.
+
+  For retarget comment options '-c TOKEN' and '-- TOKEN...':
+    - These options are mutually exclusive.
+    - Comment text is optional and is used to annotate the retarget action.
+    - For '-- TOKEN...', '--' must be a separate token.
+    - Comment text is built by joining tokens with a single space.
+    - For a quoted token, whitespace in the token is preserved and the
+      quotes are removed.
+    - The resulting retarget comment from TOKEN or TOKEN... must include
+      at least one non-whitespace character.
 
 Policy checks:
   - Caller must be an approver.
@@ -46,16 +58,20 @@ Conflict handling:
 
 Examples:
   retarget dev/parser-v1.0.0 v1.1.0
-  retarget fix/memory-v1.0.0 v1.0.1 -m "Defer fix to patch branch"
+  retarget fix/memory-v1.0.0 v1.2.0 -c "Defer fix to later version"
   retarget -d dev/parser-v1.0.0 v1.1.0
 
+Outputs:
+  - Writes help text, status messages, and summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+
 Exit codes:
-  0   Success
-  1   Argument or validation error
-  2   Permission denied (approver required)
-  3   Policy denied (branch type/version window)
-  4   Git operation failed
-  5   Rebase conflicts detected (handoff to contributor)
+  0   Success.
+  1   Argument or validation error.
+  2   Permission denied (approver required or identity unavailable).
+  3   Policy denied (branch type/version access window).
+  4   Git/prerequisite operation failed.
+  5   Rebase conflicts detected (handoff to contributor).
 EOF
 }
 
@@ -63,6 +79,8 @@ EOF
 # - Validates policy and role requirements for targeted-branch retargeting.
 # - Rebases targeted branch onto a new version parent and force-pushes update.
 # - Stops on conflicts and hands resolution to branch owner.
+
+# shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
 
 set -euo pipefail
 
@@ -77,13 +95,14 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
-# shellcheck source=helpers/validation-helpers.sh
-source "$SCRIPT_DIR/../helpers/validation-helpers.sh"
+# shellcheck source=helpers/validation_helpers.sh
+source "$SCRIPT_DIR/../helpers/validation_helpers.sh"
 
 readonly EXIT_INVALID_ARGUMENT=1
-readonly EXIT_NOT_FOUND=2
-readonly EXIT_OPERATION_FAILED=3
-readonly EXIT_CONFIG_ERROR=4
+readonly EXIT_PERMISSION_DENIED=2
+readonly EXIT_POLICY_DENIED=3
+readonly EXIT_OPERATION_FAILED=4
+readonly EXIT_REBASE_CONFLICT=5
 
 usage_error() {
   local message="$1"
@@ -96,6 +115,7 @@ usage_error() {
 DRY_RUN=false
 VERBOSE=false
 COMMENT=""
+REMOTE_TIMEOUT_SECONDS=10
 
 log_verbose() {
   if [[ "$VERBOSE" == true ]]; then
@@ -105,32 +125,15 @@ log_verbose() {
 
 trim() {
   local value="$1"
-  value="${value#${value%%[![:space:]]*}}"
-  value="${value%${value##*[![:space:]]}}"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
   printf '%s' "$value"
 }
 
 is_approver() {
   local user_name="$1"
-  local config_file="$REPO_ROOT/config/contributors.md"
-
-  if [[ ! -f "$config_file" ]]; then
-    return 1
-  fi
-
-  awk -F',' -v user="$user_name" '
-    /^- / {
-      login=$1
-      role=$2
-      gsub(/^- /, "", login)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", login)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", role)
-      if (login == user && role == "A") {
-        found=1
-      }
-    }
-    END { exit(found ? 0 : 1) }
-  ' "$config_file"
+  bt_contributors_has_min_role \
+    "$user_name" "approver" "$REPO_ROOT/config/contributors.md"
 }
 
 version_window_status() {
@@ -138,7 +141,8 @@ version_window_status() {
   local branch_type="$2"
 
   if [[ ! -f "$ACCESS_FILE" ]]; then
-    bt_error_exit "$EXIT_OPERATION_FAILED" "Version access file not found: $ACCESS_FILE"
+    bt_error_exit "$EXIT_OPERATION_FAILED" \
+      "Version access file not found: $ACCESS_FILE"
   fi
 
   awk -F',' -v version="$version" -v btype="$branch_type" '
@@ -166,7 +170,7 @@ version_window_status() {
     }
     END {
       if (!found) {
-        exit "$EXIT_NOT_FOUND"
+        exit 2
       }
     }
   ' "$ACCESS_FILE"
@@ -180,20 +184,27 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    -d | --dry-run)
+    -d)
       DRY_RUN=true
       shift
       ;;
-    -v | --verbose)
+    -v)
       VERBOSE=true
       shift
       ;;
-    -m | --message)
+    -t)
+      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC"
+      bt_is_valid_remote_timeout "$2" || \
+        usage_error "SEC for -t must be an integer greater than 0"
+      REMOTE_TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
+    -c)
       if [[ $# -lt 2 ]]; then
-        usage_error "Option -m requires a message argument"
+        usage_error "Option -c requires a comment argument"
       fi
       if [[ -n "$COMMENT" ]]; then
-        usage_error "Cannot use both -m and -- for comment"
+        usage_error "Cannot use both -c and -- for comment"
       fi
       COMMENT="$2"
       shift 2
@@ -201,7 +212,7 @@ while [[ $# -gt 0 ]]; do
     --)
       shift
       if [[ -n "$COMMENT" ]]; then
-        usage_error "Cannot use both -m and -- for comment"
+        usage_error "Cannot use both -c and -- for comment"
       fi
       COMMENT="$*"
       break
@@ -217,6 +228,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 set -- "${POSITIONAL_ARGS[@]}"
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
 
 if [[ $# -ne 2 ]]; then
   usage_error "Expected 2 arguments: <targeted-branch> <new-parent-version>"
@@ -225,15 +237,19 @@ fi
 TARGET_BRANCH="$1"
 NEW_PARENT="$2"
 
-if [[ "$TARGET_BRANCH" =~ ^(dev|fix)/.+-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]; then
+if [[ "$TARGET_BRANCH" =~ ^(dev|fix)/.+-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0)$
+ ]]; then
   TARGET_TYPE="${BASH_REMATCH[1]}"
   OLD_PARENT="${BASH_REMATCH[2]}"
 else
-  bt_error_exit "$EXIT_OPERATION_FAILED" "Invalid targeted branch '$TARGET_BRANCH'. Use dev/...-vX.Y.Z or fix/...-vX.Y.Z"
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+    "Invalid targeted branch '$TARGET_BRANCH'. Use dev/...-v<M>.<m>.0 or "\
+"fix/...-v<M>.<m>.0"
 fi
 
 if ! bt_is_version_branch "$NEW_PARENT"; then
-  bt_error_exit "$EXIT_OPERATION_FAILED" "Invalid new parent '$NEW_PARENT'. Expected version branch v<M>.<m>.<p>"
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+    "Invalid new parent '$NEW_PARENT'. Expected version branch v<M>.<m>.0"
 fi
 
 if [[ "$OLD_PARENT" == "$NEW_PARENT" ]]; then
@@ -241,28 +257,36 @@ if [[ "$OLD_PARENT" == "$NEW_PARENT" ]]; then
   exit 0
 fi
 
-CURRENT_USER="$(git config user.name 2>/dev/null || true)"
+CURRENT_USER="$(bt_require_login || true)"
 CURRENT_USER="$(trim "$CURRENT_USER")"
 if [[ -z "$CURRENT_USER" ]]; then
-  bt_error_exit "$EXIT_NOT_FOUND" "Cannot determine current user from git config"
+  bt_error_exit "$EXIT_PERMISSION_DENIED" \
+    "Unable to determine GitHub login identity for permission check"
 fi
 
 if ! is_approver "$CURRENT_USER"; then
-  bt_error_exit "$EXIT_NOT_FOUND" "User '$CURRENT_USER' is not an approver"
+  bt_error_exit "$EXIT_PERMISSION_DENIED" \
+    "User '$CURRENT_USER' is not an approver"
 fi
 
 log_verbose "Approver verified: $CURRENT_USER"
 
 status=""
-if ! status=$(version_window_status "$NEW_PARENT" "$TARGET_TYPE"); then
-  if [[ "$?" -eq 2 ]]; then
-    bt_error_exit "$EXIT_OPERATION_FAILED" "Version '$NEW_PARENT' has no access policy in $ACCESS_FILE"
+if status=$(version_window_status "$NEW_PARENT" "$TARGET_TYPE"); then
+  :
+else
+  status_rc=$?
+  if [[ "$status_rc" -eq 2 ]]; then
+    bt_error_exit "$EXIT_POLICY_DENIED" \
+      "Version '$NEW_PARENT' has no access policy in $ACCESS_FILE"
   fi
-  bt_error_exit "$EXIT_OPERATION_FAILED" "Failed to evaluate version access policy"
+  bt_error_exit "$EXIT_OPERATION_FAILED" \
+    "Failed to evaluate version access policy"
 fi
 
 if [[ "$status" != "open" ]]; then
-  bt_error_exit "$EXIT_OPERATION_FAILED" "Version '$NEW_PARENT' is closed for '$TARGET_TYPE' branches"
+  bt_error_exit "$EXIT_POLICY_DENIED" \
+    "Version '$NEW_PARENT' is closed for '$TARGET_TYPE' branches"
 fi
 
 ORIGINAL_BRANCH="$(bt_get_current_branch_or_empty)"
@@ -270,11 +294,13 @@ ORIGINAL_BRANCH="$(bt_get_current_branch_or_empty)"
 cd "$REPO_ROOT"
 
 if bt_is_worktree_dirty; then
-  bt_error_exit "$EXIT_CONFIG_ERROR" "Current branch has uncommitted changes. Commit first before running retarget"
+  bt_error_exit "$EXIT_OPERATION_FAILED" \
+    "Current branch has uncommitted changes. Commit first before running "\
+"retarget"
 fi
 
-if ! git fetch origin >/dev/null 2>&1; then
-  bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to fetch from origin"
+if ! bt_run_remote_command git fetch origin >/dev/null 2>&1; then
+  bt_error_exit "$EXIT_OPERATION_FAILED" "Failed to fetch from origin"
 fi
 
 # Propagate repository history from remote if available
@@ -286,19 +312,24 @@ case $? in
 esac
 
 if ! git show-ref --verify --quiet "refs/remotes/origin/$NEW_PARENT"; then
-  bt_error_exit "$EXIT_OPERATION_FAILED" "New parent version branch '$NEW_PARENT' not found on origin"
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+    "New parent version branch '$NEW_PARENT' not found on origin"
 fi
 
 if git show-ref --verify --quiet "refs/heads/$TARGET_BRANCH"; then
   if ! git checkout "$TARGET_BRANCH" >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to checkout local targeted branch '$TARGET_BRANCH'"
+    bt_error_exit "$EXIT_OPERATION_FAILED" \
+      "Failed to checkout local targeted branch '$TARGET_BRANCH'"
   fi
 elif git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
-  if ! git checkout -b "$TARGET_BRANCH" "origin/$TARGET_BRANCH" >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to create local branch '$TARGET_BRANCH' from origin"
+  if ! git checkout -b "$TARGET_BRANCH" "origin/$TARGET_BRANCH" \
+    >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_OPERATION_FAILED" \
+      "Failed to create local branch '$TARGET_BRANCH' from origin"
   fi
 else
-  bt_error_exit "$EXIT_OPERATION_FAILED" "Targeted branch '$TARGET_BRANCH' not found locally or on origin"
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+    "Targeted branch '$TARGET_BRANCH' not found locally or on origin"
 fi
 
 bt_info "Retargeting '$TARGET_BRANCH' from '$OLD_PARENT' to '$NEW_PARENT'"
@@ -316,15 +347,20 @@ if ! git rebase "origin/$NEW_PARENT"; then
   bt_info "Handoff required: branch owner resolves conflicts"
   echo "  1. Resolve conflicts in the current branch worktree"
   echo "  2. Continue rebase: git rebase --continue"
-  echo "  3. Push rewritten history: git push --force-with-lease origin $TARGET_BRANCH"
-  bt_error_exit "$EXIT_INTERNAL_ERROR" "Retarget paused for contributor conflict resolution"
+  echo "  3. Push rewritten history: git push --force-with-lease origin" \
+       "$TARGET_BRANCH"
+  bt_error_exit "$EXIT_REBASE_CONFLICT" \
+    "Retarget paused for contributor conflict resolution"
 fi
 
-if ! GIT_BYPASS_HOOKS=true git push --force-with-lease origin "$TARGET_BRANCH"; then
-  bt_error_exit "$EXIT_CONFIG_ERROR" "Rebase succeeded but push failed for '$TARGET_BRANCH'"
+if ! bt_run_remote_command env GIT_BYPASS_HOOKS=true \
+  git push --force-with-lease origin "$TARGET_BRANCH"; then
+  bt_error_exit "$EXIT_OPERATION_FAILED" \
+    "Rebase succeeded but push failed for '$TARGET_BRANCH'"
 fi
 
-MESSAGE="Retargeted '$TARGET_BRANCH' from '$OLD_PARENT' to '$NEW_PARENT' by approver '$CURRENT_USER'"
+MESSAGE="Retargeted '$TARGET_BRANCH' from '$OLD_PARENT' to '$NEW_PARENT' by "\
+"approver '$CURRENT_USER'"
 LOG_FILE="$REPO_ROOT/$(bt_branch_to_history_file "$TARGET_BRANCH")"
 bt_append_history_log "$LOG_FILE" "$MESSAGE" "$COMMENT"
 

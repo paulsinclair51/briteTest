@@ -367,7 +367,7 @@ test_gendocs_help() {
 
   bash "$repo/scripts/bin/gendocs" -h > "$tmpdir/gendocs_help.out"
   assert_matches '^Simple Usage:$' "$tmpdir/gendocs_help.out"
-  assert_contains "gendocs [-b <backend>] -t" "$tmpdir/gendocs_help.out"
+  assert_contains "gendocs [-b <backend>] -T" "$tmpdir/gendocs_help.out"
 }
 
 test_gendocs_default_pipeline() {
@@ -402,7 +402,7 @@ test_gendocs_toolcheck() {
   local repo
   repo=$(make_gendocs_repo repo_toolcheck)
 
-  bash "$repo/scripts/bin/gendocs" -t > "$tmpdir/gendocs_toolcheck.out"
+  bash "$repo/scripts/bin/gendocs" -T > "$tmpdir/gendocs_toolcheck.out"
   assert_contains "stub-genpdf: available" "$tmpdir/gendocs_toolcheck.out"
   assert_contains "stub-gendocx: available" "$tmpdir/gendocs_toolcheck.out"
   assert_contains "STATUS[0]: success" "$tmpdir/gendocs_toolcheck.out"

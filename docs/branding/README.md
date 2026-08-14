@@ -10,38 +10,35 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **`*.png`**: generated `.png` files corresponding to branding SVG assets.
+**canary-live.svg**: photo of a yellow canary with transparent background
+perched on partially removed branch.
 
-- **`<doctitle>.svg`**: monogram, brand name, and doctitle (for a document in
-  `docs`) with transparent background.
+**canary.svg**: Canary accent: traced from canary-live.svg with canary
+yellow fill, added black dot eye, and overlaid triangle for beak.
 
-- **`Logo_with_BrandName.svg`**: monogram and brand name with transparent
-  background.
+**\<doctitle\>.svg**: monogram, brand name, and doctitle (for a document in
+`docs`) with transparent background.
 
-- **`Logo_with_Tagline.svg`**: monogram, brand name, and tagline
-  "Catch it before it breaks." with transparent background.
+**Logo_with_BrandName.svg**: monogram and brand name with transparent
+background.
 
-- **`Monogram.svg`**: Monogram-only `bT` with canary accent perched on T in a
-  rounded-square.
+**Logo_with_Tagline.svg**: monogram, brand name, and tagline
+"Catch it before it breaks." with transparent background.
 
-- **`canary-live.svg`**: photo of a yellow canary with transparent background
-  perched on partially removed branch.
+**Monogram.svg**: Monogram-only `bT` with canary accent perched on T in a
+rounded-square.
 
-- **`canary.svg`**: Canary accent: traced from canary-live.svg with canary
-  yellow fill, added black dot eye, and overlaid triangle for beak.
+***.png**: generated `.png` files corresponding to branding SVG assets.
 
-- **README.md**: This directory guide.
-
-Note: The root `README.md` is a link to `docs/md\/<brandname\>.md` that uses
-the `Logo_with_Brandname.png` generated from `Logo_with_BrandName.svg`.
+**README.md**: This directory guide.
 
 ## Subdirectories
 
-- None.
+None.
 
 ## Generation
 
-Use `../../scripts/bin/genpngs` to regenerate the PNG exports from the SVG sources.
+Use `<repo>/scripts/bin/genpngs` to regenerate the PNG files from the SVG sources.
 
 Source-of-truth policy:
 
@@ -52,11 +49,11 @@ Source-of-truth policy:
 
 ## Palette
 
-- Charcoal: `#1F2430` (monogram rounded-square background)
-- Canary Yellow: `#FFEB66` (canary body, `b` in the monogram)
-- Near-white: `#F7F8FA` (`T` in the monogram)
-- Black: `#000000` (eye)
-- Beak: `#F4A300` (natural canary horn)
+**Charcoal**: `#1F2430` (monogram rounded-square background).
+**Canary Yellow**: `#FFEB66` (canary body, `b` in the monogram).
+**Near-white**: `#F7F8FA` (`T` in the monogram).
+**Black**: `#000000` (eye).
+**Beak**: `#F4A300` (natural canary horn).
 
 ## Tracking Note
 

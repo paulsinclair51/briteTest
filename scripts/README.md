@@ -1,23 +1,22 @@
 # `<repo>/scripts/`
+
 Directory containing script assets.
 
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
 For license details, see `<repo>/LICENSE`.
 
-See `<repo>/README.md` for a guide to briteTest.
+See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **setup-rulesets.sh**: Setup result sets for approvers, reviewers, and contributors.
-
-- **README.md**: This directory guide.
+**README.md**: This directory guide.
 
 ## Subdirectories
 
-- **bin/**: Contributor command scripts.
+**bin/**: Contributor command scripts, including `setup_rulesets`.
 
-- **helpers/**: Shared shell helper modules used by scripts in the `<repo>/scripts/bin/`
-  subdirectory.
+**helpers/**: Shared shell helper modules used by scripts in the `<repo>/scripts/bin/`
+subdirectory.
 
-- **tests/**: Script tests.
+**tests/**: Script tests.

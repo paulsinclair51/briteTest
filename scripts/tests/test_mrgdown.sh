@@ -46,14 +46,14 @@ assert_contains() {
 
 latest_report() {
   local repo_root="$1"
-  find "$repo_root/reports/branch" -maxdepth 1 -type f -name 'commit-*.md' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
+  find "$repo_root/reports/branch" -maxdepth 1 -type f -name 'mrgdown-*.md' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
 }
 
 report_path_from_output() {
   local out_file="$1"
   local rel
 
-  rel="$(grep -Eo 'reports/branch/commit-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md' "$out_file" | tail -n 1 || true)"
+  rel="$(grep -Eo 'reports/branch/mrgdown-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md' "$out_file" | tail -n 1 || true)"
   [[ -n "$rel" ]] || return 1
   printf '%s\n' "$rel"
 }
@@ -108,6 +108,7 @@ chmod +x "$WORK/scripts/bin/mrgdown"
   cat > .gitignore <<'GITIGNORE'
 reports/branch/branch-*.md
 reports/branch/commit-*.md
+reports/branch/mrgdown-*.md
 reports/branch/mrgbranch-*.md
 GITIGNORE
   git add README.md scripts reports .gitignore
@@ -138,19 +139,71 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./scripts/bin/m
 assert_contains "Usage:" "$TMPDIR/help.out"
 pass "help output"
 
-# 2) Positional argument should be rejected
+# 2) Skip mode should emit an error report and summary line.
+rc=$(run_capture "$TMPDIR/skip-e.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -e")
+[[ "$rc" -eq 6 ]] || fail "mrgdown -e should exit 6 (got $rc)"
+assert_contains "Error: Merge down skipped due to -e option." "$TMPDIR/skip-e.out"
+assert_contains "Guidance: Run without -e option." "$TMPDIR/skip-e.out"
+assert_contains "See reports/branch/mrgdown-e-" "$TMPDIR/skip-e.out"
+skip_report="$(latest_report "$WORK")"
+[[ -f "$skip_report" ]] || fail "expected mrgdown skip report"
+assert_contains "**Error:** Merge down skipped due to -e option." "$skip_report"
+assert_contains "## Guidance" "$skip_report"
+assert_contains "- Run without -e option." "$skip_report"
+pass "skip mode"
+
+# 3) Positional argument should be rejected
 rc=$(run_capture "$TMPDIR/arg-reject.out" bash -lc "cd '$WORK' && bash ./scripts/bin/mrgdown unexpected")
 [[ "$rc" -eq 1 ]] || fail "positional argument should exit 1 (got $rc)"
 assert_contains "Unknown argument: unexpected" "$TMPDIR/arg-reject.out"
 pass "positional argument rejected"
 
-# 3) Protected branch is blocked
+# Nothing to merge down should not create a report.
+cat > "$WORK/reports/branch/mrgdown-d-20000101-000000.md" <<'EOF'
+# Stale Merge-Down Report
+
+**Branch:** `dev/current-v1.0.0`
+EOF
+cat > "$WORK/reports/branch/mrgdown-e-20000101-000001.md" <<'EOF'
+# Stale Merge-Down Error Report
+
+**Branch:** `dev/current-v1.0.0`
+EOF
+chmod a-w "$WORK/reports/branch/mrgdown-d-20000101-000000.md" \
+  "$WORK/reports/branch/mrgdown-e-20000101-000001.md"
+rc=$(run_capture "$TMPDIR/noop.out" \
+  bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -f")
+[[ "$rc" -eq 0 ]] || fail "no-op mrgdown should exit 0 (got $rc)"
+assert_contains "no changes to merge" "$TMPDIR/noop.out"
+[[ -z "$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'mrgdown-*.md' -print -quit)" ]] || \
+  fail "no-op mrgdown should not create a report"
+pass "no-op mrgdown cleans transient reports and creates no report"
+
+# 3) Dry-run output stays compact and reports the merge preview
+(
+  cd "$PEER"
+  git checkout v1.0.0 >/dev/null 2>&1
+  git pull --ff-only origin v1.0.0 >/dev/null 2>&1
+  echo "parent change dry" > parent-change-dry.txt
+  git add parent-change-dry.txt
+  git commit -m "parent change dry" >/dev/null 2>&1
+  git push origin v1.0.0 >/dev/null 2>&1
+)
+rc=$(run_capture "$TMPDIR/dryrun.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -d")
+[[ "$rc" -eq 0 ]] || fail "dry-run mrgdown should exit 0 (got $rc)"
+assert_contains "Dry-run: merge v1.0.0 -> dev/current-v1.0.0" "$TMPDIR/dryrun.out"
+assert_contains "See reports/branch/mrgdown-d-" "$TMPDIR/dryrun.out"
+pass "dry-run output stays compact"
+
+# 4) Protected branch is blocked
 rc=$(run_capture "$TMPDIR/protected.out" bash -lc "cd '$WORK' && git checkout main >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -f")
 [[ "$rc" -eq 4 ]] || fail "protected branch should exit 4 (got $rc)"
-assert_contains "Cannot sync up on protected branch 'main'" "$TMPDIR/protected.out"
+assert_contains "Error: Cannot sync up on protected branch 'main'" "$TMPDIR/protected.out"
+assert_contains "Guidance: use mrgup to merge changes to this branch." "$TMPDIR/protected.out"
 pass "protected branch gate"
 
-# 4) Force merge/push creates a commit report and copies it to remote
+# 5) Force merge creates a local report
+remote_report_count_before="$(find "$ORIGIN/reports/branch" -maxdepth 1 -type f -name 'commit-*.md' | wc -l | tr -d ' ')"
 (
   cd "$PEER"
   git checkout v1.0.0 >/dev/null 2>&1
@@ -161,31 +214,25 @@ pass "protected branch gate"
   git push origin v1.0.0 >/dev/null 2>&1
 )
 
-rc=$(run_capture "$TMPDIR/merge-push.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -f -m 'sync parent one'")
+rc=$(run_capture "$TMPDIR/merge-push.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -f -c 'sync parent one'")
 [[ "$rc" -eq 0 ]] || fail "forced merge/push should exit 0 (got $rc)"
 assert_contains "Merge successful" "$TMPDIR/merge-push.out"
-assert_contains "Pushed merge commit" "$TMPDIR/merge-push.out"
+assert_contains "Merge down complete" "$TMPDIR/merge-push.out"
 report_rel="$(report_path_from_output "$TMPDIR/merge-push.out")"
 [[ -n "$report_rel" ]] || fail "expected report path in output"
 report_path="$WORK/$report_rel"
 [[ -f "$report_path" ]] || fail "expected report file: $report_path"
-assert_contains "# Commit Report" "$report_path"
-assert_contains "**Commit Comment:** sync parent one" "$report_path"
-assert_contains "**Pushed Commit Hash:**" "$report_path"
+assert_contains "# Merge Report" "$report_path"
+assert_contains "**Merge Comment:** sync parent one" "$report_path"
+assert_contains "**Merge Commit Hash:**" "$report_path"
 assert_contains "| dev/current-v1.0.0 | v1.0.0 |" "$report_path"
-[[ ! -w "$report_path" ]] || fail "expected report to be read-only"
+[[ -w "$report_path" ]] || fail "expected report to remain writable"
 
 remote_report_count="$(find "$ORIGIN/reports/branch" -maxdepth 1 -type f -name 'commit-*.md' | wc -l | tr -d ' ')"
-[[ "$remote_report_count" -ge 1 ]] || fail "expected commit report copied to remote reports/branch"
-pass "force merge/push report + remote copy"
+[[ "$remote_report_count" -eq "$remote_report_count_before" ]] || fail "expected no remote report copy"
+pass "force merge report stays local"
 
-# 5) Merge with push skipped still creates report and marks as selected-for-push
-# Ensure the next mrgdown run uses a distinct second-based report timestamp.
-ts_before="$(date +%s)"
-while [[ "$(date +%s)" == "$ts_before" ]]; do
-  :
-done
-
+# 6) Merge still creates a uniquely named report on a second run.
 (
   cd "$PEER"
   git checkout v1.0.0 >/dev/null 2>&1
@@ -196,19 +243,26 @@ done
   git push origin v1.0.0 >/dev/null 2>&1
 )
 
-rc=$(run_capture "$TMPDIR/merge-skip-push.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && printf 'y\nn\n' | bash ./scripts/bin/mrgdown -m 'sync parent two'")
+rc=$(run_capture "$TMPDIR/merge-skip-push.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && printf 'y\nn\n' | bash ./scripts/bin/mrgdown -c 'sync parent two'")
 [[ "$rc" -eq 0 ]] || fail "merge with push skipped should exit 0 (got $rc)"
-assert_contains "Push skipped - merge committed locally" "$TMPDIR/merge-skip-push.out"
+assert_contains "Merge successful" "$TMPDIR/merge-skip-push.out"
 report_rel="$(report_path_from_output "$TMPDIR/merge-skip-push.out")"
 [[ -n "$report_rel" ]] || fail "expected report path in output when push is skipped"
 report_path="$WORK/$report_rel"
 [[ -f "$report_path" ]] || fail "expected report file when push skipped: $report_path"
-assert_contains "**Commit Comment:** sync parent two" "$report_path"
-assert_contains "**Commit Selected for Push Hash:**" "$report_path"
-if grep -q '^\*\*Pushed Commit Hash:\*\*' "$report_path"; then
-  fail "push-skipped report should not use pushed-commit label"
+assert_contains "# Merge Report" "$report_path"
+assert_contains "**Merge Comment:** sync parent two" "$report_path"
+assert_contains "**Merge Commit Hash:**" "$report_path"
+if grep -q '^\*\*Commit Comment:\*\*' "$report_path"; then
+  fail "merge report should not use commit-comment label"
 fi
-[[ ! -w "$report_path" ]] || fail "expected push-skipped report to be read-only"
-pass "merge with push skipped report semantics"
+[[ -w "$report_path" ]] || fail "expected push-skipped report to remain writable"
+pass "merge report semantics"
+
+# 7) Whitespace-only comments should be rejected.
+rc=$(run_capture "$TMPDIR/empty-comment.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -c '   '")
+[[ "$rc" -eq 1 ]] || fail "whitespace-only comment should exit 1 (got $rc)"
+assert_contains "Commit comment must include at least one non-whitespace character" "$TMPDIR/empty-comment.out"
+pass "whitespace-only merge comments are rejected"
 
 echo "All mrgdown smoke tests passed."

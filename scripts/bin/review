@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# review - Create or update pull request on GitHub.
+# review - Create/update draft PRs and start review.
 #
 # See usage below for details, or run: review -h
 #
@@ -11,85 +11,150 @@
 usage() {
   cat <<'EOF'
 Usage:
-  review [OPTIONS]
+  review [OPTIONS] [-- TOKEN...]
   review {-h | --help}
 
-Create a new pull request or update an existing one for the current branch.
+By default (-s option not specified), creates a draft PR for the current
+branch if neither a draft PR exists nor an open PR exists, or
+updates/deletes an existing draft PR.
 
-The target branch is determined automatically based on the branch's Git history
-(the branch that current branch was created from).
+If the -s option is specified, it creates a non-draft PR for the current
+branch if neither a draft PR exists nor an open PR exists. If a draft PR
+exists, it updates the draft PR to be a non-draft PR. The review is then
+started by requesting reviews from the reviewers and approvers
+(listed in <repo>/config/contributors.md).
 
-Reviewers are automatically extracted from config/contributors.md
-(all R/ and A/ entries).
+Contributors should use the commit and push commands to create local
+commits and publish branch updates. To respond to review feedback,
+use the feedback command.
 
-Features:
-  - Auto-generates title from branch name
-  - Determines target branch from Git history
-  - Reads reviewers from config/contributors.md
-  - Creates ready-to-review PRs by default
-  - Supports draft PRs with --draft flag
-  - Updates existing PRs (title, description, labels, reviewers)
-  - Marks draft PRs as ready when updated (unless --draft flag used)
-  - Optionally opens PR in browser
+The target branch is determined automatically based on the current
+branch (the branch from which the current branch was created).
+
+Prerequisites:
+  - Command line must be valid.
+  - The <repo>/config/contributors.md file must exist and contain at
+    least one approver entry.
+  - The user must be a contributor, reviewer, or approver (listed in
+    <repo>/config/contributors.md).
+  - The current branch must be a contributor, targeted, or version
+    branch (the current branch must not be the main branch).
+  - The current branch must be a local branch with a remote branch.
+  - The current branch must have a configured remote origin.
+    Reachability and timeouts are validated when remote operations run.
+  - An open non-draft PR must not exist for the current branch.
+  - A draft PR must exist for the current branch if the --delete
+    option is specified.
 
 Options:
-  -h, --help           Output this help to stdout and exit (other options
+  -b                   Open the (draft or non-draft) PR in the PR User
+                       Interface (UI) after any requested action completes.
+                       If used without create/update/delete/start options and
+                       no open PR exists for the current branch, review opens
+                       the most recently closed PR for the current branch.
+                       This option is mutually exclusive with --delete
+                       and -d.
+  -c TOKEN             PR description.
+  -- TOKEN...          PR description (everything after -- is the
+                       PR description).
+  -d                   Dry-run mode. Validate inputs and show planned
+                       actions without changing PR state. Dry-run still
+                       performs non-mutating checks and may query GitHub to
+                       determine the current PR state.
+  --delete             Delete the current draft PR.
+                       This option is mutually exclusive with -b and -s,
+                       and must not be used with -c, -- TOKEN..., -T,
+                       or -l.
+  -h                   Output this help to stdout and exit (other options
                        and arguments are ignored).
-  -t, --title TITLE    PR title (auto-generated from branch name
-                       if not specified)
-  -d, --description D  PR description
-  --draft              Create as draft PR (Work In Progress)
-  -l, --labels LABELS  Comma-separated labels (e.g., "bug,urgent")
-  -a, --assignees USR  Comma-separated GitHub usernames
-  -b, --browser        Open PR in browser after creation/update
-  -v, --verbose        Show detailed information
-  -- TEXT              Unix-style description
-                       (everything after -- is description)
-                       Note: No quotes needed, captures all remaining arguments
+  --help               Output this help to stdout and exit (other options
+                       and arguments are ignored).
+  -l LABELS            Comma-separated labels (e.g., bug,urgent or
+                       "bug, urgent"). The token LABELS must be quoted
+                       if it contains whitespace (any leading whitespace,
+                       whitespace around commas and trailing whitespace is
+                       ignored). If an open PR or draft PR does not exist,
+                       the default is no labels. If a draft PR exists, the
+                       specified labels replace any existing labels.
+  -s                   Start the review (request reviews from reviewers
+                       and approvers).
+  -t SEC               Remote operation timeout in seconds (default: 10).
+                       SEC must be an integer greater than 0.
+  -T TITLE             PR title (auto-generated from branch name if not
+                       specified when creating the PR). If an existing draft
+                       PR exists, the specified title replaces any existing
+                       title. The token TITLE must be quoted if it contains
+                       whitespace.
+  -v                   Output progress and diagnostics to stdout.
+
+  For PR description options '-c TOKEN' and '-- TOKEN...':
+    - These options are mutually exclusive.
+    - Required if creating a PR or draft PR. If provided for
+      an existing draft PR, it updates the PR description with this new PR
+      description. Must not be provided when deleting a draft PR.
+    - For '-- TOKEN...', '--' must be a separate token.
+    - PR description text is built by joining tokens with a single space.
+    - For a quoted token, whitespace in the token is preserved and the
+      quotes are removed.
+    - The resulting PR description from TOKEN or TOKEN... must
+      include at least one non-whitespace character.
 
 Examples:
-  # Create PR with auto-generated title
+  # Create a draft PR with auto-generated title.
   review
 
-  # Create draft PR
-  review --draft -t "WIP: New feature"
+  # Create a draft PR with a custom title.
+  review -T "WIP: New feature"
 
-  # Create PR with labels and open in browser
-  review -l "bug,urgent" -b
+  # Create a draft PR with the labels bug and urgent, and then open the
+  # draft PR in the PR UI.
+  review -l "bug, urgent" -b
 
-  # Create PR and add description
-  review -d "This PR fixes issue #123 by refactoring the auth module"
+  # Create a non-draft PR with a description and start review.
+  review -s -- This PR fixes issue #123 by refactoring the auth module.
 
-  # Unix-style description
-  review -- This PR fixes the critical bug
-
-Workflow:
-  1. Create PR: review --draft -t "WIP: Feature"
-  2. Code review requests changes
-  3. Make changes and commit: git add . && git commit -m "Address feedback"
-  4. Update PR and mark ready: review
-
+Sample workflow:
+  1. Create a draft PR for the current branch with a title:
+        review -T "WIP: Feature"
+  2. Optionally, open the current draft PR in the PR UI:
+        review -b
+  3. As needed, update the draft PR using the review command or
+     the PR UI.
+  4. Convert the draft PR to a non-draft (ready for review) PR and
+     start review:
+        review -s
+  5. Respond to review comments using:
+        feedback respond.
 
 Outputs:
-  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes help text, status messages, and results to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented
-    output locations.
 
 Exit codes:
-  0   Success
-  1   Argument or validation error
-  2   Git operation failed
-  3   Cannot create PR from main branch
-  4   GitHub API error
-  5   Configuration error (missing contributors.md or no approvers)
+  0    Success (PR created or updated successfully, draft deleted,
+       or -h/--help).
+  1    Argument or validation error.
+  2    Missing <repo>/config/contributors.md.
+  3    User is not a contributor, reviewer, or approver.
+  4    No approvers in <repo>/config/contributors.md.
+  5    Cannot create PR from main branch
+  6    Invalid branch name for current branch (not a contributor,
+       targeted, or version branch)
+  7    Current branch is not local.
+  8    Current branch has no remote.
+  9    Remote is unreachable or timed out.
+  200  GitHub API error.
+  201  Git operation failed.
 EOF
 }
 
 # High-Level Flow:
-# - Creates or updates a GitHub pull request using branch/workflow metadata.
-# - Validates branch context and required PR fields before submission.
-# - Integrates with gh CLI and reports resulting PR identifiers/links.
+# - Parse and validate command options plus environment prerequisites.
+# - Resolve branch/reviewer metadata and current PR state from GitHub.
+# - Execute one of three paths: create/update draft, start review (-s),
+#   or delete draft (--delete), then optionally open the PR UI.
+
+# shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
 
 set -euo pipefail
 
@@ -105,14 +170,17 @@ source "$SCRIPT_DIR/../helpers/github_helpers.sh"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
 
-# Propagate repository history from remote if available
-bt_propagate_repository_history >/dev/null 2>&1
-
 readonly EXIT_INVALID_ARGUMENT=1
-readonly EXIT_NOT_FOUND=2
-readonly EXIT_OPERATION_FAILED=3
-readonly EXIT_CONFIG_ERROR=4
-readonly EXIT_INTERNAL_ERROR=100
+readonly EXIT_CONFIG_NOT_FOUND=2
+readonly EXIT_NOT_CONTRIBUTOR=3
+readonly EXIT_NO_APPROVERS=4
+readonly EXIT_MAIN_BRANCH=5
+readonly EXIT_INVALID_BRANCH=6
+readonly EXIT_NOT_LOCAL_BRANCH=7
+readonly EXIT_NO_REMOTE=8
+readonly EXIT_REMOTE_UNREACHABLE=9
+readonly EXIT_GITHUB_API=200
+readonly EXIT_GIT_OPERATION=201
 
 usage_error() {
   local message="$1"
@@ -123,28 +191,31 @@ usage_error() {
 }
 
 # Default options
-DRAFT=false
+START_REVIEW=false
+DELETE_DRAFT=false
+DRY_RUN=false
 VERBOSE=false
 CUSTOM_TITLE=""
 CUSTOM_DESCRIPTION=""
 LABELS=""
-ASSIGNEES=""
 OPEN_BROWSER=false
-PROMPT_BROWSER=true
+REMOTE_TIMEOUT_SECONDS=10
 
+trim_whitespace() {
+  bt_trim_whitespace "$1"
+}
 
 get_target_branch() {
   local current_branch="$1"
-  
-  # Cannot create PR from main
+
   if [[ "$current_branch" == "main" ]]; then
-    bt_error_exit "$EXIT_OPERATION_FAILED" "Cannot create PR from main branch"
+    bt_error_exit "$EXIT_MAIN_BRANCH" "Cannot create PR from main branch"
   fi
-  
+
   local target_branch
   target_branch=$(bt_resolve_target_branch_from_fork_point \
     "$current_branch" "main") || {
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine target branch"
+    bt_error_exit "$EXIT_GIT_OPERATION" "Failed to determine target branch"
   }
 
   echo "$target_branch"
@@ -152,101 +223,325 @@ get_target_branch() {
 
 generate_title_from_branch() {
   local branch="$1"
-  
-  # Extract the part after the last slash
   local title="${branch##*/}"
-  
-  # Replace hyphens and underscores with spaces
   title="${title//-/ }"
   title="${title//_/ }"
-  
-  # Capitalize first letter of each word
-  title=$(echo "$title" | sed 's/\b\(.\)/\u\1/g')
-  
-  echo "$title"
+
+  local word
+  local capitalized_words=()
+  for word in $title; do
+    capitalized_words+=("${word^}")
+  done
+
+  echo "${capitalized_words[*]}"
 }
 
 get_existing_pr_number() {
   local branch="$1"
 
-  bt_gh_find_pr_number_for_branch "$branch" "all"
+  local pr_number
+  bt_gh_capture_or_exit pr_number \
+    "$EXIT_REMOTE_UNREACHABLE" "$EXIT_GITHUB_API" \
+    "Failed to query PRs for branch '$branch'" \
+    gh pr list --head "$branch" --state all --json number --jq '.[0].number'
+
+  [[ "$pr_number" == "null" ]] && pr_number=""
+  echo "$pr_number"
+}
+
+get_open_pr_number() {
+  local branch="$1"
+
+  local pr_number
+  bt_gh_capture_or_exit pr_number \
+    "$EXIT_REMOTE_UNREACHABLE" "$EXIT_GITHUB_API" \
+    "Failed to query open PRs for branch '$branch'" \
+    gh pr list --head "$branch" --state open --json number --jq '.[0].number'
+
+  [[ "$pr_number" == "null" ]] && pr_number=""
+  echo "$pr_number"
+}
+
+get_closed_pr_number() {
+  local branch="$1"
+
+  local pr_number
+  bt_gh_capture_or_exit pr_number \
+    "$EXIT_REMOTE_UNREACHABLE" "$EXIT_GITHUB_API" \
+    "Failed to query closed PRs for branch '$branch'" \
+    gh pr list --head "$branch" --state closed --json number,closedAt \
+    --jq 'sort_by(.closedAt) | reverse | .[0].number'
+
+  [[ "$pr_number" == "null" ]] && pr_number=""
+  echo "$pr_number"
+}
+
+is_browser_only_mode() {
+  [[ "$OPEN_BROWSER" == true ]] && [[ "$START_REVIEW" == false ]] && \
+    [[ "$DELETE_DRAFT" == false ]] && [[ -z "$CUSTOM_TITLE" ]] && \
+    [[ -z "$CUSTOM_DESCRIPTION" ]] && [[ -z "$LABELS" ]]
 }
 
 get_pr_draft_status() {
   local pr_number="$1"
-  
-  # Check if PR is draft
-  gh pr view "$pr_number" --json isDraft --jq '.isDraft' 2>/dev/null \
-    || echo "false"
+
+  local is_draft
+  bt_gh_capture_or_exit is_draft "$EXIT_REMOTE_UNREACHABLE" "$EXIT_GITHUB_API" \
+    "Failed to query draft status for PR #$pr_number" \
+    gh pr view "$pr_number" --json isDraft --jq '.isDraft'
+
+  if [[ "$is_draft" != "true" && "$is_draft" != "false" ]]; then
+    bt_error_exit "$EXIT_GITHUB_API" \
+      "Invalid draft status for PR #$pr_number: '$is_draft'"
+  fi
+
+  echo "$is_draft"
 }
 
 extract_reviewers_from_config() {
   local config_file="config/contributors.md"
-  
-  if [[ ! -f "$config_file" ]]; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Configuration file not found: $config_file"
-  fi
-  
-  # Extract all R/ and A/ entries, format: [R/]name or [A/]name
-  # Pattern: - [R/]name, email or - [A/]name, email
+
+  bt_require_approver_presence_or_exit "$config_file" "$EXIT_NO_APPROVERS" \
+    "No approvers found in $config_file"
+
   local reviewers
-  reviewers=$(grep -E '^\s*-\s+[RA]/' "$config_file" | \
-    sed -E 's/^\s*-\s+[RA]\/([^,]+).*/\1/' | \
+  reviewers=$(grep -E '^\s*-\s*[^,]+,\s*[RA]\s*(,|$)' "$config_file" | \
+    sed -E 's/^\s*-\s*([^,]+),\s*[RA]\s*(,.*)?$/\1/' | \
     tr '\n' ',' | sed 's/,$//')
-  
+
   if [[ -z "$reviewers" ]]; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "No reviewers or approvers found in $config_file" \
-      "(need at least one A/ entry)"
+    # Backward compatibility: older format used "- A/login,..." or
+    # "- R/login,...".
+    reviewers=$(grep -E '^\s*-\s+[RA]/' "$config_file" | \
+      sed -E 's/^\s*-\s+[RA]\/([^,]+).*/\1/' | \
+      tr '\n' ',' | sed 's/,$//')
   fi
-  
+
+  if [[ -z "$reviewers" ]]; then
+    bt_error_exit "$EXIT_GITHUB_API" \
+      "No reviewers or approvers found in $config_file"
+  fi
+
   echo "$reviewers"
 }
 
-# Parse options and arguments
-while [[ $# -gt 0 ]]; do
-  case "$1" in
+require_gh_cli() {
+  command -v gh >/dev/null 2>&1 || \
+    bt_error_exit "$EXIT_INVALID_ARGUMENT" "Required command not found: gh"
+}
+
+require_contributor_role() {
+  local login
+  login=$(bt_require_login) || \
+    bt_error_exit "$EXIT_NOT_CONTRIBUTOR" \
+      "Unable to determine GitHub login identity"
+
+  bt_require_min_role_or_exit "$login" "contributor" "config/contributors.md" \
+    "$EXIT_NOT_CONTRIBUTOR" \
+    "User '$login' is not listed as contributor, reviewer, or approver"
+}
+
+require_contributors_config() {
+  [[ -f "config/contributors.md" ]] || \
+    bt_error_exit "$EXIT_CONFIG_NOT_FOUND" \
+      "Configuration file not found: config/contributors.md"
+}
+
+validate_remote_connectivity() {
+  bt_git_has_origin . || bt_error_exit "$EXIT_NO_REMOTE" \
+    "Current branch has no remote origin"
+}
+
+validate_current_branch_requirements() {
+  if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
+    bt_error_exit "$EXIT_NOT_LOCAL_BRANCH" \
+      "Current checkout is detached; switch to a local branch"
+  fi
+
+  git show-ref --verify --quiet "refs/heads/$CURRENT_BRANCH" || \
+    bt_error_exit "$EXIT_NOT_LOCAL_BRANCH" "Current branch is not local"
+
+  if [[ "$CURRENT_BRANCH" == "main" ]]; then
+    bt_error_exit "$EXIT_MAIN_BRANCH" "Cannot create PR from main branch"
+  fi
+
+  if ! bt_is_contributor_branch "$CURRENT_BRANCH" && \
+    ! bt_is_targeted_branch "$CURRENT_BRANCH" && \
+    ! bt_is_version_branch "$CURRENT_BRANCH"; then
+    bt_error_exit "$EXIT_INVALID_BRANCH" \
+      "Current branch '$CURRENT_BRANCH' is not a contributor, targeted," \
+      " or version branch"
+  fi
+}
+
+validate_options_cross_constraints() {
+  if [[ "$DELETE_DRAFT" == true && "$OPEN_BROWSER" == true ]]; then
+    usage_error "Option -b is mutually exclusive with --delete"
+  fi
+
+  if [[ "$DELETE_DRAFT" == true && "$START_REVIEW" == true ]]; then
+    usage_error "Option --delete cannot be combined with -s"
+  fi
+
+  if [[ "$DRY_RUN" == true && "$OPEN_BROWSER" == true ]]; then
+    usage_error "Option -b cannot be combined with -d"
+  fi
+
+  if [[ "$DELETE_DRAFT" == true && -n "$CUSTOM_DESCRIPTION" ]]; then
+    usage_error "PR description must not be provided with --delete"
+  fi
+
+  if [[ "$DELETE_DRAFT" == true && -n "$CUSTOM_TITLE" ]]; then
+    usage_error "Option -T must not be provided with --delete"
+  fi
+
+  if [[ "$DELETE_DRAFT" == true && -n "$LABELS" ]]; then
+    usage_error "Option -l must not be provided with --delete"
+  fi
+}
+
+validate_text_inputs() {
+  if [[ -n "$CUSTOM_TITLE" ]] && \
+    [[ -z "$(trim_whitespace "$CUSTOM_TITLE")" ]]; then
+    usage_error "TITLE must include at least one non-whitespace character"
+  fi
+
+  if [[ -n "$CUSTOM_DESCRIPTION" ]] && \
+    [[ -z "$(trim_whitespace "$CUSTOM_DESCRIPTION")" ]]; then
+    usage_error \
+      "PR description must include at least one non-whitespace character"
+  fi
+
+  if [[ -n "$LABELS" ]]; then
+    local token
+    local found=0
+    IFS=',' read -r -a _label_tokens <<< "$LABELS"
+    for token in "${_label_tokens[@]}"; do
+      token="$(trim_whitespace "$token")"
+      [[ -n "$token" ]] || usage_error "LABELS contains an empty label token"
+      found=1
+    done
+    [[ "$found" -eq 1 ]] || usage_error "LABELS must include at least one label"
+  fi
+}
+
+split_csv_tokens() {
+  local csv="$1"
+  local token
+
+  IFS=',' read -r -a _csv_tokens <<< "$csv"
+  for token in "${_csv_tokens[@]}"; do
+    token="$(trim_whitespace "$token")"
+    [[ -n "$token" ]] && echo "$token"
+  done
+}
+
+replace_pr_labels() {
+  local pr_number="$1"
+  local new_labels_csv="$2"
+  local existing_labels
+  local label
+
+  existing_labels=$(bt_run_remote_command gh pr view "$pr_number" \
+    --json labels \
+    --jq '.labels[].name' 2>/dev/null) || \
+    bt_error_exit "$EXIT_GITHUB_API" \
+      "Failed to read existing labels for PR #$pr_number"
+
+  if [[ -n "$existing_labels" ]]; then
+    while IFS= read -r label; do
+      [[ -n "$label" ]] || continue
+      bt_gh_run_or_exit "$EXIT_REMOTE_UNREACHABLE" "$EXIT_GITHUB_API" \
+        "Failed to remove existing label '$label'" \
+        gh pr edit "$pr_number" --remove-label "$label"
+    done <<< "$existing_labels"
+  fi
+
+  while IFS= read -r label; do
+    [[ -n "$label" ]] || continue
+    bt_gh_run_or_exit "$EXIT_REMOTE_UNREACHABLE" "$EXIT_GITHUB_API" \
+      "Failed to add label '$label'" \
+      gh pr edit "$pr_number" --add-label "$label"
+  done < <(split_csv_tokens "$new_labels_csv")
+}
+
+delete_draft_pr() {
+  local pr_number="$1"
+  local pr_data
+  local pr_id
+  local is_draft
+
+  bt_gh_capture_or_exit pr_data "$EXIT_REMOTE_UNREACHABLE" "$EXIT_GITHUB_API" \
+    "Failed to fetch PR metadata for #$pr_number" \
+    gh pr view "$pr_number" --json id,isDraft --jq '[.id,.isDraft] | @tsv'
+
+  pr_id="${pr_data%%$'\t'*}"
+  is_draft="${pr_data##*$'\t'}"
+
+  if [[ "$is_draft" != "true" ]]; then
+    bt_error_exit "$EXIT_INVALID_ARGUMENT" "--delete requires a draft PR"
+  fi
+
+  bt_gh_run_or_exit "$EXIT_REMOTE_UNREACHABLE" "$EXIT_GITHUB_API" \
+    "Failed to delete draft PR #$pr_number" \
+    gh api graphql \
+    -f query='mutation($id: ID!) { deletePullRequest(input: '\
+'{pullRequestId: $id}) { clientMutationId } }' \
+    -f id="$pr_id"
+
+  bt_success "Draft PR #$pr_number deleted"
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
     -h | --help)
       usage
       exit 0
       ;;
-    -t | --title)
-      if [[ $# -lt 2 ]]; then
-        usage_error "Option -t requires a title argument"
-      fi
+    approve | disapprove)
+      usage_error "Review approval actions moved to feedback. Use"
+      usage_error "'feedback approve' or 'feedback disapprove' instead."
+      ;;
+    -T | --title)
+      [[ $# -ge 2 ]] || usage_error "Option -T requires a title argument"
       CUSTOM_TITLE="$2"
       shift 2
       ;;
-    -d | --description)
-      if [[ $# -lt 2 ]]; then
-        usage_error "Option -d requires a description argument"
-      fi
+    -t)
+      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC"
+      bt_is_valid_remote_timeout "$2" || \
+        usage_error "SEC for -t must be an integer greater than 0"
+      REMOTE_TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
+    -c)
+      [[ $# -ge 2 ]] || usage_error "Option $1 requires a description argument"
       if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
-        usage_error "Cannot use both -d and -- for description"
+        usage_error "Cannot use both -c and -- for description"
       fi
       CUSTOM_DESCRIPTION="$2"
       shift 2
       ;;
-    --draft)
-      DRAFT=true
+    -d)
+      DRY_RUN=true
+      shift
+      ;;
+    -s)
+      START_REVIEW=true
+      shift
+      ;;
+    --delete)
+      DELETE_DRAFT=true
       shift
       ;;
     -l | --labels)
-      if [[ $# -lt 2 ]]; then
-        usage_error "Option -l requires labels argument"
-      fi
+      [[ $# -ge 2 ]] || usage_error "Option -l requires labels argument"
       LABELS="$2"
-      shift 2
-      ;;
-    -a | --assignees)
-      if [[ $# -lt 2 ]]; then
-        usage_error "Option -a requires assignees argument"
-      fi
-      ASSIGNEES="$2"
       shift 2
       ;;
     -b | --browser)
       OPEN_BROWSER=true
-      PROMPT_BROWSER=false
       shift
       ;;
     -v | --verbose)
@@ -254,10 +549,9 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --)
-      # Unix-style description: everything after -- is the description
       shift
       if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
-        usage_error "Cannot use both -d and -- for description"
+        usage_error "Cannot use both -c and -- for description"
       fi
       CUSTOM_DESCRIPTION="$*"
       break
@@ -268,13 +562,149 @@ while [[ $# -gt 0 ]]; do
     *)
       usage_error "Unknown argument: $1"
       ;;
-  esac
-done
+    esac
+  done
+}
+
+update_existing_draft_pr() {
+  local pr_number="$1"
+
+  bt_info "Updating draft PR #$pr_number..."
+
+  bt_gh_run_or_exit "$EXIT_REMOTE_UNREACHABLE" "$EXIT_GITHUB_API" \
+    "Failed to update PR title" \
+    gh pr edit "$pr_number" --title "$TITLE"
+
+  if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
+    bt_gh_run_or_exit "$EXIT_REMOTE_UNREACHABLE" "$EXIT_GITHUB_API" \
+      "Failed to update PR description" \
+      gh pr edit "$pr_number" --body "$CUSTOM_DESCRIPTION"
+  fi
+
+  if [[ -n "$LABELS" ]]; then
+    replace_pr_labels "$pr_number" "$LABELS"
+  fi
+
+  if [[ "$START_REVIEW" == true ]]; then
+    bt_gh_run_or_exit "$EXIT_REMOTE_UNREACHABLE" "$EXIT_GITHUB_API" \
+      "Failed to add reviewers" \
+      gh pr edit "$pr_number" --add-reviewer "$REVIEWERS"
+    bt_info "Marking draft PR as ready for review..."
+    bt_gh_run_or_exit "$EXIT_REMOTE_UNREACHABLE" "$EXIT_GITHUB_API" \
+      "Failed to mark PR as ready" \
+      gh pr ready "$pr_number"
+    bt_success "Draft PR #$pr_number updated and review started"
+  else
+    bt_success "Draft PR #$pr_number updated"
+  fi
+}
+
+create_new_pr() {
+  bt_info "Creating new PR..."
+
+  local -a create_cmd
+  create_cmd=(
+    bt_run_remote_command gh pr create \
+      --base "$TARGET_BRANCH" \
+      --head "$CURRENT_BRANCH" \
+      --title "$TITLE"
+  )
+  if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
+    create_cmd+=(--body "$CUSTOM_DESCRIPTION")
+  fi
+  if [[ "$START_REVIEW" == false ]]; then
+    create_cmd+=(--draft)
+  fi
+  if [[ -n "$LABELS" ]]; then
+    create_cmd+=(--label "$LABELS")
+  fi
+  if [[ "$START_REVIEW" == true ]]; then
+    create_cmd+=(--reviewer "$REVIEWERS")
+  fi
+
+  if ! "${create_cmd[@]}" >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_GITHUB_API" "Failed to create PR"
+  fi
+
+  EXISTING_PR=$(get_open_pr_number "$CURRENT_BRANCH")
+  if [[ -z "$EXISTING_PR" ]]; then
+    EXISTING_PR=$(get_existing_pr_number "$CURRENT_BRANCH")
+  fi
+
+  if [[ -z "$EXISTING_PR" ]]; then
+    bt_error_exit "$EXIT_GITHUB_API" "Failed to determine created PR number"
+  fi
+
+  if [[ "$START_REVIEW" == true ]]; then
+    bt_success "PR #$EXISTING_PR created and review started"
+  else
+    bt_success "Draft PR #$EXISTING_PR created"
+  fi
+}
+
+print_dry_run_plan() {
+  local existing_pr="$1"
+  local existing_draft_status="${2:-}"
+
+  bt_info "Dry run enabled: no pull request changes will be made."
+  bt_info "Current branch: $CURRENT_BRANCH"
+  bt_info "Target branch: $TARGET_BRANCH"
+
+  if [[ -n "$existing_pr" ]]; then
+    bt_info "Detected existing PR: #$existing_pr (draft=$existing_draft_status)"
+    if [[ "$DELETE_DRAFT" == true ]]; then
+      bt_info "Planned action: delete draft PR #$existing_pr"
+    elif [[ "$START_REVIEW" == true ]]; then
+      bt_info "Planned action: update draft PR #$existing_pr and start review"
+    else
+      bt_info "Planned action: update draft PR #$existing_pr"
+    fi
+  else
+    if [[ "$START_REVIEW" == true ]]; then
+      bt_info "Planned action: create non-draft PR and start review"
+    else
+      bt_info "Planned action: create draft PR"
+    fi
+  fi
+
+  if [[ -n "$CUSTOM_TITLE" ]]; then
+    bt_info "Title: $CUSTOM_TITLE"
+  else
+    bt_info "Title: $TITLE"
+  fi
+
+  if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
+    bt_info "Description: provided"
+  fi
+
+  if [[ -n "$LABELS" ]]; then
+    bt_info "Labels: $LABELS"
+  fi
+
+  if [[ "$START_REVIEW" == true ]]; then
+    bt_info "Reviewers: $REVIEWERS"
+  fi
+
+  return 0
+}
+
+parse_args "$@"
+validate_options_cross_constraints
+validate_text_inputs
+
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
+bt_propagate_repository_history >/dev/null 2>&1 || true
+
+require_gh_cli
+require_contributors_config
+require_contributor_role
+validate_remote_connectivity
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
-  bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
+  bt_error_exit "$EXIT_GIT_OPERATION" "Failed to determine current branch")
 bt_info "Current branch: $CURRENT_BRANCH"
+validate_current_branch_requirements
 
 # Determine target branch
 bt_info "Determining target branch..."
@@ -295,116 +725,84 @@ else
   bt_info "Title: $TITLE"
 fi
 
-# Check for existing PR
-EXISTING_PR=$(get_existing_pr_number "$CURRENT_BRANCH")
+# Check for existing open PR
+EXISTING_PR=$(get_open_pr_number "$CURRENT_BRANCH")
+
+if is_browser_only_mode; then
+  if [[ -n "$EXISTING_PR" ]]; then
+    bt_run_remote_command gh pr view "$EXISTING_PR" --web >/dev/null 2>&1 || true
+    bt_success "Opened open PR #$EXISTING_PR in browser"
+    exit 0
+  fi
+
+  EXISTING_PR=$(get_closed_pr_number "$CURRENT_BRANCH")
+  if [[ -n "$EXISTING_PR" ]]; then
+    bt_run_remote_command gh pr view "$EXISTING_PR" --web >/dev/null 2>&1 || true
+    bt_success "Opened latest closed PR #$EXISTING_PR in browser"
+    exit 0
+  fi
+
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+    "No open or closed PR found for branch '$CURRENT_BRANCH'"
+fi
+
+# PR description is required for create flows (including dry-run create).
+if [[ -z "$EXISTING_PR" ]] && [[ "$DELETE_DRAFT" == false ]] && \
+  [[ -z "$CUSTOM_DESCRIPTION" ]]; then
+  usage_error "PR description is required when creating a new PR (use -c"
+  usage_error " TOKEN or -- TOKEN...)"
+fi
 
 if [[ -n "$EXISTING_PR" ]]; then
-  # Update existing PR
-  bt_info "Updating existing PR #$EXISTING_PR..."
-  
-  # Update title
-  gh pr edit "$EXISTING_PR" --title "$TITLE" 2>&1 || \
-    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to update PR title"
-  
-  # Update description if provided
-  if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
-    gh pr edit "$EXISTING_PR" --body "$CUSTOM_DESCRIPTION" 2>&1 || \
-      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to update PR description"
-  fi
-  
-  # Update labels if provided
-  if [[ -n "$LABELS" ]]; then
-    gh pr edit "$EXISTING_PR" --add-label "$LABELS" 2>&1 || \
-      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to add labels"
-  fi
-  
-  # Update assignees if provided
-  if [[ -n "$ASSIGNEES" ]]; then
-    gh pr edit "$EXISTING_PR" --add-assignee "$ASSIGNEES" 2>&1 || \
-      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to add assignees"
-  fi
-  
-  # Update reviewers from config
-  gh pr edit "$EXISTING_PR" --add-reviewer "$REVIEWERS" 2>&1 || \
-    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to add reviewers"
-  
-  # Check if PR is draft and mark ready if not using --draft flag
   CURRENT_DRAFT_STATUS=$(get_pr_draft_status "$EXISTING_PR")
-  if [[ "$CURRENT_DRAFT_STATUS" == "true" ]] && [[ "$DRAFT" == false ]]; then
-    bt_info "Marking PR as ready for review..."
-    gh pr ready "$EXISTING_PR" 2>&1 || \
-      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to mark PR as ready"
+
+  if [[ "$CURRENT_DRAFT_STATUS" != "true" ]]; then
+    bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+      "An open non-draft PR already exists for branch '$CURRENT_BRANCH'"
   fi
-  
-  bt_success "PR #$EXISTING_PR updated"
-  
+
+  if [[ "$DELETE_DRAFT" == true ]]; then
+    if [[ "$DRY_RUN" == true ]]; then
+      print_dry_run_plan "$EXISTING_PR" "$CURRENT_DRAFT_STATUS"
+      exit 0
+    fi
+    bt_info "Deleting draft PR #$EXISTING_PR..."
+    delete_draft_pr "$EXISTING_PR"
+    exit 0
+  fi
+
+  if [[ "$DRY_RUN" == true ]]; then
+    print_dry_run_plan "$EXISTING_PR" "$CURRENT_DRAFT_STATUS"
+    exit 0
+  fi
+  update_existing_draft_pr "$EXISTING_PR"
 else
-  # Create new PR
-  bt_info "Creating new PR..."
-  
-  # Build gh pr create command
-  create_cmd="gh pr create --base $TARGET_BRANCH"
-  create_cmd="$create_cmd --head $CURRENT_BRANCH --title '$TITLE'"
-  
-  if [[ -n "$CUSTOM_DESCRIPTION" ]]; then
-    create_cmd="$create_cmd --body '$CUSTOM_DESCRIPTION'"
+  if [[ "$DELETE_DRAFT" == true ]]; then
+    bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+      "--delete requires an existing draft PR"
   fi
-  
-  if [[ "$DRAFT" == true ]]; then
-    create_cmd="$create_cmd --draft"
+
+  if [[ "$DRY_RUN" == true ]]; then
+    print_dry_run_plan "" ""
+    exit 0
   fi
-  
-  if [[ -n "$LABELS" ]]; then
-    create_cmd="$create_cmd --label '$LABELS'"
-  fi
-  
-  if [[ -n "$ASSIGNEES" ]]; then
-    create_cmd="$create_cmd --assignee '$ASSIGNEES'"
-  fi
-  
-  # Always add reviewers from config
-  create_cmd="$create_cmd --reviewer '$REVIEWERS'"
-  
-  # Execute command and capture PR number
-  pr_url=""
-  pr_url=$(eval "$create_cmd" 2>&1) || bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to create PR"
-  
-  # Extract PR number from URL
-  EXISTING_PR=$(echo "$pr_url" | grep -oP '#\K[0-9]+' | head -1)
-  
-  if [[ -z "$EXISTING_PR" ]]; then
-    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to extract PR number from response"
-  fi
-  
-  if [[ "$DRAFT" == true ]]; then
-    bt_success "Draft PR #$EXISTING_PR created"
-  else
-    bt_success "PR #$EXISTING_PR created (ready for review)"
-  fi
+  create_new_pr
 fi
 
-# Show PR details if verbose
 if [[ "$VERBOSE" == true ]]; then
+  local_pr_details=""
   bt_info "PR details:"
-  gh pr view "$EXISTING_PR" --json number,title,state,isDraft,url \
-    --jq '{number:.number, title:.title, state:.state, draft:.isDraft, \
-  url:.url}' | \
-    sed 's/^/  /'
+  bt_gh_capture_or_exit local_pr_details \
+    "$EXIT_REMOTE_UNREACHABLE" "$EXIT_GITHUB_API" \
+    "Failed to read PR details for #$EXISTING_PR" \
+    gh pr view "$EXISTING_PR" --json number,title,state,isDraft,url \
+    --jq '{number:.number, title:.title, state:.state, draft:.isDraft, '\
+'url:.url}'
+  echo "$local_pr_details" | sed 's/^/  /'
 fi
 
-# Prompt to open in browser if not already decided
-if [[ "$PROMPT_BROWSER" == true ]]; then
-  echo -n "Open PR in browser? (y/n): "
-  read -r response
-  if [[ "$response" =~ ^[Yy]$ ]]; then
-    OPEN_BROWSER=true
-  fi
-fi
-
-# Open in browser if requested
 if [[ "$OPEN_BROWSER" == true ]]; then
-  gh pr view "$EXISTING_PR" --web 2>&1 || bt_warn "Failed to open PR in browser"
+  bt_run_remote_command gh pr view "$EXISTING_PR" --web >/dev/null 2>&1 || true
 fi
 
-bt_success "Done"
 exit 0

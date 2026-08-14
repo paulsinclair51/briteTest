@@ -55,8 +55,9 @@ cleanup() {
 trap cleanup EXIT
 
 WORK="$TMPDIR/work"
-mkdir -p "$WORK/scripts/bin"
+mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers"
 cp "$REPLACETEXT_SRC" "$WORK/scripts/bin/replacetext"
+cp "$REPO_ROOT/scripts/helpers/git_helpers.sh" "$WORK/scripts/helpers/git_helpers.sh"
 
 cat > "$WORK/README.md" <<'EOF'
 This line includes -foo and plain text.
@@ -71,7 +72,7 @@ pass "accepts dash-leading FIND with --"
 # 2) Dash-leading FIND token is rejected without -- (treated as option).
 rc=$(run_in_work_capture "$TMPDIR/without_dash_bad.out" -d -foo bar)
 [[ "$rc" -eq 1 ]] || fail "expected '-d -foo bar' to exit 1 (got $rc)"
-assert_contains "Error: Unknown option: -foo" "$TMPDIR/without_dash_bad.out"
+assert_contains "Unknown option: -foo" "$TMPDIR/without_dash_bad.out"
 pass "rejects dash-leading FIND without --"
 
 echo "All replacetext smoke tests passed."

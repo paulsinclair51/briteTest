@@ -14,6 +14,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 FIXREPO_SRC="$REPO_ROOT/scripts/bin/fixrepo"
 COMMON_HELPER_SRC="$REPO_ROOT/scripts/helpers/common.sh"
 GIT_HELPER_SRC="$REPO_ROOT/scripts/helpers/git_helpers.sh"
+REPORT_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_helpers.sh"
 
 pass() {
   echo "PASS: $1"
@@ -49,6 +50,7 @@ make_fixture_repo() {
   cp "$FIXREPO_SRC" "$repo/scripts/bin/fixrepo"
   cp "$COMMON_HELPER_SRC" "$repo/scripts/helpers/common.sh"
   cp "$GIT_HELPER_SRC" "$repo/scripts/helpers/git_helpers.sh"
+  cp "$REPORT_HELPER_SRC" "$repo/scripts/helpers/report_helpers.sh"
   chmod +x "$repo/scripts/bin/fixrepo"
 
   git -C "$repo" init -q
@@ -142,6 +144,10 @@ for dep in bash find git grep mktemp; do
 
 TMPDIR="$(mktemp -d)"
 cleanup() {
+  if [[ "${KEEP_TMPDIR:-0}" == "1" ]]; then
+    echo "KEEP_TMPDIR=1 preserving test artifacts at: $TMPDIR" >&2
+    return 0
+  fi
   rm -rf "$TMPDIR"
 }
 trap cleanup EXIT
@@ -190,26 +196,26 @@ clone_report="$(latest_report "$PLAIN_REPO")"
 assert_contains "## Target: Clone Repository" "$clone_report"
 pass "clone-path coverage"
 
-# 5) -r 0 should skip remote connectivity and tracking checks when origin exists
-rc=$(run_capture "$TMPDIR/remote.out" bash "$REMOTE_REPO/scripts/bin/fixrepo" -d -r 0)
-[[ "$rc" -eq 0 ]] || fail "fixrepo -d -r 0 should exit 0 on remote-configured fixture (got $rc)"
+# 5) -t 0 should skip remote connectivity and tracking checks when origin exists
+rc=$(run_capture "$TMPDIR/remote.out" bash "$REMOTE_REPO/scripts/bin/fixrepo" -d -t 0)
+[[ "$rc" -eq 0 ]] || fail "fixrepo -d -t 0 should exit 0 on remote-configured fixture (got $rc)"
 remote_report="$(latest_report "$REMOTE_REPO")"
 [[ -f "$remote_report" ]] || fail "expected report file for remote fixture"
-assert_contains "Skipped (disabled by -r 0)" "$remote_report"
+assert_contains "Skipped (disabled by -t 0)" "$remote_report"
 pass "remote checks disabled"
 
 # 6) Unreachable origin should surface remote reachability issue and exit 2
-rc=$(run_capture "$TMPDIR/unreachable.out" bash "$UNREACHABLE_REMOTE_REPO/scripts/bin/fixrepo" -d -r 1)
-[[ "$rc" -eq 2 ]] || fail "fixrepo -d -r 1 with unreachable origin should exit 2 (got $rc)"
+rc=$(run_capture "$TMPDIR/unreachable.out" bash "$UNREACHABLE_REMOTE_REPO/scripts/bin/fixrepo" -d -t 1)
+[[ "$rc" -eq 2 ]] || fail "fixrepo -d -t 1 with unreachable origin should exit 2 (got $rc)"
 unreachable_report="$(latest_report "$UNREACHABLE_REMOTE_REPO")"
 [[ -f "$unreachable_report" ]] || fail "expected report file for unreachable-origin run"
 assert_contains "Remote is configured but not reachable" "$unreachable_report"
 pass "remote reachability failure"
 
 # 7) Invalid timeout should fail with argument error
-rc=$(run_capture "$TMPDIR/bad-timeout.out" bash "$PLAIN_REPO/scripts/bin/fixrepo" -r abc)
-[[ "$rc" -eq 1 ]] || fail "fixrepo -r abc should exit 1 (got $rc)"
-assert_contains "Invalid -r value" "$TMPDIR/bad-timeout.out"
+rc=$(run_capture "$TMPDIR/bad-timeout.out" bash "$PLAIN_REPO/scripts/bin/fixrepo" -t abc)
+[[ "$rc" -eq 1 ]] || fail "fixrepo -t abc should exit 1 (got $rc)"
+assert_contains "Invalid -t value" "$TMPDIR/bad-timeout.out"
 pass "invalid timeout handling"
 
 # 8) Invalid clone path should fail with argument error

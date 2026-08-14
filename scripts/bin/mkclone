@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# mkclone - Clone the repository and automatically install scripts and Git hooks.
+# mkclone - Clone the repository and automatically install scripts and Git
+# hooks.
 #
 # See usage below for details, or run: mkclone -h
 #
@@ -14,7 +15,7 @@ Usage:
   mkclone [OPTIONS] [directory]
   mkclone {-h | --help}
 
-Clone the BriteTest repository to a local directory with automatic setup.
+Clone the repository to a local directory with automatic setup.
 
 Requirements:
   - Must be run on a machine with bash, git, and curl installed
@@ -36,20 +37,13 @@ Arguments:
                                 mkclone my-workspace
                                  -> Creates ./my-workspace/
 
-Comment Options (mutually exclusive):
-  -m, --message MSG  Attach a comment to the operation
-                     Usage: mkclone -m "Setup for feature work"
-  -- COMMENT TEXT    Unix-style comment (everything after -- is the comment)
-                     Usage: mkclone -- Setup for feature work
-                     Note: No quotes needed, captures all remaining arguments
-
 Options:
-  -h, --help         Output this help to stdout and exit (other options
+  -h                 Output this help to stdout and exit (other options
                      and arguments are ignored).
-  -m, --message MSG  Add comment message (GitHub style,
-                     requires quotes if spaces)
-  -- TEXT            Add comment (Unix style,
-                     everything after -- is the comment)
+  --help             Output this help to stdout and exit (other options
+                     and arguments are ignored).
+  -t SEC             Remote operation timeout in seconds (default: 10).
+                     SEC must be an integer greater than 0.
 
 Examples:
   # Basic clone with automatic setup (run from anywhere)
@@ -60,18 +54,9 @@ Examples:
   mkclone my-workspace
     -> Creates ./my-workspace/ with scripts and hooks installed
 
-  # With GitHub-style comment
-  mkclone -m "Setup for new feature development"
-
-  # With Unix-style comment
-  mkclone work-repo -- Starting feature branch work
-
-
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented
-    output locations.
 
 Exit codes:
   0   Success
@@ -88,24 +73,40 @@ EOF
 # - Does NOT require bash helpers upfront
 # - Clones the configured repository URL into a default or user-specified
 #   target directory.
-# - Validates arguments, comment options, and target-path preconditions before
-#   cloning.
+# - Validates arguments and target-path preconditions before cloning.
 # - Automatically runs setupclone to set up scripts and Git hooks.
 # - Reports clone results and prints next-step workflow guidance.
+
+# shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
+GIT_HELPER="$SCRIPT_DIR/../helpers/git_helpers.sh"
+COMMON_HELPER="$SCRIPT_DIR/../helpers/common.sh"
+
+bt_emit_error() {
+  printf 'Error: %s\n' "$1" >&2
+}
 
 # Shared helpers
+if [[ -f "$COMMON_HELPER" ]]; then
+  # shellcheck source=helpers/common.sh
+  source "$COMMON_HELPER" 2>/dev/null || true
+fi
 if [[ ! -f "$HISTORY_HELPER" ]]; then
-  echo "Error: Required helper not found: $HISTORY_HELPER" >&2
+  bt_emit_error "Required helper not found: $HISTORY_HELPER"
   exit 5
 fi
 # shellcheck source=helpers/history_log.sh
 if ! source "$HISTORY_HELPER"; then
-  echo "Error: Failed to load helper: $HISTORY_HELPER" >&2
+  bt_emit_error "Failed to load helper: $HISTORY_HELPER"
+  exit 5
+fi
+# shellcheck disable=SC1090  # Path is resolved relative to this script.
+if [[ ! -f "$GIT_HELPER" ]] || ! source "$GIT_HELPER"; then
+  bt_emit_error "Failed to load helper: $GIT_HELPER"
   exit 5
 fi
 
@@ -119,13 +120,13 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "$message. See usage above for details." >&2
+  bt_emit_error "$message. See usage above for details."
   exit "$EXIT_INVALID_ARGUMENT"
 }
 
 # Default options
-COMMENT=""
 TARGET_DIR=""
+REMOTE_TIMEOUT_SECONDS=10
 
 # Simple output helpers (no external dependency)
 info() {
@@ -143,7 +144,7 @@ warn() {
 error_exit() {
   local code="$1"
   local message="$2"
-  echo "[ERROR] $message" >&2
+  bt_emit_error "$message"
   exit "$code"
 }
 
@@ -172,24 +173,12 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    -m | --message)
-      if [[ $# -lt 2 ]]; then
-        usage_error "Option -m requires a message argument"
-      fi
-      if [[ -n "$COMMENT" ]]; then
-        usage_error "Cannot use both -m and -- for comment"
-      fi
-      COMMENT="$2"
+    -t)
+      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC"
+      bt_is_valid_remote_timeout "$2" || \
+        usage_error "SEC for -t must be an integer greater than 0"
+      REMOTE_TIMEOUT_SECONDS="$2"
       shift 2
-      ;;
-    --)
-      # Unix-style comment: everything after -- is the comment
-      shift
-      if [[ -n "$COMMENT" ]]; then
-        usage_error "Cannot use both -m and -- for comment"
-      fi
-      COMMENT="$*"
-      break
       ;;
     -*)
       usage_error "Unknown option: $1"
@@ -204,6 +193,7 @@ done
 
 # Restore positional arguments
 set -- "${POSITIONAL_ARGS[@]}"
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
 
 # Check that we have at most 1 positional argument
 if [[ $# -gt 1 ]]; then
@@ -232,7 +222,7 @@ check_requirements
 
 # Clone the repository
 info "Cloning repository..."
-if ! git clone "$REPO_URL" "$TARGET_DIR" 2>&1; then
+if ! bt_run_remote_command git clone "$REPO_URL" "$TARGET_DIR" 2>&1; then
   error_exit 2 "Failed to clone repository from $REPO_URL"
 fi
 
@@ -266,36 +256,69 @@ fi
 
 # Enforce policy: do not leave a local 'main' branch in the clone.
 if git -C "$TARGET_DIR" show-ref --verify --quiet refs/heads/main; then
+  targeted_branch_re=""
+  version_branch_re=""
+  non_priority_branch_re=""
+
   info "Applying branch policy: removing local 'main' from clone..."
 
-  current_branch="$(git -C "$TARGET_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  current_branch="$(git -C "$TARGET_DIR" rev-parse --abbrev-ref HEAD \
+    2>/dev/null || true)"
 
   # Preferred fallback order when choosing a non-main local branch:
   # 1) targeted branch, 2) contributor branch, 3) version branch,
   # 4) detach at origin/main.
-  remote_branches="$(git -C "$TARGET_DIR" for-each-ref --format='%(refname:short)' refs/remotes/origin | sed -n 's#^origin/##p' | grep -Ev '^(HEAD|main)$' | sort || true)"
+  targeted_branch_re='^(dev|fix)/[a-z0-9][a-z0-9-]*-v[1-9][0-9]?\.'
+  targeted_branch_re+='(0|[1-9][0-9]?)\.0$'
+  version_branch_re='^v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$'
+  non_priority_branch_re="${version_branch_re}|${targeted_branch_re}"
 
-  preferred_remote_branch="$(printf '%s\n' "$remote_branches" | grep -E '^(dev|fix)/[a-z0-9][a-z0-9-]*-v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$' | head -n 1 || true)"
+  remote_branches="$(
+    git -C "$TARGET_DIR" for-each-ref --format='%(refname:short)' \
+      refs/remotes/origin | \
+      sed -n 's#^origin/##p' | \
+      grep -Ev '^(HEAD|main)$' | \
+      sort || true
+  )"
+
+  preferred_remote_branch="$(
+    printf '%s\n' "$remote_branches" | \
+      grep -E "$targeted_branch_re" | \
+      head -n 1 || true
+  )"
 
   if [[ -z "$preferred_remote_branch" ]]; then
-    preferred_remote_branch="$(printf '%s\n' "$remote_branches" | grep -Ev '^v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$|^(dev|fix)/[a-z0-9][a-z0-9-]*-v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$' | head -n 1 || true)"
+    preferred_remote_branch="$(
+      printf '%s\n' "$remote_branches" | \
+        grep -Ev "$non_priority_branch_re" | \
+        head -n 1 || true
+    )"
   fi
 
   if [[ -z "$preferred_remote_branch" ]]; then
-    preferred_remote_branch="$(printf '%s\n' "$remote_branches" | grep -E '^v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$' | head -n 1 || true)"
+    preferred_remote_branch="$(
+      printf '%s\n' "$remote_branches" | \
+        grep -E "$version_branch_re" | \
+        head -n 1 || true
+    )"
   fi
 
   if [[ "$current_branch" == "main" ]]; then
     if [[ -n "$preferred_remote_branch" ]]; then
-      if ! git -C "$TARGET_DIR" switch -c "$preferred_remote_branch" --track "origin/$preferred_remote_branch" >/dev/null 2>&1; then
-        error_exit 4 "Failed to create local tracking branch '$preferred_remote_branch' before removing local main"
+      if ! git -C "$TARGET_DIR" switch -c "$preferred_remote_branch" \
+        --track "origin/$preferred_remote_branch" >/dev/null 2>&1; then
+        error_exit 4 "Failed to create local tracking branch" \
+                     "'$preferred_remote_branch' before removing local main"
       fi
       info "Switched to local branch '$preferred_remote_branch'"
     else
-      if ! git -C "$TARGET_DIR" switch --detach origin/main >/dev/null 2>&1; then
-        error_exit 4 "Failed to detach to origin/main before removing local main"
+      if ! git -C "$TARGET_DIR" switch --detach origin/main \
+        >/dev/null 2>&1; then
+        error_exit 4 "Failed to detach to origin/main before removing local" \
+                     "main"
       fi
-      warn "No targeted, contributor, or version branch found; repository is detached at origin/main"
+      warn "No targeted, contributor, or version branch found; repository" \
+           "is detached at origin/main"
     fi
   fi
 

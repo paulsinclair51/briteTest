@@ -1,0 +1,1569 @@
+#!/usr/bin/env bash
+
+# fixlocal - Checks this local repository for integrity and issues,
+# applies safe cleanup/fixes, and generates a diagnostic report. See
+#
+# See usage below for details, or run: fixlocal -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  fixlocal [OPTIONS]
+  fixlocal {-h | --help}
+
+fixlocal checks the local repository (see below) for integrity, worktree
+state, layout, and branch tracking.
+
+It applies safe cleanup/fixes when allowed and generates a diagnostic report.
+
+It also checks the remote (origin), but does not attempt to fix the remote;
+it only reports issues found there.
+
+When to use this script:
+  - Use fixlocal first when the problem is in the current local clone or
+    working copy: worktree state, tracking status, object database, branch
+    hygiene, or local repo cleanup.
+  - This is the default starting point for fixing the current local repository
+    before broader repo-wide checks.
+  - Use fixrepo next when you need a broader repository-level check across the
+    current repo and optionally one additional clone path.
+  - Use fixremote only when the problem is remote (origin) corruption or a
+    damaged remote ref that must be recovered from a known-good local clone.
+  - Use override only for exceptional owner-authorized local recovery or a
+    temporary remote repair authorization window; it does not replace the
+    repair scripts.
+
+Recommended order when more than one repair path applies:
+  1. fixlocal (default for fixing the current local repository)
+  2. fixrepo
+  3. fixremote
+  4. owner-admin remote repair workflow, if required
+
+Remote checks performed by fixlocal are:
+  - origin connectivity/reachability (including timeout handling)
+  - current-branch upstream/tracking reachability status
+  - per-local-branch upstream ahead/behind availability and tracking refresh
+  - remote corruption signals on origin main (reported only)
+
+If the remote is healthy and safeguards are satisfied, it may be used by
+fixlocal to fix a corrupted local repository.
+
+If fixlocal is unable to repair the local repository, a contributor can
+create a new clone using mkclone (repository clone script) from its remote
+and then redo any lost work in this new clone. If the remote is corrupted,
+the contributor must wait until the remote is healthy.
+
+If the remote is corrupted, fixlocal notifies the repository owner so they
+can attempt to repair/recover the remote. Until the remote is verified clean,
+pushes from clones and creating new clones are blocked (to prevent spreading
+corruption).
+
+fixlocal operates on the local working copy (clone or local checkout) of
+the repository based on the directory from which it is invoked.
+
+     <repo>/scripts/bin/fixlocal -> <repo>
+
+Terminology:
+  - Unconnected remote: origin is not configured.
+  - Unreachable remote: connection fails before timeout.
+  - Timed-out remote: reachability check exceeds configured timeout.
+  - Fixable issue: can be safely auto-remediated by fixlocal.
+  - Non-fixable issue: requires manual follow-up.
+
+Features:
+  - Validates git object database integrity (`git fsck --full`).
+  - Verifies working tree cleanliness and repository structure/layout.
+  - Checks remote connectivity/tracking status.
+  - Iterates all local branches to evaluate upstream ahead/behind status.
+  - Attempts safe remote-tracking refresh (`git fetch --prune origin`) when
+    tracking metrics cannot be computed.
+  - Attempts guarded remote synchronization of the current local branch from
+    its configured remote-tracking branch.
+  - Optional force mode (`-f`) can discard local-only divergence/working-tree
+    changes (after creating a backup ref) to converge this local branch to
+    remote branch for stabilization (with potential local loss of recent
+    changes).
+  - Runs safe cleanup (`git gc --prune=now`) and reruns affected verification
+    checks after cleanup.
+  - Continues through remaining checks when non-critical checks/fixes fail and
+    records all failures in the report.
+  - Distinguishes fixable vs. non-fixable issues and verified vs. unverified
+    repairs.
+
+Prerequisites:
+  - The user must be a contributor (listed in <repo>/config/contributors.md) if
+    the current branch is a contributor or target branch.
+  - The user must be an approver (listed in <repo>/config/contributors.md)
+    or the repository owner if the current branch is main or a version branch.
+  - The current branch must be a contributor, targeted, version, or main branch.
+  - Current branch must be a local branch.
+  - The remote (origin) must be connected and reachable.
+
+Options:
+  -d                Dry-run mode: report issues only, do not attempt repairs.
+  -f                Force local stabilization: allow discarding local dirty
+                    changes and local-ahead commits during guarded remote
+                    synchronization (backup ref created first).
+  -h                Output this help to stdout and exit (other options ignored).
+  --help            Output this help to stdout and exit (other options ignored).
+  -t SEC            Remote reachability timeout in seconds (default: 10).
+                    Exit code is 1 if SEC is not an integer greater than 0.
+  -v                Output verbose progress and details to stdout.
+
+Remote failure state definitions (mapped to exit codes):
+  - Unconnected remote: origin is not configured for this local repository.
+    Exit code: 3.
+  - Unreachable remote: origin is configured, but connection fails before
+    timeout (for example: DNS/auth/network/transport failure).
+    Exit code: 4.
+  - Timed-out remote: origin is configured, but reachability check exceeds
+    configured timeout (-t SEC).
+    Exit code: 5.
+
+Common runs (default timeout 10 seconds; specify -t SEC to override):
+  fixlocal             Full checks with safe auto-fixes and remote checks/
+                       tracking refresh.
+  fixlocal -d          Full checks in report-only mode.
+  fixlocal -f          Full checks with safe auto-fixes and remote checks/
+                       tracking refresh plus forced local stabilization
+                       safeguards if needed.
+  fixlocal -v          Full checks with safe auto-fixes and remote checks/
+                       tracking refresh and per-step verbose detail.
+
+Outputs:
+  - stdout: issue counts and report path (plus per-step detail with -v).
+  - stderr: errors and diagnostics.
+  - Report artifact behavior:
+    - Writes a repository diagnostic report:
+      - The report file name is repository-<date>-<time>-<pid>.md or, if -d
+        specified, repository-d-<date>-<time>-<pid>.md. The report file is
+        untracked.
+      - The report file is written to
+        <repo>/reports/repository/.
+      - If this directory cannot be created or written, fixlocal exits with
+        code 100 (missing dependencies/configuration).
+    - When a new report (dry-run or non-dry-run) is written, all older dry-run
+      reports are deleted from the local repository if they are deletable.
+    - When a new non-dry-run report is written, non-dry-run reports older than
+      one month are deleted from the local repository if they are deletable.
+    - "Deletable" means report files can be deleted with current local
+      filesystem permissions. If permissions cannot be modified to permit
+      deletion or deletion fails, the failure is non-fatal and is reported.
+    - Branch tracking checks do not require manual branch switching.
+    - Report includes:
+        - Timestamp of the run.
+        - User and machine information.
+        - Repository path.
+        - Target repository name and path.
+        - Checks performed and their results.
+        - Summary of issues detected, auto-handled, and remaining.
+        - Suggested next steps for any remaining issues.
+        - Blockers preventing checking (partially or fully) the repository:
+            - Cannot determine current branch or repository state.
+            - Git operation failed (generic/unspecified).
+            - Git fsck failed - repository integrity check error.
+            - Git fetch or remote operation failed.
+            - Git checkout or branch operation failed.
+            - Missing or invalid configuration file.
+        - Remote corruption warnings (if detected):
+            - If remote (origin) main branch has corruption, the report
+              documents it.
+            - Local clone pushes are blocked until remote is verified clean.
+            - If this local copy cannot be stabilized, follow the recovery
+              guidance above for creating a fresh local clone/working copy.
+
+Exit codes:
+  0   Success - no issues or all issues fixed.
+  1   Invalid option or argument.
+  2   User is not a contributor, reviewer, approver, or the repository owner.
+  3   Remote is unconnected (origin is not configured).
+  4   Remote is unreachable (connection failed before timeout).
+  5   Remote connectivity check timed out.
+  6   Issues detected - one or more were not fixable.
+  7   For dry-run (-d) mode, fixable issues were detected that would
+      be fixed if run without -d. No non-fixable issues were detected.
+  100 Missing required helper files, dependencies, or configuration.
+EOF
+}
+
+# High-Level Flow:
+# 1. Validate prerequisites, helper availability, and caller authorization.
+# 2. Resolve strict runtime options (including -t > 0) and report destination.
+# 3. Run local integrity/worktree/layout checks and required remote checks.
+# 4. Attempt guarded local remediations for fixable findings (unless -d).
+# 5. Finalize report, apply retention cleanup policy, and emit exit status
+#    with remote-state precedence where applicable.
+
+# shellcheck disable=SC1091,SC2317  # Helper source paths and trap-managed paths
+
+# Fast-path help handling before any helper sourcing/network/git side effects.
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+done
+
+set -euo pipefail
+
+# Capture original command line for report
+COMMAND_LINE="fixlocal$(printf ' %q' "$@")"
+
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_UNAUTHORIZED=2
+readonly EXIT_REMOTE_UNCONNECTED=3
+readonly EXIT_REMOTE_UNREACHABLE=4
+readonly EXIT_REMOTE_TIMED_OUT=5
+readonly EXIT_ISSUES_DETECTED=6
+readonly EXIT_FIXABLE_ONLY=7
+readonly EXIT_MISSING_DEPENDENCIES=100
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd -P)"
+# Repository-specific: keep generated reports under this workspace layout.
+REPOSITORY_REPORTS_DIR="$REPO_ROOT/reports/repository"
+
+# Validate required helpers exist
+if [[ ! -f "$SCRIPT_DIR/../helpers/common.sh" ]]; then
+  echo "Error: Required helper not found: $SCRIPT_DIR/../helpers/common.sh" >&2
+  exit "$EXIT_MISSING_DEPENDENCIES"
+fi
+if [[ ! -f "$SCRIPT_DIR/../helpers/git_helpers.sh" ]]; then
+  echo "Error: Required helper not found:" \
+       "$SCRIPT_DIR/../helpers/git_helpers.sh" >&2
+  exit "$EXIT_MISSING_DEPENDENCIES"
+fi
+if [[ ! -f "$SCRIPT_DIR/../helpers/report_helpers.sh" ]]; then
+  echo "Error: Required helper not found:" \
+       "$SCRIPT_DIR/../helpers/report_helpers.sh" >&2
+  exit "$EXIT_MISSING_DEPENDENCIES"
+fi
+if [[ ! -f "$SCRIPT_DIR/../helpers/health_report.sh" ]]; then
+  echo "Error: Required helper not found:" \
+       "$SCRIPT_DIR/../helpers/health_report.sh" >&2
+  exit "$EXIT_MISSING_DEPENDENCIES"
+fi
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/report_helpers.sh
+source "$SCRIPT_DIR/../helpers/report_helpers.sh"
+# shellcheck source=helpers/health_report.sh
+source "$SCRIPT_DIR/../helpers/health_report.sh"
+
+# history_log.sh is optional in isolated test fixtures.
+# If unavailable, provide a no-op fallback used at startup.
+if [[ -f "$SCRIPT_DIR/../helpers/history_log.sh" ]]; then
+  # shellcheck source=helpers/history_log.sh
+  source "$SCRIPT_DIR/../helpers/history_log.sh"
+else
+  bt_propagate_repository_history() {
+    return 0
+  }
+fi
+
+# Propagate repository history from remote if available (best-effort).
+set +e
+bt_propagate_repository_history >/dev/null 2>&1
+set -e
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "$message. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
+require_contributor_role() {
+  local actor_login=""
+  local actor_email=""
+
+  actor_login="$(bt_require_login 2>/dev/null || true)"
+  actor_email="$(git -C "$REPO_ROOT" config user.email 2>/dev/null || true)"
+
+  if bt_contributors_has_min_role_by_login_or_email \
+    "$actor_login" "$actor_email" "contributor" \
+    "$REPO_ROOT/config/contributors.md"; then
+    return 0
+  fi
+
+  bt_error_exit "$EXIT_UNAUTHORIZED" \
+    "User is not a contributor."
+}
+
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_ID="${RUN_TS_FILE}-${BASHPID}"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+
+OUTPUT_FILE=""
+# shellcheck disable=SC2034  # Consumed indirectly by shared report helper.
+REPOSITORY_REPORT_DELETIONS=()
+VERBOSE=false
+DRY_RUN=false
+FORCE_LOCAL_STABILIZATION=false
+REMOTE_TIMEOUT_SECONDS=10
+readonly REMOTE_RETRY_ATTEMPTS=3
+readonly REMOTE_RETRY_BASE_DELAY_SECONDS=1
+
+ISSUES_FOUND=0
+ISSUES_FIXED=0
+FIXABLE_ISSUES_FOUND=0
+REMEDIATIONS_ATTEMPTED=0
+REMEDIATIONS_VERIFIED=0
+REMEDIATIONS_UNVERIFIED=0
+REMEDIATIONS_FAILED=0
+CRITICAL_ERROR=false
+TARGET_ISSUES_FOUND=0
+TARGET_FIXABLE_ISSUES_FOUND=0
+
+CURRENT_REPO=""
+CURRENT_TARGET_NAME=""
+
+TARGET_NAMES=()
+TARGET_PATHS=()
+REMOTE_EXIT_CODE=0
+
+set_remote_exit_code_once() {
+  local code="$1"
+  if [[ "$REMOTE_EXIT_CODE" -eq 0 ]]; then
+    REMOTE_EXIT_CODE="$code"
+  fi
+}
+
+classify_remote_failure_code() {
+  local rc="$1"
+
+  # GNU timeout returns 124 when command execution exceeds configured timeout.
+  if [[ "$rc" -eq 124 ]]; then
+    printf '%s' "$EXIT_REMOTE_TIMED_OUT"
+    return 0
+  fi
+
+  printf '%s' "$EXIT_REMOTE_UNREACHABLE"
+  return 0
+}
+
+probe_origin_reachability_with_code() {
+  local repo_path="$1"
+  local timeout_seconds="$2"
+  local attempts="$3"
+  local base_delay_seconds="$4"
+  local rc=0
+
+  # Guard `set -e`: remote probe failures are expected and classified.
+  set +e
+  bt_git_ls_remote_origin_with_timeout_and_retry \
+    "$repo_path" "$timeout_seconds" "$attempts" "$base_delay_seconds"
+  rc=$?
+  set -e
+
+  printf '%s' "$rc"
+  return 0
+}
+
+increment_counter() {
+  local var_name="$1"
+  printf -v "$var_name" '%d' "$(( ${!var_name} + 1 ))"
+}
+
+run_noncritical_check() {
+  local check_label="$1"
+  shift
+
+  # Isolate non-critical failures so remaining checks can continue and report.
+  set +e
+  "$@"
+  local rc=$?
+  set -e
+
+  if [[ "$rc" -gt 1 ]]; then
+    append_section "Execution Resilience"
+    append_check "$check_label" "ISSUE" \
+      "Check execution failed internally (exit: $rc). Continued with" \
+      "remaining checks to maximize report coverage."
+  fi
+
+  return "$rc"
+}
+
+# log_verbose: printed only when -v (verbose mode).
+# Use for per-step progress detail inside check functions.
+log_verbose() {
+  [[ "$VERBOSE" == true ]] || return 0
+  bt_info "$1"
+}
+
+safe_trim_spaces() {
+  # Normalize mixed whitespace to single spaces for robust token parsing.
+  printf '%s' "$1" | tr '\t' ' ' | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//'
+}
+
+filtered_status_output() {
+  local repo_path="$1"
+  local status_output=""
+
+  status_output="$(git -C "$repo_path" status --porcelain 2>/dev/null || true)"
+  if [[ -n "$status_output" ]]; then
+    status_output="$(printf '%s\n' "$status_output" | awk '
+      BEGIN {
+        report_re = "^reports/repository/repository(-d)?-[0-9]{8}-[0-9]{6}"
+        report_re = report_re "(-[0-9]+)?\\.md$"
+      }
+      {
+        path = substr($0, 4)
+        if (path ~ report_re) {
+          next
+        }
+        print
+      }
+    ')"
+  fi
+
+  printf '%s' "$status_output"
+}
+
+is_valid_timeout_seconds() {
+  [[ "$1" =~ ^[0-9]+$ ]] && [[ "$1" -gt 0 ]]
+}
+
+has_required_api_files() {
+  local repo_path="$1"
+
+  # Treat as valid repository when required API files exist.
+  if [[ -f "$repo_path/src/runnerapi.c" || -f "$repo_path/src/testapi.c" || \
+    -f "$repo_path/include/runnerapi.h" || \
+    -f "$repo_path/include/testapi.h" ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
+add_target_repo() {
+  local target_name="$1"
+  local target_path="$2"
+
+  local i
+  for i in "${!TARGET_PATHS[@]}"; do
+    if [[ "${TARGET_PATHS[$i]}" == "$target_path" ]]; then
+      return 0
+    fi
+  done
+
+  TARGET_NAMES+=("$target_name")
+  TARGET_PATHS+=("$target_path")
+}
+
+init_report() {
+  cat > "$OUTPUT_FILE" << EOF
+# Local Repository Repair Report
+
+**Timestamp:** ${RUN_TS_DISPLAY}
+
+**Command:** $COMMAND_LINE
+
+**Repository:** $REPO_ROOT
+
+## Checks Performed
+EOF
+}
+
+append_target_header() {
+  local target_name="$1"
+  local target_path="$2"
+
+  # Target header is redundant with earlier report info; skip it
+  return 0
+}
+
+append_section() {
+  bt_hr_append_section "$OUTPUT_FILE" "$1"
+}
+
+append_check() {
+  local check_name="$1"
+  local status="$2"
+  local details="$3"
+  local fixable="${4:-false}"
+
+  bt_hr_append_check "$OUTPUT_FILE" "$check_name" "$status" "$details" \
+    ISSUES_FOUND ISSUES_FIXED
+
+  if [[ "$status" == "ISSUE" ]]; then
+    increment_counter TARGET_ISSUES_FOUND
+    if [[ "$fixable" == "true" ]]; then
+      increment_counter FIXABLE_ISSUES_FOUND
+      increment_counter TARGET_FIXABLE_ISSUES_FOUND
+    fi
+  elif [[ "$status" == "FIXABLE" ]]; then
+    increment_counter FIXABLE_ISSUES_FOUND
+    increment_counter TARGET_FIXABLE_ISSUES_FOUND
+  elif [[ "$status" == "ERROR" ]]; then
+    increment_counter TARGET_ISSUES_FOUND
+    CRITICAL_ERROR=true
+  fi
+}
+
+check_git_validity() {
+  append_section "Git Repository Validity"
+
+  if ! bt_git_is_repository "$CURRENT_REPO"; then
+    append_check "Git Directory" "ERROR" "Not a valid git repository"
+    return 1
+  fi
+
+  append_check "Git Directory" "PASS" "Valid git repository structure"
+  return 0
+}
+
+check_object_database() {
+  append_section "Object Database Integrity"
+
+  local fsck_output
+  fsck_output="$(git -C "$CURRENT_REPO" fsck --full 2>&1 || true)"
+
+  if printf '%s\n' "$fsck_output" | \
+    grep -Eq '(^|[[:space:]])(error|fatal):'; then
+    append_check "Object Database" "ISSUE" \
+      "Repository integrity check detected errors. Not auto-handled;" \
+      "suggested fix: If remote is healthy/reachable, create a fresh local" \
+      "clone/working copy from remote and migrate any needed local changes" \
+      "manually."
+    printf '%s\n' "$fsck_output" | sed 's/^/    /' >> "$OUTPUT_FILE"
+    return 1
+  fi
+
+  append_check "Object Database" "PASS" "No corruption detected"
+
+  local dangling_count
+  dangling_count="$(printf '%s\n' "$fsck_output" | \
+    grep -c '^dangling ' || true)"
+  if [[ "$dangling_count" =~ ^[0-9]+$ ]] && [[ "$dangling_count" -gt 0 ]]; then
+    append_check "Dangling Objects" "FIXABLE" \
+      "Found $dangling_count dangling objects; will be pruned by garbage" \
+      "collection."
+  fi
+
+  return 0
+}
+
+check_remote_connectivity() {
+  append_section "Remote Connectivity"
+
+  local origin_url
+  origin_url="$(git -C "$CURRENT_REPO" remote get-url origin \
+    2>/dev/null || true)"
+
+  if [[ -z "$origin_url" ]]; then
+    set_remote_exit_code_once "$EXIT_REMOTE_UNCONNECTED"
+    append_check "Origin Remote" "ISSUE" \
+      "No origin remote configured. Remote reachability is required. Not" \
+      "auto-handled; suggested fix: Configure origin to a valid remote and" \
+      "verify reachability."
+    append_check "Origin Reachability" "ISSUE" \
+      "Unable to validate reachability because origin is not configured."
+    return 1
+  fi
+
+  append_check "Origin Remote" "PASS" "$origin_url"
+
+  local reachability_rc=0
+  reachability_rc="$(probe_origin_reachability_with_code \
+    "$CURRENT_REPO" "$REMOTE_TIMEOUT_SECONDS" \
+    "$REMOTE_RETRY_ATTEMPTS" "$REMOTE_RETRY_BASE_DELAY_SECONDS")"
+
+  if [[ "$reachability_rc" -eq 0 ]]; then
+    append_check "Origin Reachability" "PASS" "Remote is reachable"
+  else
+    set_remote_exit_code_once "$(classify_remote_failure_code \
+      "$reachability_rc")"
+    append_check "Origin Reachability" "ISSUE" \
+      "Remote is configured but not reachable (timeout:" \
+      "${REMOTE_TIMEOUT_SECONDS}s). Not auto-handled; suggested fix: Verify" \
+      "network/auth and confirm the origin URL. If the remote is healthy" \
+      "but this local copy remains unstable, create a fresh local" \
+      "clone/working copy from remote."
+    return 1
+  fi
+
+  local upstream
+  upstream="$(git -C "$CURRENT_REPO" rev-parse --abbrev-ref \
+    --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
+  if [[ -z "$upstream" ]]; then
+    append_check "Tracking Branch" "PASS" \
+      "No upstream configured for current branch"
+    return 0
+  fi
+
+  local counts
+  counts="$(git -C "$CURRENT_REPO" rev-list --left-right --count \
+    HEAD..."$upstream" 2>/dev/null || true)"
+  counts="$(safe_trim_spaces "$counts")"
+  local ahead=""
+  local behind=""
+  local extra=""
+  read -r ahead behind extra <<< "$counts"
+  if [[ "$ahead" =~ ^[0-9]+$ ]] && [[ "$behind" =~ ^[0-9]+$ ]] && \
+    [[ -z "$extra" ]]; then
+    append_check "Tracking Branch" "PASS" \
+      "Upstream: $upstream (ahead $ahead, behind $behind)"
+  else
+    append_check "Tracking Branch" "PASS" \
+      "Unable to compute ahead/behind for current branch; see 'Local Branch" \
+      "Tracking' section for per-branch remediation attempt."
+  fi
+
+  return 0
+}
+
+refresh_remote_tracking_state() {
+  append_section "Remote Tracking Remediation"
+
+  increment_counter REMEDIATIONS_ATTEMPTED
+  if bt_git_fetch_prune_origin_with_retry \
+    "$CURRENT_REPO" "$REMOTE_RETRY_ATTEMPTS" \
+    "$REMOTE_RETRY_BASE_DELAY_SECONDS" >/dev/null 2>&1; then
+    append_check "Remote Tracking Refresh" "PASS" \
+      "Refreshed remote-tracking references"
+    return 0
+  fi
+
+  append_check "Remote Tracking Refresh" "ISSUE" \
+    "Unable to refresh remote-tracking references. Not auto-handled;" \
+    "suggested fix: Verify remote branch/upstream configuration. If remote" \
+    "is reachable and healthy but this local copy remains unstable, create" \
+    "a fresh local clone/working copy from remote."
+  # A refresh failure with configured origin is treated as remote unreachable.
+  set_remote_exit_code_once "$EXIT_REMOTE_UNREACHABLE"
+  increment_counter REMEDIATIONS_FAILED
+  return 1
+}
+
+check_reports_repository_dir_for_branch() {
+  local branch_name="$1"
+  local branch_reports_dir="$CURRENT_REPO/reports/repository"
+
+  if [[ ! -d "$branch_reports_dir" ]]; then
+    append_check "Branch: $branch_name Report Path" "ISSUE" \
+      "reports/repository is missing. Suggested fix: Restore the directory" \
+      "from main or a trusted clone."
+    return 1
+  fi
+
+  if [[ ! -w "$branch_reports_dir" ]]; then
+    append_check "Branch: $branch_name Report Path" "ISSUE" \
+      "reports/repository exists but is not writable. Suggested fix:" \
+      "Correct local permissions/ownership for this working copy."
+    return 1
+  fi
+
+  append_check "Branch: $branch_name Report Path" "PASS" \
+    "reports/repository exists and is writable"
+  return 0
+}
+
+check_all_local_branch_tracking() {
+  append_section "Local Branch Tracking"
+
+  local refs_output=""
+  local refs_rc=0
+
+  # Isolate branch-list retrieval failures and keep reporting alive.
+  set +e
+  refs_output="$(git -C "$CURRENT_REPO" for-each-ref \
+    --format='%(refname:short)|%(upstream:short)' refs/heads 2>/dev/null)"
+  refs_rc=$?
+  set -e
+
+  if [[ "$refs_rc" -ne 0 ]]; then
+    append_check "All Local Branches" "ISSUE" \
+      "Unable to list local branches for tracking checks. Continued with" \
+      "remaining validations."
+    return 1
+  fi
+
+  local branch_rows=()
+  while IFS= read -r row; do
+    [[ -n "$row" ]] || continue
+    branch_rows+=("$row")
+  done <<< "$refs_output"
+
+  if [[ "${#branch_rows[@]}" -eq 0 ]]; then
+    append_check "All Local Branches" "PASS" "No local branches found"
+    return 0
+  fi
+
+  local row
+  local branch_name
+  local upstream
+  local counts
+  local ahead
+  local behind
+  local extra
+  local has_issue=false
+  local refresh_attempted=false
+
+  for row in "${branch_rows[@]}"; do
+    branch_name="${row%%|*}"
+    upstream="${row#*|}"
+
+    check_reports_repository_dir_for_branch "$branch_name" || has_issue=true
+
+    if [[ -z "$upstream" ]]; then
+      append_check "Branch: $branch_name" "PASS" \
+        "No upstream configured"
+      continue
+    fi
+
+    counts="$(git -C "$CURRENT_REPO" rev-list --left-right --count \
+      "$branch_name...$upstream" 2>/dev/null || true)"
+    counts="$(safe_trim_spaces "$counts")"
+    ahead=""
+    behind=""
+    extra=""
+    read -r ahead behind extra <<< "$counts"
+
+    if [[ "$ahead" =~ ^[0-9]+$ ]] && [[ "$behind" =~ ^[0-9]+$ ]] && \
+      [[ -z "$extra" ]]; then
+      append_check "Branch: $branch_name" "PASS" \
+        "Upstream: $upstream (ahead $ahead, behind $behind)"
+    else
+      append_check "Branch: $branch_name" "ISSUE" \
+        "Unable to compute ahead/behind against $upstream. Attempting safe" \
+        "tracking refresh." \
+        "true"
+
+      if [[ "$DRY_RUN" == true ]]; then
+        append_check "Branch: $branch_name" "ISSUE" \
+          "Dry-run mode enabled; no remote-tracking refresh attempted." \
+          "Re-run without -d to allow safe remediation."
+        has_issue=true
+        continue
+      fi
+
+      if [[ "$refresh_attempted" == false ]]; then
+        refresh_attempted=true
+        if ! refresh_remote_tracking_state; then
+          has_issue=true
+          continue
+        fi
+      fi
+
+      counts="$(git -C "$CURRENT_REPO" rev-list --left-right --count \
+        "$branch_name...$upstream" 2>/dev/null || true)"
+      counts="$(safe_trim_spaces "$counts")"
+      ahead=""
+      behind=""
+      extra=""
+      read -r ahead behind extra <<< "$counts"
+
+      if [[ "$ahead" =~ ^[0-9]+$ ]] && [[ "$behind" =~ ^[0-9]+$ ]] && \
+        [[ -z "$extra" ]]; then
+        append_check "Branch: $branch_name" "FIXED" \
+          "Tracking refreshed. Upstream: $upstream (ahead $ahead, behind" \
+          "$behind)"
+      else
+        append_check "Branch: $branch_name" "ISSUE" \
+          "Ahead/behind still unavailable after tracking refresh. Not" \
+          "auto-handled; suggested fix: Verify upstream branch" \
+          "configuration and remote branch existence."
+        has_issue=true
+      fi
+    fi
+  done
+
+  if [[ "$has_issue" == false ]]; then
+    append_check "All Local Branches" "PASS" \
+      "Per-branch tracking checks completed"
+    return 0
+  fi
+
+  return 1
+}
+
+safe_sync_current_branch_from_upstream() {
+  append_section "Safe Remote Synchronization"
+
+  if [[ "$DRY_RUN" == true ]]; then
+    append_check "Current Branch Remote Synchronization" "PASS" \
+      "Skipped in dry-run mode (-d)"
+    return 0
+  fi
+
+  local origin_url=""
+  origin_url="$(git -C "$CURRENT_REPO" remote get-url origin \
+    2>/dev/null || true)"
+  if [[ -z "$origin_url" ]]; then
+    set_remote_exit_code_once "$EXIT_REMOTE_UNCONNECTED"
+    append_check "Current Branch Remote Synchronization" "ISSUE" \
+      "No origin remote configured. Remote connectivity is required;" \
+      "configure a valid origin and verify reachability." \
+      "true"
+    return 1
+  fi
+
+  local reachability_rc=0
+  reachability_rc="$(probe_origin_reachability_with_code \
+    "$CURRENT_REPO" "$REMOTE_TIMEOUT_SECONDS" \
+    "$REMOTE_RETRY_ATTEMPTS" "$REMOTE_RETRY_BASE_DELAY_SECONDS")"
+  if [[ "$reachability_rc" -ne 0 ]]; then
+    set_remote_exit_code_once "$(classify_remote_failure_code \
+      "$reachability_rc")"
+    append_check "Current Branch Remote Synchronization" "ISSUE" \
+      "Origin is not reachable (timeout: ${REMOTE_TIMEOUT_SECONDS}s). Safe" \
+      "remote synchronization skipped." \
+      "true"
+    return 1
+  fi
+
+  local current_branch=""
+  current_branch="$(git -C "$CURRENT_REPO" rev-parse --abbrev-ref HEAD \
+    2>/dev/null || true)"
+  if [[ -z "$current_branch" || "$current_branch" == "HEAD" ]]; then
+    append_check "Current Branch Remote Synchronization" "ISSUE" \
+      "Detached HEAD or unknown current branch. Safe remote synchronization" \
+      "skipped." \
+      "true"
+    return 1
+  fi
+
+  local upstream=""
+  upstream="$(git -C "$CURRENT_REPO" rev-parse --abbrev-ref \
+    --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
+  if [[ -z "$upstream" ]]; then
+    append_check "Current Branch Remote Synchronization" "PASS" \
+      "Current branch '$current_branch' has no remote-tracking branch" \
+      "configured"
+    return 0
+  fi
+
+  local status_output=""
+  local dirty_force_needed=false
+  status_output="$(filtered_status_output "$CURRENT_REPO")"
+  if [[ -n "$status_output" ]]; then
+    local file_count=""
+    file_count="$(printf '%s\n' "$status_output" | wc -l | tr -d ' ')"
+    if [[ "$FORCE_LOCAL_STABILIZATION" == true ]]; then
+      append_check "Current Branch Remote Synchronization" "ISSUE" \
+        "Working directory is not clean ($file_count changed entries)." \
+        "Force mode (-f) will discard local working-tree changes after" \
+        "backup ref creation." \
+        "true"
+      dirty_force_needed=true
+    else
+      append_check "Current Branch Remote Synchronization" "ISSUE" \
+        "Working directory is not clean ($file_count changed entries)." \
+        "Commit/stash changes or re-run with -f to allow forced local" \
+        "stabilization." \
+        "true"
+      return 1
+    fi
+  fi
+
+  local counts=""
+  local ahead=""
+  local behind=""
+  local extra=""
+  counts="$(git -C "$CURRENT_REPO" rev-list --left-right --count \
+    HEAD..."$upstream" 2>/dev/null || true)"
+  counts="$(safe_trim_spaces "$counts")"
+  read -r ahead behind extra <<< "$counts"
+
+  if ! [[ "$ahead" =~ ^[0-9]+$ ]] || ! [[ "$behind" =~ ^[0-9]+$ ]] || \
+    [[ -n "$extra" ]]; then
+    append_check "Current Branch Remote Synchronization" "ISSUE" \
+      "Unable to compute ahead/behind for '$current_branch' vs '$upstream'." \
+      "Safe remote synchronization skipped." \
+      "true"
+    return 1
+  fi
+
+  if [[ "$ahead" -gt 0 ]]; then
+    if [[ "$FORCE_LOCAL_STABILIZATION" == true ]]; then
+      append_check "Current Branch Remote Synchronization" "ISSUE" \
+        "Current branch '$current_branch' is ahead of '$upstream' by $ahead" \
+        "commit(s). Force mode (-f) will discard local-ahead commits after" \
+        "backup ref creation." \
+        "true"
+    else
+      append_check "Current Branch Remote Synchronization" "ISSUE" \
+        "Current branch '$current_branch' is ahead of '$upstream' by $ahead" \
+        "commit(s). Auto-sync skipped to avoid rewriting local commits." \
+        "Re-run with -f to allow forced local stabilization." \
+        "true"
+      return 1
+    fi
+  fi
+
+  if [[ "$behind" -eq 0 && "$ahead" -eq 0 && \
+    "$dirty_force_needed" == false ]]; then
+    append_check "Current Branch Remote Synchronization" "PASS" \
+      "Current branch '$current_branch' is already up to date with '$upstream'"
+    return 0
+  fi
+
+  if [[ "$FORCE_LOCAL_STABILIZATION" == true ]]; then
+    append_check "Current Branch Remote Synchronization" "ISSUE" \
+      "Attempting forced local stabilization for '$current_branch'" \
+      "(backup-first, local-only)." \
+      "true"
+  else
+    append_check "Current Branch Remote Synchronization" "ISSUE" \
+      "Current branch '$current_branch' is behind '$upstream' by $behind" \
+      "commit(s). Attempting guarded fast-forward sync." \
+      "true"
+  fi
+
+  increment_counter REMEDIATIONS_ATTEMPTED
+
+  local current_commit=""
+  current_commit="$(git -C "$CURRENT_REPO" rev-parse HEAD 2>/dev/null || true)"
+  if [[ -z "$current_commit" ]]; then
+    append_check "Current Branch Remote Synchronization" "ISSUE" \
+      "Unable to capture current commit for backup. Sync aborted."
+    increment_counter REMEDIATIONS_FAILED
+    return 1
+  fi
+
+  local backup_ref=""
+  backup_ref="refs/briteTest/backups/fixlocal/${current_branch//\//-}-${RUN_ID}"
+  if ! git -C "$CURRENT_REPO" update-ref "$backup_ref" "$current_commit" \
+    >/dev/null 2>&1; then
+    append_check "Current Branch Remote Synchronization" "ISSUE" \
+      "Unable to create backup ref '$backup_ref'. Sync aborted to preserve" \
+      "safety."
+    increment_counter REMEDIATIONS_FAILED
+    return 1
+  fi
+
+  if [[ "$FORCE_LOCAL_STABILIZATION" == true && \
+    "$dirty_force_needed" == true ]]; then
+    if ! git -C "$CURRENT_REPO" reset --hard HEAD >/dev/null 2>&1; then
+      append_check "Current Branch Remote Synchronization" "ISSUE" \
+        "Force mode failed to reset working tree to HEAD. Restore point:" \
+        "$backup_ref"
+      increment_counter REMEDIATIONS_FAILED
+      return 1
+    fi
+    if ! git -C "$CURRENT_REPO" clean -fd >/dev/null 2>&1; then
+      append_check "Current Branch Remote Synchronization" "ISSUE" \
+        "Force mode failed to clean untracked files. Restore point: $backup_ref"
+      increment_counter REMEDIATIONS_FAILED
+      return 1
+    fi
+  fi
+
+  if [[ "$FORCE_LOCAL_STABILIZATION" == true && "$ahead" -gt 0 ]]; then
+    if git -C "$CURRENT_REPO" reset --hard "$upstream" >/dev/null 2>&1; then
+      counts="$(git -C "$CURRENT_REPO" rev-list --left-right --count \
+        HEAD..."$upstream" 2>/dev/null || true)"
+      counts="$(safe_trim_spaces "$counts")"
+      ahead=""
+      behind=""
+      extra=""
+      read -r ahead behind extra <<< "$counts"
+
+      if [[ "$ahead" =~ ^[0-9]+$ ]] && [[ "$behind" =~ ^[0-9]+$ ]] && \
+        [[ -z "$extra" ]] && [[ "$ahead" -eq 0 ]] && [[ "$behind" -eq 0 ]]; then
+        append_check "Current Branch Remote Synchronization" "FIXED" \
+          "Forced reset to '$upstream' completed for '$current_branch'." \
+          "Backup ref: $backup_ref"
+        increment_counter REMEDIATIONS_VERIFIED
+        return 0
+      fi
+
+      append_check "Current Branch Remote Synchronization" "ISSUE" \
+        "Forced reset executed but verification did not converge to" \
+        "'$upstream'. Restore point: $backup_ref"
+      increment_counter REMEDIATIONS_UNVERIFIED
+      return 1
+    fi
+
+    append_check "Current Branch Remote Synchronization" "ISSUE" \
+      "Forced reset to '$upstream' failed for '$current_branch'. Restore" \
+      "point: $backup_ref"
+    increment_counter REMEDIATIONS_FAILED
+    return 1
+  fi
+
+  if git -C "$CURRENT_REPO" merge --ff-only "$upstream" >/dev/null 2>&1; then
+    counts="$(git -C "$CURRENT_REPO" rev-list --left-right --count \
+      HEAD..."$upstream" 2>/dev/null || true)"
+    counts="$(safe_trim_spaces "$counts")"
+    ahead=""
+    behind=""
+    extra=""
+    read -r ahead behind extra <<< "$counts"
+
+    if [[ "$ahead" =~ ^[0-9]+$ ]] && [[ "$behind" =~ ^[0-9]+$ ]] && \
+      [[ -z "$extra" ]] && [[ "$behind" -eq 0 ]]; then
+      append_check "Current Branch Remote Synchronization" "FIXED" \
+        "Fast-forward sync completed for '$current_branch'. Backup ref:" \
+        "$backup_ref"
+      increment_counter REMEDIATIONS_VERIFIED
+      return 0
+    fi
+
+    append_check "Current Branch Remote Synchronization" "ISSUE" \
+      "Fast-forward merge ran, but verification did not confirm sync." \
+      "Review branch state; backup ref: $backup_ref"
+    increment_counter REMEDIATIONS_UNVERIFIED
+    return 1
+  fi
+
+  append_check "Current Branch Remote Synchronization" "ISSUE" \
+    "Fast-forward merge failed for '$current_branch' from '$upstream'." \
+    "Restore point: $backup_ref"
+  increment_counter REMEDIATIONS_FAILED
+  return 1
+}
+
+check_loose_objects() {
+  append_section "Repository Optimization"
+
+  local loose_count=0
+  if [[ -d "$CURRENT_REPO/.git/objects" ]]; then
+    loose_count="$(find "$CURRENT_REPO/.git/objects" -type f \
+      ! -path '*/pack/*' \
+      2>/dev/null | wc -l | tr -d ' ' || true)"
+  fi
+
+  if ! [[ "$loose_count" =~ ^[0-9]+$ ]]; then
+    append_check "Loose Objects" "ISSUE" \
+      "Loose object count could not be determined. Continued with remaining" \
+      "validations."
+    return 1
+  fi
+
+  if [[ "$loose_count" =~ ^[0-9]+$ ]] && [[ "$loose_count" -gt 100 ]]; then
+    local status_type="ISSUE"
+    if [[ "$DRY_RUN" == true ]]; then
+      status_type="FIXABLE"
+    fi
+    append_check "Loose Objects" "$status_type" \
+      "Found $loose_count loose objects (threshold: 100)." \
+      "true"
+  else
+    append_check "Loose Objects" "PASS" \
+      "Repository has $loose_count loose objects (below threshold)"
+  fi
+}
+
+check_large_objects() {
+  append_section "Object Size Analysis"
+
+  local large_objects=""
+  local large_rc=0
+
+  # Guard against pipeline/tool failures while preserving full-report behavior.
+  set +e
+  large_objects="$(
+    git -C "$CURRENT_REPO" rev-list --objects --all 2>/dev/null | \
+      git -C "$CURRENT_REPO" cat-file \
+      --batch-check='%(objecttype) %(objectsize) %(rest)' \
+      2>/dev/null | \
+      awk '$1=="blob" && $2 > 10485760 {count++} END {print count+0}'
+  )"
+  large_rc=$?
+  set -e
+
+  if [[ "$large_rc" -ne 0 ]] || ! [[ "$large_objects" =~ ^[0-9]+$ ]]; then
+    append_check "Large Objects" "ISSUE" \
+      "Large object analysis could not be completed. Continued with" \
+      "remaining validations."
+    return 1
+  fi
+
+  if [[ "$large_objects" =~ ^[0-9]+$ ]] && [[ "$large_objects" -gt 0 ]]; then
+    append_check "Large Objects (>10MB)" "ISSUE" \
+      "Found $large_objects blobs larger than 10MB. Not auto-handled;" \
+      "suggested fix: Migrate large files to Git LFS and consider history" \
+      "rewrite if needed."
+  else
+    append_check "Large Objects" "PASS" "No blobs larger than 10MB detected"
+  fi
+}
+
+check_working_directory() {
+  append_section "Working Directory Status"
+
+  local current_branch
+  current_branch="$(git -C "$CURRENT_REPO" rev-parse --abbrev-ref HEAD \
+    2>/dev/null || echo 'unknown')"
+
+  local status_output
+  status_output="$(filtered_status_output "$CURRENT_REPO")"
+
+  if [[ -n "$status_output" ]]; then
+    local file_count
+    file_count="$(printf '%s\n' "$status_output" | wc -l | tr -d ' ')"
+    append_check "Uncommitted Changes" "PASS" \
+      "Working directory has $file_count changed tracked/untracked entries"
+  else
+    append_check "Uncommitted Changes" "PASS" "Working directory is clean"
+  fi
+
+  append_check "Current Branch" "PASS" "Currently on branch: $current_branch"
+}
+
+check_repository_structure() {
+  append_section "Repository Structure"
+
+  # Repository-specific: these paths reflect the expected repo layout.
+  local required_items=(
+    ".git"
+    ".gitignore"
+    "README.md"
+    "scripts"
+    "scripts/bin"
+    "scripts/helpers"
+    "reports"
+  )
+
+  local missing_items=0
+  local item
+  for item in "${required_items[@]}"; do
+    if [[ -e "$CURRENT_REPO/$item" ]]; then
+      append_check "Exists: $item" "PASS" ""
+    else
+      append_check "Missing: $item" "ISSUE" \
+        "Required item not found. Not auto-handled; suggested fix: Restore" \
+        "from main branch or a trusted clone."
+      missing_items=$((missing_items + 1))
+    fi
+  done
+
+  if [[ "$missing_items" -gt 0 ]]; then
+    append_check "Repository Structure" "ISSUE" \
+      "Missing $missing_items required items. Not auto-handled; suggested" \
+      "fix: Restore missing files/directories from main branch or a trusted" \
+      "clone."
+  fi
+}
+
+check_repository_layout() {
+  append_section "Repository Structure Checks"
+
+  local target_kind="repository"
+  if [[ "$CURRENT_TARGET_NAME" == "Clone Repository" ]]; then
+    target_kind="clone"
+  fi
+
+  if ! has_required_api_files "$CURRENT_REPO"; then
+    append_check "Repository Structure Checks" "PASS" \
+      "Repository structure checks skipped for this $target_kind because it" \
+      "does not appear to have required API files."
+    return 0
+  fi
+
+  append_check "Repository Structure Checks" "PASS" \
+    "Repository has required API files; running layout checks."
+  check_repository_structure
+}
+
+cleanup_repository() {
+  if [[ "$DRY_RUN" == true ]] || \
+    [[ "$TARGET_FIXABLE_ISSUES_FOUND" -eq 0 ]]; then
+    if [[ "$DRY_RUN" == false ]] && [[ "$TARGET_ISSUES_FOUND" -gt 0 ]]; then
+      append_section "Cleanup Operations"
+      append_check "Safe Cleanup" "PASS" \
+        "No fixable issues detected; cleanup skipped"
+    fi
+    return 0
+  fi
+
+  append_section "Cleanup Operations"
+  log_verbose "Performing safe cleanup for $CURRENT_TARGET_NAME..."
+
+  increment_counter REMEDIATIONS_ATTEMPTED
+  if git -C "$CURRENT_REPO" gc --prune=now >/dev/null 2>&1; then
+    append_check "Garbage Collection" "PASS" \
+      "Ran garbage collection and object pruning"
+
+    verify_cleanup_effects
+  else
+    append_check "Garbage Collection" "ISSUE" \
+      "Garbage collection failed during cleanup. Not auto-handled;" \
+      "suggested fix: If remote is healthy/reachable, replace this local" \
+      "working copy with a fresh clone from remote."
+    increment_counter REMEDIATIONS_FAILED
+  fi
+}
+
+verify_cleanup_effects() {
+  append_section "Post-Cleanup Verification"
+
+  local verification_failed=false
+  local loose_count=0
+  local fsck_output
+
+  fsck_output="$(git -C "$CURRENT_REPO" fsck --full 2>&1 || true)"
+
+  if ! printf '%s\n' "$fsck_output" | \
+    grep -Eq '(^|[[:space:]])(error|fatal):'; then
+    append_check "Object Database" "PASS" \
+      "Repository integrity check passed after cleanup"
+  else
+    append_check "Object Database" "ISSUE" \
+      "Repository integrity check still reports issues after cleanup. Not" \
+      "auto-handled; suggested fix: If remote is healthy/reachable, create" \
+      "a fresh local clone/working copy from remote."
+    verification_failed=true
+  fi
+
+  if [[ -d "$CURRENT_REPO/.git/objects" ]]; then
+    loose_count="$(find "$CURRENT_REPO/.git/objects" -type f \
+      ! -path '*/pack/*' \
+      2>/dev/null | wc -l | tr -d ' ' || true)"
+  fi
+
+  if [[ "$loose_count" =~ ^[0-9]+$ ]] && [[ "$loose_count" -le 100 ]]; then
+    append_check "Loose Objects" "PASS" \
+      "Post-cleanup loose object count is $loose_count (below threshold)"
+  else
+    append_check "Loose Objects" "ISSUE" \
+      "Post-cleanup loose object count remains above threshold or could not" \
+      "be determined. Not auto-handled; suggested fix: If remote is" \
+      "healthy/reachable, create a fresh local clone/working copy from" \
+      "remote."
+    verification_failed=true
+  fi
+
+  local dangling_count
+  dangling_count="$(printf '%s\n' "$fsck_output" | \
+    grep -c '^dangling ' || true)"
+  if [[ "$dangling_count" =~ ^[0-9]+$ ]] && [[ "$dangling_count" -eq 0 ]]; then
+    append_check "Dangling Objects" "FIXED" "All dangling objects pruned"
+  else
+    append_check "Dangling Objects" "PASS" \
+      "$dangling_count dangling objects remain (normal)"
+  fi
+
+  if [[ "$verification_failed" == false ]]; then
+    append_check "Repository Cleanup" "FIXED" \
+      "Safe cleanup completed and post-cleanup verification passed."
+    increment_counter REMEDIATIONS_VERIFIED
+  else
+    append_check "Repository Cleanup" "ISSUE" \
+      "Cleanup completed, but post-cleanup verification still found issues." \
+      "Not auto-handled; suggested fix: Review the verification failures" \
+      "above."
+    increment_counter REMEDIATIONS_UNVERIFIED
+  fi
+}
+
+run_target_checks() {
+  local target_name="$1"
+  local target_path="$2"
+
+  CURRENT_TARGET_NAME="$target_name"
+  CURRENT_REPO="$target_path"
+  TARGET_ISSUES_FOUND=0
+  TARGET_FIXABLE_ISSUES_FOUND=0
+
+  log_verbose "Checking ${CURRENT_TARGET_NAME}: ${CURRENT_REPO}"
+
+  append_target_header "$CURRENT_TARGET_NAME" "$CURRENT_REPO"
+
+  check_git_validity || return 1
+  run_noncritical_check "Object Database Integrity" check_object_database || \
+    true
+  run_noncritical_check "Remote Connectivity" check_remote_connectivity || true
+  run_noncritical_check "Local Branch Tracking" \
+    check_all_local_branch_tracking || true
+  run_noncritical_check "Repository Optimization" check_loose_objects || true
+  run_noncritical_check "Object Size Analysis" check_large_objects || true
+  run_noncritical_check "Working Directory Status" check_working_directory || \
+    true
+  run_noncritical_check "Safe Remote Synchronization" \
+    safe_sync_current_branch_from_upstream || true
+  run_noncritical_check "Repository Structure Checks" \
+    check_repository_layout || true
+  run_noncritical_check "Cleanup Operations" cleanup_repository || true
+
+  return 0
+}
+
+finalize_report() {
+  local issues_remaining
+  issues_remaining=$((ISSUES_FOUND - ISSUES_FIXED))
+  if [[ "$issues_remaining" -lt 0 ]]; then
+    issues_remaining=0
+  fi
+
+  cat >> "$OUTPUT_FILE" << EOF
+
+## Summary
+
+**Issues Detected:** $ISSUES_FOUND  
+**Fixable Issues Detected:** $FIXABLE_ISSUES_FOUND  
+**Auto-Handled Attempts:** $REMEDIATIONS_ATTEMPTED  
+**Remediations Verified:** $REMEDIATIONS_VERIFIED  
+**Remediations Not Verified:** $REMEDIATIONS_UNVERIFIED  
+**Remediations Failed:** $REMEDIATIONS_FAILED  
+**Issues Remaining:** $issues_remaining
+
+EOF
+
+  if [[ "$ISSUES_FOUND" -eq 0 && "$FIXABLE_ISSUES_FOUND" -eq 0 ]]; then
+    cat >> "$OUTPUT_FILE" << 'EOF'
+Status: Repository health checks passed with no issues detected.
+EOF
+  elif [[ "$DRY_RUN" == true ]] && [[ "$ISSUES_FOUND" -eq 0 ]]; then
+    cat >> "$OUTPUT_FILE" << 'EOF'
+Status: Fixable items detected; no automated fixes applied (-d).
+EOF
+  elif [[ "$DRY_RUN" == true ]]; then
+    cat >> "$OUTPUT_FILE" << 'EOF'
+Status: Issues and fixable items detected; no automated fixes applied (-d).
+EOF
+  elif [[ "$issues_remaining" -eq 0 && "$REMEDIATIONS_VERIFIED" -gt 0 ]]; then
+    cat >> "$OUTPUT_FILE" << 'EOF'
+Status: All detected issues were resolved by verified remediations.
+EOF
+  elif [[ "$REMEDIATIONS_VERIFIED" -gt 0 ]]; then
+    cat >> "$OUTPUT_FILE" << 'EOF'
+Status: Some automated remediations were verified; unresolved issues may remain.
+EOF
+  elif [[ "$REMEDIATIONS_ATTEMPTED" -gt 0 ]]; then
+    cat >> "$OUTPUT_FILE" << 'EOF'
+Status: Remediation attempts were made, but none were fully verified.
+EOF
+  else
+    cat >> "$OUTPUT_FILE" << 'EOF'
+Status: Issues detected; no automated fixes were recorded.
+EOF
+  fi
+
+  # Dynamic recommendations based on what was found
+  local recs=""
+  if [[ "$ISSUES_FOUND" -gt 0 ]]; then
+    recs+="- Review ISSUE items in this report.\n"
+  fi
+  if [[ "$FIXABLE_ISSUES_FOUND" -gt 0 && "$DRY_RUN" == true ]]; then
+    recs+="- Re-run fixlocal without -d to apply safe cleanup.\n"
+  fi
+  if grep -q '\[ISSUE\] \*\*Origin Reachability\*\*' "$OUTPUT_FILE" \
+    2>/dev/null; then
+    recs+="- If remote appears unreachable, verify network/auth and remote"
+    recs+="URL.\n"
+  fi
+  if grep -q '\[PASS\] \*\*Origin Reachability\*\*' "$OUTPUT_FILE" \
+    2>/dev/null; then
+    recs+="- If issues persist in this local working copy and remote is"
+    recs+="healthy/reachable, create a new local clone/working copy from"
+    recs+="remote and migrate uncommitted work manually as needed.\n"
+  fi
+  if [[ "$REMEDIATIONS_FAILED" -gt 0 ]] || [[ "$CRITICAL_ERROR" == true ]]; then
+    recs+="- Re-run fixlocal after resolving listed blockers; if the local"
+    recs+="copy remains unstable while remote is healthy/reachable, replace"
+    recs+="this local copy with a fresh clone.\n"
+  fi
+
+  if [[ -n "$recs" ]]; then
+    printf '\n### Recommendations\n\n' >> "$OUTPUT_FILE"
+    printf '%b' "$recs" >> "$OUTPUT_FILE"
+  fi
+
+  cat >> "$OUTPUT_FILE" << 'EOF'
+
+### Handling Notes
+
+- "Auto-Handled Attempts" counts safe remediation actions attempted.
+- "Remediations Verified" means remediation succeeded and verification passed.
+- "Remediations Not Verified" means remediation ran but verification did not
+  pass.
+- "Remediations Failed" means remediation command did not complete successfully.
+- "Issues Remaining" reflects unresolved issues after verified remediations.
+- "Remaining" means manual follow-up is still recommended.
+
+Report Generated: This report was generated for local diagnostics.
+EOF
+}
+
+cleanup_old_reports() {
+  local old_report
+  local current_basename
+  local non_dry_report
+  local dry_report_re='^repository-d-[0-9]{8}-[0-9]{6}-[0-9]+\.md$'
+  local full_report_re='^repository-[0-9]{8}-[0-9]{6}-[0-9]+\.md$'
+  local deleted_any=false
+  local mtime=0
+  local cutoff=0
+
+  # shellcheck disable=SC2178  # Nameref points to array by contract.
+  local -a dry_run_reports=()
+  # shellcheck disable=SC2178  # Nameref points to array by contract.
+  local -a non_dry_reports=()
+
+  # shellcheck disable=SC2034  # Consumed indirectly by shared report helper.
+  REPOSITORY_REPORT_DELETIONS=()
+
+  [[ -f "$OUTPUT_FILE" ]] || return 0
+  [[ -d "$REPOSITORY_REPORTS_DIR" ]] || return 0
+
+  current_basename="$(basename "$OUTPUT_FILE")"
+
+  # Collect candidate report files with robust null-delimited traversal.
+  while IFS= read -r -d '' old_report; do
+    non_dry_report="$(basename "$old_report")"
+    if [[ "$non_dry_report" =~ $dry_report_re ]]; then
+      dry_run_reports+=("$old_report")
+    elif [[ "$non_dry_report" =~ $full_report_re ]]; then
+      non_dry_reports+=("$old_report")
+    fi
+  done < <(find "$REPOSITORY_REPORTS_DIR" -maxdepth 1 -type f \
+    -name 'repository-*.md' -print0 2>/dev/null)
+
+  # Policy 1: whenever a new report is written, delete all older dry-run
+  # reports.
+  for old_report in "${dry_run_reports[@]}"; do
+    [[ -f "$old_report" ]] || continue
+    [[ "$(basename "$old_report")" == "$current_basename" ]] && continue
+    bt_report_remove_and_record \
+      "$REPO_ROOT" REPOSITORY_REPORT_DELETIONS "$old_report" \
+      "dry-run repository report"
+    deleted_any=true
+  done
+
+  # Policy 2: when writing a non-dry-run report, delete non-dry-run reports
+  # older than 30 days. Deletion failures are non-fatal and reported by helper.
+  if [[ "$DRY_RUN" == false ]]; then
+    cutoff=$(( $(date +%s) - (30 * 24 * 60 * 60) ))
+    for old_report in "${non_dry_reports[@]}"; do
+      [[ -f "$old_report" ]] || continue
+      [[ "$(basename "$old_report")" == "$current_basename" ]] && continue
+
+      mtime=$(stat -c '%Y' "$old_report" 2>/dev/null || echo 0)
+      if [[ "$mtime" =~ ^[0-9]+$ ]] && [[ "$mtime" -lt "$cutoff" ]]; then
+        bt_report_remove_and_record \
+          "$REPO_ROOT" REPOSITORY_REPORT_DELETIONS "$old_report" \
+          "repository report"
+        deleted_any=true
+      fi
+    done
+  fi
+
+  if [[ "$deleted_any" == true ]]; then
+    append_section "Report Retention Cleanup"
+    if [[ "${#REPOSITORY_REPORT_DELETIONS[@]}" -gt 0 ]]; then
+      append_check "Report Deletions" "PASS" \
+        "Removed ${#REPOSITORY_REPORT_DELETIONS[@]} stale report(s) per" \
+        "retention policy."
+    else
+      append_check "Report Deletions" "PASS" \
+        "Deletion attempts completed; one or more stale reports could not" \
+        "be removed (see warnings)."
+    fi
+  fi
+}
+
+
+
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -v)
+      VERBOSE=true
+      shift
+      ;;
+    -d)
+      DRY_RUN=true
+      shift
+      ;;
+    -f)
+      FORCE_LOCAL_STABILIZATION=true
+      shift
+      ;;
+    -t)
+      [[ $# -ge 2 ]] || usage_error "Missing value for $1"
+      REMOTE_TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
+    -*)
+      usage_error "Unknown option: $1"
+      ;;
+    *)
+      POSITIONAL+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [[ "${#POSITIONAL[@]}" -gt 0 ]]; then
+  usage_error "Unexpected argument(s): ${POSITIONAL[*]}"
+fi
+
+if ! is_valid_timeout_seconds "$REMOTE_TIMEOUT_SECONDS"; then
+  usage_error "Invalid -t value: $REMOTE_TIMEOUT_SECONDS (expected integer > 0)"
+fi
+
+if [[ ! -d "$REPO_ROOT/reports" ]]; then
+  bt_error_exit "$EXIT_MISSING_DEPENDENCIES" \
+    "Reports directory not found: $REPO_ROOT/reports"
+fi
+
+require_contributor_role
+
+if ! mkdir -p "$REPOSITORY_REPORTS_DIR"; then
+  bt_error_exit "$EXIT_MISSING_DEPENDENCIES" \
+    "Unable to create reports directory: $REPOSITORY_REPORTS_DIR"
+fi
+
+if [[ "$DRY_RUN" == true ]]; then
+  OUTPUT_FILE="$REPOSITORY_REPORTS_DIR/repository-d-${RUN_ID}.md"
+else
+  OUTPUT_FILE="$REPOSITORY_REPORTS_DIR/repository-${RUN_ID}.md"
+fi
+
+add_target_repo "This Repository" "$REPO_ROOT"
+
+init_report
+
+index=0
+for target_path in "${TARGET_PATHS[@]}"; do
+  run_target_checks "${TARGET_NAMES[$index]}" "$target_path" || true
+  index=$((index + 1))
+done
+
+finalize_report
+cleanup_old_reports
+
+ISSUES_REMAINING=$((ISSUES_FOUND - REMEDIATIONS_VERIFIED))
+if [[ "$ISSUES_REMAINING" -lt 0 ]]; then
+  ISSUES_REMAINING=0
+fi
+
+echo "Issues: $ISSUES_FOUND found  $ISSUES_FIXED fixed  $ISSUES_REMAINING" \
+     "remaining.  Fixable: $FIXABLE_ISSUES_FOUND."
+echo "See ${OUTPUT_FILE#"${REPO_ROOT}"/} for details."
+
+if [[ "$VERBOSE" == true ]]; then
+  echo ""
+  echo "Report contents:"
+  sed 's/^/  /' "$OUTPUT_FILE"
+fi
+
+if [[ "$CRITICAL_ERROR" == true ]]; then
+  exit "$EXIT_MISSING_DEPENDENCIES"
+fi
+
+if [[ "$REMOTE_EXIT_CODE" -gt 0 ]]; then
+  exit "$REMOTE_EXIT_CODE"
+fi
+
+if [[ "$ISSUES_REMAINING" -gt 0 ]]; then
+  exit "$EXIT_ISSUES_DETECTED"
+fi
+
+if [[ "$DRY_RUN" == true ]] && [[ "$FIXABLE_ISSUES_FOUND" -gt 0 ]]; then
+  exit "$EXIT_FIXABLE_ONLY"
+fi
+
+exit 0

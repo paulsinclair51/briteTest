@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# undo - Undo last merge, release, or commit.
+# undo - uncommitted changes, commit, push, copyfix, pull, mrgdown,
+#        mrgup, or release.
 #
 # See usage below for details, or run: undo -h
 #
@@ -11,66 +12,137 @@
 usage() {
   cat <<'EOF'
 Usage:
-  undo [TYPE] [OPTIONS]
+  undo [OPTIONS] [TYPE]
   undo {-h | --help}
 
-Undo recent operations: merge, release, or commit.
+Undo recent operations: uncommitted changes, commit, or mrgdown.
 
-Supported operations:
-  merge     - Undo the last merge (revert merge commit)
-  release   - Undo the last release (delete tag and GitHub release)
-  commit    - Undo the last commit (soft reset, keeping changes)
+Prerequisites:
+  - If the current branch is a targeted or contributor branch, the
+    user must be a contributor, reviewer, or approver (listed in
+    <repo>/config/contributors.md).
+  - If the current branch is main or a version branch, the user
+    must be an approver (listed in <repo>/config/contributors.md
+    with approver role) or the repository owner.
+  - If the current branch has an invalid name, TYPE must be uncommitted.
+    This allows undoing uncommitted changes on any branch, even if the
+    name is invalid, so that accidental uncommitted changes to a
+    read-only branch can still be undone and the user can then change to
+    another branch. Use rmbranch to delete invalid branches if needed.
+  - For undo uncommitted, the current branch may be local or remote.
+  - For undo commit, pull, or mrgdown, the current branch must be local and
+    must have no untracked or uncommitted changes (undo uncommitted first and
+    rerun undo commit, pull, or mrgdown).
+  - For undo push, the current branch must be the remote branch that was
+    the target of the push and must have no untracked or uncommitted changes
+    (undo uncommitted first and rerun undo push).
+  - For undo copyfix, the current branch must be local, must be the branch
+    to which the copyfix was the target and must have no untracked or
+    uncommitted changes (undo uncommitted first and rerun undo copyfix).
+  - For undo mrgup, the current branch must be local, must be the parent
+    branch of the merge up and must have no untracked or uncommitted
+    changes (undo uncommitted first and rerun undo mrgup).
+  - For undo release, the current branch must be the branch
+    from which the release was made and must have no accidental untracked or
+    uncommitted changes (undo uncommitted first and rerun undo release).
 
-Features:
-  - Safely undoes last operation
-  - Requires confirmation (unless --force)
-  - Shows what will be undone before execution
-  - For merges: creates revert commit
-  - For releases: deletes local and remote tags, GitHub release
-  - For commits: soft reset (changes preserved in staging)
-  - Updates logs/remote_branch_history.md with undo record
+Argument:
+  TYPE          The type of operation to undo:
+                  uncommitted  Undo uncommitted changes (revert working tree).
+                               This is the default if no TYPE is specified.
+                  commit       Soft reset to previous commit (staging area
+                  preserved).
+                  pull         Undo last pull (revert working tree and reset to
+                               previous commit).
+                  push         Undo last push (revert working tree and reset to
+                               previous commit).
+                  copyfix      Undo last copyfix (revert working tree and reset
+                  to
+                               previous commit).
+                  mrgdown      Undo last merge down.
+                  mrgup        Undo last merge up.
+                  release      Undo last release (delete local and remote tag,
+                               and delete GitHub release if it exists).
 
 Options:
-  -h, --help           Output this help to stdout and exit (other options
-                       and arguments are ignored).
-  -f, --force          Skip confirmation prompt
-  -v, --verbose        Show detailed information
-  -m, --message MSG    Custom message for undo operation
-  -- TEXT              Unix-style message (everything after -- is message)
+  -c TOKEN      undo comment from TOKEN.
+  -- TOKEN...   undo comment from one or more tokens.
+  -d            Dry-run. Validates preconditions and reports what
+                would be undone, but does not perform the undo.
+  -h            Output this help to stdout and exit (other options
+                and arguments are ignored).
+  --help        Output this help to stdout and exit (other options
+                and arguments are ignored).
+  -t SEC        Remote operation timeout in seconds (default: 10)
+                for connecting to the remote if the current branch
+                is a remote branch. SEC must be an integer greater
+                than 0.
+  -v            Output detailed and progress information to stdout.
 
-Undo Types:
-  merge     Revert the last merge commit (creates new revert commit)
-  release   Delete last release tag and GitHub release
-  commit    Soft reset to previous commit (staging area preserved)
+  For undo comment options '-c TOKEN' and '-- TOKEN...':
+    - These options are mutually exclusive.
+    - Comment text is optional and is used to annotate the undo action.
+    - For '-- TOKEN...', '--' must be a separate token.
+    - Comment text is built by joining tokens with a single space.
+    - For a quoted token, whitespace in the token is preserved and the
+      quotes are removed.
+    - The resulting undo comment from TOKEN or TOKEN... must include at
+      least one non-whitespace character.
 
 Examples:
-  # Undo last merge (with confirmation)
-  undo merge
+  # Undo uncommitted changes (revert working tree).
+  undo
 
-  # Undo last release (force mode)
-  undo release -f
+  # Undo last merge down.
+  undo mrgdown
 
-  # Undo last commit with custom message
-  undo commit -m "Undo incorrect change"
+   # Undo last commit with a comment.
+  undo commit -c "Undo incorrect change."
 
-  # Undo merge with verbose output
-  undo merge -v
-
+  # Undo merge down with verbose output.
+  undo mrgdown -v
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - May generate files, reports, or other artifacts in the documented
-    output locations.
+  - Writes an undo report if successful to:
+       '<repo>/reports/branch/undo-<TYPE>-YYYYMMDD-HHMMSS-<pid>.md'
+    The report is written locally based on the TYPE being undone:
+      - For undo uncommitted, commit, pull, copyfix,and mrgdown, the undo report
+      is
+        written to the current branch.
+      - For undo push, the undo report is written to the remote branch for
+        the current branch.
+      - For undo mrgup, the undo report is written locally to the parent
+        branch of the current branch. Also, an undo push report is written to
+        the
+        parent's remote branch if one exists.
+      - For undo release, the undo report is written to the remote branch
+        for the current branch.
+  - Writes an error report if unsuccessful (and -d not specified) to the
+    current branch locally to:
+       '<repo>/reports/branch/undo-<TYPE>-e-YYYYMMDD-HHMMSS-<pid>.md'
+  - Writes a dry-run report if -d is specified locally to:
+       '<repo>/reports/branch/undo-<TYPE>-d-YYYYMMDD-HHMMSS-<pid>.md'
+  - Deletes older dry-run (-d) and error reports for the current
+    branch if a new report is written or there is nothing to undo.
 
 Exit codes:
-  0   Success
-  1   Argument or validation error
-  2   Git operation failed
-  3   Operation cancelled by user
-  4   GitHub API error (release undo)
-  5   No merge/release/commit to undo
-  6   Configuration error
+  0    Success ().
+  1    Argument or validation error.
+  2    User not authorized to perform undo operation.
+  3    No uncommitted changes to undo.
+  4    No commit to undo.
+  5    No pull to undo.
+  6    No push to undo.
+  7    No copyfix to undo.
+  8    No mrgdown to undo.
+  9    No mrgup to undo.
+  10   No release to undo.
+  11   Configuration error.
+  200  Git operation failed (e.g., revert, reset, or push)
+  201  GitHub API error (release undo)
+  202  Unable to write undo report.
 EOF
 }
 
@@ -79,6 +151,8 @@ EOF
 #   actions.
 # - Applies safe undo procedures with branch-state validation.
 # - Reports what was reverted and any manual cleanup required.
+
+# shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
 
 set -euo pipefail
 
@@ -92,13 +166,20 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
-# shellcheck source=helpers/validation-helpers.sh
-source "$SCRIPT_DIR/../helpers/validation-helpers.sh"
+# shellcheck source=helpers/validation_helpers.sh
+source "$SCRIPT_DIR/../helpers/validation_helpers.sh"
 
 readonly EXIT_INVALID_ARGUMENT=1
-readonly EXIT_NOT_FOUND=2
-readonly EXIT_OPERATION_FAILED=3
-readonly EXIT_INTERNAL_ERROR=100
+readonly EXIT_NO_UNCOMMITTED=3
+readonly EXIT_NO_COMMIT=4
+readonly EXIT_NO_PULL=5
+readonly EXIT_NO_PUSH=6
+readonly EXIT_NO_COPYFIX=7
+readonly EXIT_NO_MRGDOWN=8
+readonly EXIT_NO_MRGUP=9
+readonly EXIT_NO_RELEASE=10
+readonly EXIT_CONFIG_ERROR=11
+readonly EXIT_GIT_OPERATION_FAILED=200
 
 usage_error() {
   local message="$1"
@@ -111,13 +192,13 @@ usage_error() {
 # Default options
 UNDO_TYPE=""
 VERBOSE=false
-FORCE=false
 COMMENT=""
-
+DRY_RUN=false
+REMOTE_TIMEOUT_SECONDS=10
 
 get_current_user() {
   git config user.name 2>/dev/null || \
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current user"
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to determine current user"
 }
 
 log_undo_to_history() {
@@ -160,10 +241,6 @@ confirm_undo() {
   local operation="$1"
   local details="$2"
 
-  if [[ "$FORCE" == true ]]; then
-    return 0
-  fi
-
   echo "WARN: This will undo the following operation:"
   echo "  Type: $operation"
   echo "  Details: $details"
@@ -178,9 +255,16 @@ confirm_undo() {
 }
 
 undo_merge() {
+  local op_type="${1:-mrgdown}"
+  local not_found_code="$EXIT_NO_MRGDOWN"
+
+  if [[ "$op_type" == "mrgup" ]]; then
+    not_found_code="$EXIT_NO_MRGUP"
+  fi
+
   local current_branch
   current_branch=$(bt_get_current_branch || \
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to determine current branch")
 
   bt_info "Checking for merge commits..."
 
@@ -189,7 +273,7 @@ undo_merge() {
   last_merge=$(git log --oneline --grep="^Merge" -1 2>/dev/null | head -1)
 
   if [[ -z "$last_merge" ]]; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "No merge commit found to undo"
+    bt_error_exit "$not_found_code" "No ${op_type} operation found to undo"
   fi
 
   bt_info "Found merge commit: $last_merge"
@@ -198,20 +282,30 @@ undo_merge() {
   local commit_hash="${last_merge%% *}"
   local commit_msg="${last_merge#* }"
 
-  if ! confirm_undo "merge" "$commit_msg"; then
-    bt_error_exit "$EXIT_OPERATION_FAILED" "Undo cancelled"
+  if [[ "$DRY_RUN" == true ]]; then
+    bt_info "Dry-run: would revert merge commit $commit_hash"
+    return 0
+  fi
+
+  if ! confirm_undo "$op_type" "$commit_msg"; then
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
   fi
 
   # Revert the merge commit
   bt_info "Reverting merge commit..."
   if ! git revert -m 1 "$commit_hash" --no-edit 2>&1; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to revert merge commit"
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to revert merge commit"
   fi
 
   bt_success "Merge reverted"
 
   # Log undo
-  log_undo_to_history "merge" "Reverted $commit_hash ($commit_msg)"
+  if [[ -n "$COMMENT" ]]; then
+    log_undo_to_history "$op_type" \
+      "Reverted $commit_hash ($commit_msg). $COMMENT"
+  else
+    log_undo_to_history "$op_type" "Reverted $commit_hash ($commit_msg)"
+  fi
 
   if [[ "$VERBOSE" == true ]]; then
     bt_info "Revert details:"
@@ -229,24 +323,31 @@ undo_release() {
   last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
   if [[ -z "$last_tag" ]]; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "No release tag found to undo"
+    bt_error_exit "$EXIT_NO_RELEASE" "No release tag found to undo"
   fi
 
   bt_info "Found release tag: $last_tag"
 
+  if [[ "$DRY_RUN" == true ]]; then
+    bt_info "Dry-run: would delete release tag $last_tag locally/remotely" \
+            "and remove GitHub release"
+    return 0
+  fi
+
   if ! confirm_undo "release" "Tag: $last_tag"; then
-    bt_error_exit "$EXIT_OPERATION_FAILED" "Undo cancelled"
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
   fi
 
   # Delete local tag
   bt_info "Deleting local tag..."
   if ! git tag -d "$last_tag" 2>&1; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to delete local tag"
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to delete local tag"
   fi
 
   # Delete remote tag
   bt_info "Deleting remote tag..."
-  if ! GIT_BYPASS_HOOKS=true git push origin --delete "$last_tag" 2>&1; then
+  if ! bt_run_remote_command env GIT_BYPASS_HOOKS=true \
+    git push origin --delete "$last_tag" 2>&1; then
     bt_warn "Failed to delete remote tag (may need manual cleanup)"
   fi
 
@@ -254,14 +355,18 @@ undo_release() {
 
   # Delete GitHub release if it exists
   bt_info "Deleting GitHub release..."
-  if gh release delete "$last_tag" --confirm 2>&1; then
+  if bt_run_remote_command gh release delete "$last_tag" --confirm 2>&1; then
     bt_success "GitHub release deleted"
   else
     bt_warn "Failed to delete GitHub release (may need manual cleanup)"
   fi
 
   # Log undo
-  log_undo_to_history "release" "Deleted release $last_tag"
+  if [[ -n "$COMMENT" ]]; then
+    log_undo_to_history "release" "Deleted release $last_tag. $COMMENT"
+  else
+    log_undo_to_history "release" "Deleted release $last_tag"
+  fi
 
   bt_success "Release undo complete"
 }
@@ -269,7 +374,7 @@ undo_release() {
 undo_commit() {
   local current_branch
   current_branch=$(bt_get_current_branch || \
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to determine current branch")
 
   bt_info "Checking for recent commits..."
 
@@ -278,29 +383,100 @@ undo_commit() {
   last_commit=$(git log --oneline -1 2>/dev/null | head -1)
 
   if [[ -z "$last_commit" ]]; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "No commit to undo"
+    bt_error_exit "$EXIT_NO_COMMIT" "No commit to undo"
   fi
 
   bt_info "Found commit: $last_commit"
 
+  if [[ "$DRY_RUN" == true ]]; then
+    bt_info "Dry-run: would soft reset HEAD~1 from $last_commit"
+    return 0
+  fi
+
   if ! confirm_undo "commit" "$last_commit"; then
-    bt_error_exit "$EXIT_OPERATION_FAILED" "Undo cancelled"
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
   fi
 
   # Soft reset to previous commit (preserves changes in staging)
   bt_info "Soft resetting to previous commit..."
   if ! git reset --soft HEAD~1 2>&1; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to reset commit"
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to reset commit"
   fi
 
   bt_success "Commit undone (changes preserved in staging area)"
 
   # Log undo
-  log_undo_to_history "commit" "Soft reset from $last_commit"
+  if [[ -n "$COMMENT" ]]; then
+    log_undo_to_history "commit" "Soft reset from $last_commit. $COMMENT"
+  else
+    log_undo_to_history "commit" "Soft reset from $last_commit"
+  fi
 
   if [[ "$VERBOSE" == true ]]; then
     bt_info "Status after undo:"
     git status --short | sed 's/^/  /'
+  fi
+}
+
+undo_uncommitted() {
+  local current_branch
+  current_branch=$(bt_get_current_branch || \
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to determine current branch")
+
+  if ! bt_is_worktree_dirty; then
+    bt_error_exit "$EXIT_NO_UNCOMMITTED" "No uncommitted changes to undo"
+  fi
+
+  if [[ "$DRY_RUN" == true ]]; then
+    bt_info "Dry-run: would discard uncommitted tracked changes and remove" \
+            "untracked files"
+    return 0
+  fi
+
+  if ! confirm_undo "uncommitted" \
+    "Discard tracked and untracked working tree changes"; then
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
+  fi
+
+  if ! git reset --hard HEAD >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to reset tracked changes"
+  fi
+  if ! git clean -fd >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+      "Failed to remove untracked files"
+  fi
+
+  bt_success "Uncommitted changes undone"
+}
+
+undo_reset_hard_head() {
+  local op_type="$1"
+  local not_found_code="$2"
+
+  local last_commit
+  last_commit=$(git log --oneline -1 2>/dev/null | head -1)
+  if [[ -z "$last_commit" ]]; then
+    bt_error_exit "$not_found_code" "No ${op_type} operation found to undo"
+  fi
+
+  if [[ "$DRY_RUN" == true ]]; then
+    bt_info "Dry-run: would hard reset HEAD~1 to undo $op_type"
+    return 0
+  fi
+
+  if ! confirm_undo "$op_type" "$last_commit"; then
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
+  fi
+
+  if ! git reset --hard HEAD~1 >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to reset for $op_type"
+  fi
+
+  bt_success "$op_type undone"
+  if [[ -n "$COMMENT" ]]; then
+    log_undo_to_history "$op_type" "Hard reset from $last_commit. $COMMENT"
+  else
+    log_undo_to_history "$op_type" "Hard reset from $last_commit"
   fi
 }
 
@@ -311,29 +487,36 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    -f | --force)
-      FORCE=true
+    -d)
+      DRY_RUN=true
       shift
       ;;
-    -v | --verbose)
+    -c)
+      if [[ $# -lt 2 ]]; then
+        usage_error "Option -c requires a comment argument"
+      fi
+      if [[ -n "$COMMENT" ]]; then
+        usage_error "Cannot use both -c/-m and -- for comment"
+      fi
+      COMMENT="$2"
+      shift 2
+      ;;
+    -v)
       VERBOSE=true
       shift
       ;;
-    -m | --message)
-      if [[ $# -lt 2 ]]; then
-        usage_error "Option -m requires a message argument"
-      fi
-      if [[ -n "$COMMENT" ]]; then
-        usage_error "Cannot use both -m and -- for message"
-      fi
-      COMMENT="$2"
+    -t)
+      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC"
+      bt_is_valid_remote_timeout "$2" || \
+        usage_error "SEC for -t must be an integer greater than 0"
+      REMOTE_TIMEOUT_SECONDS="$2"
       shift 2
       ;;
     --)
       # Unix-style message: everything after -- is the message
       shift
       if [[ -n "$COMMENT" ]]; then
-        usage_error "Cannot use both -m and -- for message"
+        usage_error "Cannot use both -c and -- for comment"
       fi
       COMMENT="$*"
       break
@@ -352,21 +535,25 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
+
 # Validate undo type provided
 if [[ -z "$UNDO_TYPE" ]]; then
-  usage_error "UNDO_TYPE argument required (merge, release, or commit)"
+  UNDO_TYPE="uncommitted"
 fi
 
 # Validate current branch conforms to naming conventions
 current_branch=$(bt_get_current_branch || echo "main")
 [[ "$current_branch" == "HEAD" ]] && current_branch="main"
-if ! validate_branch_name "$current_branch" "current branch"; then
+if [[ "$UNDO_TYPE" != "uncommitted" ]] && \
+  ! validate_branch_name "$current_branch" "current branch"; then
   usage_error "Current branch does not conform to naming conventions"
 fi
 
 # Propagate repository history from remote if available
-bt_propagate_repository_history
-case $? in
+history_status=0
+bt_propagate_repository_history || history_status=$?
+case "$history_status" in
   0) ;;
   1) bt_info "Updated repository history from remote" ;;
   *) ;;
@@ -374,8 +561,23 @@ esac
 
 # Dispatch to appropriate undo function
 case "$UNDO_TYPE" in
-  merge)
-    undo_merge
+  uncommitted)
+    undo_uncommitted
+    ;;
+  mrgdown)
+    undo_merge "mrgdown"
+    ;;
+  mrgup)
+    undo_merge "mrgup"
+    ;;
+  pull)
+    undo_reset_hard_head "pull" "$EXIT_NO_PULL"
+    ;;
+  push)
+    undo_reset_hard_head "push" "$EXIT_NO_PUSH"
+    ;;
+  copyfix)
+    undo_reset_hard_head "copyfix" "$EXIT_NO_COPYFIX"
     ;;
   release)
     undo_release
@@ -385,7 +587,8 @@ case "$UNDO_TYPE" in
     ;;
   *)
     usage_error "Unknown undo type: $UNDO_TYPE" \
-      "(valid: merge, release, commit)"
+      "(valid: uncommitted, commit, pull, push, copyfix, mrgdown, mrgup," \
+      "release)"
     ;;
 esac
 

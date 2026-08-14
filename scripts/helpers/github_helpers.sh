@@ -15,6 +15,45 @@ bt_gh_find_pr_number_for_branch() {
   local branch="$1"
   local state="${2:-all}"
 
-  gh pr list --head "$branch" --state "$state" --json number \
+  bt_run_remote_command gh pr list --head "$branch" --state "$state" --json number \
     --jq '.[0].number' 2>/dev/null || echo ""
+}
+
+bt_gh_run_or_exit() {
+  local timeout_exit_code="$1"
+  local api_exit_code="$2"
+  local message="$3"
+  shift 3
+
+  local rc=0
+  bt_run_remote_command "$@" >/dev/null 2>&1 || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    return 0
+  fi
+
+  if [[ "$rc" -eq 124 ]]; then
+    bt_error_exit "$timeout_exit_code" "$message (timed out or remote unreachable)"
+  fi
+
+  bt_error_exit "$api_exit_code" "$message"
+}
+
+bt_gh_capture_or_exit() {
+  local __result_var="$1"
+  local timeout_exit_code="$2"
+  local api_exit_code="$3"
+  local message="$4"
+  shift 4
+
+  local output
+  local rc=0
+  output="$(bt_run_remote_command "$@" 2>/dev/null)" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    if [[ "$rc" -eq 124 ]]; then
+      bt_error_exit "$timeout_exit_code" "$message (timed out or remote unreachable)"
+    fi
+    bt_error_exit "$api_exit_code" "$message"
+  fi
+
+  printf -v "$__result_var" '%s' "$output"
 }

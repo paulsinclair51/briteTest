@@ -8,17 +8,16 @@ For license details, see `<repo>/LICENSE`.
 
 See `<repo>/README.md` for an introduction to briteTest.
 
-Files are removed:
-
-- At run start.
-
-- At normal run completion unless retained with `-t` for debugging.
-- Manually by a user.
-
 ## Files
 
-- **README.md**: This directory guide.
+**\<temp\>**: Temporary files. Files are removed:
+- At run start.
+- At normal run completion unless retained by specifying `-t` option
+  for debugging.
+- Manually by a user.
+
+**README.md**: This directory guide.
 
 ## Subdirectories
 
-- None.
+None.

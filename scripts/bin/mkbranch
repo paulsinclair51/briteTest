@@ -53,17 +53,22 @@
 # - Block deletions
 #
 # This script mirrors the branch-naming policy used by
-# <repo>/.github/workflows/branch-validation-*.yml.
+# <repo>/.github/workflows/validate-*.yml.
 #
 # For more information, see '<repo>/docs/md/Contributor_Guide.md'.
 
 usage() {
   cat <<'EOF'
 Usage:
-  mkbranch [OPTIONS] <newbranch> [<parentbranch>] [-- MSG]
+  mkbranch [OPTIONS] <newbranch> [<parentbranch>] [-- TOKEN...]
   mkbranch {-h | --help}
 
 Create a new branch from a parent branch.
+
+Policy:
+  - Remote branches are read-only for editing in this workflow.
+  - To make changes, use a local branch.
+  - A local branch may exist without a corresponding remote branch.
 
 Arguments:
   <newbranch>        Name of the new branch to create.
@@ -113,8 +118,8 @@ Arguments:
 
      The user must be a contributor (see <repo>/docs/md/Contributor_Guide.md).
 
-     By default, the new branch is created locally. Specify -r to push to
-     remote.
+    By default, the new branch is created locally (no remote required).
+    Specify -r to publish the local branch to remote.
 
   3. If the <newbranch> is a 'contributor' branch, i.e., the name has the
      form:
@@ -132,8 +137,8 @@ Arguments:
 
      The user must be a contributor (see <repo>/docs/md/Contributor_Guide.md).
 
-     By default, the new branch is created locally. Specify -r to push to
-     remote.
+    By default, the new branch is created locally (no remote required).
+    Specify -r to publish the local branch to remote.
 
   4. If <newbranch> is none of the above, creating the branch fails.
 
@@ -159,40 +164,38 @@ Options:
   -h, --help        Output this help to stdout and exit (other options
                     and arguments are ignored).
   -l                Create local branch only.
-  -m "MSG"          Attach a commit message/comment to the operation
-                    Usage: mkbranch dev/feature-a-v2.0.0 v2.0.0 -m \
+  -c TOKEN          Commit comment from TOKEN.
+                    Usage: mkbranch dev/feature-a-v2.0.0 v2.0.0 -c \
                       "Implement new feature a."
-  --message "MSG"   Attach a commit message to the operation
-                    Usage: mkbranch fix/memory-leak-v1.0.0 v1.0.0 \
-                      --message "Fix critical memory leak."
+  -- TOKEN...       Commit comment from one or more tokens.
+                    Usage: mkbranch dev/feature-a-v2.0.0 v2.0.0 -- \
+                      Implement new feature a.
   -r                Push to remote (default if the new branch is a
                     'version' branch).
+  -t SEC            Remote operation timeout in seconds (default: 10).
+                    SEC must be an integer greater than 0.
   -v                Verbose output.
-  -- MSG            Attach commit message (everything after
-                    -- is the comment)
-                    Usage: mkbranch fix/login-bug-v1.0.0 v1.0.0 --
-                      Fix critical memory leak
-                    Note: No quotes needed, captures all remaining
-                      arguments.
 
-  For commit message options '-m TOKEN', '--message TOKEN', and '-- TOKEN...':
+  For commit comment options '-c TOKEN' and '-- TOKEN...':
     - These are mutually exclusive.
     - One is required if one or more commits are to be made.
     - Ignored if no changes need to be committed.
     - Not required if only pushing existing local commits to remote.
-    - In dry-run mode (-d), message requirements are still validated when a
+    - In dry-run mode (-d), comment requirements are still validated when a
       commit would be created.
-    - For '-- TOKEN...', '--' must be a separate token, followed by at least
-      one or more tokens. Leading/trailing whitespace is not preserved
-      and whitespace between tokens is reduced to a single space.
+    - For '-- TOKEN...', '--' must be a separate token, followed by one or
+      more tokens. Leading/trailing whitespace is not preserved and
+      whitespace between tokens is reduced to a single space.
     - For a quoted token, whitespace is preserved and the quotes are
       removed.
-    - For example, the following both have the same commit message:
-        commit -- do "  keep   this spacing  " for commit message.
-        commit -m "do   keep   this spacing   for commit message."
-    - The resulting commit message from TOKEN/TOKENS must include at least
+    - For example, the following both have the same commit comment:
+        mkbranch dev/feature-a-v2.0.0 v2.0.0 --
+          do "  keep   this spacing  " for commit comment.
+        mkbranch dev/feature-a-v2.0.0 v2.0.0 -c
+          "do   keep   this spacing   for commit comment."
+    - The resulting commit comment from TOKEN or TOKEN... must include at least
       one non-whitespace character.
-    - Always ensure that the commit message accurately reflects the changes
+    - Always ensure that the commit comment accurately reflects the changes
       being committed.
 
 Local branch:
@@ -228,9 +231,9 @@ Examples: Basic usage.
   mkbranch fix/bug-v2.1.0 v2.1.0
   mkbranch -r dev/feature-a-v2.0.0
 
-Examples: With GitHub-style comment.
-  mkbranch fix/memory-leak-v1.1.0 v1.1.0 -m "Fix critical memory leak."
-  mkbranch -r dev/feature-b-v2.3.0 v2.3.0 -m "Add minor new dashboard feature."
+Examples: With -c comment.
+  mkbranch fix/memory-leak-v1.1.0 v1.1.0 -c "Fix critical memory leak."
+  mkbranch -r dev/feature-b-v2.3.0 v2.3.0 -c "Add minor new dashboard feature."
 
 Examples: With Unix-style comment.
   mkbranch fix/login-bug-v1.0.0 v1.0.0 -- Fix critical memory leak.
@@ -277,6 +280,8 @@ EOF
 # - Create and optionally push the branch, then log success/failure with
 #   context.
 
+# shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -284,24 +289,39 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 CONFIG_FILE="$REPO_ROOT/config/contributors.md"
 HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
 GIT_HELPER="$SCRIPT_DIR/../helpers/git_helpers.sh"
+COMMON_HELPER="$SCRIPT_DIR/../helpers/common.sh"
+
+bt_emit_error() {
+  printf 'Error: %s\n' "$1" >&2
+}
 
 # Shared helpers
+if [[ -f "$COMMON_HELPER" ]]; then
+  # shellcheck source=helpers/common.sh
+  if ! source "$COMMON_HELPER"; then
+    bt_emit_error "Failed to load helper: $COMMON_HELPER"
+    exit 5
+  fi
+else
+  bt_emit_error "Required helper not found: $COMMON_HELPER"
+  exit 5
+fi
 if [[ ! -f "$HISTORY_HELPER" ]]; then
-  echo "Error: Required helper not found: $HISTORY_HELPER" >&2
+  bt_emit_error "Required helper not found: $HISTORY_HELPER"
   exit 5
 fi
 # shellcheck source=helpers/history_log.sh
 if ! source "$HISTORY_HELPER"; then
-  echo "Error: Failed to load helper: $HISTORY_HELPER" >&2
+  bt_emit_error "Failed to load helper: $HISTORY_HELPER"
   exit 5
 fi
 if [[ ! -f "$GIT_HELPER" ]]; then
-  echo "Error: Required helper not found: $GIT_HELPER" >&2
+  bt_emit_error "Required helper not found: $GIT_HELPER"
   exit 5
 fi
 # shellcheck source=helpers/git_helpers.sh
 if ! source "$GIT_HELPER"; then
-  echo "Error: Failed to load helper: $GIT_HELPER" >&2
+  bt_emit_error "Failed to load helper: $GIT_HELPER"
   exit 5
 fi
 
@@ -310,6 +330,7 @@ MODE="local"  # local, remote, or validate
 VERBOSE=0
 COMMENT=""
 EXPLICIT_LOCAL_MODE=0
+REMOTE_TIMEOUT_SECONDS=10
 
 readonly EXIT_INVALID_ARGUMENT=1
 
@@ -317,7 +338,7 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "$message. See usage above for details." >&2
+  bt_emit_error "$message. See usage above for details."
   exit "$EXIT_INVALID_ARGUMENT"
 }
 
@@ -329,7 +350,9 @@ log_verbose() {
 
 ensure_clean_before_branch_switch() {
   if bt_is_worktree_dirty; then
-    error_exit 5 "Current branch has uncommitted changes. Commit first before running mkbranch" \
+    error_exit 5 \
+      "Current branch has uncommitted changes. Commit first before running" \
+      " mkbranch" \
       "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
   fi
 }
@@ -359,7 +382,7 @@ error_exit() {
   local parentbranchname="${4:-}"
   local comment="${5:-}"
 
-  echo "Error: $message" >&2
+  bt_emit_error "$message"
 
   if [[ -n "$branchname" ]]; then
     log_operation "FAILED" "$branchname" "$parentbranchname" \
@@ -374,69 +397,27 @@ error_exit() {
 is_contributor_or_higher() {
   local user_name="$1"
   local user_email
+
   user_email="$(git config user.email 2>/dev/null || true)"
-
-  if [[ ! -f "$CONFIG_FILE" ]]; then
-    error_exit 5 "Configuration file not found: $CONFIG_FILE"
-  fi
-
-  awk -F',' -v user_name="$user_name" -v user_email="$user_email" '
-    function trim(s) {
-      gsub(/^[[:space:]-]+|[[:space:]]+$/, "", s)
-      return s
-    }
-    {
-      login = trim($1)
-      role = trim($2)
-      email = trim($3)
-
-      if ((login == user_name || (user_email != "" && email == user_email)) &&
-          (role == "C" || role == "R" || role == "A")) {
-        found = 1
-      }
-    }
-    END {
-      exit(found ? 0 : 1)
-    }
-  ' "$CONFIG_FILE"
+  bt_contributors_has_min_role_by_login_or_email \
+    "$user_name" "$user_email" "contributor" "$CONFIG_FILE"
 }
 
 is_approver() {
   local user_name="$1"
   local user_email
+
   user_email="$(git config user.email 2>/dev/null || true)"
-
-  if [[ ! -f "$CONFIG_FILE" ]]; then
-    error_exit 5 "Configuration file not found: $CONFIG_FILE"
-  fi
-
-  awk -F',' -v user_name="$user_name" -v user_email="$user_email" '
-    function trim(s) {
-      gsub(/^[[:space:]-]+|[[:space:]]+$/, "", s)
-      return s
-    }
-    {
-      login = trim($1)
-      role = trim($2)
-      email = trim($3)
-
-      if ((login == user_name || (user_email != "" && email == user_email)) &&
-          role == "A") {
-        found = 1
-      }
-    }
-    END {
-      exit(found ? 0 : 1)
-    }
-  ' "$CONFIG_FILE"
+  bt_contributors_has_min_role_by_login_or_email \
+    "$user_name" "$user_email" "approver" "$CONFIG_FILE"
 }
 
 is_valid_version() {
   local version="$1"
 
-  # Must match v<M>.<m>.<p> where M is 1-2 digits starting with 1-9
-  # and m/p are either 0 or 1-2 digits starting with 1-9.
-  if [[ "$version" =~ ^v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$ ]]; then
+  # Must match v<M>.<m>.0 where M is 1-2 digits starting with 1-9
+  # and m is either 0 or 1-2 digits starting with 1-9.
+  if [[ "$version" =~ ^v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$ ]]; then
     return 0
   fi
   return 1
@@ -445,7 +426,8 @@ is_valid_version() {
 is_targeted_branch_name() {
   local name="$1"
 
-  if [[ "$name" =~ ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]; then
+  if [[ "$name" =~ \
+    ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0)$ ]]; then
     return 0
   fi
   return 1
@@ -475,7 +457,8 @@ is_contributor_branch_name() {
 get_target_version_from_targeted_branch() {
   local name="$1"
 
-  if [[ "$name" =~ ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?))$ ]]; then
+  if [[ "$name" =~ \
+    ^(dev|fix)/[a-z0-9][a-z0-9-]*-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0)$ ]]; then
     echo "${BASH_REMATCH[2]}"
     return 0
   fi
@@ -558,12 +541,12 @@ while [[ $# -gt 0 ]]; do
       EXPLICIT_LOCAL_MODE=1
       shift
       ;;
-    -m | --message)
+    -c)
       if [[ $# -lt 2 ]]; then
-        usage_error "Option -m requires a message argument" "" "" ""
+        usage_error "Option -c requires a comment argument" "" "" ""
       fi
       if [[ -n "$COMMENT" ]]; then
-        error_exit 4 "Cannot use both -m and -- for comment" "" "" ""
+        error_exit 4 "Cannot use both -c and -- for comment" "" "" ""
       fi
       COMMENT="$2"
       shift 2
@@ -575,6 +558,13 @@ while [[ $# -gt 0 ]]; do
       MODE="remote"
       shift
       ;;
+    -t)
+      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC" "" "" ""
+      bt_is_valid_remote_timeout "$2" || \
+        usage_error "SEC for -t must be an integer greater than 0" "" "" ""
+      REMOTE_TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
     -v)
       VERBOSE=1
       shift
@@ -583,7 +573,7 @@ while [[ $# -gt 0 ]]; do
       # Unix-style comment: everything after -- is the comment
       shift
       if [[ -n "$COMMENT" ]]; then
-        error_exit 4 "Cannot use both -m and -- for comment" "" "" ""
+        error_exit 4 "Cannot use both -c and -- for comment" "" "" ""
       fi
       COMMENT="$*"
       break
@@ -601,6 +591,7 @@ done
 
 # Restore positional arguments
 set -- "${POSITIONAL_ARGS[@]}"
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
 
 # Check that we have 1-2 positional arguments
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -688,13 +679,14 @@ if ! git remote get-url origin >/dev/null 2>&1; then
     "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 
-CURRENT_USER="$(git config user.name 2>/dev/null || true)"
+CURRENT_USER="$(bt_require_login || true)"
 if [[ -z "$CURRENT_USER" ]]; then
-  usage_error "Failed to determine current user from git config " \
-    "user.name" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+  error_exit 2 \
+    "Unable to determine GitHub login identity for permission check" \
+    "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 
-log_verbose "Current user from git config: $CURRENT_USER"
+log_verbose "Current user login for role check: $CURRENT_USER"
 
 # Validate user role based on new-branch type.
 # Approver is required for version branches; contributor-or-higher otherwise.
@@ -735,7 +727,7 @@ esac
 
 # Fetch latest refs from remote
 echo "Fetching latest refs from remote..."
-if ! git fetch origin >/dev/null 2>&1; then
+if ! bt_run_remote_command git fetch origin >/dev/null 2>&1; then
   error_exit 5 "Failed to fetch from remote" "$BRANCHNAME" \
     "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
@@ -820,7 +812,8 @@ fi
 
 if [[ "$MODE" == "remote" ]]; then
   echo "Pushing branch to remote..."
-  if ! GIT_BYPASS_HOOKS=true git push -u origin "$BRANCHNAME" >/dev/null 2>&1; then
+  if ! bt_run_remote_command env GIT_BYPASS_HOOKS=true \
+    git push -u origin "$BRANCHNAME" >/dev/null 2>&1; then
     # Clean up only the branch created in this run.
     if [[ "$CREATED_LOCAL" -eq 1 ]]; then
       git checkout - >/dev/null 2>&1 || true

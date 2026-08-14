@@ -48,8 +48,10 @@ Options:
   -c                   If fork exists but is incomplete/misconfigured, delete it
                        instead of completing configuration. Useful after crashes
                        or if manual changes broke the fork state.
-  -v, --verbose        Show detailed information during fork operations.
+  -v                   Output detailed and progress information to stdout.
   -d                   Dry-run (show what would be done without creating fork).
+  -t SEC               Remote operation timeout in seconds (default: 10).
+                       SEC must be an integer greater than 0.
 
 Examples:
   # Create and configure fork
@@ -99,6 +101,9 @@ EOF
 # - Verifies configuration was applied correctly.
 # - Reports fork status and next-step guidance.
 
+# shellcheck disable=SC1091,SC2317  # Helper source paths and trap-managed
+# paths.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -130,6 +135,7 @@ usage_error() {
 VERBOSE=false
 DRY_RUN=false
 CLEANUP_MODE=false
+REMOTE_TIMEOUT_SECONDS=10
 
 # Parse options
 while [[ $# -gt 0 ]]; do
@@ -150,6 +156,13 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
+    -t)
+      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC"
+      bt_is_valid_remote_timeout "$2" || \
+        usage_error "SEC for -t must be an integer greater than 0"
+      REMOTE_TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
     -*)
       usage_error "Unknown option: $1"
       ;;
@@ -159,9 +172,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
+
 # Helper functions
 get_github_username() {
-  gh auth whoami 2>/dev/null || bt_error_exit "$EXIT_CONFIG_ERROR" \
+  bt_run_remote_command gh auth whoami 2>/dev/null || \
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
     "GitHub authentication not configured. Run 'gh auth login' first."
 }
 
@@ -174,7 +190,8 @@ log_fork_creation_to_repository_history() {
   local repo_root
   repo_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "")"
   
-  if [[ -z "$repo_root" ]] || [[ ! -f "$repo_root/logs/repository_history.md" ]]; then
+  if [[ -z "$repo_root" ]] || \
+    [[ ! -f "$repo_root/logs/repository_history.md" ]]; then
     return 0  # Not in a clone, skip silently
   fi
   
@@ -197,7 +214,8 @@ get_repo_info() {
   origin_url=$(git config --get remote.origin.url 2>/dev/null || true)
   
   if [[ -z "$origin_url" ]]; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Cannot determine repository URL from git config"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Cannot determine repository URL from git config"
   fi
   
   # Extract owner and repo from URL (supports both HTTPS and SSH)
@@ -205,7 +223,8 @@ get_repo_info() {
     REPO_OWNER="${BASH_REMATCH[1]}"
     REPO_NAME="${BASH_REMATCH[2]}"
   else
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Cannot parse repository URL: $origin_url"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Cannot parse repository URL: $origin_url"
   fi
   
   if [[ "$VERBOSE" == "true" ]]; then
@@ -215,7 +234,8 @@ get_repo_info() {
 
 fork_exists() {
   local gh_user="$1"
-  if gh repo view "$gh_user/$REPO_NAME" >/dev/null 2>&1; then
+  if bt_run_remote_command gh repo view "$gh_user/$REPO_NAME" \
+    >/dev/null 2>&1; then
     return 0
   fi
   return 1
@@ -234,7 +254,7 @@ fork_is_complete() {
   
   # Try to retrieve and validate contributors.md
   local file_response
-  file_response=$(gh api \
+  file_response=$(bt_run_remote_command gh api \
     "repos/$gh_user/$REPO_NAME/contents/config/contributors.md" 2>&1) || {
     if [[ "$VERBOSE" == "true" ]]; then
       echo "[verbose] Fork configuration incomplete:" \
@@ -311,7 +331,8 @@ create_fork() {
     echo "[verbose] Creating fork of $source_repo..." >&2
   fi
   
-  if ! gh repo fork "$source_repo" --clone=false 2>&1; then
+  if ! bt_run_remote_command gh repo fork "$source_repo" --clone=false \
+    2>&1; then
     bt_error_exit "$EXIT_NOT_FOUND" "Failed to create fork via GitHub API"
   fi
   
@@ -333,7 +354,8 @@ wait_for_fork() {
   fi
   
   while [[ $attempt -lt $max_attempts ]]; do
-    if gh repo view "$gh_user/$REPO_NAME" >/dev/null 2>&1; then
+    if bt_run_remote_command gh repo view "$gh_user/$REPO_NAME" \
+      >/dev/null 2>&1; then
       if [[ "$VERBOSE" == "true" ]]; then
         echo "[verbose] Fork is ready" >&2
       fi
@@ -361,11 +383,13 @@ validate_fork_ownership() {
   
   # Check that the fork is actually owned by the current user
   local owner
-  owner=$(gh api "repos/$gh_user/$REPO_NAME" --jq '.owner.login' 2>&1) || \
+  owner=$(bt_run_remote_command gh api "repos/$gh_user/$REPO_NAME" \
+    --jq '.owner.login' 2>&1) || \
     bt_error_exit "$EXIT_NOT_FOUND" "Failed to retrieve fork information"
   
   if [[ "$owner" != "$gh_user" ]]; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Fork does not belong to authenticated user" \
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Fork does not belong to authenticated user" \
       "(owner: $owner, user: $gh_user)"
   fi
   
@@ -387,7 +411,8 @@ delete_fork() {
   fi
   
   # Delete the fork via API
-  if ! gh api --method DELETE "repos/$gh_user/$REPO_NAME" >/dev/null 2>&1; then
+  if ! bt_run_remote_command gh api --method DELETE \
+    "repos/$gh_user/$REPO_NAME" >/dev/null 2>&1; then
     echo "Warning: Failed to delete fork. Manual cleanup may be required." >&2
     return 1
   fi
@@ -410,17 +435,19 @@ get_file_sha() {
   
   # Get file info and extract SHA
   local file_response
-  file_response=$(gh api \
+  file_response=$(bt_run_remote_command gh api \
     "repos/$gh_user/$REPO_NAME/contents/$file_path" 2>&1) || \
     bt_error_exit "$EXIT_NOT_FOUND" "Failed to retrieve $file_path from fork"
   
   local sha
   sha=$(echo "$file_response" | jq -r '.sha' 2>/dev/null) || \
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Failed to parse API response for $file_path"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Failed to parse API response for $file_path"
   
   # Validate SHA is not null/empty
   if [[ -z "$sha" ]] || [[ "$sha" == "null" ]]; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Invalid SHA returned from API for $file_path: $sha"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Invalid SHA returned from API for $file_path: $sha"
   fi
   
   echo "$sha"
@@ -437,19 +464,23 @@ validate_content() {
   
   # Validate content contains expected markers
   if ! echo "$content" | grep -q "# Contributors"; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Generated content missing '# Contributors' header"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Generated content missing '# Contributors' header"
   fi
   
   if ! echo "$content" | grep -q "## Contributors"; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Generated content missing '## Contributors' section"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Generated content missing '## Contributors' section"
   fi
   
   if ! echo "$content" | grep -q "$gh_user"; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Generated content does not include user: $gh_user"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Generated content does not include user: $gh_user"
   fi
   
   if ! echo "$content" | grep -q ", A, "; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Generated content missing approver role marker"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Generated content missing approver role marker"
   fi
 }
 
@@ -539,25 +570,29 @@ CONTRIBUTORS_EOF
   
   # Update the file via API and capture response
   local update_response
-  update_response=$(gh api --method PUT \
+  update_response=$(bt_run_remote_command gh api --method PUT \
     "repos/$gh_user/$REPO_NAME/contents/$file_path" \
     -f message="Configure contributors.md for fork: $gh_user as sole approver" \
     -f content="$encoded_content" \
     -f sha="$current_sha" 2>&1) || \
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to update $file_path in fork via API"
+    bt_error_exit "$EXIT_NOT_FOUND" \
+      "Failed to update $file_path in fork via API"
   
   # Validate API response contains commit information
   if ! echo "$update_response" | jq -e '.commit.sha' >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "API response missing commit information"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "API response missing commit information"
   fi
   
   # Extract and validate the new file SHA from response
   local new_sha
   new_sha=$(echo "$update_response" | jq -r '.content.sha' 2>/dev/null) || \
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Failed to extract new SHA from API response"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Failed to extract new SHA from API response"
   
   if [[ -z "$new_sha" ]] || [[ "$new_sha" == "null" ]]; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Invalid new SHA in API response: $new_sha"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Invalid new SHA in API response: $new_sha"
   fi
   
   if [[ "$VERBOSE" == "true" ]]; then
@@ -587,14 +622,15 @@ verify_file_update() {
   
   # Retrieve the file and verify
   local verify_response
-  verify_response=$(gh api \
+  verify_response=$(bt_run_remote_command gh api \
     "repos/$gh_user/$REPO_NAME/contents/$file_path" 2>&1) || \
     bt_error_exit "$EXIT_NOT_FOUND" "Failed to verify $file_path after update"
   
   # Check SHA matches
   local actual_sha
   actual_sha=$(echo "$verify_response" | jq -r '.sha' 2>/dev/null) || \
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Failed to extract SHA from verification response"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Failed to extract SHA from verification response"
   
   if [[ "$actual_sha" != "$expected_sha" ]]; then
     bt_error_exit "$EXIT_INTERNAL_ERROR" "File SHA mismatch after update" \
@@ -605,7 +641,8 @@ verify_file_update() {
   local encoded_file_content
   encoded_file_content=$(echo "$verify_response" | jq -r '.content' \
     2>/dev/null) || \
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Failed to extract content from verification response"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Failed to extract content from verification response"
   
   local decoded_content
   decoded_content=$(echo "$encoded_file_content" | base64 -d 2>/dev/null) || \
@@ -613,13 +650,15 @@ verify_file_update() {
   
   # Verify content contains expected user
   if ! echo "$decoded_content" | grep -q "$expected_user"; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Verification failed: file content does not" \
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Verification failed: file content does not" \
       "contain user $expected_user"
   fi
   
   # Verify content has approver entry
   if ! echo "$decoded_content" | grep -q ", A, "; then
-    bt_error_exit "$EXIT_INTERNAL_ERROR" "Verification failed: file content missing approver entry"
+    bt_error_exit "$EXIT_INTERNAL_ERROR" \
+      "Verification failed: file content missing approver entry"
   fi
   
   if [[ "$VERBOSE" == "true" ]]; then
@@ -708,7 +747,8 @@ else
   
   # Log fork creation to repository history and push to origin/main
   log_fork_creation_to_repository_history "$GH_USER"
-  bt_commit_and_push_repository_history "mkfork: Created fork $GH_USER/$REPO_NAME"
+  bt_commit_and_push_repository_history "mkfork: Created fork" \
+                                        "$GH_USER/$REPO_NAME"
 fi
 
 exit 0

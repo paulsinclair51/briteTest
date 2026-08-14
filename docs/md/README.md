@@ -13,33 +13,47 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **Contributor_Guide.md**: Contributor process and standards.
+**Contributor_Guide.md**: Public contributor process and standards.
 
-- **Documentation_Guide.md**: Index of documents and the repository layout.
+**Contributor_Reference.md**: Public contributor reference to scripts and concepts.
 
-- **Glossary_Reference.md**: Glossary of project terms and testing terms.
+**Contributor_Internal_Guide.md**: Internal repository protection, override, and
+repair policy.
 
-- **Guide.md**: briteTest concepts and quick start example. `<repo>/README.md` is
-  a link to this file.
+**Contributor_Internal_Reference.md**: Internal script and workflow reference for
+repair and admin operations.
 
-- **Runner_Guide.md**: Runner API concepts, usage, and examples.
+**Documentation_Guide.md**: Index of documents and the repository layout.
 
-- **Runner_Internal_Guide.md**: Runner implementation guide.
+**Glossary_Reference.md**: Glossary of project terms and testing terms.
 
-- **Runner_Internal_Reference.md**: Runner implementation reference.
+**Guide.md**: briteTest introductory guide and quick start example.
+`<repo>/README.md` is a link to this file.
 
-- **Runner_Reference.md**: Runner API reference.
+**Release_\<version\>.md**: Release documents for release versions.
 
-- **Test_Guide.md**: Test API concepts, usage, and examples.
+**Runner_Guide.md**: Runner API concepts, usage, and examples.
 
-- **Test_Internal_Guide.md**: Test implementation guide.
+**Runner_Internal_Guide.md**: Runner implementation guide.
 
-- **Test_Internal_Reference.md**: Test implementation reference.
+**Runner_Internal_Reference.md**: Runner implementation reference.
 
-- **Test_Reference.md**: Test API reference.
+**Runner_Reference.md**: Runner API reference.
 
-- **README.md**: This directory guide.
+**Test_Guide.md**: Test API concepts, usage, and examples.
+
+**Test_Internal_Guide.md**: Test implementation guide.
+
+**Test_Internal_Reference.md**: Test implementation reference.
+
+**Test_Reference.md**: Test API reference.
+
+**README.md**: This directory guide.
 
 ## Subdirectories
 
-- None.
+None.
+
+## Documentation Lifecycle Policy
+
+Adding new files under `<repo>/docs/md/` must be done by an approver.

@@ -1,0 +1,56 @@
+name: Validate GPG Signatures
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+
+#-----------------------------------------------------------------------------
+# GPG SIGNATURE VALIDATION - Enforce signed commits on protected branches
+#
+# Enforces that commits to protected branches are cryptographically signed
+# with valid GPG signatures for security and authenticity.
+#
+# REQUIRED FOR: main, version branches
+#-----------------------------------------------------------------------------
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-signatures:
+    name: Validate GPG signatures
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check GPG signatures
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          echo "=== GPG SIGNATURE VALIDATION ==="
+          echo "Protected branch - GPG signatures required"
+          commits=$(git log origin/$BASE_REF..origin/$HEAD_REF --format=%H 2>/dev/null || echo "")
+          [[ -z "$commits" ]] && exit 0
+          
+          signed_count=0
+          failed=0
+          for commit in $commits; do
+            status=$(git log -1 --format=%G? "$commit")
+            if [[ "$status" == "G" ]]; then
+              signed_count=$((signed_count + 1))
+              echo "✓ Good signature"
+            else
+              echo "✗ Not signed or invalid signature"
+              failed=$((failed + 1))
+            fi
+          done
+          [[ $failed -eq 0 ]] && echo "✓ All commits signed" || exit 1

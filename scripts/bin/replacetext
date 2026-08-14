@@ -2,6 +2,8 @@
 
 # replacetext - Run markdown text replacement from a config file.
 #
+# See usage below for details, or run: replacetext -h
+#
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see '<repo>/LICENSE'.
@@ -9,8 +11,8 @@
 usage() {
 	cat <<'EOF'
 Usage:
-	replacetext [-d] [-r] [MAPPINGS]
-	replacetext [-d] [-r] FIND REPLACE [FIND REPLACE]...
+	replacetext [-d] [-r] [-t SEC] [MAPPINGS]
+	replacetext [-d] [-r] [-t SEC] FIND REPLACE [FIND REPLACE]...
 
 	replacetext {-h | --help}
 	replacetext -x
@@ -39,6 +41,8 @@ Options:
 	-d           Dry-run to show planned changes without modifying files.
 	-r           Treat FIND values as Perl-compatible regex patterns
 	             (literal mode is default).
+	-t SEC       Remote operation timeout in seconds (default: 10).
+	             SEC must be an integer greater than 0.
 	--           End option parsing. Required before FIND/REPLACE tokens
 	             that begin with '-'.
 	-x           Display basic regex guide and examples to stdout and exit.
@@ -57,7 +61,7 @@ Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
 
-Exit Codes:
+Exit codes:
 	0   Success (including -h, --help, dry run completion with one or more
 	    replacements found).
 	1   Argument or validation error.
@@ -70,6 +74,8 @@ Exit Codes:
 
 EOF
 }
+
+# shellcheck disable=SC2317  # Cleanup function is invoked via trap.
 
 regex_guide() {
 	cat <<'EOF'
@@ -131,7 +137,10 @@ readonly EXIT_RUNTIME_ERROR=200
 
 is_known_exit_status() {
 	case "$1" in
-		"$EXIT_SUCCESS"|"$EXIT_INVALID_ARGUMENT"|"$EXIT_MISSING_FIND"|"$EXIT_MISSING_REPLACE"|"$EXIT_MAPPINGS_MISSING"|"$EXIT_MAPPINGS_INVALID"|"$EXIT_NOTHING_TO_REPLACE"|"$EXIT_RUNTIME_ERROR")
+		"$EXIT_SUCCESS"|"$EXIT_INVALID_ARGUMENT"|"$EXIT_MISSING_FIND"|\
+		"$EXIT_MISSING_REPLACE"|"$EXIT_MAPPINGS_MISSING"|\
+		"$EXIT_MAPPINGS_INVALID"|"$EXIT_NOTHING_TO_REPLACE"|\
+		"$EXIT_RUNTIME_ERROR")
 			return 0
 			;;
 		*)
@@ -172,11 +181,13 @@ if [[ "$script_dir" == "$script_path" ]]; then
 fi
 SCRIPT_DIR="$( cd "$script_dir" && pwd )"
 HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
+GIT_HELPER="$SCRIPT_DIR/../helpers/git_helpers.sh"
 if [[ -f "$HISTORY_HELPER" ]]; then
-  if source "$HISTORY_HELPER" 2>/dev/null; then
-    bt_propagate_repository_history >/dev/null 2>&1
-  fi
+	# shellcheck disable=SC1090  # Repository-relative helper path.
+	source "$HISTORY_HELPER" 2>/dev/null || true
 fi
+# shellcheck disable=SC1090  # Repository-relative helper path.
+source "$GIT_HELPER"
 
 usage_error() {
   local message="$1"
@@ -278,13 +289,13 @@ tokenize_mapping_line() {
 						state='double'
 						token_active=1
 						;;
-					'\\')
+					"\\")
 						token_active=1
 						if (( i + 1 < len )); then
 							i=$((i + 1))
 							token+="${input:i:1}"
 						else
-							token+='\\'
+							token+="\\"
 						fi
 						;;
 					*)
@@ -303,20 +314,20 @@ tokenize_mapping_line() {
 			double)
 				if [[ "$ch" == '"' ]]; then
 					state='normal'
-				elif [[ "$ch" == '\\' ]]; then
+				elif [[ "$ch" == "\\" ]]; then
 					if (( i + 1 < len )); then
 						next="${input:i+1:1}"
 						case "$next" in
-							'"'|'\\'|'$'|'`')
+							'"'|"\\"|'$'|'`')
 								token+="$next"
 								i=$((i + 1))
 								;;
 							*)
-								token+='\\'
+								token+="\\"
 								;;
 						esac
 					else
-						token+='\\'
+						token+="\\"
 					fi
 				else
 					token+="$ch"
@@ -339,6 +350,7 @@ tokenize_mapping_line() {
 config_file="config/text_mappings.txt"
 dry_run=0
 regex_mode=0
+remote_timeout_seconds=10
 direct_mode=false
 declare -a positionals=()
 
@@ -378,6 +390,13 @@ while [[ $# -gt 0 ]]; do
 		-r | --regex)
 			regex_mode=1
 			;;
+		-t)
+			shift
+			[[ $# -gt 0 ]] || usage_error "Option -t requires SEC"
+			bt_is_valid_remote_timeout "$1" || \
+				usage_error "SEC for -t must be an integer greater than 0"
+			remote_timeout_seconds="$1"
+			;;
 		-x)
 			show_regex_guide=1
 			;;
@@ -390,6 +409,9 @@ while [[ $# -gt 0 ]]; do
 	esac
 	shift
 done
+
+export BT_REMOTE_TIMEOUT_SECONDS="$remote_timeout_seconds"
+bt_propagate_repository_history >/dev/null 2>&1 || true
 
 if [[ "$show_help" -eq 1 && "$show_regex_guide" -eq 1 ]]; then
 	usage
@@ -473,7 +495,8 @@ else
 		fi
 
 		if (( ${#TOKENIZED_WORDS[@]} % 2 != 0 )); then
-			echo "Error: Line $line_num: Missing REPLACE token for FIND: ${TOKENIZED_WORDS[-1]}" >&2
+			echo "Error: Line $line_num: Missing REPLACE token for FIND:" \
+        "${TOKENIZED_WORDS[-1]}" >&2
 			exit "$EXIT_MAPPINGS_INVALID"
 		fi
 

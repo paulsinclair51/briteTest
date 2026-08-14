@@ -1,8 +1,28 @@
 # `<repo>/reports/repository/`
 
-Directory for repository/fork/clone report files.
+Directory containing repository/fork/clone untracked reports.
 
-Examples:
-- `repository-<datetime>.md` from `scripts/bin/fixrepo`
+Copyright (c) 2026 Paul Sinclair  
+SPDX-License-Identifier: MIT  
+For license details, see `<repo>/LICENSE`.
 
-Reserved for future reports from clone/fork lifecycle scripts.
+See `<repo>/README.md` for an introduction to briteTest.
+
+## Files
+
+**repository-\<datetime\>-\<pid\>.md**: Report from `<repo>/scripts/bin/fixrepo`.
+
+**repository-d-\<datetime\>-\<pid\>.md**: Dry-run report from `<repo>/scripts/bin/fixrepo`.
+
+**README.md**: This directory guide.
+
+## Subdirectories
+
+None.
+
+## Notes
+
+`<datetime>` has the form `YYYYMMDD-HHMMSS`. Older reports may be removed by
+the generating script after successful report creation.
+
+`<pid>` is a process id to provide uniqueness to the file name.

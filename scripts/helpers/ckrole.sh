@@ -31,6 +31,8 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "$script_dir/common.sh"
+# shellcheck source=git_helpers.sh
+source "$script_dir/git_helpers.sh"
 
 role_arg="${1:-}"
 if [[ -z "$role_arg" ]]; then

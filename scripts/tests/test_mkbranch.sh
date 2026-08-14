@@ -12,7 +12,9 @@ export LC_ALL=C
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 MKBRANCH_SRC="$REPO_ROOT/scripts/bin/mkbranch"
+COMMON_HELPER_SRC="$REPO_ROOT/scripts/helpers/common.sh"
 HISTORY_HELPER_SRC="$REPO_ROOT/scripts/helpers/history_log.sh"
+GIT_HELPER_SRC="$REPO_ROOT/scripts/helpers/git_helpers.sh"
 
 pass() {
   echo "PASS: $1"
@@ -45,10 +47,15 @@ for dep in bash git grep mktemp; do
 done
 
 [[ -f "$MKBRANCH_SRC" ]] || fail "missing script: $MKBRANCH_SRC"
+[[ -f "$COMMON_HELPER_SRC" ]] || fail "missing helper: $COMMON_HELPER_SRC"
 [[ -f "$HISTORY_HELPER_SRC" ]] || fail "missing helper: $HISTORY_HELPER_SRC"
 
 TMPDIR="$(mktemp -d)"
 cleanup() {
+  if [[ "${KEEP_TMPDIR:-0}" == "1" ]]; then
+    echo "KEEP_TMPDIR=1 preserving test artifacts at: $TMPDIR" >&2
+    return 0
+  fi
   rm -rf "$TMPDIR"
 }
 trap cleanup EXIT
@@ -63,16 +70,18 @@ git clone "$ORIGIN" "$WORK" >/dev/null 2>&1
 
 mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/config" "$WORK/logs"
 cp "$MKBRANCH_SRC" "$WORK/scripts/bin/mkbranch"
+cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
 cp "$HISTORY_HELPER_SRC" "$WORK/scripts/helpers/history_log.sh"
+cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
 chmod +x "$WORK/scripts/bin/mkbranch"
 
 cat > "$WORK/config/contributors.md" <<'EOF'
-testuser,C,test@example.com
+- testuser, C
 EOF
 
 (
   cd "$WORK"
-  git config user.name "testuser"
+  git config user.name "Test User Display Name"
   git config user.email "test@example.com"
 
   echo "seed" > README.md

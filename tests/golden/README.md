@@ -10,17 +10,17 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **Golden files**: Files that contain the expected contents of each corresponding
-  output file.
+**Golden files**: Files that contain the expected contents of each corresponding
+output file.
 
-- **Metadata files**: Markdown Document (`.md`) metadata files associated with
-  golden files and related file groups.
+**Metadata files**: Markdown Document (`.md`) metadata files associated with
+golden files and related file groups.
   
-- **README.md**: This directory guide.
+**README.md**: This directory guide.
 
 ## Subdirectories
 
-- None.
+None.
 
 ## Golden Files and Output Files
 

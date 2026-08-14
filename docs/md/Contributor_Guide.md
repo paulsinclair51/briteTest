@@ -154,16 +154,15 @@ the action, generates informational output, and, for some scripts, a report. Thi
 simplifies the workflow for contributors, reviewers, and approvers while
 maintaining integrity in the repository.
 
-Repository owner behavior:
-- By default, repository owner is still restricted by the role assigned in
-  `config/contributors.md`.
-- For scripts that support `-o`, owner may run one command with temporary
-  elevated override.
-- Repository owner can explicitly toggle unrestricted local-clone mode using:
-  `override on` and `override off`.
-- Unrestricted mode affects direct command restrictions enforced by local hooks
-  and related local mechanisms; it does not disable script-level policy checks
-  or role gating.
+For routine contributor work, use the scripts in `scripts/bin/` without any
+special owner privileges. An owner may use the repository-owner override only in
+exceptional local-repair scenarios, and any protected-remote recovery still
+requires GitHub-side admin authority.
+
+For the internal owner, ruleset, and remote-repair policy, see the
+[Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md). For detailed
+script usage and repair script behavior, see the
+[Contributor_Internal_Reference.md](./Contributor_Internal_Reference.md).
 
 The current executable script set is maintained in `scripts/bin/README.md`.
 After `setupclone`, run `bind -f ~/.inputrc` in an already-open terminal.
@@ -174,7 +173,7 @@ Alt+n and Alt+p to cycle forward and backward through those choices.
 - **Document/brand:** `ckstyle`, `gendocs`, `genpngs`, `replacephrases`, `updatebrand`
 - **Repository/fork/clone:** `mkfork`, `mkclone`, `rmclone`, `fixrepo`
 - **Branch/workflow:** `ckbranch_history`, `chcurrent`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `mkfeedback`, `mergetoparent`, `mkpullrequest`, `chtarget`, `mkrelease`, `syncfromremote`, `syncfromparent`, `undo`, `rmbranch`
-- **Owner controls:** `override` (toggle repository-owner unrestricted mode for this clone)
+- **Owner controls:** `override` (toggle repository-owner unrestricted mode for this clone); `override -r` (temporary remote repair authorization window for GitHub-side repair workflows)
 </details>
 </details>
 
@@ -185,7 +184,7 @@ Alt+n and Alt+p to cycle forward and backward through those choices.
 
 This repository uses a release-oriented branching model with four branch types:
 
-**Protected Branches** (Require PR, no force-push, no deletion):
+**Protected Branches** (Effectively read-only; no direct commits, force-push, or deletion):
 - `main` - Production-ready code (remote-only; use `origin/main` for Git commands)
 - `v<M>.<m>.0` - Version branches (e.g., v1.0.0, v2.1.0)
 
@@ -195,8 +194,9 @@ This repository uses a release-oriented branching model with four branch types:
 
 **Valid Merge Up Paths:**
 - contributor -> contributor (optional PR/review by contributors, mrgup by the contributor)
-- contributor -> targeted (recommended PR/review by contributors, mrgup by the contributor)
-- targeted -> version (required PR/review by reviewers, mrgup by an approver)
+- contributor -> targeted (optional PR/review by contributors, mrgup by the contributor)
+- targeted -> version (required approved PR, mrgup by an approver)
+- targeted -> version with `mrgup -o` (PR optional, repository owner only)
 - version -> `origin/main` (no PR, mrgup by an approver)
 - main -> any (not allowed)
 
@@ -207,11 +207,29 @@ This repository uses a release-oriented branching model with four branch types:
 - contributor branches: local branch required; remote branch optional while developing,
   but required before remote-reviewed workflows (for example PR-required merge paths).
 
+**Editing and Commit Policy:**
+- Remote branches are read-only for editing in this workflow.
+- To make changes, use a local branch.
+- `commit` must be run from a local branch.
+- A local branch may exist without a corresponding remote branch.
+- Existing branches with policy-invalid names may be inspected with `chbranch`
+  in read-only mode and removed with `rmbranch`; they cannot be used for edits
+  or commits.
+
 **Merge-Up Safety Preconditions (`mrgup`):**
 - remote must be connected/reachable.
 - current local branch must be in sync with its remote when a remote branch exists.
 - current branch must not be behind its parent.
 - parent local/remote must be in sync when both parent refs exist.
+
+**PR Requirements (`mrgup` is authoritative):**
+- A PR is required only for a targeted branch merged to a version branch
+  without `-o`.
+- The repository owner may use `mrgup -o` for a targeted-to-version merge;
+  that operation does not require a PR or approver role.
+- PRs are optional for contributor-to-contributor,
+  contributor-to-targeted, and version-to-main merges.
+- If an optional PR exists, `mrgup` still validates its state and approval.
 
 Role naming used in this guide is: users, contributors, reviewers, approvers,
 and repository owner.
@@ -235,8 +253,9 @@ Repository owner role model:
 
 ## 3. Validation Workflows
 
-15 automated GitHub Actions workflows are provided for defense-in-depth
-validation across all git operations.
+GitHub Actions workflows provide validation and post-push auditing. GitHub
+rulesets separately provide server-authoritative protection against deletion
+and non-fast-forward updates of protected branches.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Workflow Summary Dashboard</summary>
@@ -245,21 +264,22 @@ validation across all git operations.
 
 | Workflow | Purpose | Trigger | When Blocks |
 |----------|---------|---------|------------|
-| branch-validation-pull-request.yml | Validates branch relationships, naming, roles | PR events | Invalid merge path |
-| branch-validation-merge.yml | Post-merge compliance audit logging | Push to protected | Audit trail only |
-| branch-validation-commit-message.yml | Enforces conventional commit format | PR events | Invalid format |
-| branch-validation-author.yml | Verifies approved commit authors | PR events | Unknown author |
-| branch-validation-gpg-signature.yml | Requires GPG signatures on protected branches | PR to main/version | Unsigned commits |
-| branch-validation-rebase.yml | Monitors rebase operations | Push events | Audit trail only |
-| branch-validation-force-push.yml | Audits force push attempts | Push events | Blocked by GitHub |
-| branch-validation-cherry-pick.yml | Detects cherry-pick operations | Push events | Cherry-pick to protected |
-| branch-validation-file-changes.yml | Prevents critical file modifications | PR events | LICENSE, workflows modified |
-| branch-validation-large-files.yml | Detects and blocks files > 10MB | Push events | File exceeds limit |
-| branch-validation-secrets.yml | Prevents API keys and credentials | PR events | Secrets detected |
-| branch-validation-workflow.yml | Validates GitHub workflow syntax | PR modifying workflows | Invalid syntax |
-| branch-validation-license-headers.yml | Ensures MIT license headers | PR events | Missing headers |
-| branch-validation-code-quality.yml | Runs linting and format checks | PR events | Formatting issues |
-| branch-validation-tags.yml | Validates tag naming conventions | Tag creation | Invalid tag format |
+| validate-pull-request.yml | Validates branch relationships, naming, roles | PR events | Invalid merge path |
+| validate-merge.yml | Post-merge compliance audit logging | Push to protected | Audit trail only |
+| validate-commit-message.yml | Enforces conventional commit format | PR events | Invalid format |
+| validate-author.yml | Verifies approved commit authors | PR events | Unknown author |
+| validate-gpg-signature.yml | Requires GPG signatures on protected branches | PR to main/version | Unsigned commits |
+| validate-rebase.yml | Monitors rebase operations | Push events | Audit trail only |
+| validate-force-push.yml | Audits force push attempts | Push events | Blocked by GitHub |
+| validate-cherry-pick.yml | Detects cherry-pick operations | Push events | Cherry-pick to protected |
+| validate-file-changes.yml | Prevents critical file modifications | PR events | LICENSE, workflows modified |
+| validate-large-files.yml | Detects and blocks files > 10MB | Push events | File exceeds limit |
+| validate-secrets.yml | Prevents API keys and credentials | PR events | Secrets detected |
+| validate-workflow.yml | Validates GitHub workflow syntax | PR modifying workflows | Invalid syntax |
+| validate-license-headers.yml | Ensures MIT license headers | PR events | Missing headers |
+| validate-code-quality.yml | Runs linting and format checks | PR events | Formatting issues |
+| validate-tags.yml | Validates tag naming conventions | Tag creation | Invalid tag format |
+| validate-rulesets.yml | Verifies live protected-branch rulesets | Weekly/manual | Ruleset drift |
 </details>
 
 <details>
@@ -267,7 +287,8 @@ validation across all git operations.
 
 ### 3.2. Primary Prevention Layer
 
-These workflows run **BEFORE merge up** to prevent problems:
+Pull-request workflows run before a PR merge. `mrgup` performs the authoritative
+merge-path, role, and conditional PR checks for the script-based workflow:
 
 PASS: **Valid commits:** Allowed to proceed
 BLOCKED: **Invalid commits:** PR blocked until fixed
@@ -375,12 +396,11 @@ changes.
 - Commit often
 
 `scripts/bin/commit` behavior summary:
-- Automatically pushes when `origin` is connected and `origin/<current-branch>`
-  exists.
-- Does not push when remote is disconnected or no corresponding remote branch
-  exists.
+- Runs only on a local targeted or contributor branch.
+- Does not push. Use `scripts/bin/push` to publish local commits to remote.
 - Uses report naming: `reports/branch/commit-<datetime>.md` (or
-  `commit-d-<datetime>.md` in dry-run).
+  `commit-d-<datetime>.md` in dry-run, and `commit-e-<datetime>-<pid>.md`
+  for error-run reports when `-e` is enabled).
 </details>
 
 <details>
@@ -438,7 +458,7 @@ Hooks are automatically configured when you:
 No manual setup is required. If hooks are not configured, you can manually run:
 
 ```bash
-bash scripts/helpers/install-git-hooks.sh
+bash scripts/helpers/install_git_hooks.sh
 ```
 
 #### 4.5.2. How Hooks Work
@@ -449,6 +469,10 @@ The repository uses Git's `core.hooksPath` configuration (Git 2.9+) to point to 
 - **Changes to hooks apply automatically** after pulling updates
 - **Hooks run in consistent environments** across all clones and Codespaces
 - **No copying or duplication** to `.git/hooks/` directories
+
+Git hook entrypoints keep the canonical hook names (`pre-commit`, `pre-push`,
+`pre-merge-commit`, `post-checkout`) because Git looks for those exact names.
+Shared hook logic can use `.sh` suffixes, such as `githook_helper.sh`.
 
 #### 4.5.3. Available Hooks
 
@@ -465,6 +489,11 @@ The repository uses four Git hooks to enforce the script-based workflow and conf
 
 The enforcement hooks (pre-commit, pre-push, pre-merge-commit) prevent direct Git commands and require you to use the appropriate briteTest script instead:
 
+Hooks are local workflow guardrails, not an authorization boundary. A user who
+controls the local Git process can disable hooks, use `--no-verify`, or set the
+internal bypass environment variable. Server-side GitHub rulesets remain the
+authoritative protection for protected remote refs.
+
 **Example: Attempting direct commit (blocked)**
 ```bash
 $ git add file.txt
@@ -474,8 +503,8 @@ $ git commit -m "my change"
 
    Use the 'commit' script instead:
    
-     commit -m "Your commit message"
-     commit -m "Message" -p    # Commit and push
+     commit -c "Your commit message"
+     commit -- Your commit message
    
    For help:
      commit -h
@@ -486,6 +515,8 @@ $ git commit -m "my change"
 - [OK] Maintains consistent commit history and metadata
 - [OK] Prevents accidental commits to protected branches
 - [OK] Enables audit trails and compliance logging
+- [OK] Blocks commits from detached read-only checkouts, even when the normal
+  script bypass environment variable is present
 
 #### 4.5.5. Script Bypass (Automatic)
 
@@ -493,16 +524,16 @@ Scripts automatically bypass hook enforcement by setting an environment variable
 
 ```bash
 # When you run:
-commit -m "my change"
+commit -c "my change"
 
 # The script internally does:
-export BRITETEST_BYPASS_HOOKS=true
-git add <files>
-git commit -m "my change"
-unset BRITETEST_BYPASS_HOOKS
+env GIT_BYPASS_HOOKS=true git add <files>
+env GIT_BYPASS_HOOKS=true git commit -m "my change"
 ```
 
 This is transparent - you don't need to do anything. The script handles the details.
+The bypass is an implementation mechanism, not proof that a caller is
+authorized; each public script must perform its own policy and role checks.
 
 #### 4.5.6. Workflow: Commit and Push Example
 
@@ -515,8 +546,8 @@ git push origin branch       # [ERROR] BLOCKED by pre-push hook
 
 **Correct approach (using scripts):**
 ```bash
-commit -m "fix typo"         # [OK] Uses commit script
-commit -m "fix typo" -p      # [OK] Commit AND push in one step
+commit -c "fix typo"         # [OK] Uses commit script
+push                          # [OK] Publishes local commits to remote
 ```
 
 #### 4.5.7. Identity Configuration
@@ -542,7 +573,7 @@ If you suspect hooks aren't working:
 git config core.hooksPath
 
 # Manually reconfigure hooks
-bash scripts/helpers/install-git-hooks.sh
+bash scripts/helpers/install_git_hooks.sh
 
 # Verify your git identity
 git config --local user.name
@@ -716,12 +747,42 @@ If identity cannot be resolved, role checks fail by design.
 
 Security controls expected for contributor workflows:
 
-- **Branch protection:** `main` and `v*.0` require PRs, reviews, and status checks.
-- **Secret prevention:** never commit credentials, tokens, or keys; use repository secret scanning and validation workflows.
-- **Critical file protection:** avoid direct changes to protected areas (`.github/workflows/`, policy/security files) unless explicitly required and approved.
+- **Branch protection:** GitHub rulesets prevent deletion and
+  non-fast-forward updates of `main` and `v<M>.<m>.0` branches.
+- **Merge policy:** `mrgup` enforces merge paths, roles, synchronization, and
+  the targeted-to-version PR requirement. GitHub rulesets cannot express that
+  source/target-dependent PR rule without breaking allowed version-to-main
+  and repository-owner override operations.
+- **Configuration drift:** `validate-rulesets.yml` compares live rulesets with
+  `scripts/bin/setup_rulesets --check` each week and on manual request.
+- **Ruleset credentials:** configure the repository Actions secret
+  `RULESET_ADMIN_TOKEN` with permission to read repository administration
+  rules. Apply changes with an admin-authenticated
+  `scripts/bin/setup_rulesets`; the default Actions token is insufficient.
+- **Secret prevention:** never commit credentials, tokens, or keys; use repository
+  secret scanning  and validation workflows.
+- **Critical file protection:** avoid direct changes to protected areas
+  (`.github/workflows/`, policy/security files) unless explicitly required and approved.
 - **Signed provenance:** use GPG signing for protected-branch commits.
-- **Vulnerability reporting:** report security concerns via the repository security policy (`.github/SECURITY.md`) rather than public issue disclosure.
-- **Auditability:** approver-level actions and protected operations must remain traceable through workflow/script logs.
+- **Vulnerability reporting:** report security concerns via the repository
+  security policy (`.github/SECURITY.md`) rather than public issue disclosure.
+- **Auditability:** approver-level actions and protected operations must remain
+   traceable through workflow/script logs.
+
+GitHub cannot distinguish a user running `mrgup` from the same user issuing an
+equivalent direct Git push. Consequently, script-only invocation is enforced
+locally as a guardrail and monitored by push workflows; deletion and history
+rewrite restrictions are the server-authoritative controls. The repository owner
+is not exempt from direct-edit restrictions: the ruleset is configured without a
+bypass actor, and direct mutation of protected or script-managed branches must
+use the repository workflow rather than GitHub.com editing. A local
+`override on` mode is a narrow recovery aid for exceptional local admin work in
+a clone, not an authorization to perform routine direct edits to protected or
+script-managed branches. Remote repair of protected refs or repository state
+must be performed through GitHub admin controls or an explicit server-side
+exception, not through a local clone-only override. Stronger script-identity
+enforcement would require a dedicated GitHub App or bot to be the only
+identity permitted to update protected refs.
 
 Keep this section aligned with repository policy whenever workflows or branch protections change.
 </details>
@@ -988,13 +1049,14 @@ See `.github/CODEOWNERS` for details.
 
 ### 15.2. Opening and Reviewing
 
-1. Push your branch to repository
-2. Open PR on GitHub with clear title and description
-3. Verify base branch is correct (PR should target version or contributor branch, NOT main)
-4. GitHub runs validation workflows automatically
-5. Reviewers examine for quality, correctness, standards
-6. Address feedback and re-push
-7. Once approved and checks pass, approver merges
+1. Commit and push your branch updates.
+2. Create a draft PR (or update the existing draft PR): `review`.
+3. Optionally set or update title/labels while in draft: `review -T "WIP: ..." -l "..."`.
+4. Start formal review when ready: `review -s` (converts draft to ready when needed).
+5. GitHub runs validation workflows automatically.
+6. Respond to feedback with `feedback view`, `feedback respond`, and `feedback resolve`.
+7. Push follow-up fixes and run `review -s` again only if review requests must be refreshed.
+8. Once approved and checks pass, approver merges.
 </details>
 </details>
 
@@ -1016,21 +1078,27 @@ See `.github/CODEOWNERS` for details.
 ## 17. Protected Branches
 
 Protected branches require:
-- required: pull request before merging
-- required: status checks pass
-- required: approvals from code owners
-- prohibited: force pushes
-- prohibited: direct commits
-- prohibited: deletions
+- prohibited: direct commits and direct edits in GitHub.com
+- accidental local modify/rename/delete changes must be undone before
+  continuing workflows that require a clean branch
+- prohibited by GitHub ruleset: non-fast-forward updates
+- prohibited by GitHub ruleset: deletions
+- required by `mrgup`: approved PR for targeted-to-version merges without `-o`
+- optional PR: version-to-main merges and owner `mrgup -o` merges
 
 The protected base branch is `origin/main`; version branches are local protected branches.
-Neither may receive direct commits.
-Updates are made through `scripts/bin/mergetoparent` only:
+Neither may receive direct commits or direct GitHub.com edits.
+Updates are made through `scripts/bin/mrgup` only:
 
-- Use `scripts/bin/syncfromparent` (or equivalent) in the source branch first
-- Resolve conflicts in the source branch before running `mergetoparent`
-- Merge to protected parent using `mergetoparent`
+- Use `scripts/bin/mrgdown` in the source branch first when synchronization is needed
+- Resolve conflicts in the source branch before running `mrgup`
+- Merge to protected parent using `mrgup`
 - When the parent is protected, approver role is required
+  unless the repository owner uses the targeted-to-version `mrgup -o` override.
+- The owner override only authorizes the merge workflow; it does not permit direct
+  editing of protected or script-managed branches in GitHub.com.
+- A separate local `override on` recovery mode is reserved for exceptional
+  repository-repair or maintenance work, not for routine direct branch changes.
 </details>
 
 <details>
@@ -1289,24 +1357,22 @@ If you clone manually instead of using `mkclone`:
   git push origin mywork/description
   ```
 - [ ] **Open a Pull Request on GitHub**
-  - Go to https://github.com/paulsinclair51/briteTest
-  - Click "New Pull Request"
-  - Select your branch as source
-  - Select main (or appropriate base branch) as target
-  - Fill in title and description
-  - Submit
+  - Run `review` to create/update the draft PR for your current branch
+  - Use `review -T "..." -l "..."` to refine title/labels while drafting
+- [ ] **Start review when ready**
+  - Run `review -s` to create a non-draft PR or convert the current draft PR
+  - Optionally run `review -b` to open the PR in GitHub UI
 - [ ] **Wait for validation**
   - GitHub runs 15+ workflows automatically
   - All should pass with green checkmarks
   - If any fail, fix locally and re-push
 - [ ] **Request review**
-  - Assign reviewer if applicable
-  - Request review from `@paulsinclair51`
+  - `review -s` requests review from configured reviewers/approvers
 - [ ] **Respond to feedback**
-  - Read review comments
-  - Make requested changes
-  - Re-push
-  - Re-request review
+  - Read review comments: `feedback view`
+  - Reply to comments: `feedback respond -i <id> -c "..."`
+  - Resolve addressed threads: `feedback resolve -i <id>`
+  - Make requested changes, commit, and re-push
 - [ ] **Celebrate merge**
   - Once approved and checks pass, approver merges
   - Your contribution is now in the codebase!

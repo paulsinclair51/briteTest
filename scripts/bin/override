@@ -11,28 +11,54 @@
 usage() {
   cat <<'EOF'
 Usage:
-  override {on|off}
+  override [-r] [-t SEC] on
+  override off
   override {-h | --help}
 
-Toggle repository-owner unrestricted mode for this local clone.
+Toggle repository-owner override state for this local clone or
+for the remote.
+
+This is intended for exceptional repository recovery or maintenance only.
+Use fixlocal, fixrepo, and fixremote before using override when possible.
+
+Prerequisites:
+  - Caller must be the repository owner.
+  - The current branch must be a local branch.
+  - If -r is specified,
+    - The owner must also have the GitHub repository admin or
+      organization admin authority required to modify remote
+      protected refs or rulesets.
+    - The remote must be reachable within the timeout.
 
 Behavior:
-  - Only the repository owner may run this command.
-  - 'on' enables unrestricted mode in this clone, allowing direct git
-    modifying commands that are normally blocked by hooks.
-  - 'on' also allows repository actions blocked by local hook-based
-    enforcement mechanisms in this clone.
-  - 'off' disables unrestricted mode and restores normal role restrictions.
-  - Does not change script-level policy enforcement or role checks; scripts
-    continue enforcing their own rules unless invoked with their own explicit
-    options (for example, -o where supported).
-  - Applies to this local repository clone only.
+  - Without -r, 'on' enables unrestricted mode in this clone for direct git
+    commands that are normally blocked by local hooks. This is a local recovery
+    mode only.
+  - With -r, 'on' enables a temporary remote repair authorization window.
+    This records that the owner has explicitly entered a GitHub-side repair
+    workflow. Actual remote repair of protected refs or repository state must
+    still be performed through GitHub repository admin or organization admin
+    controls, or through an explicit server-side exception approved by
+    repository admins.
+  - 'off' disables both local and remote override modes for this clone and
+    restores normal role restrictions.
+  - 'override -r off' is not allowed; use 'override off' instead.
 
-Arguments:
+Argument:
   on|off   Required; case-insensitive.
+
+Options:
+  -h         Show this help text and exit.
+  --help     Show this help text and exit.
+  -r         Remote repair mode. Default is local unrestricted mode.
+  -t SEC     Remote reachability timeout in seconds (default: 10).
+             Sec must be an integer greater than 0.
+             Ignored if remote does not need to be accessed.
+  -v         Output progress and diagnostics to stdout.
 
 Examples:
   override on
+  override -r on
   override off
 
 Outputs:
@@ -40,12 +66,22 @@ Outputs:
   - Writes errors to stderr.
 
 Exit codes:
-  0   Success.
-  1   Argument or validation error.
-  3   Caller is not repository owner.
-  4   Configuration or identity resolution failed.
+  0    Success.
+  1    Argument or validation error.
+  3    Caller is not repository owner.
+  4    Remote is not reachable.
+  5    Remote timed out.
+  200  Configuration or identity resolution failed.
 EOF
 }
+
+# High-Level Flow:
+# - Parse mode (on/off) and validate caller identity/ownership prerequisites.
+# - Resolve repository owner from environment or origin URL.
+# - Toggle owner override git config for this clone.
+# - Confirm applied state and print final status.
+
+# shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
 
 set -euo pipefail
 
@@ -53,11 +89,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NOT_OWNER=3
 readonly EXIT_CONFIG_ERROR=4
 readonly OWNER_OVERRIDE_KEY="brite.ownerOverride"
+readonly REMOTE_REPAIR_OVERRIDE_KEY="brite.remoteRepairOverride"
 
 usage_error() {
   local message="$1"
@@ -65,29 +104,6 @@ usage_error() {
   echo >&2
   echo "$message. See usage above for details." >&2
   exit "$EXIT_INVALID_ARGUMENT"
-}
-
-resolve_repo_owner_login_or_empty() {
-  local repo_slug="${GITHUB_REPOSITORY:-}"
-  local remote_url=""
-  local owner=""
-
-  if [[ -n "$repo_slug" && "$repo_slug" == */* ]]; then
-    owner="${repo_slug%%/*}"
-  fi
-
-  if [[ -z "$owner" ]]; then
-    remote_url="$(git remote get-url origin 2>/dev/null || true)"
-    if [[ "$remote_url" =~ ^git@github\.com:([^/]+)/([^/]+)(\.git)?$ ]]; then
-      owner="${BASH_REMATCH[1]}"
-    elif [[ "$remote_url" =~ ^https://github\.com/([^/]+)/([^/]+)(\.git)?$ ]]; then
-      owner="${BASH_REMATCH[1]}"
-    elif [[ "$remote_url" =~ ^ssh://git@github\.com/([^/]+)/([^/]+)(\.git)?$ ]]; then
-      owner="${BASH_REMATCH[1]}"
-    fi
-  fi
-
-  bt_normalize_login "$owner"
 }
 
 ensure_repository_owner() {
@@ -99,15 +115,17 @@ ensure_repository_owner() {
       "Owner override requires a resolvable caller identity"
   fi
 
-  repo_owner_lc="$(resolve_repo_owner_login_or_empty)"
+  repo_owner_lc="$(bt_resolve_repo_owner_login_or_empty)"
   if [[ -z "$repo_owner_lc" ]]; then
     bt_error_exit "$EXIT_CONFIG_ERROR" \
-      "Owner override requires repository owner identity (set GITHUB_REPOSITORY or configure origin GitHub URL)"
+      "Owner override requires repository owner identity (set" \
+      "GITHUB_REPOSITORY or configure origin GitHub URL)"
   fi
 
-  if [[ "$actor_lc" != "$repo_owner_lc" ]]; then
+  if ! bt_is_repository_owner_login "$actor_lc"; then
     bt_error_exit "$EXIT_NOT_OWNER" \
-      "Owner override denied: caller '$actor_lc' is not repository owner '$repo_owner_lc'"
+      "Owner override denied: caller '$actor_lc' is not repository owner" \
+      "'$repo_owner_lc'"
   fi
 }
 
@@ -124,18 +142,67 @@ normalize_state() {
   esac
 }
 
-main() {
-  local arg="${1:-}"
-  local state=""
-
-  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
-    usage
-    exit 0
+log_verbose() {
+  local message="$1"
+  if [[ "$verbose" == true ]]; then
+    bt_info "$message"
   fi
+}
 
-  if [[ -z "$arg" || $# -ne 1 ]]; then
+get_override_value() {
+  local key="$1"
+  git config --local --get "$key" 2>/dev/null || true
+}
+
+set_override_value() {
+  local key="$1"
+  local value="$2"
+  git config --local "$key" "$value"
+}
+
+main() {
+  local arg=""
+  local remote_timeout_seconds=10
+  local state=""
+  local remote_repair=false
+  local target_key=""
+  local verbose=false
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      -r)
+        remote_repair=true
+        ;;
+      -t)
+        shift
+        [[ $# -gt 0 ]] || usage_error "Option -t requires SEC"
+        bt_is_valid_remote_timeout "$1" || \
+          usage_error "SEC for -t must be an integer greater than 0"
+        remote_timeout_seconds="$1"
+        ;;
+      -v)
+        verbose=true
+        ;;
+      -*)
+        usage_error "Unknown option: $1"
+        ;;
+      *)
+        [[ -z "$arg" ]] || usage_error "Exactly one argument is required"
+        arg="$1"
+        ;;
+    esac
+    shift
+  done
+
+  if [[ -z "$arg" ]]; then
     usage_error "Exactly one argument is required"
   fi
+
+  export BT_REMOTE_TIMEOUT_SECONDS="$remote_timeout_seconds"
 
   if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
     bt_error_exit "$EXIT_CONFIG_ERROR" "Must be run inside a Git repository"
@@ -144,16 +211,71 @@ main() {
   ensure_repository_owner
   state="$(normalize_state "$arg")"
 
-  if [[ "$state" == "on" ]]; then
-    if ! git config --local "$OWNER_OVERRIDE_KEY" true; then
-      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to enable owner override"
+  if [[ "$remote_repair" == true && "$state" == "off" ]]; then
+    usage_error "Remote repair override cannot be turned off separately; use 'override off' to disable both local and remote overrides"
+  fi
+
+  if [[ "$remote_repair" == true ]]; then
+    log_verbose "Validating origin remote reachability before enabling remote repair override"
+    if ! bt_git_has_origin "$PWD"; then
+      bt_error_exit "$EXIT_CONFIG_ERROR" \
+        "Remote repair mode requires an origin remote to be configured"
     fi
-    bt_success "Owner unrestricted mode is ON for this clone"
+
+    if ! bt_git_ls_remote_origin_with_timeout "$PWD" "$remote_timeout_seconds"; then
+      bt_error_exit "$EXIT_CONFIG_ERROR" \
+        "Remote repair mode requires a reachable origin remote within ${remote_timeout_seconds}s"
+    fi
+    target_key="$REMOTE_REPAIR_OVERRIDE_KEY"
   else
-    if ! git config --local "$OWNER_OVERRIDE_KEY" false; then
-      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to disable owner override"
+    target_key="$OWNER_OVERRIDE_KEY"
+  fi
+
+  if [[ "$state" == "on" ]]; then
+    local current_local_state="$(get_override_value "$OWNER_OVERRIDE_KEY")"
+    local current_remote_state="$(get_override_value "$REMOTE_REPAIR_OVERRIDE_KEY")"
+
+    if [[ "$remote_repair" == true ]]; then
+      if [[ "$current_remote_state" == "true" ]]; then
+        log_verbose "Remote repair override is already enabled"
+        bt_success "Owner remote repair authorization is already ON for this clone"
+        exit 0
+      fi
+      log_verbose "Setting remote repair authorization to on"
+      if ! set_override_value "$target_key" true; then
+        bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to enable remote repair override"
+      fi
+      bt_success "Owner remote repair authorization is ON for this clone"
+    else
+      if [[ "$current_local_state" == "true" ]]; then
+        log_verbose "Local override is already enabled"
+        bt_success "Owner unrestricted mode is already ON for this clone"
+        exit 0
+      fi
+      log_verbose "Setting local override state to on"
+      if ! set_override_value "$target_key" true; then
+        bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to enable override"
+      fi
+      bt_success "Owner unrestricted mode is ON for this clone"
     fi
-    bt_success "Owner unrestricted mode is OFF for this clone"
+  else
+    local current_local_state="$(get_override_value "$OWNER_OVERRIDE_KEY")"
+    local current_remote_state="$(get_override_value "$REMOTE_REPAIR_OVERRIDE_KEY")"
+
+    if [[ "$current_local_state" != "true" && "$current_remote_state" != "true" ]]; then
+      log_verbose "Both local and remote override flags are already disabled"
+      bt_success "Owner override state is already OFF for this clone (local and remote)"
+      exit 0
+    fi
+
+    log_verbose "Disabling both local and remote override flags"
+    if ! set_override_value "$OWNER_OVERRIDE_KEY" false; then
+      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to disable local override"
+    fi
+    if ! set_override_value "$REMOTE_REPAIR_OVERRIDE_KEY" false; then
+      bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to disable remote override"
+    fi
+    bt_success "Owner override state is OFF for this clone (local and remote)"
   fi
 }
 

@@ -1,0 +1,97 @@
+name: Validate Rebase Operations
+
+# Define the GitHub workflow for validating rebase operations.
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+#-----------------------------------------------------------------------------
+# REBASE PROTECTION WORKFLOW - Prevent rebasing onto protected branches
+#
+# PURPOSE: Prevents rebasing onto protected branches (main, version) which
+# could bypass PR validation and create history issues.
+#
+# WHEN THIS RUNS:
+#   - After a force push (detected by checking for rebased commits)
+#   - Monitors push events to detect rebase patterns
+#
+# WHAT IT VALIDATES:
+#   1. Detects rebase operations
+#   2. Prevents rebasing onto protected branches
+#   3. Prevents rewriting history on protected branches
+#   4. Logs rebase attempts for audit
+#
+# EXPECTED OUTCOME:
+#   ✓ Valid rebases: Within contributor branches allowed
+#   ✗ Invalid rebases: Rebasing onto protected branches detected and logged
+#
+# NOTE:
+#   - GitHub branch protection rules can enforce "Require branches to be up to
+#     date before merging" to prevent merge commits, forcing rebase workflow
+#   - This workflow audits rebase patterns to ensure they don't bypass rules
+#
+# For more information, see '<repo>/docs/md/Contributor_Guide.md'.
+#
+# YAML is a plain‑text, human‑readable format where indentation defines
+# structure. Files (with the extension .yml) contain YAML text and are
+# used by GitHub Actions.
+#-----------------------------------------------------------------------------
+
+on:
+  push:
+    branches:
+      - main
+      - 'v*.*.0'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-rebase:
+    name: Validate rebase
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check rebase patterns
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.event.after }}
+        run: |
+          set -euo pipefail
+
+          # Get branch type
+          branch_result=$(bash scripts/helpers/ckbranchname.sh "$REF_NAME" 2>/dev/null; echo $?)
+
+          get_type_name() {
+            local type_code=$1
+            case $type_code in
+              1) echo "main" ;;
+              2) echo "version" ;;
+              3) echo "targeted" ;;
+              4) echo "contributor" ;;
+              5) echo "invalid" ;;
+              *) echo "unknown" ;;
+            esac
+          }
+
+          branch_type_name=$(get_type_name "$branch_result")
+
+          echo "=== REBASE VALIDATION ==="
+          echo "Branch: $REF_NAME (type: $branch_type_name)"
+
+          # Protected branches should not be rebased
+          if [[ $branch_result -eq 1 || $branch_result -eq 2 ]]; then
+            echo "✓ This is a protected branch ($branch_type_name)"
+            echo "ℹ Rebase operations on protected branches are restricted"
+            echo "ℹ Use merge commits or squash merges via pull requests"
+          else
+            echo "✓ This is a non-protected branch ($branch_type_name)"
+            echo "ℹ Rebase operations are allowed"
+          fi

@@ -13,8 +13,8 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **README.md**: This directory guide.
+**README.md**: This directory guide.
 
 ## Subdirectories
 
-- None.
+None.

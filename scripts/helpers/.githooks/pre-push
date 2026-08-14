@@ -17,10 +17,16 @@
 
 set -euo pipefail
 
-# Source orchestrator for common functions
-ORCHESTRATOR="$(git rev-parse --git-dir)/hooks/orchestrator.sh"
-if [[ -f "$ORCHESTRATOR" ]]; then
-  source "$ORCHESTRATOR" 2>/dev/null || true
+# Source hook helper for common functions
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GITHOOK_HELPER="$HOOK_DIR/githook_helper.sh"
+
+# Fallback for legacy installs that still run from .git/hooks.
+if [[ ! -f "$GITHOOK_HELPER" ]]; then
+  GITHOOK_HELPER="$(git rev-parse --git-dir)/hooks/githook_helper.sh"
+fi
+if [[ -f "$GITHOOK_HELPER" ]]; then
+  source "$GITHOOK_HELPER" 2>/dev/null || true
 fi
 
 # Check if bypass is set by authorized script or owner unrestricted mode

@@ -42,15 +42,6 @@ bt_report_error_exit() {
   fi
 }
 
-bt_report_mark_read_only() {
-  local report_path="$1"
-  local exit_code="$2"
-
-  if ! chmod a-w "$report_path" 2>/dev/null; then
-    bt_report_error_exit "$exit_code" "Failed to mark report read-only: $report_path"
-  fi
-}
-
 bt_report_dir_enable_writes() {
   local report_dir="$1"
   local exit_code="$2"
@@ -64,24 +55,63 @@ bt_report_dir_enable_writes() {
   fi
 }
 
-bt_report_dir_disable_writes() {
+bt_report_unique_path() {
   local report_dir="$1"
-  local exit_code="$2"
-  local report_file
+  local prefix="$2"
+  local timestamp="$3"
+  local process_id="${4:-$BASHPID}"
 
-  [[ -d "$report_dir" ]] || return 0
+  printf '%s/%s-%s-%s.md\n' \
+    "${report_dir%/}" "$prefix" "$timestamp" "$process_id"
+}
 
-  # Normalize report files to read-only before locking the directory.
-  for report_file in "$report_dir"/*.md; do
-    [[ -e "$report_file" ]] || continue
-    if ! chmod a-w "$report_file" 2>/dev/null; then
-      bt_report_warn "Could not mark report read-only: ${report_file}"
-    fi
-  done
+bt_report_write_header() {
+  local report_path="$1"
+  local report_title="$2"
+  local run_ts_display="$3"
+  local command_text="$4"
 
-  if ! chmod a-w "$report_dir" 2>/dev/null; then
-    bt_report_error_exit "$exit_code" "Failed to disable writes for report directory: $report_dir"
+  cat > "$report_path" <<EOF
+# ${report_title} ${run_ts_display}
+
+**Command:** \`${command_text}\`
+
+EOF
+}
+
+bt_report_acquire_lock() {
+  local repo_root="$1"
+  local namespace="$2"
+  local timeout_seconds="$3"
+  local output_fd_name="$4"
+  local repo_hash=""
+  local lock_fd=""
+  local lock_path=""
+  local safe_namespace=""
+  local -n output_fd_ref="$output_fd_name"
+
+  [[ "$timeout_seconds" =~ ^[0-9]+$ && "$timeout_seconds" -gt 0 ]] || return 2
+
+  safe_namespace="${namespace//[^a-zA-Z0-9_.-]/-}"
+  repo_hash="$(printf '%s' "$repo_root" | cksum | awk '{print $1}')"
+  lock_path="/tmp/briteTest-report-${safe_namespace}-${repo_hash}.lock"
+
+  exec {lock_fd}>"$lock_path"
+  if ! flock -w "$timeout_seconds" "$lock_fd"; then
+    eval "exec ${lock_fd}>&-"
+    return 1
   fi
+
+  # shellcheck disable=SC2034  # Returned by nameref.
+  output_fd_ref="$lock_fd"
+}
+
+bt_report_release_lock() {
+  local lock_fd="$1"
+
+  [[ "$lock_fd" =~ ^[0-9]+$ ]] || return 0
+  flock -u "$lock_fd" >/dev/null 2>&1 || true
+  eval "exec ${lock_fd}>&-"
 }
 
 bt_report_remove_and_record() {
@@ -101,71 +131,47 @@ bt_report_remove_and_record() {
   fi
 }
 
-bt_report_persist_changes() {
-  local repo_root="$1"
-  local report_path="$2"
-  local deleted_array_name="$3"
-  local commit_message="$4"
-  local exit_code="$5"
-  local allow_force_push="${6:-false}"
-  local current_branch
-  local report_filename
-  local report_rel
-  local -a report_paths=()
-  # shellcheck disable=SC2178  # Nameref points to an array variable by contract.
-  local -n deleted_reports_ref="$deleted_array_name"
+bt_report_cleanup_transient_reports() {
+  local reports_dir="$1"
+  local current_branch="$2"
+  local current_report_path="$3"
+  shift 3
 
-  if [[ -z "$report_path" || ! -f "$report_path" ]]; then
-    bt_report_error_exit "$exit_code" "Report file was not generated as expected."
-  fi
+  local pattern
+  local report_path
+  local report_branch=""
+  local matched_branch_field=""
 
-  report_filename="$(basename "$report_path")"
-  report_rel="${report_path#"${repo_root}"/}"
-  current_branch="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
-  if [[ -z "$current_branch" ]]; then
-    bt_report_error_exit "$exit_code" "Cannot save report. Check out a branch and try again."
-  fi
+  for pattern in "$@"; do
+    for report_path in "$reports_dir"/$pattern; do
+      [[ -e "$report_path" ]] || continue
+      [[ -n "$current_report_path" && "$report_path" == "$current_report_path" ]] && continue
 
-  report_paths=("$report_rel")
-  if [[ ${#deleted_reports_ref[@]} -gt 0 ]]; then
-    report_paths+=("${deleted_reports_ref[@]}")
-  fi
+      report_branch=""
+      matched_branch_field=""
+      if grep -Eq '^\*\*Branch:\*\* ' "$report_path" 2>/dev/null; then
+        matched_branch_field="Branch"
+      elif grep -Eq '^\*\*Source Branch:\*\* ' "$report_path" 2>/dev/null; then
+        matched_branch_field="Source Branch"
+      fi
 
-  if ! env GIT_BYPASS_HOOKS=true git add -A -- "${report_paths[@]}" >/dev/null 2>&1; then
-    bt_report_error_exit "$exit_code" "Failed to prepare report for commit."
-  fi
+      if [[ -n "$matched_branch_field" ]]; then
+        report_branch="$(awk -v field="$matched_branch_field" '
+          $0 ~ "^\\*\\*" field "\\*\\* " {
+            sub("^\\*\\*" field "\\*\\* ", "", $0)
+            gsub(/^`|`$/, "", $0)
+            print $0
+            exit
+          }
+        ' "$report_path" 2>/dev/null || true)"
+      fi
 
-  if git diff --cached --quiet -- "${report_paths[@]}"; then
-    bt_report_info "No changes to report."
-    return 0
-  fi
+      if [[ -n "$report_branch" && "$report_branch" != "$current_branch" ]]; then
+        continue
+      fi
 
-  if ! env GIT_BYPASS_HOOKS=true git commit -m "$commit_message" -- "${report_paths[@]}" >/dev/null 2>&1; then
-    bt_report_error_exit "$exit_code" "Failed to commit report."
-  fi
-
-  if ! git remote get-url origin >/dev/null 2>&1; then
-    bt_report_warn "No remote repository configured"
-    bt_report_success "Report $report_filename committed."
-    return 0
-  fi
-
-  if ! git ls-remote --heads origin >/dev/null 2>&1; then
-    bt_report_warn "Cannot connect to remote repository"
-    bt_report_success "Report $report_filename committed."
-    return 0
-  fi
-
-  if env GIT_BYPASS_HOOKS=true git push origin "$current_branch" >/dev/null 2>&1; then
-    bt_report_success "Report $report_filename committed/pushed."
-    return 0
-  fi
-
-  if [[ "$allow_force_push" == true ]] && env GIT_BYPASS_HOOKS=true git push --force origin "$current_branch" >/dev/null 2>&1; then
-    bt_report_success "Report $report_filename committed/pushed."
-    return 0
-  fi
-
-  bt_report_warn "Failed to push report commit to remote."
-  bt_report_success "Report $report_filename committed."
+      chmod u+w "$report_path" >/dev/null 2>&1 || true
+      rm -f "$report_path" >/dev/null 2>&1 || true
+    done
+  done
 }

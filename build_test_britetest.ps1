@@ -1,8 +1,8 @@
 #-----------------------------------------------------------------
 # Build Powershell script for test_britetest (Linux/macOS)
 #
-# test_liteteest.exe is an executable that uses the BriteTest
-# framework and APIs to test itself.
+# test_britetest.exe is an executable that uses the BriteTest
+# Runner Framework and the Runner and Test APIs to test itself.
 #
 #-----------------------------------------------------------------
 # Copyright (c) 2026 Paul Sinclair
@@ -16,12 +16,11 @@
 #   [<directory_path>/]test_britetest [<option>],,, [<arg>]...
 #
 # For usage information about the options and args, submit the
-# follpwing to a shell:
+# following to a shell:
 #
 #   [<directory_path>/]test_britetest --help
 #
-# For an introduction to BriteTest, see README.md in ghe root
-# directory.
+# For an introduction to BriteTest, see <repo>/README.md.
 #----------------------------------------------------------------
 
 param(

@@ -8,22 +8,22 @@ For license details, see `<repo>/LICENSE`.
 
 See `<repo>/README.md` for an introduction to briteTest.
 
-- Output files in this directory are compared against corresponding
-  golden files and metadata files in `<repo>/tests/golden/`.
+Output files in this directory are compared against corresponding
+golden files and metadata files in `<repo>/tests/golden/`.
 
-## Files/
+## Files
 
-- **Output files**: Captured copies of `stdout`, `stderr`, and named output files
-  produced during test runs.
+**Output files**: Captured copies of `stdout`, `stderr`, and named output files
+produced during test runs.
 
-- **Metadata files**: Markdown Document (`.md`) metadata files associated with
-  captured output files and related file groups.
+**Metadata files**: Markdown Document (`.md`) metadata files associated with
+captured output files and related file groups.
 
-- **README.md**: This directory guide.
+**README.md**: This directory guide.
 
 ## Subdirectories
 
-- None.
+None.
 
 ## Output and Golden Files
 

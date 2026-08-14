@@ -16,6 +16,11 @@ Usage:
 
 Change current branch to BRANCH.
 
+Prerequisites:
+  - If changing branches, or changing between local and remote for the same
+    branch, the current branch must not be dirty (that is, no uncommitted
+    changes). Use commit or undo first, then rerun chbranch.
+
 Arguments:
   BRANCH      Name of the branch to change to. If BRANCH is omitted,
               defaults to the name of the current branch. If current
@@ -28,29 +33,34 @@ Options:
   --help      Output this help to stdout and exit (other options
               and arguments are ignored).
   -l          Change to local BRANCH.
-  -r          Change to remote (origin) BRANCH if it exists and is
-              connected and reachable within the specified or default
-              timeout.
+  -r          Change to a snapshot of the remote (origin) BRANCH if it
+              exists and is connected and reachable within the specified or
+              default timeout. This option is mutually exclusive with -l.
   -t SEC      Timeout in seconds for accessing remote branch (default
-              10 seconds).
-              SEC must be an integer greater than 0.
+              10 seconds). SEC must be an integer greater than 0.
   -v          Output verbose progress and diagnostics to stdout.
 
-Rules:
-  - Changing branch is blocked when the current branch is dirty; use the commit
-    script or undo script, and then rerun chbranch.
-  - Protected branches (main and v<M>.<m>.<p>) are always read-only.
-  - By default (neither -l nor -r specified), changes to local BRANCH
-    when it exists; otherwise, remote branch if it exists and is connected
-    and reachable within the specified or default timeout.
-  - Mode flags are strict:
-      * -l forces local mode.
-      * -r forces remote mode.
-      * -l and -r together are invalid.
-  - For targeted/contributor branches in remote mode:
-      * If a corresponding local branch exists, remote is read-only.
-      * If no corresponding local branch exists, remote is read/write by
-        creating a local tracking branch.
+If neither -l nor -r is specified, changes to local BRANCH when it exists;
+otherwise, changes to a snapshot of the remote branch if it exists and is
+connected and reachable within the specified or default timeout.
+
+Notes:
+  - Protected branches (main and v<M>.<m>.0) are local-first by default.
+  - Protected branches (both local and remote) are effectively read-only
+    since commit is not allowed on them. Files can be changed, but any
+    changes must be undone before changing to another branch.
+  - Remote targeted/contributor branches are effectively read-only since
+    they are snapshots of the remote branch. Files can be changed, but any
+    changes are local and must be undone before changing to another branch.
+  - Existing branches whose names are invalid (that is, do not conform
+    to branch naming policy) are effectively read-only (if changes are
+    made, they must be undone before changing to another branch).
+  - When changed to a protected branch, remote branch, or branch with an
+    invalid name, chbranch prints a warning to avoid modify/rename/delete
+    changes since any changes need to be undone before changing to another
+    branch.
+  - To make changes, switch to a local contributor or targeted branch
+    (create one first if it doesn't exist).
 
 Examples:
   chbranch dev/my-feature-v1.0.0
@@ -61,37 +71,42 @@ Outputs:
   - Writes errors and diagnostics to stderr.
 
 Exit codes:
-  0   Success.
-  1   Invalid option or argument.
-  2   Current branch is dirty; commit/undo changes and then rerun.
-  3   Branch not found (when neither -l nor -r specified).
-  4   Local branch not found when -l specified.
-  5   Remote branch not found when -r specified.
-  6   Remote branch is not connected/reachable.
-  7   Timeout waiting for remote branch to be reachable.
-  200 Git switch command failed (e.g., corrupted index, merge conflicts,
-      permissions, or other git-level errors preventing branch change).
+  0    Success (changed to the specified branch, already on it, or
+       -h/--help specified).
+  1    Invalid option or argument.
+  2    Current branch is dirty; commit/undo changes and then rerun.
+  3    Branch not found (when neither -l nor -r specified).
+  4    Local branch not found when -l specified.
+  5    Remote branch not found when -r specified.
+  6    Remote is not connected/reachable.
+  7    Timeout waiting for remote to be reachable.
+  8    Running outside a Git repository.
+  9    Required command is not available (git or timeout).
+  200  Git switch command failed (e.g., corrupted index, merge conflicts,
+       permissions, or other git-level errors preventing branch change).
 EOF
 }
 
 # High-Level Flow:
-# 1. Parse options and resolve BRANCH.
+# 1. Honor help before validating the environment.
+# 2. Verify required commands and Git repository context.
+# 3. Parse options and resolve BRANCH.
 #    - If BRANCH is omitted, use current local/detached state; if unresolved,
 #      fall back to last successful branch name from local config.
-# 2. Validate branch name and policy constraints.
-# 3. Determine desired checkout mode.
+# 4. Validate branch name and policy constraints.
+# 5. Determine desired checkout mode.
 #    - Default: local when BRANCH exists locally; otherwise remote.
 #    - Explicit: -l forces local mode, -r forces remote mode.
-# 4. Apply branch policy.
-#    - main/version branches are always read-only.
-#    - Remote targeted/contributor branches are read-only only when a
-#      corresponding local branch exists.
-# 5. Validate target availability.
+# 6. Apply branch policy.
+#    - main/version branches are local-first by default.
+#    - remote mode for main/version branches is read-only (detached).
+#    - Non-policy branch names remain read-only.
+# 7. Validate target availability.
 #    - Local mode: local ref must exist.
 #    - Remote mode: remote ref must exist and be reachable within timeout.
-# 6. Ensure worktree is clean.
-# 7. Switch to local/read-write, or detached read-only target.
-# 8. Persist the branch name for future no-BRANCH invocations.
+# 8. Ensure there are no uncommitted changes when switching branches.
+# 9. Switch to local/read-write, or detached read-only target.
+# 10. Persist the branch name for future no-BRANCH invocations.
 
 set -euo pipefail
 
@@ -109,17 +124,17 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 readonly EXIT_ARG_ERROR=1
-readonly EXIT_NOT_GIT_REPO=200
 readonly EXIT_DIRTY_WORKTREE=2
 readonly EXIT_BRANCH_NOT_FOUND=3
 readonly EXIT_LOCAL_NOT_FOUND=4
 readonly EXIT_REMOTE_NOT_FOUND=5
 readonly EXIT_REMOTE_UNREACHABLE=6
 readonly EXIT_REMOTE_TIMEOUT=7
+readonly EXIT_NOT_GIT_REPO=8
+readonly EXIT_REQUIRED_COMMAND_MISSING=9
 readonly EXIT_CHANGE_FAILED=200
 
 VERBOSE=false
-FORCE_LOCAL=false
 REMOTE_TIMEOUT_SECONDS=10
 readonly LAST_BRANCH_KEY="chbranch.lastBranch"
 
@@ -141,10 +156,37 @@ verbose_info() {
   fi
 }
 
+show_help_if_requested() {
+  local arg
+
+  for arg in "$@"; do
+    if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+      usage
+      exit 0
+    fi
+  done
+}
+
+ensure_required_commands() {
+  local command_name
+
+  for command_name in git timeout; do
+    if ! command -v "$command_name" >/dev/null 2>&1; then
+      bt_error_exit "$EXIT_REQUIRED_COMMAND_MISSING" \
+        "Required command '$command_name' is not available"
+    fi
+  done
+}
+
 emit_success_changed() {
   local mode="$1"
   local branch="$2"
   echo "Changed to $mode $branch branch."
+
+  if [[ "$mode" == "remote" ]] || bt_is_read_only_branch "$branch"; then
+    echo "Warning: do not modify, rename, or delete files in this branch."
+    echo "If you do, undo the changes before switching."
+  fi
 }
 
 ensure_git_repository() {
@@ -179,7 +221,8 @@ last_branch_or_empty() {
   local branch=""
 
   branch="$(git config --local --get "$LAST_BRANCH_KEY" 2>/dev/null || true)"
-  if [[ -n "$branch" ]] && git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+  if [[ -n "$branch" ]] && \
+    git check-ref-format --branch "$branch" >/dev/null 2>&1; then
     echo "$branch"
     return 0
   fi
@@ -200,8 +243,11 @@ current_branch_name_or_empty() {
     return 0
   fi
 
-  remote_branches="$(git for-each-ref --format='%(refname:short)' --points-at HEAD refs/remotes/origin 2>/dev/null | grep -v '^origin/HEAD$' || true)"
-  remote_count="$(printf '%s\n' "$remote_branches" | sed '/^$/d' | wc -l | tr -d ' ')"
+  remote_branches="$(git for-each-ref --format='%(refname:short)' \
+    --points-at HEAD refs/remotes/origin 2>/dev/null | \
+    grep -v '^origin/HEAD$' || true)"
+  remote_count="$(printf '%s\n' "$remote_branches" | sed '/^$/d' | \
+    wc -l | tr -d ' ')"
   remembered_branch="$(last_branch_or_empty)"
 
   if [[ "$remote_count" == "1" ]]; then
@@ -215,7 +261,8 @@ current_branch_name_or_empty() {
   # If HEAD points at multiple remote branches, prefer the remembered branch
   # when it is still one of the candidates.
   if [[ "$remote_count" -gt 1 && -n "$remembered_branch" ]] &&
-    printf '%s\n' "$remote_branches" | grep -Fxq "origin/$remembered_branch"; then
+    printf '%s\n' "$remote_branches" | \
+    grep -Fxq "origin/$remembered_branch"; then
     echo "$remembered_branch"
     return 0
   fi
@@ -240,16 +287,14 @@ refresh_remote_branch_ref() {
   local branch="$1"
   local ls_output=""
   local rc=0
+  local history_rc=0
 
-  if ! command -v timeout >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_REMOTE_UNREACHABLE" \
-      "Required command 'timeout' is not available"
+  if ls_output="$(bt_run_remote_command git ls-remote --heads origin \
+    "$branch" 2>/dev/null)"; then
+    rc=0
+  else
+    rc=$?
   fi
-
-  set +e
-  ls_output="$(timeout "$REMOTE_TIMEOUT_SECONDS" git ls-remote --heads origin "$branch" 2>/dev/null)"
-  rc=$?
-  set -e
 
   if [[ "$rc" -eq 124 ]]; then
     return 3
@@ -264,13 +309,27 @@ refresh_remote_branch_ref() {
   fi
 
   verbose_info "Found origin/$branch. Fetching branch metadata..."
-  if ! git fetch origin "$branch:refs/remotes/origin/$branch" \
-    >/dev/null 2>&1; then
+  if bt_run_remote_command git fetch origin \
+    "$branch:refs/remotes/origin/$branch" >/dev/null 2>&1; then
+    rc=0
+  else
+    rc=$?
+  fi
+
+  if [[ "$rc" -eq 124 ]]; then
+    return 3
+  fi
+
+  if [[ "$rc" -ne 0 ]]; then
     return 2
   fi
 
-  bt_propagate_repository_history
-  case $? in
+  if bt_propagate_repository_history; then
+    history_rc=0
+  else
+    history_rc=$?
+  fi
+  case "$history_rc" in
     0) ;;
     1) verbose_info "Updated repository history from remote" ;;
     *) ;;
@@ -281,16 +340,15 @@ refresh_remote_branch_ref() {
 
 ensure_remote_ref_available() {
   local branch="$1"
-  local require_fresh="${2:-false}"
   local msg=""
+  local rc=0
 
-  if [[ "$require_fresh" != "true" ]] && \
-    branch_exists_cached_remote "$branch"; then
-    return 0
+  if refresh_remote_branch_ref "$branch"; then
+    rc=0
+  else
+    rc=$?
   fi
-
-  refresh_remote_branch_ref "$branch"
-  case $? in
+  case "$rc" in
     0) return 0 ;;
     1) return 1 ;;
     3)
@@ -346,18 +404,6 @@ switch_remote() {
   fi
   remember_last_branch "$branch"
   emit_success_changed "remote" "$branch"
-}
-
-switch_local_tracking_from_remote() {
-  local branch="$1"
-
-  verbose_info "Creating local tracking branch '$branch' from origin/$branch"
-  if ! git switch --track -c "$branch" "origin/$branch" >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_CHANGE_FAILED" \
-      "Failed to create local tracking branch '$branch' from 'origin/$branch'"
-  fi
-  remember_last_branch "$branch"
-  emit_success_changed "local" "$branch"
 }
 
 switch_local_read_only() {
@@ -433,22 +479,15 @@ parse_args() {
   fi
 }
 
-validate_target_branch() {
+validate_git_branch_name() {
   local branch="$1"
-  local msg=""
-
-  if [[ "$branch" == origin/* ]]; then
-    msg="Remote branch input '$branch' is not allowed. Create a local "
-    msg+="tracking branch first."
-    arg_error "$msg"
-  fi
 
   if ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
     arg_error "Invalid branch name: '$branch'"
   fi
 }
 
-ensure_clean_or_discard() {
+ensure_no_uncommitted_changes() {
   local curr_branch="$1"
   local msg=""
 
@@ -475,19 +514,24 @@ main() {
   local protected_branch=false
   local read_only_mode=false
   local desired_mode="local"
-  local require_fresh_remote=false
   local curr_branch
   local msg=""
 
+  show_help_if_requested "$@"
+  ensure_required_commands
   ensure_git_repository
   parse_args "$@"
+  export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
 
   TARGET_BRANCH="$BRANCH_ARG"
-  validate_target_branch "$TARGET_BRANCH"
+  validate_git_branch_name "$TARGET_BRANCH"
+
+  if bt_is_read_only_branch "$TARGET_BRANCH"; then
+    read_only_mode=true
+  fi
 
   if bt_is_protected_branch "$TARGET_BRANCH"; then
     protected_branch=true
-    read_only_mode=true
   fi
 
   if branch_exists_local "$TARGET_BRANCH"; then
@@ -500,25 +544,18 @@ main() {
     desired_mode="remote"
   fi
 
-  # Protected branches are always read-only. Keep local mode for no-local
-  # fallback detection but enforce detached checkout below.
-  if [[ "$protected_branch" == true && "$FORCE_LOCAL" == true ]]; then
-    read_only_mode=true
+  # Protected branches are read-only only in remote mode; local mode should
+  # attach to the local branch so downstream scripts treat it as checked out.
+  if [[ "$protected_branch" == true && "$desired_mode" == "local" ]]; then
+    read_only_mode=false
   fi
-
-  # For explicit -r, always validate against the current remote state rather
-  # than relying on a possibly stale local remote-tracking ref.
-  if [[ "$FORCE_REMOTE" == true ]]; then
-    require_fresh_remote=true
-  fi
-
   if [[ "$FORCE_LOCAL" == true && "$has_local" == false ]]; then
     bt_error_exit "$EXIT_LOCAL_NOT_FOUND" \
       "Local branch '$TARGET_BRANCH' does not exist"
   fi
 
   if [[ "$desired_mode" == "remote" ]]; then
-    if ! ensure_remote_ref_available "$TARGET_BRANCH" "$require_fresh_remote"; then
+    if ! ensure_remote_ref_available "$TARGET_BRANCH"; then
       if [[ "$FORCE_REMOTE" == true ]]; then
         bt_error_exit "$EXIT_REMOTE_NOT_FOUND" \
           "Remote branch 'origin/$TARGET_BRANCH' does not exist"
@@ -550,7 +587,7 @@ main() {
     exit 0
   fi
 
-  ensure_clean_or_discard "$curr_branch"
+  ensure_no_uncommitted_changes "$curr_branch"
 
   if [[ "$read_only_mode" == true ]]; then
     # Respect explicit mode flags first.
@@ -570,14 +607,7 @@ main() {
   elif [[ "$desired_mode" == "local" ]]; then
     switch_local "$TARGET_BRANCH"
   else
-    # Remote targeted/contributor policy:
-    # - local exists => remote is read-only
-    # - no local => remote is read/write (create tracking local branch)
-    if [[ "$has_local" == true ]]; then
-      switch_remote "$TARGET_BRANCH"
-    else
-      switch_local_tracking_from_remote "$TARGET_BRANCH"
-    fi
+    switch_remote "$TARGET_BRANCH"
   fi
 }
 

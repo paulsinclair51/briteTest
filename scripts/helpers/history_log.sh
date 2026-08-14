@@ -11,6 +11,16 @@
 # - Ensures consistent row formatting and timestamp handling across scripts.
 # - Centralizes history-log write operations for workflow scripts.
 
+bt_history_run_remote_command() {
+  if declare -F bt_run_remote_command >/dev/null 2>&1; then
+    bt_run_remote_command "$@"
+  elif command -v timeout >/dev/null 2>&1; then
+    timeout "${BT_REMOTE_TIMEOUT_SECONDS:-10}s" "$@"
+  else
+    "$@"
+  fi
+}
+
 bt_init_history_log() {
   local log_file="$1"
 
@@ -83,7 +93,7 @@ bt_propagate_repository_history() {
   current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
   
   # Check 1: Can we reach remote?
-  if ! git ls-remote origin >/dev/null 2>&1; then
+  if ! bt_history_run_remote_command git ls-remote origin >/dev/null 2>&1; then
     return 2  # Offline or remote unreachable, silent fail
   fi
 
@@ -107,12 +117,12 @@ bt_propagate_repository_history() {
   fi
 
   # SHAs differ, fetch from origin/main (preferred source) or current branch
-  if git fetch origin main:logs/repository_history.md 2>/dev/null; then
+  if bt_history_run_remote_command git fetch origin main:logs/repository_history.md 2>/dev/null; then
     return 1  # Successfully updated from origin/main
   fi
   
   # origin/main fetch failed, try current branch on remote
-  if git fetch origin "$current_branch":logs/repository_history.md 2>/dev/null; then
+  if bt_history_run_remote_command git fetch origin "$current_branch":logs/repository_history.md 2>/dev/null; then
     return 1  # Successfully updated from origin/<current-branch>
   fi
 
@@ -128,7 +138,7 @@ bt_commit_and_push_repository_history() {
   local commit_msg="${1:-Update repository history}"
   
   # Only proceed if we're connected to remote
-  if ! git ls-remote origin >/dev/null 2>&1; then
+  if ! bt_history_run_remote_command git ls-remote origin >/dev/null 2>&1; then
     return 0  # No remote, skip silently
   fi
   
@@ -140,7 +150,7 @@ bt_commit_and_push_repository_history() {
   # Commit and push (silently fail if not on main or can't push)
   git add "logs/repository_history.md" 2>/dev/null || return 0
   git commit -m "$commit_msg" 2>/dev/null || return 0
-  git push origin HEAD:main 2>/dev/null || return 0
+  bt_history_run_remote_command git push origin HEAD:main 2>/dev/null || return 0
   
   return 0
 }

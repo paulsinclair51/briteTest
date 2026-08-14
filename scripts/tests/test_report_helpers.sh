@@ -38,12 +38,14 @@ assert_contains() {
   grep -Fq -- "$text" "$file" || fail "expected '$text' in $file"
 }
 
-for dep in bash git grep mktemp chmod; do
+for dep in bash git grep mktemp; do
   command -v "$dep" >/dev/null 2>&1 || fail "missing required command: $dep"
 done
 
 [[ -f "$REPORT_HELPER_SRC" ]] || fail "missing helper: $REPORT_HELPER_SRC"
 
+# shellcheck source=scripts/helpers/common.sh
+source "$REPO_ROOT/scripts/helpers/common.sh"
 # shellcheck source=scripts/helpers/report_helpers.sh
 source "$REPORT_HELPER_SRC"
 
@@ -84,72 +86,62 @@ bt_report_remove_and_record \
   fail "expected recorded deleted report path to be relative"
 pass "delete-and-record helper"
 
-# 2) Read-only helper should remove write permissions from the generated report.
-READONLY_REPORT="$TMPDIR/readonly-report.md"
-echo "report body" > "$READONLY_REPORT"
-bt_report_mark_read_only "$READONLY_REPORT" 99
-[[ ! -w "$READONLY_REPORT" ]] || fail "report should be marked read-only"
-pass "mark report read-only"
+# 2) Shared formatting helpers should behave consistently.
+[[ "$(bt_ensure_trailing_period "Hello")" == "Hello." ]] || \
+  fail "expected trailing period helper to append a period"
+[[ "$(bt_ensure_trailing_period "Hello.")" == "Hello." ]] || \
+  fail "expected trailing period helper to preserve an existing period"
+[[ "$(bt_format_command_line "mrgdown" "-v" "two words")" == "mrgdown -v two\ words" ]] || \
+  fail "expected command-line formatter to shell-escape arguments"
+[[ "$(bt_trim_whitespace "  keep this  ")" == "keep this" ]] || \
+  fail "expected whitespace trimming helper to normalize surrounding whitespace"
 
-# 3) Persist helper should commit only the target report and exact deleted paths.
-PERSIST_REPO="$TMPDIR/persist-repo"
-seed_repo "$PERSIST_REPO"
+# 3) Shared transient report cleanup should remove only matching branch reports.
+cleanup_repo="$TMPDIR/cleanup-repo"
+seed_repo "$cleanup_repo"
+mkdir -p "$cleanup_repo/reports/branch"
+cat > "$cleanup_repo/reports/branch/keep.md" <<'EOF'
+# Keep Report
+
+**Branch:** `feature/other`
+EOF
+cat > "$cleanup_repo/reports/branch/remove.md" <<'EOF'
+# Remove Report
+
+**Branch:** `feature/current`
+EOF
+cat > "$cleanup_repo/reports/branch/source-remove.md" <<'EOF'
+# Remove Report
+
+**Source Branch:** `feature/current`
+EOF
+bt_report_cleanup_transient_reports \
+  "$cleanup_repo/reports/branch" \
+  "feature/current" \
+  "$cleanup_repo/reports/branch/keep.md" \
+  "remove.md" "source-remove.md"
+[[ -f "$cleanup_repo/reports/branch/keep.md" ]] || fail "expected non-matching report to remain"
+[[ -f "$cleanup_repo/reports/branch/remove.md" ]] && fail "expected branch-matching report to be removed"
+[[ -f "$cleanup_repo/reports/branch/source-remove.md" ]] && fail "expected source-branch-matching report to be removed"
+
+# 4) Shared report names include process identity, and locks serialize writers.
+unique_path="$(bt_report_unique_path "/tmp/reports" "push-d" "20260802-120000" "12345")"
+[[ "$unique_path" == "/tmp/reports/push-d-20260802-120000-12345.md" ]] || \
+  fail "unexpected unique report path: $unique_path"
+
+lock_fd=""
+bt_report_acquire_lock "$DELETE_REPO" "test" 2 lock_fd || \
+  fail "expected first report lock acquisition to succeed"
+set +e
 (
-  cd "$PERSIST_REPO"
-  mkdir -p reports/branch
-  echo "stale" > reports/branch/stale.md
-  echo "keep me" > reports/branch/unrelated.md
-  git add reports/branch/stale.md reports/branch/unrelated.md
-  git commit -m "seed reports" >/dev/null 2>&1
-
-  rm -f reports/branch/stale.md
-  echo "current report" > reports/branch/current.md
-  echo "manual unrelated edit" >> reports/branch/unrelated.md
-
-  deleted_reports=("reports/branch/stale.md")
-  bt_report_persist_changes \
-    "$PERSIST_REPO" "$PERSIST_REPO/reports/branch/current.md" \
-    deleted_reports "test: persist exact paths" 99 false
-
-  git show --pretty='' --name-only HEAD > "$TMPDIR/persist-head-files.out"
-  git diff --name-only > "$TMPDIR/persist-worktree-files.out"
-)
-assert_contains "reports/branch/current.md" "$TMPDIR/persist-head-files.out"
-assert_contains "reports/branch/stale.md" "$TMPDIR/persist-head-files.out"
-if grep -Fq -- "reports/branch/unrelated.md" "$TMPDIR/persist-head-files.out"; then
-  fail "persist helper should not commit unrelated modified report files"
-fi
-assert_contains "reports/branch/unrelated.md" "$TMPDIR/persist-worktree-files.out"
-pass "persist exact report paths"
-
-# 4) Persist helper should fall back to local-only commit when remote is unreachable.
-FALLBACK_REPO="$TMPDIR/fallback-repo"
-seed_repo "$FALLBACK_REPO"
-(
-  cd "$FALLBACK_REPO"
-  git remote add origin "$TMPDIR/does-not-exist.git"
-  mkdir -p reports/branch
-  echo "fallback report" > reports/branch/fallback.md
-)
-export REPORT_HELPER_SRC FALLBACK_REPO
-# shellcheck disable=SC2016  # Exported variables are expanded in the child shell.
-rc=$(run_capture "$TMPDIR/fallback.out" bash -c '
-  set -euo pipefail
-  source "$REPORT_HELPER_SRC"
-  deleted_reports=()
-  cd "$FALLBACK_REPO"
-  bt_report_persist_changes \
-    "$FALLBACK_REPO" "$FALLBACK_REPO/reports/branch/fallback.md" \
-    deleted_reports "test: unreachable remote fallback" 99 false
-')
-[[ "$rc" -eq 0 ]] || fail "persist helper should succeed when remote is unreachable"
-assert_contains "Cannot connect to remote repository" "$TMPDIR/fallback.out"
-assert_contains "Report fallback.md committed." "$TMPDIR/fallback.out"
-(
-  cd "$FALLBACK_REPO"
-  git log --pretty=%s -1 | grep -Fx "test: unreachable remote fallback" >/dev/null || \
-    fail "fallback helper should create a local commit"
-)
-pass "unreachable remote fallback"
+  # shellcheck disable=SC2034  # Populated through nameref.
+  competing_fd=""
+  bt_report_acquire_lock "$DELETE_REPO" "test" 1 competing_fd
+) >/dev/null 2>&1
+lock_rc=$?
+set -e
+[[ "$lock_rc" -eq 1 ]] || fail "expected competing report lock to time out"
+bt_report_release_lock "$lock_fd"
+pass "shared report naming and locking"
 
 echo "All report helper tests passed."

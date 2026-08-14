@@ -31,6 +31,8 @@ Options:
   -h, --help            Output this help to stdout and exit.
   -d, --dry-run         Show checks and deletion plan only.
   -O, --override        Override safety checks and remove anyway.
+  -t SEC                Remote operation timeout in seconds (default: 10).
+                        SEC must be an integer greater than 0.
 
 Examples:
   rmclone ../BriteTest-work
@@ -57,6 +59,8 @@ EOF
 # - Supports dry-run mode to preview actions.
 # - Removes clone directory with rm -rf only after checks/confirmation.
 
+# shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -64,7 +68,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
 COMMON_HELPER="$SCRIPT_DIR/../helpers/common.sh"
 
 if [[ ! -f "$COMMON_HELPER" ]]; then
-  echo "Error: Required helper not found: $COMMON_HELPER" >&2
+  bt_emit_error "Required helper not found: $COMMON_HELPER"
   exit "$EXIT_INVALID_ARGUMENT"
 fi
 
@@ -72,6 +76,8 @@ fi
 source "$COMMON_HELPER"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NOT_FOUND=2
@@ -82,7 +88,7 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "$message. See usage above for details." >&2
+  bt_emit_error "$message. See usage above for details."
   exit "$EXIT_INVALID_ARGUMENT"
 }
 
@@ -91,6 +97,7 @@ OVERRIDE=false
 TARGET_INPUT=""
 TARGET_ABS=""
 ISSUES=()
+REMOTE_TIMEOUT_SECONDS=10
 
 add_issue() {
   ISSUES+=("$1")
@@ -148,7 +155,8 @@ check_path_safety() {
   fi
 
   if [[ "$pwd_abs" == "$TARGET_ABS" || "$pwd_abs" == "$TARGET_ABS"/* ]]; then
-    add_issue "Current shell is inside target directory; run from outside target."
+    add_issue "Current shell is inside target directory; run from outside" \
+              "target."
   fi
 }
 
@@ -167,21 +175,26 @@ check_git_safety() {
   fi
 
   local stash_count
-  stash_count="$(git -C "$TARGET_ABS" stash list 2>/dev/null | wc -l | tr -d ' ')"
+  stash_count="$(git -C "$TARGET_ABS" stash list 2>/dev/null | \
+    wc -l | tr -d ' ')"
   if [[ "$stash_count" =~ ^[0-9]+$ ]] && [[ "$stash_count" -gt 0 ]]; then
     add_issue "Repository contains $stash_count stash entries."
   fi
 
   local local_only_commits
-  local_only_commits="$(git -C "$TARGET_ABS" rev-list --count --branches --not --remotes 2>/dev/null || echo 0)"
-  if [[ "$local_only_commits" =~ ^[0-9]+$ ]] && [[ "$local_only_commits" -gt 0 ]]; then
-    add_issue "Repository has $local_only_commits local-only commits not on remotes."
+  local_only_commits="$(git -C "$TARGET_ABS" rev-list --count --branches \
+    --not --remotes 2>/dev/null || echo 0)"
+  if [[ "$local_only_commits" =~ ^[0-9]+$ ]] && \
+    [[ "$local_only_commits" -gt 0 ]]; then
+    add_issue "Repository has $local_only_commits local-only commits not on" \
+              "remotes."
   fi
 
   local origin_url
   origin_url="$(git -C "$TARGET_ABS" remote get-url origin 2>/dev/null || true)"
   if [[ -n "$origin_url" ]]; then
-    if ! git -C "$TARGET_ABS" ls-remote --exit-code origin HEAD >/dev/null 2>&1; then
+    if ! bt_run_remote_command git -C "$TARGET_ABS" \
+      ls-remote --exit-code origin HEAD >/dev/null 2>&1; then
       add_issue "Origin remote is configured but not reachable: $origin_url"
     fi
   fi
@@ -227,6 +240,13 @@ while [[ $# -gt 0 ]]; do
       OVERRIDE=true
       shift
       ;;
+    -t)
+      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC"
+      bt_is_valid_remote_timeout "$2" || \
+        usage_error "SEC for -t must be an integer greater than 0"
+      REMOTE_TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
     -* )
       usage_error "Unknown option: $1"
       ;;
@@ -238,6 +258,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 set -- "${POSITIONAL_ARGS[@]}"
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
 
 if [[ $# -ne 1 ]]; then
   usage_error "Expected exactly 1 argument: <clone-path>"
@@ -252,8 +273,9 @@ fi
 bt_info "Target clone path: $TARGET_ABS"
 
 # Propagate repository history from remote if available
-bt_propagate_repository_history
-case $? in
+history_status=0
+bt_propagate_repository_history || history_status=$?
+case "$history_status" in
   0) bt_info "Repository history already up to date" ;;
   1) bt_info "Updated repository history from remote" ;;
   *) ;;  # offline or unavailable, continue silently
@@ -267,7 +289,8 @@ if [[ "${#ISSUES[@]}" -gt 0 ]]; then
   print_issues
 
   if [[ "$OVERRIDE" == false ]]; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Aborting removal. Re-run with -O to override safety checks."
+    bt_error_exit "$EXIT_NOT_FOUND" \
+      "Aborting removal. Re-run with -O to override safety checks."
   fi
 
   bt_warn "Override enabled (-O). Continuing despite safety check failures."
@@ -292,11 +315,13 @@ fi
 
 bt_info "Removing clone directory..."
 if ! rm -rf -- "$TARGET_ABS"; then
-  bt_error_exit "$EXIT_OPERATION_FAILED" "Failed to remove clone directory: $TARGET_ABS"
+  bt_error_exit "$EXIT_OPERATION_FAILED" \
+    "Failed to remove clone directory: $TARGET_ABS"
 fi
 
 if [[ -e "$TARGET_ABS" ]]; then
-  bt_error_exit "$EXIT_OPERATION_FAILED" "Target still exists after removal attempt: $TARGET_ABS"
+  bt_error_exit "$EXIT_OPERATION_FAILED" \
+    "Target still exists after removal attempt: $TARGET_ABS"
 fi
 
 bt_success "Clone removed successfully: $TARGET_ABS"

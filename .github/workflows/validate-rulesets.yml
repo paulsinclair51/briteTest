@@ -1,0 +1,28 @@
+name: Verify Repository Rulesets
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-rulesets:
+    name: Verify ruleset policy
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: "${{ secrets.RULESET_ADMIN_TOKEN }}"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compare live rulesets with policy
+        shell: bash
+        run: |
+          bash scripts/bin/setup_rulesets --check "${GITHUB_REPOSITORY}"

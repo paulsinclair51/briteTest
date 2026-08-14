@@ -26,8 +26,8 @@ set -euo pipefail
 
 # Source common utilities
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=common-utils.sh
-source "${script_dir}/common-utils.sh"
+# shellcheck source=common_utils.sh
+source "${script_dir}/common_utils.sh"
 
 #####################################################################
 # ROLE DEFINITIONS
@@ -43,7 +43,7 @@ readonly CONTRIBUTOR_SCRIPTS=(
   "mrgbranch"       # Sync with remote
   "mrgdown"           # Sync current branch with parent branch
   "undo"             # Undo changes
-  "lsbranchlog"   # Check branch history
+  "report"           # Generate workflow reports
   "lsbranch"           # List branches
 )
 
@@ -68,7 +68,7 @@ readonly APPROVER_SCRIPTS=(
 readonly UTILITY_SCRIPTS=(
   "gendocs"            # Generate documentation
   "genpngs"            # Generate PNG files
-  "lsbranchlog"   # Check branch history
+  "report"           # Generate workflow reports
   "setupclone"         # Setup clone environment
 )
 

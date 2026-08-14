@@ -33,7 +33,10 @@ run_capture() {
 
 extract_report_path() {
   local infile="$1"
-  sed -n -E 's/^Report (branch-[^ ]+\.md) committed(\/pushed)?\.$/reports\/branch\/\1/p' "$infile" | tail -n 1
+  sed -n -E \
+    -e 's/^Report (branch-[^ ]+\.md) committed(\/pushed)?\.$/reports\/branch\/\1/p' \
+    -e 's/^See (reports\/branch\/branch-[^ ]+\.md) for details\.$/\1/p' \
+    "$infile" | tail -n 1
 }
 
 AUTO_STASH_LABEL=""

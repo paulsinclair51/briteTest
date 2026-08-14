@@ -65,24 +65,10 @@ __pycache__/
 tests/tmp/*
 !tests/tmp/README.md
 
-# Local-only lsbranch reports
-reports/branch/branch-*.md
-
-# commit/push/pull/mrgdown/mrgup reports
-reports/branch/commit-*.md
-reports/branch/push-*.md
-reports/branch/pull-*.md
-reports/branch/mrgdown-*.md
-reports/branch/mrgup-*.md
-
-# Local-only ckstyle reports
-reports/guidelines/ckstyle-*.md
-
-# Repository reports
-reports/repository/clone-*.md
-
-# Repository reports
-reports/repository/fork-*.md
-
-# Repository reports
-reports/repository/repository-*.md
+# Generated reports
+reports/branch/*.md
+!reports/branch/README.md
+reports/guidelines/*.md
+!reports/guidelines/README.md
+reports/repository/*.md
+!reports/repository/README.md

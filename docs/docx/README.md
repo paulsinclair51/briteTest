@@ -10,11 +10,11 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-- **`*.docx`**: `.docx` files generated from the `<repo>/docs/pdf/*.pdf` files
-  using `<repo>/scripts/bin/gendocs`.
+***.docx**: `.docx` files generated from the `<repo>/docs/pdf/*.pdf` files
+using `<repo>/scripts/bin/gendocs`.
 
-- **README.md**: This directory guide.
+**README.md**: This directory guide.
 
 ## Subdirectories
 
-- None.
+None.

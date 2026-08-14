@@ -31,27 +31,39 @@ Permissions:
   - The current user must be a contributor, reviewer, or approver.
 
 Options:
-  -h, --help         Output this help to stdout and exit (other options
+  -a                 Remove from both local and remote (alias for -l -r).
+  -c TOKEN           Branch-removal comment from TOKEN.
+                     Usage: rmbranch patch/old-fix -c
+                     "Reverted in favor of better approach.".
+  -- TOKEN...        Branch-removal comment from one or more tokens.
+                     Usage: rmbranch patch/old-fix -- 
+                     Reverted in favor of better approach.
+  -f                 Force removal when local branch has unmerged commits.
+  -h                 Output this help to stdout and exit (other options
+                     and arguments are ignored).
+  --help             Output this help to stdout and exit (other options
                      and arguments are ignored).
   -l                 Remove local branch.
   -r                 Remove branch from remote.
-  -a                 Remove from both local and remote (alias for -l -r).
-  -f                 Force removal when local branch has unmerged commits.
-  -m "MSG"           Attach a commit message/comment to the
-                     operation. Usage: rmbranch patch/old-fix -m
-                     "Reverted in favor of better approach.".
-  --message "MSG"    Attach a commit message/comment to the
-                     operation. Usage: rmbranch old-fix --message
-                     "Reverted in favor of better approach."
-  -- MSG             Attach a commit message/comment (everything
-                     after -- is the comment). Usage: rmbranch
-                     old-fix -- Reverted in favor of better approach.
-                     Note: No quotes needed, captures all remaining.
+  -t SEC             Remote operation timeout in seconds (default: 10).
+                     SEC must be an integer greater than 0.
+
+  For branch-removal comment options '-c TOKEN' and '-- TOKEN...':
+    - These options are mutually exclusive.
+    - Comment text is optional and is used to annotate the deletion.
+    - For '-- TOKEN...', '--' must be a separate token.
+    - Comment text is built by joining tokens with a single space.
+    - For a quoted token, whitespace in the token is preserved and the
+      quotes are removed.
+    - The resulting branch-removal comment from TOKEN or TOKEN... must
+      include at least one non-whitespace character.
 
 Safety behavior:
   - rmbranch does not prompt for confirmation.
   - Without -f, local deletion uses safe mode and fails if unmerged
     commits exist.
+  - Local-only deletion (-l) is blocked when the branch also exists on
+    remote. Use -a (or -l -r) to remove both local and remote together.
   - When local deletion is requested (-l or default both), working tree must
     be clean before deletion starts.
   - Local deletion is blocked if a pending `chbranch` auto-stash exists for
@@ -71,10 +83,8 @@ Modes:
 
   Both (-l -r, default):
     - Remove the local branch.
-    - Remove the branch from remote if it is not protected (main
-      or version branches).
-    - Exits with code 4 when local removal succeeded but remote
-      protected branch removal was skipped.
+    - Remove the branch from remote.
+    - Fails if the remote branch is protected (main or version).
     - Log the operation to 'logs/remote_branch_history.md' and
       'logs/local_branch_history.md'
 
@@ -85,10 +95,10 @@ Examples: Basic usage.
   rmbranch -l -r -f temp-feature
   rmbranch -a -f temp-feature
 
-Examples: With GitHub-style comment.
-  rmbranch old-fix -m "Reverted in favor of better
+Examples: With -c comment.
+  rmbranch old-fix -c "Reverted in favor of better
     approach."
-  rmbranch -r experiment -m "Experiment failed."
+  rmbranch -r experiment -c "Experiment failed."
 
 Examples: With Unix-style comment.
   rmbranch old-fix -- Reverted in favor of better
@@ -96,7 +106,7 @@ Examples: With Unix-style comment.
   rmbranch -r experiment -- Experiment failed.
 
 Examples: Force removal with comment.
-  rmbranch -f temp -m "Temporary testing branch."
+  rmbranch -f temp -c "Temporary testing branch."
   rmbranch -a -f old -- Cleanup old feature branch.
 
 Outputs:
@@ -108,13 +118,11 @@ Exit codes:
   1   Argument error.
   2   Git operation failed.
   3   Branch does not exist.
-  4   Local branch removed successfully but remote branch is
-      protected and was not removed (applies to both-mode requests).
-  5   Remote branch is protected (cannot remove).
-  6   Branch has unmerged commits (use -f option to force removal).
-  7   User is not authorized (must be contributor or higher).
-  8   Local deletion blocked (working tree not clean or pending auto-stash
+  4   Branch has unmerged commits (use -f option to force removal).
+  5   User is not authorized (must be contributor or higher).
+  6   Local deletion blocked (working tree not clean or pending auto-stash
       exists for target branch).
+  7   Local-only deletion blocked because branch also exists on remote.
 EOF
 }
 
@@ -123,6 +131,8 @@ EOF
 #   protected-branch safeguards.
 # - Validates branch existence, current-branch constraints, and deletion scope.
 # - Reports deletion results and skipped/protected targets.
+
+# shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
 
 set -euo pipefail
 
@@ -136,34 +146,31 @@ CKROLE_HELPER="$SCRIPT_DIR/../helpers/ckrole.sh"
 
 # Shared helpers
 if [[ ! -f "$COMMON_HELPER" ]]; then
-  echo "Error: Required helper not found: $COMMON_HELPER" >&2
+  bt_emit_error "Required helper not found: $COMMON_HELPER"
   exit 2
 fi
 if [[ ! -f "$HISTORY_HELPER" ]]; then
-  _msg="Error: Required helper not found: $HISTORY_HELPER"
-  echo "$_msg" >&2
+  bt_emit_error "Required helper not found: $HISTORY_HELPER"
   exit 2
 fi
 if [[ ! -f "$CKROLE_HELPER" ]]; then
-  _msg="Error: Required helper not found: $CKROLE_HELPER"
-  echo "$_msg" >&2
+  bt_emit_error "Required helper not found: $CKROLE_HELPER"
   exit 2
 fi
 
 # shellcheck source=helpers/common.sh
 if ! source "$COMMON_HELPER"; then
-  _msg="Error: Failed to load helper: $COMMON_HELPER"
-  echo "$_msg" >&2
+  bt_emit_error "Failed to load helper: $COMMON_HELPER"
   exit 2
 fi
 # shellcheck source=helpers/history_log.sh
 if ! source "$HISTORY_HELPER"; then
-  _msg="Error: Failed to load helper: $HISTORY_HELPER"
-  echo "$_msg" >&2
+  bt_emit_error "Failed to load helper: $HISTORY_HELPER"
   exit 2
 fi
-# shellcheck source=helpers/validation-helpers.sh
-VALIDATION_HELPER="$SCRIPT_DIR/../helpers/validation-helpers.sh"
+# shellcheck source=helpers/validation_helpers.sh
+VALIDATION_HELPER="$SCRIPT_DIR/../helpers/validation_helpers.sh"
+# shellcheck disable=SC1090  # Path is validated immediately before sourcing.
 if ! source "$VALIDATION_HELPER"; then
   _msg="Error: Failed to load helper: $VALIDATION_HELPER"
   echo "$_msg" >&2
@@ -171,13 +178,12 @@ if ! source "$VALIDATION_HELPER"; then
 fi
 GIT_HELPER="$SCRIPT_DIR/../helpers/git_helpers.sh"
 if [[ ! -f "$GIT_HELPER" ]]; then
-  echo "Error: Required helper not found: $GIT_HELPER" >&2
+  bt_emit_error "Required helper not found: $GIT_HELPER"
   exit 2
 fi
 # shellcheck source=helpers/git_helpers.sh
 if ! source "$GIT_HELPER"; then
-  _msg="Error: Failed to load helper: $GIT_HELPER"
-  echo "$_msg" >&2
+  bt_emit_error "Failed to load helper: $GIT_HELPER"
   exit 2
 fi
 
@@ -187,7 +193,7 @@ usage_error() {
   local message="$1"
   usage
   echo >&2
-  echo "$message. See usage above for details." >&2
+  bt_emit_error "$message. See usage above for details."
   exit 1
 }
 
@@ -197,10 +203,7 @@ FORCE=false
 COMMENT=""
 INCLUDE_LOCAL_FLAG=false
 INCLUDE_REMOTE_FLAG=false
-REMOTE_PROTECTED_SKIPPED=false
-
-# Protected branch references for remote deletion checks
-PROTECTED_BRANCHES=("main")
+REMOTE_TIMEOUT_SECONDS=10
 
 append_log_entry() {
   local log_file="$1"
@@ -235,7 +238,7 @@ error_exit() {
   local branchname="${3:-}"
   local comment="${4:-}"
 
-  echo "Error: $message" >&2
+  bt_emit_error "$message"
 
   if [[ -n "$branchname" ]]; then
     _log_msg="Branch \`$branchname\` deletion failed" 
@@ -260,17 +263,8 @@ warn() {
 
 is_protected_branch() {
   local branch="$1"
-  local protected
-  
-  for protected in "${PROTECTED_BRANCHES[@]}"; do
-    if [[ "$branch" == "$protected" ]]; then
-      return 0
-    fi
-  done
-  if [[ "$branch" =~ ^v([1-9][0-9]?)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$ ]]; then
-    return 0
-  fi
-  return 1
+
+  bt_is_protected_branch "$branch"
 }
 
 # Use exact ref lookups rather than generic revision parsing so branch-like
@@ -310,6 +304,13 @@ while [[ $# -gt 0 ]]; do
       INCLUDE_REMOTE_FLAG=true
       shift
       ;;
+    -t)
+      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC" "" ""
+      bt_is_valid_remote_timeout "$2" || \
+        usage_error "SEC for -t must be an integer greater than 0" "" ""
+      REMOTE_TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
     -a)
       INCLUDE_LOCAL_FLAG=true
       INCLUDE_REMOTE_FLAG=true
@@ -319,12 +320,12 @@ while [[ $# -gt 0 ]]; do
       FORCE=true
       shift
       ;;
-    -m | --message)
+    -c)
       if [[ $# -lt 2 ]]; then
-        usage_error "Option -m requires a message argument" "" ""
+        usage_error "Option -c requires a comment argument" "" ""
       fi
       if [[ -n "$COMMENT" ]]; then
-      _msg="Cannot use both -m and -- for comment"
+      _msg="Cannot use both -c and -- for comment"
       usage_error "$_msg" "" ""
       fi
       COMMENT="$2"
@@ -334,7 +335,7 @@ while [[ $# -gt 0 ]]; do
       # Unix-style comment: everything after -- is the comment
       shift
       if [[ -n "$COMMENT" ]]; then
-        usage_error "Cannot use both -m and -- for comment" "" ""
+        usage_error "Cannot use both -c and -- for comment" "" ""
       fi
       COMMENT="$*"
       break
@@ -349,6 +350,8 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
 
 # Resolve deletion scope: if neither -l nor -r is provided, default to both.
 if [[ "$INCLUDE_LOCAL_FLAG" == false && "$INCLUDE_REMOTE_FLAG" == false ]]; then
@@ -382,11 +385,6 @@ if [[ -z "$BRANCHNAME" ]]; then
   usage_error "Branch name cannot be empty" ""
 fi
 
-# Validate branch name conforms to naming conventions
-if ! validate_branch_name "$BRANCHNAME" "branch to delete"; then
-  usage_error "Branch does not conform to naming conventions" "$BRANCHNAME"
-fi
-
 # Change to repo root
 cd "$REPO_ROOT"
 
@@ -398,11 +396,15 @@ fi
 
 # Require contributor role (or higher) for branch deletion operations.
 if ! bash "$CKROLE_HELPER" contributor >/dev/null 2>&1; then
+  unauthorized_msg=""
+
   ACTOR_LOGIN="$(bt_resolve_login_or_empty)"
   if [[ -z "$ACTOR_LOGIN" ]]; then
     ACTOR_LOGIN="<unknown>"
   fi
-  error_exit 7 "User '$ACTOR_LOGIN' is not authorized to run rmbranch (requires contributor role or higher)" "$BRANCHNAME" "$COMMENT"
+  unauthorized_msg="User '$ACTOR_LOGIN' is not authorized to run rmbranch "
+  unauthorized_msg+="(requires contributor role or higher)"
+  error_exit 7 "$unauthorized_msg" "$BRANCHNAME" "$COMMENT"
 fi
 
 if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
@@ -427,13 +429,16 @@ esac
 # Fetch latest refs from remote
 if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
   info "Fetching latest refs from remote..."
-  if ! git fetch origin >/dev/null 2>&1; then
-    error_exit 2 "Failed to fetch from remote" "$BRANCHNAME" "$COMMENT"
+  fetch_output=""
+  if ! fetch_output="$(bt_run_remote_command git fetch origin 2>&1)"; then
+    error_exit 2 "Failed to fetch from remote: ${fetch_output:-unknown error}" \
+      "$BRANCHNAME" "$COMMENT"
   fi
   
   # Propagate repository history from remote if available
-  bt_propagate_repository_history
-  case $? in
+  history_status=0
+  bt_propagate_repository_history || history_status=$?
+  case "$history_status" in
     0) ;;
     1) info "Updated repository history from remote" ;;
     *) ;;
@@ -452,25 +457,20 @@ if remote_branch_exists "$BRANCHNAME"; then
   REMOTE_EXISTS=true
 fi
 
-# Protected branches are never removed from remote. If user requested both,
-# degrade to local-only so local cleanup of protected artifacts is possible.
+# Protected branches are never removed from remote.
 if is_protected_branch "$BRANCHNAME"; then
   if [[ "$MODE" == "remote" ]]; then
-    error_exit 5 "Remote branch '$BRANCHNAME' is protected and cannot be removed" \
-      "$BRANCHNAME" "$COMMENT"
+    _msg="Remote branch '$BRANCHNAME' is protected and cannot be removed"
+    error_exit 5 "$_msg" "$BRANCHNAME" "$COMMENT"
   fi
 
   if [[ "$MODE" == "both" ]]; then
-    if [[ "$LOCAL_EXISTS" == false && "$REMOTE_EXISTS" == true ]]; then
-      error_exit 5 "Remote branch '$BRANCHNAME' is protected and local branch '$BRANCHNAME' does not exist; nothing was removed" \
-        "$BRANCHNAME" "$COMMENT"
-    fi
-
-    warn "Branch '$BRANCHNAME' is protected; skipping remote deletion and continuing with local deletion only"
     if [[ "$REMOTE_EXISTS" == true ]]; then
-      REMOTE_PROTECTED_SKIPPED=true
+      _msg="Remote branch '$BRANCHNAME' is protected and cannot be removed; "
+      _msg+="local branch deletion is blocked unless both local and remote "
+      _msg+="can be removed"
+      error_exit 5 "$_msg" "$BRANCHNAME" "$COMMENT"
     fi
-    MODE="local"
   fi
 fi
 
@@ -488,16 +488,28 @@ elif [[ "$MODE" == "both" && "$LOCAL_EXISTS" == false && \
       "$COMMENT"
 fi
 
+if [[ "$MODE" == "local" && "$LOCAL_EXISTS" == true && \
+  "$REMOTE_EXISTS" == true ]]; then
+  _msg="Local branch '$BRANCHNAME' has corresponding remote branch "
+  _msg+="'origin/$BRANCHNAME'. Use -a (or -l -r) to remove both"
+  error_exit 9 "$_msg" "$BRANCHNAME" "$COMMENT"
+fi
+
 # Additional preconditions for local deletion.
 if [[ "$MODE" == "local" || "$MODE" == "both" ]]; then
   if [[ "$LOCAL_EXISTS" == true ]]; then
     if bt_is_worktree_dirty; then
-      error_exit 8 "Working tree must be clean before deleting local branch '$BRANCHNAME'" "$BRANCHNAME" "$COMMENT"
+      _msg="Working tree must be clean before deleting local branch "
+      _msg+="'$BRANCHNAME'"
+      error_exit 8 "$_msg" "$BRANCHNAME" "$COMMENT"
     fi
 
     BRANCH_AUTO_STASH_REF="$(find_branch_auto_stash_ref "$BRANCHNAME")"
     if [[ -n "$BRANCH_AUTO_STASH_REF" ]]; then
-      error_exit 8 "Pending auto-stash '$BRANCH_AUTO_STASH_REF' exists for '$BRANCHNAME'; switch to '$BRANCHNAME' to recover it (or drop it explicitly) before deletion" "$BRANCHNAME" "$COMMENT"
+      _msg="Pending auto-stash '$BRANCH_AUTO_STASH_REF' exists for "
+      _msg+="'$BRANCHNAME'; switch to '$BRANCHNAME' to recover it "
+      _msg+="(or drop it explicitly) before deletion"
+      error_exit 8 "$_msg" "$BRANCHNAME" "$COMMENT"
     fi
   fi
 fi
@@ -537,7 +549,9 @@ if [[ "$MODE" == "local" || "$MODE" == "both" ]]; then
               "$COMMENT"
         fi
       else
-        error_exit 6 "Local branch '$BRANCHNAME' has unmerged commits; use -f option to force removal" "$BRANCHNAME" "$COMMENT"
+        _msg="Local branch '$BRANCHNAME' has unmerged commits; use -f option"
+        _msg+=" to force removal"
+        error_exit 6 "$_msg" "$BRANCHNAME" "$COMMENT"
       fi
     fi
     
@@ -549,10 +563,12 @@ fi
 if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
   if [[ "$REMOTE_EXISTS" == true ]]; then
     info "Deleting remote branch..."
-    if ! GIT_BYPASS_HOOKS=true git push origin --delete "$BRANCHNAME" >/dev/null 2>&1; then
+    push_output=""
+    if ! push_output="$(bt_run_remote_command env GIT_BYPASS_HOOKS=true \
+      git push origin --delete "$BRANCHNAME" 2>&1)"; then
     _msg="Failed to delete remote branch" 
-    error_exit 2 "$_msg '$BRANCHNAME'" "$BRANCHNAME" \
-        "$COMMENT"
+    _msg="$_msg '$BRANCHNAME': ${push_output:-unknown error}"
+    error_exit 2 "$_msg" "$BRANCHNAME" "$COMMENT"
     fi
     
     success "Remote branch '$BRANCHNAME' deleted"
@@ -563,11 +579,6 @@ fi
 _log_msg="Branch \`$BRANCHNAME\` deleted."
 log_operation "SUCCESS" "$BRANCHNAME" "$_log_msg" \
     "$COMMENT"
-
-if [[ "$REMOTE_PROTECTED_SKIPPED" == true ]]; then
-  warn "Local branch '$BRANCHNAME' deleted, but remote branch is protected and was not deleted"
-  exit 4
-fi
 
 success "Branch '$BRANCHNAME' successfully removed"
 
