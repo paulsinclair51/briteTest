@@ -13,5 +13,4 @@ See `README.md` in the root directory for an introduction to the project.
 - [2026-08-13 22:04:29] [paulsinclair51] Merged [dev/release-v1.0.0] to[v1.0.0]: dev/release-v1.0.0 merged to v1.0.0 by owner paulsinclair51.
 - [2026-08-14 02:01:45] [paulsinclair51] Merged [dev/release-v1.0.0] to[v1.0.0]: dev/release-v1.0.0 merged to v1.0.0 by owner paulsinclair51.
 - [2026-08-14 06:55:10] [paulsinclair51] Merged [dev/release-v1.0.0] to[v1.0.0]: dev/release-v1.0.0 merged to v1.0.0 by owner paulsinclair51.
-- [2026-08-14 16:59:13] [paulsinclair51] Merged [v1.0.0] to[main]: v1.0.0 merged to main branch by approver paulsinclair51.
 - [2026-08-14 17:04:56] [paulsinclair51] Merged [dev/release-v1.0.0] to[v1.0.0]: dev/release-v1.0.0 merged to v1.0.0 by owner paulsinclair51.
