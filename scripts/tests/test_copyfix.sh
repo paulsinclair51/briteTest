@@ -81,15 +81,17 @@ set +e
 rc=$?
 set -e
 
-[[ "$rc" -eq 0 ]] || fail "no-op copyfix should exit 0 (got $rc)"
-grep -Fq "No new commits to copy" "$TMPDIR/noop.out" || \
-  fail "expected no-op copyfix summary"
+[[ "$rc" -eq 4 ]] || fail "no-work copyfix should exit 4 (got $rc)"
+grep -Fq "has no new commits to copy" "$TMPDIR/noop.out" || \
+  fail "expected no-work copyfix prerequisite"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/target-v1.0.0" ]] || \
   fail "no-op copyfix should remain on the target branch"
-[[ -z "$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'copyfix-*.md' -print -quit)" ]] || \
-  fail "no-op copyfix should not create a report"
+[[ -f "$WORK/reports/branch/copyfix-d-20000101-000000.md" ]] || \
+  fail "copyfix prerequisite failure should preserve stale dry-run report"
+[[ -f "$WORK/reports/branch/copyfix-e-20000101-000001.md" ]] || \
+  fail "copyfix prerequisite failure should preserve stale error report"
 
-echo "PASS: no-op copyfix creates no report"
+echo "PASS: no-work copyfix prerequisite"
 
 set +e
 (
@@ -215,16 +217,40 @@ set -e
   fail "source branch should retain its original latest commit"
 [[ "$(git -C "$WORK" log -1 --format=%s dev/target-v1.0.0)" == \
   "Backport copied fix" ]] || fail "expected target commit to use the -- comment"
+copy_body="$(git -C "$WORK" log -1 --format=%B dev/target-v1.0.0)"
+if grep -Fq "Command-Line: copyfix" <<< "$copy_body"; then
+  fail "copied commit should not duplicate workflow history metadata"
+fi
+copy_note="$(git -C "$WORK" notes --ref=briteTest-workflow show \
+  dev/target-v1.0.0)"
+[[ "$(grep -c '^--- briteTest workflow ---$' <<< "$copy_note")" -eq 1 ]] || \
+  fail "copyfix should record exactly one workflow event"
+[[ "$copy_note" == *'Command-Line: copyfix fix/source-v1.0.0 -- Backport copied fix'* ]] || \
+  fail "copyfix event should record its command line"
+[[ "$copy_note" == *"from fix/source-v1.0.0 to dev/target-v1.0.0"* ]] || \
+  fail "copyfix event should record its branches"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/target-v1.0.0" ]] || \
   fail "copyfix should remain on the target branch"
 grep -Fq "0 modified, 1 added, and 0 deleted files copied." "$TMPDIR/custom-comment.out" || \
   fail "copy output should include file summary"
-success_report="$(latest_report 'copyfix-[0-9]*.md')"
-[[ -f "$success_report" ]] || fail "successful copyfix should create a report"
-grep -Fq "**Branch:** \`dev/target-v1.0.0\`" "$success_report" || \
-  fail "success report should belong to the target branch"
-grep -Fq '**Summary:** 0 modified, 1 added, and 0 deleted files copied.' "$success_report" || \
-  fail "success report should include file summary"
+grep -Fq "Run report for details." "$TMPDIR/custom-comment.out" || \
+  fail "successful copyfix should defer details to report"
+if find "$WORK/reports/branch" -maxdepth 1 -type f \
+  -name 'copyfix-[0-9]*.md' -print -quit | grep -q .; then
+  fail "successful copyfix should not create an immediate report"
+fi
+[[ "$copy_note" == *"Commits-Copied: 1"* ]] || \
+  fail "copyfix event should record copied commit count"
+[[ "$copy_note" == *"Files-Modified: 0"* ]] || \
+  fail "copyfix event should record modified file count"
+[[ "$copy_note" == *"Files-Added: 1"* ]] || \
+  fail "copyfix event should record added file count"
+[[ "$copy_note" == *"Files-Deleted: 0"* ]] || \
+  fail "copyfix event should record deleted file count"
+[[ "$copy_note" == *"Status: Fix commits copied to target branch"* ]] || \
+  fail "copyfix event should record copy status"
+[[ "$copy_note" == *"Method: Cherry-pick created by copyfix"* ]] || \
+  fail "copyfix event should record copy method"
 [[ ! -e "$dry_report" ]] || fail "success should remove stale source dry-run report"
 if git -C "$WORK" show-ref --verify --quiet refs/remotes/origin/fix/source-v1.0.0; then
   fail "copyfix source should not require a remote branch"
@@ -388,16 +414,24 @@ set -e
   "resolved conflict" ]] || fail "continued copyfix should update the target branch"
 grep -Eq "files copied\\." "$TMPDIR/continue.out" || \
   fail "continued copyfix should report the copied file summary"
+grep -Fq "Run report for details." "$TMPDIR/continue.out" || \
+  fail "continued copyfix should defer details to report"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/conflict-target-v1.0.0" ]] || \
   fail "continued copyfix should remain on the target branch"
 [[ ! -e "$state_dir" ]] || fail "continued copyfix should remove saved state"
 [[ ! -e "$target_worktree" ]] || fail "continued copyfix should remove target worktree"
-continue_report="$(latest_report 'copyfix-[0-9]*.md')"
-[[ -f "$continue_report" ]] || fail "continued copyfix should create a success report"
-grep -Fq "**Branch:** \`dev/conflict-target-v1.0.0\`" "$continue_report" || \
-  fail "continued success report should belong to the target branch"
-grep -Eq '^\*\*Summary:\*\* .*files copied\.$' "$continue_report" || \
-  fail "continued report should include file summary"
+continue_body="$(git -C "$WORK" log -1 --format=%B dev/conflict-target-v1.0.0)"
+if grep -Fq "Command-Line: copyfix" <<< "$continue_body"; then
+  fail "continued copied commit should not contain workflow metadata"
+fi
+continue_note="$(git -C "$WORK" notes --ref=briteTest-workflow show \
+  dev/conflict-target-v1.0.0)"
+[[ "$(grep -c '^--- briteTest workflow ---$' <<< "$continue_note")" -eq 1 ]] || \
+  fail "continued copyfix should record exactly one workflow event"
+[[ "$continue_note" == *"Command-Line: copyfix --continue"* ]] || \
+  fail "continued copyfix event should record its command line"
+[[ "$continue_note" == *"Status: Fix commits copied to target branch"* ]] || \
+  fail "continued copyfix event should record copy status"
 [[ ! -e "$error_report" ]] || fail "continued success should remove source error report"
 echo "PASS: conflict continuation preserves target checkout"
 

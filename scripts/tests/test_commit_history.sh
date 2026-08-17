@@ -35,6 +35,7 @@ echo "local diverged change" > "$WORK/LOCAL_ONLY.md"
 rc=$(run_capture "$TMPDIR/diverged.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -c 'local diverged change'")
 [[ "$rc" -eq 0 ]] || fail "local commit on diverged branch should exit 0 (got $rc)"
 grep -Eq '^Committed \([0-9a-f]{7}\) to local .*: [0-9]+ modified, [0-9]+ added, and [0-9]+ deleted files\.$' "$TMPDIR/diverged.out" || fail "expected final commit summary in diverged output"
+assert_contains "Run report for details." "$TMPDIR/diverged.out"
 if grep -Fq "See reports/branch/commit-" "$TMPDIR/diverged.out"; then
   fail "successful commit should not output a report path"
 fi
@@ -56,6 +57,7 @@ printf '\nlocal only branch change\n' >> "$WORK/README.md"
 rc=$(run_capture "$TMPDIR/local-only.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit -c 'local only commit'")
 [[ "$rc" -eq 0 ]] || fail "commit on local-only branch should exit 0 (got $rc)"
 grep -Eq '^Committed \([0-9a-f]{7}\) to local .*: [0-9]+ modified, [0-9]+ added, and [0-9]+ deleted files\.$' "$TMPDIR/local-only.out" || fail "expected final commit summary in local-only output"
+assert_contains "Run report for details." "$TMPDIR/local-only.out"
 if find "$WORK/reports/branch" -maxdepth 1 -type f -name 'commit-*.md' -print -quit | grep -q .; then
   fail "successful local-only commit should not create a commit report"
 fi

@@ -141,18 +141,17 @@ Outputs:
   - Writes errors and diagnostics to stderr.
   - No reports are written when there are usage or prerequisite failures.
     Older dry-run and error reports for the current branch are not deleted.
-  - No reports are written when there are no changes to merge.
-    Older dry-run and error reports for the current branch are still deleted.
-  - After a successful non-dry-run mrgup, an untracked report is written
-    locally in the parent branch to:
-        <repo>/reports/branch/mrgup-<datetime>-<pid>.md
+  - No-work prerequisite failures do not generate or delete reports.
+  - After a successful non-dry-run mrgup, records history for the report
+    command and tells the user to run chbranch for the parent branch, then run
+    report for details. It does not write an immediate local merge report.
   - If an associated PR exists, successful non-dry-run mrgup posts the
-    success report content into PR comments and then closes that PR.
+    merge summary into PR comments and then closes that PR.
   - If a non-dry-run operation fails after merge work starts, an
     untracked error report is written locally at:
-      <repo>/reports/branch/mrgup-e-<datetime>-<pid>.md
+      <repo>/reports/branch/mrgup-e-<datetime>.md
   - If -d was specified, an untracked dry-run report is written locally at:
-        <repo>/reports/branch/mrgup-d-<datetime>-<pid>.md
+        <repo>/reports/branch/mrgup-d-<datetime>.md
   - If the parent has a remote, push writes a push, error-run push, or
     dry-run push report. Run push -h for details and location of a reports.
     The report identifies the current branch that initiated mrgup.
@@ -211,11 +210,14 @@ Exit codes:
   33   PR is not yet approved. Checked when a PR is found.
   34   PR is already merged. Checked when a PR is found.
   35   Another mrgup process holds the repository run lock.
+  36   Merge-up skipped because -e was specified.
+  37   No changes are available to merge into the parent branch.
   200  GitHub identity query failed.
   201  A required GitHub PR query failed.
   202  Git operation failed while checking branch state, during the merge,
        history update, parent push, or post-merge alignment.
-  203  A local mrgup report could not be generated.
+    203  Merge-up report history or a temporary PR summary could not be
+      generated.
   204  The parent push report could not be generated.
   205  Merge succeeded but closing the associated PR failed after posting
        the success report comment. Rerun mrgup to retry PR closure.
@@ -226,13 +228,13 @@ EOF
 # - Parse options, acquire the repository lock, and resolve the checked-out
 #   current branch, its local parent, actor roles, and remote requirements.
 # - Validate worktree, branch synchronization, merge ancestry, and PR state;
-#   collect available CI/CD results for reports.
+#   reject no-work runs and collect available CI/CD results.
 # - For -d, preview the parent push through push, restore the current branch,
 #   and write dry-run reports without creating a commit or pushing a branch.
 # - Otherwise, check out the parent, squash merge, update history, commit, and
 #   publish the parent through the shared push workflow.
 # - Align the source branch to the merged parent commit, verify all applicable
-#   local/remote refs, then write the final mrgup success report.
+#   local/remote refs, finalize the PR, then record one completed event.
 # - On failure, restore the source branch when possible, write an operation
 #   error report, restore report permissions, and release the run lock.
 
@@ -297,6 +299,7 @@ readonly EXIT_PR_NOT_APPROVED=33
 readonly EXIT_PR_ALREADY_MERGED=34
 readonly EXIT_RUN_LOCKED=35
 readonly EXIT_WORKFLOW_SKIPPED=36
+readonly EXIT_NOTHING_TO_MERGE=37
 readonly EXIT_GITHUB_IDENTITY_FAILED=200
 readonly EXIT_GITHUB_PR_QUERY_FAILED=201
 readonly EXIT_GIT_OPERATION_FAILED=202
@@ -309,6 +312,7 @@ readonly PUSH_EXIT_REPORT_FAILED=201
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BRANCH_REPORTS_DIR="$REPO_ROOT/reports/branch"
 REPORT_FILE=""
+REPORT_LOCK_FD=""
 ORIGINAL_ARGS=("$@")
 
 usage_error() {
@@ -382,6 +386,10 @@ format_command_line() {
   bt_format_command_line "mrgup" "${ORIGINAL_ARGS[@]}"
 }
 
+current_checked_out_branch() {
+  git symbolic-ref -q --short HEAD 2>/dev/null || true
+}
+
 bt_run_cmd() {
   if [[ "$VERBOSE" == true ]]; then
     "$@"
@@ -398,12 +406,25 @@ bt_run_remote_cmd() {
   fi
 }
 
+acquire_report_lock() {
+  if ! bt_report_acquire_lock "$REPO_ROOT" "mrgup" 10 REPORT_LOCK_FD; then
+    bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" \
+      "Timed out waiting for the mrgup report lock"
+  fi
+}
+
+release_report_lock() {
+  bt_report_release_lock "$REPORT_LOCK_FD"
+  REPORT_LOCK_FD=""
+}
+
 skip_merge_up_and_exit() {
   local message="Merge-up skipped due to -e option."
   local guidance="Run without -e option."
 
+  acquire_report_lock
   bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_LOCAL_REPORT_FAILED" >/dev/null 2>&1 || true
-  REPORT_FILE="$(bt_report_unique_path "$BRANCH_REPORTS_DIR" "mrgup-e" "$RUN_TS_FILE")"
+  REPORT_FILE="$(bt_report_transient_path "$BRANCH_REPORTS_DIR" "mrgup-e" "$RUN_TS_FILE")"
   bt_report_write_header "$REPORT_FILE" "Merge-Up Error Report" "$RUN_TS_DISPLAY" "$(format_command_line)" >/dev/null 2>&1 || true
   cat >> "$REPORT_FILE" <<EOF
 **Branch:** \`${CURRENT_BRANCH:-unknown}\`
@@ -417,6 +438,7 @@ skip_merge_up_and_exit() {
 - ${guidance}
 
 EOF
+  release_report_lock
   bt_emit_error "$message"
   bt_emit_guidance "$guidance"
   bt_success "See ${REPORT_FILE#"${REPO_ROOT}"/} for details."
@@ -724,12 +746,12 @@ restore_current_branch_on_failure() {
 
   git switch "$CURRENT_BRANCH" >/dev/null 2>&1 || true
 
-  now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  now_branch="$(current_checked_out_branch)"
   if [[ "$now_branch" == "$CURRENT_BRANCH" ]]; then
     restored=true
   else
     git switch -f "$CURRENT_BRANCH" >/dev/null 2>&1 || true
-    now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+    now_branch="$(current_checked_out_branch)"
     if [[ "$now_branch" == "$CURRENT_BRANCH" ]]; then
       restored=true
     fi
@@ -770,6 +792,13 @@ cleanup_untracked_history_after_failure() {
 
 on_exit_restore_branch_if_needed() {
   local exit_code=$?
+
+  if [[ -n "${SUCCESS_COMMENT_FILE:-}" ]]; then
+    rm -f "$SUCCESS_COMMENT_FILE" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "${REPORT_LOCK_FD:-}" ]]; then
+    release_report_lock || true
+  fi
 
   # Keep the run lock through restoration and report generation so another
   # mrgup cannot begin while this run is still repairing local state.
@@ -937,7 +966,7 @@ verify_post_merge_sync() {
       "remote parent branch origin/$parent_branch" "remote_parent_ref" || return 1
   fi
 
-  now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  now_branch="$(current_checked_out_branch)"
   if [[ "$now_branch" != "$current_branch" ]]; then
     set_verify_failure "checked_out_branch" \
       "expected current branch '$current_branch', found '$now_branch'"
@@ -974,7 +1003,7 @@ attempt_post_merge_sync_repair() {
       ;;
     local_parent_ref)
       if has_local_branch "$parent_branch"; then
-        now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+        now_branch="$(current_checked_out_branch)"
         if [[ "$now_branch" == "$parent_branch" ]]; then
           set_verify_failure "$failure_kind" \
             "cannot force-align local parent branch '$parent_branch' while " \\
@@ -1388,26 +1417,22 @@ cleanup_untracked_branch_reports_for_merge() {
   fi
 }
 
-generate_merge_report() {
-  local current_branch="$1"
-  local parent_branch="$2"
-  local merge_message="$3"
+write_merge_success_content() {
+  local output_file="$1"
+  local current_branch="$2"
+  local parent_branch="$3"
+  local merge_message="$4"
   local command_text
 
   command_text="$(format_command_line)"
-  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_LOCAL_REPORT_FAILED"
 
-  REPORT_FILE="$(bt_report_unique_path \
-    "$BRANCH_REPORTS_DIR" "mrgup" "$RUN_TS_FILE")"
-  cleanup_old_transient_reports
-
-  if ! bt_report_write_header "$REPORT_FILE" "Merge-Up Report" \
+  if ! bt_report_write_header "$output_file" "Merge-Up Report" \
     "$RUN_TS_DISPLAY" "$command_text"; then
     bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" \
-      "Failed to write merge report '$REPORT_FILE'"
+      "Failed to write merge summary '$output_file'"
   fi
 
-  if ! cat >> "$REPORT_FILE" <<EOF
+  if ! cat >> "$output_file" <<EOF
 **Source Branch:** ${current_branch}
 
 **Parent Branch:** ${parent_branch}
@@ -1426,9 +1451,9 @@ ${CI_CD_REPORT_DETAILS}
 
 EOF
   then
-    bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" "Failed to write merge report '$REPORT_FILE'"
+    bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" \
+      "Failed to write merge summary '$output_file'"
   fi
-
 }
 
 generate_dry_run_report() {
@@ -1438,9 +1463,10 @@ generate_dry_run_report() {
   local command_text
 
   command_text="$(format_command_line)"
+  acquire_report_lock
   bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_LOCAL_REPORT_FAILED"
 
-  REPORT_FILE="$(bt_report_unique_path \
+  REPORT_FILE="$(bt_report_transient_path \
     "$BRANCH_REPORTS_DIR" "mrgup-d" "$RUN_TS_FILE")"
   cleanup_old_transient_reports
 
@@ -1473,6 +1499,7 @@ EOF
   then
     bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" "Failed to write dry-run report '$REPORT_FILE'"
   fi
+  release_report_lock
 
 }
 
@@ -1481,9 +1508,10 @@ generate_error_report() {
   local command_text
 
   command_text="$(format_command_line)"
+  acquire_report_lock
   bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_LOCAL_REPORT_FAILED"
 
-  REPORT_FILE="$(bt_report_unique_path \
+  REPORT_FILE="$(bt_report_transient_path \
     "$BRANCH_REPORTS_DIR" "mrgup-e" "$RUN_TS_FILE")"
   cleanup_old_transient_reports
 
@@ -1517,6 +1545,7 @@ EOF
   then
     bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" "Failed to write error report '$REPORT_FILE'"
   fi
+  release_report_lock
 
 }
 
@@ -1781,40 +1810,6 @@ finalize_pr_after_success() {
   close_pr_after_success "$pr_number"
 }
 
-attempt_retry_pr_close_for_noop_merge() {
-  local current_branch="$1"
-  local parent_branch="$2"
-  local pr_number=""
-  local fields=""
-  local state=""
-  local is_draft=""
-  local head_ref=""
-  local base_ref=""
-  local merged_at=""
-
-  command -v gh >/dev/null 2>&1 || return 0
-
-  pr_number="$(bt_gh_find_pr_number_for_branch "$current_branch" "open" 2>/dev/null || true)"
-  [[ -n "$pr_number" ]] || return 0
-
-  fields="$(bt_run_remote_command gh pr view "$pr_number" \
-    --json state,isDraft,headRefName,baseRefName,mergedAt \
-    --jq '[.state, (.isDraft|tostring), .headRefName, .baseRefName, \
-      (.mergedAt // "")] | @tsv' 2>/dev/null || true)"
-  [[ -n "$fields" ]] || return 0
-
-  IFS=$'\t' read -r state is_draft head_ref base_ref merged_at <<< "$fields"
-
-  if [[ "$state" != "OPEN" || "$is_draft" == "true" || -n "$merged_at" || \
-    "$head_ref" != "$current_branch" || "$base_ref" != "$parent_branch" ]]; then
-    return 0
-  fi
-
-  bt_info "No changes to merge; retrying PR close for #$pr_number"
-  close_pr_after_success "$pr_number"
-  bt_success "Closed pull request #$pr_number after prior successful merge-up"
-}
-
 run_parent_push() {
   local source_branch="$1"
   local dry_run="$2"
@@ -1965,7 +1960,7 @@ sync_local_parent_branch_ref() {
 
   # If the parent branch is currently checked out, it is already at parent_tip
   # during this phase of mrgup and cannot be force-updated with git branch -f.
-  now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  now_branch="$(current_checked_out_branch)"
   if [[ "$now_branch" == "$parent_branch" ]]; then
     return 0
   fi
@@ -2219,12 +2214,9 @@ ensure_current_up_to_date_with_parent "$CURRENT_BRANCH" "$PARENT_BRANCH"
 preflight_current_history_sync_push "$CURRENT_BRANCH"
 
 if git diff --quiet "$PARENT_BRANCH" "$CURRENT_BRANCH"; then
-  attempt_retry_pr_close_for_noop_merge "$CURRENT_BRANCH" "$PARENT_BRANCH"
-  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_LOCAL_REPORT_FAILED"
-  REPORT_FILE=""
-  cleanup_old_transient_reports
-  bt_success "Local ${CURRENT_BRANCH} branch: no changes to merge."
-  exit 0
+  bt_emit_prerequisite_failure "$EXIT_NOTHING_TO_MERGE" \
+    "Current branch '$CURRENT_BRANCH' has no changes to merge into '$PARENT_BRANCH'." \
+    "make changes before rerunning mrgup."
 fi
 
 # Determine whether a PR is required for this merge path.
@@ -2362,7 +2354,8 @@ if [[ "$CURRENT_HISTORY_FILE" != "$HISTORY_FILE" ]]; then
   fi
 fi
 
-# Create commit with message
+# Create the squash commit. Completed workflow history is recorded only after
+# push, alignment, verification, and PR finalization all succeed.
 if ! GIT_BYPASS_HOOKS=true bt_run_cmd git commit -m "$COMMIT_MESSAGE"; then
   bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to create commit"
 fi
@@ -2385,30 +2378,15 @@ align_current_branch_to_parent_tip "$CURRENT_BRANCH" "$PARENT_BRANCH"
 relock_reports_branch_dir_after_merge
 ensure_post_merge_sync_or_repair "$CURRENT_BRANCH" "$PARENT_BRANCH" "$MERGE_COMMIT_SHA"
 
-# Report success only after merge, push, source alignment, and verification.
-# Write the success report while the parent branch is checked out so the
-# implementation matches the documented behavior.
-PARENT_CHECKOUT_ACTIVE=true
-if ! git switch "$PARENT_BRANCH" >/dev/null 2>&1; then
-  bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
-    "Merge completed, but failed to switch to parent branch" \
-    "'$PARENT_BRANCH' to write the report"
+# Successful details are durable in the merge commit. Build a temporary copy
+# only when an associated PR needs the same content as a comment.
+REPORT_FILE=""
+cleanup_old_transient_reports
+if [[ -n "$PR_NUMBER" ]]; then
+  SUCCESS_COMMENT_FILE="$(mktemp)"
+  write_merge_success_content "$SUCCESS_COMMENT_FILE" \
+    "$CURRENT_BRANCH" "$PARENT_BRANCH" "$COMMIT_MESSAGE"
 fi
-
-generate_merge_report "$CURRENT_BRANCH" "$PARENT_BRANCH" "$COMMIT_MESSAGE"
-
-report_file_on_parent="$REPORT_FILE"
-if ! git switch "$CURRENT_BRANCH" >/dev/null 2>&1; then
-  if [[ -n "$report_file_on_parent" && -e "$report_file_on_parent" ]]; then
-    chmod u+w "$report_file_on_parent" >/dev/null 2>&1 || true
-    rm -f "$report_file_on_parent" >/dev/null 2>&1 || true
-  fi
-  REPORT_FILE=""
-  bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
-    "Merge completed, but failed to switch back to '$CURRENT_BRANCH' after" \
-    "writing the report"
-fi
-PARENT_CHECKOUT_ACTIVE=false
 
 # Merge operations are complete. Subsequent PR finalization failures should not
 # trigger local merge error report generation.
@@ -2429,8 +2407,24 @@ if [[ "$PARENT_HAS_REMOTE" == true ]]; then
 fi
 
 if [[ -n "$PR_NUMBER" ]]; then
-  finalize_pr_after_success "$PR_NUMBER" "$REPORT_FILE" \
+  finalize_pr_after_success "$PR_NUMBER" "$SUCCESS_COMMENT_FILE" \
     "$CURRENT_BRANCH" "$PARENT_BRANCH"
+  rm -f "$SUCCESS_COMMENT_FILE" >/dev/null 2>&1 || true
+  SUCCESS_COMMENT_FILE=""
+fi
+
+ci_history_details="$(printf '%s' "$CI_CD_REPORT_DETAILS" | tr '\n' ' ')"
+if ! bt_record_workflow_event "mrgup" "$PARENT_BRANCH" \
+  "$(format_command_line)" \
+  "$COMMIT_MESSAGE" "$MERGE_COMMIT_SHA" \
+  "Source-Branch" "$CURRENT_BRANCH" \
+  "Target-Branch" "$PARENT_BRANCH" \
+  "PR" "${PR_NUMBER:-none}" \
+  "Status" "Current branch merged into parent branch" \
+  "Method" "Squash merge created by mrgup" \
+  "CI-CD" "$ci_history_details"; then
+  bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" \
+    "Merge-up completed, but its report history could not be recorded"
 fi
 
 if bt_is_version_branch "$CURRENT_BRANCH" && \
@@ -2449,10 +2443,7 @@ if [[ "$VERBOSE" == true ]]; then
 fi
 
 print_merge_change_summary "$MERGE_COMMIT_SHA"
-if [[ -n "$REPORT_FILE" ]]; then
-  report_rel="${REPORT_FILE#"${REPO_ROOT}"/}"
-  bt_success "See ${report_rel} in local ${PARENT_BRANCH} for details."
-fi
+bt_success "Run chbranch $PARENT_BRANCH, then run report for details."
 if [[ -n "$push_output" ]]; then
   printf '%s\n' "$push_output"
 fi

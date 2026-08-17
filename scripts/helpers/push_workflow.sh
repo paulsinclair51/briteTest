@@ -15,6 +15,7 @@ bt_push_workflow() (
   local exit_invalid_argument=1
   local exit_remote_branch_not_found=7
   local exit_report_lock_timed_out=8
+  local exit_nothing_to_push=10
   local exit_push_failed=200
   local exit_report_failed=201
 
@@ -27,7 +28,6 @@ bt_push_workflow() (
   local remote_branch_tip=""
   local commits_ahead=0
   local push_content_ref="HEAD"
-  local push_trigger="push command"
   local source_branch=""
   local dry_run=false
   local error_run=false
@@ -198,14 +198,6 @@ bt_push_workflow() (
     done
   }
 
-  bt_push_cleanup_noop_reports() {
-    bt_push_acquire_report_lock
-    bt_push_enable_report_writes
-    report_file=""
-    bt_push_cleanup_old_reports
-    bt_push_release_report_lock
-  }
-
   bt_push_cleanup_success_transient_reports() {
     bt_push_acquire_report_lock
     bt_push_enable_report_writes
@@ -235,9 +227,9 @@ bt_push_workflow() (
     local rest=""
 
     command_text="$(bt_push_format_command_line)"
-    report_file="$(bt_report_unique_path "$reports_dir" "push-e" "$run_ts_file")"
     bt_push_acquire_report_lock
     bt_push_enable_report_writes
+    report_file="$(bt_report_transient_path "$reports_dir" "push-e" "$run_ts_file")"
 
     cat > "$report_file" <<EOF
 # Error Push Report ${run_ts_display}
@@ -346,7 +338,6 @@ EOF
 
   bt_push_generate_report() {
     local command_text=""
-    local report_title="Push Report"
     local report_heading=""
     local push_tip_line=""
     local files_count=0
@@ -365,17 +356,18 @@ EOF
 
     command_text="$(bt_push_format_command_line)"
     if [[ "$dry_run" == true ]]; then
-      report_file="$(bt_report_unique_path "$reports_dir" "push-d" "$run_ts_file")"
-      report_title="Dry-run Push Report"
       report_heading="# Dry-run Push Report"
       push_tip_line="**Push Tip:** \`To be determined\` at ${run_ts_display}."
     else
-      report_file="$(bt_report_unique_path "$reports_dir" "push" "$run_ts_file")"
-      report_title="Push Report"
       report_heading="# Push Report ${run_ts_display}"
     fi
     bt_push_acquire_report_lock
     bt_push_enable_report_writes
+    if [[ "$dry_run" == true ]]; then
+      report_file="$(bt_report_transient_path "$reports_dir" "push-d" "$run_ts_file")"
+    else
+      report_file="$(bt_report_transient_path "$reports_dir" "push" "$run_ts_file")"
+    fi
     [[ ! -f "$report_file" ]] || chmod u+w "$report_file" 2>/dev/null || true
 
     files_count="$(git diff --name-only --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null | sed '/^$/d' | wc -l | tr -d ' ')"
@@ -555,7 +547,6 @@ EOF
         [[ $# -ge 2 ]] || bt_push_error_exit "$exit_invalid_argument" "Internal --mrgup option requires a source branch"
         mrgup_mode=true
         source_branch="$2"
-        push_trigger="mrgup from \`$source_branch\`"
         shift 2
         ;;
       --preview-ref)
@@ -617,9 +608,9 @@ EOF
 
   commits_ahead="$(git rev-list --count "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || echo 0)"
   if [[ "$commits_ahead" == "0" ]]; then
-    bt_push_cleanup_noop_reports
-    echo "Local ${current_branch} branch: no changes to push."
-    exit 0
+    bt_emit_error "Local ${current_branch} branch has no changes to push."
+    bt_push_emit_guidance "commit changes before rerunning push."
+    exit "$exit_nothing_to_push"
   fi
 
   local commits_behind=0
@@ -658,5 +649,19 @@ EOF
   local pushed_tip_short=""
   pushed_tip_short="$(git rev-parse --short=7 "$push_content_ref" 2>/dev/null || true)"
   [[ -n "$pushed_tip_short" ]] || pushed_tip_short="${push_content_ref:0:7}"
+  if declare -F bt_record_workflow_event >/dev/null 2>&1; then
+    if ! bt_record_workflow_event "push" "$current_branch" \
+      "${BT_PUSH_COMMAND_LINE:-push}" \
+      "Pushed ${commits_ahead} commit(s) to origin/$current_branch" \
+      "$push_content_ref" \
+      "Previous-Remote-Tip" "$remote_branch_tip" \
+      "Pushed-Tip" "$push_content_ref" \
+      "Commits" "$commits_ahead" \
+      "Files" "${pushed_modified_files} modified, ${pushed_added_files} added, ${pushed_deleted_files} deleted"; then
+      bt_push_error_exit "$exit_report_failed" \
+        "Push completed, but its report history could not be recorded"
+    fi
+  fi
   echo "Pushed (${pushed_tip_short}) to remote $current_branch: ${pushed_modified_files} modified, ${pushed_added_files} added, and ${pushed_deleted_files} deleted files."
+  echo "Run chbranch -r $current_branch, then run report for details."
 )

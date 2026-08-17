@@ -27,11 +27,14 @@ chmod a-w "$WORK/reports/branch/commit-d-20000101-000000.md" \
   "$WORK/reports/branch/commit-e-20000101-000001.md"
 rc=$(run_capture "$TMPDIR/noop.out" env GITHUB_ACTOR=testuser \
   bash -lc "cd '$WORK' && bash ./scripts/bin/commit")
-[[ "$rc" -eq 0 ]] || fail "no-op commit should exit 0 (got $rc)"
+[[ "$rc" -eq 7 ]] || fail "no-work commit should exit 7 (got $rc)"
 assert_contains "no changes to commit" "$TMPDIR/noop.out"
-[[ -z "$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'commit*.md' -print -quit)" ]] || \
-  fail "no-op commit should not create a report"
-pass "no-op commit cleans transient reports and creates no report"
+assert_contains "Guidance: make changes before rerunning commit." "$TMPDIR/noop.out"
+[[ -f "$WORK/reports/branch/commit-d-20000101-000000.md" ]] || \
+  fail "commit prerequisite failure should preserve stale dry-run reports"
+[[ -f "$WORK/reports/branch/commit-e-20000101-000001.md" ]] || \
+  fail "commit prerequisite failure should preserve stale error reports"
+pass "no-work commit prerequisite"
 
 rc=$(run_capture "$TMPDIR/invalid-timeout.out" bash -lc "cd '$WORK' && bash ./scripts/bin/commit -t nope -d -c 'invalid timeout'")
 [[ "$rc" -eq 1 ]] || fail "unsupported -t should exit 1 (got $rc)"

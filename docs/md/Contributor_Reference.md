@@ -218,10 +218,9 @@ Use `-c TOKEN` or `-- TOKEN...` to replace the comment on each copied fix
 commit. Without either option, copied commits retain their original comments.
 
 Use `-d` to preview the copy without changing the target. Successful copies
-write `copyfix-<datetime>-<pid>.md` for the target branch. Dry runs and
-operation errors write `copyfix-d-<datetime>-<pid>.md` and
-`copyfix-e-<datetime>-<pid>.md` for the current target branch. Reports are
-untracked files in `reports/branch`.
+are available through `report`. Dry runs and operation errors write
+`copyfix-d-<datetime>.md` and `copyfix-e-<datetime>.md` for the current target
+branch. Reports are untracked files in `reports/branch`.
 </details>
 
 <details>

@@ -14,22 +14,28 @@ Usage:
   pull [OPTIONS]
   pull {-h | --help}
 
-If the current local branch is behind its remote branch, pull fetches
-and pulls the latest changes from the remote branch into the local branch
-when it is safe to do so, so that the local branch is synchronized with
-its remote branch.
+If the current local branch is behind its remote branch, pull the latest
+changes from the remote branch into the local branch when it is safe to
+do so, so that the local branch is synchronized with its remote branch.
 
-If local and remote branches have diverged, pull attempts to
-automatically resolve the divergence via rebase when it is safe to
-do so. If unresolved conflicts occur, the rebase is left in progress
-for manual resolution. After resolving conflicts, rerun pull.
+If local and remote branches have diverged, pull attempts to automatically
+resolve the divergence when it is safe to do so (local commits may be rewritten). If unresolved conflicts
+occur, manual resolution is required. After resolving conflicts, rerun pull.
 
 Prerequisites:
+  - If the -o option is specified, the user must be the repository owner.
   - The current branch must be a local branch.
+  - The current branch must be a targeted or contributor branch if the -o
+    option is not specified.
+  - The current branch must be a version branch if the -o option is
+    specified.
   - The current branch must not have uncommitted changes. Commit or
     undo them before running pull.
-  - The remote branch must exist and be reachable within the timeout
-    specified by -t (default: 10 seconds).
+  - The remote repository must be reachable within the timeout
+    specified by the -t option (default: 10 seconds).
+  - A corresponding remote branch must exist.
+  - The remote branch must contain changes that are not in the current local
+    branch, or a pull rebase must already be in progress.
 
 Options:
   -d          Generate a dry-run report for the pull workflow without
@@ -43,10 +49,8 @@ Options:
               and arguments are ignored).
   --help      Output this help to stdout and exit (other options
               and arguments are ignored).
-  -o          Owner override. Allows repository owner to run even
-              on version branches normally blocked by user policy
-              for this command run only; normal role restrictions
-              apply again after exit.
+  -o          Allow the repository owner to pull to the current local version
+              branch.
   -t SEC      Remote reachability timeout in seconds (default: 10).
               SEC must be an integer greater than 0.
   -v          Output progress and diagnostics to stdout.
@@ -64,41 +68,48 @@ Outputs:
   - Writes help text, status messages, and results or summaries
     to stdout.
   - Writes errors and diagnostics to stderr.
-  - For non-dry-run, writes an untracked report to:
-        '<repo>/reports/branch/pull-<datetime>-<pid>.md'
-  - For a dry-run, writes an untracked report to:
-        '<repo>/reports/branch/pull-d-<datetime>-<pid>.md'
-  - If a non-dry-run operation fails after pull work starts, writes an
-    untracked error report to:
-        '<repo>/reports/branch/pull-e-<datetime>-<pid>.md'
-    Usage and prerequisite failures do not create reports.
+  - Usage and prerequisite failures do not generate or delete reports.
+  - After a successful non-dry-run pull, records history for the report
+    command and writes 'Run report for details.' to stdout. It does not write
+    an immediate pull report.
+  - For a dry-run, writes an untracked report in the current branch to:
+        '<repo>/reports/branch/pull-d-<datetime>.md'
+  - If a non-dry-run operation fails after pull work starts or the -e option
+    is specified, writes an untracked error report in the current branch
+    to:
+        '<repo>/reports/branch/pull-e-<datetime>.md'
+  - If a report is generated, older dry-run and error reports for the current
+    branch are deleted.
 
 Exit codes:
-  0   Success (operation completed for current branch scope;
-      dry run completes with no branch-sync changes).
-  1   Invalid option or argument.
-  2   Remote disconnected.
-  4   Branch was skipped and not synchronized (for example, no
-      corresponding remote branch, uncommitted changes in worktree,
-      unresolved divergence, or unsafe fast-forward).
-
-If a branch is skipped because local and remote have diverged:
-  1. Inspect branch sync status:
-       lsbranch BRANCH -v
-  2. If your branch needs latest parent updates first:
-       mrgdown
-  3. If divergence remains, use one possible script workflow
-     (for example, copy fixes to a clean branch):
-      copyfix SOURCE_BRANCH
-  4. Run pull again.
+  0    Success (operation completed, dry run completed, or -h/--help).
+  1    Invalid option or argument.
+  2    User must be repository owner if the -o option is specified,
+  3    Current branch must be a local branch.
+  4    Current branch must be a targeted or contributor branch if the
+       -o option is not specified.
+  5    Current branch must be a version branch if the -o option
+       is specified.
+  6    Uncommitted changes in current branch. Commit or undo changes.
+  7    Remote branch does not exist.
+  8    Remote is unreachable.
+  9    Accessing remote timed out.
+  10   Unresolved divergence. Manually resolve and then rerun pull.
+  11   Unsafe fast-forward. Manually resolve and then rerun pull.
+  12   Pull skipped because -e was specified.
+  13   No remote changes are available to pull.
+  200  Git error.
+  201  Report creation or locking error.
 EOF
 }
 
 # High-Level Flow:
-# - Synchronizes current branch with remote by fetching and pulling latest
-#   updates.
-# - Validates branch/repository conditions before merge operations.
-# - Reports merge branch results and non-fast-forward/error situations.
+# - Validate actor/branch/worktree policy and confirm live remote work exists.
+# - Preview without fetching for -d; otherwise fetch the current remote branch.
+# - Fast-forward, resume a rebase, or automatically rebase safe divergence;
+#   preserve conflicts for manual continuation when necessary.
+# - Write local reports only for dry-run/error paths and record one successful
+#   pull event on the synchronized tip for report.
 
 # shellcheck disable=SC1091,SC2317  # Helper source paths and trap-managed
 # cleanup paths.
@@ -124,9 +135,20 @@ source "$SCRIPT_DIR/../helpers/history_log.sh"
 source "$SCRIPT_DIR/../helpers/report_helpers.sh"
 
 readonly EXIT_INVALID_ARGUMENT=1
-readonly EXIT_NOT_FOUND=2
-readonly EXIT_CONFIG_ERROR=4
-readonly EXIT_WORKFLOW_SKIPPED=6
+readonly EXIT_NOT_REPOSITORY_OWNER=2
+readonly EXIT_NOT_LOCAL_BRANCH=3
+readonly EXIT_BRANCH_POLICY=4
+readonly EXIT_OWNER_OVERRIDE_BRANCH=5
+readonly EXIT_UNCOMMITTED=6
+readonly EXIT_REMOTE_BRANCH_MISSING=7
+readonly EXIT_REMOTE_UNREACHABLE=8
+readonly EXIT_REMOTE_TIMEOUT=9
+readonly EXIT_DIVERGENCE=10
+readonly EXIT_UNSAFE_FAST_FORWARD=11
+readonly EXIT_WORKFLOW_SKIPPED=12
+readonly EXIT_NOTHING_TO_PULL=13
+readonly EXIT_GIT_ERROR=200
+readonly EXIT_REPORT_ERROR=201
 
 usage_error() {
   local message="$1"
@@ -152,10 +174,12 @@ bt_error_exit() {
   local code="$1"
   local message="$2"
 
-  if [[ "$OPERATION_STARTED" == true && \
+  if [[ "$code" != "$EXIT_REPORT_ERROR" && \
+    "$OPERATION_STARTED" == true && \
     "$ERROR_REPORT_WRITTEN" == false ]]; then
     ERROR_REPORT_WRITTEN=true
-    generate_error_report "$message" "$code" >/dev/null 2>&1 || true
+    generate_error_report "$message" "$code" \
+      "Address the error and rerun pull." >/dev/null 2>&1 || true
   fi
 
   bt_emit_error "$message"
@@ -166,7 +190,8 @@ skip_pull_and_exit() {
   local message="Pull skipped due to -e option."
   local guidance="Run without -e option."
 
-  generate_error_report "$message" "$EXIT_WORKFLOW_SKIPPED" >/dev/null 2>&1 || true
+  generate_error_report "$message" "$EXIT_WORKFLOW_SKIPPED" "$guidance" \
+    >/dev/null 2>&1 || true
   bt_emit_error "$message"
   bt_emit_guidance "$guidance"
   bt_success "See ${REPORT_FILE#"${REPO_ROOT}"/} for details."
@@ -189,16 +214,8 @@ REBASE_IN_PROGRESS_AT_START=false
 EVALUATED_COUNT=0
 SYNCED_COUNT=0
 SKIPPED_COUNT=0
-GLOBAL_SKIP_REASON=""
 PULL_NEEDED=false
-
-declare -a RESULT_BRANCHES=()
-declare -a RESULT_STATUS=()
-declare -a RESULT_REASON=()
-declare -a DIVERGENCE_BRANCHES=()
-declare -a DIVERGENCE_OUTCOMES=()
-declare -a DIVERGENCE_FILES=()
-declare -a DIVERGENCE_GUIDANCE=()
+REMOTE_BRANCH_TIP=""
 
 cleanup_runtime_files() {
   if [[ "$REPORT_LOCK_HELD" == true ]]; then
@@ -213,7 +230,7 @@ cleanup_runtime_files() {
 trap cleanup_runtime_files EXIT
 
 enable_branch_reports_write_access() {
-  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_CONFIG_ERROR"
+  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_REPORT_ERROR"
   BRANCH_REPORTS_DIR_UNLOCKED=true
 }
 
@@ -225,7 +242,7 @@ disable_branch_reports_write_access() {
 
 acquire_report_lock() {
   if ! bt_report_acquire_lock "$REPO_ROOT" "pull" 10 REPORT_LOCK_FD; then
-    bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
+    bt_emit_prerequisite_failure "$EXIT_REPORT_ERROR" \
       "Timed out waiting 10s for report write lock." \
       "retry the operation after the report lock becomes available."
   fi
@@ -236,10 +253,6 @@ release_report_lock() {
   bt_report_release_lock "$REPORT_LOCK_FD"
   REPORT_LOCK_FD=""
   REPORT_LOCK_HELD=false
-}
-
-get_repository_owner_login() {
-  bt_resolve_repo_owner_login_or_empty
 }
 
 is_repository_owner() {
@@ -255,7 +268,7 @@ format_command_line() {
 initialize_report_file() {
   local prefix="$1"
 
-  REPORT_FILE="$(bt_report_unique_path "$BRANCH_REPORTS_DIR" "$prefix" \
+  REPORT_FILE="$(bt_report_transient_path "$BRANCH_REPORTS_DIR" "$prefix" \
     "$RUN_TS_FILE")"
 }
 
@@ -268,6 +281,15 @@ cleanup_old_dry_run_reports() {
     "pull-e-*.md"
 }
 
+cleanup_success_transient_reports() {
+  REPORT_FILE=""
+  acquire_report_lock
+  enable_branch_reports_write_access
+  cleanup_old_dry_run_reports
+  disable_branch_reports_write_access
+  release_report_lock
+}
+
 generate_pull_report() {
   local mode="$1"
   local status_line="$2"
@@ -275,19 +297,21 @@ generate_pull_report() {
 
   command_text="$(format_command_line)"
 
+  acquire_report_lock
+  enable_branch_reports_write_access
   if [[ "$mode" == "dry-run" ]]; then
     initialize_report_file "pull-d"
   else
     initialize_report_file "pull"
   fi
-
-  acquire_report_lock
-  enable_branch_reports_write_access
   cleanup_old_dry_run_reports
 
-  bt_report_write_header "$REPORT_FILE" "Pull Report" \
-    "$RUN_TS_DISPLAY" "$command_text"
-  cat >> "$REPORT_FILE" <<EOF
+  if ! bt_report_write_header "$REPORT_FILE" "Pull Report" \
+    "$RUN_TS_DISPLAY" "$command_text"; then
+    bt_error_exit "$EXIT_REPORT_ERROR" \
+      "Failed to write pull report: $REPORT_FILE"
+  fi
+  if ! cat >> "$REPORT_FILE" <<EOF
 **Branch:** \`${CURRENT_BRANCH}\`
 
 **Mode:** ${mode}
@@ -298,6 +322,10 @@ generate_pull_report() {
 total=${EVALUATED_COUNT}
 
 EOF
+  then
+    bt_error_exit "$EXIT_REPORT_ERROR" \
+      "Failed to write pull report: $REPORT_FILE"
+  fi
 
   disable_branch_reports_write_access
   release_report_lock
@@ -306,18 +334,21 @@ EOF
 generate_error_report() {
   local message="$1"
   local code="$2"
+  local guidance="${3:-Address the error and rerun pull.}"
   local command_text
 
   command_text="$(format_command_line)"
-  initialize_report_file "pull-e"
-
   acquire_report_lock
   enable_branch_reports_write_access
+  initialize_report_file "pull-e"
   cleanup_old_dry_run_reports
 
-  bt_report_write_header "$REPORT_FILE" "Pull Error Report" \
-    "$RUN_TS_DISPLAY" "$command_text"
-  cat >> "$REPORT_FILE" <<EOF
+  if ! bt_report_write_header "$REPORT_FILE" "Pull Error Report" \
+    "$RUN_TS_DISPLAY" "$command_text"; then
+    bt_error_exit "$EXIT_REPORT_ERROR" \
+      "Failed to write pull error report: $REPORT_FILE"
+  fi
+  if ! cat >> "$REPORT_FILE" <<EOF
 **Branch:** \`${CURRENT_BRANCH:-unknown}\`
 
 **Exit Code:** ${code}
@@ -326,32 +357,78 @@ generate_error_report() {
 
 ## Guidance
 
-- Run without -e option.
+- ${guidance}
 
 EOF
+  then
+    bt_error_exit "$EXIT_REPORT_ERROR" \
+      "Failed to write pull error report: $REPORT_FILE"
+  fi
 
   disable_branch_reports_write_access
   release_report_lock
-}
-
-is_remote_connected() {
-  git remote get-url origin >/dev/null 2>&1 || return 1
-  bt_run_remote_command git ls-remote --heads origin >/dev/null 2>&1 || return 1
 }
 
 current_branch_has_uncommitted_changes() {
   bt_is_worktree_dirty
 }
 
-branch_has_remote() {
+require_remote_branch() {
   local branch="$1"
-  git show-ref --verify --quiet "refs/remotes/origin/$branch"
+  local remote_output=""
+  local remote_status=0
+
+  if ! git remote get-url origin >/dev/null 2>&1; then
+    bt_emit_prerequisite_failure "$EXIT_REMOTE_UNREACHABLE" \
+      "Remote 'origin' is not configured." \
+      "configure origin and rerun pull."
+  fi
+
+  if remote_output="$(bt_run_remote_command git ls-remote --exit-code \
+    --heads origin "$branch" 2>/dev/null)"; then
+    REMOTE_BRANCH_TIP="$(printf '%s\n' "$remote_output" | \
+      awk 'NR == 1 { print $1 }')"
+    return 0
+  else
+    remote_status=$?
+  fi
+
+  case "$remote_status" in
+    2)
+      bt_emit_prerequisite_failure "$EXIT_REMOTE_BRANCH_MISSING" \
+        "Remote branch 'origin/$branch' does not exist." \
+        "publish the branch or switch to a branch that exists on origin."
+      ;;
+    124)
+      bt_emit_prerequisite_failure "$EXIT_REMOTE_TIMEOUT" \
+        "Accessing remote 'origin' timed out after ${REMOTE_TIMEOUT_SECONDS}s." \
+        "restore remote connectivity or increase -t, then rerun pull."
+      ;;
+    *)
+      bt_emit_prerequisite_failure "$EXIT_REMOTE_UNREACHABLE" \
+        "Remote 'origin' is unreachable." \
+        "restore remote connectivity and rerun pull."
+      ;;
+  esac
 }
 
-remote_branch_exists() {
+pull_work_available() {
   local branch="$1"
-  bt_run_remote_command git ls-remote --exit-code --heads origin "$branch" \
-    >/dev/null 2>&1
+  local local_tip=""
+
+  is_rebase_in_progress && return 0
+
+  local_tip="$(git rev-parse "$branch" 2>/dev/null || true)"
+  [[ -n "$local_tip" && -n "$REMOTE_BRANCH_TIP" ]] || return 1
+  [[ "$local_tip" != "$REMOTE_BRANCH_TIP" ]] || return 1
+
+  if git cat-file -e "${REMOTE_BRANCH_TIP}^{commit}" >/dev/null 2>&1 && \
+    git merge-base --is-ancestor "$REMOTE_BRANCH_TIP" "$local_tip" \
+      >/dev/null 2>&1; then
+    return 1
+  fi
+
+  return 0
 }
 
 is_rebase_in_progress() {
@@ -403,19 +480,11 @@ continue_rebase_if_in_progress() {
     if [[ "$conflict_files" != \
       "(unable to determine conflicting files)" ]]; then
       SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-      add_result "$branch" "skipped" \
-        "manual conflict resolution required (rebase in progress)"
-      add_divergence_detail \
-        "$branch" \
-        "rebase paused for manual conflict resolution" \
-        "$conflict_files" \
-        "$(printf '%s%s' \
-          "Resolve conflicts, stage files, rerun pull to continue. Use git " \
-          "rebase --abort to cancel.")"
       bt_warn "$(printf '%s%s' \
         "Skipped '$branch': rebase is paused for manual conflict " \
         "resolution.")"
-      return 0
+      bt_error_exit "$EXIT_DIVERGENCE" \
+        "Branch '$branch' requires manual conflict resolution."
     fi
 
     bt_info "Rebase in progress on '$branch'; attempting to continue"
@@ -426,21 +495,12 @@ continue_rebase_if_in_progress() {
       if [[ "$continue_conflicts" != \
         "(unable to determine conflicting files)" ]]; then
         SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-        add_result "$branch" "skipped" \
-          "manual conflict resolution required (rebase in progress)"
-        add_divergence_detail \
-          "$branch" \
-          "rebase paused for manual conflict resolution" \
-          "$conflict_files" \
-          "Resolve conflicts, stage files, rerun pull to continue. Use git "\
-"rebase --abort to cancel."
         bt_warn "Skipped '$branch': rebase paused again due to conflicts."
-        return 0
+        bt_error_exit "$EXIT_DIVERGENCE" \
+          "Branch '$branch' requires manual conflict resolution."
       fi
-      SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-      add_result "$branch" "skipped" "failed to continue rebase"
-      bt_warn "Skipped '$branch': failed to continue rebase."
-      return 0
+      bt_error_exit "$EXIT_GIT_ERROR" \
+        "Git failed to continue the rebase for '$branch'."
     fi
     progressed=true
   done
@@ -512,76 +572,30 @@ branch_fast_forward_possible() {
   [[ "$merge_base" == "$local_commit" ]]
 }
 
-add_result() {
-  local branch="$1"
-  local status="$2"
-  local reason="$3"
-
-  RESULT_BRANCHES+=("$branch")
-  RESULT_STATUS+=("$status")
-  RESULT_REASON+=("$reason")
-}
-
-add_divergence_detail() {
-  local branch="$1"
-  local outcome="$2"
-  local files="$3"
-  local guidance="$4"
-
-  DIVERGENCE_BRANCHES+=("$branch")
-  DIVERGENCE_OUTCOMES+=("$outcome")
-  DIVERGENCE_FILES+=("$files")
-  DIVERGENCE_GUIDANCE+=("$guidance")
-}
-
 attempt_auto_resolve_divergence() {
   local branch="$1"
 
   if [[ "$DRY_RUN" == true ]]; then
     SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-    add_result "$branch" "skipped" \
-      "local and remote have diverged (dry run: auto-resolution not "\
-"executed)"
-    add_divergence_detail \
-      "$branch" \
-      "dry-run only; auto-resolution not executed" \
-      "" \
-      "$(printf '%s%s' \
-        "Run pull without -d to attempt automatic rebase, or run git rebase " \
-        "origin/$branch and resolve conflicts manually.")"
     bt_warn "Skipped '$branch': local and remote have diverged (dry run)"
     return 0
   fi
 
-  bt_warn "Branch '$branch' has diverged; attempting automatic rebase onto "\
-"remote $branch."
+  bt_warn "$(printf '%s%s' \
+    "Branch '$branch' has diverged; attempting automatic rebase onto " \
+    "remote $branch.")"
 
   if GIT_BYPASS_HOOKS=true git rebase "origin/$branch" >/dev/null 2>&1; then
     SYNCED_COUNT=$((SYNCED_COUNT + 1))
-    add_result "$branch" "synchronized" "auto-resolved divergence via rebase"
-    add_divergence_detail \
-      "$branch" \
-      "auto-resolved via rebase" \
-      "" \
-      "Review rebased commits, run tests, and push when ready."
     bt_success "Synchronized '$branch' (auto-resolved divergence)."
     warn_branch_behind_parent "$branch"
     return 0
   fi
 
-  local conflict_files
-  conflict_files="$(get_conflict_files)"
-
   SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-  add_result "$branch" "skipped" \
-    "diverged; rebase paused for manual conflict resolution"
-  add_divergence_detail \
-    "$branch" \
-    "rebase paused for manual conflict resolution" \
-    "$conflict_files" \
-    "Resolve conflicts in listed files, stage them, and rerun pull to "\
-"continue rebase. Use git rebase --abort to cancel."
   bt_warn "Skipped '$branch': diverged and requires manual conflict resolution."
+  bt_error_exit "$EXIT_DIVERGENCE" \
+    "Branch '$branch' requires manual conflict resolution."
 }
 
 warn_branch_behind_parent() {
@@ -608,29 +622,37 @@ warn_branch_behind_parent() {
   fi
 }
 
+validate_pull_branch_policy() {
+  if [[ "$CURRENT_BRANCH_MODE" != "local" ]]; then
+    bt_emit_prerequisite_failure "$EXIT_NOT_LOCAL_BRANCH" \
+      "Current branch '$CURRENT_BRANCH' must be a local branch." \
+      "check out a local branch and rerun pull."
+  fi
+
+  if [[ "$OWNER_OVERRIDE_ACTIVE" == true ]]; then
+    if ! bt_is_version_branch "$CURRENT_BRANCH"; then
+      bt_emit_prerequisite_failure "$EXIT_OWNER_OVERRIDE_BRANCH" \
+        "Current branch '$CURRENT_BRANCH' must be a version branch if -o is specified." \
+        "switch to a version branch and rerun pull."
+    fi
+    return 0
+  fi
+
+  if ! bt_is_targeted_branch "$CURRENT_BRANCH" && \
+    ! bt_is_contributor_branch "$CURRENT_BRANCH"; then
+    bt_emit_prerequisite_failure "$EXIT_BRANCH_POLICY" \
+      "Current branch '$CURRENT_BRANCH' must be a targeted or contributor branch." \
+      "switch to a targeted or contributor branch and rerun pull."
+  fi
+}
+
 evaluate_branch() {
   local branch="$1"
 
   EVALUATED_COUNT=$((EVALUATED_COUNT + 1))
 
-  if [[ -n "$GLOBAL_SKIP_REASON" ]]; then
-    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-    add_result "$branch" "skipped" "$GLOBAL_SKIP_REASON"
-    bt_warn "Skipped '$branch': $GLOBAL_SKIP_REASON"
-    return 0
-  fi
-
   if continue_rebase_if_in_progress "$branch"; then
     PULL_NEEDED=true
-    return 0
-  fi
-
-  if ! branch_has_remote "$branch"; then
-    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-    add_result "$branch" "skipped" "no corresponding remote branch"
-    bt_warn "$(printf '%s%s' \
-      "Skipped '$branch': current branch '$branch' has no " \
-      "corresponding remote branch.")"
     return 0
   fi
 
@@ -642,7 +664,6 @@ evaluate_branch() {
 
   if branch_is_up_to_date "$branch"; then
     SYNCED_COUNT=$((SYNCED_COUNT + 1))
-    add_result "$branch" "synchronized" "already up to date"
     if [[ "$VERBOSE" == true ]]; then
       bt_info "Branch '$branch' is already up to date."
     fi
@@ -652,8 +673,6 @@ evaluate_branch() {
 
   if branch_contains_remote "$branch"; then
     SYNCED_COUNT=$((SYNCED_COUNT + 1))
-    add_result "$branch" "synchronized" \
-      "contains latest remote commits (local ahead)"
     if [[ "$VERBOSE" == true ]]; then
       bt_info "Branch '$branch' already contains latest remote commits."
     fi
@@ -663,17 +682,14 @@ evaluate_branch() {
 
   if ! branch_fast_forward_possible "$branch"; then
     PULL_NEEDED=true
-    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-    add_result "$branch" "skipped" "cannot fast-forward safely"
-    bt_warn "Skipped '$branch': cannot fast-forward safely."
-    return 0
+    bt_error_exit "$EXIT_UNSAFE_FAST_FORWARD" \
+      "Branch '$branch' cannot be fast-forwarded safely."
   fi
 
   PULL_NEEDED=true
 
   if [[ "$DRY_RUN" == true ]]; then
     SYNCED_COUNT=$((SYNCED_COUNT + 1))
-    add_result "$branch" "synchronized" "would synchronize (dry run)"
     if [[ "$VERBOSE" == true ]]; then
       bt_info "Dry-run: would synchronize '$branch'."
     fi
@@ -684,15 +700,13 @@ evaluate_branch() {
   if GIT_BYPASS_HOOKS=true git merge --ff-only "origin/$branch" \
     >/dev/null 2>&1; then
     SYNCED_COUNT=$((SYNCED_COUNT + 1))
-    add_result "$branch" "synchronized" "fast-forwarded from remote"
     bt_success "Synchronized '$branch'."
     warn_branch_behind_parent "$branch"
     return 0
   fi
 
-  SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-  add_result "$branch" "skipped" "failed to fast-forward current branch"
-  bt_warn "Skipped '$branch': failed to fast-forward current branch."
+  bt_error_exit "$EXIT_UNSAFE_FAST_FORWARD" \
+    "Git failed to fast-forward current branch '$branch'."
 }
 
 # Parse options and arguments
@@ -742,13 +756,14 @@ done
 
 export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
 
-if [[ "$ERROR_RUN" == true ]]; then
-  skip_pull_and_exit
-fi
-
 # Get current branch
-CURRENT_BRANCH=$(bt_get_current_branch || \
-  usage_error "Failed to determine current branch.")
+if CURRENT_BRANCH="$(bt_get_current_branch)"; then
+  :
+else
+  bt_emit_prerequisite_failure "$EXIT_GIT_ERROR" \
+    "Git failed to determine the current branch." \
+    "run pull from a Git worktree."
+fi
 
 if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
   if is_rebase_in_progress; then
@@ -758,7 +773,9 @@ if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
       usage_error "Cannot sync from detached branch state."
     bt_info "Detected rebase in progress for branch: $CURRENT_BRANCH"
   else
-    usage_error "Cannot sync from detached branch state."
+    bt_emit_prerequisite_failure "$EXIT_NOT_LOCAL_BRANCH" \
+      "Current branch must be a local branch; HEAD is detached." \
+      "check out a local branch and rerun pull."
   fi
 fi
 
@@ -767,7 +784,8 @@ if is_rebase_in_progress; then
   PULL_NEEDED=true
 fi
 
-if [[ -n "$(git symbolic-ref -q --short HEAD 2>/dev/null || true)" ]]; then
+if [[ "$REBASE_IN_PROGRESS_AT_START" == true ]] || \
+  [[ -n "$(git symbolic-ref -q --short HEAD 2>/dev/null || true)" ]]; then
   CURRENT_BRANCH_MODE="local"
 else
   CURRENT_BRANCH_MODE="remote"
@@ -780,7 +798,7 @@ fi
 if [[ "$OWNER_OVERRIDE" == true ]]; then
   CURRENT_USER="$(bt_require_login || true)"
   if [[ -z "$CURRENT_USER" ]]; then
-    bt_emit_prerequisite_failure "$EXIT_NOT_FOUND" \
+    bt_emit_prerequisite_failure "$EXIT_NOT_REPOSITORY_OWNER" \
       "Option -o requires a resolvable GitHub login." \
       "verify GitHub CLI authentication and access, then rerun pull."
   fi
@@ -788,41 +806,52 @@ if [[ "$OWNER_OVERRIDE" == true ]]; then
     OWNER_OVERRIDE_ACTIVE=true
     bt_info "Owner override enabled for repository owner '$CURRENT_USER'"
   else
-    bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
+    bt_emit_prerequisite_failure "$EXIT_NOT_REPOSITORY_OWNER" \
       "Option -o is allowed only for the repository owner." \
       "use an account and merge path authorized by repository policy, then" \
       "rerun pull."
   fi
 fi
 
-if ! is_remote_connected; then
-  bt_emit_prerequisite_failure "$EXIT_NOT_FOUND" \
-    "Remote disconnected." \
-    "restore remote connectivity (origin) and rerun pull."
-fi
+validate_pull_branch_policy
+
+require_remote_branch "$CURRENT_BRANCH"
 
 if [[ "$REBASE_IN_PROGRESS_AT_START" == false ]] && \
   current_branch_has_uncommitted_changes; then
-  if [[ "$OWNER_OVERRIDE_ACTIVE" == true ]]; then
-    bt_warn "Owner override enabled: proceeding despite uncommitted or "\
-"untracked changes on '$CURRENT_BRANCH'."
-  else
-    GLOBAL_SKIP_REASON="current branch '$CURRENT_BRANCH' has uncommitted or "\
-"untracked changes."
-  fi
+  bt_emit_prerequisite_failure "$EXIT_UNCOMMITTED" \
+    "Current branch '$CURRENT_BRANCH' has uncommitted changes." \
+    "commit or undo changes, then rerun pull."
 fi
 
-if [[ -n "$GLOBAL_SKIP_REASON" ]]; then
-  bt_warn "Cannot proceed: $GLOBAL_SKIP_REASON"
-elif is_rebase_in_progress; then
-  bt_info "Rebase already in progress; skipping fetch and continuing rebase "\
-"workflow."
+if ! pull_work_available "$CURRENT_BRANCH"; then
+  bt_emit_prerequisite_failure "$EXIT_NOTHING_TO_PULL" \
+    "Remote branch 'origin/$CURRENT_BRANCH' has no changes to pull." \
+    "rerun pull after remote changes are available."
+fi
+
+if [[ "$ERROR_RUN" == true ]]; then
+  skip_pull_and_exit
+fi
+
+if is_rebase_in_progress; then
+  OPERATION_STARTED=true
+  bt_info "$(printf '%s%s' \
+    "Rebase already in progress; skipping fetch and continuing rebase " \
+    "workflow.")"
 elif [[ "$DRY_RUN" == false ]]; then
   OPERATION_STARTED=true
   bt_info "Fetching from remote..."
-  if ! bt_run_remote_command env GIT_BYPASS_HOOKS=true git fetch origin \
+  if bt_run_remote_command env GIT_BYPASS_HOOKS=true git fetch origin \
     2>&1; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Remote disconnected."
+    :
+  else
+    fetch_status=$?
+    if [[ "$fetch_status" -eq 124 ]]; then
+      bt_error_exit "$EXIT_REMOTE_TIMEOUT" \
+        "Fetching from remote 'origin' timed out."
+    fi
+    bt_error_exit "$EXIT_GIT_ERROR" "Git failed to fetch from origin."
   fi
   bt_success "Fetched successfully"
 
@@ -844,35 +873,51 @@ fi
 
 declare -a EVAL_BRANCHES=("$CURRENT_BRANCH")
 
-for branch in "${EVAL_BRANCHES[@]}"; do
-  evaluate_branch "$branch"
-done
-
-if [[ "$VERBOSE" == true ]]; then
-  bt_info "Summary: synchronized=$SYNCED_COUNT, skipped=$SKIPPED_COUNT, "\
-"total=$EVALUATED_COUNT"
+if [[ "$DRY_RUN" == true ]]; then
+  EVALUATED_COUNT=1
+  SYNCED_COUNT=1
+  PULL_NEEDED=true
+  if [[ "$VERBOSE" == true ]]; then
+    bt_info "Dry-run: would synchronize '$CURRENT_BRANCH'."
+  fi
+else
+  for branch in "${EVAL_BRANCHES[@]}"; do
+    evaluate_branch "$branch"
+  done
 fi
 
 if [[ "$PULL_NEEDED" == false ]]; then
-  acquire_report_lock
-  enable_branch_reports_write_access
-  REPORT_FILE=""
-  cleanup_old_dry_run_reports
-  disable_branch_reports_write_access
-  release_report_lock
-  bt_success "${CURRENT_BRANCH_MODE^} branch ${CURRENT_BRANCH}: no changes "\
-"to pull."
-  exit 0
+  OPERATION_STARTED=false
+  bt_emit_prerequisite_failure "$EXIT_NOTHING_TO_PULL" \
+    "Remote branch 'origin/$CURRENT_BRANCH' has no changes to pull." \
+    "rerun pull after remote changes are available."
 fi
 
-generate_pull_report \
-  "$([[ "$DRY_RUN" == true ]] && echo dry-run || echo pull)" \
-  "synchronized branches"
-if [[ "$DRY_RUN" == true ]]; then
-  bt_success "Dry-run: pull $CURRENT_BRANCH"
-else
-  bt_success "Pull complete: synchronized=$SYNCED_COUNT, "\
-"skipped=$SKIPPED_COUNT, total=$EVALUATED_COUNT branches."
+if [[ "$VERBOSE" == true ]]; then
+  bt_info "$(printf '%s%s' \
+    "Summary: synchronized=$SYNCED_COUNT, skipped=$SKIPPED_COUNT, " \
+    "total=$EVALUATED_COUNT")"
 fi
-bt_success "See ${REPORT_FILE#"${REPO_ROOT}"/} for details."
+
+if [[ "$DRY_RUN" == true ]]; then
+  generate_pull_report "dry-run" "dry-run complete"
+  bt_success "Dry-run: pull $CURRENT_BRANCH"
+  bt_success "See ${REPORT_FILE#"${REPO_ROOT}"/} for details."
+else
+  command_line="$(format_command_line)"
+  if ! bt_record_workflow_event "pull" "$CURRENT_BRANCH" "$command_line" \
+    "Synchronized $SYNCED_COUNT branch(es) from origin" \
+    "HEAD" \
+    "Synchronized" "$SYNCED_COUNT" \
+    "Skipped" "$SKIPPED_COUNT" \
+    "Evaluated" "$EVALUATED_COUNT"; then
+    bt_error_exit "$EXIT_REPORT_ERROR" \
+      "Pull completed, but its report history could not be recorded"
+  fi
+  bt_success "$(printf '%s%s' \
+    "Pull complete: synchronized=$SYNCED_COUNT, " \
+    "skipped=$SKIPPED_COUNT, total=$EVALUATED_COUNT branches.")"
+  cleanup_success_transient_reports
+  bt_success "Run report for details."
+fi
 exit 0

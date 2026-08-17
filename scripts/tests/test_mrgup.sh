@@ -193,6 +193,10 @@ if [[ -n "${FAKE_GH_FAIL_QUERY:-}" && "$args" == *"$FAKE_GH_FAIL_QUERY"* ]]; the
 fi
 # Identity lookup
 if [[ "$args" == *"api user"* ]]; then
+  if [[ "${FAKE_GH_IDENTITY_FAIL:-0}" == "1" ]]; then
+    echo '{"message":"Service unavailable"}'
+    exit 1
+  fi
   echo "${FAKE_GH_LOGIN:-testowner}"
   exit 0
 fi
@@ -450,21 +454,17 @@ chmod a-w "$WORK/reports/branch/mrgup-d-20000101-000000.md" \
 rc=$(run_mrgup "$TMPDIR/noop.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
   "FAKE_GH_PR_NUMBER=" -- -o -d)
-[[ "$rc" -eq 0 ]] || fail "no-op mrgup should exit 0 (got $rc)"
+[[ "$rc" -eq 37 ]] || fail "no-work mrgup should exit 37 (got $rc)"
 assert_contains "no changes to merge" "$TMPDIR/noop.out"
-noop_report_count_after="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
-  -name 'mrgup-*.md' | wc -l | tr -d ' ')"
-[[ "$noop_report_count_after" -eq 0 ]] || \
-  fail "no-op mrgup should remove stale transient reports and create no new report"
-[[ ! -e "$WORK/reports/branch/mrgup-d-20000101-000000.md" ]] || \
-  fail "no-op mrgup should remove stale dry-run report"
-[[ ! -e "$WORK/reports/branch/mrgup-e-20000101-000001.md" ]] || \
-  fail "no-op mrgup should remove stale error report"
+[[ -e "$WORK/reports/branch/mrgup-d-20000101-000000.md" ]] || \
+  fail "mrgup prerequisite failure should preserve stale dry-run report"
+[[ -e "$WORK/reports/branch/mrgup-e-20000101-000001.md" ]] || \
+  fail "mrgup prerequisite failure should preserve stale error report"
 (
   cd "$WORK"
   "$REAL_GIT" checkout dev/feat-v1.0.0 >/dev/null 2>&1
 )
-pass "no-op mrgup cleans transient reports and creates no report"
+pass "no-work mrgup prerequisite"
 
 # ---------------------------------------------------------------------------
 # -o accepts a repository owner who is not a contributor
@@ -548,6 +548,21 @@ rc=$(run_mrgup "$TMPDIR/identity-failed.out" \
 [[ "$rc" -eq 200 ]] || fail "unresolved GitHub identity should exit 200 (got $rc)"
 assert_contains "Unable to determine GitHub login identity" "$TMPDIR/identity-failed.out"
 pass "unresolved GitHub identity returns exit 200"
+
+# ---------------------------------------------------------------------------
+# A failed GitHub identity query must fall back to the configured Git login,
+# even when the failed query emits an error response on stdout.
+# ---------------------------------------------------------------------------
+rc=$(run_mrgup "$TMPDIR/identity-fallback.out" \
+  "GITHUB_ACTOR=" "FAKE_GH_IDENTITY_FAIL=1" \
+  "FAKE_REPO_OWNER=testowner" "FAKE_GH_PR_NUMBER=" -- -o -d)
+[[ "$rc" -eq 0 ]] || \
+  fail "failed GitHub identity query should use Git login fallback (got $rc)"
+assert_contains "Dry-run: merge to local v1.0.0:" \
+  "$TMPDIR/identity-fallback.out"
+assert_not_contains "Unable to determine GitHub login identity" \
+  "$TMPDIR/identity-fallback.out"
+pass "failed GitHub identity query uses Git login fallback"
 
 # ---------------------------------------------------------------------------
 # -o by owner, no open PR uses the owner default message
@@ -878,14 +893,33 @@ push_line_number="$(grep -n "to remote v1.0.0:" "$TMPDIR/verify-repair.out" | he
 [[ "$merge_line_number" -lt "$push_line_number" ]] || fail "expected merge success line before push summary"
 assert_contains "Merged to local v1.0.0:" "$TMPDIR/verify-repair.out"
 assert_contains "Pushed (" "$TMPDIR/verify-repair.out"
-report_rel="$(grep -Eo 'reports/branch/mrgup-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md' "$TMPDIR/verify-repair.out" | tail -n 1 || true)"
-[[ -n "$report_rel" ]] || fail "expected merge-up report path in output"
-report_path="$WORK/$report_rel"
-[[ -f "$report_path" ]] || fail "expected merge-up report file: $report_path"
-assert_contains '# Merge-Up Report' "$report_path"
-assert_contains '**Parent Branch:** v1.0.0' "$report_path"
-assert_contains '**Source Branch:** dev/feat-v1.0.0' "$report_path"
-assert_contains "No associated PR; CI/CD checks were not queried." "$report_path"
+assert_contains "Run chbranch v1.0.0, then run report for details." \
+  "$TMPDIR/verify-repair.out"
+if find "$WORK/reports/branch" -maxdepth 1 -type f \
+  -name 'mrgup-[0-9]*.md' -print -quit | grep -q .; then
+  fail "successful merge-up should not create an immediate local report"
+fi
+merge_body="$(git -C "$WORK" log -1 --format=%B v1.0.0)"
+if grep -Fq "Command-Line: mrgup" <<< "$merge_body"; then
+  fail "merge-up commit should not claim workflow success before finalization"
+fi
+merge_note="$(git -C "$WORK" notes --ref=briteTest-workflow show v1.0.0)"
+[[ "$merge_note" == *"Workflow-Type: mrgup"* ]] || \
+  fail "completed merge-up should record one final workflow event"
+[[ "$merge_note" == *"Command-Line: mrgup -o -c verify\\ repair\\ path"* ]] || \
+  fail "merge-up event should record its command line"
+[[ "$merge_note" == *"Source-Branch: dev/feat-v1.0.0"* ]] || \
+  fail "merge-up event should record its source branch"
+[[ "$merge_note" == *"Target-Branch: v1.0.0"* ]] || \
+  fail "merge-up event should record its target branch"
+[[ "$merge_note" == *"PR: none"* ]] || \
+  fail "merge-up event should record that no PR was associated"
+[[ "$merge_note" == *"Status: Current branch merged into parent branch"* ]] || \
+  fail "merge-up event should record merge status"
+[[ "$merge_note" == *"Method: Squash merge created by mrgup"* ]] || \
+  fail "merge-up event should record merge method"
+[[ "$merge_note" == *"No associated PR; CI/CD checks were not queried."* ]] || \
+  fail "merge-up event should record CI/CD availability"
 push_report_path="$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'push-*.md' \
   -print 2>/dev/null | xargs -r ls -1t 2>/dev/null | head -n 1 || true)"
 if [[ -n "$push_report_path" ]]; then
@@ -894,11 +928,6 @@ if [[ -n "$push_report_path" ]]; then
   assert_not_contains "--mrgup" "$push_report_path"
   assert_not_contains "--preview-ref" "$push_report_path"
 fi
-(
-  cd "$WORK"
-  git ls-files --error-unmatch "$report_rel" >/dev/null 2>&1
-) && fail "expected merge-up report to remain untracked"
-
 ab=$(
   cd "$WORK"
   "$REAL_GIT" fetch origin >/dev/null 2>&1
@@ -1048,8 +1077,15 @@ rc=$(run_mrgup "$TMPDIR/contributor-failed-ci-merge.out" \
   "FAKE_GH_REVIEW_DECISION=APPROVED" \
   "FAKE_GH_STATUS_CHECKS=ci build"$'\t'"FAILURE" --)
 [[ "$rc" -eq 0 ]] || fail "failed CI result should not block merge (got $rc)"
-ci_merge_report="$(cd "$WORK/reports/branch" && ls -1t mrgup-[0-9]*.md | head -n 1)"
-assert_contains "| ci build | FAILURE |" "$WORK/reports/branch/$ci_merge_report"
+ci_merge_note="$(git -C "$WORK" notes --ref=briteTest-workflow show \
+  dev/feat-v1.0.0)"
+[[ "$ci_merge_note" == *"ci build"* && "$ci_merge_note" == *"FAILURE"* ]] || \
+  fail "merge-up event should record CI/CD results"
+[[ "$ci_merge_note" == *"PR: 42"* ]] || \
+  fail "merge-up event should record its PR number"
+if ! grep -Fq "Command-Line: mrgup" <<< "$ci_merge_note"; then
+  fail "merge-up event should record its command line"
+fi
 pass "failed CI result is reported without blocking a real merge"
 
 # ---------------------------------------------------------------------------

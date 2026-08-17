@@ -46,7 +46,7 @@ Prerequisites:
   - The current branch must be a local branch.
   - The current branch must be a targeted or contributor branch (not
     main or a version branch).
-  - The current branch must have no untracked or uncommitted changes.
+  - The current branch must have no uncommitted changes.
     - If there are changes, run the commit or undo script first.
 
 Arguments:

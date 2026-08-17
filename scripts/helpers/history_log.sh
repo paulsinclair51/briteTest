@@ -7,9 +7,10 @@
 # For license details, see LICENSE in the repository root.
 
 # High-Level Flow:
-# - Provides shared functions to append and format branch history markdown logs.
-# - Ensures consistent row formatting and timestamp handling across scripts.
-# - Centralizes history-log write operations for workflow scripts.
+# - Maintain tracked branch-history markdown used by merge/retarget workflows.
+# - Record completed workflow activity on the resulting commits.
+# - Keep note field validation and user/timestamp attribution consistent.
+# - Propagate repository-level history used by branch workflows.
 
 bt_history_run_remote_command() {
   if declare -F bt_run_remote_command >/dev/null 2>&1; then
@@ -65,6 +66,49 @@ EOF
 **$timestamp**: $message
 EOF
   fi
+}
+
+# Record one completed workflow action. Additional arguments are key/value
+# pairs rendered by report without requiring workflow-specific parsing.
+bt_record_workflow_event() {
+  local workflow_type="$1"
+  local branch="$2"
+  local command_line="$3"
+  local summary="$4"
+  local commit_ref="${5:-HEAD}"
+  local timestamp=""
+  local user_name=""
+  local user_email=""
+  local record=""
+  local field_name=""
+  local field_value=""
+
+  shift 5
+  (( $# % 2 == 0 )) || return 2
+
+  timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+  user_name="$(git config user.name 2>/dev/null || true)"
+  user_email="$(git config user.email 2>/dev/null || true)"
+  record="--- briteTest workflow ---
+Workflow-Type: ${workflow_type}
+Workflow-Time: ${timestamp}
+Workflow-Branch: ${branch}
+Workflow-User: ${user_name} <${user_email}>
+Command-Line: ${command_line}
+Summary: ${summary}"
+
+  while [[ $# -gt 0 ]]; do
+    field_name="$1"
+    field_value="$2"
+    shift 2
+    [[ "$field_name" =~ ^[A-Za-z][A-Za-z0-9-]*$ ]] || return 2
+    field_value="$(printf '%s' "$field_value" | tr '\r\n' '  ')"
+    record+=$'\n'
+    record+="${field_name}: ${field_value}"
+  done
+
+  git notes --ref=briteTest-workflow append -m "$record" "$commit_ref" \
+    >/dev/null 2>&1
 }
 
 # Propagate repository_history.md from remote main to current branch if available.

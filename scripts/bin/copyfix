@@ -82,30 +82,35 @@ Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
   - The current worktree remains on the current branch.
-  - No report is written when the fix branch has no new commits to copy.
-    Older dry-run and error reports for the current branch are deleted.
-  - A successful copy writes an untracked report locally to:
-        <repo>/reports/branch/copyfix-<datetime>-<pid>.md
+  - No-work prerequisite failures do not generate or delete reports.
+  - After a successful copy, records history for the report command and
+    writes 'Run report for details.' to stdout. It does not write an immediate
+    local copy report.
   - A dry-run writes an untracked report locally to:
-        <repo>/reports/branch/copyfix-d-<datetime>-<pid>.md
+        <repo>/reports/branch/copyfix-d-<datetime>.md
   - A failure after target work starts writes an untracked error report
     locally to:
-        <repo>/reports/branch/copyfix-e-<datetime>-<pid>.md
+        <repo>/reports/branch/copyfix-e-<datetime>.md
 
 Exit codes:
   0   Success.
   1   Invalid option or argument.
   2   Operation failed (e.g., uncommitted changes).
   3   Config error (e.g., source branch not found locally).
+  4   No new fix commits are available to copy.
   5   Copy paused because conflicts require manual resolution.
   200 Git operation failed.
 EOF
 }
 
 # High-Level Flow:
-# - Copies selected commits from a source branch into a target branch.
-# - Validates branch/commit inputs and guards against unsafe copy scenarios.
-# - Reports applied commits and failures for conflict resolution.
+# - Validate source/target branch policy, worktree state, and available commits.
+# - Preview counts for -d or cherry-pick source commits oldest first in a linked
+#   target worktree, preserving original messages unless a comment is supplied.
+# - Persist worktree/state on conflicts and resume the same action with
+#   --continue.
+# - After all commits succeed, record one aggregate event on the target tip;
+#   write local reports only for dry-run/error paths.
 
 set -euo pipefail
 
@@ -134,6 +139,7 @@ ORIGINAL_ARGS=("$@")
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_OPERATION_FAILED=2
 readonly EXIT_CONFIG_ERROR=3
+readonly EXIT_NOTHING_TO_COPY=4
 readonly EXIT_GIT_FAILED=200
 
 usage_error() {
@@ -263,6 +269,14 @@ cleanup_old_transient_reports() {
     "copyfix-e-*.md"
 }
 
+cleanup_success_transient_reports() {
+  REPORT_FILE=""
+  acquire_report_lock
+  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_GIT_FAILED"
+  cleanup_old_transient_reports
+  release_report_lock
+}
+
 prepare_report_write() {
   acquire_report_lock
   bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_GIT_FAILED"
@@ -286,9 +300,9 @@ generate_copyfix_report() {
   command_text="$(format_command_line)"
   [[ -z "$COMMITS" ]] || \
     commit_count="$(printf '%s\n' "$COMMITS" | wc -l | tr -d ' ')"
-  REPORT_FILE="$(bt_report_unique_path "$BRANCH_REPORTS_DIR" "$prefix" \
-    "$RUN_TS_FILE")"
   prepare_report_write
+  REPORT_FILE="$(bt_report_transient_path "$BRANCH_REPORTS_DIR" "$prefix" \
+    "$RUN_TS_FILE")"
   cat > "$REPORT_FILE" <<EOF
 # Copy-Fix Report ${RUN_TS_DISPLAY}
 
@@ -430,10 +444,40 @@ save_copyfix_state() {
 }
 
 apply_copy_comment() {
-  if [[ "$COPY_COMMENT_SET" == true ]] && \
-    ! git -C "$TARGET_WORKTREE" commit --amend -m "$COPY_COMMENT" \
-      >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_GIT_FAILED" "Failed to apply copied fix commit comment"
+  local commit_message=""
+
+  if [[ "$COPY_COMMENT_SET" == true ]]; then
+    commit_message="$COPY_COMMENT"
+  else
+    commit_message="$(git -C "$TARGET_WORKTREE" log -1 --format=%B)"
+  fi
+  if ! git -C "$TARGET_WORKTREE" commit --amend -m "$commit_message" \
+    >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_GIT_FAILED" \
+      "Failed to apply copied fix commit comment"
+  fi
+}
+
+record_copyfix_success() {
+  local commit_count=0
+  local command_line=""
+
+  [[ -z "$COMMITS" ]] || \
+    commit_count="$(printf '%s\n' "$COMMITS" | sed '/^$/d' | wc -l | tr -d ' ')"
+  command_line="$(format_command_line)"
+  if ! bt_record_workflow_event "copyfix" "$TARGET_BRANCH" "$command_line" \
+    "Copied ${commit_count} fix commit(s) from $SOURCE_BRANCH to $TARGET_BRANCH" \
+    "$TARGET_BRANCH" \
+    "Source-Branch" "$SOURCE_BRANCH" \
+    "Target-Branch" "$TARGET_BRANCH" \
+    "Commits-Copied" "$commit_count" \
+    "Files-Modified" "$FILES_MODIFIED" \
+    "Files-Added" "$FILES_ADDED" \
+    "Files-Deleted" "$FILES_DELETED" \
+    "Status" "Fix commits copied to target branch" \
+    "Method" "Cherry-pick created by copyfix"; then
+    bt_error_exit "$EXIT_GIT_FAILED" \
+      "Copy completed, but its report history could not be recorded"
   fi
 }
 
@@ -630,12 +674,11 @@ if [[ "$CONTINUE_MODE" == true ]]; then
     bt_error_exit "$EXIT_GIT_FAILED" \
       "Failed to remove temporary copyfix worktree"
   summary_line="$(format_file_copy_summary "copied")"
-  generate_copyfix_report "copyfix" "$TARGET_BRANCH" "Succeeded" "copy" \
-    "**Result:** Fix commits copied to the target branch.\n\n**Summary:** " \
-    "${summary_line}"
+  record_copyfix_success
+  cleanup_success_transient_reports
   bt_success "Copy continued successfully"
   bt_success "$summary_line"
-  bt_success "See ${REPORT_FILE#"${REPO_ROOT}/"} for details."
+  bt_success "Run report for details."
   exit 0
 fi
 
@@ -700,13 +743,9 @@ COMMITS=$(get_commits_from_branch "$SOURCE_BRANCH" "$TARGET_BRANCH")
 compute_file_copy_counts "$SOURCE_BRANCH" "$TARGET_BRANCH"
 
 if [[ -z "$COMMITS" ]]; then
-  acquire_report_lock
-  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_GIT_FAILED"
-  REPORT_FILE=""
-  cleanup_old_transient_reports
-  release_report_lock
-  bt_success "No new commits to copy from $SOURCE_BRANCH into $TARGET_BRANCH"
-  exit 0
+  bt_emit_prerequisite_failure "$EXIT_NOTHING_TO_COPY" \
+    "Source branch '$SOURCE_BRANCH' has no new commits to copy into '$TARGET_BRANCH'." \
+    "rerun copyfix after new fix commits are available."
 fi
 
 bt_info "Found commits to copy:"
@@ -743,9 +782,8 @@ copy_commits "$COMMITS"
 remove_copyfix_state || \
   bt_error_exit "$EXIT_GIT_FAILED" "Failed to remove temporary copyfix worktree"
 summary_line="$(format_file_copy_summary "copied")"
-generate_copyfix_report "copyfix" "$TARGET_BRANCH" "Succeeded" "copy" \
-  "**Result:** Fix commits copied to the target branch.\n\n**Summary:** " \
-  "${summary_line}"
+record_copyfix_success
+cleanup_success_transient_reports
 
 bt_success "Copy completed successfully"
 bt_success "$summary_line"
@@ -757,5 +795,5 @@ if [[ "$VERBOSE" == true ]]; then
 fi
 
 bt_success "Done"
-bt_success "See ${REPORT_FILE#"${REPO_ROOT}/"} for details."
+bt_success "Run report for details."
 exit 0

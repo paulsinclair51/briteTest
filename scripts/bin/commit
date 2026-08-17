@@ -54,9 +54,7 @@ Options:
 
   For user comment options '-c TOKEN' and '-- TOKEN...':
     - These options are mutually exclusive.
-    - If -h/--help is not specified, one of these options is required if one
-      or more commits are pending; otherwise, it is not required and it is
-      ignored if specified.
+    - If -h/--help is not specified, one of these options is required.
     - For '-- TOKEN...', '--' must be a separate token, followed by at least
       one or more tokens. Leading/trailing whitespace is not preserved
       and whitespace between tokens is reduced to a single space.
@@ -87,19 +85,21 @@ Outputs:
   - Writes verbose (-v) progress and diagnostics to stdout.
   - If prerequisites are met, output to stdout is:
     - Current local branch.
-    - Final status summary line for run outcome (success, dry-run,
-      error-run report, or no-op).
+    - Final status summary line for run outcome (success, dry-run, or
+      error-run report).
     - If report is written, the line "See <report> for details."
       is output.
   - If a non-dry-run operation fails after commit work starts or -e is
     specified, an untracked error report in the current branch is written to:
-      - <repo>/reports/branch/commit-e-<datetime>-<pid>.md
+      - <repo>/reports/branch/commit-e-<datetime>.md
   - For a dry-run (-d) when there are changes to commit, an untracked report in
     the current branch is written to:
-      - <repo>/reports/branch/commit-d-<datetime>-<pid>.md
+      - <repo>/reports/branch/commit-d-<datetime>.md
   - Older dry-run and error reports are removed if usage and prerequisites
     pass and -h/--help is not specified.
   - Commit reports can be generated using the 'report' command.
+  - After a successful non-dry-run commit, writes
+    'Run report for details.' to stdout.
 
 Exit codes:
   0   Success.
@@ -117,6 +117,7 @@ Exit codes:
   5   Commit must run on a local branch. If current state is remote-only,
       create/switch to a local branch first (for example, via chbranch).
   6   Commit skipped due to -e option.
+  7   No changes are available to commit.
   200 Failed to commit. Run `fixrepo` and retry. If the issue persists,
       create a new clone (mkclone), apply changes, then retry.
   201 Failed to write report. Check permissions and disk space, then retry.
@@ -124,15 +125,12 @@ EOF
 }
 
 # High-Level Flow:
-# - Parse options and initialize run mode (dry-run, verbose).
-# - Validate branch constraints and determine whether there are local changes to
-#   commit.
-# - Serialize commit execution per local branch, then execute commit when
-#   prerequisites are met.
-# - Generate reports only for dry-run and error runs, and delete stale -d and
-#   -e reports.
-# - Print a single final status line that includes counts and report
-#   disposition.
+# - Parse mode/comment options and validate actor, local branch, and policy.
+# - Serialize work per branch and reject runs with no commit candidates.
+# - Collect file/line metadata, create the standardized commit body, and commit.
+# - Write local reports only for dry-run/error paths; clean stale transient
+#   reports after successful work.
+# - Direct successful runs to report, which reads the durable commit metadata.
 
 # shellcheck disable=SC1091,SC2317  # Helper source paths and trap-managed lock
 # cleanup paths.
@@ -174,6 +172,7 @@ readonly EXIT_NOT_AUTHORIZED=3
 readonly EXIT_BRANCH_POLICY=4
 readonly EXIT_REMOTE_LOCAL_CONFLICT=5
 readonly EXIT_WORKFLOW_SKIPPED=6
+readonly EXIT_NOTHING_TO_COMMIT=7
 readonly EXIT_WORKTREE_INSPECTION_FAILED=200
 readonly EXIT_STAGE_COMMIT_FAILED=200
 readonly EXIT_REPORT_WRITE_FAILED=201
@@ -388,8 +387,6 @@ EOF
 
 initialize_report_file() {
   local report_prefix="$1"
-  local current_ts
-  local current_display
 
   if [[ "$DRY_RUN" == true ]]; then
     report_prefix="commit-d"
@@ -400,18 +397,9 @@ initialize_report_file() {
     REPORT_NAME_LOCKED=true
   fi
 
-  current_ts="$(date '+%Y%m%d-%H%M%S')"
-  current_display="$(date '+%Y-%m-%d %H:%M:%S')"
-  if [[ "$current_ts" == "$RUN_TS_FILE" ]]; then
-    sleep 1
-    current_ts="$(date '+%Y%m%d-%H%M%S')"
-    current_display="$(date '+%Y-%m-%d %H:%M:%S')"
-  fi
-
-  RUN_TS_FILE="$current_ts"
-  RUN_TS_DISPLAY="$current_display"
-  REPORT_FILE="$(bt_report_unique_path \
+  REPORT_FILE="$(bt_report_transient_path \
     "$BRANCH_REPORTS_DIR" "$report_prefix" "$RUN_TS_FILE")"
+  RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 }
 
 # Default options
@@ -1294,6 +1282,12 @@ else
   COMMIT_SUMMARY_TEXT="No changes to commit"
 fi
 
+if [[ "$NEEDS_COMMIT" == false ]]; then
+  bt_emit_prerequisite_failure "$EXIT_NOTHING_TO_COMMIT" \
+    "Current branch '$CURRENT_BRANCH' has no changes to commit." \
+    "make changes before rerunning commit."
+fi
+
 # Validate user comment only when a commit is actually needed.
 if [[ "$NEEDS_COMMIT" == true ]]; then
   if [[ -z "$COMMIT_COMMENT" ]]; then
@@ -1325,7 +1319,6 @@ fi
 if [[ "$NEEDS_COMMIT" == true ]]; then
   if [[ "$ERROR_RUN" == true ]]; then
     skip_commit_and_exit
-    SKIP_COMMIT_EXITED=true
     emit_final_status "$(printf '%s%s%s%s' \
       "Error-run: commit to ${CURRENT_BRANCH}: " \
       "${COMMIT_MODIFIED_FILES} modified, " \
@@ -1395,6 +1388,7 @@ if [[ "$COMMITTED_FILES" -gt 0 ]]; then
   else
     cleanup_transient_reports_locked
     emit_final_status "$COMMIT_SUMMARY_TEXT" false
+    bt_success "Run report for details."
   fi
 else
   cleanup_transient_reports_locked

@@ -10,13 +10,15 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-**branch-<datetime>-<pid>.md**: Branch report from `<repo>/scripts/bin/lsbranch`.
+**branch-<datetime>.md**: Latest branch report from
+`<repo>/scripts/bin/lsbranch`.
 
-**commit-<datetime>-<pid>.md**: Commit report from `<repo>/scripts/bin/commit`.
+**history-<datetime>-<id>.md**: Retained activity report from
+`<repo>/scripts/bin/report`.
 
-**mrgup-<datetime>-<pid>.md**: Merge-and-push report from `<repo>/scripts/bin/mrgup`.
+**<workflow>-d-<datetime>.md**: Dry-run report from a branch workflow.
 
-**push-<datetime>-<pid>.md**: Push report from `<repo>/scripts/bin/push`.
+**<workflow>-e-<datetime>.md**: Error report from a branch workflow.
 
 **README.md**: This directory guide.
 
@@ -26,7 +28,10 @@ None.
 
 ## Notes
 
-`<datetime>` has the form `YYYYMMDD-HHMMSS`. Older reports may be removed by
-the generating script after successful report creation.
+`<workflow>` can be commit, push, pull, mrgup, mrgdown, or copyfix.
 
-`<pid>` is a process id to provide uniqueness to the file name.
+`<datetime>` has the form `YYYYMMDD-HHMMSS`. Branch workflows serialize report
+creation, wait for the next available second, and remove older dry-run/error
+reports after successful work. History reports are retained.
+
+`<id>` distinguishes retained reports created in the same second.

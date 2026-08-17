@@ -26,7 +26,7 @@ Use -a or PATTERN to list the status of branches matching "*"
 or PATTERN, respectively.
 
 An untracked branch report is written locally at
-<repo>/reports/branch/branch-<datetime>-<pid>.md
+<repo>/reports/branch/branch-<datetime>.md
 
 Report includes:
   Branch:  Indicates the branch name. `*` indicates this is
@@ -116,7 +116,7 @@ Outputs:
   - When remote is unreachable, remote fields use cached local
     remote refs from your last successful remote update and this is noted
     in stdout and the report.
-  - Writes a report to <repo>/reports/branch/branch-<datetime>-<pid>.md.
+  - Writes a report to <repo>/reports/branch/branch-<datetime>.md.
   - Removes previous reports before writing a new one.
 
 Exit codes:
@@ -178,13 +178,13 @@ source "$SCRIPT_DIR/../helpers/history_log.sh"
 source "$SCRIPT_DIR/../helpers/report_helpers.sh"
 
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
-RUN_PID="${BASHPID:-$$}"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 ORIGINAL_ARGS=("$@")
 REPORT_COMMAND=""
 
 # Default options
 OUTPUT_FILE=""
+REPORT_LOCK_FD=""
 BRANCH_REPORT_DELETIONS=()
 BRANCH_PATTERN=""
 EXCLUDE_PATTERN=""
@@ -219,6 +219,10 @@ cleanup_runtime_files() {
   # shellcheck disable=SC2317  # Invoked by trap cleanup_runtime_files EXIT.
   # Suppress errors during cleanup to ensure trap always completes
   rm -f "$WARNINGS_FILE" 2>/dev/null || true
+  if [[ -n "$REPORT_LOCK_FD" ]]; then
+    bt_report_release_lock "$REPORT_LOCK_FD"
+    REPORT_LOCK_FD=""
+  fi
 }
 
 trap cleanup_runtime_files EXIT
@@ -1760,8 +1764,6 @@ fi
 
 bt_report_dir_enable_writes "$branch_reports_dir" "$EXIT_OPERATION_FAILED"
 
-OUTPUT_FILE="$branch_reports_dir/branch-${RUN_TS_FILE}-${RUN_PID}.md"
-
 # Get current branch to restore later
 ORIGINAL_BRANCH=$(bt_get_current_branch ||
   bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch.")
@@ -1857,6 +1859,12 @@ fi
 
 # Remove stale branch reports before generating the new one so old report
 # files are not counted as untracked during the status check below.
+if ! bt_report_acquire_lock "$repo_root" "lsbranch" 10 REPORT_LOCK_FD; then
+  bt_error_exit "$EXIT_OPERATION_FAILED" \
+    "Timed out waiting for the branch report lock."
+fi
+OUTPUT_FILE="$(bt_report_transient_path \
+  "$branch_reports_dir" "branch" "$RUN_TS_FILE")"
 cleanup_old_reports
 
 # Generate report header
@@ -1985,6 +1993,9 @@ EOF
 append_report_note_about_stale_remote
 
 append_report_warnings
+
+bt_report_release_lock "$REPORT_LOCK_FD"
+REPORT_LOCK_FD=""
 
 persist_report_changes
 

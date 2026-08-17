@@ -64,6 +64,9 @@ Examples:
 Outputs:
   - Writes help text, status messages, and summaries to stdout.
   - Writes errors and diagnostics to stderr.
+  - After a successful retarget, records history for the report command and
+    tells the user to run chbranch for the targeted branch, then run report
+    for details.
 
 Exit codes:
   0   Success.
@@ -76,9 +79,11 @@ EOF
 }
 
 # High-Level Flow:
-# - Validates policy and role requirements for targeted-branch retargeting.
-# - Rebases targeted branch onto a new version parent and force-pushes update.
-# - Stops on conflicts and hands resolution to branch owner.
+# - Validate approver identity, target naming, version access, and clean state.
+# - Preview the new parent for -d; otherwise rebase the target and force-push it.
+# - Preserve conflicts for branch-owner handoff instead of recording success.
+# - Append tracked history and one structured event to the rewritten target tip,
+#   then direct users back to that branch for report generation.
 
 # shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
 
@@ -87,6 +92,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ACCESS_FILE="$REPO_ROOT/config/version_branch_access.csv"
+ORIGINAL_ARGS=("$@")
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
@@ -363,11 +369,24 @@ MESSAGE="Retargeted '$TARGET_BRANCH' from '$OLD_PARENT' to '$NEW_PARENT' by "\
 "approver '$CURRENT_USER'"
 LOG_FILE="$REPO_ROOT/$(bt_branch_to_history_file "$TARGET_BRANCH")"
 bt_append_history_log "$LOG_FILE" "$MESSAGE" "$COMMENT"
+command_line="$(bt_format_command_line "retarget" "${ORIGINAL_ARGS[@]}")"
+retarget_tip="$(git rev-parse HEAD 2>/dev/null || true)"
+if ! bt_record_workflow_event "retarget" "$TARGET_BRANCH" "$command_line" \
+  "$MESSAGE" "$retarget_tip" \
+  "Old-Parent" "$OLD_PARENT" \
+  "New-Parent" "$NEW_PARENT" \
+  "Retargeted-Tip" "$retarget_tip" \
+  "Comment" "${COMMENT:-none}"; then
+  bt_error_exit "$EXIT_OPERATION_FAILED" \
+    "Retarget completed, but its report history could not be recorded"
+fi
 
 bt_success "Retarget complete"
 
 if [[ -n "$ORIGINAL_BRANCH" && "$ORIGINAL_BRANCH" != "$TARGET_BRANCH" ]]; then
   git checkout "$ORIGINAL_BRANCH" >/dev/null 2>&1 || true
 fi
+
+bt_success "Run chbranch $TARGET_BRANCH, then run report for details."
 
 exit 0

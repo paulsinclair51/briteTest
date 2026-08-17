@@ -104,6 +104,7 @@ bt_normalize_login() {
 
 bt_resolve_login_or_empty() {
   local login=""
+  local gh_login=""
   local timeout_seconds="${BT_REMOTE_TIMEOUT_SECONDS:-10}"
 
   if [[ -n "${GITHUB_ACTOR:-}" ]]; then
@@ -112,12 +113,18 @@ bt_resolve_login_or_empty() {
 
   if [[ -z "$login" ]] && command -v gh >/dev/null 2>&1; then
     if declare -F bt_run_remote_command >/dev/null 2>&1; then
-      login="$(bt_run_remote_command gh api user --jq '.login' 2>/dev/null || true)"
+      if gh_login="$(bt_run_remote_command gh api user --jq '.login' 2>/dev/null)"; then
+        login="$gh_login"
+      fi
     elif [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] && \
       command -v timeout >/dev/null 2>&1; then
-      login="$(timeout "${timeout_seconds}s" gh api user --jq '.login' 2>/dev/null || true)"
+      if gh_login="$(timeout "${timeout_seconds}s" gh api user --jq '.login' 2>/dev/null)"; then
+        login="$gh_login"
+      fi
     else
-      login="$(gh api user --jq '.login' 2>/dev/null || true)"
+      if gh_login="$(gh api user --jq '.login' 2>/dev/null)"; then
+        login="$gh_login"
+      fi
     fi
   fi
 

@@ -23,7 +23,7 @@ from). Handles simple conflicts automatically and provides
 instructions for complex ones.
 
 Prerequisites:
-  - The current branch must have no untracked or uncommitted changes.
+  - The current branch must have no uncommitted changes.
   - If there are changes, use the commit or undo workflow first.
 
 Protected branches (cannot run mrgdown):
@@ -80,16 +80,15 @@ Example: Merge down with verbose output.
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - No report is written when there are no changes to merge.
-    Older dry-run and error reports for the current branch are deleted.
-  - For a non-dry-run mrgdown:
-    - Writes an untracked report locally to:
-            <repo>/reports/branch/mrgdown-<datetime>-<pid>.md
-    - A dry-run report is written (untracked) locally to:
-        <repo>/reports/branch/mrgdown-d-<datetime>-<pid>.md
+  - No-work prerequisite failures do not generate or delete reports.
+  - After a successful non-dry-run mrgdown, records history for the report
+    command and writes 'Run report for details.' to stdout. It does not write
+    an immediate merge report.
+  - A dry-run report is written (untracked) locally to:
+        <repo>/reports/branch/mrgdown-d-<datetime>.md
   - If a non-dry-run operation fails after merge work starts, writes an
     untracked error report to:
-        <repo>/reports/branch/mrgdown-e-<datetime>-<pid>.md
+        <repo>/reports/branch/mrgdown-e-<datetime>.md
     Usage and prerequisite failures do not create reports.
 
 Exit codes:
@@ -97,16 +96,19 @@ Exit codes:
   1     Invalid option or argument.
   2     Conflicts detected (user must resolve).
   3     Branch is protected (cannot sync up).
+  5     No parent changes are available to merge.
   200   Failed to determine parent branch.
   201   Git merge failed.
 EOF
 }
 
 # High-Level Flow:
-# - Brings parent-branch changes into the current branch using project sync-up
-#   workflow.
-# - Validates branch relationships and merge/rebase preconditions.
-# - Reports integration outcomes and required follow-up actions.
+# - Validate actor, current/parent branch policy, worktree, and remote state.
+# - Reject runs with no parent commits; preview changes and report them for -d.
+# - Merge with --no-ff, auto-resolving only known history-log conflicts.
+# - Store command, branch, commit-count, and file-count metadata in the merge
+#   commit so report can reconstruct the completed action.
+# - Write local reports only for dry-run/error paths and clean them on success.
 
 # shellcheck disable=SC1091,SC2317  # Helper source paths and trap-managed
 # cleanup paths.
@@ -146,6 +148,7 @@ readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NOT_FOUND=2
 readonly EXIT_OPERATION_FAILED=3
 readonly EXIT_CONFIG_ERROR=4
+readonly EXIT_NOTHING_TO_MERGE=5
 readonly EXIT_WORKFLOW_SKIPPED=6
 readonly EXIT_INTERNAL_ERROR=100
 
@@ -187,15 +190,7 @@ release_report_lock() {
   REPORT_LOCK_HELD=false
 }
 
-generate_merge_report() {
-  local parent_branch="$1"
-  local merge_message="$2"
-  local merge_hash="$3"
-  local commits_merged="$4"
-  local command_text
-
-  command_text="$(format_command_line)"
-
+collect_staged_merge_file_summary() {
   MERGE_UPDATED_FILES=0
   MERGE_ADDED_FILES=0
   MERGE_DELETED_FILES=0
@@ -211,52 +206,19 @@ generate_merge_report() {
       D)
         MERGE_DELETED_FILES=$((MERGE_DELETED_FILES + 1))
         ;;
-      *)
-        ;;
     esac
-  done < <(git show --pretty=format: --name-status "$merge_hash" \
-    2>/dev/null || \
-    true)
+  done < <(git diff --cached --name-status --find-renames 2>/dev/null || true)
 
   MERGE_FILE_SUMMARY_TEXT="${MERGE_UPDATED_FILES} modified, "\
 "${MERGE_ADDED_FILES} added, and "\
 "${MERGE_DELETED_FILES} deleted files"
+}
 
+cleanup_success_transient_reports() {
+  REPORT_FILE=""
   acquire_report_lock
   enable_branch_reports_write_access
-
-  REPORT_FILE="$(bt_report_unique_path "$BRANCH_REPORTS_DIR" "mrgdown" \
-    "$RUN_TS_FILE")"
   cleanup_old_transient_reports
-
-  bt_report_write_header "$REPORT_FILE" "Merge Report" \
-    "$RUN_TS_DISPLAY" "$command_text"
-  cat >> "$REPORT_FILE" <<EOF
-**Branch:** \`${CURRENT_BRANCH}\`
-
-**Merge Commit Hash:** ${merge_hash}
-
-**Merge Comment:** ${merge_message}
-
-**Files:** ${MERGE_FILE_SUMMARY_TEXT}
-
-**Merge:** 1<br>
-**Total:** 1
-
-## Merge
-
-| Branch | Parent Branch | Parent Commits Integrated | Merge Commit Hash |
-| --- | --- | --- | --- |
-| ${CURRENT_BRANCH} | ${parent_branch} | ${commits_merged} | ${merge_hash} |
-
-## Merge Details
-
-- **Status:** Parent branch merged into current branch.
-- **Method:** Merge commit (--no-ff) created by mrgdown.
-- **Guidance:** Review merged changes and run tests before sharing.
-
-EOF
-
   disable_branch_reports_write_access
   release_report_lock
 }
@@ -280,7 +242,7 @@ generate_dry_run_report() {
   acquire_report_lock
   enable_branch_reports_write_access
 
-  REPORT_FILE="$(bt_report_unique_path "$BRANCH_REPORTS_DIR" "mrgdown-d" \
+  REPORT_FILE="$(bt_report_transient_path "$BRANCH_REPORTS_DIR" "mrgdown-d" \
     "$RUN_TS_FILE")"
   cleanup_old_transient_reports
 
@@ -316,7 +278,7 @@ generate_error_report() {
   acquire_report_lock
   enable_branch_reports_write_access
 
-  REPORT_FILE="$(bt_report_unique_path "$BRANCH_REPORTS_DIR" "mrgdown-e" \
+  REPORT_FILE="$(bt_report_transient_path "$BRANCH_REPORTS_DIR" "mrgdown-e" \
     "$RUN_TS_FILE")"
   cleanup_old_transient_reports
 
@@ -410,7 +372,7 @@ REMOTE_TIMEOUT_SECONDS=10
 ensure_clean_worktree() {
   if bt_is_worktree_dirty; then
     bt_emit_prerequisite_failure "$EXIT_NOT_FOUND" \
-      "Current branch has uncommitted or untracked changes." \
+      "Current branch has uncommitted changes." \
       "commit or undo changes, then rerun mrgdown."
   fi
 }
@@ -609,14 +571,9 @@ commits_to_merge=$(git rev-list --count "HEAD..origin/$PARENT_BRANCH" \
   2>/dev/null || echo "0")
 
 if [[ "$commits_to_merge" == "0" ]]; then
-  acquire_report_lock
-  enable_branch_reports_write_access
-  REPORT_FILE=""
-  cleanup_old_transient_reports
-  disable_branch_reports_write_access
-  release_report_lock
-  bt_success "Local ${CURRENT_BRANCH} branch: no changes to merge."
-  exit 0
+  bt_emit_prerequisite_failure "$EXIT_NOTHING_TO_MERGE" \
+    "Parent branch '$PARENT_BRANCH' has no changes to merge into '$CURRENT_BRANCH'." \
+    "rerun mrgdown after parent changes are available."
 fi
 
 bt_info "Commits to merge: $commits_to_merge"
@@ -677,7 +634,20 @@ if ! git merge --no-commit --no-ff "origin/$PARENT_BRANCH" >/dev/null 2>&1; then
   fi
 fi
 
-if ! GIT_BYPASS_HOOKS=true git commit -m "$MERGE_MESSAGE" >/dev/null 2>&1; then
+collect_staged_merge_file_summary
+
+if ! GIT_BYPASS_HOOKS=true git commit -m "$MERGE_MESSAGE" \
+  -m "## Workflow Metadata
+
+Command-Line: $(format_command_line)
+Source-Branch: $PARENT_BRANCH
+Target-Branch: $CURRENT_BRANCH
+Parent-Commits-Integrated: $commits_to_merge
+Files-Modified: $MERGE_UPDATED_FILES
+Files-Added: $MERGE_ADDED_FILES
+Files-Deleted: $MERGE_DELETED_FILES
+Status: Parent branch merged into current branch
+Method: Merge commit (--no-ff) created by mrgdown" >/dev/null 2>&1; then
   bt_error_exit "$EXIT_NOT_FOUND" \
     "Merge applied, but failed to create merge commit"
 fi
@@ -690,16 +660,10 @@ if [[ "$VERBOSE" == true ]]; then
   git log -1 --oneline | sed 's/^/  /'
 fi
 
-MERGE_COMMIT_HASH="$(git rev-parse --short HEAD 2>/dev/null || true)"
-generate_merge_report \
-  "$PARENT_BRANCH" "$MERGE_MESSAGE" "$MERGE_COMMIT_HASH" \
-  "$commits_to_merge"
+cleanup_success_transient_reports
 
 bt_success "Merged parent '$PARENT_BRANCH' into '$CURRENT_BRANCH': "\
 "${MERGE_FILE_SUMMARY_TEXT}."
 bt_success "Merge down complete"
-if [[ -n "$REPORT_FILE" ]]; then
-  report_rel="${REPORT_FILE#"${REPO_ROOT}"/}"
-  bt_success "See ${report_rel} for details."
-fi
+bt_success "Run report for details."
 exit 0

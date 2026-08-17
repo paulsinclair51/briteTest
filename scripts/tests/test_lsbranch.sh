@@ -102,7 +102,32 @@ grep -q '\[local\]' "$TMPDIR/local.out" || \
   fail "lsbranch -a -l should include [local] output"
 pass "-a -l local-only output"
 
-# 4) Current branch marker should be a trailing * in the report
+# 4) Concurrent runs should serialize replacement report creation.
+set +e
+"$LSBRANCH" -a -l >"$TMPDIR/concurrent-1.out" 2>&1 &
+first_pid=$!
+"$LSBRANCH" -a -l >"$TMPDIR/concurrent-2.out" 2>&1 &
+second_pid=$!
+wait "$first_pid"
+first_rc=$?
+wait "$second_pid"
+second_rc=$?
+set -e
+[[ "$first_rc" -eq 0 ]] || \
+  fail "first concurrent lsbranch should exit 0 (got $first_rc)"
+[[ "$second_rc" -eq 0 ]] || \
+  fail "second concurrent lsbranch should exit 0 (got $second_rc)"
+branch_report_count="$(find "$SCRIPT_DIR/../../reports/branch" -maxdepth 1 \
+  -type f -name 'branch-*.md' | wc -l | tr -d ' ')"
+[[ "$branch_report_count" -eq 1 ]] || \
+  fail "concurrent lsbranch runs should leave one report"
+concurrent_report="$(find "$SCRIPT_DIR/../../reports/branch" -maxdepth 1 \
+  -type f -name 'branch-*.md' -print -quit)"
+[[ "$(basename "$concurrent_report")" =~ ^branch-[0-9]{8}-[0-9]{6}\.md$ ]] || \
+  fail "concurrent lsbranch report should be PID-free"
+pass "concurrent report serialization"
+
+# 5) Current branch marker should be a trailing * in the report
 # (not malformed markdown)
 rc=$(run_capture "$TMPDIR/default.out" "$LSBRANCH")
 [[ "$rc" -eq 0 ]] || fail "lsbranch should exit 0"
@@ -111,6 +136,8 @@ report_rel=$(extract_report_path "$TMPDIR/default.out")
   fail "lsbranch output should include generated report path"
 report_path="$SCRIPT_DIR/../../$report_rel"
 [[ -f "$report_path" ]] || fail "generated report file should exist"
+[[ "$(basename "$report_path")" =~ ^branch-[0-9]{8}-[0-9]{6}\.md$ ]] || \
+  fail "expected PID-free branch report filename"
 
 current_branch=$(git rev-parse --abbrev-ref HEAD)
 grep -Eq "\\| ${current_branch}(\\*|<span[^>]*>\\*</span>) \\| local \\|" "$report_path" || \

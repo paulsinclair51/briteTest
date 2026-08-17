@@ -31,20 +31,20 @@ Prerequisites:
     another branch. Use rmbranch to delete invalid branches if needed.
   - For undo uncommitted, the current branch may be local or remote.
   - For undo commit, pull, or mrgdown, the current branch must be local and
-    must have no untracked or uncommitted changes (undo uncommitted first and
+    must have no uncommitted changes (undo uncommitted first and
     rerun undo commit, pull, or mrgdown).
   - For undo push, the current branch must be the remote branch that was
-    the target of the push and must have no untracked or uncommitted changes
+    the target of the push and must have no uncommitted changes
     (undo uncommitted first and rerun undo push).
   - For undo copyfix, the current branch must be local, must be the branch
-    to which the copyfix was the target and must have no untracked or
-    uncommitted changes (undo uncommitted first and rerun undo copyfix).
+    to which the copyfix was the target and must have no uncommitted changes
+    (undo uncommitted first and rerun undo copyfix).
   - For undo mrgup, the current branch must be local, must be the parent
-    branch of the merge up and must have no untracked or uncommitted
-    changes (undo uncommitted first and rerun undo mrgup).
+    branch of the merge up and must have no uncommitted changes
+    (undo uncommitted first and rerun undo mrgup).
   - For undo release, the current branch must be the branch
-    from which the release was made and must have no accidental untracked or
-    uncommitted changes (undo uncommitted first and rerun undo release).
+    from which the release was made and must have no accidental uncommitted
+    changes (undo uncommitted first and rerun undo release).
 
 Argument:
   TYPE          The type of operation to undo:

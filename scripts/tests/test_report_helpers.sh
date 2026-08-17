@@ -12,6 +12,7 @@ export LC_ALL=C
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 REPORT_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_helpers.sh"
+HISTORY_HELPER_SRC="$REPO_ROOT/scripts/helpers/history_log.sh"
 
 pass() {
   echo "PASS: $1"
@@ -43,11 +44,14 @@ for dep in bash git grep mktemp; do
 done
 
 [[ -f "$REPORT_HELPER_SRC" ]] || fail "missing helper: $REPORT_HELPER_SRC"
+[[ -f "$HISTORY_HELPER_SRC" ]] || fail "missing helper: $HISTORY_HELPER_SRC"
 
 # shellcheck source=scripts/helpers/common.sh
 source "$REPO_ROOT/scripts/helpers/common.sh"
 # shellcheck source=scripts/helpers/report_helpers.sh
 source "$REPORT_HELPER_SRC"
+# shellcheck source=scripts/helpers/history_log.sh
+source "$HISTORY_HELPER_SRC"
 
 TMPDIR="$(mktemp -d)"
 cleanup() {
@@ -125,7 +129,7 @@ bt_report_cleanup_transient_reports \
 [[ -f "$cleanup_repo/reports/branch/source-remove.md" ]] && fail "expected source-branch-matching report to be removed"
 
 # 4) Shared report names include process identity, and locks serialize writers.
-unique_path="$(bt_report_unique_path "/tmp/reports" "push-d" "20260802-120000" "12345")"
+unique_path="$(bt_report_retained_path "/tmp/reports" "push-d" "20260802-120000" "12345")"
 [[ "$unique_path" == "/tmp/reports/push-d-20260802-120000-12345.md" ]] || \
   fail "unexpected unique report path: $unique_path"
 
@@ -143,5 +147,30 @@ set -e
 [[ "$lock_rc" -eq 1 ]] || fail "expected competing report lock to time out"
 bt_report_release_lock "$lock_fd"
 pass "shared report naming and locking"
+
+# 5) Structured workflow events should validate fields and normalize values.
+(
+  cd "$DELETE_REPO"
+  bt_record_workflow_event "pull" "feature/current" "pull -v" \
+    "Synchronized branch" "HEAD" \
+    "Synchronized" "1" \
+    "Status" $'line one\nline two'
+)
+event_note="$(git -C "$DELETE_REPO" notes --ref=briteTest-workflow show HEAD)"
+assert_contains "Workflow-Type: pull" <(printf '%s\n' "$event_note")
+assert_contains "Synchronized: 1" <(printf '%s\n' "$event_note")
+assert_contains "Status: line one line two" <(printf '%s\n' "$event_note")
+
+set +e
+(
+  cd "$DELETE_REPO"
+  bt_record_workflow_event "pull" "feature/current" "pull" \
+    "Invalid event" "HEAD" "MissingValue"
+) >/dev/null 2>&1
+invalid_event_rc=$?
+set -e
+[[ "$invalid_event_rc" -eq 2 ]] || \
+  fail "expected malformed workflow fields to return 2"
+pass "structured workflow event validation"
 
 echo "All report helper tests passed."

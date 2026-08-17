@@ -154,4 +154,28 @@ assert_contains "Dry-run passed" "$TMPDIR/dry-run.out"
 assert_contains "Rebase preview: git rebase origin/v1.1.0" "$TMPDIR/dry-run.out"
 pass "dry-run success with login identity"
 
+# 5) Successful retarget should record details for report.
+rc=$(run_capture "$TMPDIR/success.out" env GITHUB_ACTOR=testapprover \
+  bash -lc "cd '$WORK' && bash ./scripts/bin/retarget -c 'move parser' dev/parser-v1.0.0 v1.1.0")
+[[ "$rc" -eq 0 ]] || fail "retarget should exit 0 (got $rc)"
+assert_contains "Retarget complete" "$TMPDIR/success.out"
+assert_contains \
+  "Run chbranch dev/parser-v1.0.0, then run report for details." \
+  "$TMPDIR/success.out"
+retarget_note="$(git -C "$WORK" notes --ref=briteTest-workflow show \
+  dev/parser-v1.0.0)"
+[[ "$retarget_note" == *"Workflow-Type: retarget"* ]] || \
+  fail "retarget should record its workflow type"
+[[ "$retarget_note" == *"Command-Line: retarget -c move\\ parser dev/parser-v1.0.0 v1.1.0"* ]] || \
+  fail "retarget should record its command line"
+[[ "$retarget_note" == *"Old-Parent: v1.0.0"* ]] || \
+  fail "retarget should record its old parent"
+[[ "$retarget_note" == *"New-Parent: v1.1.0"* ]] || \
+  fail "retarget should record its new parent"
+[[ "$retarget_note" == *"Retargeted-Tip: "* ]] || \
+  fail "retarget should record its rewritten tip"
+[[ "$retarget_note" == *"Comment: move parser"* ]] || \
+  fail "retarget should record its comment"
+pass "successful retarget history"
+
 echo "All retarget smoke tests passed."

@@ -173,11 +173,13 @@ chmod a-w "$WORK/reports/branch/mrgdown-d-20000101-000000.md" \
   "$WORK/reports/branch/mrgdown-e-20000101-000001.md"
 rc=$(run_capture "$TMPDIR/noop.out" \
   bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -f")
-[[ "$rc" -eq 0 ]] || fail "no-op mrgdown should exit 0 (got $rc)"
+[[ "$rc" -eq 5 ]] || fail "no-work mrgdown should exit 5 (got $rc)"
 assert_contains "no changes to merge" "$TMPDIR/noop.out"
-[[ -z "$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'mrgdown-*.md' -print -quit)" ]] || \
-  fail "no-op mrgdown should not create a report"
-pass "no-op mrgdown cleans transient reports and creates no report"
+[[ -f "$WORK/reports/branch/mrgdown-d-20000101-000000.md" ]] || \
+  fail "mrgdown prerequisite failure should preserve stale dry-run report"
+[[ -f "$WORK/reports/branch/mrgdown-e-20000101-000001.md" ]] || \
+  fail "mrgdown prerequisite failure should preserve stale error report"
+pass "no-work mrgdown prerequisite"
 
 # 3) Dry-run output stays compact and reports the merge preview
 (
@@ -202,7 +204,7 @@ assert_contains "Error: Cannot sync up on protected branch 'main'" "$TMPDIR/prot
 assert_contains "Guidance: use mrgup to merge changes to this branch." "$TMPDIR/protected.out"
 pass "protected branch gate"
 
-# 5) Force merge creates a local report
+# 5) Force merge records report history without creating an immediate report
 remote_report_count_before="$(find "$ORIGIN/reports/branch" -maxdepth 1 -type f -name 'commit-*.md' | wc -l | tr -d ' ')"
 (
   cd "$PEER"
@@ -214,25 +216,48 @@ remote_report_count_before="$(find "$ORIGIN/reports/branch" -maxdepth 1 -type f 
   git push origin v1.0.0 >/dev/null 2>&1
 )
 
+reports_before="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+  -name 'mrgdown-[0-9]*.md' -print | sort)"
 rc=$(run_capture "$TMPDIR/merge-push.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -f -c 'sync parent one'")
 [[ "$rc" -eq 0 ]] || fail "forced merge/push should exit 0 (got $rc)"
 assert_contains "Merge successful" "$TMPDIR/merge-push.out"
 assert_contains "Merge down complete" "$TMPDIR/merge-push.out"
-report_rel="$(report_path_from_output "$TMPDIR/merge-push.out")"
-[[ -n "$report_rel" ]] || fail "expected report path in output"
-report_path="$WORK/$report_rel"
-[[ -f "$report_path" ]] || fail "expected report file: $report_path"
-assert_contains "# Merge Report" "$report_path"
-assert_contains "**Merge Comment:** sync parent one" "$report_path"
-assert_contains "**Merge Commit Hash:**" "$report_path"
-assert_contains "| dev/current-v1.0.0 | v1.0.0 |" "$report_path"
-[[ -w "$report_path" ]] || fail "expected report to remain writable"
+assert_contains "Run report for details." "$TMPDIR/merge-push.out"
+reports_after="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+  -name 'mrgdown-[0-9]*.md' -print | sort)"
+[[ "$reports_after" == "$reports_before" ]] || \
+  fail "successful merge-down should not add an immediate report"
+merge_body="$(git -C "$WORK" log -1 --format=%B dev/current-v1.0.0)"
+[[ "$merge_body" == *'Command-Line: mrgdown -f -c sync\ parent\ one'* ]] || \
+  fail "merge-down commit should record its command line"
+[[ "$merge_body" == *"Source-Branch: v1.0.0"* ]] || \
+  fail "merge-down commit should record its source branch"
+[[ "$merge_body" == *"Target-Branch: dev/current-v1.0.0"* ]] || \
+  fail "merge-down commit should record its target branch"
+if ! grep -Eq '^Parent-Commits-Integrated: [1-9][0-9]*$' <<< "$merge_body"; then
+  fail "merge-down commit should record a positive integrated commit count"
+fi
+for count_field in Files-Modified Files-Added Files-Deleted; do
+  if ! grep -Eq "^${count_field}: [0-9]+$" <<< "$merge_body"; then
+    fail "merge-down commit should record numeric $count_field"
+  fi
+done
+if grep -Eq '^Files-(Modified|Added|Deleted): [1-9][0-9]*$' \
+  <<< "$merge_body"; then
+  :
+else
+  fail "merge-down commit should record at least one changed file"
+fi
+[[ "$merge_body" == *"Status: Parent branch merged into current branch"* ]] || \
+  fail "merge-down commit should record merge status"
+[[ "$merge_body" == *"Method: Merge commit (--no-ff) created by mrgdown"* ]] || \
+  fail "merge-down commit should record merge method"
 
 remote_report_count="$(find "$ORIGIN/reports/branch" -maxdepth 1 -type f -name 'commit-*.md' | wc -l | tr -d ' ')"
 [[ "$remote_report_count" -eq "$remote_report_count_before" ]] || fail "expected no remote report copy"
-pass "force merge report stays local"
+pass "force merge records report history"
 
-# 6) Merge still creates a uniquely named report on a second run.
+# 6) A second merge also defers reporting.
 (
   cd "$PEER"
   git checkout v1.0.0 >/dev/null 2>&1
@@ -243,21 +268,17 @@ pass "force merge report stays local"
   git push origin v1.0.0 >/dev/null 2>&1
 )
 
+reports_before="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+  -name 'mrgdown-[0-9]*.md' -print | sort)"
 rc=$(run_capture "$TMPDIR/merge-skip-push.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && printf 'y\nn\n' | bash ./scripts/bin/mrgdown -c 'sync parent two'")
 [[ "$rc" -eq 0 ]] || fail "merge with push skipped should exit 0 (got $rc)"
 assert_contains "Merge successful" "$TMPDIR/merge-skip-push.out"
-report_rel="$(report_path_from_output "$TMPDIR/merge-skip-push.out")"
-[[ -n "$report_rel" ]] || fail "expected report path in output when push is skipped"
-report_path="$WORK/$report_rel"
-[[ -f "$report_path" ]] || fail "expected report file when push skipped: $report_path"
-assert_contains "# Merge Report" "$report_path"
-assert_contains "**Merge Comment:** sync parent two" "$report_path"
-assert_contains "**Merge Commit Hash:**" "$report_path"
-if grep -q '^\*\*Commit Comment:\*\*' "$report_path"; then
-  fail "merge report should not use commit-comment label"
-fi
-[[ -w "$report_path" ]] || fail "expected push-skipped report to remain writable"
-pass "merge report semantics"
+assert_contains "Run report for details." "$TMPDIR/merge-skip-push.out"
+reports_after="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+  -name 'mrgdown-[0-9]*.md' -print | sort)"
+[[ "$reports_after" == "$reports_before" ]] || \
+  fail "second merge-down should not add an immediate report"
+pass "merge reporting is deferred"
 
 # 7) Whitespace-only comments should be rejected.
 rc=$(run_capture "$TMPDIR/empty-comment.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -c '   '")

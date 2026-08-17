@@ -25,13 +25,13 @@ Policy:
   - A local branch may exist without a corresponding remote branch.
 
 Prerequisites:
-  - The user must be a contributor, reviewer, or approver (lis -ated in
+  - The user must be a contributor, reviewer, or approver (listed in
     <repo>/config/contributors.md).
   - The remote (origin) must be connected and reachable.
   - The current branch must be a local branch.
   - The current branch must be a targeted or contributor branch, and
     must not be the main or a version branch.
-  - The current branch must have no untracked or uncommitted changes.
+  - The current branch must have no uncommitted changes.
     - If there are changes, run the commit or undo command first.
 
 Remote state requirements:
@@ -67,14 +67,17 @@ Outputs:
   - Writes errors and diagnostics to stderr.
   - Reports are written only when prerequisites and remote state
     requirements are satisfied and there are commits to push.
-  - No report is written when there are no commits to push or when a
-    non-dry-run push succeeds.
-    Older dry-run and error reports for the current branch are deleted.
+  - No-work prerequisite failures do not generate or delete reports.
+  - No report is written when a non-dry-run push succeeds. Older dry-run and
+    error reports for the current branch are deleted.
+  - After a successful non-dry-run push, records history for the report
+    command and tells the user to run chbranch -r for the pushed branch,
+    then run report for details.
   - For a dry-run, writes an untracked report locally to:
-      '<repo>/reports/branch/push-d-<datetime>-<pid>.md'
+      '<repo>/reports/branch/push-d-<datetime>.md'
   - If a non-dry-run operation fails after push work starts, writes an
     untracked error report to:
-      '<repo>/reports/branch/push-e-<datetime>-<pid>.md'
+      '<repo>/reports/branch/push-e-<datetime>.md'
     Usage and prerequisite failures do not create reports.
   - If a report is written, older dry-run (-d) and error reports for the
     current branch are deleted.
@@ -90,15 +93,18 @@ Exit codes:
   7    Remote branch for the current branch not found.
   8    Timed out waiting for report write lock.
   9    Push skipped due to -e option.
+  10   No committed changes are available to push.
   200  Push failed.
   201  Failed to write report.
 EOF
 }
 
 # High-Level Flow:
-# - Validate direct-use authorization, branch, worktree, and remote state.
-# - Publish local commits or preview the publication.
-# - Report the outcome and required follow-up actions.
+# - Validate direct-use authorization, branch policy, worktree, and origin.
+# - Delegate range calculation, dry-run/error reports, and publication to the
+#   shared push workflow.
+# - On success, record one event on the pushed tip and remove transient reports.
+# - Direct users to the remote snapshot branch for report generation.
 
 # shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
 
@@ -131,6 +137,8 @@ done
 source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
 # shellcheck source=helpers/report_helpers.sh
 source "$SCRIPT_DIR/../helpers/report_helpers.sh"
 # shellcheck source=helpers/report_sync.sh
@@ -292,7 +300,7 @@ push_validate_prerequisites() {
   fi
   if push_worktree_has_blocking_changes; then
     bt_emit_prerequisite_failure 1 \
-      "Current branch has uncommitted or untracked changes. Commit or" \
+      "Current branch has uncommitted changes. Commit or" \
       " undo them before running push." \
       "commit or undo changes, then rerun push."
   fi
@@ -317,5 +325,7 @@ push_validate_prerequisites() {
   export BT_REMOTE_TIMEOUT_SECONDS="$timeout_seconds"
 }
 
+BT_PUSH_COMMAND_LINE="$(bt_format_command_line "push" "$@")"
+export BT_PUSH_COMMAND_LINE
 push_validate_prerequisites "$@"
 bt_push_workflow "${PUSH_WORKFLOW_ARGS[@]}"

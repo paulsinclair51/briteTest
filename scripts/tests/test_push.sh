@@ -14,6 +14,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PUSH_SRC="$REPO_ROOT/scripts/bin/push"
 COMMON_HELPER_SRC="$REPO_ROOT/scripts/helpers/common.sh"
 GIT_HELPER_SRC="$REPO_ROOT/scripts/helpers/git_helpers.sh"
+HISTORY_HELPER_SRC="$REPO_ROOT/scripts/helpers/history_log.sh"
 REPORT_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_helpers.sh"
 REPORT_SYNC_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_sync.sh"
 PUSH_WORKFLOW_HELPER_SRC="$REPO_ROOT/scripts/helpers/push_workflow.sh"
@@ -73,6 +74,7 @@ mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/config"
 cp "$PUSH_SRC" "$WORK/scripts/bin/push"
 cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
 cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
+cp "$HISTORY_HELPER_SRC" "$WORK/scripts/helpers/history_log.sh"
 cp "$REPORT_HELPER_SRC" "$WORK/scripts/helpers/report_helpers.sh"
 cp "$REPORT_SYNC_HELPER_SRC" "$WORK/scripts/helpers/report_sync.sh"
 cp "$PUSH_WORKFLOW_HELPER_SRC" "$WORK/scripts/helpers/push_workflow.sh"
@@ -146,11 +148,13 @@ chmod a-w "$WORK/reports/branch/push-d-20000101-000000.md" \
   "$WORK/reports/branch/push-e-20000101-000001.md"
 rc=$(run_capture "$TMPDIR/noop.out" env GITHUB_ACTOR=testuser \
   bash -lc "cd '$WORK' && bash ./scripts/bin/push -t 5")
-[[ "$rc" -eq 0 ]] || fail "no-op push should exit 0 (got $rc)"
+[[ "$rc" -eq 10 ]] || fail "no-work push should exit 10 (got $rc)"
 assert_contains "no changes to push" "$TMPDIR/noop.out"
-[[ -z "$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'push-*.md' -print -quit)" ]] || \
-  fail "no-op push should not create a report"
-pass "no-op push cleans transient reports and creates no report"
+[[ -f "$WORK/reports/branch/push-d-20000101-000000.md" ]] || \
+  fail "push prerequisite failure should preserve stale dry-run reports"
+[[ -f "$WORK/reports/branch/push-e-20000101-000001.md" ]] || \
+  fail "push prerequisite failure should preserve stale error reports"
+pass "no-work push prerequisite"
 
 # 2) Invalid timeout should fail before remote operations.
 rc=$(run_capture "$TMPDIR/invalid-t.out" bash -lc "cd '$WORK' && bash ./scripts/bin/push -t 0")
@@ -287,25 +291,12 @@ wait "$lock_holder_pid" >/dev/null 2>&1 || true
 rm -f "$TMPDIR/lock.wait"
 pass "report lock timeout"
 
-# 9) Concurrent same-second dry-runs should serialize report cleanup and leave
-# one complete, uniquely named transient report.
-mkdir -p "$TMPDIR/fakebin"
-cat > "$TMPDIR/fakebin/date" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$1" == "+%Y%m%d-%H%M%S" ]]; then
-  echo 20260727-195000
-elif [[ "$1" == "+%Y-%m-%d %H:%M:%S" ]]; then
-  echo "2026-07-27 19:50:00"
-else
-  /usr/bin/date "$@"
-fi
-EOF
-chmod +x "$TMPDIR/fakebin/date"
-
+# 9) Concurrent dry-runs should serialize allocation/cleanup and leave one
+# complete PID-free transient report.
 set +e
-env PATH="$TMPDIR/fakebin:$PATH" GITHUB_ACTOR=testuser bash -c "cd '$WORK' && bash ./scripts/bin/push -d -t 5" >"$TMPDIR/dry-race-1.out" 2>&1 &
+env GITHUB_ACTOR=testuser bash -c "cd '$WORK' && bash ./scripts/bin/push -d -t 5" >"$TMPDIR/dry-race-1.out" 2>&1 &
 p1=$!
-env PATH="$TMPDIR/fakebin:$PATH" GITHUB_ACTOR=testuser bash -c "cd '$WORK' && bash ./scripts/bin/push -d -t 5" >"$TMPDIR/dry-race-2.out" 2>&1 &
+env GITHUB_ACTOR=testuser bash -c "cd '$WORK' && bash ./scripts/bin/push -d -t 5" >"$TMPDIR/dry-race-2.out" 2>&1 &
 p2=$!
 wait "$p1"; rc1=$?
 wait "$p2"; rc2=$?
@@ -316,10 +307,10 @@ set -e
 
 race_report="$(latest_report "$WORK" 'push-d-*.md')"
 [[ -f "$race_report" ]] || fail "expected concurrent dry-run report"
-race_report_count="$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'push-d-20260727-195000-*.md' | wc -l | tr -d ' ')"
+race_report_count="$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'push-d-*.md' | wc -l | tr -d ' ')"
 [[ "$race_report_count" -eq 1 ]] || fail "expected one serialized same-second dry-run report (got $race_report_count)"
-[[ "$(basename "$race_report")" =~ ^push-d-20260727-195000-[0-9]+\.md$ ]] || \
-  fail "expected timestamp-and-process dry-run filename"
+[[ "$(basename "$race_report")" =~ ^push-d-[0-9]{8}-[0-9]{6}\.md$ ]] || \
+  fail "expected PID-free dry-run filename"
 
 pass "concurrent dry-run report serialization"
 
@@ -328,6 +319,21 @@ rc=$(run_capture "$TMPDIR/push.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WOR
 [[ "$rc" -eq 0 ]] || fail "push should exit 0 (got $rc)"
 assert_contains "Pushed (" "$TMPDIR/push.out"
 assert_contains "to remote dev/push-tests-v1.0.0: 1 modified, 0 added, and 0 deleted files." "$TMPDIR/push.out"
+assert_contains "Run chbranch -r dev/push-tests-v1.0.0, then run report for details." \
+  "$TMPDIR/push.out"
+push_note="$(git -C "$WORK" notes --ref=briteTest-workflow show HEAD)"
+[[ "$push_note" == *"Workflow-Type: push"* ]] || \
+  fail "successful push should record its workflow type"
+[[ "$push_note" == *"Command-Line: push -t 5"* ]] || \
+  fail "successful push should record its command line"
+[[ "$push_note" == *"Previous-Remote-Tip: "* ]] || \
+  fail "successful push should record its previous remote tip"
+[[ "$push_note" == *"Pushed-Tip: "* ]] || \
+  fail "successful push should record its pushed tip"
+[[ "$push_note" == *"Commits: 1"* ]] || \
+  fail "successful push should record its commit count"
+[[ "$push_note" == *"Files: 1 modified, 0 added, 0 deleted"* ]] || \
+  fail "successful push should record its file counts"
 if grep -Fq "See reports/branch/push-" "$TMPDIR/push.out"; then
   fail "successful non-dry push should not output a report path"
 fi
