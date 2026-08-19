@@ -101,10 +101,8 @@ Options:
   -d  Dry-run showing planned conversions without writing output files.
   -f  Force regeneration even if the source is in docs/md/ and has
       not changed since the last time its .pdf was generated.
-  -h  Output this help to stdout and exit (other options
-      and arguments are ignored).
-  --help  Output this help to stdout and exit (other options
-          and arguments are ignored).
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
   -p  Output only .pdf files. For validation, a temporary .docx is
       generated from each .pdf and then discarded.
   -T  Tool check: report backends (see -b option) status and exit.
@@ -118,17 +116,6 @@ Notes:
     uses the file name with line count, character count, and
     SHA-256 fingerprint, and stores this metadata in
     repository root docs/md/.md_metadata with one line per file.
-
-Exit codes:
-  0   Success.
-  1   Invalid option or argument.
-  2   Input not found.
-  3   No source files to process.
-  100 Internal setup error: helper script missing.
-  110 Internal helper/toolchain check failed.
-  111 Internal helper failure: genpdf helper returned non-zero.
-  112 Internal helper failure: gendocx helper returned non-zero.
-  249 System/runtime call failure.
 
 Examples:
   gendocs
@@ -147,6 +134,17 @@ Outputs:
   - Writes errors and diagnostics to stderr.
   - May generate files, reports, or other artifacts in the documented
     output locations.
+
+Exit codes:
+  0   Success.
+  1   Invalid option or argument.
+  2   Input not found.
+  3   No source files to process.
+  100 Internal setup error: helper script missing.
+  110 Internal helper/toolchain check failed.
+  111 Internal helper failure: genpdf helper returned non-zero.
+  112 Internal helper failure: gendocx helper returned non-zero.
+  249 System/runtime call failure.
 
 EOF
 }
@@ -182,6 +180,11 @@ fi
 if [[ -f "$COMMON_HELPER" ]]; then
   # shellcheck disable=SC1090  # Repository-relative helper path.
   source "$COMMON_HELPER" 2>/dev/null || true
+fi
+if ! declare -F bt_emit_error >/dev/null 2>&1; then
+  bt_emit_error() {
+    printf 'Error: %s\n' "$1" >&2
+  }
 fi
 
 usage_error() {

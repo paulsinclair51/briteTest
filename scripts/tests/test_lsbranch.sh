@@ -31,14 +31,6 @@ run_capture() {
   echo "$rc"
 }
 
-extract_report_path() {
-  local infile="$1"
-  sed -n -E \
-    -e 's/^Report (branch-[^ ]+\.md) committed(\/pushed)?\.$/reports\/branch\/\1/p' \
-    -e 's/^See (reports\/branch\/branch-[^ ]+\.md) for details\.$/\1/p' \
-    "$infile" | tail -n 1
-}
-
 AUTO_STASH_LABEL=""
 
 cleanup_auto_stash() {
@@ -102,48 +94,23 @@ grep -q '\[local\]' "$TMPDIR/local.out" || \
   fail "lsbranch -a -l should include [local] output"
 pass "-a -l local-only output"
 
-# 4) Concurrent runs should serialize replacement report creation.
-set +e
-"$LSBRANCH" -a -l >"$TMPDIR/concurrent-1.out" 2>&1 &
-first_pid=$!
-"$LSBRANCH" -a -l >"$TMPDIR/concurrent-2.out" 2>&1 &
-second_pid=$!
-wait "$first_pid"
-first_rc=$?
-wait "$second_pid"
-second_rc=$?
-set -e
-[[ "$first_rc" -eq 0 ]] || \
-  fail "first concurrent lsbranch should exit 0 (got $first_rc)"
-[[ "$second_rc" -eq 0 ]] || \
-  fail "second concurrent lsbranch should exit 0 (got $second_rc)"
-branch_report_count="$(find "$SCRIPT_DIR/../../reports/branch" -maxdepth 1 \
-  -type f -name 'branch-*.md' | wc -l | tr -d ' ')"
-[[ "$branch_report_count" -eq 1 ]] || \
-  fail "concurrent lsbranch runs should leave one report"
-concurrent_report="$(find "$SCRIPT_DIR/../../reports/branch" -maxdepth 1 \
-  -type f -name 'branch-*.md' -print -quit)"
-[[ "$(basename "$concurrent_report")" =~ ^branch-[0-9]{8}-[0-9]{6}\.md$ ]] || \
-  fail "concurrent lsbranch report should be PID-free"
-pass "concurrent report serialization"
-
-# 5) Current branch marker should be a trailing * in the report
-# (not malformed markdown)
-rc=$(run_capture "$TMPDIR/default.out" "$LSBRANCH")
+# 4) Normal use should write only branch status to stdout
+reports_before="$(find "$SCRIPT_DIR/../../reports" -maxdepth 1 \
+  -type f -name 'branch-*.md' -printf '%f\n' | sort)"
+rc=$(run_capture "$TMPDIR/default.out" "$LSBRANCH" -b)
 [[ "$rc" -eq 0 ]] || fail "lsbranch should exit 0"
-report_rel=$(extract_report_path "$TMPDIR/default.out")
-[[ -n "$report_rel" ]] || \
-  fail "lsbranch output should include generated report path"
-report_path="$SCRIPT_DIR/../../$report_rel"
-[[ -f "$report_path" ]] || fail "generated report file should exist"
-[[ "$(basename "$report_path")" =~ ^branch-[0-9]{8}-[0-9]{6}\.md$ ]] || \
-  fail "expected PID-free branch report filename"
-
 current_branch=$(git rev-parse --abbrev-ref HEAD)
-grep -Eq "\\| ${current_branch}(\\*|<span[^>]*>\\*</span>) \\| local \\|" "$report_path" || \
-  fail "current branch should be marked with trailing * in local \
-  report row"
-pass "current branch report marker"
+grep -Eq "^${current_branch}\\* \\[local\\] \\[current\\]" \
+  "$TMPDIR/default.out" || \
+  fail "current branch should be marked with a trailing * in stdout"
+if grep -q '^See .* for details\.$' "$TMPDIR/default.out"; then
+  fail "lsbranch should not output a report path"
+fi
+reports_after="$(find "$SCRIPT_DIR/../../reports" -maxdepth 1 \
+  -type f -name 'branch-*.md' -printf '%f\n' | sort)"
+[[ "$reports_after" == "$reports_before" ]] || \
+  fail "lsbranch should not create or remove branch reports"
+pass "stdout-only branch status"
 
 # 5) BRANCH mode allows only -v/-b; local/remote filters are
 # invalid in BRANCH mode
@@ -223,17 +190,10 @@ rc=$(run_capture "$TMPDIR/auto_stash.out" "$LSBRANCH" "$current_branch" -b)
 grep -Eq '\[auto-stash: [1-9][0-9]*\]' "$TMPDIR/auto_stash.out" || \
   fail "lsbranch stdout should indicate branch-matching auto-stash"
 
-auto_stash_report_rel=$(extract_report_path "$TMPDIR/auto_stash.out")
-[[ -n "$auto_stash_report_rel" ]] || \
-  fail "auto-stash run should generate a report"
-auto_stash_report_path="$SCRIPT_DIR/../../$auto_stash_report_rel"
-grep -Eq "\\| ${current_branch}(\\*|<span[^>]*>\\*</span>) \\| local \\| .*auto-stash:[1-9][0-9]*" "$auto_stash_report_path" || \
-  fail "report local row should include auto-stash status annotation"
-
 cleanup_auto_stash
 pass "branch auto-stash indicator"
 
-# 9) Verbose mode and the report should surface degraded fetch/PR lookups
+# 9) Verbose mode should surface degraded fetch/PR lookups
 FAKEBIN="$TMPDIR/fakebin"
 mkdir -p "$FAKEBIN"
 cat > "$FAKEBIN/git" <<EOF
@@ -260,16 +220,6 @@ grep -q "Warning: Failed to fetch remote; remote status may use cached refs from
   fail "verbose output should include fetch diagnostics"
 grep -q "Warning: Failed to query pull requests for 'main'; PR column shown as N/A." "$TMPDIR/degraded.out" || \
   fail "verbose output should include PR diagnostics"
-degraded_report_rel=$(extract_report_path "$TMPDIR/degraded.out")
-[[ -n "$degraded_report_rel" ]] || \
-  fail "degraded run should still generate a report"
-degraded_report_path="$SCRIPT_DIR/../../$degraded_report_rel"
-grep -q '^## Warnings$' "$degraded_report_path" || \
-  fail "report should include a warnings section when helpers degrade"
-grep -q "Failed to fetch remote; remote status may use cached refs from your last successful remote update." "$degraded_report_path" || \
-  fail "report should include fetch warning"
-grep -q "Failed to query pull requests for 'main'; PR column shown as N/A." "$degraded_report_path" || \
-  fail "report should include PR warning"
 pass "degraded helper diagnostics"
 
 echo "All lsbranch smoke tests passed."

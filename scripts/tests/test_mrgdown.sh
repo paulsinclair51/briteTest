@@ -46,14 +46,14 @@ assert_contains() {
 
 latest_report() {
   local repo_root="$1"
-  find "$repo_root/reports/branch" -maxdepth 1 -type f -name 'mrgdown-*.md' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
+  find "$repo_root/reports" -maxdepth 1 -type f -name 'mrgdown-*.md' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
 }
 
 report_path_from_output() {
   local out_file="$1"
   local rel
 
-  rel="$(grep -Eo 'reports/branch/mrgdown-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md' "$out_file" | tail -n 1 || true)"
+  rel="$(grep -Eo 'reports/mrgdown-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md' "$out_file" | tail -n 1 || true)"
   [[ -n "$rel" ]] || return 1
   printf '%s\n' "$rel"
 }
@@ -85,12 +85,12 @@ WORK="$TMPDIR/work"
 PEER="$TMPDIR/peer"
 
 git init --bare "$ORIGIN" >/dev/null 2>&1
-mkdir -p "$ORIGIN/reports/branch"
+mkdir -p "$ORIGIN/reports"
 
 git clone "file://$ORIGIN" "$WORK" >/dev/null 2>&1
 git clone "file://$ORIGIN" "$PEER" >/dev/null 2>&1
 
-mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/reports/branch"
+mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/reports"
 cp "$MRGDOWN_SRC" "$WORK/scripts/bin/mrgdown"
 cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
 cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
@@ -106,10 +106,10 @@ chmod +x "$WORK/scripts/bin/mrgdown"
 
   echo "seed" > README.md
   cat > .gitignore <<'GITIGNORE'
-reports/branch/branch-*.md
-reports/branch/commit-*.md
-reports/branch/mrgdown-*.md
-reports/branch/mrgbranch-*.md
+reports/branch-*.md
+reports/commit-*.md
+reports/mrgdown-*.md
+reports/mrgbranch-*.md
 GITIGNORE
   git add README.md scripts reports .gitignore
   git commit -m "seed repo" >/dev/null 2>&1
@@ -137,14 +137,26 @@ GITIGNORE
 rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./scripts/bin/mrgdown -h")
 [[ "$rc" -eq 0 ]] || fail "mrgdown -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
+assert_contains "-e" "$TMPDIR/help.out"
 pass "help output"
+
+copyfix_state_root="$(git -C "$WORK" rev-parse \
+  --path-format=absolute --git-common-dir)/briteTest-copyfix-state"
+mkdir -p "$copyfix_state_root/dev/current-v1.0.0"
+rc=$(run_capture "$TMPDIR/copyfix-active.out" \
+  bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -f")
+[[ "$rc" -eq 3 ]] || fail "unfinished copyfix should block mrgdown (got $rc)"
+assert_contains "has an unfinished copyfix operation" \
+  "$TMPDIR/copyfix-active.out"
+rm -rf "$copyfix_state_root"
+pass "unfinished copyfix blocks mrgdown"
 
 # 2) Skip mode should emit an error report and summary line.
 rc=$(run_capture "$TMPDIR/skip-e.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -e")
 [[ "$rc" -eq 6 ]] || fail "mrgdown -e should exit 6 (got $rc)"
 assert_contains "Error: Merge down skipped due to -e option." "$TMPDIR/skip-e.out"
 assert_contains "Guidance: Run without -e option." "$TMPDIR/skip-e.out"
-assert_contains "See reports/branch/mrgdown-e-" "$TMPDIR/skip-e.out"
+assert_contains "See reports/mrgdown-e-" "$TMPDIR/skip-e.out"
 skip_report="$(latest_report "$WORK")"
 [[ -f "$skip_report" ]] || fail "expected mrgdown skip report"
 assert_contains "**Error:** Merge down skipped due to -e option." "$skip_report"
@@ -159,25 +171,25 @@ assert_contains "Unknown argument: unexpected" "$TMPDIR/arg-reject.out"
 pass "positional argument rejected"
 
 # Nothing to merge down should not create a report.
-cat > "$WORK/reports/branch/mrgdown-d-20000101-000000.md" <<'EOF'
+cat > "$WORK/reports/mrgdown-d-20000101-000000.md" <<'EOF'
 # Stale Merge-Down Report
 
 **Branch:** `dev/current-v1.0.0`
 EOF
-cat > "$WORK/reports/branch/mrgdown-e-20000101-000001.md" <<'EOF'
+cat > "$WORK/reports/mrgdown-e-20000101-000001.md" <<'EOF'
 # Stale Merge-Down Error Report
 
 **Branch:** `dev/current-v1.0.0`
 EOF
-chmod a-w "$WORK/reports/branch/mrgdown-d-20000101-000000.md" \
-  "$WORK/reports/branch/mrgdown-e-20000101-000001.md"
+chmod a-w "$WORK/reports/mrgdown-d-20000101-000000.md" \
+  "$WORK/reports/mrgdown-e-20000101-000001.md"
 rc=$(run_capture "$TMPDIR/noop.out" \
   bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -f")
 [[ "$rc" -eq 5 ]] || fail "no-work mrgdown should exit 5 (got $rc)"
 assert_contains "no changes to merge" "$TMPDIR/noop.out"
-[[ -f "$WORK/reports/branch/mrgdown-d-20000101-000000.md" ]] || \
+[[ -f "$WORK/reports/mrgdown-d-20000101-000000.md" ]] || \
   fail "mrgdown prerequisite failure should preserve stale dry-run report"
-[[ -f "$WORK/reports/branch/mrgdown-e-20000101-000001.md" ]] || \
+[[ -f "$WORK/reports/mrgdown-e-20000101-000001.md" ]] || \
   fail "mrgdown prerequisite failure should preserve stale error report"
 pass "no-work mrgdown prerequisite"
 
@@ -194,7 +206,7 @@ pass "no-work mrgdown prerequisite"
 rc=$(run_capture "$TMPDIR/dryrun.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -d")
 [[ "$rc" -eq 0 ]] || fail "dry-run mrgdown should exit 0 (got $rc)"
 assert_contains "Dry-run: merge v1.0.0 -> dev/current-v1.0.0" "$TMPDIR/dryrun.out"
-assert_contains "See reports/branch/mrgdown-d-" "$TMPDIR/dryrun.out"
+assert_contains "See reports/mrgdown-d-" "$TMPDIR/dryrun.out"
 pass "dry-run output stays compact"
 
 # 4) Protected branch is blocked
@@ -205,7 +217,7 @@ assert_contains "Guidance: use mrgup to merge changes to this branch." "$TMPDIR/
 pass "protected branch gate"
 
 # 5) Force merge records report history without creating an immediate report
-remote_report_count_before="$(find "$ORIGIN/reports/branch" -maxdepth 1 -type f -name 'commit-*.md' | wc -l | tr -d ' ')"
+remote_report_count_before="$(find "$ORIGIN/reports" -maxdepth 1 -type f -name 'commit-*.md' | wc -l | tr -d ' ')"
 (
   cd "$PEER"
   git checkout v1.0.0 >/dev/null 2>&1
@@ -216,14 +228,14 @@ remote_report_count_before="$(find "$ORIGIN/reports/branch" -maxdepth 1 -type f 
   git push origin v1.0.0 >/dev/null 2>&1
 )
 
-reports_before="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+reports_before="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'mrgdown-[0-9]*.md' -print | sort)"
 rc=$(run_capture "$TMPDIR/merge-push.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./scripts/bin/mrgdown -f -c 'sync parent one'")
 [[ "$rc" -eq 0 ]] || fail "forced merge/push should exit 0 (got $rc)"
 assert_contains "Merge successful" "$TMPDIR/merge-push.out"
 assert_contains "Merge down complete" "$TMPDIR/merge-push.out"
 assert_contains "Run report for details." "$TMPDIR/merge-push.out"
-reports_after="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'mrgdown-[0-9]*.md' -print | sort)"
 [[ "$reports_after" == "$reports_before" ]] || \
   fail "successful merge-down should not add an immediate report"
@@ -253,7 +265,7 @@ fi
 [[ "$merge_body" == *"Method: Merge commit (--no-ff) created by mrgdown"* ]] || \
   fail "merge-down commit should record merge method"
 
-remote_report_count="$(find "$ORIGIN/reports/branch" -maxdepth 1 -type f -name 'commit-*.md' | wc -l | tr -d ' ')"
+remote_report_count="$(find "$ORIGIN/reports" -maxdepth 1 -type f -name 'commit-*.md' | wc -l | tr -d ' ')"
 [[ "$remote_report_count" -eq "$remote_report_count_before" ]] || fail "expected no remote report copy"
 pass "force merge records report history"
 
@@ -268,13 +280,13 @@ pass "force merge records report history"
   git push origin v1.0.0 >/dev/null 2>&1
 )
 
-reports_before="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+reports_before="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'mrgdown-[0-9]*.md' -print | sort)"
 rc=$(run_capture "$TMPDIR/merge-skip-push.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && printf 'y\nn\n' | bash ./scripts/bin/mrgdown -c 'sync parent two'")
 [[ "$rc" -eq 0 ]] || fail "merge with push skipped should exit 0 (got $rc)"
 assert_contains "Merge successful" "$TMPDIR/merge-skip-push.out"
 assert_contains "Run report for details." "$TMPDIR/merge-skip-push.out"
-reports_after="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'mrgdown-[0-9]*.md' -print | sort)"
 [[ "$reports_after" == "$reports_before" ]] || \
   fail "second merge-down should not add an immediate report"

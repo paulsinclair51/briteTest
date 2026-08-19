@@ -20,7 +20,7 @@ fail() {
 
 latest_report() {
   local pattern="$1"
-  find "$WORK/reports/branch" -maxdepth 1 -type f -name "$pattern" \
+  find "$WORK/reports" -maxdepth 1 -type f -name "$pattern" \
     -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
 }
 
@@ -40,19 +40,28 @@ WORK="$TMPDIR/work"
 
 git init --bare "$ORIGIN" >/dev/null 2>&1
 git clone "file://$ORIGIN" "$WORK" >/dev/null 2>&1
-mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/reports/branch"
+mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/reports"
 cp "$COPYFIX_SRC" "$WORK/scripts/bin/copyfix"
 for helper in common.sh git_helpers.sh history_log.sh report_helpers.sh; do
   cp "$REPO_ROOT/scripts/helpers/$helper" "$WORK/scripts/helpers/$helper"
 done
 chmod +x "$WORK/scripts/bin/copyfix"
 
+help_output="$(bash "$WORK/scripts/bin/copyfix" -h)"
+[[ "$help_output" == *"Commits added to SOURCE_BRANCH after copying begins"* ]] || \
+  fail "copyfix help should explain source commits added during an operation"
+[[ "$help_output" == *"current branch must not have"* ]] || \
+  fail "copyfix help should state the target-branch operation prerequisite"
+echo "PASS: help documents source and target operation scope"
+
 (
   cd "$WORK"
   git config user.name "testuser"
   git config user.email "test@example.com"
   echo "seed" > README.md
-  git add README.md scripts reports
+  printf 'reports/*.md\n!reports/README.md\n' > .gitignore
+  echo "# Reports" > reports/README.md
+  git add README.md scripts reports .gitignore
   git commit -m "seed repo" >/dev/null 2>&1
   git branch -M main
   git push -u origin main >/dev/null 2>&1
@@ -64,14 +73,14 @@ chmod +x "$WORK/scripts/bin/copyfix"
   git checkout dev/target-v1.0.0 >/dev/null 2>&1
 )
 
-cat > "$WORK/reports/branch/copyfix-d-20000101-000000.md" <<'EOF'
+cat > "$WORK/reports/copyfix-d-20000101-000000.md" <<'EOF'
 **Branch:** `dev/target-v1.0.0`
 EOF
-cat > "$WORK/reports/branch/copyfix-e-20000101-000001.md" <<'EOF'
+cat > "$WORK/reports/copyfix-e-20000101-000001.md" <<'EOF'
 **Branch:** `dev/target-v1.0.0`
 EOF
-chmod a-w "$WORK/reports/branch/copyfix-d-20000101-000000.md" \
-  "$WORK/reports/branch/copyfix-e-20000101-000001.md"
+chmod a-w "$WORK/reports/copyfix-d-20000101-000000.md" \
+  "$WORK/reports/copyfix-e-20000101-000001.md"
 
 set +e
 (
@@ -86,12 +95,54 @@ grep -Fq "has no new commits to copy" "$TMPDIR/noop.out" || \
   fail "expected no-work copyfix prerequisite"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/target-v1.0.0" ]] || \
   fail "no-op copyfix should remain on the target branch"
-[[ -f "$WORK/reports/branch/copyfix-d-20000101-000000.md" ]] || \
+[[ -f "$WORK/reports/copyfix-d-20000101-000000.md" ]] || \
   fail "copyfix prerequisite failure should preserve stale dry-run report"
-[[ -f "$WORK/reports/branch/copyfix-e-20000101-000001.md" ]] || \
+[[ -f "$WORK/reports/copyfix-e-20000101-000001.md" ]] || \
   fail "copyfix prerequisite failure should preserve stale error report"
 
 echo "PASS: no-work copyfix prerequisite"
+
+set +e
+(
+  cd "$WORK"
+  bash ./scripts/bin/copyfix -e fix/source-v1.0.0
+) >"$TMPDIR/error-run.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 6 ]] || fail "copyfix -e should exit 6 (got $rc)"
+grep -Fq "Copy skipped due to -e option" "$TMPDIR/error-run.out" || \
+  fail "expected copyfix error-run message"
+grep -Fq "See reports/copyfix-e-" "$TMPDIR/error-run.out" || \
+  fail "expected copyfix error report path"
+error_run_report="$(latest_report 'copyfix-e-*.md')"
+[[ -f "$error_run_report" ]] || fail "expected copyfix error-run report"
+echo "PASS: explicit error-run report"
+
+set +e
+(
+  cd "$WORK"
+  bash ./scripts/bin/copyfix -e
+) >"$TMPDIR/error-run-missing-source.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 1 ]] || fail "copyfix -e without SOURCE_BRANCH should exit 1"
+grep -Fq "SOURCE_BRANCH argument required" \
+  "$TMPDIR/error-run-missing-source.out" || \
+  fail "expected SOURCE_BRANCH requirement for copyfix -e"
+echo "PASS: error-run requires source branch"
+
+set +e
+(
+  cd "$WORK"
+  bash ./scripts/bin/copyfix --continue -e
+) >"$TMPDIR/error-run-continue.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 1 ]] || fail "copyfix --continue -e should exit 1"
+grep -Fq "Option -e cannot be used with --continue" \
+  "$TMPDIR/error-run-continue.out" || \
+  fail "expected copyfix continue/error mode rejection"
+echo "PASS: error-run excluded from continue mode"
 
 set +e
 (
@@ -104,6 +155,18 @@ set -e
 grep -Fq "Unknown option: -m" "$TMPDIR/obsolete-message.out" || \
   fail "expected obsolete -m option rejection"
 echo "PASS: obsolete message option rejected"
+
+set +e
+(
+  cd "$WORK"
+  bash ./scripts/bin/copyfix -t 1 fix/source-v1.0.0
+) >"$TMPDIR/obsolete-timeout.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 1 ]] || fail "obsolete -t option should exit 1 (got $rc)"
+grep -Fq "Unknown option: -t" "$TMPDIR/obsolete-timeout.out" || \
+  fail "expected obsolete -t option rejection"
+echo "PASS: obsolete timeout option rejected"
 
 set +e
 (
@@ -148,15 +211,15 @@ set +e
   cd "$WORK"
   git checkout main >/dev/null 2>&1
   bash ./scripts/bin/copyfix fix/source-v1.0.0
-) >"$TMPDIR/read-only-target.out" 2>&1
+) >"$TMPDIR/protected-target.out" 2>&1
 rc=$?
 set -e
-[[ "$rc" -eq 2 ]] || fail "read-only target should exit 2 (got $rc)"
-grep -Fq "Current target branch is read-only for copyfix: main" \
-  "$TMPDIR/read-only-target.out" || fail "expected read-only target rejection"
+[[ "$rc" -eq 2 ]] || fail "protected target should exit 2 (got $rc)"
+grep -Fq "Current target branch must match <type>/<description>-v<M>.<m>.0" \
+  "$TMPDIR/protected-target.out" || fail "expected targeted branch rejection"
 [[ "$(git -C "$WORK" branch --show-current)" == "main" ]] || \
-  fail "read-only target failure should remain on the target branch"
-echo "PASS: current target branch must be writable"
+  fail "protected target failure should remain on the target branch"
+echo "PASS: protected target rejected"
 
 set +e
 (
@@ -171,7 +234,7 @@ grep -Fq "Current target branch must match <type>/<description>-v<M>.<m>.0" \
   "$TMPDIR/non-targeted-target.out" || fail "expected targeted branch validation"
 [[ "$(git -C "$WORK" branch --show-current)" == "topic-branch" ]] || \
   fail "non-targeted target failure should remain on the current branch"
-echo "PASS: current target branch must be targeted"
+echo "PASS: contributor target rejected"
 
 (
   cd "$WORK"
@@ -235,7 +298,7 @@ grep -Fq "0 modified, 1 added, and 0 deleted files copied." "$TMPDIR/custom-comm
   fail "copy output should include file summary"
 grep -Fq "Run report for details." "$TMPDIR/custom-comment.out" || \
   fail "successful copyfix should defer details to report"
-if find "$WORK/reports/branch" -maxdepth 1 -type f \
+if find "$WORK/reports" -maxdepth 1 -type f \
   -name 'copyfix-[0-9]*.md' -print -quit | grep -q .; then
   fail "successful copyfix should not create an immediate report"
 fi
@@ -257,6 +320,18 @@ if git -C "$WORK" show-ref --verify --quiet refs/remotes/origin/fix/source-v1.0.
 fi
 echo "PASS: -- comment is applied to copied fix commit"
 
+set +e
+(
+  cd "$WORK"
+  bash ./scripts/bin/copyfix fix/source-v1.0.0
+) >"$TMPDIR/already-copied.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 4 ]] || fail "already copied fix should exit 4 (got $rc)"
+grep -Fq "has no new commits to copy" "$TMPDIR/already-copied.out" || \
+  fail "expected patch-equivalent copied fix to be skipped"
+echo "PASS: already copied fixes are not copied again"
+
 (
   cd "$WORK"
   git checkout dev/token-target-v1.0.0 >/dev/null 2>&1
@@ -273,6 +348,8 @@ set -e
   fail "expected copied commit to use the -c token"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/token-target-v1.0.0" ]] || \
   fail "copyfix with -c should remain on the target branch"
+[[ -z "$(git -C "$WORK" status --porcelain)" ]] || \
+  fail "successful copyfix should leave the target worktree clean"
 echo "PASS: -c token is applied to copied fix commit"
 
 set +e
@@ -293,6 +370,8 @@ set -e
 [[ "$rc" -eq 0 ]] || fail "rename copyfix should exit 0 (got $rc)"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/target-v1.0.0" ]] || \
   fail "rename copyfix should remain on the target branch"
+[[ -z "$(git -C "$WORK" status --porcelain)" ]] || \
+  fail "rename copyfix should leave the target worktree clean"
 grep -Fq "1 modified, 0 added, and 0 deleted files copied." "$TMPDIR/rename.out" || \
   fail "rename copy should count rename as modified"
 echo "PASS: rename-based copy summary is counted correctly"
@@ -306,42 +385,67 @@ set +e
   git add lock.txt
   git commit -m 'lock commit' >/dev/null 2>&1
   git checkout dev/target-v1.0.0 >/dev/null 2>&1
+  git branch dev/parallel-target-v1.0.0
+  git worktree add "$TMPDIR/parallel-worktree" \
+    dev/parallel-target-v1.0.0 >/dev/null 2>&1
   git reset --hard HEAD >/dev/null 2>&1
-  mkdir -p bin
-  cat > bin/git <<'EOF'
+  mkdir -p "$TMPDIR/copyfix-fake-bin"
+  cat > "$TMPDIR/copyfix-fake-bin/git" <<'EOF'
 #!/usr/bin/env bash
+for arg in "$@"; do
+  if [[ "$arg" == "cherry-pick" ]]; then
+    sleep 5
+    break
+  fi
+done
 if [[ "$1" == "fetch" ]]; then
-  sleep 5
-elif [[ "$1" == "cherry-pick" ]]; then
   sleep 5
 fi
 exec /usr/bin/git "$@"
 EOF
-  chmod +x bin/git
-  PATH="$WORK/bin:$PATH" bash ./scripts/bin/copyfix fix/lock-v1.0.0 >"$TMPDIR/lock-primary.out" 2>&1 &
+  chmod +x "$TMPDIR/copyfix-fake-bin/git"
+  PATH="$TMPDIR/copyfix-fake-bin:$PATH" bash ./scripts/bin/copyfix fix/lock-v1.0.0 >"$TMPDIR/lock-primary.out" 2>&1 &
   primary_pid=$!
   sleep 1
   set +e
-  PATH="$WORK/bin:$PATH" bash ./scripts/bin/copyfix fix/lock-v1.0.0 >"$TMPDIR/lock-secondary.out" 2>&1
+  PATH="$TMPDIR/copyfix-fake-bin:$PATH" bash ./scripts/bin/copyfix fix/lock-v1.0.0 >"$TMPDIR/lock-secondary.out" 2>&1
   secondary_rc=$?
+  set -e
+  state_dir="$(git rev-parse --path-format=absolute --git-common-dir)/briteTest-copyfix-state/dev/target-v1.0.0"
+  [[ -e "$state_dir.lock" ]] || \
+    printf 'missing\n' > "$TMPDIR/active-lock-missing"
+  set +e
+  (
+    cd "$TMPDIR/parallel-worktree"
+    PATH="$TMPDIR/copyfix-fake-bin:$PATH" \
+      bash ./scripts/bin/copyfix fix/lock-v1.0.0
+  ) >"$TMPDIR/lock-parallel.out" 2>&1
+  parallel_rc=$?
   set -e
   wait "$primary_pid"
   primary_rc=$?
   printf '%s\n' "$secondary_rc" >"$TMPDIR/lock-secondary-rc"
+  printf '%s\n' "$parallel_rc" >"$TMPDIR/lock-parallel-rc"
   printf '%s\n' "$primary_rc" >"$TMPDIR/lock-primary-rc"
 ) >"$TMPDIR/lock-run.out" 2>&1
 rc=$?
 set -e
 secondary_rc="$(cat "$TMPDIR/lock-secondary-rc")"
+parallel_rc="$(cat "$TMPDIR/lock-parallel-rc")"
 primary_rc="$(cat "$TMPDIR/lock-primary-rc")"
+[[ "$parallel_rc" -eq 0 ]] || \
+  fail "different-target copyfix should run concurrently (got $parallel_rc)"
 [[ "${secondary_rc:-0}" -eq 2 ]] || fail "concurrent copyfix should exit 2 (got ${secondary_rc:-0})"
-grep -Fq "Another copyfix operation is active" "$TMPDIR/lock-secondary.out" || \
+grep -Fq "current branch has an unfinished copyfix operation" "$TMPDIR/lock-secondary.out" || \
   fail "concurrent copyfix should report the active-operation lock"
+[[ ! -e "$TMPDIR/active-lock-missing" ]] || \
+  fail "concurrent copyfix should not unlink the active lock file"
 [[ "$primary_rc" -eq 0 ]] || fail "primary copyfix should exit 0 (got $primary_rc)"
-state_dir="$(git -C "$WORK" rev-parse --path-format=absolute --git-common-dir)/briteTest-copyfix-state"
+state_dir="$(git -C "$WORK" rev-parse --path-format=absolute --git-common-dir)/briteTest-copyfix-state/dev/target-v1.0.0"
 [[ ! -e "$state_dir" ]] || fail "copyfix should remove saved state after completion"
 [[ ! -e "$state_dir.lock" ]] || fail "copyfix should release lock file after completion"
 echo "PASS: copyfix locking prevents concurrent operations"
+echo "PASS: copyfix locking permits different target branches"
 
 (
   cd "$WORK"
@@ -367,19 +471,56 @@ set -e
 [[ "$rc" -eq 5 ]] || fail "conflicting copyfix should exit 5 (got $rc)"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/conflict-target-v1.0.0" ]] || \
   fail "conflicting copyfix should remain on the target branch"
-state_dir="$(git -C "$WORK" rev-parse --path-format=absolute --git-common-dir)/briteTest-copyfix-state"
+state_dir="$(git -C "$WORK" rev-parse --path-format=absolute --git-common-dir)/briteTest-copyfix-state/dev/conflict-target-v1.0.0"
 [[ -d "$state_dir" ]] || fail "expected preserved copyfix state"
-[[ -f "$state_dir/worktree" ]] || fail "expected preserved worktree path"
-target_worktree="$(cat "$state_dir/worktree")"
-[[ -d "$target_worktree" ]] || fail "expected preserved target worktree"
+[[ -n "$(git -C "$WORK" diff --name-only --diff-filter=U)" ]] || \
+  fail "expected unresolved conflicts in the current target worktree"
 error_report="$(latest_report 'copyfix-e-*.md')"
 [[ -f "$error_report" ]] || fail "conflicting copyfix should create an error report"
 grep -Fq "**Branch:** \`dev/conflict-target-v1.0.0\`" "$error_report" || \
   fail "error report should belong to the current target branch"
 grep -Fq '**Exit Code:** 5' "$error_report" || \
   fail "error report should include the conflict exit code"
-printf 'resolved conflict\n' > "$target_worktree/README.md"
-git -C "$target_worktree" add README.md
+
+set +e
+(
+  cd "$WORK"
+  bash ./scripts/bin/copyfix --continue
+) >"$TMPDIR/unresolved-continue.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 5 ]] || \
+  fail "copyfix --continue with unresolved conflicts should exit 5 (got $rc)"
+grep -Fq "Conflicts remain after continue" "$TMPDIR/unresolved-continue.out" || \
+  fail "expected unresolved conflict guidance"
+[[ -d "$state_dir" ]] || fail "unresolved continue should preserve copyfix state"
+
+git -C "$WORK" cherry-pick --abort >/dev/null 2>&1
+set +e
+(
+  cd "$WORK"
+  bash ./scripts/bin/copyfix --continue
+) >"$TMPDIR/continue-without-cherry-pick.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 2 ]] || \
+  fail "copyfix --continue without cherry-pick state should exit 2 (got $rc)"
+grep -Fq "not in the copyfix continue state" \
+  "$TMPDIR/continue-without-cherry-pick.out" || \
+  fail "expected copyfix continue-state validation"
+rm -rf "$state_dir" "$state_dir.lock"
+
+set +e
+(
+  cd "$WORK"
+  bash ./scripts/bin/copyfix fix/conflict-v1.0.0
+) >"$TMPDIR/conflict-again.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 5 ]] || fail "recreated conflict should exit 5 (got $rc)"
+state_dir="$(git -C "$WORK" rev-parse --path-format=absolute --git-common-dir)/briteTest-copyfix-state/dev/conflict-target-v1.0.0"
+error_report="$(latest_report 'copyfix-e-*.md')"
+printf 'resolved conflict\n' > "$WORK/README.md"
 set +e
 (
   cd "$WORK"
@@ -405,7 +546,7 @@ grep -Fq "Comment options are not allowed with --continue" "$TMPDIR/continue-wit
 set +e
 (
   cd "$WORK"
-  GIT_EDITOR=true bash ./scripts/bin/copyfix --continue
+  bash ./scripts/bin/copyfix --continue
 ) >"$TMPDIR/continue.out" 2>&1
 rc=$?
 set -e
@@ -418,8 +559,10 @@ grep -Fq "Run report for details." "$TMPDIR/continue.out" || \
   fail "continued copyfix should defer details to report"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/conflict-target-v1.0.0" ]] || \
   fail "continued copyfix should remain on the target branch"
+continued_status="$(git -C "$WORK" status --porcelain)"
+[[ -z "$continued_status" ]] || \
+  fail "continued copyfix should leave the target worktree clean: $continued_status"
 [[ ! -e "$state_dir" ]] || fail "continued copyfix should remove saved state"
-[[ ! -e "$target_worktree" ]] || fail "continued copyfix should remove target worktree"
 continue_body="$(git -C "$WORK" log -1 --format=%B dev/conflict-target-v1.0.0)"
 if grep -Fq "Command-Line: copyfix" <<< "$continue_body"; then
   fail "continued copied commit should not contain workflow metadata"
@@ -433,6 +576,6 @@ continue_note="$(git -C "$WORK" notes --ref=briteTest-workflow show \
 [[ "$continue_note" == *"Status: Fix commits copied to target branch"* ]] || \
   fail "continued copyfix event should record copy status"
 [[ ! -e "$error_report" ]] || fail "continued success should remove source error report"
-echo "PASS: conflict continuation preserves target checkout"
+echo "PASS: conflict continuation stages current-worktree resolutions"
 
 echo "All copyfix smoke tests passed."

@@ -39,10 +39,8 @@ Options:
                      Usage: rmbranch patch/old-fix -- 
                      Reverted in favor of better approach.
   -f                 Force removal when local branch has unmerged commits.
-  -h                 Output this help to stdout and exit (other options
-                     and arguments are ignored).
-  --help             Output this help to stdout and exit (other options
-                     and arguments are ignored).
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
   -l                 Remove local branch.
   -r                 Remove branch from remote.
   -t SEC             Remote operation timeout in seconds (default: 10).
@@ -88,24 +86,25 @@ Modes:
     - Log the operation to 'logs/remote_branch_history.md' and
       'logs/local_branch_history.md'
 
-Examples: Basic usage.
+Examples:
+  # Basic usage.
   rmbranch old-fix
   rmbranch -l old-fix
   rmbranch -r experiment
   rmbranch -l -r -f temp-feature
   rmbranch -a -f temp-feature
 
-Examples: With -c comment.
+  # With -c comment.
   rmbranch old-fix -c "Reverted in favor of better
     approach."
   rmbranch -r experiment -c "Experiment failed."
 
-Examples: With Unix-style comment.
+  # With Unix-style comment.
   rmbranch old-fix -- Reverted in favor of better
     approach.
   rmbranch -r experiment -- Experiment failed.
 
-Examples: Force removal with comment.
+  # Force removal with comment.
   rmbranch -f temp -c "Temporary testing branch."
   rmbranch -a -f old -- Cleanup old feature branch.
 

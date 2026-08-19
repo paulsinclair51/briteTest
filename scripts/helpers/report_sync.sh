@@ -45,7 +45,7 @@ bt_report_copy_to_remote() {
     remote_host="${BASH_REMATCH[1]}"
     remote_path="${BASH_REMATCH[2]}"
     [[ "$remote_path" == *.git ]] && remote_path="${remote_path%.git}"
-    remote_reports_dir="${remote_path}/reports/branch"
+    remote_reports_dir="${remote_path}/reports"
     if [[ -n "$remote_branch" ]]; then
       remote_reports_dir="${remote_reports_dir}/${remote_branch}"
     fi
@@ -67,7 +67,7 @@ bt_report_copy_to_remote() {
   # Extract path from file:// URL
   if [[ "$remote_url" =~ ^file://(.+) ]]; then
     remote_path="${BASH_REMATCH[1]}"
-    remote_reports_dir="$remote_path/reports/branch"
+    remote_reports_dir="$remote_path/reports"
     if [[ -n "$remote_branch" ]]; then
       remote_reports_dir="${remote_reports_dir}/${remote_branch}"
     fi
@@ -107,7 +107,7 @@ bt_report_copy_from_remote() {
 
     # Copy reports from remote bare repo
     if ! bt_run_remote_command scp -q \
-      "git@${remote_host}:${remote_path}/reports/branch"/$report_pattern \
+      "git@${remote_host}:${remote_path}/reports"/$report_pattern \
       "$reports_dir/" 2>/dev/null; then
       return 1
     fi
@@ -117,8 +117,8 @@ bt_report_copy_from_remote() {
   # Extract path from file:// URL
   if [[ "$remote_url" =~ ^file://(.+) ]]; then
     remote_path="${BASH_REMATCH[1]}"
-    if [[ -d "$remote_path/reports/branch" ]]; then
-      cp -f "$remote_path/reports/branch"/$report_pattern "$reports_dir/" 2>/dev/null || return 1
+    if [[ -d "$remote_path/reports" ]]; then
+      cp -f "$remote_path/reports"/$report_pattern "$reports_dir/" 2>/dev/null || return 1
       return 0
     fi
   fi

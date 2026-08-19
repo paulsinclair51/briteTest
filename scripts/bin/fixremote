@@ -44,7 +44,8 @@ Arguments:
 
 Options:
   -d                Dry-run mode (report only). Does not mutate origin.
-  -h, --help        Output this help to stdout and exit.
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
   -t SEC            Remote reachability timeout in seconds (default: 10).
                     Use 0 to skip reachability checks.
   -v                Verbose mode: add per-step detail and print report at end.
@@ -68,9 +69,9 @@ What Does NOT Get Recovered:
 
 Outputs:
   - Writes an untracked local recovery report to:
-      <repo>/reports/repository/recovery-<date>-<time>-<pid>.md
-    <repo>/reports must exist; <repo>/reports/repository is created if
-    absent. If either is missing or unwritable, exits with code 100.
+      <repo>/reports/recovery-<date>-<time>-<pid>.md
+    <repo>/reports is created if absent. If it is unwritable, exits with
+    code 100.
   - Prints issue counts and report path to stdout.
   - Adds per-step detail with -v.
   - Writes errors to stderr.
@@ -118,7 +119,7 @@ readonly EXIT_MISSING_DEPENDENCIES=100
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd -P)"
-RECOVERY_REPORTS_DIR="$REPO_ROOT/reports/repository"
+RECOVERY_REPORTS_DIR="$REPO_ROOT/reports"
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_ID="${RUN_TS_FILE}-${BASHPID}"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"

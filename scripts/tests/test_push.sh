@@ -54,7 +54,7 @@ assert_matches() {
 latest_report() {
   local repo="$1"
   local pattern="$2"
-  find "$repo/reports/branch" -maxdepth 1 -type f -name "$pattern" -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
+  find "$repo/reports" -maxdepth 1 -type f -name "$pattern" -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
 }
 
 TMPDIR="$(mktemp -d)"
@@ -81,7 +81,7 @@ cp "$PUSH_WORKFLOW_HELPER_SRC" "$WORK/scripts/helpers/push_workflow.sh"
 cp "$CKROLE_HELPER_SRC" "$WORK/scripts/helpers/ckrole.sh"
 chmod +x "$WORK/scripts/bin/push" "$WORK/scripts/helpers/ckrole.sh"
 
-mkdir -p "$WORK/reports/branch"
+mkdir -p "$WORK/reports"
 
 cat > "$WORK/config/contributors.md" <<'EOF'
 - testuser, C
@@ -108,12 +108,23 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./scripts/bin/p
 assert_contains "-t SEC" "$TMPDIR/help.out"
 pass "help output"
 
+copyfix_state_root="$(git -C "$WORK" rev-parse \
+  --path-format=absolute --git-common-dir)/briteTest-copyfix-state"
+mkdir -p "$copyfix_state_root/dev/push-tests-v1.0.0"
+rc=$(run_capture "$TMPDIR/copyfix-active.out" env GITHUB_ACTOR=testuser \
+  bash -lc "cd '$WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 1 ]] || fail "unfinished copyfix should block push (got $rc)"
+assert_contains "has an unfinished copyfix operation" \
+  "$TMPDIR/copyfix-active.out"
+rm -rf "$copyfix_state_root"
+pass "unfinished copyfix blocks push"
+
 # 1b) The explicit skip mode should emit an error report and summary line.
 rc=$(run_capture "$TMPDIR/skip-e.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/push -e -t 5")
 [[ "$rc" -eq 9 ]] || fail "push -e should exit 9 (got $rc)"
 assert_contains "Error: Push skipped due to -e option." "$TMPDIR/skip-e.out"
 assert_contains "Guidance: Run without -e option." "$TMPDIR/skip-e.out"
-assert_contains "See reports/branch/push-e-" "$TMPDIR/skip-e.out"
+assert_contains "See reports/push-e-" "$TMPDIR/skip-e.out"
 skip_report="$(latest_report "$WORK" 'push-e-*.md')"
 [[ -f "$skip_report" ]] || fail "expected push skip report"
 assert_contains "# Error Push Report" "$skip_report"
@@ -134,25 +145,25 @@ assert_contains "Push is atomic for this branch update." "$skip_report"
 pass "skip mode"
 
 # Nothing to push should not create a report.
-cat > "$WORK/reports/branch/push-d-20000101-000000.md" <<'EOF'
+cat > "$WORK/reports/push-d-20000101-000000.md" <<'EOF'
 # Stale Push Report
 
 **Branch:** `dev/push-tests-v1.0.0`
 EOF
-cat > "$WORK/reports/branch/push-e-20000101-000001.md" <<'EOF'
+cat > "$WORK/reports/push-e-20000101-000001.md" <<'EOF'
 # Stale Push Error Report
 
 **Branch:** `dev/push-tests-v1.0.0`
 EOF
-chmod a-w "$WORK/reports/branch/push-d-20000101-000000.md" \
-  "$WORK/reports/branch/push-e-20000101-000001.md"
+chmod a-w "$WORK/reports/push-d-20000101-000000.md" \
+  "$WORK/reports/push-e-20000101-000001.md"
 rc=$(run_capture "$TMPDIR/noop.out" env GITHUB_ACTOR=testuser \
   bash -lc "cd '$WORK' && bash ./scripts/bin/push -t 5")
 [[ "$rc" -eq 10 ]] || fail "no-work push should exit 10 (got $rc)"
 assert_contains "no changes to push" "$TMPDIR/noop.out"
-[[ -f "$WORK/reports/branch/push-d-20000101-000000.md" ]] || \
+[[ -f "$WORK/reports/push-d-20000101-000000.md" ]] || \
   fail "push prerequisite failure should preserve stale dry-run reports"
-[[ -f "$WORK/reports/branch/push-e-20000101-000001.md" ]] || \
+[[ -f "$WORK/reports/push-e-20000101-000001.md" ]] || \
   fail "push prerequisite failure should preserve stale error reports"
 pass "no-work push prerequisite"
 
@@ -233,7 +244,7 @@ pass "internal helper option rejected by direct push"
 rc=$(run_capture "$TMPDIR/dry.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/push -d -t 5")
 [[ "$rc" -eq 0 ]] || fail "dry-run push should exit 0 (got $rc)"
 assert_contains "Dry-run: push to remote dev/push-tests-v1.0.0:" "$TMPDIR/dry.out"
-assert_contains "See reports/branch/push-d-" "$TMPDIR/dry.out"
+assert_contains "See reports/push-d-" "$TMPDIR/dry.out"
 dry_report="$(latest_report "$WORK" 'push-d-*.md')"
 [[ -f "$dry_report" ]] || fail "expected dry-run push report"
 [[ "$(basename "$dry_report")" == push-d-* ]] || fail "expected push-d report filename"
@@ -307,7 +318,7 @@ set -e
 
 race_report="$(latest_report "$WORK" 'push-d-*.md')"
 [[ -f "$race_report" ]] || fail "expected concurrent dry-run report"
-race_report_count="$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'push-d-*.md' | wc -l | tr -d ' ')"
+race_report_count="$(find "$WORK/reports" -maxdepth 1 -type f -name 'push-d-*.md' | wc -l | tr -d ' ')"
 [[ "$race_report_count" -eq 1 ]] || fail "expected one serialized same-second dry-run report (got $race_report_count)"
 [[ "$(basename "$race_report")" =~ ^push-d-[0-9]{8}-[0-9]{6}\.md$ ]] || \
   fail "expected PID-free dry-run filename"
@@ -334,10 +345,10 @@ push_note="$(git -C "$WORK" notes --ref=briteTest-workflow show HEAD)"
   fail "successful push should record its commit count"
 [[ "$push_note" == *"Files: 1 modified, 0 added, 0 deleted"* ]] || \
   fail "successful push should record its file counts"
-if grep -Fq "See reports/branch/push-" "$TMPDIR/push.out"; then
+if grep -Fq "See reports/push-" "$TMPDIR/push.out"; then
   fail "successful non-dry push should not output a report path"
 fi
-if find "$WORK/reports/branch" -maxdepth 1 -type f -name 'push-*.md' -print -quit | grep -q .; then
+if find "$WORK/reports" -maxdepth 1 -type f -name 'push-*.md' -print -quit | grep -q .; then
   fail "successful non-dry push should not create a push report"
 fi
 remote_tip="$(git -C "$ORIGIN" rev-parse refs/heads/dev/push-tests-v1.0.0)"
@@ -440,16 +451,16 @@ pass "group-level failed push attribution"
   git add README.md
   git commit -m "push report failure test" >/dev/null 2>&1
 )
-rm -rf "$ORIGIN/reports/branch"
+rm -rf "$ORIGIN/reports"
 rc=$(run_capture "$TMPDIR/report-fail.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/push -t 5")
 [[ "$rc" -eq 0 ]] || fail "push should not depend on remote report directory and exit 0 (got $rc)"
 assert_contains "Pushed " "$TMPDIR/report-fail.out"
 assert_contains "Pushed (" "$TMPDIR/report-fail.out"
 assert_contains "to remote dev/push-tests-v1.0.0:" "$TMPDIR/report-fail.out"
-if grep -Fq "See reports/branch/push-" "$TMPDIR/report-fail.out"; then
+if grep -Fq "See reports/push-" "$TMPDIR/report-fail.out"; then
   fail "successful non-dry push should not output a report path"
 fi
-if find "$WORK/reports/branch" -maxdepth 1 -type f -name 'push-*.md' -print -quit | grep -q .; then
+if find "$WORK/reports" -maxdepth 1 -type f -name 'push-*.md' -print -quit | grep -q .; then
   fail "successful non-dry push should not create a push report"
 fi
 pass "push success remains independent of remote report directory"

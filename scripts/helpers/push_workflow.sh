@@ -591,7 +591,7 @@ EOF
 
   repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
   [[ -n "$repo_root" ]] || bt_push_error_exit "$exit_invalid_argument" "Unable to resolve repository root"
-  reports_dir="$repo_root/reports/branch"
+  reports_dir="$repo_root/reports"
   run_ts_file="$(date '+%Y%m%d-%H%M%S')"
   run_ts_display="$(date '+%Y-%m-%d %H:%M:%S')"
 

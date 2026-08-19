@@ -66,9 +66,5 @@ tests/tmp/*
 !tests/tmp/README.md
 
 # Generated reports
-reports/branch/*.md
-!reports/branch/README.md
-reports/guidelines/*.md
-!reports/guidelines/README.md
-reports/repository/*.md
-!reports/repository/README.md
+reports/*
+!reports/README.md

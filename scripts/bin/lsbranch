@@ -25,35 +25,13 @@ its parent branch.
 Use -a or PATTERN to list the status of branches matching "*"
 or PATTERN, respectively.
 
-An untracked branch report is written locally at
-<repo>/reports/branch/branch-<datetime>.md
-
-Report includes:
-  Branch:  Indicates the branch name. `*` indicates this is
-           the current branch. '!' indicates the branch name
-           violates naming rules.
-  Type:    Indicates branch is `local` or `remote`.
-  Parent:  Parent branch reference for the row when applicable.
-           For example, 'main' or 'v1.0.0'.
-  Status:  'clean', 'dirty', 'read-only', or 'not checked out' for local
-           worktree state. For local branches, 'clean'/'dirty' reflect the
-           current checkout's shared working tree, including untracked files.
-           If branch-matching legacy auto-stashes exist
-           (label: chcurrent-auto:BRANCH:TIMESTAMP),
-           status includes '; auto-stash:N' in reports and
-           '[auto-stash: N]' in stdout rows.
-           'synced' or 'diverged' for tracked-branch state,
-           or 'unknown'.
-  Staged/Unstaged: Count of staged files and count of unstaged files.
-           Unstaged includes tracked modifications and untracked files
-           (anything requiring 'git add' before commit).
-  Unpushed Commits: Count of local commits pending sync
-           for this branch.
-  Ahead/Behind: Counts of commits this branch is ahead of / behind
-           its tracked remote branch and parent branch.
-  PR:      Count of pending (not closed) pull requests.
-  First Commit: Approximate date of the branch's first commit.
-  Last Commit: Date of the last commit on the branch.
+Output includes:
+  - Branch name; `*` marks the current branch and `!` marks a name that
+    violates naming rules.
+  - Local or remote type and applicable state tags such as current, dirty,
+    read-only, staged, unstaged, synced, diverged, or unknown.
+  - Ahead/behind, unpushed commit, pull request, and auto-stash tags when
+    applicable.
 
 Arguments:
   BRANCH      Check branch with name BRANCH.
@@ -64,18 +42,16 @@ Arguments:
 Options (see above for the options allowed for each form of usage):
 
   -a          Same as specifying "*" as PATTERN.
-  -b          Black text (disable color) in stdout and report output.
-  -h          Output this help to stdout and exit (other options
-              and arguments are ignored). Help is output also
-              if invalid arguments or options are provided.
-  --help      Alias for -h.
+  -b          Black text (disable color) in stdout output.
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
   -i          List branches that violate naming rules (see
               Contributor Guide for rules).
   -l          List local branches.
   -r          List remote branches.
   -t SEC      Remote operation timeout in seconds (default: 10).
               SEC must be an integer greater than 0.
-  -v          Verbose output to stdout for debugging.
+  -v          Output progress and diagnostics to stdout.
   -x PATTERN  Exclude branches matching the given quoted (") glob
               pattern.
 
@@ -115,9 +91,7 @@ Outputs:
   - Writes errors and diagnostics to stderr.
   - When remote is unreachable, remote fields use cached local
     remote refs from your last successful remote update and this is noted
-    in stdout and the report.
-  - Writes a report to <repo>/reports/branch/branch-<datetime>.md.
-  - Removes previous reports before writing a new one.
+    in stdout.
 
 Exit codes:
   0   Success.
@@ -126,7 +100,7 @@ Exit codes:
       requested branch reference is missing).
   4   Branches found that violate naming rules if option -i
       specified.
-  200 Git/report persistence operation failed.
+  200 Git operation failed.
 EOF
 }
 
@@ -147,14 +121,12 @@ usage_error() {
 # High-Level Flow:
 # 1. Validate arguments and parse options (-a, -l, -r, -v, -b, -i, -x).
 # 2. Resolve query scope: current branch, exact branch, or glob pattern.
-# 3. Set up report directory and capture initial repository state.
+# 3. Capture initial repository state.
 # 4. Ensure remote refs are up-to-date (with timeout and fallback).
 # 5. For each candidate branch:
 #    - Collect status, sync metrics, PR count with per-field error fallbacks.
-#    - Append row to markdown report table.
 #    - Print compact status to stdout.
-# 6. Persist report locally (no commit/push).
-# 7. Log warnings for degraded data collection; exit with appropriate code.
+# 6. Log warnings for degraded data collection; exit with appropriate code.
 
 # shellcheck disable=SC1091,SC2317  # Helper source paths and trap-managed
 # paths.
@@ -163,7 +135,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-branch_reports_dir="$repo_root/reports/branch"
+branch_reports_dir="${BRITETEST_LSBRANCH_REPORT_DIR:-}"
+branch_report_prefix="${BRITETEST_LSBRANCH_REPORT_PREFIX:-branch}"
+GENERATE_REPORT=false
+[[ -z "$branch_reports_dir" ]] || GENERATE_REPORT=true
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
@@ -1202,6 +1177,8 @@ append_report_row() {
   local created="$9"
   local last_commit="${10}"
 
+  [[ "$GENERATE_REPORT" == true ]] || return 0
+
   # Escape markdown-table delimiters so table column counts stay stable.
   branch="${branch//|/\\|}"
   type="${type//|/\\|}"
@@ -1238,7 +1215,7 @@ format_ratio_or_blank() {
 cleanup_old_reports() {
   local old_report
   local report_rel
-  local pattern="branch-*.md"
+  local pattern="${branch_report_prefix}-*.md"
 
   BRANCH_REPORT_DELETIONS=()
 
@@ -1755,14 +1732,9 @@ build_report_command
 # reflects repository state at invocation time.
 capture_initial_worktree_status
 
-# Validate reports directory exists (should be part of repository structure)
-if [[ ! -d "$branch_reports_dir" ]]; then
-  bt_error_exit "$EXIT_OPERATION_FAILED" "$(printf '%s%s' \
-    "$branch_reports_dir directory not found. Repository may be " \
-    "corrupted; run 'fixrepo' to verify.")"
+if [[ "$GENERATE_REPORT" == true ]]; then
+  bt_report_dir_enable_writes "$branch_reports_dir" "$EXIT_OPERATION_FAILED"
 fi
-
-bt_report_dir_enable_writes "$branch_reports_dir" "$EXIT_OPERATION_FAILED"
 
 # Get current branch to restore later
 ORIGINAL_BRANCH=$(bt_get_current_branch ||
@@ -1857,18 +1829,16 @@ else
   fi
 fi
 
-# Remove stale branch reports before generating the new one so old report
-# files are not counted as untracked during the status check below.
-if ! bt_report_acquire_lock "$repo_root" "lsbranch" 10 REPORT_LOCK_FD; then
-  bt_error_exit "$EXIT_OPERATION_FAILED" \
-    "Timed out waiting for the branch report lock."
+if [[ "$GENERATE_REPORT" == true ]]; then
+  if ! bt_report_acquire_lock "$repo_root" "lsbranch" 10 REPORT_LOCK_FD; then
+    bt_error_exit "$EXIT_OPERATION_FAILED" \
+      "Timed out waiting for the branch report lock."
+  fi
+  OUTPUT_FILE="$(bt_report_transient_path \
+    "$branch_reports_dir" "$branch_report_prefix" "$RUN_TS_FILE")"
+  cleanup_old_reports
+  generate_report_header
 fi
-OUTPUT_FILE="$(bt_report_transient_path \
-  "$branch_reports_dir" "branch" "$RUN_TS_FILE")"
-cleanup_old_reports
-
-# Generate report header
-generate_report_header
 
 # Warn if remote status is stale (fetch failed/timed out)
 if [[ "$FETCH_FAILED" == true ]] && 
@@ -1954,7 +1924,8 @@ else
   FOOTER_INVALID_LINE+='violates naming rules.'
 fi
 
-cat >> "$OUTPUT_FILE" << EOF
+if [[ "$GENERATE_REPORT" == true ]]; then
+  cat >> "$OUTPUT_FILE" << EOF
 
 $FOOTER_BRANCH_LINE
 
@@ -1990,16 +1961,17 @@ first commit on the branch.
 **Last Commit**: Date of the last commit on the branch.
 EOF
 
-append_report_note_about_stale_remote
+  append_report_note_about_stale_remote
 
-append_report_warnings
+  append_report_warnings
 
-bt_report_release_lock "$REPORT_LOCK_FD"
-REPORT_LOCK_FD=""
+  bt_report_release_lock "$REPORT_LOCK_FD"
+  REPORT_LOCK_FD=""
 
-persist_report_changes
+  persist_report_changes
+fi
 
-if [[ "$VERBOSE" == true ]]; then
+if [[ "$VERBOSE" == true && "$GENERATE_REPORT" == true ]]; then
   echo ""
   bt_info "Report contents:"
   sed 's/^/  /' "$OUTPUT_FILE"

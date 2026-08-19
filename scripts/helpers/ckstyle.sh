@@ -1,189 +1,51 @@
 #!/usr/bin/env bash
 
-# ckstyle - Validate consistent style in repository files.
-#
-# See usage below for details, or run: ckstyle -h
+# ckstyle.sh - Style validation helper for report.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see '<repo>/LICENSE'.
 
-usage() {
-  cat <<'EOF'
-Usage:
-  ckstyle [OPTIONS] [FILE ...]
-  ckstyle {-h | --help}
-
-Validate style for files in the current branch. See the Contributor Guide
-for details on style requirements and recommendations.
-
-Prerequisites:
-  - User must be contributor, reviewer, or approver (listed in
-    <repo>/config/contributors.md).
-  - Current branch must be a local branch.
-  - Current branch must be a targeted or contributor branch
-    (not main or a version branch).
-
-Argument:
-  FILE    Optional one or more files to check. If not specified, all
-          files in the current branch are checked (excluding
-          files in '<repo>/obsolete/' and '<repo>/.git/').
-          If FILE is only a filename (no path separator), every
-          file in the current branch with that name is selected.
-
-Options:
-  -h      Output this help to stdout and exit (other options
-          and arguments are ignored).
-  --help  Output this help to stdout and exit (other options
-          and arguments are ignored).
-  -i      Run include (.h) checks if applicable to file.
-  -m      Run .md document checks, including version consistency,
-          if applicable to file.
-  -r      Run directory guide README checks if applicable to file.
-  -s      Run src (.c) or script checks if applicable to file.
-  -v      Output verbose progress and diagnostics to stderr.
-
-If no check options are provided, all checks are enabled; otherwise, only
-the specified checks are enabled.
-
-Outputs:
-  - Writes normal status messages to stdout and errors to stderr.
-  - If issues are found, creates an untracked report in the current branch:
-    <repo>/reports/guidelines/ckstyle-<datetime>-<pid>.md
-  - Removes older ckstyle reports in the current branch, keeping only
-    the latest report.
-  - Groups issues by file in the report.
-
-Exit codes:
-  0    Success (no issues found, -h/--help specified).
-  1    Invalid option or argument.
-  2    Validation issues found.
-  3    Contributor authorization failed (user not listed in
-       config/contributors.md).
-  4    Branch policy violation: current branch must be a targeted or
-       contributor branch (not main or a version branch).
-  5    Current branch must be local, not a remote snapshot.
-  200  Report I/O error (for example, unable to create/open report file).
-EOF
-}
-
 # High-Level Flow:
-# 1. Honor -h/--help before any other processing.
-# 2. Parse check-option flags (-i/-m/-r/-s/-v) and optional FILE arguments.
-# 3. Enforce prerequisites: local branch, targeted/contributor branch,
+# 1. Parse validated check flags and file arguments from report.
+# 2. Enforce prerequisites: local branch, targeted/contributor branch,
 # contributor role.
-# 4. Build the list of tracked files to check (all tracked, or scoped to FILE
+# 3. Build the list of tracked files to check (all tracked, or scoped to FILE
 # args).
-# 5. Propagate repository history; initialize report path and issue state.
-# 6. Run enabled check groups: documents (-m), includes (-i), guides (-r),
+# 4. Propagate repository history; initialize report path and issue state.
+# 5. Run enabled check groups: documents (-m), includes (-i), guides (-r),
 # sources/scripts (-s).
 #    Document checks also populate DOC_VERSION_FILES/SEMVERS consumed by version
 # checks.
-# 7. Write a consolidated report and prune older untracked ckstyle-*.md reports.
-# 8. Exit 0 (clean), 2 (issues found), or a prerequisite/I-O error code.
+# 6. Write a consolidated report and prune older style reports.
+# 7. Exit 0 (clean), 2 (issues found), or a prerequisite/I-O error code.
 
+bt_ckstyle() {
 set -euo pipefail
 
-CKSTYLE_STANDALONE_MODE=false
+CKSTYLE_HELPER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Honor help flags before loading helpers so usage works in minimal fixtures.
-for arg in "$@"; do
-  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
-    usage
-    exit 0
-  fi
-done
+# shellcheck source=common.sh
+source "$CKSTYLE_HELPER_DIR/common.sh"
+# shellcheck source=git_helpers.sh
+source "$CKSTYLE_HELPER_DIR/git_helpers.sh"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-if [[ -f "$SCRIPT_DIR/../helpers/common.sh" && \
-  -f "$SCRIPT_DIR/../helpers/git_helpers.sh" ]]; then
-  # shellcheck disable=SC1091
-  # shellcheck source=../helpers/common.sh
-  source "$SCRIPT_DIR/../helpers/common.sh"
-  # shellcheck disable=SC1091
-  # shellcheck source=../helpers/git_helpers.sh
-  source "$SCRIPT_DIR/../helpers/git_helpers.sh"
-else
-  CKSTYLE_STANDALONE_MODE=true
-
-  bt_error_exit() {
-    local code="$1"
-    local message="$2"
-    local guidance="${3:-}"
-
-    echo "Error: ${message%.}." >&2
-    [[ -z "$guidance" ]] || echo "Guidance: ${guidance%.}." >&2
-    exit "$code"
-  }
-
-  bt_emit_prerequisite_failure() {
-    local code="$1"
-    local message="$2"
-    local guidance="${3:-}"
-
-    bt_error_exit "$code" "$message" "$guidance"
-  }
-
-  bt_format_command_line() {
-    local cmd="$1"
-    shift
-
-    printf '%s' "$cmd"
-    if [[ "$#" -gt 0 ]]; then
-      printf ' %s' "$@"
-    fi
-    printf '\n'
-  }
-
-  bt_require_login() {
-    local login=""
-
-    login="${GITHUB_ACTOR:-}"
-    [[ -n "$login" ]] || login="$(git config user.name 2>/dev/null || true)"
-    [[ -n "$login" ]] || login="unknown"
-    printf '%s\n' "$login"
-  }
-
-  bt_is_targeted_branch() {
-    local targeted_branch_re
-
-    targeted_branch_re='^(dev|fix)/[a-z0-9]+(-[a-z0-9]+)*-v([1-9][0-9]?)\.'
-    targeted_branch_re+='(0|[1-9][0-9]?)\.0$'
-    [[ "$1" =~ $targeted_branch_re ]]
-  }
-
-  bt_is_contributor_branch() {
-    [[ "$1" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]
-  }
-
-  bt_contributors_has_min_role_by_login_or_email() {
-    return 0
-  }
-
-  bt_propagate_repository_history() {
-    return 2
-  }
-fi
-
-readonly EXIT_SUCCESS=0
-readonly EXIT_INVALID_ARGUMENT=1
-readonly EXIT_VALIDATION_FAILED=2
-readonly EXIT_NOT_AUTHORIZED=3
-readonly EXIT_BRANCH_POLICY=4
-readonly EXIT_NOT_LOCAL_BRANCH=5
-readonly EXIT_REPORT_IO_ERROR=200
+readonly CKSTYLE_EXIT_SUCCESS=0
+readonly CKSTYLE_EXIT_INVALID_ARGUMENT=1
+readonly CKSTYLE_EXIT_VALIDATION_FAILED=2
+readonly CKSTYLE_EXIT_NOT_AUTHORIZED=3
+readonly CKSTYLE_EXIT_BRANCH_POLICY=4
+readonly CKSTYLE_EXIT_NOT_LOCAL_BRANCH=5
+readonly CKSTYLE_EXIT_REPORT_IO_ERROR=200
 
 usage_error() {
   local message="$1"
-  usage
-  echo >&2
-  echo "$message. See usage above for details." >&2
-  exit "$EXIT_INVALID_ARGUMENT"
+  echo "$message. See 'report -h' for details." >&2
+  exit "$CKSTYLE_EXIT_INVALID_ARGUMENT"
 }
 
 report_io_error() {
-  bt_error_exit "$EXIT_REPORT_IO_ERROR" "$1"
+  bt_error_exit "$CKSTYLE_EXIT_REPORT_IO_ERROR" "$1"
 }
 
 log_warning() {
@@ -222,13 +84,6 @@ declare -A SELECTED_FILE_SET=()
 declare -A FILE_ACCESS_ISSUED=()
 declare -a DOC_VERSION_FILES=()
 declare -A DOC_VERSION_SEMVERS=()
-
-for arg in "$@"; do
-  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
-    usage
-    exit "$EXIT_SUCCESS"
-  fi
-done
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -277,44 +132,42 @@ if ! $CHECK_INCLUDES && ! $CHECK_DOCUMENTS && ! $CHECK_GUIDES && \
   CHECK_SOURCES=true
 fi
 
-repo_root="$(cd "$(dirname "$0")/../../" && pwd)"
+repo_root="$(cd "$CKSTYLE_HELPER_DIR/../.." && pwd)"
 cd "$repo_root"
 
 CONTRIBUTORS_FILE="$repo_root/config/contributors.md"
 
 CURRENT_BRANCH="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
 if [[ -z "$CURRENT_BRANCH" ]]; then
-  bt_emit_prerequisite_failure "$EXIT_NOT_LOCAL_BRANCH" \
+  bt_emit_prerequisite_failure "$CKSTYLE_EXIT_NOT_LOCAL_BRANCH" \
     "Current branch must be a local branch." \
     "Use 'chbranch' to switch to a local targeted or contributor branch," \
-    "then rerun ckstyle."
+    "then rerun 'report style'."
 fi
 
 if ! bt_is_targeted_branch "$CURRENT_BRANCH" && \
   ! bt_is_contributor_branch "$CURRENT_BRANCH"; then
-  bt_emit_prerequisite_failure "$EXIT_BRANCH_POLICY" \
+  bt_emit_prerequisite_failure "$CKSTYLE_EXIT_BRANCH_POLICY" \
     "Current branch '$CURRENT_BRANCH' must be a targeted or contributor" \
     "branch (not main or a version branch)."
 fi
 
-if [[ "$CKSTYLE_STANDALONE_MODE" != true ]]; then
-  if [[ ! -f "$CONTRIBUTORS_FILE" ]]; then
-    bt_emit_prerequisite_failure "$EXIT_NOT_AUTHORIZED" \
-      "Configuration file not found: $CONTRIBUTORS_FILE"
-  fi
-  ACTOR_LOGIN="$(bt_require_login || true)"
-  if [[ -z "$ACTOR_LOGIN" ]]; then
-    bt_emit_prerequisite_failure "$EXIT_NOT_AUTHORIZED" \
-      "Unable to determine GitHub login identity for permission check." \
-      "Set GITHUB_ACTOR or run 'gh auth login', then rerun ckstyle."
-  fi
-  ACTOR_EMAIL="$(git config user.email 2>/dev/null || true)"
-  if ! bt_contributors_has_min_role_by_login_or_email \
-    "$ACTOR_LOGIN" "$ACTOR_EMAIL" "contributor" "$CONTRIBUTORS_FILE"; then
-    bt_emit_prerequisite_failure "$EXIT_NOT_AUTHORIZED" \
-      "User '$ACTOR_LOGIN' is not authorized to run ckstyle (requires" \
-      "contributor role or higher)."
-  fi
+if [[ ! -f "$CONTRIBUTORS_FILE" ]]; then
+  bt_emit_prerequisite_failure "$CKSTYLE_EXIT_NOT_AUTHORIZED" \
+    "Configuration file not found: $CONTRIBUTORS_FILE"
+fi
+ACTOR_LOGIN="$(bt_require_login || true)"
+if [[ -z "$ACTOR_LOGIN" ]]; then
+  bt_emit_prerequisite_failure "$CKSTYLE_EXIT_NOT_AUTHORIZED" \
+    "Unable to determine GitHub login identity for permission check." \
+    "Set GITHUB_ACTOR or run 'gh auth login', then rerun 'report style'."
+fi
+ACTOR_EMAIL="$(git config user.email 2>/dev/null || true)"
+if ! bt_contributors_has_min_role_by_login_or_email \
+  "$ACTOR_LOGIN" "$ACTOR_EMAIL" "contributor" "$CONTRIBUTORS_FILE"; then
+  bt_emit_prerequisite_failure "$CKSTYLE_EXIT_NOT_AUTHORIZED" \
+    "User '$ACTOR_LOGIN' is not authorized to run report style (requires" \
+    "contributor role or higher)."
 fi
 
 # -----------------------------
@@ -455,7 +308,7 @@ count_eligible_selected_files() {
 ELIGIBLE_SELECTED_COUNT="$(count_eligible_selected_files)"
 
 # Propagate repository history from remote if available.
-HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
+HISTORY_HELPER="$CKSTYLE_HELPER_DIR/history_log.sh"
 if [[ -f "$HISTORY_HELPER" ]]; then
     # shellcheck disable=SC1090,SC1091  # Sourced conditionally from repository
     # helper path.
@@ -465,13 +318,12 @@ if [[ -f "$HISTORY_HELPER" ]]; then
 fi
 
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
-RUN_PID="${BASHPID:-$$}"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
-GUIDELINES_REPORTS_DIR="$repo_root/reports/guidelines"
-REPORT_FILE="$GUIDELINES_REPORTS_DIR/ckstyle-${RUN_TS_FILE}-${RUN_PID}.md"
+STYLE_REPORTS_DIR="$repo_root/reports"
+REPORT_FILE="$STYLE_REPORTS_DIR/style-${RUN_TS_FILE}.md"
 
-if ! mkdir -p "$GUIDELINES_REPORTS_DIR"; then
-  report_io_error "unable to create report directory: $GUIDELINES_REPORTS_DIR"
+if ! mkdir -p "$STYLE_REPORTS_DIR"; then
+  report_io_error "unable to create report directory: $STYLE_REPORTS_DIR"
 fi
 
 # -----------------------------
@@ -1149,7 +1001,7 @@ normalize_file_entry() {
 }
 
 format_command_line() {
-  bt_format_command_line "ckstyle" "${ORIGINAL_ARGS[@]}"
+  bt_format_command_line "report style" "${ORIGINAL_ARGS[@]}"
 }
 
 entry_matches_file() {
@@ -2178,7 +2030,7 @@ fi
 {
   command_line="$(format_command_line)"
 
-  echo "# ckstyle Validation Report"
+  echo "# Style Validation Report"
   echo
   echo "**Command:** \`${command_line}\`"
   echo
@@ -2236,9 +2088,9 @@ awk '
 mv "$report_tmp" "$REPORT_FILE" || \
   report_io_error "unable to finalize report file: $REPORT_FILE"
 
-# Remove old ckstyle reports only after successful write.
+# Remove old reports of this type only after successful write.
 old_report_rel=""
-for old_report in "$GUIDELINES_REPORTS_DIR"/ckstyle-*.md; do
+for old_report in "$STYLE_REPORTS_DIR"/style-*.md; do
   [[ "$old_report" == "$REPORT_FILE" ]] && continue
   [[ -e "$old_report" ]] || continue
 
@@ -2256,9 +2108,10 @@ if [[ $TOTAL_ISSUES -gt 0 ]]; then
   echo "Validation found $TOTAL_ISSUES issue(s) across" \
     "${#ISSUE_FILES[@]} file(s)."
   echo "See $(display_repo_path "$REPORT_FILE") for details."
-  exit "$EXIT_VALIDATION_FAILED"
+  exit "$CKSTYLE_EXIT_VALIDATION_FAILED"
 fi
 
 echo "All selected files pass style checks."
 echo "See $(display_repo_path "$REPORT_FILE") for details."
-exit "$EXIT_SUCCESS"
+exit "$CKSTYLE_EXIT_SUCCESS"
+}

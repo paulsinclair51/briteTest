@@ -38,9 +38,9 @@ Outputs:
   - Final status block (COMPLETED or DRY RUN COMPLETE).
 
 Reporting:
-    - rebrand and rebrand -d write a report in reports/guidelines/.
-    - Non-dry run report: reports/guidelines/rebrand-YYYYMMDD-HHMMSS-<pid>.md
-    - Dry-run report: reports/guidelines/rebrand-d-YYYYMMDD-HHMMSS-<pid>.md
+    - rebrand and rebrand -d write a report in reports/.
+    - Non-dry run report: reports/rebrand-YYYYMMDD-HHMMSS-<pid>.md
+    - Dry-run report: reports/rebrand-d-YYYYMMDD-HHMMSS-<pid>.md
     - Reports are generated as local untracked files.
     - Successful non-dry-run runs delete stale dry-run reports.
   - -h/--help does not generate a report.
@@ -109,7 +109,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CONFIG_FILE="${REPO_ROOT}/logs/brand_history.md"
 BRANDING_DIR="${REPO_ROOT}/docs/branding"
 GENPNGS_SCRIPT="${SCRIPT_DIR}/genpngs"
-REPORTS_DIR="${REPO_ROOT}/reports/guidelines"
+REPORTS_DIR="${REPO_ROOT}/reports"
 
 DRY_RUN=0
 REMOTE_TIMEOUT_SECONDS=10

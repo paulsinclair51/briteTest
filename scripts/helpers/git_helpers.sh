@@ -33,6 +33,23 @@ bt_get_current_branch() {
   git rev-parse --abbrev-ref HEAD 2>/dev/null
 }
 
+bt_copyfix_state_dir_for_branch() {
+  local branch="$1"
+  local common_dir=""
+
+  common_dir="$(git rev-parse --path-format=absolute --git-common-dir \
+    2>/dev/null)" || return 1
+  printf '%s/briteTest-copyfix-state/%s\n' "$common_dir" "$branch"
+}
+
+bt_is_copyfix_in_progress() {
+  local branch="$1"
+  local state_dir=""
+
+  state_dir="$(bt_copyfix_state_dir_for_branch "$branch")" || return 1
+  [[ -d "$state_dir" ]]
+}
+
 bt_git_is_repository() {
   local repo_path="$1"
   git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1

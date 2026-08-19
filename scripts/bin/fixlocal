@@ -108,8 +108,8 @@ Options:
   -f                Force local stabilization: allow discarding local dirty
                     changes and local-ahead commits during guarded remote
                     synchronization (backup ref created first).
-  -h                Output this help to stdout and exit (other options ignored).
-  --help            Output this help to stdout and exit (other options ignored).
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
   -t SEC            Remote reachability timeout in seconds (default: 10).
                     Exit code is 1 if SEC is not an integer greater than 0.
   -v                Output verbose progress and details to stdout.
@@ -142,8 +142,7 @@ Outputs:
       - The report file name is repository-<date>-<time>-<pid>.md or, if -d
         specified, repository-d-<date>-<time>-<pid>.md. The report file is
         untracked.
-      - The report file is written to
-        <repo>/reports/repository/.
+      - The report file is written to <repo>/reports/.
       - If this directory cannot be created or written, fixlocal exits with
         code 100 (missing dependencies/configuration).
     - When a new report (dry-run or non-dry-run) is written, all older dry-run
@@ -225,7 +224,7 @@ readonly EXIT_MISSING_DEPENDENCIES=100
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd -P)"
 # Repository-specific: keep generated reports under this workspace layout.
-REPOSITORY_REPORTS_DIR="$REPO_ROOT/reports/repository"
+REPOSITORY_REPORTS_DIR="$REPO_ROOT/reports"
 
 # Validate required helpers exist
 if [[ ! -f "$SCRIPT_DIR/../helpers/common.sh" ]]; then
@@ -412,7 +411,7 @@ filtered_status_output() {
   if [[ -n "$status_output" ]]; then
     status_output="$(printf '%s\n' "$status_output" | awk '
       BEGIN {
-        report_re = "^reports/repository/repository(-d)?-[0-9]{8}-[0-9]{6}"
+        report_re = "^reports/repository(-d)?-[0-9]{8}-[0-9]{6}"
         report_re = report_re "(-[0-9]+)?\\.md$"
       }
       {
@@ -647,24 +646,24 @@ refresh_remote_tracking_state() {
 
 check_reports_repository_dir_for_branch() {
   local branch_name="$1"
-  local branch_reports_dir="$CURRENT_REPO/reports/repository"
+  local branch_reports_dir="$CURRENT_REPO/reports"
 
   if [[ ! -d "$branch_reports_dir" ]]; then
     append_check "Branch: $branch_name Report Path" "ISSUE" \
-      "reports/repository is missing. Suggested fix: Restore the directory" \
+      "reports is missing. Suggested fix: Restore the directory" \
       "from main or a trusted clone."
     return 1
   fi
 
   if [[ ! -w "$branch_reports_dir" ]]; then
     append_check "Branch: $branch_name Report Path" "ISSUE" \
-      "reports/repository exists but is not writable. Suggested fix:" \
+      "reports exists but is not writable. Suggested fix:" \
       "Correct local permissions/ownership for this working copy."
     return 1
   fi
 
   append_check "Branch: $branch_name Report Path" "PASS" \
-    "reports/repository exists and is writable"
+    "reports exists and is writable"
   return 0
 }
 

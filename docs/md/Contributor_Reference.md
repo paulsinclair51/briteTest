@@ -204,14 +204,14 @@ commit [OPTIONS]
 **Purpose:** Copy commits from a local source fix branch into the current local
 target branch.
 
-The command updates the target through a temporary worktree and leaves the
-current worktree on the target branch.
+The command updates the current target branch directly. If conflicts occur,
+resolve the files and run `copyfix --continue` to continue the copy.
 
 **Usage:**
 
 ```bash
 copyfix [OPTIONS] SOURCE_BRANCH [-- TOKEN...]
-copyfix --continue [OPTIONS]
+copyfix --continue [-v]
 ```
 
 Use `-c TOKEN` or `-- TOKEN...` to replace the comment on each copied fix
@@ -220,7 +220,7 @@ commit. Without either option, copied commits retain their original comments.
 Use `-d` to preview the copy without changing the target. Successful copies
 are available through `report`. Dry runs and operation errors write
 `copyfix-d-<datetime>.md` and `copyfix-e-<datetime>.md` for the current target
-branch. Reports are untracked files in `reports/branch`.
+branch. Reports are untracked files in `reports/`.
 </details>
 
 <details>
@@ -267,13 +267,19 @@ lsbranch [<pattern>]
 
 #### 1.1.6. report
 
-**Purpose:** Query branch history log entries.
+**Purpose:** Generate repository, branch activity, or style reports.
 
 **Usage:**
 
 ```bash
-report [OPTIONS]
+report [OPTIONS] [TYPE]
 ```
+
+`TYPE` is `repo`, `branch`, or `style` and defaults to `branch`. The latest
+report is written directly in `reports/` as `repo-<datetime>.md`,
+`local-<datetime>.md`, `remote-<datetime>.md`, or `style-<datetime>.md`.
+Only one report with each filename prefix is kept. Local and remote reports
+are retained independently.
 </details>
 
 <details>
@@ -596,23 +602,26 @@ rmclone <clone_path> [OPTIONS]
 ### 1.3. Documentation and Branding
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.1. ckstyle</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.1. report style</summary>
 
-#### 1.3.1. ckstyle
+#### 1.3.1. report style
 
 **Purpose:** Validate style guidelines for documentation, code, scripts, and versions.
 
 **Usage:**
 
 ```bash
-ckstyle [OPTIONS]
+report style [OPTIONS]
 ```
 
 **Options:**
 
-- `-d` - Run document checks
+- `-f FILE` - Check only the specified file; may be repeated
+- `-i` - Run include checks
+- `-m` - Run Markdown and version consistency checks
 - `-r` - Run directory guide checks
-- `-v` - Run version consistency checks
+- `-s` - Run source and script checks
+- `-v` - Output verbose progress and diagnostics
 
 **Validation Coverage:**
 
@@ -1350,7 +1359,7 @@ For role-gated scripts, ensure one of the supported identity sources resolves to
 
 ### 5.2. Script-Specific Codes
 
-**ckstyle**
+**report style**
 
 | Code | Meaning |
 |------|----------|

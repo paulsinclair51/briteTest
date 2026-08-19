@@ -21,18 +21,29 @@ assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "-d" "$TMPDIR/help.out"
 pass "help output"
 
-echo "stale dry-run" > "$WORK/reports/branch/commit-d-20000101-000000.md"
-echo "stale error" > "$WORK/reports/branch/commit-e-20000101-000001.md"
-chmod a-w "$WORK/reports/branch/commit-d-20000101-000000.md" \
-  "$WORK/reports/branch/commit-e-20000101-000001.md"
+copyfix_state_root="$(git -C "$WORK" rev-parse \
+  --path-format=absolute --git-common-dir)/briteTest-copyfix-state"
+mkdir -p "$copyfix_state_root/dev/commit-tests-v1.0.0"
+rc=$(run_capture "$TMPDIR/copyfix-active.out" env GITHUB_ACTOR=testuser \
+  bash -lc "cd '$WORK' && bash ./scripts/bin/commit")
+[[ "$rc" -eq 8 ]] || fail "unfinished copyfix should block commit (got $rc)"
+assert_contains "has an unfinished copyfix operation" \
+  "$TMPDIR/copyfix-active.out"
+rm -rf "$copyfix_state_root"
+pass "unfinished copyfix blocks commit"
+
+echo "stale dry-run" > "$WORK/reports/commit-d-20000101-000000.md"
+echo "stale error" > "$WORK/reports/commit-e-20000101-000001.md"
+chmod a-w "$WORK/reports/commit-d-20000101-000000.md" \
+  "$WORK/reports/commit-e-20000101-000001.md"
 rc=$(run_capture "$TMPDIR/noop.out" env GITHUB_ACTOR=testuser \
   bash -lc "cd '$WORK' && bash ./scripts/bin/commit")
 [[ "$rc" -eq 7 ]] || fail "no-work commit should exit 7 (got $rc)"
 assert_contains "no changes to commit" "$TMPDIR/noop.out"
 assert_contains "Guidance: make changes before rerunning commit." "$TMPDIR/noop.out"
-[[ -f "$WORK/reports/branch/commit-d-20000101-000000.md" ]] || \
+[[ -f "$WORK/reports/commit-d-20000101-000000.md" ]] || \
   fail "commit prerequisite failure should preserve stale dry-run reports"
-[[ -f "$WORK/reports/branch/commit-e-20000101-000001.md" ]] || \
+[[ -f "$WORK/reports/commit-e-20000101-000001.md" ]] || \
   fail "commit prerequisite failure should preserve stale error reports"
 pass "no-work commit prerequisite"
 
@@ -73,7 +84,7 @@ rc=$(run_capture "$TMPDIR/dry.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK
 dry_report="$(latest_report "$WORK")"
 [[ -f "$dry_report" ]] || fail "expected dry-run commit report"
 assert_contains "Dry-run:" "$TMPDIR/dry.out"
-assert_contains "See reports/branch/commit-d-" "$TMPDIR/dry.out"
+assert_contains "See reports/commit-d-" "$TMPDIR/dry.out"
 assert_contains "for details." "$TMPDIR/dry.out"
 [[ "$(basename "$dry_report")" == commit-d-* ]] || fail "expected dry-run report filename"
 assert_contains "# Dry-Run Commit Report" "$dry_report"
@@ -101,7 +112,7 @@ printf '\nmessage required test\n' >> "$WORK/README.md"
 rc=$(run_capture "$TMPDIR/missing-message.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/commit")
 [[ "$rc" -eq 2 ]] || fail "missing message should exit 2 (got $rc)"
 assert_contains "User comment is required" "$TMPDIR/missing-message.out"
-[[ -z "$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+[[ -z "$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'commit-e-*.md' -print -quit)" ]] || \
   fail "prerequisite failure should not create an error report"
 pass "missing message handling"
@@ -139,7 +150,7 @@ rc=$(run_capture "$TMPDIR/e-option.out" env GITHUB_ACTOR=testuser \
 [[ "$rc" -eq 6 ]] || fail "commit -e should exit 6 (got $rc)"
 assert_contains "Error: Commit skipped due to -e option." "$TMPDIR/e-option.out"
 assert_contains "Guidance: Run without -e option." "$TMPDIR/e-option.out"
-error_report="$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'commit-e-*.md' -print -quit)"
+error_report="$(find "$WORK/reports" -maxdepth 1 -type f -name 'commit-e-*.md' -print -quit)"
 [[ -f "$error_report" ]] || fail "commit -e should create an error report"
 assert_contains "**Error:** Commit skipped due to -e option." "$error_report"
 assert_contains "**Guidance:** Run without -e option." "$error_report"
@@ -167,7 +178,7 @@ printf '\nautomatic error report test\n' >> "$WORK/README.md"
 rc=$(run_capture "$TMPDIR/commit-failure.out" env GITHUB_ACTOR=testuser \
   bash -lc "cd '$WORK' && bash ./scripts/bin/commit -c 'automatic error report test'")
 [[ "$rc" -eq 200 ]] || fail "failed commit should exit 200 (got $rc)"
-error_report="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+error_report="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'commit-e-*.md' -print -quit)"
 [[ -f "$error_report" ]] || fail "failed commit should create an error report"
 assert_contains "Failed to commit" "$error_report"

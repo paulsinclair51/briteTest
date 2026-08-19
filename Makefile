@@ -98,8 +98,8 @@ test-mrgdown:
 test-report-helpers:
 	bash ./scripts/tests/test_report_helpers.sh
 
-test-ckstyle:
-	bash ./scripts/tests/test_ckstyle.sh
+test-report-style:
+	bash ./scripts/tests/test_report_style.sh
 
 test-genpngs:
 	bash ./scripts/tests/test_genpngs.sh
@@ -116,4 +116,4 @@ genpngs:
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run lint-md check-doc test-gendocs test-fixlocal test-fixremote test-lsbranch test-mkbranch test-mrgdown test-report-helpers test-ckstyle test-genpngs test-all-scripts gendocs genpngs clean
+.PHONY: all run lint-md check-doc test-gendocs test-fixlocal test-fixremote test-lsbranch test-mkbranch test-mrgdown test-report-helpers test-report-style test-genpngs test-all-scripts gendocs genpngs clean

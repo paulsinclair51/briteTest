@@ -18,7 +18,7 @@ Usage:
 
 Check the current briteTest repository for corruption and issues, apply safe
 cleanup/fixes, and generate a report in
-reports/repository/repository-<datetime>.md.
+reports/repository-<datetime>.md.
 
 You can optionally include one clone path so this one script checks both repos.
 
@@ -49,10 +49,11 @@ Features:
   - Distinguishes fixable vs non-fixable issues
 
 Options:
-  -h, --help            Output this help to stdout and exit.
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
   -v                    Show report contents to stdout after completion.
   -d                    Dry-run mode: report issues only, do not attempt
-  repairs.
+                        repairs.
   -q                    Faster checks using reduced-cost diagnostics.
   -t SEC                Remote reachability timeout in seconds (default: 10).
                         Use 0 to skip remote connectivity/tracking checks.
@@ -66,7 +67,7 @@ Common runs:
 Outputs:
   - Writes help text, status messages, and summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - Writes a report to reports/repository/repository-<datetime>.md.
+  - Writes a report to reports/repository-<datetime>.md.
   - Report files are generated as local untracked files.
 
 Exit codes:
@@ -98,7 +99,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd -P)"
 # Repository-specific: keep generated reports under this workspace layout.
-REPOSITORY_REPORTS_DIR="$REPO_ROOT/reports/repository"
+REPOSITORY_REPORTS_DIR="$REPO_ROOT/reports"
 
 # Validate required helpers exist
 if [[ ! -f "$SCRIPT_DIR/../helpers/common.sh" ]]; then
@@ -524,7 +525,7 @@ check_working_directory() {
   if [[ -n "$status_output" ]]; then
     status_output="$(printf '%s\n' "$status_output" | awk '
       BEGIN {
-        report_re = "^reports/repository/repository-[0-9]{8}-[0-9]{6}"
+        report_re = "^reports/repository-[0-9]{8}-[0-9]{6}"
         report_re = report_re "(-[0-9]+)?\\.md$"
       }
       {

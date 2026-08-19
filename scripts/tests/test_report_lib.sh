@@ -43,7 +43,7 @@ assert_contains() {
 report_path_from_output() {
   local output_file="$1"
 
-  sed -n 's/^See \(reports\/branch\/history-[0-9]\{8\}-[0-9]\{6\}-[0-9]\+\.md\) for details\.$/\1/p' \
+  sed -n 's/^See \(reports\/\(local\|remote\)-[0-9]\{8\}-[0-9]\{6\}\.md\) for details\.$/\1/p' \
     "$output_file" | tail -n 1
 }
 
@@ -72,7 +72,29 @@ report_test_init() {
   cp "$REPORT_SRC" "$WORK/scripts/bin/report"
   cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
   cp "$REPORT_HELPER_SRC" "$WORK/scripts/helpers/report_helpers.sh"
-  chmod +x "$WORK/scripts/bin/report"
+  cat > "$WORK/scripts/helpers/ckstyle.sh" <<'EOF'
+#!/usr/bin/env bash
+bt_ckstyle() {
+  printf '%s\n' "$@" > style-args.txt
+  echo "See reports/style-test.md for details."
+  exit 0
+}
+EOF
+  cat > "$WORK/scripts/bin/lsbranch" <<'EOF'
+#!/usr/bin/env bash
+mkdir -p "$BRITETEST_LSBRANCH_REPORT_DIR"
+report="$BRITETEST_LSBRANCH_REPORT_DIR/$BRITETEST_LSBRANCH_REPORT_PREFIX-test.md"
+cat > "$report" <<'REPORT'
+# Branch Report
+
+| **Branch** | **Type** | **Status** |
+| --- | --- | --- |
+| dev/report-tests-v1.0.0 | local | clean |
+REPORT
+printf 'See %s for details.\n' "${report#"$PWD"/}"
+EOF
+  chmod +x "$WORK/scripts/bin/report" "$WORK/scripts/helpers/ckstyle.sh" \
+    "$WORK/scripts/bin/lsbranch"
 
   (
     cd "$WORK"

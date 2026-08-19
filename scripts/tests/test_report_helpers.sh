@@ -67,7 +67,7 @@ seed_repo() {
     cd "$repo"
     git config user.name "testuser"
     git config user.email "test@example.com"
-    mkdir -p reports/branch
+    mkdir -p reports
     echo "seed" > README.md
     git add README.md reports
     git commit -m "seed repo" >/dev/null 2>&1
@@ -77,16 +77,16 @@ seed_repo() {
 # 1) Deletion tracking should record the exact relative path.
 DELETE_REPO="$TMPDIR/delete-repo"
 seed_repo "$DELETE_REPO"
-echo "obsolete report" > "$DELETE_REPO/reports/branch/old-report.md"
+echo "obsolete report" > "$DELETE_REPO/reports/old-report.md"
 deleted_reports=()
 bt_report_remove_and_record \
   "$DELETE_REPO" deleted_reports \
-  "$DELETE_REPO/reports/branch/old-report.md" "test report"
-[[ ! -e "$DELETE_REPO/reports/branch/old-report.md" ]] || \
+  "$DELETE_REPO/reports/old-report.md" "test report"
+[[ ! -e "$DELETE_REPO/reports/old-report.md" ]] || \
   fail "old report should be deleted"
 [[ "${#deleted_reports[@]}" -eq 1 ]] || \
   fail "expected one deleted report path to be recorded"
-[[ "${deleted_reports[0]}" == "reports/branch/old-report.md" ]] || \
+[[ "${deleted_reports[0]}" == "reports/old-report.md" ]] || \
   fail "expected recorded deleted report path to be relative"
 pass "delete-and-record helper"
 
@@ -103,30 +103,30 @@ pass "delete-and-record helper"
 # 3) Shared transient report cleanup should remove only matching branch reports.
 cleanup_repo="$TMPDIR/cleanup-repo"
 seed_repo "$cleanup_repo"
-mkdir -p "$cleanup_repo/reports/branch"
-cat > "$cleanup_repo/reports/branch/keep.md" <<'EOF'
+mkdir -p "$cleanup_repo/reports"
+cat > "$cleanup_repo/reports/keep.md" <<'EOF'
 # Keep Report
 
 **Branch:** `feature/other`
 EOF
-cat > "$cleanup_repo/reports/branch/remove.md" <<'EOF'
+cat > "$cleanup_repo/reports/remove.md" <<'EOF'
 # Remove Report
 
 **Branch:** `feature/current`
 EOF
-cat > "$cleanup_repo/reports/branch/source-remove.md" <<'EOF'
+cat > "$cleanup_repo/reports/source-remove.md" <<'EOF'
 # Remove Report
 
 **Source Branch:** `feature/current`
 EOF
 bt_report_cleanup_transient_reports \
-  "$cleanup_repo/reports/branch" \
+  "$cleanup_repo/reports" \
   "feature/current" \
-  "$cleanup_repo/reports/branch/keep.md" \
+  "$cleanup_repo/reports/keep.md" \
   "remove.md" "source-remove.md"
-[[ -f "$cleanup_repo/reports/branch/keep.md" ]] || fail "expected non-matching report to remain"
-[[ -f "$cleanup_repo/reports/branch/remove.md" ]] && fail "expected branch-matching report to be removed"
-[[ -f "$cleanup_repo/reports/branch/source-remove.md" ]] && fail "expected source-branch-matching report to be removed"
+[[ -f "$cleanup_repo/reports/keep.md" ]] || fail "expected non-matching report to remain"
+[[ -f "$cleanup_repo/reports/remove.md" ]] && fail "expected branch-matching report to be removed"
+[[ -f "$cleanup_repo/reports/source-remove.md" ]] && fail "expected source-branch-matching report to be removed"
 
 # 4) Shared report names include process identity, and locks serialize writers.
 unique_path="$(bt_report_retained_path "/tmp/reports" "push-d" "20260802-120000" "12345")"

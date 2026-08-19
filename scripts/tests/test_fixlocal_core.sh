@@ -30,7 +30,7 @@ rc=$(run_capture "$TMPDIR/help.out" bash "$BRITE_REPO/scripts/bin/fixlocal" -h)
 [[ "$rc" -eq 0 ]] || fail "fixlocal -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "repository-d-<date>-<time>-<pid>.md" "$TMPDIR/help.out"
-assert_contains "<repo>/reports/repository/" "$TMPDIR/help.out"
+assert_contains "<repo>/reports/" "$TMPDIR/help.out"
 pass "help output"
 
 # 2) Verified remediation flow should resolve fixable loose-object issues
@@ -122,11 +122,11 @@ pass "missing helper dependency handling"
 
 # 9) Unwritable report path setup should exit 100
 REPORT_PATH_FAIL_REPO="$(make_fixture_repo reportpathfail plain)"
-rm -rf "$REPORT_PATH_FAIL_REPO/reports/repository"
-echo "blocking file" > "$REPORT_PATH_FAIL_REPO/reports/repository"
+rm -rf "$REPORT_PATH_FAIL_REPO/reports"
+echo "blocking file" > "$REPORT_PATH_FAIL_REPO/reports"
 rc=$(run_capture "$TMPDIR/report-path-fail.out" bash "$REPORT_PATH_FAIL_REPO/scripts/bin/fixlocal" -d)
 [[ "$rc" -eq 100 ]] || fail "fixlocal should exit 100 when report directory cannot be created (got $rc)"
-assert_contains "Unable to create reports directory" "$TMPDIR/report-path-fail.out"
+assert_contains "Reports directory not found" "$TMPDIR/report-path-fail.out"
 pass "report path creation failure handling"
 
 # 10) Unauthorized user should be blocked

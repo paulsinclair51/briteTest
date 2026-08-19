@@ -45,6 +45,12 @@ assert_contains() {
   grep -Fq -- "$text" "$file" || fail "expected '$text' in $file"
 }
 
+assert_matches() {
+  local pattern="$1"
+  local file="$2"
+  grep -Eq -- "$pattern" "$file" || fail "expected pattern '$pattern' in $file"
+}
+
 for dep in bash git grep mktemp timeout; do
   command -v "$dep" >/dev/null 2>&1 || fail "missing required command: $dep"
 done
@@ -111,8 +117,9 @@ chmod +x "$WORK/scripts/bin/chbranch"
 rc=$(run_in_work_capture "$TMPDIR/help.out" -h)
 [[ "$rc" -eq 0 ]] || fail "chbranch -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
-assert_contains "8   Running outside a Git repository." "$TMPDIR/help.out"
-assert_contains "9   Required command is not available (git or timeout)." \
+assert_matches '^[[:space:]]*8[[:space:]]+Running outside a Git repository\.$' \
+  "$TMPDIR/help.out"
+assert_matches '^[[:space:]]*9[[:space:]]+Required command is not available \(git or timeout\)\.$' \
   "$TMPDIR/help.out"
 pass "help output"
 
@@ -204,6 +211,76 @@ assert_contains "Changed to remote dev/target branch." \
   fail "expected detached HEAD in remote mode"
 pass "remote branch switch"
 
+# Refreshing the current remote snapshot requires a clean worktree.
+NO_REMOTE_BIN="$TMPDIR/no-remote-bin"
+REMOTE_CALL_MARKER="$TMPDIR/dirty-remote-call"
+mkdir -p "$NO_REMOTE_BIN"
+cat > "$NO_REMOTE_BIN/git" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "ls-remote" || "$1" == "fetch" ]]; then
+  : > "${REMOTE_CALL_MARKER:?}"
+  exit 99
+fi
+exec "${REAL_GIT:?}" "$@"
+EOF
+chmod +x "$NO_REMOTE_BIN/git"
+echo "dirty remote snapshot" >> "$WORK/README.md"
+set +e
+(
+  cd "$WORK"
+  PATH="$NO_REMOTE_BIN:$PATH" REAL_GIT="$REAL_GIT" \
+    REMOTE_CALL_MARKER="$REMOTE_CALL_MARKER" \
+    bash "$WORK/scripts/bin/chbranch" -r dev/target
+) >"$TMPDIR/dirty-current-remote.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 2 ]] || \
+  fail "dirty current remote snapshot should exit 2 (got $rc)"
+assert_contains "has uncommitted changes" "$TMPDIR/dirty-current-remote.out"
+[[ ! -e "$REMOTE_CALL_MARKER" ]] || \
+  fail "dirty remote selection should not query or fetch the remote"
+(
+  cd "$WORK"
+  git restore README.md
+)
+pass "dirty remote snapshot refresh blocked"
+
+# Re-selecting a remote snapshot refreshes the remote ref and moves HEAD when
+# the remote branch has advanced.
+(
+  cd "$WORK"
+  git switch dev/target >/dev/null 2>&1
+  git commit --allow-empty -m "advance remote snapshot" >/dev/null 2>&1
+  advanced_remote_tip="$(git rev-parse HEAD)"
+  git push origin dev/target >/dev/null 2>&1
+  git switch --detach HEAD^ >/dev/null 2>&1
+  printf '%s\n' "$advanced_remote_tip" > "$TMPDIR/advanced-remote-tip"
+)
+rc=$(run_in_work_capture "$TMPDIR/remote-refresh.out" -r dev/target)
+[[ "$rc" -eq 0 ]] || fail "remote refresh should exit 0 (got $rc)"
+[[ "$(git -C "$WORK" rev-parse HEAD)" == \
+  "$(cat "$TMPDIR/advanced-remote-tip")" ]] || \
+  fail "expected refreshed snapshot to match the advanced remote tip"
+pass "existing remote snapshot refresh"
+
+# Resolving an omitted branch from a uniquely identifiable detached snapshot
+# must not update remembered state until the requested selection succeeds.
+(
+  cd "$WORK"
+  git config --local --unset-all chbranch.lastBranch >/dev/null 2>&1 || true
+)
+echo "dirty failed selection" >> "$WORK/README.md"
+rc=$(run_in_work_capture "$TMPDIR/failed-implicit.out")
+[[ "$rc" -eq 2 ]] || fail "dirty implicit switch should exit 2 (got $rc)"
+if git -C "$WORK" config --local --get chbranch.lastBranch >/dev/null 2>&1; then
+  fail "failed branch selection should not update remembered branch state"
+fi
+(
+  cd "$WORK"
+  git restore README.md
+)
+pass "remember branch only after success"
+
 # Default mode falls back to a remote-only branch and remains detached.
 rc=$(run_in_work_capture "$TMPDIR/default-remote-only.out" dev/remote-only)
 [[ "$rc" -eq 0 ]] || fail "default remote-only switch should exit 0 (got $rc)"
@@ -216,16 +293,16 @@ assert_contains "Changed to remote dev/remote-only branch." \
   fail "expected HEAD to match origin/dev/remote-only"
 pass "default remote-only branch switch"
 
-# Protected local branches are checked out detached according to policy.
+# Protected local branches remain attached in explicit local mode.
 rc=$(run_in_work_capture "$TMPDIR/protected-success.out" -l main)
 [[ "$rc" -eq 0 ]] || fail "protected local switch should exit 0 (got $rc)"
 assert_contains "Changed to local main branch." \
   "$TMPDIR/protected-success.out"
-[[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
-  fail "expected detached HEAD for protected local branch"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" == "main" ]] || \
+  fail "expected attached HEAD for protected local branch"
 pass "protected branch policy"
 
-# Default mode also checks out a protected local branch detached.
+# Default mode is local-first and keeps a protected local branch attached.
 rc=$(run_in_work_capture "$TMPDIR/protected-default.out" dev/target)
 [[ "$rc" -eq 0 ]] || fail "setup switch should exit 0 (got $rc)"
 rc=$(run_in_work_capture "$TMPDIR/protected-default.out" main)
@@ -233,19 +310,19 @@ rc=$(run_in_work_capture "$TMPDIR/protected-default.out" main)
   fail "default protected switch should exit 0 (got $rc)"
 assert_contains "Changed to local main branch." \
   "$TMPDIR/protected-default.out"
-[[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
-  fail "expected detached HEAD for default protected branch"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" == "main" ]] || \
+  fail "expected attached HEAD for default protected branch"
 pass "default protected branch policy"
 
-# Version branches are protected and checked out detached.
+# Protected version branches remain attached in default local mode.
 rc=$(run_in_work_capture "$TMPDIR/version-setup.out" dev/target)
 [[ "$rc" -eq 0 ]] || fail "version setup switch should exit 0 (got $rc)"
 rc=$(run_in_work_capture "$TMPDIR/version-protected.out" v1.0.0)
 [[ "$rc" -eq 0 ]] || fail "version branch should exit 0 (got $rc)"
 assert_contains "Changed to local v1.0.0 branch." \
   "$TMPDIR/version-protected.out"
-[[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
-  fail "expected detached HEAD for protected version branch"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" == "v1.0.0" ]] || \
+  fail "expected attached HEAD for protected version branch"
 pass "version branch policy"
 
 # Existing policy-invalid local branches can be inspected only as detached.

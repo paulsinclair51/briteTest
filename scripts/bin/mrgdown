@@ -25,6 +25,7 @@ instructions for complex ones.
 Prerequisites:
   - The current branch must have no uncommitted changes.
   - If there are changes, use the commit or undo workflow first.
+  - The current branch must not have an unfinished copyfix operation.
 
 Protected branches (cannot run mrgdown):
   - main
@@ -46,10 +47,8 @@ Options:
   -d                 Dry-run for the merge workflow. The script does not
                      create the merge commit, but it still generates the
                      report and may delete stale dry-run reports.
-  -h                 Output this help to stdout and exit (other options
-                     and arguments are ignored).
-  --help             Output this help to stdout and exit (other options
-                     and arguments are ignored).
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
   -o                 Owner override. Allows repository owner to run even
                      on version branches normally blocked by user policy
                      for this command run only; normal role restrictions
@@ -71,10 +70,11 @@ Options:
   If a commit comment is not specified, the default commit comment is:
     "Merge <parent_branch> into <current_branch>"
 
-Example: Merge down.
+Examples:
+  # Merge down.
   mrgdown
 
-Example: Merge down with verbose output.
+  # Merge down with verbose output.
   mrgdown -v
 
 Outputs:
@@ -85,10 +85,10 @@ Outputs:
     command and writes 'Run report for details.' to stdout. It does not write
     an immediate merge report.
   - A dry-run report is written (untracked) locally to:
-        <repo>/reports/branch/mrgdown-d-<datetime>.md
+        <repo>/reports/mrgdown-d-<datetime>.md
   - If a non-dry-run operation fails after merge work starts, writes an
     untracked error report to:
-        <repo>/reports/branch/mrgdown-e-<datetime>.md
+        <repo>/reports/mrgdown-e-<datetime>.md
     Usage and prerequisite failures do not create reports.
 
 Exit codes:
@@ -117,12 +117,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BRANCH_REPORTS_DIR="$REPO_ROOT/reports/branch"
+REPORTS_DIR="$REPO_ROOT/reports"
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 REPORT_FILE=""
 ORIGINAL_ARGS=("$@")
-BRANCH_REPORTS_DIR_UNLOCKED=false
+REPORTS_DIR_WRITE_ENABLED=false
 REPORT_LOCK_FD=""
 REPORT_LOCK_HELD=false
 CURRENT_BRANCH=""
@@ -157,21 +157,21 @@ cleanup_runtime_files() {
     bt_report_release_lock "$REPORT_LOCK_FD"
     REPORT_LOCK_HELD=false
   fi
-  if [[ "$BRANCH_REPORTS_DIR_UNLOCKED" == true ]]; then
-    BRANCH_REPORTS_DIR_UNLOCKED=false
+  if [[ "$REPORTS_DIR_WRITE_ENABLED" == true ]]; then
+    REPORTS_DIR_WRITE_ENABLED=false
   fi
 }
 
 trap cleanup_runtime_files EXIT
 
-enable_branch_reports_write_access() {
-  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_CONFIG_ERROR"
-  BRANCH_REPORTS_DIR_UNLOCKED=true
+enable_reports_write_access() {
+  bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_CONFIG_ERROR"
+  REPORTS_DIR_WRITE_ENABLED=true
 }
 
-disable_branch_reports_write_access() {
-  if [[ "$BRANCH_REPORTS_DIR_UNLOCKED" == true ]]; then
-    BRANCH_REPORTS_DIR_UNLOCKED=false
+disable_reports_write_access() {
+  if [[ "$REPORTS_DIR_WRITE_ENABLED" == true ]]; then
+    REPORTS_DIR_WRITE_ENABLED=false
   fi
 }
 
@@ -217,15 +217,15 @@ collect_staged_merge_file_summary() {
 cleanup_success_transient_reports() {
   REPORT_FILE=""
   acquire_report_lock
-  enable_branch_reports_write_access
+  enable_reports_write_access
   cleanup_old_transient_reports
-  disable_branch_reports_write_access
+  disable_reports_write_access
   release_report_lock
 }
 
 cleanup_old_transient_reports() {
   bt_report_cleanup_transient_reports \
-    "$BRANCH_REPORTS_DIR" \
+    "$REPORTS_DIR" \
     "$CURRENT_BRANCH" \
     "$REPORT_FILE" \
     "mrgdown-d-*.md" \
@@ -240,9 +240,9 @@ generate_dry_run_report() {
 
   command_text="$(format_command_line)"
   acquire_report_lock
-  enable_branch_reports_write_access
+  enable_reports_write_access
 
-  REPORT_FILE="$(bt_report_transient_path "$BRANCH_REPORTS_DIR" "mrgdown-d" \
+  REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "mrgdown-d" \
     "$RUN_TS_FILE")"
   cleanup_old_transient_reports
 
@@ -265,7 +265,7 @@ generate_dry_run_report() {
 
 EOF
 
-  disable_branch_reports_write_access
+  disable_reports_write_access
   release_report_lock
 }
 
@@ -276,9 +276,9 @@ generate_error_report() {
 
   command_text="$(format_command_line)"
   acquire_report_lock
-  enable_branch_reports_write_access
+  enable_reports_write_access
 
-  REPORT_FILE="$(bt_report_transient_path "$BRANCH_REPORTS_DIR" "mrgdown-e" \
+  REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "mrgdown-e" \
     "$RUN_TS_FILE")"
   cleanup_old_transient_reports
 
@@ -299,7 +299,7 @@ generate_error_report() {
 
 EOF
 
-  disable_branch_reports_write_access
+  disable_reports_write_access
   release_report_lock
 }
 
@@ -509,6 +509,12 @@ CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
 if [[ "$VERBOSE" == true ]]; then
   bt_info "Current local branch $CURRENT_BRANCH."
+fi
+
+if bt_is_copyfix_in_progress "$CURRENT_BRANCH"; then
+  bt_emit_prerequisite_failure "$EXIT_OPERATION_FAILED" \
+    "Current branch '$CURRENT_BRANCH' has an unfinished copyfix operation." \
+    "complete it with 'copyfix --continue' before rerunning mrgdown."
 fi
 
 if [[ "$OWNER_OVERRIDE" == true ]]; then

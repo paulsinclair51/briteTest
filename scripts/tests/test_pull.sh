@@ -64,7 +64,7 @@ git init --bare "$ORIGIN" >/dev/null 2>&1
 git clone "$ORIGIN" "$WORK" >/dev/null 2>&1
 git clone "$ORIGIN" "$PEER" >/dev/null 2>&1
 
-mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/reports/branch"
+mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/reports"
 cp "$PULL_SRC" "$WORK/scripts/bin/pull"
 cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
 cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
@@ -78,11 +78,11 @@ chmod +x "$WORK/scripts/bin/pull"
   git config user.name "testuser"
   git config user.email "test@example.com"
   echo "seed" > README.md
-  mkdir -p reports/branch
+  mkdir -p reports
   cat > .gitignore <<'GITIGNORE'
-reports/branch/branch-*.md
-reports/branch/pull-*.md
-reports/branch/commit-*.md
+reports/branch-*.md
+reports/pull-*.md
+reports/commit-*.md
 GITIGNORE
   git add README.md scripts reports .gitignore
   git commit -m "seed repo" >/dev/null 2>&1
@@ -108,7 +108,18 @@ assert_contains "must be a targeted or contributor branch" "$TMPDIR/help.out"
 assert_contains "12   Pull skipped because -e was specified." "$TMPDIR/help.out"
 pass "help output"
 
-cat > "$WORK/reports/branch/pull-e-20000101-000000.md" <<'EOF'
+copyfix_state_root="$(git -C "$WORK" rev-parse \
+  --path-format=absolute --git-common-dir)/briteTest-copyfix-state"
+mkdir -p "$copyfix_state_root/dev/current-v1.0.0"
+rc=$(run_capture "$TMPDIR/copyfix-active.out" \
+  bash -lc "cd '$WORK' && bash ./scripts/bin/pull")
+[[ "$rc" -eq 14 ]] || fail "unfinished copyfix should block pull (got $rc)"
+assert_contains "has an unfinished copyfix operation" \
+  "$TMPDIR/copyfix-active.out"
+rm -rf "$copyfix_state_root"
+pass "unfinished copyfix blocks pull"
+
+cat > "$WORK/reports/pull-e-20000101-000000.md" <<'EOF'
 # Stale Pull Error Report
 
 **Branch:** `dev/current-v1.0.0`
@@ -124,14 +135,14 @@ rc=$(run_capture "$TMPDIR/skip-e.out" bash -lc "cd '$WORK' && bash ./scripts/bin
 [[ "$rc" -eq 12 ]] || fail "pull -e should exit 12 (got $rc)"
 assert_contains "Error: Pull skipped due to -e option." "$TMPDIR/skip-e.out"
 assert_contains "Guidance: Run without -e option." "$TMPDIR/skip-e.out"
-assert_contains "See reports/branch/pull-e-" "$TMPDIR/skip-e.out"
-skip_report="$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'pull-e-*.md' | sort | tail -n 1)"
+assert_contains "See reports/pull-e-" "$TMPDIR/skip-e.out"
+skip_report="$(find "$WORK/reports" -maxdepth 1 -type f -name 'pull-e-*.md' | sort | tail -n 1)"
 [[ -f "$skip_report" ]] || fail "expected pull skip report"
 assert_contains '**Branch:** `dev/current-v1.0.0`' "$skip_report"
 assert_contains "**Error:** Pull skipped due to -e option." "$skip_report"
 assert_contains "## Guidance" "$skip_report"
 assert_contains "- Run without -e option." "$skip_report"
-[[ ! -e "$WORK/reports/branch/pull-e-20000101-000000.md" ]] || \
+[[ ! -e "$WORK/reports/pull-e-20000101-000000.md" ]] || \
   fail "pull -e should delete the older error report for the current branch"
 pass "skip mode"
 
@@ -145,7 +156,7 @@ pass "skip mode"
   cd "$WORK"
   git checkout main >/dev/null 2>&1
 )
-cat > "$WORK/reports/branch/pull-e-20000101-000001.md" <<'EOF'
+cat > "$WORK/reports/pull-e-20000101-000001.md" <<'EOF'
 # Stale Pull Error Report
 
 **Branch:** `main`
@@ -155,12 +166,12 @@ rc=$(run_capture "$TMPDIR/skip-e-policy.out" \
 [[ "$rc" -eq 4 ]] || fail "pull -e on main should exit 4 (got $rc)"
 assert_contains "Current branch 'main' must be a targeted or contributor branch" \
   "$TMPDIR/skip-e-policy.out"
-[[ -e "$WORK/reports/branch/pull-e-20000101-000001.md" ]] || \
+[[ -e "$WORK/reports/pull-e-20000101-000001.md" ]] || \
   fail "pull -e prerequisite failure should not delete reports"
-[[ "$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+[[ "$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pull-e-*.md' | wc -l)" -eq 2 ]] || \
   fail "pull -e prerequisite failure should not generate a report"
-rm -f "$WORK/reports/branch/pull-e-20000101-000001.md"
+rm -f "$WORK/reports/pull-e-20000101-000001.md"
 (
   cd "$WORK"
   git checkout dev/current-v1.0.0 >/dev/null 2>&1
@@ -223,7 +234,7 @@ rc=$(run_capture "$TMPDIR/version-owner.out" env \
   bash -lc "cd '$WORK' && bash ./scripts/bin/pull -o -d")
 [[ "$rc" -eq 0 ]] || fail "pull -o on version branch should succeed (got $rc)"
 assert_contains "Owner override enabled" "$TMPDIR/version-owner.out"
-assert_contains "See reports/branch/pull-d-" "$TMPDIR/version-owner.out"
+assert_contains "See reports/pull-d-" "$TMPDIR/version-owner.out"
 pass "owner override accepts version branch"
 
 (
@@ -231,30 +242,30 @@ pass "owner override accepts version branch"
   git checkout dev/current-v1.0.0 >/dev/null 2>&1
 )
 
-cat > "$WORK/reports/branch/pull-d-20000101-000000.md" <<'EOF'
+cat > "$WORK/reports/pull-d-20000101-000000.md" <<'EOF'
 # Stale Pull Report
 
 **Branch:** `dev/current-v1.0.0`
 EOF
-cat > "$WORK/reports/branch/pull-e-20000101-000001.md" <<'EOF'
+cat > "$WORK/reports/pull-e-20000101-000001.md" <<'EOF'
 # Stale Pull Error Report
 
 **Branch:** `dev/current-v1.0.0`
 EOF
-chmod a-w "$WORK/reports/branch/pull-d-20000101-000000.md" \
-  "$WORK/reports/branch/pull-e-20000101-000001.md"
+chmod a-w "$WORK/reports/pull-d-20000101-000000.md" \
+  "$WORK/reports/pull-e-20000101-000001.md"
 rc=$(run_capture "$TMPDIR/noop.out" \
   bash -lc "cd '$WORK' && bash ./scripts/bin/pull")
 [[ "$rc" -eq 13 ]] || fail "no-work pull should exit 13 (got $rc)"
 assert_contains "no changes to pull" "$TMPDIR/noop.out"
 assert_contains "Guidance: rerun pull after remote changes are available." \
   "$TMPDIR/noop.out"
-if grep -Fq "See reports/branch/pull-" "$TMPDIR/noop.out"; then
+if grep -Fq "See reports/pull-" "$TMPDIR/noop.out"; then
   fail "pull prerequisite failure should not output a report path"
 fi
-[[ -f "$WORK/reports/branch/pull-d-20000101-000000.md" ]] || \
+[[ -f "$WORK/reports/pull-d-20000101-000000.md" ]] || \
   fail "pull prerequisite failure should preserve stale dry-run reports"
-[[ -f "$WORK/reports/branch/pull-e-20000101-000001.md" ]] || \
+[[ -f "$WORK/reports/pull-e-20000101-000001.md" ]] || \
   fail "pull prerequisite failure should preserve stale error reports"
 pass "no-work pull prerequisite"
 
@@ -268,8 +279,8 @@ pass "no-work pull prerequisite"
 rc=$(run_capture "$TMPDIR/dryrun.out" bash -lc "cd '$WORK' && bash ./scripts/bin/pull -d")
 [[ "$rc" -eq 0 ]] || fail "dry-run pull should exit 0 (got $rc)"
 assert_contains "Dry-run: no fetch, pull, or branch updates will be performed." "$TMPDIR/dryrun.out"
-assert_contains "See reports/branch/pull-d-" "$TMPDIR/dryrun.out"
-dryrun_report="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+assert_contains "See reports/pull-d-" "$TMPDIR/dryrun.out"
+dryrun_report="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pull-d-*.md' | sort | tail -n 1)"
 [[ -f "$dryrun_report" ]] || fail "dry-run pull should create a report"
 pass "dry-run output and report"
@@ -318,13 +329,13 @@ pass "missing origin"
   git add local-current.txt
   git commit -m "local current update" >/dev/null 2>&1
 )
-reports_before="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+reports_before="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pull-[0-9]*.md' -print | sort)"
 rc=$(run_capture "$TMPDIR/diverge-safe.out" bash -lc "cd '$WORK' && bash ./scripts/bin/pull")
 [[ "$rc" -eq 0 ]] || fail "safe divergence should auto-resolve (got $rc)"
 assert_contains "auto-resolved divergence" "$TMPDIR/diverge-safe.out"
 assert_contains "Run report for details." "$TMPDIR/diverge-safe.out"
-reports_after="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pull-[0-9]*.md' -print | sort)"
 if [[ "$reports_after" != "$reports_before" ]]; then
   fail "successful pull should not add an immediate pull report"
@@ -376,13 +387,13 @@ pass "conflicting divergence pauses for manual resolution"
   printf 'peer\nlocal\n' > conflict.txt
   git add conflict.txt
 )
-reports_before="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+reports_before="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pull-[0-9]*.md' -print | sort)"
 rc=$(run_capture "$TMPDIR/rebase-rerun.out" bash -lc "cd '$WORK' && bash ./scripts/bin/pull")
 [[ "$rc" -eq 0 ]] || fail "rerun after manual conflict resolution should complete sync (got $rc)"
 assert_contains "Completed in-progress rebase" "$TMPDIR/rebase-rerun.out"
 assert_contains "Run report for details." "$TMPDIR/rebase-rerun.out"
-reports_after="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pull-[0-9]*.md' -print | sort)"
 [[ "$reports_after" == "$reports_before" ]] || \
   fail "completed pull rebase should not add an immediate pull report"

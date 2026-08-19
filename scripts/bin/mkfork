@@ -48,7 +48,7 @@ Options:
   -c                   If fork exists but is incomplete/misconfigured, delete it
                        instead of completing configuration. Useful after crashes
                        or if manual changes broke the fork state.
-  -v                   Output detailed and progress information to stdout.
+  -v                   Output progress and diagnostics to stdout.
   -d                   Dry-run (show what would be done without creating fork).
   -t SEC               Remote operation timeout in seconds (default: 10).
                        SEC must be an integer greater than 0.

@@ -11,7 +11,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  release VERSION [OPTIONS]
+  release [OPTIONS] VERSION
+  release -e
   release {-h | --help}
 
 Create and publish a release with annotated git tag and GitHub release.
@@ -32,12 +33,18 @@ Features:
   - Release logging to logs/remote_branch_history.md
   - Pre-release validation
 
+Arguments:
+  VERSION       The version for the release (e.g., v1.2.3).
+                Options may precede or follow the VERSION argument.
 Options:
-  -h, --help    Output this help to stdout and exit (other options
-                and arguments are ignored).
+  -d            Dry-run. Validate the release without creating or publishing
+                a tag, GitHub release, or history entry.
+  -e            Generate an error report without creating a release.
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
   -t SEC        Remote operation timeout in seconds (default: 10).
                 SEC must be an integer greater than 0.
-  -v            Output detailed progress information to stdout.
+  -v            Output progress and diagnostics to stdout.
 
 Examples:
   # Create release v1.0.0
@@ -51,8 +58,9 @@ Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
   - No report is written when the requested release tag already exists.
-  - May generate files, reports, or other artifacts in the documented output
-    locations.
+  - Dry-run and error-run reports are written to
+    <repo>/reports/release-d-<datetime>.md and release-e-<datetime>.md.
+  - Successful releases do not write an immediate report.
 
 Exit codes:
   0   Success
@@ -63,6 +71,8 @@ Exit codes:
   5   Status checks not passing
   6   GitHub API error
   7   Tag already exists
+  8   Release skipped because -e was specified
+  201 Report creation or locking failed
 EOF
 }
 
@@ -87,12 +97,16 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 source "$SCRIPT_DIR/../helpers/github_helpers.sh"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
+# shellcheck source=helpers/report_helpers.sh
+source "$SCRIPT_DIR/../helpers/report_helpers.sh"
 
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NOT_FOUND=2
 readonly EXIT_OPERATION_FAILED=3
 readonly EXIT_CONFIG_ERROR=4
 readonly EXIT_INTERNAL_ERROR=100
+readonly EXIT_WORKFLOW_SKIPPED=8
+readonly EXIT_REPORT_FAILED=201
 
 usage_error() {
   local message="$1"
@@ -104,8 +118,53 @@ usage_error() {
 
 # Default options
 VERBOSE=false
+DRY_RUN=false
+ERROR_RUN=false
 VERSION=""
 REMOTE_TIMEOUT_SECONDS=10
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPORTS_DIR="$REPO_ROOT/reports"
+REPORT_FILE=""
+REPORT_LOCK_FD=""
+ORIGINAL_ARGS=("$@")
+
+generate_release_report() {
+  local mode="$1"
+  local status="$2"
+  local prefix="release-d"
+  local title="Release Dry-Run Report"
+  local command_text=""
+
+  if [[ "$mode" == "error" ]]; then
+    prefix="release-e"
+    title="Release Error Report"
+  fi
+  if ! bt_report_acquire_lock "$REPO_ROOT" "release" 10 REPORT_LOCK_FD; then
+    bt_error_exit "$EXIT_REPORT_FAILED" \
+      "Timed out waiting for the release report lock"
+  fi
+  bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_FAILED"
+  REPORT_FILE="$(bt_report_transient_path \
+    "$REPORTS_DIR" "$prefix" "$(date '+%Y%m%d-%H%M%S')")"
+  bt_report_cleanup_transient_reports \
+    "$REPORTS_DIR" "${CURRENT_BRANCH:-unknown}" "$REPORT_FILE" \
+    "release-d-*.md" "release-e-*.md"
+  command_text="$(bt_format_command_line "release" "${ORIGINAL_ARGS[@]}")"
+  bt_report_write_header "$REPORT_FILE" "$title" \
+    "$(date '+%Y-%m-%d %H:%M:%S')" "$command_text"
+  cat >> "$REPORT_FILE" <<EOF
+**Branch:** \`${CURRENT_BRANCH:-unknown}\`
+
+**Version:** \`${VERSION:-unknown}\`
+
+**Mode:** ${mode}
+
+**Status:** ${status}
+
+EOF
+  bt_report_release_lock "$REPORT_LOCK_FD"
+  REPORT_LOCK_FD=""
+}
 
 
 get_current_user() {
@@ -336,6 +395,18 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
+    -d)
+      [[ "$ERROR_RUN" == false ]] || \
+        usage_error "Options -d and -e are mutually exclusive"
+      DRY_RUN=true
+      shift
+      ;;
+    -e)
+      [[ "$DRY_RUN" == false ]] || \
+        usage_error "Options -d and -e are mutually exclusive"
+      ERROR_RUN=true
+      shift
+      ;;
     -v | --verbose)
       VERBOSE=true
       shift
@@ -362,6 +433,16 @@ while [[ $# -gt 0 ]]; do
 done
 
 export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
+
+if [[ "$ERROR_RUN" == true ]]; then
+  CURRENT_BRANCH="$(bt_get_current_branch_or_empty)"
+  [[ -n "$CURRENT_BRANCH" ]] || CURRENT_BRANCH="unknown"
+  generate_release_report "error" "Release skipped due to -e option."
+  bt_emit_error "Release skipped due to -e option."
+  bt_emit_guidance "Run without -e option."
+  bt_success "See ${REPORT_FILE#"${REPO_ROOT}"/} for details."
+  exit "$EXIT_WORKFLOW_SKIPPED"
+fi
 
 # Validate version provided
 if [[ -z "$VERSION" ]]; then
@@ -414,6 +495,14 @@ case "$history_status" in
   *) ;;  # offline or unavailable, continue silently
 esac
 check_status_checks "$CURRENT_BRANCH"
+
+if [[ "$DRY_RUN" == true ]]; then
+  generate_release_report "dry-run" \
+    "Validation passed; release would be created and published."
+  bt_success "Dry-run: release $VERSION validation passed"
+  bt_success "See ${REPORT_FILE#"${REPO_ROOT}"/} for details."
+  exit 0
+fi
 
 # Create annotated tag
 create_annotated_tag "$VERSION" "$CURRENT_USER"

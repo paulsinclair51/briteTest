@@ -31,6 +31,7 @@ Prerequisites:
     specified.
   - The current branch must not have uncommitted changes. Commit or
     undo them before running pull.
+  - The current branch must not have an unfinished copyfix operation.
   - The remote repository must be reachable within the timeout
     specified by the -t option (default: 10 seconds).
   - A corresponding remote branch must exist.
@@ -45,23 +46,22 @@ Options:
               testing and debugging the error report and is not typically
               used in normal operation. This option is mutually exclusive
               with the -d option.
-  -h          Output this help to stdout and exit (other options
-              and arguments are ignored).
-  --help      Output this help to stdout and exit (other options
-              and arguments are ignored).
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
   -o          Allow the repository owner to pull to the current local version
               branch.
   -t SEC      Remote reachability timeout in seconds (default: 10).
               SEC must be an integer greater than 0.
   -v          Output progress and diagnostics to stdout.
 
-Example: Pull for current branch which must be local.
+Examples:
+  # Pull the current local branch.
   pull
 
-Example: Pull branch with verbose output.
+  # Pull with verbose output.
   pull -v
 
-Example: Preview pull (dry run).
+  # Preview the pull.
   pull -d
 
 Outputs:
@@ -73,11 +73,11 @@ Outputs:
     command and writes 'Run report for details.' to stdout. It does not write
     an immediate pull report.
   - For a dry-run, writes an untracked report in the current branch to:
-        '<repo>/reports/branch/pull-d-<datetime>.md'
+      '<repo>/reports/pull-d-<datetime>.md'
   - If a non-dry-run operation fails after pull work starts or the -e option
     is specified, writes an untracked error report in the current branch
     to:
-        '<repo>/reports/branch/pull-e-<datetime>.md'
+        '<repo>/reports/pull-e-<datetime>.md'
   - If a report is generated, older dry-run and error reports for the current
     branch are deleted.
 
@@ -98,6 +98,7 @@ Exit codes:
   11   Unsafe fast-forward. Manually resolve and then rerun pull.
   12   Pull skipped because -e was specified.
   13   No remote changes are available to pull.
+  14   The current branch has an unfinished copyfix operation.
   200  Git error.
   201  Report creation or locking error.
 EOF
@@ -118,12 +119,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BRANCH_REPORTS_DIR="$REPO_ROOT/reports/branch"
+REPORTS_DIR="$REPO_ROOT/reports"
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 REPORT_FILE=""
 ORIGINAL_ARGS=("$@")
-BRANCH_REPORTS_DIR_UNLOCKED=false
+REPORTS_DIR_WRITE_ENABLED=false
 REPORT_LOCK_FD=""
 REPORT_LOCK_HELD=false
 source "$SCRIPT_DIR/../helpers/common.sh"
@@ -147,6 +148,7 @@ readonly EXIT_DIVERGENCE=10
 readonly EXIT_UNSAFE_FAST_FORWARD=11
 readonly EXIT_WORKFLOW_SKIPPED=12
 readonly EXIT_NOTHING_TO_PULL=13
+readonly EXIT_COPYFIX_IN_PROGRESS=14
 readonly EXIT_GIT_ERROR=200
 readonly EXIT_REPORT_ERROR=201
 
@@ -222,21 +224,21 @@ cleanup_runtime_files() {
     bt_report_release_lock "$REPORT_LOCK_FD"
     REPORT_LOCK_HELD=false
   fi
-  if [[ "$BRANCH_REPORTS_DIR_UNLOCKED" == true ]]; then
-    BRANCH_REPORTS_DIR_UNLOCKED=false
+  if [[ "$REPORTS_DIR_WRITE_ENABLED" == true ]]; then
+    REPORTS_DIR_WRITE_ENABLED=false
   fi
 }
 
 trap cleanup_runtime_files EXIT
 
-enable_branch_reports_write_access() {
-  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_REPORT_ERROR"
-  BRANCH_REPORTS_DIR_UNLOCKED=true
+enable_reports_write_access() {
+  bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_ERROR"
+  REPORTS_DIR_WRITE_ENABLED=true
 }
 
-disable_branch_reports_write_access() {
-  if [[ "$BRANCH_REPORTS_DIR_UNLOCKED" == true ]]; then
-    BRANCH_REPORTS_DIR_UNLOCKED=false
+disable_reports_write_access() {
+  if [[ "$REPORTS_DIR_WRITE_ENABLED" == true ]]; then
+    REPORTS_DIR_WRITE_ENABLED=false
   fi
 }
 
@@ -268,13 +270,13 @@ format_command_line() {
 initialize_report_file() {
   local prefix="$1"
 
-  REPORT_FILE="$(bt_report_transient_path "$BRANCH_REPORTS_DIR" "$prefix" \
+  REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "$prefix" \
     "$RUN_TS_FILE")"
 }
 
 cleanup_old_dry_run_reports() {
   bt_report_cleanup_transient_reports \
-    "$BRANCH_REPORTS_DIR" \
+    "$REPORTS_DIR" \
     "$CURRENT_BRANCH" \
     "$REPORT_FILE" \
     "pull-d-*.md" \
@@ -284,9 +286,9 @@ cleanup_old_dry_run_reports() {
 cleanup_success_transient_reports() {
   REPORT_FILE=""
   acquire_report_lock
-  enable_branch_reports_write_access
+  enable_reports_write_access
   cleanup_old_dry_run_reports
-  disable_branch_reports_write_access
+  disable_reports_write_access
   release_report_lock
 }
 
@@ -298,7 +300,7 @@ generate_pull_report() {
   command_text="$(format_command_line)"
 
   acquire_report_lock
-  enable_branch_reports_write_access
+  enable_reports_write_access
   if [[ "$mode" == "dry-run" ]]; then
     initialize_report_file "pull-d"
   else
@@ -327,7 +329,7 @@ EOF
       "Failed to write pull report: $REPORT_FILE"
   fi
 
-  disable_branch_reports_write_access
+  disable_reports_write_access
   release_report_lock
 }
 
@@ -339,7 +341,7 @@ generate_error_report() {
 
   command_text="$(format_command_line)"
   acquire_report_lock
-  enable_branch_reports_write_access
+  enable_reports_write_access
   initialize_report_file "pull-e"
   cleanup_old_dry_run_reports
 
@@ -365,7 +367,7 @@ EOF
       "Failed to write pull error report: $REPORT_FILE"
   fi
 
-  disable_branch_reports_write_access
+  disable_reports_write_access
   release_report_lock
 }
 
@@ -814,6 +816,12 @@ if [[ "$OWNER_OVERRIDE" == true ]]; then
 fi
 
 validate_pull_branch_policy
+
+if bt_is_copyfix_in_progress "$CURRENT_BRANCH"; then
+  bt_emit_prerequisite_failure "$EXIT_COPYFIX_IN_PROGRESS" \
+    "Current branch '$CURRENT_BRANCH' has an unfinished copyfix operation." \
+    "complete it with 'copyfix --continue' before rerunning pull."
+fi
 
 require_remote_branch "$CURRENT_BRANCH"
 

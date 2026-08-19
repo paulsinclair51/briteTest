@@ -17,6 +17,7 @@ GIT_HELPER_SRC="$REPO_ROOT/scripts/helpers/git_helpers.sh"
 HISTORY_HELPER_SRC="$REPO_ROOT/scripts/helpers/history_log.sh"
 VALIDATION_HELPER_SRC="$REPO_ROOT/scripts/helpers/validation_helpers.sh"
 COMMON_UTILS_HELPER_SRC="$REPO_ROOT/scripts/helpers/common_utils.sh"
+REPORT_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_helpers.sh"
 
 pass() {
   echo "PASS: $1"
@@ -53,6 +54,7 @@ done
 [[ -f "$HISTORY_HELPER_SRC" ]] || fail "missing helper: $HISTORY_HELPER_SRC"
 [[ -f "$VALIDATION_HELPER_SRC" ]] || fail "missing helper: $VALIDATION_HELPER_SRC"
 [[ -f "$COMMON_UTILS_HELPER_SRC" ]] || fail "missing helper: $COMMON_UTILS_HELPER_SRC"
+[[ -f "$REPORT_HELPER_SRC" ]] || fail "missing helper: $REPORT_HELPER_SRC"
 
 TMPDIR="$(mktemp -d)"
 cleanup() {
@@ -70,13 +72,15 @@ WORK="$TMPDIR/work"
 git init --bare "$ORIGIN" >/dev/null 2>&1
 git clone "$ORIGIN" "$WORK" >/dev/null 2>&1
 
-mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/config" "$WORK/logs"
+mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/config" \
+  "$WORK/logs" "$WORK/reports"
 cp "$RETARGET_SRC" "$WORK/scripts/bin/retarget"
 cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
 cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
 cp "$HISTORY_HELPER_SRC" "$WORK/scripts/helpers/history_log.sh"
 cp "$VALIDATION_HELPER_SRC" "$WORK/scripts/helpers/validation_helpers.sh"
 cp "$COMMON_UTILS_HELPER_SRC" "$WORK/scripts/helpers/common_utils.sh"
+cp "$REPORT_HELPER_SRC" "$WORK/scripts/helpers/report_helpers.sh"
 chmod +x "$WORK/scripts/bin/retarget"
 
 cat > "$WORK/config/contributors.md" <<'EOF'
@@ -98,7 +102,9 @@ EOF
 
   echo "seed" > README.md
   echo "# history" > logs/repository_history.md
-  git add README.md scripts config logs
+  printf 'reports/*.md\n!reports/README.md\n' > .gitignore
+  echo "# Reports" > reports/README.md
+  git add README.md scripts config logs reports .gitignore
   git commit -m "seed repo" >/dev/null 2>&1
   git branch -M main
   git push -u origin main >/dev/null 2>&1
@@ -122,9 +128,39 @@ EOF
 rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./scripts/bin/retarget -h")
 [[ "$rc" -eq 0 ]] || fail "retarget -h should exit 0 (got $rc)"
 assert_contains "Usage:" "$TMPDIR/help.out"
+assert_contains "-e" "$TMPDIR/help.out"
 pass "help output"
 
-# 2) Unauthorized user should be blocked (permission denied exit code).
+copyfix_state_root="$(git -C "$WORK" rev-parse \
+  --path-format=absolute --git-common-dir)/briteTest-copyfix-state"
+mkdir -p "$copyfix_state_root/dev/parser-v1.0.0"
+rc=$(run_capture "$TMPDIR/copyfix-active.out" env GITHUB_ACTOR=testapprover \
+  bash -lc "cd '$WORK' && bash ./scripts/bin/retarget -d dev/parser-v1.0.0 v1.1.0")
+[[ "$rc" -eq 4 ]] || fail "unfinished copyfix should block retarget (got $rc)"
+assert_contains "has an unfinished copyfix operation" \
+  "$TMPDIR/copyfix-active.out"
+rm -rf "$copyfix_state_root"
+pass "unfinished copyfix blocks retarget"
+
+# 2) Explicit error mode should write a report without retargeting.
+rc=$(run_capture "$TMPDIR/error-run.out" bash -lc \
+  "cd '$WORK' && bash ./scripts/bin/retarget -e dev/parser-v1.0.0 v1.1.0")
+[[ "$rc" -eq 6 ]] || fail "retarget -e should exit 6 (got $rc)"
+assert_contains "Retarget skipped due to -e option" "$TMPDIR/error-run.out"
+assert_contains "See reports/retarget-e-" "$TMPDIR/error-run.out"
+error_report="$(find "$WORK/reports" -maxdepth 1 -type f \
+  -name 'retarget-e-*.md' -print -quit)"
+[[ -f "$error_report" ]] || fail "expected retarget error report"
+assert_contains '**Branch:** `dev/parser-v1.0.0`' "$error_report"
+pass "explicit error-run report"
+
+rc=$(run_capture "$TMPDIR/mode-conflict.out" bash -lc \
+  "cd '$WORK' && bash ./scripts/bin/retarget -d -e")
+[[ "$rc" -eq 1 ]] || fail "retarget -d -e should exit 1 (got $rc)"
+assert_contains "mutually exclusive" "$TMPDIR/mode-conflict.out"
+pass "dry-run and error-run conflict"
+
+# 3) Unauthorized user should be blocked (permission denied exit code).
 rc=$(run_capture "$TMPDIR/unauth.out" env GITHUB_ACTOR=testcontrib bash -lc "cd '$WORK' && bash ./scripts/bin/retarget -d dev/parser-v1.0.0 v1.1.0")
 [[ "$rc" -eq 2 ]] || fail "unauthorized retarget should exit 2 (got $rc)"
 assert_contains "is not an approver" "$TMPDIR/unauth.out"

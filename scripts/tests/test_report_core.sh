@@ -49,29 +49,29 @@ verbose_rel="$(report_path_from_output "$TMPDIR/verbose.out")"
 assert_contains "### Details" "$WORK/$verbose_rel"
 pass "verbose progress output"
 
-# 5) Type all with no limit should include generic commits and workflow activity
-rc=$(run_capture "$TMPDIR/type-all.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report all -l 0")
-[[ "$rc" -eq 0 ]] || fail "report all should exit 0 (got $rc)"
+# 5) Branch type with no limit should include generic commits and workflow activity
+rc=$(run_capture "$TMPDIR/type-all.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -l 0")
+[[ "$rc" -eq 0 ]] || fail "report branch should exit 0 (got $rc)"
 all_rel="$(report_path_from_output "$TMPDIR/type-all.out")"
 assert_contains "seed repo" "$WORK/$all_rel"
 assert_contains "push activity" "$WORK/$all_rel"
-pass "type all includes every activity once"
+pass "branch report includes every activity once"
 
 # 6) TYPE may appear before or after options
-rc=$(run_capture "$TMPDIR/type-before.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report push -l 1")
+rc=$(run_capture "$TMPDIR/type-before.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'push activity' -l 1")
 [[ "$rc" -eq 0 ]] || fail "TYPE before options should exit 0 (got $rc)"
 before_rel="$(report_path_from_output "$TMPDIR/type-before.out")"
 assert_contains "push activity" "$WORK/$before_rel"
 assert_contains '**Command:** `push -v`' "$WORK/$before_rel"
 assert_contains "recorded push details" "$WORK/$before_rel"
-rc=$(run_capture "$TMPDIR/type-after.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report -l 1 push")
+rc=$(run_capture "$TMPDIR/type-after.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report -q 'push activity' -l 1 branch")
 [[ "$rc" -eq 0 ]] || fail "TYPE after options should exit 0 (got $rc)"
 after_rel="$(report_path_from_output "$TMPDIR/type-after.out")"
 assert_contains "push activity" "$WORK/$after_rel"
 pass "positional type placement"
 
 # 7) Merge-down reports should render durable workflow details
-rc=$(run_capture "$TMPDIR/mrgdown.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report mrgdown")
+rc=$(run_capture "$TMPDIR/mrgdown.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'mrgdown activity'")
 [[ "$rc" -eq 0 ]] || fail "mrgdown report should exit 0 (got $rc)"
 mrgdown_rel="$(report_path_from_output "$TMPDIR/mrgdown.out")"
 assert_contains "mrgdown activity" "$WORK/$mrgdown_rel"
@@ -85,7 +85,7 @@ assert_contains "Method: Merge commit (--no-ff) created by mrgdown" "$WORK/$mrgd
 pass "mrgdown report details"
 
 # 8) Merge-up reports should render durable workflow details
-rc=$(run_capture "$TMPDIR/mrgup.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report mrgup")
+rc=$(run_capture "$TMPDIR/mrgup.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'mrgup activity'")
 [[ "$rc" -eq 0 ]] || fail "mrgup report should exit 0 (got $rc)"
 mrgup_rel="$(report_path_from_output "$TMPDIR/mrgup.out")"
 assert_contains "mrgup activity" "$WORK/$mrgup_rel"
@@ -99,7 +99,7 @@ assert_contains "CI-CD: ci build SUCCESS" "$WORK/$mrgup_rel"
 pass "mrgup report details"
 
 # 9) Copyfix reports should render durable workflow details
-rc=$(run_capture "$TMPDIR/copyfix.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report copyfix")
+rc=$(run_capture "$TMPDIR/copyfix.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'copyfix activity'")
 [[ "$rc" -eq 0 ]] || fail "copyfix report should exit 0 (got $rc)"
 copyfix_rel="$(report_path_from_output "$TMPDIR/copyfix.out")"
 assert_contains "copyfix activity" "$WORK/$copyfix_rel"
@@ -113,7 +113,7 @@ assert_contains "Method: Cherry-pick created by copyfix" "$WORK/$copyfix_rel"
 pass "copyfix report details"
 
 # 10) Retarget reports should render durable workflow details
-rc=$(run_capture "$TMPDIR/retarget.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report retarget")
+rc=$(run_capture "$TMPDIR/retarget.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'retarget activity'")
 [[ "$rc" -eq 0 ]] || fail "retarget report should exit 0 (got $rc)"
 retarget_rel="$(report_path_from_output "$TMPDIR/retarget.out")"
 assert_contains "retarget activity" "$WORK/$retarget_rel"
@@ -126,7 +126,7 @@ assert_contains "Comment: move branch" "$WORK/$retarget_rel"
 pass "retarget report details"
 
 # 11) TYPE may be specified only once
-rc=$(run_capture "$TMPDIR/duplicate-type.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report commit all")
+rc=$(run_capture "$TMPDIR/duplicate-type.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch repo")
 [[ "$rc" -eq 1 ]] || fail "duplicate TYPE should exit 1 (got $rc)"
 assert_contains "TYPE may be specified only once" "$TMPDIR/duplicate-type.out"
 pass "duplicate type rejection"
@@ -136,5 +136,24 @@ rc=$(run_capture "$TMPDIR/help-overrides.out" bash -lc "cd '$WORK' && bash ./scr
 [[ "$rc" -eq 0 ]] || fail "help should ignore other arguments (got $rc)"
 assert_contains "Usage:" "$TMPDIR/help-overrides.out"
 pass "help overrides arguments"
+
+# 13) Repo reports include repository health and delegated branch status
+rc=$(run_capture "$TMPDIR/repo.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report repo -t 2")
+[[ "$rc" -eq 0 ]] || fail "repo report should exit 0 (got $rc)"
+repo_rel="$(sed -n 's/^See \(reports\/repo-[^ ]*\.md\) for details\.$/\1/p' \
+  "$TMPDIR/repo.out" | tail -n 1)"
+[[ -n "$repo_rel" && -f "$WORK/$repo_rel" ]] || fail "repo report file was not created"
+assert_contains "## Health" "$WORK/$repo_rel"
+assert_contains "## Branch Status" "$WORK/$repo_rel"
+pass "repository report dispatch"
+
+# 14) Style options and files are forwarded to ckstyle
+rc=$(run_capture "$TMPDIR/style.out" bash -lc \
+  "cd '$WORK' && bash ./scripts/bin/report -m -f README.md -v style")
+[[ "$rc" -eq 0 ]] || fail "style report should exit 0 (got $rc)"
+assert_contains "-m" "$WORK/style-args.txt"
+assert_contains "README.md" "$WORK/style-args.txt"
+assert_contains "-v" "$WORK/style-args.txt"
+pass "style report dispatch"
 
 echo "All report core smoke tests passed."

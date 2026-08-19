@@ -15,10 +15,10 @@ source "$SCRIPT_DIR/test_commit_lib.sh"
 commit_test_init
 
 # Seed stale dry-run, stale error, legacy failed, and success reports.
-old_dry="$WORK/reports/branch/commit-d-20000101-000000.md"
-old_error="$WORK/reports/branch/commit-e-20000101-000000.md"
-old_legacy_failed="$WORK/reports/branch/commit-f-20000101-000000.md"
-old_success="$WORK/reports/branch/commit-20000101-000000-12345.md"
+old_dry="$WORK/reports/commit-d-20000101-000000.md"
+old_error="$WORK/reports/commit-e-20000101-000000.md"
+old_legacy_failed="$WORK/reports/commit-f-20000101-000000.md"
+old_success="$WORK/reports/commit-20000101-000000-12345.md"
 printf 'old dry\n' > "$old_dry"
 printf 'old error\n' > "$old_error"
 printf 'old legacy failed\n' > "$old_legacy_failed"
