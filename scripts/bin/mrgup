@@ -435,111 +435,25 @@ cleanup_old_transient_reports() {
 
 print_merge_change_summary() {
   local commit_sha="$1"
-  local modified_count=0
-  local added_count=0
-  local deleted_count=0
-  local status=""
-  local path_a=""
-  local path_b=""
-  local changed_path=""
-  local parent_history_path="${HISTORY_FILE#./}"
-  local source_history_path="${CURRENT_HISTORY_FILE#./}"
+  local change_summary=""
 
-  while IFS=$'\t' read -r status path_a path_b; do
-    case "$status" in
-      R*|C*)
-        changed_path="$path_b"
-        ;;
-      *)
-        changed_path="$path_a"
-        ;;
-    esac
-
-    changed_path="${changed_path#./}"
-    if [[ -n "$parent_history_path" && \
-      "$changed_path" == "$parent_history_path" ]]; then
-      continue
-    fi
-    if [[ -n "$source_history_path" && \
-      "$changed_path" == "$source_history_path" ]]; then
-      continue
-    fi
-
-    case "$status" in
-      M|R*|C*)
-        modified_count=$((modified_count + 1))
-        ;;
-      A)
-        added_count=$((added_count + 1))
-        ;;
-      D)
-        deleted_count=$((deleted_count + 1))
-        ;;
-      *)
-        ;;
-    esac
-  done < <(git show --pretty=format: --name-status "$commit_sha" 2>/dev/null || \
-    true)
-
-  if [[ "$modified_count" -eq 0 && "$added_count" -eq 0 && \
-    "$deleted_count" -eq 0 ]]; then
+  bt_git_collect_ref_change_summary "${commit_sha}^1" "$commit_sha" \
+    "$HISTORY_FILE" "$CURRENT_HISTORY_FILE"
+  change_summary="$(bt_format_change_summary)"
+  if [[ "$change_summary" == "no changes" ]]; then
     bt_success "Local ${CURRENT_BRANCH} branch: no changes to merge."
     return 0
   fi
 
-  bt_success "Merged to local ${PARENT_BRANCH}: $modified_count modified," \
-             "$added_count added, and $deleted_count deleted files."
+  bt_success "Merged to local ${PARENT_BRANCH}: ${change_summary}."
 }
 
 format_merge_preview_change_summary_from_commit() {
   local commit_sha="$1"
-  local modified_count=0
-  local added_count=0
-  local deleted_count=0
-  local status=""
-  local path_a=""
-  local path_b=""
-  local changed_path=""
-  local parent_history_path="${HISTORY_FILE#./}"
-  local source_history_path="${CURRENT_HISTORY_FILE#./}"
 
-  while IFS=$'\t' read -r status path_a path_b; do
-    case "$status" in
-      R*|C*)
-        changed_path="$path_b"
-        ;;
-      *)
-        changed_path="$path_a"
-        ;;
-    esac
-
-    changed_path="${changed_path#./}"
-    if [[ -n "$parent_history_path" && \
-      "$changed_path" == "$parent_history_path" ]]; then
-      continue
-    fi
-    if [[ -n "$source_history_path" && \
-      "$changed_path" == "$source_history_path" ]]; then
-      continue
-    fi
-
-    case "$status" in
-      A)
-        added_count=$((added_count + 1))
-        ;;
-      D)
-        deleted_count=$((deleted_count + 1))
-        ;;
-      M|R*|C*)
-        modified_count=$((modified_count + 1))
-        ;;
-      *)
-        ;;
-    esac
-  done < <(git show --pretty=format: --name-status "$commit_sha" 2>/dev/null || \
-    true)
-
-  printf '%s modified, %s added, and %s deleted files' "$modified_count" "$added_count" "$deleted_count"
+  bt_git_collect_ref_change_summary "${commit_sha}^1" "$commit_sha" \
+    "$HISTORY_FILE" "$CURRENT_HISTORY_FILE"
+  bt_format_change_summary
 }
 
 build_dry_run_push_preview_ref() {

@@ -417,6 +417,36 @@ recorded_field_value() {
   printf '%s' "$value"
 }
 
+recorded_change_summary() {
+  local body="$1"
+  local field=""
+  local value=""
+  local found=false
+
+  bt_git_reset_change_summary
+  for field in Files-Modified Files-Deleted Files-Added Files-Renamed \
+    Files-Renamed-Modified Directories-Deleted Directories-Added \
+    Directories-Renamed; do
+    value="$(recorded_field_value "$body" "$field")"
+    [[ "$value" =~ ^[0-9]+$ ]] || value=0
+    [[ "$value" -gt 0 ]] && found=true
+    # shellcheck disable=SC2034  # Consumed by bt_format_change_summary.
+    case "$field" in
+      Files-Modified) BT_CHANGE_MODIFIED_FILES="$value" ;;
+      Files-Deleted) BT_CHANGE_DELETED_FILES="$value" ;;
+      Files-Added) BT_CHANGE_ADDED_FILES="$value" ;;
+      Files-Renamed) BT_CHANGE_RENAMED_FILES="$value" ;;
+      Files-Renamed-Modified) BT_CHANGE_RENAMED_MODIFIED_FILES="$value" ;;
+      Directories-Deleted) BT_CHANGE_DELETED_DIRECTORIES="$value" ;;
+      Directories-Added) BT_CHANGE_ADDED_DIRECTORIES="$value" ;;
+      Directories-Renamed) BT_CHANGE_RENAMED_DIRECTORIES="$value" ;;
+    esac
+  done
+
+  [[ "$found" == true ]] || return 0
+  bt_format_change_summary
+}
+
 workflow_record_missing_fields() {
   local record="$1"
   local field=""
@@ -645,6 +675,7 @@ while IFS= read -r -d $'\x1e' row; do
       note_command="$(recorded_field_value "$note_record" "Command-Line")"
       note_summary="$(recorded_field_value "$note_record" "Summary")"
       note_details="$(printf '%s\n' "$note_record" | workflow_event_details)"
+      change_summary="$(recorded_change_summary "$note_record")"
 
       [[ "$note_branch" == "$TARGET_REF" ]] || continue
       if ! entry_matches_filters "$note_type" "$note_user" \
@@ -656,6 +687,10 @@ while IFS= read -r -d $'\x1e' row; do
       printf -v line '**Commit:** `%s`  \n**User:** %s  \n**Summary:** %s\n' \
         "$short_hash" "$note_user" "$note_summary"
       entry+="$line"
+      if [[ -n "$change_summary" ]]; then
+        printf -v line '**Changes:** %s  \n' "$change_summary"
+        entry+="$line"
+      fi
       printf -v line '\n**Command:** `%s`\n' "$note_command"
       entry+="$line"
       if [[ -n "$note_details" ]]; then
@@ -676,6 +711,7 @@ while IFS= read -r -d $'\x1e' row; do
   fi
 
   command_line="$(recorded_field_value "$body" "Command-Line")"
+  change_summary="$(recorded_change_summary "$body")"
   entry_type="$(activity_type "$command_line")"
   if ! entry_matches_filters "$entry_type" "$author_name $author_email" \
     "$subject $body"; then
@@ -686,6 +722,10 @@ while IFS= read -r -d $'\x1e' row; do
   printf -v line '**Commit:** `%s`  \n**User:** %s <%s>  \n**Summary:** %s\n' \
     "$short_hash" "$author_name" "$author_email" "$subject"
   entry+="$line"
+  if [[ -n "$change_summary" ]]; then
+    printf -v line '**Changes:** %s  \n' "$change_summary"
+    entry+="$line"
+  fi
   if [[ -n "$command_line" ]]; then
     printf -v line '\n**Command:** `%s`\n' "$command_line"
     entry+="$line"

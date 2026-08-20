@@ -324,7 +324,7 @@ generate_error_report() {
     branch_display="$CURRENT_BRANCH"
   fi
 
-  summary_text="${COMMIT_MODIFIED_FILES} modified, ${COMMIT_ADDED_FILES} added, ${COMMIT_DELETED_FILES} deleted, and ${COMMITTED_FILES} total."
+  summary_text="${COMMIT_CHANGE_SUMMARY}; ${COMMITTED_FILES} total files."
   commit_only_rows_tmp="$(mktemp)"
 
   initialize_report_file "commit-e"
@@ -414,6 +414,11 @@ COMMIT_STATS_FILE="$(mktemp)"
 COMMIT_MODIFIED_FILES=0
 COMMIT_ADDED_FILES=0
 COMMIT_DELETED_FILES=0
+COMMIT_RENAMED_FILES=0
+COMMIT_RENAMED_MODIFIED_FILES=0
+COMMIT_DELETED_DIRECTORIES=0
+COMMIT_ADDED_DIRECTORIES=0
+COMMIT_RENAMED_DIRECTORIES=0
 COMMIT_LINES_ADDED=0
 COMMIT_LINES_DELETED=0
 COMMIT_PR_NUMBER=""
@@ -424,6 +429,7 @@ COMMIT_COMMENT_NORMALIZED=""
 COMMIT_COMMAND_LINE_TEMPLATE=""
 COMMENT_OPTION_MODE=""
 COMMIT_SUMMARY_TEXT=""
+COMMIT_CHANGE_SUMMARY=""
 
 cleanup_runtime_files() {
   if [[ "$REPORT_WRITE_LOCK_HELD" == true ]]; then
@@ -815,18 +821,6 @@ collect_commit_candidate_files() {
     status="${record:0:2}"
     path="${record:3}"
 
-    case "$status" in
-      '??'|A*|*A)
-        ((++COMMIT_ADDED_FILES))
-        ;;
-      D*|*D)
-        ((++COMMIT_DELETED_FILES))
-        ;;
-      *)
-        ((++COMMIT_MODIFIED_FILES))
-        ;;
-    esac
-
     # For porcelain -z rename/copy entries, the next NUL field is the source
     # path.
     if [[ "${status:0:1}" == "R" || "${status:1:1}" == "R" ]]; then
@@ -849,6 +843,19 @@ collect_commit_candidate_files() {
     COMMIT_FILE_LIST="$(printf '%s\n' "${candidates[@]}" | sed '/^$/d' | \
       sort -u)"
   fi
+}
+
+collect_commit_change_summary() {
+  bt_git_collect_worktree_change_summary
+  COMMIT_MODIFIED_FILES="$BT_CHANGE_MODIFIED_FILES"
+  COMMIT_DELETED_FILES="$BT_CHANGE_DELETED_FILES"
+  COMMIT_ADDED_FILES="$BT_CHANGE_ADDED_FILES"
+  COMMIT_RENAMED_FILES="$BT_CHANGE_RENAMED_FILES"
+  COMMIT_RENAMED_MODIFIED_FILES="$BT_CHANGE_RENAMED_MODIFIED_FILES"
+  COMMIT_DELETED_DIRECTORIES="$BT_CHANGE_DELETED_DIRECTORIES"
+  COMMIT_ADDED_DIRECTORIES="$BT_CHANGE_ADDED_DIRECTORIES"
+  COMMIT_RENAMED_DIRECTORIES="$BT_CHANGE_RENAMED_DIRECTORIES"
+  COMMIT_CHANGE_SUMMARY="$(bt_format_change_summary)"
 }
 
 print_commit_file_details() {
@@ -982,7 +989,7 @@ build_commit_body() {
 ${quoted_comment}
 
 ## Summary
-- Files: ${COMMIT_MODIFIED_FILES} modified, ${COMMIT_ADDED_FILES} added, and ${COMMIT_DELETED_FILES} deleted.
+- Changes: ${COMMIT_CHANGE_SUMMARY}.
 - Lines: ${COMMIT_LINES_ADDED} added and ${COMMIT_LINES_DELETED} deleted.
 
 ## Commit Metadata
@@ -990,6 +997,11 @@ ${quoted_comment}
 Files-Modified: ${COMMIT_MODIFIED_FILES}
 Files-Added: ${COMMIT_ADDED_FILES}
 Files-Deleted: ${COMMIT_DELETED_FILES}
+Files-Renamed: ${COMMIT_RENAMED_FILES}
+Files-Renamed-Modified: ${COMMIT_RENAMED_MODIFIED_FILES}
+Directories-Deleted: ${COMMIT_DELETED_DIRECTORIES}
+Directories-Added: ${COMMIT_ADDED_DIRECTORIES}
+Directories-Renamed: ${COMMIT_RENAMED_DIRECTORIES}
 Lines-Added: ${COMMIT_LINES_ADDED}
 Lines-Deleted: ${COMMIT_LINES_DELETED}
 Command-Line: ${COMMIT_COMMAND_LINE_TEMPLATE}
@@ -1104,7 +1116,7 @@ generate_commit_report() {
     chmod u+w "$REPORT_FILE" 2>/dev/null || true
   fi
 
-  summary_text="${COMMIT_MODIFIED_FILES} modified, ${COMMIT_ADDED_FILES} added, ${COMMIT_DELETED_FILES} deleted, and ${COMMITTED_FILES} total."
+  summary_text="${COMMIT_CHANGE_SUMMARY}; ${COMMITTED_FILES} total files."
 
   cat > "$REPORT_FILE" <<EOF
 # Dry-Run Commit Report
@@ -1273,15 +1285,15 @@ acquire_commit_work_lock
 collect_commit_candidate_files
 if [[ -n "$COMMIT_FILE_LIST" ]]; then
   NEEDS_COMMIT=true
+  collect_commit_change_summary
   COMMITTED_FILES="$(printf '%s\n' "$COMMIT_FILE_LIST" | wc -l | tr -d ' ')"
   collect_commit_file_stats
   collect_commit_line_totals
   resolve_associated_pr_number
-  COMMIT_SUMMARY_TEXT="$(printf '%s%s%s%s' \
+  COMMIT_SUMMARY_TEXT="$(printf '%s%s%s' \
     "Committed to local ${CURRENT_BRANCH}: " \
-    "${COMMIT_MODIFIED_FILES} modified, " \
-    "${COMMIT_ADDED_FILES} added, and " \
-    "${COMMIT_DELETED_FILES} deleted files.")"
+    "$COMMIT_CHANGE_SUMMARY" \
+    ".")"
 else
   NEEDS_COMMIT=false
   COMMITTED_FILES=0
@@ -1325,11 +1337,10 @@ fi
 if [[ "$NEEDS_COMMIT" == true ]]; then
   if [[ "$ERROR_RUN" == true ]]; then
     skip_commit_and_exit
-    emit_final_status "$(printf '%s%s%s%s' \
+    emit_final_status "$(printf '%s%s%s' \
       "Error-run: commit to ${CURRENT_BRANCH}: " \
-      "${COMMIT_MODIFIED_FILES} modified, " \
-      "${COMMIT_ADDED_FILES} added, and " \
-      "${COMMIT_DELETED_FILES} deleted files.")" true
+      "$COMMIT_CHANGE_SUMMARY" \
+      ".")" true
     exit "$EXIT_WORKFLOW_SKIPPED"
   fi
 
@@ -1378,19 +1389,17 @@ fi
 
 if [[ "$COMMITTED_FILES" -gt 0 ]]; then
   if [[ "$ERROR_RUN" == true ]]; then
-    emit_final_status "$(printf '%s%s%s%s' \
+    emit_final_status "$(printf '%s%s%s' \
       "Error-run: commit to ${CURRENT_BRANCH}: " \
-      "${COMMIT_MODIFIED_FILES} modified, " \
-      "${COMMIT_ADDED_FILES} added, and " \
-      "${COMMIT_DELETED_FILES} deleted files.")" true
+      "$COMMIT_CHANGE_SUMMARY" \
+      ".")" true
     exit "$EXIT_WORKFLOW_SKIPPED"
   elif [[ "$DRY_RUN" == true ]]; then
     generate_commit_report
-    emit_final_status "$(printf '%s%s%s%s' \
+    emit_final_status "$(printf '%s%s%s' \
       "Dry-run: commit to ${CURRENT_BRANCH}: " \
-      "${COMMIT_MODIFIED_FILES} modified, " \
-      "${COMMIT_ADDED_FILES} added, and " \
-      "${COMMIT_DELETED_FILES} deleted files.")" true
+      "$COMMIT_CHANGE_SUMMARY" \
+      ".")" true
   else
     cleanup_transient_reports_locked
     emit_final_status "$COMMIT_SUMMARY_TEXT" false

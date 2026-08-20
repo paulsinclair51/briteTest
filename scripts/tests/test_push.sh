@@ -256,6 +256,7 @@ if grep -Fq "**Triggered By:**" "$dry_report"; then
   fail "dry-run push report should not include Triggered By"
 fi
 assert_contains "**Files:** " "$dry_report"
+assert_contains "**Changes:** 1 modified file" "$dry_report"
 assert_contains "<details>" "$dry_report"
 assert_contains "<summary><strong>Commits</strong></summary>" "$dry_report"
 assert_contains "## Commits" "$dry_report"
@@ -331,7 +332,7 @@ pass "concurrent dry-run report serialization"
 rc=$(run_capture "$TMPDIR/push.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/push -t 5")
 [[ "$rc" -eq 0 ]] || fail "push should exit 0 (got $rc)"
 assert_contains "Pushed (" "$TMPDIR/push.out"
-assert_contains "to remote dev/push-tests-v1.0.0: 1 modified, 0 added, and 0 deleted files." "$TMPDIR/push.out"
+assert_contains "to remote dev/push-tests-v1.0.0: 1 modified file." "$TMPDIR/push.out"
 assert_contains "Run report -r for details." \
   "$TMPDIR/push.out"
 push_note="$(git -C "$WORK" notes --ref=briteTest-remote-workflow show HEAD)"
@@ -345,7 +346,9 @@ push_note="$(git -C "$WORK" notes --ref=briteTest-remote-workflow show HEAD)"
   fail "successful push should record its pushed tip"
 [[ "$push_note" == *"Commits: 1"* ]] || \
   fail "successful push should record its commit count"
-[[ "$push_note" == *"Files: 1 modified, 0 added, 0 deleted"* ]] || \
+[[ "$push_note" == *"Files-Modified: 1"* && \
+  "$push_note" == *"Files-Renamed: 0"* && \
+  "$push_note" == *"Directories-Renamed: 0"* ]] || \
   fail "successful push should record its file counts"
 remote_push_note="$(git --git-dir="$ORIGIN" notes \
   --ref=briteTest-remote-workflow show \

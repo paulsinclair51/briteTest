@@ -39,6 +39,12 @@ bt_push_workflow() (
   local pushed_modified_files=0
   local pushed_added_files=0
   local pushed_deleted_files=0
+  local pushed_renamed_files=0
+  local pushed_renamed_modified_files=0
+  local pushed_deleted_directories=0
+  local pushed_added_directories=0
+  local pushed_renamed_directories=0
+  local pushed_change_summary=""
   local -a original_args=("$@")
 
   bt_push_error_exit() {
@@ -384,6 +390,8 @@ EOF
 **Commits:** ${commits_ahead}  
 **Files:** ${files_count}
 
+**Changes:** ${pushed_change_summary}
+
 <details>
 <summary><strong>Commits</strong></summary>
 
@@ -501,45 +509,20 @@ EOF
   }
 
   bt_push_collect_stdout_summary_counts() {
-    local status=""
-    local _rest=""
-
-    pushed_modified_files=0
-    pushed_added_files=0
-    pushed_deleted_files=0
-
     if [[ "$mrgup_mode" == true && "$dry_run" == true ]]; then
-      while IFS=$'\t' read -r status _rest; do
-        [[ -n "$status" ]] || continue
-        case "$status" in
-          A*)
-            pushed_added_files=$((pushed_added_files + 1))
-            ;;
-          D*)
-            pushed_deleted_files=$((pushed_deleted_files + 1))
-            ;;
-          *)
-            pushed_modified_files=$((pushed_modified_files + 1))
-            ;;
-        esac
-      done < <(git diff --name-status --find-renames "${current_branch}" "${push_content_ref}" 2>/dev/null || true)
-      return
+      bt_git_collect_ref_change_summary "$current_branch" "$push_content_ref"
+    else
+      bt_git_collect_ref_change_summary "$remote_branch_tip" "$push_content_ref"
     fi
-
-    while IFS=$'\t' read -r status _rest; do
-      [[ -n "$status" ]] || continue
-      case "$status" in
-        A*)
-          pushed_added_files=$((pushed_added_files + 1))
-          ;;
-        D*)
-          pushed_deleted_files=$((pushed_deleted_files + 1))
-          ;;
-        *)
-          pushed_modified_files=$((pushed_modified_files + 1))
-          ;;
-      esac
-    done < <(git diff --name-status --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)
+    pushed_modified_files="$BT_CHANGE_MODIFIED_FILES"
+    pushed_deleted_files="$BT_CHANGE_DELETED_FILES"
+    pushed_added_files="$BT_CHANGE_ADDED_FILES"
+    pushed_renamed_files="$BT_CHANGE_RENAMED_FILES"
+    pushed_renamed_modified_files="$BT_CHANGE_RENAMED_MODIFIED_FILES"
+    pushed_deleted_directories="$BT_CHANGE_DELETED_DIRECTORIES"
+    pushed_added_directories="$BT_CHANGE_ADDED_DIRECTORIES"
+    pushed_renamed_directories="$BT_CHANGE_RENAMED_DIRECTORIES"
+    pushed_change_summary="$(bt_format_change_summary)"
   }
 
   while [[ $# -gt 0 ]]; do
@@ -653,9 +636,9 @@ EOF
   fi
 
   if [[ "$dry_run" == true ]]; then
-    bt_push_generate_report
     bt_push_collect_stdout_summary_counts
-    echo "Dry-run: push to remote $current_branch: ${pushed_modified_files} modified, ${pushed_added_files} added, and ${pushed_deleted_files} deleted files."
+    bt_push_generate_report
+    echo "Dry-run: push to remote $current_branch: ${pushed_change_summary}."
     echo "See ${report_file#"${repo_root}"/} for details."
     exit 0
   fi
@@ -669,7 +652,14 @@ EOF
       "Previous-Remote-Tip" "$remote_branch_tip" \
       "Pushed-Tip" "$push_content_ref" \
       "Commits" "$commits_ahead" \
-      "Files" "${pushed_modified_files} modified, ${pushed_added_files} added, ${pushed_deleted_files} deleted"; then
+      "Files-Modified" "$pushed_modified_files" \
+      "Files-Deleted" "$pushed_deleted_files" \
+      "Files-Added" "$pushed_added_files" \
+      "Files-Renamed" "$pushed_renamed_files" \
+      "Files-Renamed-Modified" "$pushed_renamed_modified_files" \
+      "Directories-Deleted" "$pushed_deleted_directories" \
+      "Directories-Added" "$pushed_added_directories" \
+      "Directories-Renamed" "$pushed_renamed_directories"; then
       bt_push_error_exit "$exit_report_failed" \
         "Push was not started because its report history could not be recorded"
     fi
@@ -696,6 +686,6 @@ EOF
         "Push completed, but its pull request could not be finalized"
     fi
   fi
-  echo "Pushed (${pushed_tip_short}) to remote $current_branch: ${pushed_modified_files} modified, ${pushed_added_files} added, and ${pushed_deleted_files} deleted files."
+  echo "Pushed (${pushed_tip_short}) to remote $current_branch: ${pushed_change_summary}."
   echo "Run report -r for details."
 )

@@ -38,6 +38,7 @@ rc=$(run_capture "$TMPDIR/text-filter.out" bash -lc "cd '$WORK' && bash ./script
 [[ "$rc" -eq 0 ]] || fail "detail text filter should exit 0 (got $rc)"
 text_rel="$(report_path_from_output "$TMPDIR/text-filter.out")"
 assert_contains "Files-Modified: 1" "$WORK/$text_rel"
+assert_contains "**Changes:** 1 modified file" "$WORK/$text_rel"
 pass "summary and detail filtering"
 
 # 4) Multiple appended records should render independently, and delimiter-like
