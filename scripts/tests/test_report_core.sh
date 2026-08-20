@@ -19,6 +19,7 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./scripts/bin/r
 [[ "$rc" -eq 0 ]] || fail "report -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "-q TEXT" "$TMPDIR/help.out"
+assert_contains "Report the current local branch's remote state" "$TMPDIR/help.out"
 assert_contains "TYPE may appear before or after options" "$TMPDIR/help.out"
 if grep -Fq "Required history" "$TMPDIR/help.out"; then
   fail "help should not claim that missing history can be detected"
@@ -30,6 +31,18 @@ rc=$(run_capture "$TMPDIR/invalid-limit.out" bash -lc "cd '$WORK' && bash ./scri
 [[ "$rc" -eq 1 ]] || fail "report -l nope should exit 1 (got $rc)"
 assert_contains "N for -l must be an integer >= 0" "$TMPDIR/invalid-limit.out"
 pass "invalid limit rejection"
+
+rc=$(run_capture "$TMPDIR/branch-timeout-without-remote.out" bash -lc \
+  "cd '$WORK' && bash ./scripts/bin/report branch -t 2")
+[[ "$rc" -eq 1 ]] || fail "branch -t without -r should exit 1 (got $rc)"
+assert_contains "Option -t requires -r for TYPE branch" \
+  "$TMPDIR/branch-timeout-without-remote.out"
+rc=$(run_capture "$TMPDIR/invalid-remote-timeout.out" bash -lc \
+  "cd '$WORK' && bash ./scripts/bin/report branch -r -t 0")
+[[ "$rc" -eq 1 ]] || fail "branch -r -t 0 should exit 1 (got $rc)"
+assert_contains "SEC for -t must be an integer > 0" \
+  "$TMPDIR/invalid-remote-timeout.out"
+pass "branch remote timeout validation"
 
 # 3) Default type all should write one newest activity
 rc=$(run_capture "$TMPDIR/default.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report")

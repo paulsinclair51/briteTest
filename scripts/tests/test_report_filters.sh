@@ -42,14 +42,42 @@ newer_line="$(grep -n 'retarget activity' "$WORK/$newest_first_rel" | head -n 1 
 older_line="$(grep -n 'pull activity' "$WORK/$newest_first_rel" | head -n 1 | cut -d: -f1 || true)"
 [[ -n "$newer_line" && -n "$older_line" && "$newer_line" -lt "$older_line" ]] || \
 	fail "branch report should write selected activities newest first"
-
-rc=$(run_capture "$TMPDIR/branch-r.out" bash -lc \
-	"cd '$WORK' && bash ./scripts/bin/report branch -r")
-[[ "$rc" -eq 1 ]] || fail "branch -r should exit 1 (got $rc)"
-assert_contains "Option -r requires TYPE style" "$TMPDIR/branch-r.out"
 pass "newest-first branch ordering"
 
-# 5) A remote snapshot should resolve its branch and push history
+# 5) -r should report the current branch's remote without changing HEAD
+branch_before="$(git -C "$WORK" symbolic-ref --short HEAD)"
+head_before="$(git -C "$WORK" rev-parse HEAD)"
+rc=$(run_capture "$TMPDIR/branch-r.out" bash -lc \
+	"cd '$WORK' && bash ./scripts/bin/report -t 2 -r branch -q 'Pushed 1 commit'")
+[[ "$rc" -eq 0 ]] || fail "remote branch report should exit 0 (got $rc)"
+branch_r_rel="$(report_path_from_output "$TMPDIR/branch-r.out")"
+[[ "$branch_r_rel" == reports/remote-*.md ]] || \
+	fail "branch -r should write a remote report"
+assert_contains "Pushed 1 commit(s) to origin/dev/report-tests-v1.0.0" \
+	"$WORK/$branch_r_rel"
+[[ "$(git -C "$WORK" symbolic-ref --short HEAD)" == "$branch_before" ]] || \
+	fail "branch -r should not change the checked-out branch"
+[[ "$(git -C "$WORK" rev-parse HEAD)" == "$head_before" ]] || \
+	fail "branch -r should not change HEAD"
+pass "direct remote branch report"
+
+# 6) -r should fail clearly when the current branch has no remote
+(
+	cd "$WORK"
+	git switch -c dev/local-only-v1.0.0 >/dev/null 2>&1
+)
+rc=$(run_capture "$TMPDIR/branch-r-missing.out" bash -lc \
+	"cd '$WORK' && bash ./scripts/bin/report branch -r")
+[[ "$rc" -eq 1 ]] || fail "missing remote branch report should exit 1 (got $rc)"
+assert_contains "Remote branch 'origin/dev/local-only-v1.0.0' is not available" \
+	"$TMPDIR/branch-r-missing.out"
+[[ "$(git -C "$WORK" symbolic-ref --short HEAD)" == \
+	"dev/local-only-v1.0.0" ]] || \
+	fail "missing remote branch report should not change the checked-out branch"
+git -C "$WORK" switch dev/report-tests-v1.0.0 >/dev/null 2>&1
+pass "missing direct remote branch"
+
+# 7) A remote snapshot should resolve its branch and push history
 local_report="$(find "$WORK/reports" -maxdepth 1 -type f \
 	-name 'local-*.md' -print -quit)"
 [[ -n "$local_report" ]] || fail "expected local report before remote snapshot"
@@ -80,7 +108,7 @@ assert_contains "Commits: 1" "$WORK/$remote_push_rel"
 assert_contains "Files: 1 modified, 0 added, 0 deleted" "$WORK/$remote_push_rel"
 pass "remote snapshot push report"
 
-# 6) A new local report should replace only the previous local report
+# 8) A new local report should replace only the previous local report
 remote_report="$WORK/$remote_push_rel"
 printf 'stale local report\n' > "$WORK/reports/local-20000101-000000.md"
 rc=$(run_capture "$TMPDIR/local-again.out" bash -lc \

@@ -280,6 +280,10 @@ report is written directly in `reports/` as `repo-<datetime>.md`,
 `local-<datetime>.md`, `remote-<datetime>.md`, or `style-<datetime>.md`.
 Only one report with each filename prefix is kept. Local and remote reports
 are retained independently.
+
+Use `report branch -r [-t SEC]` to refresh and report
+`origin/<current-local-branch>` without changing the checked-out branch or
+worktree. The remote timeout defaults to 10 seconds.
 </details>
 
 <details>

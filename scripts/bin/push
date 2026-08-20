@@ -106,7 +106,7 @@ EOF
 # - Delegate range calculation, dry-run/error reports, and publication to the
 #   shared push workflow.
 # - On success, record one event on the pushed tip and remove transient reports.
-# - Direct users to the remote snapshot branch for report generation.
+# - Direct users to report -r for remote activity details.
 
 # shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
 

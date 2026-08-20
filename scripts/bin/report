@@ -48,15 +48,19 @@ Additional options only for a repo report:
               SEC must be an integer greater than 0.
 
 Additional options only for a branch report:
-  -u USER     Include activity whose associated user contains USER.
-              Matching is case-insensitive. Activity without a recorded user
-              does not match.
-  -q TEXT     Include activity whose summary or details contain TEXT.
-              Matching is case-insensitive.
   -l N        Limit the report to N matching activities (default: 1).
               N must be 0 or an integer greater than 0; 0 means all matching
               activities are included. The newest N matches
               are selected. In report, listed newest to oldest.
+  -q TEXT     Include activity whose summary or details contain TEXT.
+              Matching is case-insensitive.
+  -r          Report the current local branch's remote state without changing
+              the checked-out branch or worktree.
+  -t SEC      Remote timeout in seconds with -r (default: 10 seconds).
+              SEC must be an integer greater than 0.
+  -u USER     Include activity whose associated user contains USER.
+              Matching is case-insensitive. Activity without a recorded user
+              does not match.
 
 Additional options only for a style report:
   -f FILE     Check only FILE. May be specified more than once.
@@ -108,7 +112,7 @@ EOF
 }
 
 # High-Level Flow:
-# - Resolve the selected local branch or chbranch-selected remote snapshot.
+# - Resolve the selected local branch, fetched remote branch, or remote snapshot.
 # - Read recorded commits and completed workflow activity newest first.
 # - Apply user/text filters and select the newest limit.
 # - Write one report of the selected type; never mutate workflow history.
@@ -122,6 +126,8 @@ RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/report_helpers.sh
 source "$SCRIPT_DIR/../helpers/report_helpers.sh"
 
@@ -144,6 +150,44 @@ is_non_negative_integer() {
 
 is_positive_integer() {
   [[ "$1" =~ ^[1-9][0-9]*$ ]]
+}
+
+refresh_remote_branch_report_refs() {
+  local branch="$1"
+  local remote_output=""
+  local remote_branch_ref="refs/heads/$branch"
+  local remote_notes_ref="refs/notes/briteTest-remote-workflow"
+
+  if ! remote_output="$(bt_run_remote_command git ls-remote origin \
+    "$remote_branch_ref" "$remote_notes_ref" 2>/dev/null)"; then
+    bt_warn "Failed to query origin for remote branch report"
+    exit "$EXIT_HISTORY_READ_FAILED"
+  fi
+  if ! printf '%s\n' "$remote_output" | awk -v ref="$remote_branch_ref" \
+    '$2 == ref { found = 1 } END { exit !found }'; then
+    usage_error "Remote branch 'origin/$branch' is not available"
+  fi
+
+  if ! bt_run_remote_command git fetch origin \
+    "+${remote_branch_ref}:refs/remotes/origin/$branch" \
+    >/dev/null 2>&1; then
+    bt_warn "Failed to refresh remote branch 'origin/$branch'"
+    exit "$EXIT_HISTORY_READ_FAILED"
+  fi
+
+  if printf '%s\n' "$remote_output" | awk -v ref="$remote_notes_ref" \
+    '$2 == ref { found = 1 } END { exit !found }'; then
+    if ! bt_run_remote_command git fetch origin \
+      "+${remote_notes_ref}:${remote_notes_ref}" >/dev/null 2>&1; then
+      bt_warn "Failed to refresh remote workflow history"
+      exit "$EXIT_HISTORY_READ_FAILED"
+    fi
+  else
+    git update-ref -d "$remote_notes_ref" >/dev/null 2>&1 || {
+      bt_warn "Failed to reset unavailable remote workflow history"
+      exit "$EXIT_HISTORY_READ_FAILED"
+    }
+  fi
 }
 
 generate_repository_report() {
@@ -320,6 +364,8 @@ recorded_field_value() {
 REPORT_TYPE="branch"
 REPORT_TYPE_SPECIFIED=false
 REMOTE_TIMEOUT=10
+REMOTE_TIMEOUT_SPECIFIED=false
+REMOTE_BRANCH_REPORT=false
 TYPE_FILTER="all"
 FILTER_USER=""
 FILTER_TEXT=""
@@ -383,12 +429,13 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     -t)
-      [[ "$REPORT_TYPE" == "repo" ]] || \
-        usage_error "Option -t requires TYPE repo"
+      [[ "$REPORT_TYPE" == "repo" || "$REPORT_TYPE" == "branch" ]] || \
+        usage_error "Option -t requires TYPE repo or TYPE branch with -r"
       [[ $# -ge 2 ]] || usage_error "Option -t requires SEC"
       is_positive_integer "$2" || \
         usage_error "SEC for -t must be an integer > 0"
       REMOTE_TIMEOUT="$2"
+      REMOTE_TIMEOUT_SPECIFIED=true
       shift 2
       ;;
     -f)
@@ -407,8 +454,10 @@ while [[ $# -gt 0 ]]; do
     -r)
       if [[ "$REPORT_TYPE" == "style" ]]; then
         STYLE_ARGS+=(-r)
+      elif [[ "$REPORT_TYPE" == "branch" ]]; then
+        REMOTE_BRANCH_REPORT=true
       else
-        usage_error "Option -r requires TYPE style"
+        usage_error "Option -r requires TYPE branch or TYPE style"
       fi
       shift
       ;;
@@ -425,6 +474,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ "$REPORT_TYPE" == "branch" && "$REMOTE_TIMEOUT_SPECIFIED" == true && \
+  "$REMOTE_BRANCH_REPORT" == false ]]; then
+  usage_error "Option -t requires -r for TYPE branch"
+fi
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT"
+
 if [[ "$REPORT_TYPE" == "style" ]]; then
   [[ "$VERBOSE" == false ]] || STYLE_ARGS+=(-v)
   # shellcheck source=helpers/ckstyle.sh
@@ -436,11 +491,19 @@ if [[ "$REPORT_TYPE" == "repo" ]]; then
   generate_repository_report
 fi
 
-TARGET_REF="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
-HISTORY_REF="$TARGET_REF"
+CURRENT_REF="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
+TARGET_REF="$CURRENT_REF"
+HISTORY_REF="$CURRENT_REF"
 WORKFLOW_NOTES_REF="briteTest-workflow"
 BRANCH_REPORT_PREFIX="local"
-if [[ -z "$TARGET_REF" ]]; then
+if [[ "$REMOTE_BRANCH_REPORT" == true ]]; then
+  [[ -n "$CURRENT_REF" ]] || \
+    usage_error "Option -r requires a current local branch"
+  refresh_remote_branch_report_refs "$CURRENT_REF"
+  HISTORY_REF="origin/$CURRENT_REF"
+  WORKFLOW_NOTES_REF="briteTest-remote-workflow"
+  BRANCH_REPORT_PREFIX="remote"
+elif [[ -z "$TARGET_REF" ]]; then
   BRANCH_REPORT_PREFIX="remote"
   WORKFLOW_NOTES_REF="briteTest-remote-workflow"
   remote_refs="$(git for-each-ref --format='%(refname:short)' \

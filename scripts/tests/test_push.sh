@@ -332,7 +332,7 @@ rc=$(run_capture "$TMPDIR/push.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WOR
 [[ "$rc" -eq 0 ]] || fail "push should exit 0 (got $rc)"
 assert_contains "Pushed (" "$TMPDIR/push.out"
 assert_contains "to remote dev/push-tests-v1.0.0: 1 modified, 0 added, and 0 deleted files." "$TMPDIR/push.out"
-assert_contains "Run chbranch -r dev/push-tests-v1.0.0, then run report for details." \
+assert_contains "Run report -r for details." \
   "$TMPDIR/push.out"
 push_note="$(git -C "$WORK" notes --ref=briteTest-remote-workflow show HEAD)"
 [[ "$push_note" == *"Workflow-Type: push"* ]] || \

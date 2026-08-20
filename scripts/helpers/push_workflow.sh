@@ -697,5 +697,5 @@ EOF
     fi
   fi
   echo "Pushed (${pushed_tip_short}) to remote $current_branch: ${pushed_modified_files} modified, ${pushed_added_files} added, and ${pushed_deleted_files} deleted files."
-  echo "Run chbranch -r $current_branch, then run report for details."
+  echo "Run report -r for details."
 )
