@@ -281,9 +281,11 @@ report is written directly in `reports/` as `repo-<datetime>.md`,
 Only one report with each filename prefix is kept. Local and remote reports
 are retained independently.
 
-Use `report branch -r [-t SEC]` to refresh and report
-`origin/<current-local-branch>` without changing the checked-out branch or
-worktree. The remote timeout defaults to 10 seconds.
+Use `report branch -r [-t SEC]` to refresh and report the remote corresponding
+to the current local branch or remote snapshot without changing the checked-out
+branch, detached snapshot, or worktree. For a remote snapshot, `-r` reports the
+current remote state rather than the snapshot state. The timeout defaults to
+10 seconds.
 </details>
 
 <details>

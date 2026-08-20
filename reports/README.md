@@ -23,7 +23,7 @@ qe
 
 **recovery-<datetime>-<id>.md**: Latest untracked remote recovery report.
 
-**remote-<datetime>.md**: Latest untracked activity report for a remote snapshot branch
+**remote-<datetime>.md**: Latest untracked activity report for a remote branch
 from `<repo>/scripts/bin/report`.
 
 **repo-<datetime>.md**: Latest untracked repository health and branch status report from

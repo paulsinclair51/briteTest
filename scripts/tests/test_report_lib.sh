@@ -197,7 +197,9 @@ Workflow-Branch: dev/report-tests-v1.0.0
 Workflow-User: testuser <test@example.com>
 Command-Line: pull -v
 Summary: pull activity
-Status: recorded pull details" HEAD >/dev/null 2>&1
+Record-Group: appended pair
+Status: recorded pull details with --- briteTest workflow --- marker" \
+  HEAD >/dev/null 2>&1
 
     retarget_tip="$(git rev-parse HEAD)"
     git notes --ref=briteTest-workflow append -m \
@@ -211,8 +213,18 @@ Summary: retarget activity
 Old-Parent: v1.0.0
 New-Parent: v1.1.0
 Retargeted-Tip: $retarget_tip
+Record-Group: appended pair
 Comment: move branch" \
   HEAD >/dev/null 2>&1
+
+    git notes --ref=briteTest-workflow append -m \
+      "--- briteTest workflow ---
+Workflow-Type: push
+Workflow-Time: 2026-08-16 12:00:09
+Workflow-Branch: dev/report-tests-v1.0.0
+Workflow-User: testuser <test@example.com>
+Command-Line: push
+Status: malformed fixture missing summary" HEAD >/dev/null 2>&1
 
     git checkout -b sandbox/report-other >/dev/null 2>&1
     echo "other" > other.txt

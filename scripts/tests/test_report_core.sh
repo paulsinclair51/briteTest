@@ -19,7 +19,7 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./scripts/bin/r
 [[ "$rc" -eq 0 ]] || fail "report -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "-q TEXT" "$TMPDIR/help.out"
-assert_contains "Report the current local branch's remote state" "$TMPDIR/help.out"
+assert_contains "If the current branch is a remote snapshot" "$TMPDIR/help.out"
 assert_contains "TYPE may appear before or after options" "$TMPDIR/help.out"
 if grep -Fq "Required history" "$TMPDIR/help.out"; then
   fail "help should not claim that missing history can be detected"
