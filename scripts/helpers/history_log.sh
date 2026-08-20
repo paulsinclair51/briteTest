@@ -70,12 +70,13 @@ EOF
 
 # Record one completed workflow action. Additional arguments are key/value
 # pairs rendered by report without requiring workflow-specific parsing.
-bt_record_workflow_event() {
-  local workflow_type="$1"
-  local branch="$2"
-  local command_line="$3"
-  local summary="$4"
-  local commit_ref="${5:-HEAD}"
+bt_record_workflow_event_to_ref() {
+  local notes_ref="$1"
+  local workflow_type="$2"
+  local branch="$3"
+  local command_line="$4"
+  local summary="$5"
+  local commit_ref="${6:-HEAD}"
   local timestamp=""
   local user_name=""
   local user_email=""
@@ -83,7 +84,7 @@ bt_record_workflow_event() {
   local field_name=""
   local field_value=""
 
-  shift 5
+  shift 6
   (( $# % 2 == 0 )) || return 2
 
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
@@ -107,8 +108,45 @@ Summary: ${summary}"
     record+="${field_name}: ${field_value}"
   done
 
-  git notes --ref=briteTest-workflow append -m "$record" "$commit_ref" \
+  git notes --ref="$notes_ref" append -m "$record" "$commit_ref" \
     >/dev/null 2>&1
+}
+
+bt_record_workflow_event() {
+  bt_record_workflow_event_to_ref "briteTest-workflow" "$@"
+}
+
+bt_record_remote_workflow_event() {
+  bt_record_workflow_event_to_ref "briteTest-remote-workflow" "$@"
+}
+
+bt_refresh_remote_workflow_history() {
+  local remote_ref="refs/notes/briteTest-remote-workflow"
+  local remote_tip=""
+
+  remote_tip="$(bt_history_run_remote_command git ls-remote origin \
+    "$remote_ref" 2>/dev/null | awk 'NR == 1 { print $1 }')" || return 1
+  if [[ -z "$remote_tip" ]]; then
+    git update-ref -d "$remote_ref" >/dev/null 2>&1 || return 1
+    return 0
+  fi
+  bt_history_run_remote_command git fetch origin \
+    "+${remote_ref}:${remote_ref}" >/dev/null 2>&1
+}
+
+bt_publish_remote_workflow_history() {
+  bt_history_run_remote_command env GIT_BYPASS_HOOKS=true git push origin \
+    refs/notes/briteTest-remote-workflow:refs/notes/briteTest-remote-workflow \
+    >/dev/null 2>&1
+}
+
+bt_workflow_note_field() {
+  local note="$1"
+  local field="$2"
+
+  printf '%s\n' "$note" | awk -v prefix="${field}: " \
+    'index($0, prefix) == 1 { value = substr($0, length(prefix) + 1) }
+     END { print value }'
 }
 
 # Propagate repository_history.md from remote main to current branch if available.

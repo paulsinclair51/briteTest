@@ -438,9 +438,11 @@ fi
 
 TARGET_REF="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
 HISTORY_REF="$TARGET_REF"
+WORKFLOW_NOTES_REF="briteTest-workflow"
 BRANCH_REPORT_PREFIX="local"
 if [[ -z "$TARGET_REF" ]]; then
   BRANCH_REPORT_PREFIX="remote"
+  WORKFLOW_NOTES_REF="briteTest-remote-workflow"
   remote_refs="$(git for-each-ref --format='%(refname:short)' \
     --points-at HEAD refs/remotes/origin 2>/dev/null | \
     grep -v '^origin/HEAD$' || true)"
@@ -495,7 +497,7 @@ while IFS= read -r -d $'\x1e' row; do
   subject="${row%%"$sep"*}"
   body="${row#*"$sep"}"
 
-  note="$(git notes --ref=briteTest-workflow show "$full_hash" 2>/dev/null || true)"
+  note="$(git notes --ref="$WORKFLOW_NOTES_REF" show "$full_hash" 2>/dev/null || true)"
   if [[ -n "$note" ]]; then
     while IFS= read -r -d $'\x1e' note_record; do
       note_type="$(recorded_field_value "$note_record" "Workflow-Type")"

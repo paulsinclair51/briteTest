@@ -308,6 +308,12 @@ refresh_remote_branch_ref() {
     return 2
   fi
 
+  # Remote workflow history is independent of local workflow history. A
+  # missing notes ref is valid when no remote-modifying command has run yet.
+  bt_run_remote_command git fetch origin \
+    "+refs/notes/briteTest-remote-workflow:refs/notes/briteTest-remote-workflow" \
+    >/dev/null 2>&1 || true
+
   if bt_propagate_repository_history; then
     history_rc=0
   else

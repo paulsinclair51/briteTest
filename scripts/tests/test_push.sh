@@ -14,6 +14,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PUSH_SRC="$REPO_ROOT/scripts/bin/push"
 COMMON_HELPER_SRC="$REPO_ROOT/scripts/helpers/common.sh"
 GIT_HELPER_SRC="$REPO_ROOT/scripts/helpers/git_helpers.sh"
+GITHUB_HELPER_SRC="$REPO_ROOT/scripts/helpers/github_helpers.sh"
 HISTORY_HELPER_SRC="$REPO_ROOT/scripts/helpers/history_log.sh"
 REPORT_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_helpers.sh"
 REPORT_SYNC_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_sync.sh"
@@ -74,6 +75,7 @@ mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/config"
 cp "$PUSH_SRC" "$WORK/scripts/bin/push"
 cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
 cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
+cp "$GITHUB_HELPER_SRC" "$WORK/scripts/helpers/github_helpers.sh"
 cp "$HISTORY_HELPER_SRC" "$WORK/scripts/helpers/history_log.sh"
 cp "$REPORT_HELPER_SRC" "$WORK/scripts/helpers/report_helpers.sh"
 cp "$REPORT_SYNC_HELPER_SRC" "$WORK/scripts/helpers/report_sync.sh"
@@ -332,7 +334,7 @@ assert_contains "Pushed (" "$TMPDIR/push.out"
 assert_contains "to remote dev/push-tests-v1.0.0: 1 modified, 0 added, and 0 deleted files." "$TMPDIR/push.out"
 assert_contains "Run chbranch -r dev/push-tests-v1.0.0, then run report for details." \
   "$TMPDIR/push.out"
-push_note="$(git -C "$WORK" notes --ref=briteTest-workflow show HEAD)"
+push_note="$(git -C "$WORK" notes --ref=briteTest-remote-workflow show HEAD)"
 [[ "$push_note" == *"Workflow-Type: push"* ]] || \
   fail "successful push should record its workflow type"
 [[ "$push_note" == *"Command-Line: push -t 5"* ]] || \
@@ -345,6 +347,11 @@ push_note="$(git -C "$WORK" notes --ref=briteTest-workflow show HEAD)"
   fail "successful push should record its commit count"
 [[ "$push_note" == *"Files: 1 modified, 0 added, 0 deleted"* ]] || \
   fail "successful push should record its file counts"
+remote_push_note="$(git --git-dir="$ORIGIN" notes \
+  --ref=briteTest-remote-workflow show \
+  "$(git -C "$WORK" rev-parse HEAD)" 2>/dev/null || true)"
+[[ "$remote_push_note" == *"Workflow-Type: push"* ]] || \
+  fail "successful push should publish its workflow history to origin"
 if grep -Fq "See reports/push-" "$TMPDIR/push.out"; then
   fail "successful non-dry push should not output a report path"
 fi
@@ -355,6 +362,138 @@ remote_tip="$(git -C "$ORIGIN" rev-parse refs/heads/dev/push-tests-v1.0.0)"
 local_tip="$(git -C "$WORK" rev-parse HEAD)"
 [[ "$remote_tip" == "$local_tip" ]] || fail "remote tip should match local tip after push"
 pass "real push"
+
+# A local mrgup event authorizes an approver to publish its protected parent
+# and finalizes the associated PR only after the branch push succeeds.
+MRGUP_ORIGIN="$TMPDIR/mrgup-origin.git"
+MRGUP_WORK="$TMPDIR/mrgup-work"
+MRGUP_BIN="$TMPDIR/mrgup-bin"
+git init --bare "$MRGUP_ORIGIN" >/dev/null 2>&1
+git clone "file://$MRGUP_ORIGIN" "$MRGUP_WORK" >/dev/null 2>&1
+mkdir -p "$MRGUP_WORK/scripts/bin" "$MRGUP_WORK/scripts/helpers" \
+  "$MRGUP_WORK/config" "$MRGUP_WORK/reports" "$MRGUP_BIN"
+cp "$PUSH_SRC" "$MRGUP_WORK/scripts/bin/push"
+cp "$COMMON_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/common.sh"
+cp "$GIT_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/git_helpers.sh"
+cp "$GITHUB_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/github_helpers.sh"
+cp "$HISTORY_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/history_log.sh"
+cp "$REPORT_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/report_helpers.sh"
+cp "$REPORT_SYNC_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/report_sync.sh"
+cp "$PUSH_WORKFLOW_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/push_workflow.sh"
+cat > "$MRGUP_WORK/config/contributors.md" <<'EOF'
+- testapprover, A
+EOF
+cat > "$MRGUP_BIN/gh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$FAKE_GH_LOG"
+
+if [[ "$1 $2" == "pr view" && "$*" == *"--json state"* ]]; then
+  if [[ -f "$FAKE_GH_STATE_DIR/closed-$3" ]]; then
+    echo "CLOSED"
+  else
+    echo "OPEN"
+  fi
+elif [[ "$1 $2" == "pr view" && "$*" == *"--json comments"* ]]; then
+  cat "$FAKE_GH_STATE_DIR/comments-$3" 2>/dev/null || true
+elif [[ "$1 $2" == "pr comment" ]]; then
+  pr_number="$3"
+  while [[ $# -gt 0 ]]; do
+    if [[ "$1" == "--body-file" ]]; then
+      cat "$2" > "$FAKE_GH_STATE_DIR/comments-$pr_number"
+      break
+    fi
+    shift
+  done
+elif [[ "$1 $2" == "pr close" ]]; then
+  if [[ "${FAKE_GH_FAIL_CLOSE_ONCE:-false}" == true && \
+    ! -f "$FAKE_GH_STATE_DIR/failed-close-$3" ]]; then
+    touch "$FAKE_GH_STATE_DIR/failed-close-$3"
+    exit 1
+  fi
+  touch "$FAKE_GH_STATE_DIR/closed-$3"
+fi
+exit 0
+EOF
+chmod +x "$MRGUP_BIN/gh" "$MRGUP_WORK/scripts/bin/push"
+FAKE_GH_STATE_DIR="$TMPDIR/mrgup-gh-state"
+mkdir -p "$FAKE_GH_STATE_DIR"
+(
+  cd "$MRGUP_WORK"
+  git config user.name testapprover
+  git config user.email approver@example.com
+  echo seed > README.md
+  git add README.md scripts config
+  git commit -m seed >/dev/null 2>&1
+  git branch -M main
+  git push -u origin main >/dev/null 2>&1
+  git checkout -b v1.0.0 >/dev/null 2>&1
+  git push -u origin v1.0.0 >/dev/null 2>&1
+  echo merged > merged.txt
+  git add merged.txt
+  git commit -m "local mrgup result" >/dev/null 2>&1
+  source scripts/helpers/history_log.sh
+  bt_record_workflow_event "mrgup" "v1.0.0" "mrgup" \
+    "Merged dev/feature-v1.0.0 into v1.0.0" HEAD \
+    "Source-Branch" "dev/feature-v1.0.0" \
+    "Target-Branch" "v1.0.0" "PR" "42"
+)
+FAKE_GH_LOG="$TMPDIR/mrgup-gh.log"
+rc=$(run_capture "$TMPDIR/mrgup-push.out" env GITHUB_ACTOR=testapprover \
+  FAKE_GH_LOG="$FAKE_GH_LOG" FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" \
+  PATH="$MRGUP_BIN:$PATH" \
+  bash -c "cd '$MRGUP_WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 0 ]] || fail "push should publish pending mrgup (got $rc)"
+assert_contains "Pushed (" "$TMPDIR/mrgup-push.out"
+assert_contains "pr comment 42" "$FAKE_GH_LOG"
+assert_contains "pr close 42" "$FAKE_GH_LOG"
+[[ "$(git -C "$MRGUP_WORK" rev-parse v1.0.0)" == \
+  "$(git --git-dir="$MRGUP_ORIGIN" rev-parse refs/heads/v1.0.0)" ]] || \
+  fail "push should publish the local mrgup parent tip"
+pass "mrgup publication and PR finalization"
+
+# A failed close occurs after the atomic branch/history publication. A rerun
+# with no commits retries only PR finalization and does not duplicate comments.
+(
+  cd "$MRGUP_WORK"
+  echo retry > retry.txt
+  git add retry.txt
+  git commit -m "mrgup close retry" >/dev/null 2>&1
+  source scripts/helpers/history_log.sh
+  bt_record_workflow_event "mrgup" "v1.0.0" "mrgup" \
+    "Merged dev/retry-v1.0.0 into v1.0.0" HEAD \
+    "Source-Branch" "dev/retry-v1.0.0" \
+    "Target-Branch" "v1.0.0" "PR" "43"
+)
+retry_tip="$(git -C "$MRGUP_WORK" rev-parse HEAD)"
+rc=$(run_capture "$TMPDIR/mrgup-close-fail.out" env \
+  GITHUB_ACTOR=testapprover FAKE_GH_LOG="$FAKE_GH_LOG" \
+  FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" FAKE_GH_FAIL_CLOSE_ONCE=true \
+  PATH="$MRGUP_BIN:$PATH" \
+  bash -c "cd '$MRGUP_WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 202 ]] || fail "failed PR close should exit 202 (got $rc)"
+[[ "$(git --git-dir="$MRGUP_ORIGIN" rev-parse refs/heads/v1.0.0)" == \
+  "$retry_tip" ]] || fail "failed PR close should leave the branch published"
+remote_retry_note="$(git --git-dir="$MRGUP_ORIGIN" notes \
+  --ref=briteTest-remote-workflow show "$retry_tip" 2>/dev/null || true)"
+[[ "$remote_retry_note" == *"Workflow-Type: push"* ]] || \
+  fail "failed PR close should leave remote history published"
+
+rc=$(run_capture "$TMPDIR/mrgup-close-retry.out" env \
+  GITHUB_ACTOR=testapprover FAKE_GH_LOG="$FAKE_GH_LOG" \
+  FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" FAKE_GH_FAIL_CLOSE_ONCE=true \
+  PATH="$MRGUP_BIN:$PATH" \
+  bash -c "cd '$MRGUP_WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 0 ]] || fail "no-change PR close retry should succeed (got $rc)"
+assert_contains "Finalized pull request" "$TMPDIR/mrgup-close-retry.out"
+[[ "$(grep -Fc 'pr comment 43' "$FAKE_GH_LOG")" -eq 1 ]] || \
+  fail "PR close retry should not duplicate its publication comment"
+
+rc=$(run_capture "$TMPDIR/mrgup-closed-noop.out" env \
+  GITHUB_ACTOR=testapprover FAKE_GH_LOG="$FAKE_GH_LOG" \
+  FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" PATH="$MRGUP_BIN:$PATH" \
+  bash -c "cd '$MRGUP_WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 10 ]] || fail "closed mrgup no-work push should exit 10 (got $rc)"
+pass "mrgup PR finalization recovery"
 
 # 11) Non-dry push should fail with 200 and write a failed push report.
 cat > "$ORIGIN/hooks/pre-receive" <<'EOF'
@@ -375,8 +514,18 @@ chmod +x "$ORIGIN/hooks/pre-receive"
   git add README.md
   git commit -m "push failure report test" >/dev/null 2>&1
 )
+remote_branch_before="$(git --git-dir="$ORIGIN" rev-parse \
+  refs/heads/dev/push-tests-v1.0.0)"
+remote_notes_before="$(git --git-dir="$ORIGIN" rev-parse \
+  refs/notes/briteTest-remote-workflow)"
 rc=$(run_capture "$TMPDIR/push-fail.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/push -t 5")
 [[ "$rc" -eq 200 ]] || fail "push should exit 200 when remote rejects push (got $rc)"
+[[ "$(git --git-dir="$ORIGIN" rev-parse \
+  refs/heads/dev/push-tests-v1.0.0)" == "$remote_branch_before" ]] || \
+  fail "rejected atomic push should not update the remote branch"
+[[ "$(git --git-dir="$ORIGIN" rev-parse \
+  refs/notes/briteTest-remote-workflow)" == "$remote_notes_before" ]] || \
+  fail "rejected atomic push should not update remote workflow history"
 assert_contains "Failed to push branch 'dev/push-tests-v1.0.0' to remote" "$TMPDIR/push-fail.out"
 assert_contains "rejected by test hook: README.md policy violation" "$TMPDIR/push-fail.out"
 push_error_report="$(latest_report "$WORK" 'push-e-*.md')"

@@ -85,7 +85,7 @@ corresponding remote branch.
 
 **release**: Create and publish releases.
 
-**retarget**: Retarget a targeted branch to a different version branch.
+**retarget**: Retarget a targeted branch locally; use `-r` to publish it.
 targeted branch is renamed to have its version as the specified version.
 
 **review**: Create or update a pull request.

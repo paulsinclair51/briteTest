@@ -129,6 +129,7 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./scripts/bin/r
 [[ "$rc" -eq 0 ]] || fail "retarget -h should exit 0 (got $rc)"
 assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "-e" "$TMPDIR/help.out"
+assert_contains "-r" "$TMPDIR/help.out"
 pass "help output"
 
 copyfix_state_root="$(git -C "$WORK" rev-parse \
@@ -190,14 +191,20 @@ assert_contains "Dry-run passed" "$TMPDIR/dry-run.out"
 assert_contains "Rebase preview: git rebase origin/v1.1.0" "$TMPDIR/dry-run.out"
 pass "dry-run success with login identity"
 
-# 5) Successful retarget should record details for report.
+# 5) Successful retarget should remain local and record details for report.
+remote_tip_before="$(git -C "$ORIGIN" rev-parse refs/heads/dev/parser-v1.0.0)"
 rc=$(run_capture "$TMPDIR/success.out" env GITHUB_ACTOR=testapprover \
   bash -lc "cd '$WORK' && bash ./scripts/bin/retarget -c 'move parser' dev/parser-v1.0.0 v1.1.0")
 [[ "$rc" -eq 0 ]] || fail "retarget should exit 0 (got $rc)"
-assert_contains "Retarget complete" "$TMPDIR/success.out"
+assert_contains "Local retarget complete" "$TMPDIR/success.out"
 assert_contains \
-  "Run chbranch dev/parser-v1.0.0, then run report for details." \
+  "Run chbranch dev/parser-v1.0.0, then run report for local details." \
   "$TMPDIR/success.out"
+assert_contains "Run retarget -r dev/parser-v1.0.0 v1.1.0 when ready to update origin." \
+  "$TMPDIR/success.out"
+remote_tip_after="$(git -C "$ORIGIN" rev-parse refs/heads/dev/parser-v1.0.0)"
+[[ "$remote_tip_after" == "$remote_tip_before" ]] || \
+  fail "retarget without -r should not update origin"
 retarget_note="$(git -C "$WORK" notes --ref=briteTest-workflow show \
   dev/parser-v1.0.0)"
 [[ "$retarget_note" == *"Workflow-Type: retarget"* ]] || \
@@ -212,6 +219,60 @@ retarget_note="$(git -C "$WORK" notes --ref=briteTest-workflow show \
   fail "retarget should record its rewritten tip"
 [[ "$retarget_note" == *"Comment: move parser"* ]] || \
   fail "retarget should record its comment"
-pass "successful retarget history"
+pass "successful local retarget history"
+
+# 6) A rejected -r publication should change neither remote ref and should be
+# retryable without duplicating local or remote history.
+cat > "$ORIGIN/hooks/pre-receive" <<'EOF'
+#!/usr/bin/env bash
+while read -r _old _new ref; do
+  if [[ "$ref" == "refs/heads/dev/parser-v1.0.0" ]]; then
+    echo "rejected by retarget test hook" >&2
+    exit 1
+  fi
+done
+exit 0
+EOF
+chmod +x "$ORIGIN/hooks/pre-receive"
+remote_tip_before="$(git -C "$ORIGIN" rev-parse \
+  refs/heads/dev/parser-v1.0.0)"
+remote_notes_before="$(git --git-dir="$ORIGIN" rev-parse \
+  refs/notes/briteTest-remote-workflow 2>/dev/null || true)"
+local_event_count_before="$(printf '%s\n' "$retarget_note" | \
+  grep -Fc -- 'Workflow-Type: retarget')"
+rc=$(run_capture "$TMPDIR/remote-rejected.out" env GITHUB_ACTOR=testapprover \
+  bash -lc "cd '$WORK' && bash ./scripts/bin/retarget -r dev/parser-v1.0.0 v1.1.0")
+[[ "$rc" -eq 4 ]] || fail "rejected retarget -r should exit 4 (got $rc)"
+[[ "$(git -C "$ORIGIN" rev-parse refs/heads/dev/parser-v1.0.0)" == \
+  "$remote_tip_before" ]] || \
+  fail "rejected retarget should not update the remote branch"
+[[ "$(git --git-dir="$ORIGIN" rev-parse \
+  refs/notes/briteTest-remote-workflow 2>/dev/null || true)" == \
+  "$remote_notes_before" ]] || \
+  fail "rejected retarget should not update remote workflow history"
+local_retry_note="$(git -C "$WORK" notes --ref=briteTest-workflow show \
+  dev/parser-v1.0.0)"
+[[ "$(printf '%s\n' "$local_retry_note" | \
+  grep -Fc -- 'Workflow-Type: retarget')" -eq "$local_event_count_before" ]] || \
+  fail "rejected retarget retry should not duplicate local history"
+rm -f "$ORIGIN/hooks/pre-receive"
+
+# 7) -r should publish the already-retargeted local branch after rejection.
+rc=$(run_capture "$TMPDIR/remote-success.out" env GITHUB_ACTOR=testapprover \
+  bash -lc "cd '$WORK' && bash ./scripts/bin/retarget -r dev/parser-v1.0.0 v1.1.0")
+[[ "$rc" -eq 0 ]] || fail "retarget -r should exit 0 (got $rc)"
+assert_contains "Retarget complete locally and on origin" "$TMPDIR/remote-success.out"
+remote_tip_after="$(git -C "$ORIGIN" rev-parse refs/heads/dev/parser-v1.0.0)"
+local_tip="$(git -C "$WORK" rev-parse dev/parser-v1.0.0)"
+[[ "$remote_tip_after" == "$local_tip" ]] || \
+  fail "retarget -r should update origin to the local retargeted tip"
+remote_retarget_note="$(git --git-dir="$ORIGIN" notes \
+  --ref=briteTest-remote-workflow show "$local_tip" 2>/dev/null || true)"
+[[ "$remote_retarget_note" == *"Workflow-Type: retarget"* ]] || \
+  fail "retarget -r should publish remote workflow history"
+[[ "$(printf '%s\n' "$remote_retarget_note" | \
+  grep -Fc -- 'Workflow-Type: retarget')" -eq 1 ]] || \
+  fail "retarget retry should publish one remote history event"
+pass "atomic remote retarget publication and retry"
 
 echo "All retarget smoke tests passed."

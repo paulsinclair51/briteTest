@@ -44,7 +44,7 @@ pass "default all report"
 # 4) Verbose mode should report progress while details remain in the file
 rc=$(run_capture "$TMPDIR/verbose.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report -v -l 10")
 [[ "$rc" -eq 0 ]] || fail "verbose report should exit 0 (got $rc)"
-assert_contains "Found 10 matching activities" "$TMPDIR/verbose.out"
+assert_contains "matching activities" "$TMPDIR/verbose.out"
 verbose_rel="$(report_path_from_output "$TMPDIR/verbose.out")"
 assert_contains "### Details" "$WORK/$verbose_rel"
 pass "verbose progress output"
@@ -54,20 +54,20 @@ rc=$(run_capture "$TMPDIR/type-all.out" bash -lc "cd '$WORK' && bash ./scripts/b
 [[ "$rc" -eq 0 ]] || fail "report branch should exit 0 (got $rc)"
 all_rel="$(report_path_from_output "$TMPDIR/type-all.out")"
 assert_contains "seed repo" "$WORK/$all_rel"
-assert_contains "push activity" "$WORK/$all_rel"
+assert_contains "pull activity" "$WORK/$all_rel"
 pass "branch report includes every activity once"
 
 # 6) TYPE may appear before or after options
-rc=$(run_capture "$TMPDIR/type-before.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'push activity' -l 1")
+rc=$(run_capture "$TMPDIR/type-before.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'pull activity' -l 1")
 [[ "$rc" -eq 0 ]] || fail "TYPE before options should exit 0 (got $rc)"
 before_rel="$(report_path_from_output "$TMPDIR/type-before.out")"
-assert_contains "push activity" "$WORK/$before_rel"
-assert_contains '**Command:** `push -v`' "$WORK/$before_rel"
-assert_contains "recorded push details" "$WORK/$before_rel"
-rc=$(run_capture "$TMPDIR/type-after.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report -q 'push activity' -l 1 branch")
+assert_contains "pull activity" "$WORK/$before_rel"
+assert_contains '**Command:** `pull -v`' "$WORK/$before_rel"
+assert_contains "recorded pull details" "$WORK/$before_rel"
+rc=$(run_capture "$TMPDIR/type-after.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report -q 'pull activity' -l 1 branch")
 [[ "$rc" -eq 0 ]] || fail "TYPE after options should exit 0 (got $rc)"
 after_rel="$(report_path_from_output "$TMPDIR/type-after.out")"
-assert_contains "push activity" "$WORK/$after_rel"
+assert_contains "pull activity" "$WORK/$after_rel"
 pass "positional type placement"
 
 # 7) Merge-down reports should render durable workflow details

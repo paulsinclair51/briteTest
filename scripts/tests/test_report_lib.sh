@@ -128,7 +128,7 @@ EOF
 
     remote_push_tip="$(git rev-parse origin/dev/report-tests-v1.0.0)"
     remote_push_previous="$(git rev-parse "${remote_push_tip}^")"
-    git notes --ref=briteTest-workflow append -m \
+    git notes --ref=briteTest-remote-workflow append -m \
       "--- briteTest workflow ---
 Workflow-Type: push
 Workflow-Time: 2026-08-16 11:59:59
@@ -184,7 +184,7 @@ Method: Cherry-pick created by copyfix" \
       -m $'## Workflow Metadata\n\nCommand-Line: mrgdown -f\nSource-Branch: v1.0.0\nTarget-Branch: dev/report-tests-v1.0.0\nParent-Commits-Integrated: 2\nFiles-Modified: 1\nFiles-Added: 1\nFiles-Deleted: 0\nStatus: Parent branch merged into current branch\nMethod: Merge commit (--no-ff) created by mrgdown' \
       >/dev/null 2>&1
 
-    for workflow_type in push pull; do
+    for workflow_type in pull; do
       git notes --ref=briteTest-workflow append -m \
         "--- briteTest workflow ---
 Workflow-Type: $workflow_type

@@ -381,12 +381,12 @@ release <version> [OPTIONS]
 
 #### 1.1.12. retarget
 
-**Purpose:** Retarget a targeted branch to a different version branch.
+**Purpose:** Retarget a targeted branch locally to a different version branch.
 
 **Usage:**
 
 ```bash
-retarget <branch_name> <new_version>
+retarget [-r] <branch_name> <new_version>
 ```
 
 **Notes:**

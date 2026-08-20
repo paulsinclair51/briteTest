@@ -30,7 +30,8 @@ Prerequisites:
   - The remote (origin) must be connected and reachable.
   - The current branch must be a local branch.
   - The current branch must be a targeted or contributor branch, and
-    must not be the main or a version branch.
+    must not be the main or a version branch, except when publishing a local
+    mrgup result recorded on that protected parent branch.
   - The current branch must have no uncommitted changes.
     - If there are changes, run the commit or undo command first.
   - The current branch must not have an unfinished copyfix operation.
@@ -71,8 +72,8 @@ Outputs:
   - No report is written when a non-dry-run push succeeds. Older dry-run and
     error reports for the current branch are deleted.
   - After a successful non-dry-run push, records history for the report
-    command and tells the user to run chbranch -r for the pushed branch,
-    then run report for details.
+    command in remote workflow history. When the pushed tip is a local mrgup
+    result, push comments on and closes its associated PR after publication.
   - For a dry-run, writes an untracked report locally to:
       '<repo>/reports/push-d-<datetime>.md'
   - If a non-dry-run operation fails after push work starts, writes an
@@ -96,6 +97,7 @@ Exit codes:
   10   No committed changes are available to push.
   200  Push failed.
   201  Failed to write report.
+  202  Push succeeded, but PR finalization failed.
 EOF
 }
 
@@ -137,6 +139,8 @@ done
 source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/github_helpers.sh
+source "$SCRIPT_DIR/../helpers/github_helpers.sh"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
 # shellcheck source=helpers/report_helpers.sh
@@ -147,6 +151,10 @@ source "$SCRIPT_DIR/../helpers/report_sync.sh"
 source "$SCRIPT_DIR/../helpers/push_workflow.sh"
 
 PUSH_WORKFLOW_ARGS=()
+PENDING_MRGUP=false
+PENDING_MRGUP_SOURCE=""
+PENDING_MRGUP_TARGET=""
+PENDING_MRGUP_PR=""
 
 push_error_exit() {
   local code="$1"
@@ -204,6 +212,90 @@ push_require_contributor_role() {
     "$actor_login" "$actor_email" "contributor" "$contributors_file"
 }
 
+push_require_approver_role() {
+  local actor_login=""
+  local actor_email=""
+  local repo_root=""
+
+  actor_login="$(bt_require_login 2>/dev/null || true)"
+  [[ -n "$actor_login" ]] || return 1
+  actor_email="$(git config user.email 2>/dev/null || true)"
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  [[ -n "$repo_root" ]] || return 1
+  bt_contributors_has_min_role_by_login_or_email \
+    "$actor_login" "$actor_email" "approver" \
+    "$repo_root/config/contributors.md"
+}
+
+push_load_pending_mrgup() {
+  local current_branch="$1"
+  local note=""
+  local workflow_type=""
+
+  note="$(git notes --ref=briteTest-workflow show HEAD 2>/dev/null || true)"
+  [[ -n "$note" ]] || return 0
+  workflow_type="$(bt_workflow_note_field "$note" "Workflow-Type")"
+  [[ "$workflow_type" == "mrgup" ]] || return 0
+
+  PENDING_MRGUP_TARGET="$(bt_workflow_note_field "$note" "Target-Branch")"
+  [[ "$PENDING_MRGUP_TARGET" == "$current_branch" ]] || return 0
+  PENDING_MRGUP_SOURCE="$(bt_workflow_note_field "$note" "Source-Branch")"
+  PENDING_MRGUP_PR="$(bt_workflow_note_field "$note" "PR")"
+  PENDING_MRGUP=true
+}
+
+bt_push_has_pending_mrgup_pr() {
+  [[ "$PENDING_MRGUP" == true && -n "$PENDING_MRGUP_PR" && \
+    "$PENDING_MRGUP_PR" != "none" ]]
+}
+
+bt_push_get_mrgup_pr_state() {
+  bt_run_remote_command gh pr view "$PENDING_MRGUP_PR" \
+    --json state --jq '.state' 2>/dev/null
+}
+
+bt_push_finalize_mrgup_pr() {
+  local pushed_tip="$1"
+  local body_file=""
+  local comment_bodies=""
+  local marker="<!-- briteTest-mrgup-published:${pushed_tip} -->"
+
+  bt_push_has_pending_mrgup_pr || return 0
+
+  if ! comment_bodies="$(bt_run_remote_command gh pr view "$PENDING_MRGUP_PR" \
+    --json comments --jq '.comments[].body' 2>/dev/null)"; then
+    return 1
+  fi
+
+  if ! printf '%s\n' "$comment_bodies" | grep -Fq -- "$marker"; then
+    body_file="$(mktemp)"
+    cat > "$body_file" <<EOF
+$marker
+
+## mrgup Published
+
+Source branch: \`$PENDING_MRGUP_SOURCE\`
+
+Parent branch: \`$PENDING_MRGUP_TARGET\`
+
+Published tip: \`$pushed_tip\`
+EOF
+    if ! bt_run_remote_command gh pr comment "$PENDING_MRGUP_PR" \
+      --body-file "$body_file" >/dev/null 2>&1; then
+      rm -f "$body_file"
+      return 1
+    fi
+    rm -f "$body_file"
+  fi
+
+  if ! bt_run_remote_command gh pr close "$PENDING_MRGUP_PR" \
+    >/dev/null 2>&1; then
+    return 1
+  fi
+
+  return 0
+}
+
 push_validate_prerequisites() {
   local timeout_seconds=10
   local current_branch=""
@@ -230,16 +322,14 @@ push_validate_prerequisites() {
           usage
           echo >&2
           bt_emit_prerequisite_failure 1 \
-            "Option -t requires timeout seconds. See usage above for" \
-            " details." \
+            "Option -t requires timeout seconds. See usage above for details." \
             "provide a positive timeout value and rerun push."
         }
         [[ "$2" =~ ^[0-9]+$ && "$2" -gt 0 ]] || {
           usage
           echo >&2
           bt_emit_prerequisite_failure 1 \
-            "Option -t requires an integer greater than 0. See usage" \
-            " above for details." \
+            "Option -t requires an integer greater than 0. See usage above for details." \
             "provide a positive timeout value and rerun push."
         }
         timeout_seconds="$2"
@@ -270,33 +360,46 @@ push_validate_prerequisites() {
   if [[ -z "$current_branch" || "$current_branch" == "HEAD" ]] || \
     ! git show-ref --verify --quiet "refs/heads/$current_branch"; then
     bt_emit_prerequisite_failure 1 \
-      "Not on a local branch. Use 'chbranch' to switch to a local" \
-      " non-protected branch, then retry." \
+      "Not on a local branch. Use 'chbranch' to switch to a local non-protected branch, then retry." \
       "switch to a local branch and rerun push."
   fi
+  push_load_pending_mrgup "$current_branch"
   if ! push_require_contributor_role; then
     bt_emit_prerequisite_failure 2 \
       "User is not a contributor." \
-      "use an account and merge path authorized by repository policy," \
-      " then rerun push."
+      "use an account and merge path authorized by repository policy, then rerun push."
   fi
-  if bt_is_protected_branch "$current_branch"; then
+  if bt_is_protected_branch "$current_branch" && \
+    [[ "$PENDING_MRGUP" != true ]]; then
     bt_emit_prerequisite_failure 3 \
-      "Cannot push protected branch '$current_branch' via push. Use the" \
-      " standard release workflow" \
+      "Cannot push protected branch '$current_branch' via push. Use the standard release workflow" \
       "for protected branches."
   fi
-  if bt_is_read_only_branch "$current_branch"; then
+  if bt_is_protected_branch "$current_branch" && \
+    ! push_require_approver_role; then
+    bt_emit_prerequisite_failure 2 \
+      "Publishing merged protected branch '$current_branch' requires an approver." \
+      "use an approver account and rerun push."
+  fi
+  if bt_is_read_only_branch "$current_branch" && \
+    [[ "$PENDING_MRGUP" != true ]]; then
     bt_emit_prerequisite_failure 3 \
       "Cannot push policy-invalid read-only branch '$current_branch'." \
-      " Use a valid targeted or contributor branch." \
       "switch to a valid targeted or contributor branch and rerun push."
   fi
-  if ! push_is_targeted_branch "$current_branch" && \
+  if [[ "$PENDING_MRGUP" != true ]] && \
+    ! push_is_targeted_branch "$current_branch" && \
     ! push_is_contributor_branch "$current_branch"; then
     bt_emit_prerequisite_failure 1 \
       "Current branch must be a targeted or contributor branch. Use " \
       "chbranch or mkbranch to switch to a supported local branch, then retry."
+  fi
+
+  if [[ "$PENDING_MRGUP" == true && -n "$PENDING_MRGUP_PR" && \
+    "$PENDING_MRGUP_PR" != "none" ]] && ! command -v gh >/dev/null 2>&1; then
+    bt_emit_prerequisite_failure 1 \
+      "GitHub CLI is required to finalize pull request #$PENDING_MRGUP_PR." \
+      "install gh and rerun push."
   fi
   if bt_is_copyfix_in_progress "$current_branch"; then
     bt_emit_prerequisite_failure 1 \

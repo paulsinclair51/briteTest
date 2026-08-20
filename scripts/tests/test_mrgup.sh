@@ -448,8 +448,6 @@ pass "-o rejected for non-owner"
   "$REAL_GIT" commit --allow-empty -m "no-op source branch" >/dev/null 2>&1
   "$REAL_GIT" push -u origin dev/noop-v1.0.0 >/dev/null 2>&1
 )
-noop_report_count_before="$(find "$WORK/reports" -maxdepth 1 -type f \
-  -name 'mrgup-*.md' | wc -l | tr -d ' ')"
 cat > "$WORK/reports/mrgup-d-20000101-000000.md" <<'EOF'
 # Stale Merge-Up Report
 
@@ -587,9 +585,8 @@ rc=$(run_mrgup "$TMPDIR/owner-nopr.out" \
 }
 assert_not_contains "0 modified, 0 added, and 0 deleted files would be merged." "$TMPDIR/owner-nopr.out"
 assert_contains "Dry-run: merge to local v1.0.0:" "$TMPDIR/owner-nopr.out"
-assert_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/owner-nopr.out"
 assert_contains "See reports/mrgup-d-" "$TMPDIR/owner-nopr.out"
-assert_contains "See reports/push-d-" "$TMPDIR/owner-nopr.out"
+assert_not_contains "See reports/push-d-" "$TMPDIR/owner-nopr.out"
 assert_not_contains "in remote for details" "$TMPDIR/owner-nopr.out"
 assert_not_contains "Dry run complete" "$TMPDIR/owner-nopr.out"
 assert_not_contains "no merge commit was created and no branch was pushed" "$TMPDIR/owner-nopr.out"
@@ -606,18 +603,15 @@ assert_contains "**Commit Comment:** dev/feat-v1.0.0 merged to v1.0.0 by owner t
 pass "-o owner, no PR: owner default message is reported"
 
 # ---------------------------------------------------------------------------
-# Parent-push guidance from the shared push workflow is emitted once
+# mrgup does not invoke the shared push workflow
 # ---------------------------------------------------------------------------
 rc=$(run_mrgup "$TMPDIR/parent-push-guidance.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
   "FAKE_PUSH_REMOTE_BRANCH_MISSING=1" "FAKE_GH_PR_NUMBER=" -- -o -d)
-[[ "$rc" -ne 0 ]] || fail "parent-push guidance path should fail (got $rc)"
-guidance_lines="$(grep -c '^Guidance:' "$TMPDIR/parent-push-guidance.out" || true)"
-[[ "$guidance_lines" -eq 1 ]] || fail "expected exactly one guidance line in parent-push failure output (got $guidance_lines)"
-assert_contains "Guidance:" "$TMPDIR/parent-push-guidance.out"
-assert_contains "rerun mrgup" "$TMPDIR/parent-push-guidance.out"
-[[ "$(grep -E '^Guidance: .*\.$' "$TMPDIR/parent-push-guidance.out" | wc -l | tr -d ' ')" -eq 1 ]] || fail "expected guidance line to end with a period"
-pass "parent-push guidance is emitted once with terminal punctuation"
+[[ "$rc" -eq 0 ]] || fail "mrgup dry-run should ignore push failures (got $rc)"
+assert_not_contains "Parent branch push workflow failed" \
+  "$TMPDIR/parent-push-guidance.out"
+pass "mrgup does not invoke push workflow"
 
 # ---------------------------------------------------------------------------
 # -o by owner with an unapproved PR fails
@@ -643,7 +637,7 @@ rc=$(run_mrgup "$TMPDIR/owner-pr-approved.out" \
 }
 assert_not_contains "0 modified, 0 added, and 0 deleted files would be merged." "$TMPDIR/owner-pr-approved.out"
 assert_contains "Dry-run: merge to local v1.0.0:" "$TMPDIR/owner-pr-approved.out"
-assert_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/owner-pr-approved.out"
+assert_not_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/owner-pr-approved.out"
 assert_not_contains "Dry run complete" "$TMPDIR/owner-pr-approved.out"
 assert_not_contains "is approved" "$TMPDIR/owner-pr-approved.out"
 assert_not_contains "My approved PR" "$TMPDIR/owner-pr-approved.out"
@@ -739,17 +733,6 @@ done
 pass "CI/CD results are included without blocking"
 
 # ---------------------------------------------------------------------------
-# A child push report failure is propagated as exit 204
-# ---------------------------------------------------------------------------
-rc=$(run_mrgup "$TMPDIR/push-report-failed.out" \
-  "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
-  "FAKE_GH_PR_NUMBER=" "BT_PUSH_REPORT_LOCK_TIMEOUT_SECONDS=invalid" -- \
-  -o -d -c "push report failure")
-[[ "$rc" -eq 204 ]] || fail "push report failure should exit 204 (got $rc)"
-assert_contains "Parent branch push report failed" "$TMPDIR/push-report-failed.out"
-pass "child push report failure returns exit 204"
-
-# ---------------------------------------------------------------------------
 # Normal approved PR uses its title as the commit comment
 # ---------------------------------------------------------------------------
 rc=$(run_mrgup "$TMPDIR/normal-pr-approved.out" \
@@ -774,7 +757,7 @@ assert_not_contains "Determining parent branch" "$TMPDIR/quiet-dryrun.out"
 assert_not_contains "Parent branch:" "$TMPDIR/quiet-dryrun.out"
 assert_not_contains "0 modified, 0 added, and 0 deleted files would be merged." "$TMPDIR/quiet-dryrun.out"
 assert_contains "Dry-run: merge to local v1.0.0:" "$TMPDIR/quiet-dryrun.out"
-assert_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/quiet-dryrun.out"
+assert_not_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/quiet-dryrun.out"
 pass "non-verbose dry-run output stays compact"
 
 # ---------------------------------------------------------------------------
@@ -883,7 +866,7 @@ assert_contains "not up-to-date with parent" "$TMPDIR/current-behind-parent.out"
 pass "current branch behind parent returns exit 13"
 
 # ---------------------------------------------------------------------------
-# One-time verification mismatch auto-repairs and succeeds
+# Local merge succeeds without remote post-merge repair
 # ---------------------------------------------------------------------------
 VERIFY_MARKER="$TMPDIR/revparse-once.marker"
 rc=$(run_mrgup "$TMPDIR/verify-repair.out" \
@@ -895,17 +878,16 @@ rc=$(run_mrgup "$TMPDIR/verify-repair.out" \
   echo "--- output ---"; cat "$TMPDIR/verify-repair.out"
   fail "one-time verification mismatch should auto-repair and succeed (got $rc)"
 }
-assert_contains "Post-merge sync verification failed:" "$TMPDIR/verify-repair.out"
-assert_contains "Failure kind: remote_parent_ref" "$TMPDIR/verify-repair.out"
 merge_line_number="$(grep -n "Merged to local v1.0.0:" "$TMPDIR/verify-repair.out" | head -n 1 | cut -d: -f1)"
-push_line_number="$(grep -n "to remote v1.0.0:" "$TMPDIR/verify-repair.out" | head -n 1 | cut -d: -f1)"
 [[ -n "$merge_line_number" ]] || fail "expected merge success line in verify-repair output"
-[[ -n "$push_line_number" ]] || fail "expected push summary line in verify-repair output"
-[[ "$merge_line_number" -lt "$push_line_number" ]] || fail "expected merge success line before push summary"
 assert_contains "Merged to local v1.0.0:" "$TMPDIR/verify-repair.out"
-assert_contains "Pushed (" "$TMPDIR/verify-repair.out"
-assert_contains "Run chbranch v1.0.0, then run report for details." \
+assert_not_contains "Pushed (" "$TMPDIR/verify-repair.out"
+assert_contains "Local merge complete on v1.0.0." \
   "$TMPDIR/verify-repair.out"
+assert_contains "Run push when ready to publish v1.0.0 and finalize its PR." \
+  "$TMPDIR/verify-repair.out"
+[[ "$(git -C "$WORK" branch --show-current)" == "v1.0.0" ]] || \
+  fail "successful mrgup should leave the local parent checked out"
 if find "$WORK/reports" -maxdepth 1 -type f \
   -name 'mrgup-[0-9]*.md' -print -quit | grep -q .; then
   fail "successful merge-up should not create an immediate local report"
@@ -931,21 +913,15 @@ merge_note="$(git -C "$WORK" notes --ref=briteTest-workflow show v1.0.0)"
   fail "merge-up event should record merge method"
 [[ "$merge_note" == *"No associated PR; CI/CD checks were not queried."* ]] || \
   fail "merge-up event should record CI/CD availability"
-push_report_path="$(find "$WORK/reports" -maxdepth 1 -type f -name 'push-*.md' \
-  -print 2>/dev/null | xargs -r ls -1t 2>/dev/null | head -n 1 || true)"
-if [[ -n "$push_report_path" ]]; then
-  assert_contains "**Triggered By:** mrgup from \`dev/feat-v1.0.0\`" \
-    "$push_report_path"
-  assert_not_contains "--mrgup" "$push_report_path"
-  assert_not_contains "--preview-ref" "$push_report_path"
-fi
-ab=$(
+remote_parent_tip="$(git -C "$ORIGIN" rev-parse refs/heads/v1.0.0)"
+[[ "$remote_parent_tip" != "$(git -C "$WORK" rev-parse v1.0.0)" ]] || \
+  fail "mrgup should leave origin/v1.0.0 unchanged"
+(
   cd "$WORK"
-  "$REAL_GIT" fetch origin >/dev/null 2>&1
-  "$REAL_GIT" rev-list --left-right --count origin/v1.0.0...origin/dev/feat-v1.0.0
+  "$REAL_GIT" switch dev/feat-v1.0.0 >/dev/null 2>&1
+  "$REAL_GIT" branch -f v1.0.0 origin/v1.0.0 >/dev/null 2>&1
 )
-[[ "$ab" == $'0\t0' ]] || fail "expected origin/v1.0.0 and origin/dev/feat-v1.0.0 synced after auto-repair (got $ab)"
-pass "targeted one-shot post-merge auto-repair succeeds"
+pass "mrgup completes locally without remote repair"
 
 # ---------------------------------------------------------------------------
 # Local run lock blocks overlapping invocation

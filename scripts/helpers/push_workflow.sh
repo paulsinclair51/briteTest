@@ -18,6 +18,7 @@ bt_push_workflow() (
   local exit_nothing_to_push=10
   local exit_push_failed=200
   local exit_report_failed=201
+  local exit_pr_finalize_failed=202
 
   local repo_root=""
   local reports_dir=""
@@ -606,8 +607,32 @@ EOF
   [[ -n "$remote_branch_tip" ]] || bt_push_error_exit "$exit_remote_branch_not_found" \
     "Remote branch '$current_branch' not found on origin"
 
+  if declare -F bt_refresh_remote_workflow_history >/dev/null 2>&1 && \
+    ! bt_refresh_remote_workflow_history; then
+    bt_push_error_exit "$exit_report_failed" \
+      "Failed to refresh remote report history before push"
+  fi
+
   commits_ahead="$(git rev-list --count "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || echo 0)"
   if [[ "$commits_ahead" == "0" ]]; then
+    if [[ "$dry_run" == false ]] && \
+      declare -F bt_push_has_pending_mrgup_pr >/dev/null 2>&1 && \
+      bt_push_has_pending_mrgup_pr; then
+      local pending_pr_state=""
+      if ! pending_pr_state="$(bt_push_get_mrgup_pr_state)"; then
+        bt_push_error_exit "$exit_pr_finalize_failed" \
+          "Remote branch is current, but its pull request state could not be read"
+      fi
+      if [[ "$pending_pr_state" == "OPEN" ]]; then
+        if bt_push_finalize_mrgup_pr "$push_content_ref"; then
+          echo "Remote $current_branch already contains the local mrgup result."
+          echo "Finalized pull request for $current_branch."
+          exit 0
+        fi
+        bt_push_error_exit "$exit_pr_finalize_failed" \
+          "Remote branch is current, but its pull request could not be finalized"
+      fi
+    fi
     bt_emit_error "Local ${current_branch} branch has no changes to push."
     bt_push_emit_guidance "commit changes before rerunning push."
     exit "$exit_nothing_to_push"
@@ -635,22 +660,9 @@ EOF
     exit 0
   fi
 
-  local push_output=""
-  if ! push_output="$(bt_run_remote_command env GIT_BYPASS_HOOKS=true \
-    git push origin "$current_branch" 2>&1)"; then
-    printf '%s\n' "$push_output" >&2
-    bt_push_generate_error_report "Failed to push branch '$current_branch' to remote" "push failed" "$push_output"
-    bt_push_error_exit "$exit_push_failed" "Failed to push branch '$current_branch' to remote"
-  fi
-
-  bt_push_cleanup_success_transient_reports
-
   bt_push_collect_stdout_summary_counts
-  local pushed_tip_short=""
-  pushed_tip_short="$(git rev-parse --short=7 "$push_content_ref" 2>/dev/null || true)"
-  [[ -n "$pushed_tip_short" ]] || pushed_tip_short="${push_content_ref:0:7}"
-  if declare -F bt_record_workflow_event >/dev/null 2>&1; then
-    if ! bt_record_workflow_event "push" "$current_branch" \
+  if declare -F bt_record_remote_workflow_event >/dev/null 2>&1; then
+    if ! bt_record_remote_workflow_event "push" "$current_branch" \
       "${BT_PUSH_COMMAND_LINE:-push}" \
       "Pushed ${commits_ahead} commit(s) to origin/$current_branch" \
       "$push_content_ref" \
@@ -659,7 +671,29 @@ EOF
       "Commits" "$commits_ahead" \
       "Files" "${pushed_modified_files} modified, ${pushed_added_files} added, ${pushed_deleted_files} deleted"; then
       bt_push_error_exit "$exit_report_failed" \
-        "Push completed, but its report history could not be recorded"
+        "Push was not started because its report history could not be recorded"
+    fi
+  fi
+
+  local push_output=""
+  if ! push_output="$(bt_run_remote_command env GIT_BYPASS_HOOKS=true \
+    git push --atomic origin "$current_branch" \
+      refs/notes/briteTest-remote-workflow:refs/notes/briteTest-remote-workflow \
+      2>&1)"; then
+    printf '%s\n' "$push_output" >&2
+    bt_push_generate_error_report "Failed to push branch '$current_branch' to remote" "push failed" "$push_output"
+    bt_push_error_exit "$exit_push_failed" "Failed to push branch '$current_branch' to remote"
+  fi
+
+  bt_push_cleanup_success_transient_reports
+
+  local pushed_tip_short=""
+  pushed_tip_short="$(git rev-parse --short=7 "$push_content_ref" 2>/dev/null || true)"
+  [[ -n "$pushed_tip_short" ]] || pushed_tip_short="${push_content_ref:0:7}"
+  if declare -F bt_push_finalize_mrgup_pr >/dev/null 2>&1; then
+    if ! bt_push_finalize_mrgup_pr "$push_content_ref"; then
+      bt_push_error_exit "$exit_pr_finalize_failed" \
+        "Push completed, but its pull request could not be finalized"
     fi
   fi
   echo "Pushed (${pushed_tip_short}) to remote $current_branch: ${pushed_modified_files} modified, ${pushed_added_files} added, and ${pushed_deleted_files} deleted files."
