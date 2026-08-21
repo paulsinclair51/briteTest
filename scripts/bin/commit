@@ -28,7 +28,7 @@ Prerequisites:
   - The current branch must be a local branch.
   - The current branch must not have an unfinished copyfix operation.
 
-Note: To make changes tomain, a version branch (v<M>.<m>.0), or a
+Note: To make changes to main, a version branch (v<M>.<m>.0), or a
 remote snapshot, first make the changes in a local targeted or contributor branch, run
 commit, and then run push. Run review on a targeted branch to start a pull
 request. An approver can then use mrgup to apply changes to its parent branch.

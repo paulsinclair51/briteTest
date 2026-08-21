@@ -18,9 +18,10 @@ If the current local branch is behind its remote branch, pull the latest
 changes from the remote branch into the local branch when it is safe to
 do so, so that the local branch is synchronized with its remote branch.
 
-If local and remote branches have diverged, pull attempts to automatically
-resolve the divergence when it is safe to do so (local commits may be rewritten). If unresolved conflicts
-occur, manual resolution is required. After resolving conflicts, rerun pull.
+If local and remote branches have diverged, pull automatically resolves
+the divergence when it is safe to do so (local commits may be rewritten).
+If unresolved conflicts occur, manual resolution is required. After
+resolving conflicts, rerun pull.
 
 Prerequisites:
   - If the -o option is specified, the user must be the repository owner.
