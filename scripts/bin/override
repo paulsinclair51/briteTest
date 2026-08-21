@@ -44,15 +44,15 @@ Behavior:
     restores normal role restrictions.
   - 'override -r off' is not allowed; use 'override off' instead.
 
-Argument:
+Arguments:
   on|off   Required; case-insensitive.
 
 Options:
-  -h         Show this help text and exit.
-  --help     Show this help text and exit.
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
   -r         Remote repair mode. Default is local unrestricted mode.
   -t SEC     Remote reachability timeout in seconds (default: 10).
-             Sec must be an integer greater than 0.
+             SEC must be an integer greater than 0.
              Ignored if remote does not need to be accessed.
   -v         Output progress and diagnostics to stdout.
 

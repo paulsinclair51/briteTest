@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# copyfix - Copy commits from a targeted fix branch to the
+# copyfix - Copy commits from a source fix branch to the
 #           current branch.
 #
 # See usage below for details, or run: copyfix -h
@@ -13,7 +13,7 @@ usage() {
   cat <<'EOF'
 Usage:
   copyfix [OPTIONS] SOURCE_BRANCH [-- TOKEN...]
-  copyfix --continue [OPTIONS]
+  copyfix --continue [-v]
   copyfix {-h | --help}
 
 Copy commits from a local source fix branch into the current local
@@ -21,33 +21,37 @@ branch (the target). Commits not already present in the target are
 copied oldest first.
 
 Prerequisites:
-  - SOURCE_BRANCH must be a targeted fix branch: fix/<description>-v<M>.<m>.0.
-  - SOURCE_BRANCH must exist locally.
-  - The working tree must have no tracked, uncommitted changes.
-  - The current branch must be a targeted branch.
-  - The current branch must be local and must be writable by this workflow.
+  - The current branch must be a targeted branch and local.
+  - For a new copy, SOURCE_BRANCH must be a local targeted fix branch:
+    fix/<description>-v<M>.<m>.0. The current branch must not have
+    uncommitted changes or an unfinished copyfix operation.
+  - For --continue, the current branch must have an unfinished copyfix
+    operation with resolved changes ready to continue.
+
+Commits added to SOURCE_BRANCH after copying begins are not included in the
+current operation and remain available for a later copyfix operation.
 
 If conflicts occur:
-  - Resolve and stage the conflicting files in the temporary target worktree
-    path printed by copyfix.
-  - Run 'copyfix --continue' to continue the copy.
-  - Repeat these steps if another copied commit conflicts.
+  - Resolve any conflicting files in the current branch. Do not commit
+    the changes (commit will fail).
+  - Run 'copyfix --continue' to continue the copy and commit the changes.
+  - Repeat these steps if another conflict occurs.
+
+After all commits are copied, the current branch leaves the copyfix continue
+state.
 
 Options:
-  -c TOKEN             Copied-commit comment from TOKEN.
-                       By default, original comments are retained.
-  -- TOKEN...          Copied-commit comment from one or more tokens.
-                       This option must be last.
-  -d                   Dry-run. Validate and report the fixes that would be
-                       copied without updating the current target branch.
-  -h                   Output this help to stdout and exit (other options
-                       and arguments are ignored).
-  --help               Output this help to stdout and exit (other options
-                       and arguments are ignored).
-  -t SEC               Remote operation timeout in seconds (default: 10).
-                       SEC must be an integer greater than 0.
-  -v                   Output progress and diagnostics to stdout.
-  --continue           Continue after resolving and staging conflicts.
+  -c TOKEN        Copied-commit comment from TOKEN.
+                  By default, original comments are retained.
+  -- TOKEN...     Copied-commit comment from one or more tokens.
+                  This option must be last.
+  --continue      Continue copyfix after resolving conflicts.
+  -d              Dry-run. Validate and report the fixes that would be
+                  copied without updating the current target branch.
+  -e              Generate an error report without copying.
+  -h, --help      Output this help to stdout and exit (other options and
+                  arguments are ignored).
+  -v              Output progress and diagnostics to stdout.
 
   For copied-commit comment options '-c TOKEN' and '-- TOKEN...':
     - These options are mutually exclusive.
@@ -66,7 +70,7 @@ Examples:
   # Copy fixes and replace each copied commit comment.
   copyfix fix/auth-v1.0.0 -- Backport authentication fixes.
 
-  # Continue after resolving and staging conflicts.
+  # Continue after resolving conflicts.
   copyfix --continue
 
   # Output progress and diagnostic details.
@@ -74,38 +78,44 @@ Examples:
 
 Workflow:
   1. Identify SOURCE_BRANCH commits not in the current branch.
-  2. Copy those commits oldest first in a temporary target worktree.
-  3. If a conflict occurs, preserve that worktree for manual resolution.
+  2. Copy those commits oldest first into the current target branch.
+  3. If a conflict occurs, preserve it for manual resolution.
   4. Continue with 'copyfix --continue'.
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
   - The current worktree remains on the current branch.
-  - No report is written when the fix branch has no new commits to copy.
-    Older dry-run and error reports for the current branch are deleted.
-  - A successful copy writes an untracked report locally to:
-        <repo>/reports/branch/copyfix-<datetime>-<pid>.md
+  - No-work prerequisite failures do not generate or delete reports.
+  - After a successful copy, records history for the report command and
+    writes 'Run report for details.' to stdout. It does not write an immediate
+    local copy report.
   - A dry-run writes an untracked report locally to:
-        <repo>/reports/branch/copyfix-d-<datetime>-<pid>.md
-  - A failure after target work starts writes an untracked error report
-    locally to:
-        <repo>/reports/branch/copyfix-e-<datetime>-<pid>.md
+        <repo>/reports/copyfix-d-<datetime>.md
+  - A failure after target work starts or if the -e option is specified
+    writes an untracked error report locally to:
+        <repo>/reports/copyfix-e-<datetime>.md
 
 Exit codes:
-  0   Success.
-  1   Invalid option or argument.
-  2   Operation failed (e.g., uncommitted changes).
-  3   Config error (e.g., source branch not found locally).
-  5   Copy paused because conflicts require manual resolution.
-  200 Git operation failed.
+  0    Success.
+  1    Invalid option or argument.
+  2    Operation failed (e.g., uncommitted changes).
+  3    Config error (e.g., source branch not found locally).
+  4    No new fix commits are available to copy.
+  5    Copy paused because conflicts require manual resolution.
+  6    Copy skipped because -e was specified.
+  200  Git operation failed.
 EOF
 }
 
 # High-Level Flow:
-# - Copies selected commits from a source branch into a target branch.
-# - Validates branch/commit inputs and guards against unsafe copy scenarios.
-# - Reports applied commits and failures for conflict resolution.
+# - Validate source/target branch policy, worktree state, and available commits.
+# - Preview counts for -d or cherry-pick source commits oldest first into the
+#   current target branch, preserving messages unless a comment is supplied.
+# - Persist workflow state on conflicts; --continue stages resolutions and
+#   resumes the same action.
+# - After all commits succeed, record one aggregate event on the target tip;
+#   write local reports only for dry-run/error paths.
 
 set -euo pipefail
 
@@ -126,7 +136,7 @@ source "$SCRIPT_DIR/../helpers/history_log.sh"
 source "$SCRIPT_DIR/../helpers/report_helpers.sh"
 
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BRANCH_REPORTS_DIR="$REPO_ROOT/reports/branch"
+REPORTS_DIR="$REPO_ROOT/reports"
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 ORIGINAL_ARGS=("$@")
@@ -134,6 +144,9 @@ ORIGINAL_ARGS=("$@")
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_OPERATION_FAILED=2
 readonly EXIT_CONFIG_ERROR=3
+readonly EXIT_NOTHING_TO_COPY=4
+readonly EXIT_CONFLICTS=5
+readonly EXIT_WORKFLOW_SKIPPED=6
 readonly EXIT_GIT_FAILED=200
 
 usage_error() {
@@ -149,11 +162,10 @@ COPY_COMMENT=""
 COPY_COMMENT_SET=false
 VERBOSE=false
 DRY_RUN=false
+ERROR_RUN=false
 CONTINUE_MODE=false
 SOURCE_BRANCH_ARG=""
-REMOTE_TIMEOUT_SECONDS=10
 COPYFIX_STATE_DIR=""
-TARGET_WORKTREE=""
 SOURCE_BRANCH=""
 TARGET_BRANCH=""
 REPORT_FILE=""
@@ -169,32 +181,31 @@ COMMITS=""
 FILES_MODIFIED=0
 FILES_ADDED=0
 FILES_DELETED=0
+FILES_RENAMED=0
+FILES_RENAMED_MODIFIED=0
+DIRECTORIES_DELETED=0
+DIRECTORIES_ADDED=0
+DIRECTORIES_RENAMED=0
+FILE_COPY_SUMMARY=""
 
 format_file_copy_summary() {
   local suffix="$1"
-  printf '%s modified, %s added, and %s deleted files %s.' \
-    "$FILES_MODIFIED" "$FILES_ADDED" "$FILES_DELETED" "$suffix"
+  printf '%s %s.' "$FILE_COPY_SUMMARY" "$suffix"
 }
 
 compute_file_copy_counts() {
   local source_branch="$1"
   local target_branch="$2"
-  local status=""
-
-  FILES_MODIFIED=0
-  FILES_ADDED=0
-  FILES_DELETED=0
-
-  while IFS=$'\t' read -r status _; do
-    [[ -n "$status" ]] || continue
-    case "$status" in
-      A*) FILES_ADDED=$((FILES_ADDED + 1)) ;;
-      D*) FILES_DELETED=$((FILES_DELETED + 1)) ;;
-      R*) FILES_MODIFIED=$((FILES_MODIFIED + 1)) ;;
-      *) FILES_MODIFIED=$((FILES_MODIFIED + 1)) ;;
-    esac
-  done < <(git diff --name-status --find-renames \
-    "$target_branch..$source_branch" 2>/dev/null || true)
+  bt_git_collect_ref_change_summary "$target_branch" "$source_branch"
+  FILES_MODIFIED="$BT_CHANGE_MODIFIED_FILES"
+  FILES_DELETED="$BT_CHANGE_DELETED_FILES"
+  FILES_ADDED="$BT_CHANGE_ADDED_FILES"
+  FILES_RENAMED="$BT_CHANGE_RENAMED_FILES"
+  FILES_RENAMED_MODIFIED="$BT_CHANGE_RENAMED_MODIFIED_FILES"
+  DIRECTORIES_DELETED="$BT_CHANGE_DELETED_DIRECTORIES"
+  DIRECTORIES_ADDED="$BT_CHANGE_ADDED_DIRECTORIES"
+  DIRECTORIES_RENAMED="$BT_CHANGE_RENAMED_DIRECTORIES"
+  FILE_COPY_SUMMARY="$(bt_format_change_summary)"
 }
 
 format_command_line() {
@@ -234,6 +245,7 @@ cleanup_runtime() {
         should_remove_state=false
         ;;
       130|143)
+        git cherry-pick --abort >/dev/null 2>&1 || true
         should_remove_state=true
         ;;
       *)
@@ -256,16 +268,24 @@ trap 'cleanup_runtime 143; exit 143' TERM
 
 cleanup_old_transient_reports() {
   bt_report_cleanup_transient_reports \
-    "$BRANCH_REPORTS_DIR" \
+    "$REPORTS_DIR" \
     "$TARGET_BRANCH" \
     "$REPORT_FILE" \
     "copyfix-d-*.md" \
     "copyfix-e-*.md"
 }
 
+cleanup_success_transient_reports() {
+  REPORT_FILE=""
+  acquire_report_lock
+  bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_GIT_FAILED"
+  cleanup_old_transient_reports
+  release_report_lock
+}
+
 prepare_report_write() {
   acquire_report_lock
-  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_GIT_FAILED"
+  bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_GIT_FAILED"
   cleanup_old_transient_reports
 }
 
@@ -286,9 +306,9 @@ generate_copyfix_report() {
   command_text="$(format_command_line)"
   [[ -z "$COMMITS" ]] || \
     commit_count="$(printf '%s\n' "$COMMITS" | wc -l | tr -d ' ')"
-  REPORT_FILE="$(bt_report_unique_path "$BRANCH_REPORTS_DIR" "$prefix" \
-    "$RUN_TS_FILE")"
   prepare_report_write
+  REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "$prefix" \
+    "$RUN_TS_FILE")"
   cat > "$REPORT_FILE" <<EOF
 # Copy-Fix Report ${RUN_TS_DISPLAY}
 
@@ -341,7 +361,7 @@ bt_error_exit() {
 
 
 check_working_directory_clean() {
-  if ! git diff-index --quiet HEAD --; then
+  if bt_is_worktree_dirty; then
     bt_error_exit "$EXIT_OPERATION_FAILED" \
       "Working directory has uncommitted changes." \
       "Commit or stash them first."
@@ -358,14 +378,13 @@ get_commits_from_branch() {
   local source_branch="$1"
   local target_branch="$2"
 
-  # Get source commits not already present in target.
-  git rev-list "$target_branch..$source_branch" 2>/dev/null || true
+  # Exclude source commits whose patches are already present on the target,
+  # including commits previously copied by cherry-pick under a different ID.
+  git rev-list --cherry-pick --right-only \
+    "$target_branch...$source_branch" 2>/dev/null || true
 }
 
 remove_copyfix_state() {
-  if [[ -n "$TARGET_WORKTREE" && -d "$TARGET_WORKTREE" ]]; then
-    git worktree remove --force "$TARGET_WORKTREE" >/dev/null 2>&1 || return 1
-  fi
   if [[ "$COPYFIX_STATE_LOCKED" == true ]]; then
     flock -u 9 2>/dev/null || true
     exec 9>&- 2>/dev/null || true
@@ -380,10 +399,13 @@ acquire_copyfix_state_lock() {
   local lock_file=""
 
   if [[ "$create_state_dir" == true ]]; then
+    mkdir -p "$(dirname "$COPYFIX_STATE_DIR")" || \
+      bt_error_exit "$EXIT_GIT_FAILED" \
+        "Failed to prepare copyfix state for target branch"
     if ! mkdir "$COPYFIX_STATE_DIR" 2>/dev/null; then
       bt_error_exit "$EXIT_OPERATION_FAILED" \
-        "Another copyfix operation is active; complete it with 'copyfix" \
-        "--continue'"
+        "The current branch has an unfinished copyfix operation; complete" \
+        "it with 'copyfix --continue'"
     fi
     COPYFIX_STATE_OWNED=true
   else
@@ -397,10 +419,8 @@ acquire_copyfix_state_lock() {
   exec 9>"$lock_file"
   if ! flock -x -n 9; then
     exec 9>&-
-    rm -f "$lock_file"
     bt_error_exit "$EXIT_OPERATION_FAILED" \
-      "Another copyfix operation is active; complete it with 'copyfix" \
-      "--continue'"
+      "The current branch has an active copyfix operation"
   fi
   COPYFIX_STATE_LOCKED=true
 }
@@ -417,7 +437,6 @@ release_copyfix_state_lock() {
 save_copyfix_state() {
   local remaining_commits="$1"
 
-  printf '%s\n' "$TARGET_WORKTREE" > "$COPYFIX_STATE_DIR/worktree"
   printf '%s\n' "$remaining_commits" > "$COPYFIX_STATE_DIR/remaining"
   printf '%s\n' "$COPY_COMMENT_SET" > "$COPYFIX_STATE_DIR/comment-set"
   printf '%s' "$COPY_COMMENT" > "$COPYFIX_STATE_DIR/comment"
@@ -427,13 +446,57 @@ save_copyfix_state() {
   printf '%s\n' "$FILES_MODIFIED" > "$COPYFIX_STATE_DIR/files-modified"
   printf '%s\n' "$FILES_ADDED" > "$COPYFIX_STATE_DIR/files-added"
   printf '%s\n' "$FILES_DELETED" > "$COPYFIX_STATE_DIR/files-deleted"
+  printf '%s\n' "$FILES_RENAMED" > "$COPYFIX_STATE_DIR/files-renamed"
+  printf '%s\n' "$FILES_RENAMED_MODIFIED" \
+    > "$COPYFIX_STATE_DIR/files-renamed-modified"
+  printf '%s\n' "$DIRECTORIES_DELETED" \
+    > "$COPYFIX_STATE_DIR/directories-deleted"
+  printf '%s\n' "$DIRECTORIES_ADDED" \
+    > "$COPYFIX_STATE_DIR/directories-added"
+  printf '%s\n' "$DIRECTORIES_RENAMED" \
+    > "$COPYFIX_STATE_DIR/directories-renamed"
 }
 
 apply_copy_comment() {
-  if [[ "$COPY_COMMENT_SET" == true ]] && \
-    ! git -C "$TARGET_WORKTREE" commit --amend -m "$COPY_COMMENT" \
-      >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_GIT_FAILED" "Failed to apply copied fix commit comment"
+  local commit_message=""
+
+  if [[ "$COPY_COMMENT_SET" == true ]]; then
+    commit_message="$COPY_COMMENT"
+  else
+    commit_message="$(git log -1 --format=%B)"
+  fi
+  if ! git commit --amend -m "$commit_message" \
+    >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_GIT_FAILED" \
+      "Failed to apply copied fix commit comment"
+  fi
+}
+
+record_copyfix_success() {
+  local commit_count=0
+  local command_line=""
+
+  [[ -z "$COMMITS" ]] || \
+    commit_count="$(printf '%s\n' "$COMMITS" | sed '/^$/d' | wc -l | tr -d ' ')"
+  command_line="$(format_command_line)"
+  if ! bt_record_workflow_event "copyfix" "$TARGET_BRANCH" "$command_line" \
+    "Copied ${commit_count} fix commit(s) from $SOURCE_BRANCH to $TARGET_BRANCH" \
+    "$TARGET_BRANCH" \
+    "Source-Branch" "$SOURCE_BRANCH" \
+    "Target-Branch" "$TARGET_BRANCH" \
+    "Commits-Copied" "$commit_count" \
+    "Files-Modified" "$FILES_MODIFIED" \
+    "Files-Added" "$FILES_ADDED" \
+    "Files-Deleted" "$FILES_DELETED" \
+    "Files-Renamed" "$FILES_RENAMED" \
+    "Files-Renamed-Modified" "$FILES_RENAMED_MODIFIED" \
+    "Directories-Deleted" "$DIRECTORIES_DELETED" \
+    "Directories-Added" "$DIRECTORIES_ADDED" \
+    "Directories-Renamed" "$DIRECTORIES_RENAMED" \
+    "Status" "Fix commits copied to target branch" \
+    "Method" "Cherry-pick created by copyfix"; then
+    bt_error_exit "$EXIT_GIT_FAILED" \
+      "Copy completed, but its report history could not be recorded"
   fi
 }
 
@@ -466,19 +529,25 @@ copy_commits() {
     commit="${reversed[$i]}"
     bt_info "Copying $commit..."
     
-    if ! git -C "$TARGET_WORKTREE" cherry-pick "$commit" 2>&1; then
+    if ! git cherry-pick "$commit" 2>&1; then
       conflict_msg=""
 
-      remaining_commits="$(printf '%s\n' "${reversed[@]:$((i + 1))}")"
-      save_copyfix_state "$remaining_commits"
-      ERROR_REPORT_WRITTEN=true
-      conflict_msg="Copy paused because conflicts require manual resolution"
-      generate_error_report "$conflict_msg" 5 || true
-      bt_warn "Conflict detected while copying $commit"
-      echo "WARN: Resolve and stage conflicts in: $TARGET_WORKTREE"
-      echo "Then run:"
-      echo "  copyfix --continue"
-      exit 5
+      if [[ -n "$(git diff --name-only --diff-filter=U 2>/dev/null)" ]]; then
+        remaining_commits="$(printf '%s\n' "${reversed[@]:$((i + 1))}")"
+        save_copyfix_state "$remaining_commits"
+        ERROR_REPORT_WRITTEN=true
+        conflict_msg="Copy paused because conflicts require manual resolution"
+        generate_error_report "$conflict_msg" "$EXIT_CONFLICTS" || true
+        bt_warn "Conflict detected while copying $commit"
+        echo "Resolve the conflicting files in the current branch."
+        echo "Then run:"
+        echo "  copyfix --continue"
+        exit "$EXIT_CONFLICTS"
+      fi
+
+      git cherry-pick --abort >/dev/null 2>&1 || true
+      bt_error_exit "$EXIT_GIT_FAILED" \
+        "Failed to cherry-pick commit $commit"
     fi
     apply_copy_comment
   done
@@ -507,19 +576,20 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     -d)
+      [[ "$ERROR_RUN" == false ]] || \
+        usage_error "Options -d and -e are mutually exclusive"
       DRY_RUN=true
+      shift
+      ;;
+    -e)
+      [[ "$DRY_RUN" == false ]] || \
+        usage_error "Options -d and -e are mutually exclusive"
+      ERROR_RUN=true
       shift
       ;;
     -v | --verbose)
       VERBOSE=true
       shift
-      ;;
-    -t)
-      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC"
-      bt_is_valid_remote_timeout "$2" || \
-        usage_error "SEC for -t must be an integer greater than 0"
-      REMOTE_TIMEOUT_SECONDS="$2"
-      shift 2
       ;;
     --)
       shift
@@ -551,15 +621,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
-
-GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir \
-  2>/dev/null || true)"
-[[ -n "$GIT_COMMON_DIR" ]] || \
-  bt_error_exit "$EXIT_GIT_FAILED" \
-    "Failed to determine repository metadata directory"
-COPYFIX_STATE_DIR="$GIT_COMMON_DIR/briteTest-copyfix-state"
-
 if [[ "$COPY_COMMENT_SET" == true ]]; then
   comment_validation_msg=""
   trim_prefix=""
@@ -578,19 +639,28 @@ fi
 
 # Handle continue mode
 if [[ "$CONTINUE_MODE" == true ]]; then
+  declare -a unresolved_paths=()
+  conflict_check=""
+  [[ "$ERROR_RUN" == false ]] || \
+    usage_error "Option -e cannot be used with --continue"
   [[ "$DRY_RUN" == false ]] || \
     usage_error "Option -d cannot be used with --continue"
   [[ -z "$SOURCE_BRANCH_ARG" ]] || \
     usage_error "SOURCE_BRANCH is not allowed with --continue"
   [[ "$COPY_COMMENT_SET" == false ]] || \
     usage_error "Comment options are not allowed with --continue"
+  current_branch="$(bt_get_current_branch || true)"
+  [[ -n "$current_branch" ]] || \
+    bt_error_exit "$EXIT_GIT_FAILED" "Failed to determine current branch"
+  COPYFIX_STATE_DIR="$(bt_copyfix_state_dir_for_branch "$current_branch")" || \
+    bt_error_exit "$EXIT_GIT_FAILED" \
+      "Failed to determine copyfix state for current branch"
   [[ -d "$COPYFIX_STATE_DIR" ]] || \
     bt_error_exit "$EXIT_OPERATION_FAILED" "No copyfix operation to continue"
+  git rev-parse --verify CHERRY_PICK_HEAD >/dev/null 2>&1 || \
+    bt_error_exit "$EXIT_OPERATION_FAILED" \
+      "Current branch is not in the copyfix continue state"
   acquire_copyfix_state_lock false
-  TARGET_WORKTREE="$(cat "$COPYFIX_STATE_DIR/worktree" 2>/dev/null || true)"
-  [[ -n "$TARGET_WORKTREE" && -d "$TARGET_WORKTREE" ]] || \
-    bt_error_exit "$EXIT_GIT_FAILED" \
-      "Saved copyfix target worktree is unavailable"
   COPY_COMMENT_SET="$(cat "$COPYFIX_STATE_DIR/comment-set" 2>/dev/null || \
     echo false)"
   COPY_COMMENT="$(cat "$COPYFIX_STATE_DIR/comment" 2>/dev/null || true)"
@@ -602,7 +672,25 @@ if [[ "$CONTINUE_MODE" == true ]]; then
   FILES_ADDED="$(cat "$COPYFIX_STATE_DIR/files-added" 2>/dev/null || echo 0)"
   FILES_DELETED="$(cat "$COPYFIX_STATE_DIR/files-deleted" 2>/dev/null || \
     echo 0)"
-  current_branch="$(bt_get_current_branch || true)"
+  FILES_RENAMED="$(cat "$COPYFIX_STATE_DIR/files-renamed" 2>/dev/null || \
+    echo 0)"
+  FILES_RENAMED_MODIFIED="$(cat \
+    "$COPYFIX_STATE_DIR/files-renamed-modified" 2>/dev/null || echo 0)"
+  DIRECTORIES_DELETED="$(cat \
+    "$COPYFIX_STATE_DIR/directories-deleted" 2>/dev/null || echo 0)"
+  DIRECTORIES_ADDED="$(cat \
+    "$COPYFIX_STATE_DIR/directories-added" 2>/dev/null || echo 0)"
+  DIRECTORIES_RENAMED="$(cat \
+    "$COPYFIX_STATE_DIR/directories-renamed" 2>/dev/null || echo 0)"
+  BT_CHANGE_MODIFIED_FILES="$FILES_MODIFIED"
+  BT_CHANGE_DELETED_FILES="$FILES_DELETED"
+  BT_CHANGE_ADDED_FILES="$FILES_ADDED"
+  BT_CHANGE_RENAMED_FILES="$FILES_RENAMED"
+  BT_CHANGE_RENAMED_MODIFIED_FILES="$FILES_RENAMED_MODIFIED"
+  BT_CHANGE_DELETED_DIRECTORIES="$DIRECTORIES_DELETED"
+  BT_CHANGE_ADDED_DIRECTORIES="$DIRECTORIES_ADDED"
+  BT_CHANGE_RENAMED_DIRECTORIES="$DIRECTORIES_RENAMED"
+  FILE_COPY_SUMMARY="$(bt_format_change_summary)"
   if [[ -n "$TARGET_BRANCH" && "$current_branch" != "$TARGET_BRANCH" ]]; then
     bt_error_exit "$EXIT_OPERATION_FAILED" \
       "Current branch must match the saved target branch for --continue:" \
@@ -610,13 +698,35 @@ if [[ "$CONTINUE_MODE" == true ]]; then
   fi
   OPERATION_STARTED=true
   bt_info "Continuing copy..."
-  
-  if ! git -C "$TARGET_WORKTREE" cherry-pick --continue 2>&1; then
-    bt_warn "Conflict still present after continue"
-    echo "Resolve and stage conflicts in: $TARGET_WORKTREE"
-    echo -e "${YELLOW}Then run:${NC}"
-    echo "  copyfix --continue"
-    exit 5
+
+  mapfile -d '' -t unresolved_paths < <(
+    git diff --name-only --diff-filter=U -z 2>/dev/null
+  )
+  if [[ ${#unresolved_paths[@]} -gt 0 ]]; then
+    conflict_check="$(git diff --check -- "${unresolved_paths[@]}" \
+      2>&1 || true)"
+  fi
+  if [[ "$conflict_check" == *"leftover conflict marker"* ]]; then
+      bt_warn "Conflicts remain after continue"
+      echo "Resolve the conflicting files in the current branch."
+      echo "Then run:"
+      echo "  copyfix --continue"
+      exit "$EXIT_CONFLICTS"
+  fi
+  if [[ ${#unresolved_paths[@]} -gt 0 ]] && \
+    ! git add -- "${unresolved_paths[@]}"; then
+      bt_error_exit "$EXIT_GIT_FAILED" \
+        "Failed to stage resolved conflict files"
+  fi
+  if ! GIT_EDITOR=true git cherry-pick --continue 2>&1; then
+    if [[ -n "$(git diff --name-only --diff-filter=U 2>/dev/null)" ]]; then
+      bt_warn "Conflicts remain after continue"
+      echo "Resolve the conflicting files in the current branch."
+      echo "Then run:"
+      echo "  copyfix --continue"
+      exit "$EXIT_CONFLICTS"
+    fi
+    bt_error_exit "$EXIT_GIT_FAILED" "Failed to continue the cherry-pick"
   fi
   apply_copy_comment
   REMAINING_COMMITS="$(cat "$COPYFIX_STATE_DIR/remaining" 2>/dev/null || true)"
@@ -627,15 +737,13 @@ if [[ "$CONTINUE_MODE" == true ]]; then
     copy_commits "$REMAINING_COMMITS" true
   fi
   remove_copyfix_state || \
-    bt_error_exit "$EXIT_GIT_FAILED" \
-      "Failed to remove temporary copyfix worktree"
+    bt_error_exit "$EXIT_GIT_FAILED" "Failed to remove copyfix state"
   summary_line="$(format_file_copy_summary "copied")"
-  generate_copyfix_report "copyfix" "$TARGET_BRANCH" "Succeeded" "copy" \
-    "**Result:** Fix commits copied to the target branch.\n\n**Summary:** " \
-    "${summary_line}"
+  record_copyfix_success
+  cleanup_success_transient_reports
   bt_success "Copy continued successfully"
   bt_success "$summary_line"
-  bt_success "See ${REPORT_FILE#"${REPO_ROOT}/"} for details."
+  bt_success "Run report for details."
   exit 0
 fi
 
@@ -661,10 +769,6 @@ if ! local_branch_exists "$SOURCE_BRANCH"; then
   bt_error_exit "$EXIT_CONFIG_ERROR" \
     "Source branch not found locally: $SOURCE_BRANCH"
 fi
-if bt_is_read_only_branch "$TARGET_BRANCH"; then
-  bt_error_exit "$EXIT_OPERATION_FAILED" \
-    "Current target branch is read-only for copyfix: $TARGET_BRANCH"
-fi
 if ! bt_is_targeted_branch "$TARGET_BRANCH"; then
   bt_error_exit "$EXIT_OPERATION_FAILED" \
     "Current target branch must match <type>/<description>-v<M>.<m>.0"
@@ -673,6 +777,9 @@ if [[ "$TARGET_BRANCH" == "$SOURCE_BRANCH" ]]; then
   usage_error "SOURCE_BRANCH must differ from the current target branch"
 fi
 
+COPYFIX_STATE_DIR="$(bt_copyfix_state_dir_for_branch "$TARGET_BRANCH")" || \
+  bt_error_exit "$EXIT_GIT_FAILED" \
+    "Failed to determine copyfix state for target branch"
 acquire_copyfix_state_lock true
 
 # Check working directory is clean
@@ -680,19 +787,15 @@ bt_info "Checking working directory..."
 check_working_directory_clean
 bt_success "Working directory is clean"
 
-# Fetch latest from remote
-bt_info "Fetching latest from remote..."
-bt_run_remote_command git fetch origin 2>/dev/null || \
-  bt_warn "Failed to fetch from origin"
-
-# Propagate repository history from remote if available
-history_status=0
-bt_propagate_repository_history || history_status=$?
-case "$history_status" in
-  0) ;;
-  1) bt_info "Updated repository history from remote" ;;
-  *) ;;
-esac
+if [[ "$ERROR_RUN" == true ]]; then
+  ERROR_REPORT_WRITTEN=true
+  generate_error_report "Copy skipped due to -e option." \
+    "$EXIT_WORKFLOW_SKIPPED"
+  bt_emit_error "Copy skipped due to -e option."
+  bt_emit_guidance "Run without -e option."
+  bt_success "See ${REPORT_FILE#"${REPO_ROOT}"/} for details."
+  exit "$EXIT_WORKFLOW_SKIPPED"
+fi
 
 # Get commits to copy
 bt_info "Getting commits from $SOURCE_BRANCH for target $TARGET_BRANCH..."
@@ -700,13 +803,9 @@ COMMITS=$(get_commits_from_branch "$SOURCE_BRANCH" "$TARGET_BRANCH")
 compute_file_copy_counts "$SOURCE_BRANCH" "$TARGET_BRANCH"
 
 if [[ -z "$COMMITS" ]]; then
-  acquire_report_lock
-  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_GIT_FAILED"
-  REPORT_FILE=""
-  cleanup_old_transient_reports
-  release_report_lock
-  bt_success "No new commits to copy from $SOURCE_BRANCH into $TARGET_BRANCH"
-  exit 0
+  bt_emit_prerequisite_failure "$EXIT_NOTHING_TO_COPY" \
+    "Source branch '$SOURCE_BRANCH' has no new commits to copy into '$TARGET_BRANCH'." \
+    "rerun copyfix after new fix commits are available."
 fi
 
 bt_info "Found commits to copy:"
@@ -729,23 +828,15 @@ if [[ "$DRY_RUN" == true ]]; then
   exit 0
 fi
 
-# Copy commits in a temporary linked worktree so the user's current
-# worktree remains on the current target branch.
+# Copy commits directly into the current target branch so conflict resolution
+# occurs in the user's current worktree.
 OPERATION_STARTED=true
-TARGET_WORKTREE="$(mktemp -d "${TMPDIR:-/tmp}/briteTest-copyfix.XXXXXX")"
-rmdir "$TARGET_WORKTREE"
-if ! git worktree add --quiet --force "$TARGET_WORKTREE" "$TARGET_BRANCH"; then
-  rm -rf "$COPYFIX_STATE_DIR"
-  bt_error_exit "$EXIT_GIT_FAILED" \
-    "Failed to create temporary worktree for target branch: $TARGET_BRANCH"
-fi
 copy_commits "$COMMITS"
 remove_copyfix_state || \
-  bt_error_exit "$EXIT_GIT_FAILED" "Failed to remove temporary copyfix worktree"
+  bt_error_exit "$EXIT_GIT_FAILED" "Failed to remove copyfix state"
 summary_line="$(format_file_copy_summary "copied")"
-generate_copyfix_report "copyfix" "$TARGET_BRANCH" "Succeeded" "copy" \
-  "**Result:** Fix commits copied to the target branch.\n\n**Summary:** " \
-  "${summary_line}"
+record_copyfix_success
+cleanup_success_transient_reports
 
 bt_success "Copy completed successfully"
 bt_success "$summary_line"
@@ -757,5 +848,5 @@ if [[ "$VERBOSE" == true ]]; then
 fi
 
 bt_success "Done"
-bt_success "See ${REPORT_FILE#"${REPO_ROOT}/"} for details."
+bt_success "Run report for details."
 exit 0

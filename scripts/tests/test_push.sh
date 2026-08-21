@@ -14,6 +14,8 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PUSH_SRC="$REPO_ROOT/scripts/bin/push"
 COMMON_HELPER_SRC="$REPO_ROOT/scripts/helpers/common.sh"
 GIT_HELPER_SRC="$REPO_ROOT/scripts/helpers/git_helpers.sh"
+GITHUB_HELPER_SRC="$REPO_ROOT/scripts/helpers/github_helpers.sh"
+HISTORY_HELPER_SRC="$REPO_ROOT/scripts/helpers/history_log.sh"
 REPORT_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_helpers.sh"
 REPORT_SYNC_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_sync.sh"
 PUSH_WORKFLOW_HELPER_SRC="$REPO_ROOT/scripts/helpers/push_workflow.sh"
@@ -53,7 +55,7 @@ assert_matches() {
 latest_report() {
   local repo="$1"
   local pattern="$2"
-  find "$repo/reports/branch" -maxdepth 1 -type f -name "$pattern" -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
+  find "$repo/reports" -maxdepth 1 -type f -name "$pattern" -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
 }
 
 TMPDIR="$(mktemp -d)"
@@ -73,13 +75,15 @@ mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/config"
 cp "$PUSH_SRC" "$WORK/scripts/bin/push"
 cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
 cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
+cp "$GITHUB_HELPER_SRC" "$WORK/scripts/helpers/github_helpers.sh"
+cp "$HISTORY_HELPER_SRC" "$WORK/scripts/helpers/history_log.sh"
 cp "$REPORT_HELPER_SRC" "$WORK/scripts/helpers/report_helpers.sh"
 cp "$REPORT_SYNC_HELPER_SRC" "$WORK/scripts/helpers/report_sync.sh"
 cp "$PUSH_WORKFLOW_HELPER_SRC" "$WORK/scripts/helpers/push_workflow.sh"
 cp "$CKROLE_HELPER_SRC" "$WORK/scripts/helpers/ckrole.sh"
 chmod +x "$WORK/scripts/bin/push" "$WORK/scripts/helpers/ckrole.sh"
 
-mkdir -p "$WORK/reports/branch"
+mkdir -p "$WORK/reports"
 
 cat > "$WORK/config/contributors.md" <<'EOF'
 - testuser, C
@@ -106,12 +110,23 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./scripts/bin/p
 assert_contains "-t SEC" "$TMPDIR/help.out"
 pass "help output"
 
+copyfix_state_root="$(git -C "$WORK" rev-parse \
+  --path-format=absolute --git-common-dir)/briteTest-copyfix-state"
+mkdir -p "$copyfix_state_root/dev/push-tests-v1.0.0"
+rc=$(run_capture "$TMPDIR/copyfix-active.out" env GITHUB_ACTOR=testuser \
+  bash -lc "cd '$WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 1 ]] || fail "unfinished copyfix should block push (got $rc)"
+assert_contains "has an unfinished copyfix operation" \
+  "$TMPDIR/copyfix-active.out"
+rm -rf "$copyfix_state_root"
+pass "unfinished copyfix blocks push"
+
 # 1b) The explicit skip mode should emit an error report and summary line.
 rc=$(run_capture "$TMPDIR/skip-e.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/push -e -t 5")
 [[ "$rc" -eq 9 ]] || fail "push -e should exit 9 (got $rc)"
 assert_contains "Error: Push skipped due to -e option." "$TMPDIR/skip-e.out"
 assert_contains "Guidance: Run without -e option." "$TMPDIR/skip-e.out"
-assert_contains "See reports/branch/push-e-" "$TMPDIR/skip-e.out"
+assert_contains "See reports/push-e-" "$TMPDIR/skip-e.out"
 skip_report="$(latest_report "$WORK" 'push-e-*.md')"
 [[ -f "$skip_report" ]] || fail "expected push skip report"
 assert_contains "# Error Push Report" "$skip_report"
@@ -132,25 +147,27 @@ assert_contains "Push is atomic for this branch update." "$skip_report"
 pass "skip mode"
 
 # Nothing to push should not create a report.
-cat > "$WORK/reports/branch/push-d-20000101-000000.md" <<'EOF'
+cat > "$WORK/reports/push-d-20000101-000000.md" <<'EOF'
 # Stale Push Report
 
 **Branch:** `dev/push-tests-v1.0.0`
 EOF
-cat > "$WORK/reports/branch/push-e-20000101-000001.md" <<'EOF'
+cat > "$WORK/reports/push-e-20000101-000001.md" <<'EOF'
 # Stale Push Error Report
 
 **Branch:** `dev/push-tests-v1.0.0`
 EOF
-chmod a-w "$WORK/reports/branch/push-d-20000101-000000.md" \
-  "$WORK/reports/branch/push-e-20000101-000001.md"
+chmod a-w "$WORK/reports/push-d-20000101-000000.md" \
+  "$WORK/reports/push-e-20000101-000001.md"
 rc=$(run_capture "$TMPDIR/noop.out" env GITHUB_ACTOR=testuser \
   bash -lc "cd '$WORK' && bash ./scripts/bin/push -t 5")
-[[ "$rc" -eq 0 ]] || fail "no-op push should exit 0 (got $rc)"
+[[ "$rc" -eq 10 ]] || fail "no-work push should exit 10 (got $rc)"
 assert_contains "no changes to push" "$TMPDIR/noop.out"
-[[ -z "$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'push-*.md' -print -quit)" ]] || \
-  fail "no-op push should not create a report"
-pass "no-op push cleans transient reports and creates no report"
+[[ -f "$WORK/reports/push-d-20000101-000000.md" ]] || \
+  fail "push prerequisite failure should preserve stale dry-run reports"
+[[ -f "$WORK/reports/push-e-20000101-000001.md" ]] || \
+  fail "push prerequisite failure should preserve stale error reports"
+pass "no-work push prerequisite"
 
 # 2) Invalid timeout should fail before remote operations.
 rc=$(run_capture "$TMPDIR/invalid-t.out" bash -lc "cd '$WORK' && bash ./scripts/bin/push -t 0")
@@ -229,7 +246,7 @@ pass "internal helper option rejected by direct push"
 rc=$(run_capture "$TMPDIR/dry.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/push -d -t 5")
 [[ "$rc" -eq 0 ]] || fail "dry-run push should exit 0 (got $rc)"
 assert_contains "Dry-run: push to remote dev/push-tests-v1.0.0:" "$TMPDIR/dry.out"
-assert_contains "See reports/branch/push-d-" "$TMPDIR/dry.out"
+assert_contains "See reports/push-d-" "$TMPDIR/dry.out"
 dry_report="$(latest_report "$WORK" 'push-d-*.md')"
 [[ -f "$dry_report" ]] || fail "expected dry-run push report"
 [[ "$(basename "$dry_report")" == push-d-* ]] || fail "expected push-d report filename"
@@ -239,6 +256,7 @@ if grep -Fq "**Triggered By:**" "$dry_report"; then
   fail "dry-run push report should not include Triggered By"
 fi
 assert_contains "**Files:** " "$dry_report"
+assert_contains "**Changes:** 1 modified file" "$dry_report"
 assert_contains "<details>" "$dry_report"
 assert_contains "<summary><strong>Commits</strong></summary>" "$dry_report"
 assert_contains "## Commits" "$dry_report"
@@ -287,25 +305,12 @@ wait "$lock_holder_pid" >/dev/null 2>&1 || true
 rm -f "$TMPDIR/lock.wait"
 pass "report lock timeout"
 
-# 9) Concurrent same-second dry-runs should serialize report cleanup and leave
-# one complete, uniquely named transient report.
-mkdir -p "$TMPDIR/fakebin"
-cat > "$TMPDIR/fakebin/date" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$1" == "+%Y%m%d-%H%M%S" ]]; then
-  echo 20260727-195000
-elif [[ "$1" == "+%Y-%m-%d %H:%M:%S" ]]; then
-  echo "2026-07-27 19:50:00"
-else
-  /usr/bin/date "$@"
-fi
-EOF
-chmod +x "$TMPDIR/fakebin/date"
-
+# 9) Concurrent dry-runs should serialize allocation/cleanup and leave one
+# complete PID-free transient report.
 set +e
-env PATH="$TMPDIR/fakebin:$PATH" GITHUB_ACTOR=testuser bash -c "cd '$WORK' && bash ./scripts/bin/push -d -t 5" >"$TMPDIR/dry-race-1.out" 2>&1 &
+env GITHUB_ACTOR=testuser bash -c "cd '$WORK' && bash ./scripts/bin/push -d -t 5" >"$TMPDIR/dry-race-1.out" 2>&1 &
 p1=$!
-env PATH="$TMPDIR/fakebin:$PATH" GITHUB_ACTOR=testuser bash -c "cd '$WORK' && bash ./scripts/bin/push -d -t 5" >"$TMPDIR/dry-race-2.out" 2>&1 &
+env GITHUB_ACTOR=testuser bash -c "cd '$WORK' && bash ./scripts/bin/push -d -t 5" >"$TMPDIR/dry-race-2.out" 2>&1 &
 p2=$!
 wait "$p1"; rc1=$?
 wait "$p2"; rc2=$?
@@ -316,10 +321,10 @@ set -e
 
 race_report="$(latest_report "$WORK" 'push-d-*.md')"
 [[ -f "$race_report" ]] || fail "expected concurrent dry-run report"
-race_report_count="$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'push-d-20260727-195000-*.md' | wc -l | tr -d ' ')"
+race_report_count="$(find "$WORK/reports" -maxdepth 1 -type f -name 'push-d-*.md' | wc -l | tr -d ' ')"
 [[ "$race_report_count" -eq 1 ]] || fail "expected one serialized same-second dry-run report (got $race_report_count)"
-[[ "$(basename "$race_report")" =~ ^push-d-20260727-195000-[0-9]+\.md$ ]] || \
-  fail "expected timestamp-and-process dry-run filename"
+[[ "$(basename "$race_report")" =~ ^push-d-[0-9]{8}-[0-9]{6}\.md$ ]] || \
+  fail "expected PID-free dry-run filename"
 
 pass "concurrent dry-run report serialization"
 
@@ -327,17 +332,171 @@ pass "concurrent dry-run report serialization"
 rc=$(run_capture "$TMPDIR/push.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/push -t 5")
 [[ "$rc" -eq 0 ]] || fail "push should exit 0 (got $rc)"
 assert_contains "Pushed (" "$TMPDIR/push.out"
-assert_contains "to remote dev/push-tests-v1.0.0: 1 modified, 0 added, and 0 deleted files." "$TMPDIR/push.out"
-if grep -Fq "See reports/branch/push-" "$TMPDIR/push.out"; then
+assert_contains "to remote dev/push-tests-v1.0.0: 1 modified file." "$TMPDIR/push.out"
+assert_contains "Run report -r for details." \
+  "$TMPDIR/push.out"
+push_note="$(git -C "$WORK" notes --ref=briteTest-remote-workflow show HEAD)"
+[[ "$push_note" == *"Workflow-Type: push"* ]] || \
+  fail "successful push should record its workflow type"
+[[ "$push_note" == *"Command-Line: push -t 5"* ]] || \
+  fail "successful push should record its command line"
+[[ "$push_note" == *"Previous-Remote-Tip: "* ]] || \
+  fail "successful push should record its previous remote tip"
+[[ "$push_note" == *"Pushed-Tip: "* ]] || \
+  fail "successful push should record its pushed tip"
+[[ "$push_note" == *"Commits: 1"* ]] || \
+  fail "successful push should record its commit count"
+[[ "$push_note" == *"Files-Modified: 1"* && \
+  "$push_note" == *"Files-Renamed: 0"* && \
+  "$push_note" == *"Directories-Renamed: 0"* ]] || \
+  fail "successful push should record its file counts"
+remote_push_note="$(git --git-dir="$ORIGIN" notes \
+  --ref=briteTest-remote-workflow show \
+  "$(git -C "$WORK" rev-parse HEAD)" 2>/dev/null || true)"
+[[ "$remote_push_note" == *"Workflow-Type: push"* ]] || \
+  fail "successful push should publish its workflow history to origin"
+if grep -Fq "See reports/push-" "$TMPDIR/push.out"; then
   fail "successful non-dry push should not output a report path"
 fi
-if find "$WORK/reports/branch" -maxdepth 1 -type f -name 'push-*.md' -print -quit | grep -q .; then
+if find "$WORK/reports" -maxdepth 1 -type f -name 'push-*.md' -print -quit | grep -q .; then
   fail "successful non-dry push should not create a push report"
 fi
 remote_tip="$(git -C "$ORIGIN" rev-parse refs/heads/dev/push-tests-v1.0.0)"
 local_tip="$(git -C "$WORK" rev-parse HEAD)"
 [[ "$remote_tip" == "$local_tip" ]] || fail "remote tip should match local tip after push"
 pass "real push"
+
+# A local mrgup event authorizes an approver to publish its protected parent
+# and finalizes the associated PR only after the branch push succeeds.
+MRGUP_ORIGIN="$TMPDIR/mrgup-origin.git"
+MRGUP_WORK="$TMPDIR/mrgup-work"
+MRGUP_BIN="$TMPDIR/mrgup-bin"
+git init --bare "$MRGUP_ORIGIN" >/dev/null 2>&1
+git clone "file://$MRGUP_ORIGIN" "$MRGUP_WORK" >/dev/null 2>&1
+mkdir -p "$MRGUP_WORK/scripts/bin" "$MRGUP_WORK/scripts/helpers" \
+  "$MRGUP_WORK/config" "$MRGUP_WORK/reports" "$MRGUP_BIN"
+cp "$PUSH_SRC" "$MRGUP_WORK/scripts/bin/push"
+cp "$COMMON_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/common.sh"
+cp "$GIT_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/git_helpers.sh"
+cp "$GITHUB_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/github_helpers.sh"
+cp "$HISTORY_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/history_log.sh"
+cp "$REPORT_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/report_helpers.sh"
+cp "$REPORT_SYNC_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/report_sync.sh"
+cp "$PUSH_WORKFLOW_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/push_workflow.sh"
+cat > "$MRGUP_WORK/config/contributors.md" <<'EOF'
+- testapprover, A
+EOF
+cat > "$MRGUP_BIN/gh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$FAKE_GH_LOG"
+
+if [[ "$1 $2" == "pr view" && "$*" == *"--json state"* ]]; then
+  if [[ -f "$FAKE_GH_STATE_DIR/closed-$3" ]]; then
+    echo "CLOSED"
+  else
+    echo "OPEN"
+  fi
+elif [[ "$1 $2" == "pr view" && "$*" == *"--json comments"* ]]; then
+  cat "$FAKE_GH_STATE_DIR/comments-$3" 2>/dev/null || true
+elif [[ "$1 $2" == "pr comment" ]]; then
+  pr_number="$3"
+  while [[ $# -gt 0 ]]; do
+    if [[ "$1" == "--body-file" ]]; then
+      cat "$2" > "$FAKE_GH_STATE_DIR/comments-$pr_number"
+      break
+    fi
+    shift
+  done
+elif [[ "$1 $2" == "pr close" ]]; then
+  if [[ "${FAKE_GH_FAIL_CLOSE_ONCE:-false}" == true && \
+    ! -f "$FAKE_GH_STATE_DIR/failed-close-$3" ]]; then
+    touch "$FAKE_GH_STATE_DIR/failed-close-$3"
+    exit 1
+  fi
+  touch "$FAKE_GH_STATE_DIR/closed-$3"
+fi
+exit 0
+EOF
+chmod +x "$MRGUP_BIN/gh" "$MRGUP_WORK/scripts/bin/push"
+FAKE_GH_STATE_DIR="$TMPDIR/mrgup-gh-state"
+mkdir -p "$FAKE_GH_STATE_DIR"
+(
+  cd "$MRGUP_WORK"
+  git config user.name testapprover
+  git config user.email approver@example.com
+  echo seed > README.md
+  git add README.md scripts config
+  git commit -m seed >/dev/null 2>&1
+  git branch -M main
+  git push -u origin main >/dev/null 2>&1
+  git checkout -b v1.0.0 >/dev/null 2>&1
+  git push -u origin v1.0.0 >/dev/null 2>&1
+  echo merged > merged.txt
+  git add merged.txt
+  git commit -m "local mrgup result" >/dev/null 2>&1
+  source scripts/helpers/history_log.sh
+  bt_record_workflow_event "mrgup" "v1.0.0" "mrgup" \
+    "Merged dev/feature-v1.0.0 into v1.0.0" HEAD \
+    "Source-Branch" "dev/feature-v1.0.0" \
+    "Target-Branch" "v1.0.0" "PR" "42"
+)
+FAKE_GH_LOG="$TMPDIR/mrgup-gh.log"
+rc=$(run_capture "$TMPDIR/mrgup-push.out" env GITHUB_ACTOR=testapprover \
+  FAKE_GH_LOG="$FAKE_GH_LOG" FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" \
+  PATH="$MRGUP_BIN:$PATH" \
+  bash -c "cd '$MRGUP_WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 0 ]] || fail "push should publish pending mrgup (got $rc)"
+assert_contains "Pushed (" "$TMPDIR/mrgup-push.out"
+assert_contains "pr comment 42" "$FAKE_GH_LOG"
+assert_contains "pr close 42" "$FAKE_GH_LOG"
+[[ "$(git -C "$MRGUP_WORK" rev-parse v1.0.0)" == \
+  "$(git --git-dir="$MRGUP_ORIGIN" rev-parse refs/heads/v1.0.0)" ]] || \
+  fail "push should publish the local mrgup parent tip"
+pass "mrgup publication and PR finalization"
+
+# A failed close occurs after the atomic branch/history publication. A rerun
+# with no commits retries only PR finalization and does not duplicate comments.
+(
+  cd "$MRGUP_WORK"
+  echo retry > retry.txt
+  git add retry.txt
+  git commit -m "mrgup close retry" >/dev/null 2>&1
+  source scripts/helpers/history_log.sh
+  bt_record_workflow_event "mrgup" "v1.0.0" "mrgup" \
+    "Merged dev/retry-v1.0.0 into v1.0.0" HEAD \
+    "Source-Branch" "dev/retry-v1.0.0" \
+    "Target-Branch" "v1.0.0" "PR" "43"
+)
+retry_tip="$(git -C "$MRGUP_WORK" rev-parse HEAD)"
+rc=$(run_capture "$TMPDIR/mrgup-close-fail.out" env \
+  GITHUB_ACTOR=testapprover FAKE_GH_LOG="$FAKE_GH_LOG" \
+  FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" FAKE_GH_FAIL_CLOSE_ONCE=true \
+  PATH="$MRGUP_BIN:$PATH" \
+  bash -c "cd '$MRGUP_WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 202 ]] || fail "failed PR close should exit 202 (got $rc)"
+[[ "$(git --git-dir="$MRGUP_ORIGIN" rev-parse refs/heads/v1.0.0)" == \
+  "$retry_tip" ]] || fail "failed PR close should leave the branch published"
+remote_retry_note="$(git --git-dir="$MRGUP_ORIGIN" notes \
+  --ref=briteTest-remote-workflow show "$retry_tip" 2>/dev/null || true)"
+[[ "$remote_retry_note" == *"Workflow-Type: push"* ]] || \
+  fail "failed PR close should leave remote history published"
+
+rc=$(run_capture "$TMPDIR/mrgup-close-retry.out" env \
+  GITHUB_ACTOR=testapprover FAKE_GH_LOG="$FAKE_GH_LOG" \
+  FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" FAKE_GH_FAIL_CLOSE_ONCE=true \
+  PATH="$MRGUP_BIN:$PATH" \
+  bash -c "cd '$MRGUP_WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 0 ]] || fail "no-change PR close retry should succeed (got $rc)"
+assert_contains "Finalized pull request" "$TMPDIR/mrgup-close-retry.out"
+[[ "$(grep -Fc 'pr comment 43' "$FAKE_GH_LOG")" -eq 1 ]] || \
+  fail "PR close retry should not duplicate its publication comment"
+
+rc=$(run_capture "$TMPDIR/mrgup-closed-noop.out" env \
+  GITHUB_ACTOR=testapprover FAKE_GH_LOG="$FAKE_GH_LOG" \
+  FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" PATH="$MRGUP_BIN:$PATH" \
+  bash -c "cd '$MRGUP_WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 10 ]] || fail "closed mrgup no-work push should exit 10 (got $rc)"
+pass "mrgup PR finalization recovery"
 
 # 11) Non-dry push should fail with 200 and write a failed push report.
 cat > "$ORIGIN/hooks/pre-receive" <<'EOF'
@@ -358,8 +517,18 @@ chmod +x "$ORIGIN/hooks/pre-receive"
   git add README.md
   git commit -m "push failure report test" >/dev/null 2>&1
 )
+remote_branch_before="$(git --git-dir="$ORIGIN" rev-parse \
+  refs/heads/dev/push-tests-v1.0.0)"
+remote_notes_before="$(git --git-dir="$ORIGIN" rev-parse \
+  refs/notes/briteTest-remote-workflow)"
 rc=$(run_capture "$TMPDIR/push-fail.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/push -t 5")
 [[ "$rc" -eq 200 ]] || fail "push should exit 200 when remote rejects push (got $rc)"
+[[ "$(git --git-dir="$ORIGIN" rev-parse \
+  refs/heads/dev/push-tests-v1.0.0)" == "$remote_branch_before" ]] || \
+  fail "rejected atomic push should not update the remote branch"
+[[ "$(git --git-dir="$ORIGIN" rev-parse \
+  refs/notes/briteTest-remote-workflow)" == "$remote_notes_before" ]] || \
+  fail "rejected atomic push should not update remote workflow history"
 assert_contains "Failed to push branch 'dev/push-tests-v1.0.0' to remote" "$TMPDIR/push-fail.out"
 assert_contains "rejected by test hook: README.md policy violation" "$TMPDIR/push-fail.out"
 push_error_report="$(latest_report "$WORK" 'push-e-*.md')"
@@ -434,16 +603,16 @@ pass "group-level failed push attribution"
   git add README.md
   git commit -m "push report failure test" >/dev/null 2>&1
 )
-rm -rf "$ORIGIN/reports/branch"
+rm -rf "$ORIGIN/reports"
 rc=$(run_capture "$TMPDIR/report-fail.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/push -t 5")
 [[ "$rc" -eq 0 ]] || fail "push should not depend on remote report directory and exit 0 (got $rc)"
 assert_contains "Pushed " "$TMPDIR/report-fail.out"
 assert_contains "Pushed (" "$TMPDIR/report-fail.out"
 assert_contains "to remote dev/push-tests-v1.0.0:" "$TMPDIR/report-fail.out"
-if grep -Fq "See reports/branch/push-" "$TMPDIR/report-fail.out"; then
+if grep -Fq "See reports/push-" "$TMPDIR/report-fail.out"; then
   fail "successful non-dry push should not output a report path"
 fi
-if find "$WORK/reports/branch" -maxdepth 1 -type f -name 'push-*.md' -print -quit | grep -q .; then
+if find "$WORK/reports" -maxdepth 1 -type f -name 'push-*.md' -print -quit | grep -q .; then
   fail "successful non-dry push should not create a push report"
 fi
 pass "push success remains independent of remote report directory"

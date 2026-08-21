@@ -398,9 +398,8 @@ changes.
 `scripts/bin/commit` behavior summary:
 - Runs only on a local targeted or contributor branch.
 - Does not push. Use `scripts/bin/push` to publish local commits to remote.
-- Uses report naming: `reports/branch/commit-<datetime>.md` (or
-  `commit-d-<datetime>.md` in dry-run, and `commit-e-<datetime>-<pid>.md`
-  for error-run reports when `-e` is enabled).
+- Successful commits are available through `report`. Dry-run and error-run
+  reports use `commit-d-<datetime>.md` and `commit-e-<datetime>.md`.
 </details>
 
 <details>

@@ -16,10 +16,6 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ### Document and Brand Management
 
-**ckstyle**: Check style quidelines for documention, code, scripts,
-directory guides, versions etc. for the current branch.
-See Contributor Guide for guidelines.
-
 **gendocs**: Generate PDF and DOCX documentation.
 
 **genpngs**: Generate branding PNG images from SVG files.
@@ -67,7 +63,7 @@ the current branch.
 
 **lsbranch**: List a branch or branches and their status.
 
-**report**: Generate and query workflow history report entries.
+**report**: Generate repository health, branch activity, and style reports.
 
 **mkbranch**: Create branches with policy validation.
 
@@ -89,7 +85,7 @@ corresponding remote branch.
 
 **release**: Create and publish releases.
 
-**retarget**: Retarget a targeted branch to a different version branch.
+**retarget**: Retarget a targeted branch locally; use `-r` to publish it.
 targeted branch is renamed to have its version as the specified version.
 
 **review**: Create or update a pull request.

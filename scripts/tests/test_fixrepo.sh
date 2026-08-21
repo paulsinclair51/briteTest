@@ -68,8 +68,8 @@ EOF
     cat > "$repo/reports/README.md" <<'EOF'
 # Reports
 EOF
-    mkdir -p "$repo/reports/repository"
-    cat > "$repo/reports/repository/README.md" <<'EOF'
+    mkdir -p "$repo/reports"
+    cat > "$repo/reports/README.md" <<'EOF'
 # Repository Reports
 EOF
     cat > "$repo/include/runnerapi.h" <<'EOF'
@@ -93,8 +93,8 @@ EOF
     cat > "$repo/reports/README.md" <<'EOF'
 # Reports
 EOF
-    mkdir -p "$repo/reports/repository"
-    cat > "$repo/reports/repository/README.md" <<'EOF'
+    mkdir -p "$repo/reports"
+    cat > "$repo/reports/README.md" <<'EOF'
 # Repository Reports
 EOF
     git -C "$repo" add README.md scripts reports
@@ -131,7 +131,7 @@ make_unreachable_remote_repo() {
 
 latest_report() {
   local repo="$1"
-  find "$repo/reports/repository" -maxdepth 1 -type f -name 'repository-*.md' | sort | tail -n 1
+  find "$repo/reports" -maxdepth 1 -type f -name 'repository-*.md' | sort | tail -n 1
 }
 
 for dep in bash find git grep mktemp; do
@@ -163,7 +163,7 @@ BRITE_FAIL_REPO="$(make_fixture_repo britefail brite)"
 rc=$(run_capture "$TMPDIR/help.out" bash "$BRITE_REPO/scripts/bin/fixrepo" -h)
 [[ "$rc" -eq 0 ]] || fail "fixrepo -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
-assert_contains "reports/repository/repository-<datetime>.md" "$TMPDIR/help.out"
+assert_contains "reports/repository-<datetime>.md" "$TMPDIR/help.out"
 pass "help output"
 
 # 2) Verified remediation flow should resolve fixable loose-object issues

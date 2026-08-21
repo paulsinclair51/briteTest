@@ -31,22 +31,22 @@ Prerequisites:
     another branch. Use rmbranch to delete invalid branches if needed.
   - For undo uncommitted, the current branch may be local or remote.
   - For undo commit, pull, or mrgdown, the current branch must be local and
-    must have no untracked or uncommitted changes (undo uncommitted first and
+    must have no uncommitted changes (undo uncommitted first and
     rerun undo commit, pull, or mrgdown).
   - For undo push, the current branch must be the remote branch that was
-    the target of the push and must have no untracked or uncommitted changes
+    the target of the push and must have no uncommitted changes
     (undo uncommitted first and rerun undo push).
   - For undo copyfix, the current branch must be local, must be the branch
-    to which the copyfix was the target and must have no untracked or
-    uncommitted changes (undo uncommitted first and rerun undo copyfix).
+    to which the copyfix was the target and must have no uncommitted changes
+    (undo uncommitted first and rerun undo copyfix).
   - For undo mrgup, the current branch must be local, must be the parent
-    branch of the merge up and must have no untracked or uncommitted
-    changes (undo uncommitted first and rerun undo mrgup).
+    branch of the merge up and must have no uncommitted changes
+    (undo uncommitted first and rerun undo mrgup).
   - For undo release, the current branch must be the branch
-    from which the release was made and must have no accidental untracked or
-    uncommitted changes (undo uncommitted first and rerun undo release).
+    from which the release was made and must have no accidental uncommitted
+    changes (undo uncommitted first and rerun undo release).
 
-Argument:
+Arguments:
   TYPE          The type of operation to undo:
                   uncommitted  Undo uncommitted changes (revert working tree).
                                This is the default if no TYPE is specified.
@@ -69,15 +69,13 @@ Options:
   -- TOKEN...   undo comment from one or more tokens.
   -d            Dry-run. Validates preconditions and reports what
                 would be undone, but does not perform the undo.
-  -h            Output this help to stdout and exit (other options
-                and arguments are ignored).
-  --help        Output this help to stdout and exit (other options
-                and arguments are ignored).
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
   -t SEC        Remote operation timeout in seconds (default: 10)
                 for connecting to the remote if the current branch
                 is a remote branch. SEC must be an integer greater
                 than 0.
-  -v            Output detailed and progress information to stdout.
+  -v            Output progress and diagnostics to stdout.
 
   For undo comment options '-c TOKEN' and '-- TOKEN...':
     - These options are mutually exclusive.
@@ -106,7 +104,7 @@ Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
   - Writes an undo report if successful to:
-       '<repo>/reports/branch/undo-<TYPE>-YYYYMMDD-HHMMSS-<pid>.md'
+      '<repo>/reports/undo-<TYPE>-YYYYMMDD-HHMMSS-<pid>.md'
     The report is written locally based on the TYPE being undone:
       - For undo uncommitted, commit, pull, copyfix,and mrgdown, the undo report
       is
@@ -121,9 +119,9 @@ Outputs:
         for the current branch.
   - Writes an error report if unsuccessful (and -d not specified) to the
     current branch locally to:
-       '<repo>/reports/branch/undo-<TYPE>-e-YYYYMMDD-HHMMSS-<pid>.md'
+      '<repo>/reports/undo-<TYPE>-e-YYYYMMDD-HHMMSS-<pid>.md'
   - Writes a dry-run report if -d is specified locally to:
-       '<repo>/reports/branch/undo-<TYPE>-d-YYYYMMDD-HHMMSS-<pid>.md'
+      '<repo>/reports/undo-<TYPE>-d-YYYYMMDD-HHMMSS-<pid>.md'
   - Deletes older dry-run (-d) and error reports for the current
     branch if a new report is written or there is nothing to undo.
 

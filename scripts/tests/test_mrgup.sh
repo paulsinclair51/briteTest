@@ -58,7 +58,7 @@ run_capture() {
 
 latest_report() {
   local repo_root="$1"
-  find "$repo_root/reports/branch" -maxdepth 1 -type f -name 'mrgup-e-*.md' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
+  find "$repo_root/reports" -maxdepth 1 -type f -name 'mrgup-e-*.md' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
 }
 
 for dep in bash git grep mktemp; do
@@ -193,6 +193,10 @@ if [[ -n "${FAKE_GH_FAIL_QUERY:-}" && "$args" == *"$FAKE_GH_FAIL_QUERY"* ]]; the
 fi
 # Identity lookup
 if [[ "$args" == *"api user"* ]]; then
+  if [[ "${FAKE_GH_IDENTITY_FAIL:-0}" == "1" ]]; then
+    echo '{"message":"Service unavailable"}'
+    exit 1
+  fi
   echo "${FAKE_GH_LOGIN:-testowner}"
   exit 0
 fi
@@ -247,7 +251,7 @@ git init --bare "$ORIGIN" >/dev/null 2>&1
 
 # Copy scripts so mrgup sources helpers relative to its own SCRIPT_DIR.
 mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" \
-         "$WORK/config" "$WORK/reports/branch" "$WORK/logs"
+         "$WORK/config" "$WORK/reports" "$WORK/logs"
 cp "$MRGUP_SRC" "$WORK/scripts/bin/mrgup"
 cp "$PUSH_SRC" "$WORK/scripts/bin/push"
 chmod +x "$WORK/scripts/bin/mrgup" "$WORK/scripts/bin/push"
@@ -306,7 +310,7 @@ rc=$(run_capture "$TMPDIR/skip-e.out" env PATH="$FAKEBIN:$PATH" GITHUB_ACTOR=tes
 [[ "$rc" -eq 36 ]] || fail "mrgup -e should exit 36 (got $rc)"
 assert_contains "Error: Merge-up skipped due to -e option." "$TMPDIR/skip-e.out"
 assert_contains "Guidance: Run without -e option." "$TMPDIR/skip-e.out"
-assert_contains "See reports/branch/mrgup-e-" "$TMPDIR/skip-e.out"
+assert_contains "See reports/mrgup-e-" "$TMPDIR/skip-e.out"
 skip_report="$(latest_report "$WORK")"
 [[ -f "$skip_report" ]] || fail "expected mrgup skip report"
 assert_contains "**Error:** Merge-up skipped due to -e option." "$skip_report"
@@ -363,6 +367,17 @@ duplicate_exit_codes="$(
 [[ -z "$duplicate_exit_codes" ]] || \
   fail "help output contains duplicate exit codes: $duplicate_exit_codes"
 pass "help output includes -o"
+
+copyfix_state_root="$($REAL_GIT -C "$WORK" rev-parse \
+  --path-format=absolute --git-common-dir)/briteTest-copyfix-state"
+mkdir -p "$copyfix_state_root/dev/feat-v1.0.0"
+rc=$(run_mrgup "$TMPDIR/copyfix-active.out" \
+  "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" -- -d)
+[[ "$rc" -eq 38 ]] || fail "unfinished copyfix should block mrgup (got $rc)"
+assert_contains "has an unfinished copyfix operation" \
+  "$TMPDIR/copyfix-active.out"
+rm -rf "$copyfix_state_root"
+pass "unfinished copyfix blocks mrgup"
 
 # ---------------------------------------------------------------------------
 # Invalid timeout is rejected before remote operations
@@ -433,38 +448,32 @@ pass "-o rejected for non-owner"
   "$REAL_GIT" commit --allow-empty -m "no-op source branch" >/dev/null 2>&1
   "$REAL_GIT" push -u origin dev/noop-v1.0.0 >/dev/null 2>&1
 )
-noop_report_count_before="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
-  -name 'mrgup-*.md' | wc -l | tr -d ' ')"
-cat > "$WORK/reports/branch/mrgup-d-20000101-000000.md" <<'EOF'
+cat > "$WORK/reports/mrgup-d-20000101-000000.md" <<'EOF'
 # Stale Merge-Up Report
 
 **Source Branch:** dev/noop-v1.0.0
 EOF
-cat > "$WORK/reports/branch/mrgup-e-20000101-000001.md" <<'EOF'
+cat > "$WORK/reports/mrgup-e-20000101-000001.md" <<'EOF'
 # Stale Merge-Up Error Report
 
 **Source Branch:** dev/noop-v1.0.0
 EOF
-chmod a-w "$WORK/reports/branch/mrgup-d-20000101-000000.md" \
-  "$WORK/reports/branch/mrgup-e-20000101-000001.md"
+chmod a-w "$WORK/reports/mrgup-d-20000101-000000.md" \
+  "$WORK/reports/mrgup-e-20000101-000001.md"
 rc=$(run_mrgup "$TMPDIR/noop.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
   "FAKE_GH_PR_NUMBER=" -- -o -d)
-[[ "$rc" -eq 0 ]] || fail "no-op mrgup should exit 0 (got $rc)"
+[[ "$rc" -eq 37 ]] || fail "no-work mrgup should exit 37 (got $rc)"
 assert_contains "no changes to merge" "$TMPDIR/noop.out"
-noop_report_count_after="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
-  -name 'mrgup-*.md' | wc -l | tr -d ' ')"
-[[ "$noop_report_count_after" -eq 0 ]] || \
-  fail "no-op mrgup should remove stale transient reports and create no new report"
-[[ ! -e "$WORK/reports/branch/mrgup-d-20000101-000000.md" ]] || \
-  fail "no-op mrgup should remove stale dry-run report"
-[[ ! -e "$WORK/reports/branch/mrgup-e-20000101-000001.md" ]] || \
-  fail "no-op mrgup should remove stale error report"
+[[ -e "$WORK/reports/mrgup-d-20000101-000000.md" ]] || \
+  fail "mrgup prerequisite failure should preserve stale dry-run report"
+[[ -e "$WORK/reports/mrgup-e-20000101-000001.md" ]] || \
+  fail "mrgup prerequisite failure should preserve stale error report"
 (
   cd "$WORK"
   "$REAL_GIT" checkout dev/feat-v1.0.0 >/dev/null 2>&1
 )
-pass "no-op mrgup cleans transient reports and creates no report"
+pass "no-work mrgup prerequisite"
 
 # ---------------------------------------------------------------------------
 # -o accepts a repository owner who is not a contributor
@@ -550,6 +559,21 @@ assert_contains "Unable to determine GitHub login identity" "$TMPDIR/identity-fa
 pass "unresolved GitHub identity returns exit 200"
 
 # ---------------------------------------------------------------------------
+# A failed GitHub identity query must fall back to the configured Git login,
+# even when the failed query emits an error response on stdout.
+# ---------------------------------------------------------------------------
+rc=$(run_mrgup "$TMPDIR/identity-fallback.out" \
+  "GITHUB_ACTOR=" "FAKE_GH_IDENTITY_FAIL=1" \
+  "FAKE_REPO_OWNER=testowner" "FAKE_GH_PR_NUMBER=" -- -o -d)
+[[ "$rc" -eq 0 ]] || \
+  fail "failed GitHub identity query should use Git login fallback (got $rc)"
+assert_contains "Dry-run: merge to local v1.0.0:" \
+  "$TMPDIR/identity-fallback.out"
+assert_not_contains "Unable to determine GitHub login identity" \
+  "$TMPDIR/identity-fallback.out"
+pass "failed GitHub identity query uses Git login fallback"
+
+# ---------------------------------------------------------------------------
 # -o by owner, no open PR uses the owner default message
 # ---------------------------------------------------------------------------
 rc=$(run_mrgup "$TMPDIR/owner-nopr.out" \
@@ -561,9 +585,8 @@ rc=$(run_mrgup "$TMPDIR/owner-nopr.out" \
 }
 assert_not_contains "0 modified, 0 added, and 0 deleted files would be merged." "$TMPDIR/owner-nopr.out"
 assert_contains "Dry-run: merge to local v1.0.0:" "$TMPDIR/owner-nopr.out"
-assert_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/owner-nopr.out"
-assert_contains "See reports/branch/mrgup-d-" "$TMPDIR/owner-nopr.out"
-assert_contains "See reports/branch/push-d-" "$TMPDIR/owner-nopr.out"
+assert_contains "See reports/mrgup-d-" "$TMPDIR/owner-nopr.out"
+assert_not_contains "See reports/push-d-" "$TMPDIR/owner-nopr.out"
 assert_not_contains "in remote for details" "$TMPDIR/owner-nopr.out"
 assert_not_contains "Dry run complete" "$TMPDIR/owner-nopr.out"
 assert_not_contains "no merge commit was created and no branch was pushed" "$TMPDIR/owner-nopr.out"
@@ -575,23 +598,20 @@ merge_line_number="$(grep -n "Dry-run: merge to local v1.0.0:" "$TMPDIR/owner-no
 assert_not_contains "PR is not required" "$TMPDIR/owner-nopr.out"
 assert_not_contains "Using custom message:" "$TMPDIR/owner-nopr.out"
 assert_not_contains "is not approved" "$TMPDIR/owner-nopr.out"
-owner_report="$WORK/reports/branch/$(cd "$WORK/reports/branch" && ls -1t mrgup-d-*.md | head -n 1)"
+owner_report="$WORK/reports/$(cd "$WORK/reports" && ls -1t mrgup-d-*.md | head -n 1)"
 assert_contains "**Commit Comment:** dev/feat-v1.0.0 merged to v1.0.0 by owner testowner." "$owner_report"
 pass "-o owner, no PR: owner default message is reported"
 
 # ---------------------------------------------------------------------------
-# Parent-push guidance from the shared push workflow is emitted once
+# mrgup does not invoke the shared push workflow
 # ---------------------------------------------------------------------------
 rc=$(run_mrgup "$TMPDIR/parent-push-guidance.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
   "FAKE_PUSH_REMOTE_BRANCH_MISSING=1" "FAKE_GH_PR_NUMBER=" -- -o -d)
-[[ "$rc" -ne 0 ]] || fail "parent-push guidance path should fail (got $rc)"
-guidance_lines="$(grep -c '^Guidance:' "$TMPDIR/parent-push-guidance.out" || true)"
-[[ "$guidance_lines" -eq 1 ]] || fail "expected exactly one guidance line in parent-push failure output (got $guidance_lines)"
-assert_contains "Guidance:" "$TMPDIR/parent-push-guidance.out"
-assert_contains "rerun mrgup" "$TMPDIR/parent-push-guidance.out"
-[[ "$(grep -E '^Guidance: .*\.$' "$TMPDIR/parent-push-guidance.out" | wc -l | tr -d ' ')" -eq 1 ]] || fail "expected guidance line to end with a period"
-pass "parent-push guidance is emitted once with terminal punctuation"
+[[ "$rc" -eq 0 ]] || fail "mrgup dry-run should ignore push failures (got $rc)"
+assert_not_contains "Parent branch push workflow failed" \
+  "$TMPDIR/parent-push-guidance.out"
+pass "mrgup does not invoke push workflow"
 
 # ---------------------------------------------------------------------------
 # -o by owner with an unapproved PR fails
@@ -617,7 +637,7 @@ rc=$(run_mrgup "$TMPDIR/owner-pr-approved.out" \
 }
 assert_not_contains "0 modified, 0 added, and 0 deleted files would be merged." "$TMPDIR/owner-pr-approved.out"
 assert_contains "Dry-run: merge to local v1.0.0:" "$TMPDIR/owner-pr-approved.out"
-assert_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/owner-pr-approved.out"
+assert_not_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/owner-pr-approved.out"
 assert_not_contains "Dry run complete" "$TMPDIR/owner-pr-approved.out"
 assert_not_contains "is approved" "$TMPDIR/owner-pr-approved.out"
 assert_not_contains "My approved PR" "$TMPDIR/owner-pr-approved.out"
@@ -686,9 +706,9 @@ rc=$(run_mrgup "$TMPDIR/github-query-failed.out" \
   "FAKE_GH_PR_NUMBER=42" "FAKE_GH_REVIEW_DECISION=APPROVED" \
   "FAKE_GH_FAIL_QUERY=statusCheckRollup" -- -d)
 [[ "$rc" -eq 0 ]] || fail "unavailable CI/CD results should not block preview (got $rc)"
-query_report="$(cd "$WORK/reports/branch" && ls -1t mrgup-d-*.md | head -n 1)"
+query_report="$(cd "$WORK/reports" && ls -1t mrgup-d-*.md | head -n 1)"
 assert_contains "CI/CD results were unavailable for PR #42." \
-  "$WORK/reports/branch/$query_report"
+  "$WORK/reports/$query_report"
 pass "unavailable CI/CD results are report-only"
 
 # ---------------------------------------------------------------------------
@@ -706,22 +726,11 @@ for i in "${!ci_cd_checks[@]}"; do
     "FAKE_GH_PR_NUMBER=42" "FAKE_GH_REVIEW_DECISION=APPROVED" \
     "FAKE_GH_STATUS_CHECKS=${ci_cd_checks[$i]}" -- -d)
   [[ "$rc" -eq 0 ]] || fail "CI/CD results should not block preview (got $rc)"
-  ci_cd_dry_report="$(cd "$WORK/reports/branch" && ls -1t mrgup-d-*.md | head -n 1)"
-  assert_contains "| Check | State |" "$WORK/reports/branch/$ci_cd_dry_report"
-  assert_contains "FAILURE" "$WORK/reports/branch/$ci_cd_dry_report"
+  ci_cd_dry_report="$(cd "$WORK/reports" && ls -1t mrgup-d-*.md | head -n 1)"
+  assert_contains "| Check | State |" "$WORK/reports/$ci_cd_dry_report"
+  assert_contains "FAILURE" "$WORK/reports/$ci_cd_dry_report"
 done
 pass "CI/CD results are included without blocking"
-
-# ---------------------------------------------------------------------------
-# A child push report failure is propagated as exit 204
-# ---------------------------------------------------------------------------
-rc=$(run_mrgup "$TMPDIR/push-report-failed.out" \
-  "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
-  "FAKE_GH_PR_NUMBER=" "BT_PUSH_REPORT_LOCK_TIMEOUT_SECONDS=invalid" -- \
-  -o -d -c "push report failure")
-[[ "$rc" -eq 204 ]] || fail "push report failure should exit 204 (got $rc)"
-assert_contains "Parent branch push report failed" "$TMPDIR/push-report-failed.out"
-pass "child push report failure returns exit 204"
 
 # ---------------------------------------------------------------------------
 # Normal approved PR uses its title as the commit comment
@@ -731,7 +740,7 @@ rc=$(run_mrgup "$TMPDIR/normal-pr-approved.out" \
   "FAKE_GH_PR_NUMBER=42" "FAKE_GH_REVIEW_DECISION=APPROVED" \
   "FAKE_GH_STATUS_CHECKS=SUCCESS" "FAKE_GH_PR_TITLE=Approved release title" -- -d)
 [[ "$rc" -eq 0 ]] || fail "normal approved PR dry-run should succeed (got $rc)"
-pr_report="$WORK/reports/branch/$(cd "$WORK/reports/branch" && ls -1t mrgup-d-*.md | head -n 1)"
+pr_report="$WORK/reports/$(cd "$WORK/reports" && ls -1t mrgup-d-*.md | head -n 1)"
 assert_contains "**Commit Comment:** Approved release title" "$pr_report"
 assert_contains "| unlabeled | SUCCESS |" "$pr_report"
 pass "approved PR title is used as the commit comment"
@@ -748,7 +757,7 @@ assert_not_contains "Determining parent branch" "$TMPDIR/quiet-dryrun.out"
 assert_not_contains "Parent branch:" "$TMPDIR/quiet-dryrun.out"
 assert_not_contains "0 modified, 0 added, and 0 deleted files would be merged." "$TMPDIR/quiet-dryrun.out"
 assert_contains "Dry-run: merge to local v1.0.0:" "$TMPDIR/quiet-dryrun.out"
-assert_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/quiet-dryrun.out"
+assert_not_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/quiet-dryrun.out"
 pass "non-verbose dry-run output stays compact"
 
 # ---------------------------------------------------------------------------
@@ -841,9 +850,9 @@ rc=$(run_mrgup "$TMPDIR/parent-checkout.out" \
   "FAKE_GH_PR_NUMBER=" "FAKE_FAIL_PARENT_SWITCH=1" -- -o -c "checkout failure")
 [[ "$rc" -eq 15 ]] || fail "parent checkout failure should exit 15 (got $rc)"
 assert_contains "cannot be checked out" "$TMPDIR/parent-checkout.out"
-checkout_error_report="$(cd "$WORK/reports/branch" && ls -1t mrgup-e-*.md | head -n 1)"
+checkout_error_report="$(cd "$WORK/reports" && ls -1t mrgup-e-*.md | head -n 1)"
 assert_contains "**Error:** Parent branch 'v1.0.0' cannot be checked out" \
-  "$WORK/reports/branch/$checkout_error_report"
+  "$WORK/reports/$checkout_error_report"
 pass "parent checkout failure returns exit 15 with actionable report"
 
 # ---------------------------------------------------------------------------
@@ -857,7 +866,7 @@ assert_contains "not up-to-date with parent" "$TMPDIR/current-behind-parent.out"
 pass "current branch behind parent returns exit 13"
 
 # ---------------------------------------------------------------------------
-# One-time verification mismatch auto-repairs and succeeds
+# Local merge succeeds without remote post-merge repair
 # ---------------------------------------------------------------------------
 VERIFY_MARKER="$TMPDIR/revparse-once.marker"
 rc=$(run_mrgup "$TMPDIR/verify-repair.out" \
@@ -869,43 +878,50 @@ rc=$(run_mrgup "$TMPDIR/verify-repair.out" \
   echo "--- output ---"; cat "$TMPDIR/verify-repair.out"
   fail "one-time verification mismatch should auto-repair and succeed (got $rc)"
 }
-assert_contains "Post-merge sync verification failed:" "$TMPDIR/verify-repair.out"
-assert_contains "Failure kind: remote_parent_ref" "$TMPDIR/verify-repair.out"
 merge_line_number="$(grep -n "Merged to local v1.0.0:" "$TMPDIR/verify-repair.out" | head -n 1 | cut -d: -f1)"
-push_line_number="$(grep -n "to remote v1.0.0:" "$TMPDIR/verify-repair.out" | head -n 1 | cut -d: -f1)"
 [[ -n "$merge_line_number" ]] || fail "expected merge success line in verify-repair output"
-[[ -n "$push_line_number" ]] || fail "expected push summary line in verify-repair output"
-[[ "$merge_line_number" -lt "$push_line_number" ]] || fail "expected merge success line before push summary"
 assert_contains "Merged to local v1.0.0:" "$TMPDIR/verify-repair.out"
-assert_contains "Pushed (" "$TMPDIR/verify-repair.out"
-report_rel="$(grep -Eo 'reports/branch/mrgup-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md' "$TMPDIR/verify-repair.out" | tail -n 1 || true)"
-[[ -n "$report_rel" ]] || fail "expected merge-up report path in output"
-report_path="$WORK/$report_rel"
-[[ -f "$report_path" ]] || fail "expected merge-up report file: $report_path"
-assert_contains '# Merge-Up Report' "$report_path"
-assert_contains '**Parent Branch:** v1.0.0' "$report_path"
-assert_contains '**Source Branch:** dev/feat-v1.0.0' "$report_path"
-assert_contains "No associated PR; CI/CD checks were not queried." "$report_path"
-push_report_path="$(find "$WORK/reports/branch" -maxdepth 1 -type f -name 'push-*.md' \
-  -print 2>/dev/null | xargs -r ls -1t 2>/dev/null | head -n 1 || true)"
-if [[ -n "$push_report_path" ]]; then
-  assert_contains "**Triggered By:** mrgup from \`dev/feat-v1.0.0\`" \
-    "$push_report_path"
-  assert_not_contains "--mrgup" "$push_report_path"
-  assert_not_contains "--preview-ref" "$push_report_path"
+assert_not_contains "Pushed (" "$TMPDIR/verify-repair.out"
+assert_contains "Local merge complete on v1.0.0." \
+  "$TMPDIR/verify-repair.out"
+assert_contains "Run push when ready to publish v1.0.0 and finalize its PR." \
+  "$TMPDIR/verify-repair.out"
+[[ "$(git -C "$WORK" branch --show-current)" == "v1.0.0" ]] || \
+  fail "successful mrgup should leave the local parent checked out"
+if find "$WORK/reports" -maxdepth 1 -type f \
+  -name 'mrgup-[0-9]*.md' -print -quit | grep -q .; then
+  fail "successful merge-up should not create an immediate local report"
 fi
+merge_body="$(git -C "$WORK" log -1 --format=%B v1.0.0)"
+if grep -Fq "Command-Line: mrgup" <<< "$merge_body"; then
+  fail "merge-up commit should not claim workflow success before finalization"
+fi
+merge_note="$(git -C "$WORK" notes --ref=briteTest-workflow show v1.0.0)"
+[[ "$merge_note" == *"Workflow-Type: mrgup"* ]] || \
+  fail "completed merge-up should record one final workflow event"
+[[ "$merge_note" == *"Command-Line: mrgup -o -c verify\\ repair\\ path"* ]] || \
+  fail "merge-up event should record its command line"
+[[ "$merge_note" == *"Source-Branch: dev/feat-v1.0.0"* ]] || \
+  fail "merge-up event should record its source branch"
+[[ "$merge_note" == *"Target-Branch: v1.0.0"* ]] || \
+  fail "merge-up event should record its target branch"
+[[ "$merge_note" == *"PR: none"* ]] || \
+  fail "merge-up event should record that no PR was associated"
+[[ "$merge_note" == *"Status: Current branch merged into parent branch"* ]] || \
+  fail "merge-up event should record merge status"
+[[ "$merge_note" == *"Method: Squash merge created by mrgup"* ]] || \
+  fail "merge-up event should record merge method"
+[[ "$merge_note" == *"No associated PR; CI/CD checks were not queried."* ]] || \
+  fail "merge-up event should record CI/CD availability"
+remote_parent_tip="$(git -C "$ORIGIN" rev-parse refs/heads/v1.0.0)"
+[[ "$remote_parent_tip" != "$(git -C "$WORK" rev-parse v1.0.0)" ]] || \
+  fail "mrgup should leave origin/v1.0.0 unchanged"
 (
   cd "$WORK"
-  git ls-files --error-unmatch "$report_rel" >/dev/null 2>&1
-) && fail "expected merge-up report to remain untracked"
-
-ab=$(
-  cd "$WORK"
-  "$REAL_GIT" fetch origin >/dev/null 2>&1
-  "$REAL_GIT" rev-list --left-right --count origin/v1.0.0...origin/dev/feat-v1.0.0
+  "$REAL_GIT" switch dev/feat-v1.0.0 >/dev/null 2>&1
+  "$REAL_GIT" branch -f v1.0.0 origin/v1.0.0 >/dev/null 2>&1
 )
-[[ "$ab" == $'0\t0' ]] || fail "expected origin/v1.0.0 and origin/dev/feat-v1.0.0 synced after auto-repair (got $ab)"
-pass "targeted one-shot post-merge auto-repair succeeds"
+pass "mrgup completes locally without remote repair"
 
 # ---------------------------------------------------------------------------
 # Local run lock blocks overlapping invocation
@@ -944,12 +960,12 @@ pass "merge-time git failure emits resolve-and-rerun guidance"
 # ---------------------------------------------------------------------------
 # Commit failure must not leave a success report claiming the merge completed
 # ---------------------------------------------------------------------------
-success_reports_before="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+success_reports_before="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'mrgup-[0-9]*.md' | wc -l | tr -d ' ')"
 rc=$(run_mrgup "$TMPDIR/commit-fail-report.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
   "FAKE_GH_PR_NUMBER=" "FAKE_GIT_FAIL_COMMIT=1" -- -o -c "commit failure")
-success_reports_after="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+success_reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'mrgup-[0-9]*.md' | wc -l | tr -d ' ')"
 [[ "$rc" -eq 202 ]] || fail "commit failure should exit 202 (got $rc)"
 [[ "$success_reports_after" -eq "$success_reports_before" ]] || \
@@ -957,7 +973,7 @@ success_reports_after="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
 assert_contains "Failed to create commit" "$TMPDIR/commit-fail-report.out"
 remaining_dirty="$(
   (cd "$WORK" || exit 1; git status --porcelain --untracked-files=all) | \
-    grep -Ev '^\?\? reports/branch/(mrgup|push)(-d|-e)?-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md$' || true
+    grep -Ev '^\?\? reports/(mrgup|push)(-d|-e)?-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md$' || true
 )"
 [[ -z "$remaining_dirty" ]] || fail "commit failure should restore a clean worktree"
 pass "commit failure does not create a success report"
@@ -965,13 +981,13 @@ pass "commit failure does not create a success report"
 # ---------------------------------------------------------------------------
 # History staging failure is fatal and must not produce a success report
 # ---------------------------------------------------------------------------
-success_reports_before="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+success_reports_before="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'mrgup-[0-9]*.md' | wc -l | tr -d ' ')"
 rc=$(run_mrgup "$TMPDIR/history-add-fail.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
   "FAKE_GH_PR_NUMBER=" "FAKE_GIT_FAIL_HISTORY_ADD=1" -- \
   -o -c "history staging failure")
-success_reports_after="$(find "$WORK/reports/branch" -maxdepth 1 -type f \
+success_reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'mrgup-[0-9]*.md' | wc -l | tr -d ' ')"
 [[ "$rc" -eq 202 ]] || fail "history staging failure should exit 202 (got $rc)"
 [[ "$success_reports_after" -eq "$success_reports_before" ]] || \
@@ -990,10 +1006,10 @@ rc=$(run_mrgup "$TMPDIR/version-main-default.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
   "FAKE_GH_PR_NUMBER=" -- -d)
 [[ "$rc" -eq 0 ]] || fail "version-to-main preview should succeed (got $rc)"
-version_report="$(cd "$WORK/reports/branch" && ls -1t mrgup-d-*.md | head -n 1)"
+version_report="$(cd "$WORK/reports" && ls -1t mrgup-d-*.md | head -n 1)"
 assert_contains \
   "**Commit Comment:** v1.0.0 merged to main branch by approver testowner." \
-  "$WORK/reports/branch/$version_report"
+  "$WORK/reports/$version_report"
 pass "version-to-main preview uses the documented default comment"
 
 # ---------------------------------------------------------------------------
@@ -1012,10 +1028,10 @@ rc=$(run_mrgup "$TMPDIR/contributor-no-pr.out" \
   "GITHUB_ACTOR=otheruser" "FAKE_REPO_OWNER=testowner" \
   "FAKE_GH_PR_NUMBER=" -- -d)
 [[ "$rc" -eq 0 ]] || fail "contributor merge without PR should succeed (got $rc)"
-contributor_report="$(cd "$WORK/reports/branch" && ls -1t mrgup-d-*.md | head -n 1)"
+contributor_report="$(cd "$WORK/reports" && ls -1t mrgup-d-*.md | head -n 1)"
 assert_contains \
   "**Commit Comment:** contributor-work merged to dev/feat-v1.0.0 by contributor otheruser." \
-  "$WORK/reports/branch/$contributor_report"
+  "$WORK/reports/$contributor_report"
 
 rc=$(run_mrgup "$TMPDIR/contributor-outsider.out" \
   "GITHUB_ACTOR=outsider" "FAKE_REPO_OWNER=testowner" \
@@ -1048,8 +1064,15 @@ rc=$(run_mrgup "$TMPDIR/contributor-failed-ci-merge.out" \
   "FAKE_GH_REVIEW_DECISION=APPROVED" \
   "FAKE_GH_STATUS_CHECKS=ci build"$'\t'"FAILURE" --)
 [[ "$rc" -eq 0 ]] || fail "failed CI result should not block merge (got $rc)"
-ci_merge_report="$(cd "$WORK/reports/branch" && ls -1t mrgup-[0-9]*.md | head -n 1)"
-assert_contains "| ci build | FAILURE |" "$WORK/reports/branch/$ci_merge_report"
+ci_merge_note="$(git -C "$WORK" notes --ref=briteTest-workflow show \
+  dev/feat-v1.0.0)"
+[[ "$ci_merge_note" == *"ci build"* && "$ci_merge_note" == *"FAILURE"* ]] || \
+  fail "merge-up event should record CI/CD results"
+[[ "$ci_merge_note" == *"PR: 42"* ]] || \
+  fail "merge-up event should record its PR number"
+if ! grep -Fq "Command-Line: mrgup" <<< "$ci_merge_note"; then
+  fail "merge-up event should record its command line"
+fi
 pass "failed CI result is reported without blocking a real merge"
 
 # ---------------------------------------------------------------------------

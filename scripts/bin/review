@@ -65,10 +65,8 @@ Options:
                        This option is mutually exclusive with -b and -s,
                        and must not be used with -c, -- TOKEN..., -T,
                        or -l.
-  -h                   Output this help to stdout and exit (other options
-                       and arguments are ignored).
-  --help               Output this help to stdout and exit (other options
-                       and arguments are ignored).
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
   -l LABELS            Comma-separated labels (e.g., bug,urgent or
                        "bug, urgent"). The token LABELS must be quoted
                        if it contains whitespace (any leading whitespace,

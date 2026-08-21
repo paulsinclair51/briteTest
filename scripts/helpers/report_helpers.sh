@@ -55,7 +55,8 @@ bt_report_dir_enable_writes() {
   fi
 }
 
-bt_report_unique_path() {
+# Retained reports keep every run, so an ID distinguishes same-second files.
+bt_report_retained_path() {
   local report_dir="$1"
   local prefix="$2"
   local timestamp="$3"
@@ -63,6 +64,26 @@ bt_report_unique_path() {
 
   printf '%s/%s-%s-%s.md\n' \
     "${report_dir%/}" "$prefix" "$timestamp" "$process_id"
+}
+
+# Transient reports replace earlier dry-run/error output. Call while holding
+# the workflow report lock so path allocation, cleanup, and writing serialize.
+bt_report_transient_path() {
+  local report_dir="$1"
+  local prefix="$2"
+  local run_timestamp="$3"
+  local timestamp=""
+  local report_path=""
+
+  while true; do
+    timestamp="$(date '+%Y%m%d-%H%M%S')"
+    report_path="${report_dir%/}/${prefix}-${timestamp}.md"
+    if [[ "$timestamp" != "$run_timestamp" && ! -e "$report_path" ]]; then
+      printf '%s\n' "$report_path"
+      return 0
+    fi
+    sleep 1
+  done
 }
 
 bt_report_write_header() {

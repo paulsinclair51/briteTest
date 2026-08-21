@@ -46,7 +46,7 @@ assert_contains() {
 
 make_runner_repo() {
   local root="$1"
-  mkdir -p "$root/scripts/bin" "$root/scripts/helpers" "$root/config" "$root/reports/repository"
+  mkdir -p "$root/scripts/bin" "$root/scripts/helpers" "$root/config" "$root/reports"
 
   cp "$FIXREMOTE_SRC" "$root/scripts/bin/fixremote"
   cp "$COMMON_HELPER_SRC" "$root/scripts/helpers/common.sh"
@@ -63,14 +63,14 @@ make_runner_repo() {
 - paulsinclair51, A
 EOF
 
-  cat > "$root/reports/repository/README.md" <<'EOF'
+  cat > "$root/reports/README.md" <<'EOF'
 # Repository Reports
 EOF
 }
 
 latest_recovery_report() {
   local repo="$1"
-  find "$repo/reports/repository" -maxdepth 1 -type f -name 'recovery-*.md' | sort | tail -n 1
+  find "$repo/reports" -maxdepth 1 -type f -name 'recovery-*.md' | sort | tail -n 1
 }
 
 for dep in bash find git grep mktemp; do

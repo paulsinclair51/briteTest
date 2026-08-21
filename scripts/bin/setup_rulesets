@@ -6,20 +6,48 @@
 # SPDX-License-Identifier: MIT
 # For license details, see '<repo>/LICENSE'.
 
-# Usage:
-#
-#   <repo>/scripts/bin/setup_rulesets [--check] [<owner>/<reponame>]
-#
-# Idempotent GitHub ruleset setup with auto-cleanup (create-or-update by ruleset name)
-#
-# Example:
-#   ./scripts/bin/setup_rulesets paulsinclair51/briteTest
-#
-# Requirements:
-#   - gh CLI authenticated (gh auth status)
-#   - jq installed
-#   - repo admin permissions
-#
+usage() {
+  cat <<'EOF'
+Usage:
+  setup_rulesets [--check] [REPOSITORY]
+  setup_rulesets {-h | --help}
+
+Create or update the repository rulesets, or verify them with --check.
+
+Prerequisites:
+  - GitHub CLI must be installed and authenticated.
+  - jq must be installed.
+  - The authenticated user must have repository administration permission.
+
+Arguments:
+  REPOSITORY  Repository in OWNER/NAME form (default:
+              paulsinclair51/briteTest).
+
+Options:
+  --check     Verify rulesets without changing them.
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
+
+Examples:
+  # Configure the default repository.
+  setup_rulesets
+
+  # Configure a specified repository.
+  setup_rulesets paulsinclair51/briteTest
+
+  # Verify rulesets without changing them.
+  setup_rulesets --check paulsinclair51/briteTest
+
+Outputs:
+  - Writes status messages and results to stdout.
+  - Writes errors and diagnostics to stderr.
+
+Exit codes:
+  0  Success.
+  1  Argument, dependency, permission, API, or verification error.
+EOF
+}
+
 # These rulesets enforce properties GitHub can verify from a ref update:
 # protected refs cannot be deleted or rewritten. Conditional PR, role, and
 # source/target merge requirements remain authoritative in mrgup because
@@ -28,13 +56,22 @@
 
 set -euo pipefail
 
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+done
+
 MODE="apply"
 if [[ "${1:-}" == "--check" ]]; then
   MODE="check"
   shift
 fi
 if [[ $# -gt 1 ]]; then
-  echo "Usage: $0 [--check] [<owner>/<reponame>]" >&2
+  usage
+  echo >&2
+  echo "Too many arguments. See usage above for details." >&2
   exit 1
 fi
 

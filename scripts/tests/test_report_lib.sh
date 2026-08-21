@@ -13,6 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 REPORT_SRC="$REPO_ROOT/scripts/bin/report"
 COMMON_HELPER_SRC="$REPO_ROOT/scripts/helpers/common.sh"
+GIT_HELPER_SRC="$REPO_ROOT/scripts/helpers/git_helpers.sh"
 REPORT_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_helpers.sh"
 
 pass() {
@@ -40,6 +41,13 @@ assert_contains() {
   grep -Fq -- "$text" "$file" || fail "expected '$text' in $file"
 }
 
+report_path_from_output() {
+  local output_file="$1"
+
+  sed -n 's/^See \(reports\/\(local\|remote\)-[0-9]\{8\}-[0-9]\{6\}\.md\) for details\.$/\1/p' \
+    "$output_file" | tail -n 1
+}
+
 report_test_init() {
   for dep in bash git grep mktemp; do
     command -v "$dep" >/dev/null 2>&1 || fail "missing required command: $dep"
@@ -64,8 +72,31 @@ report_test_init() {
   mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers"
   cp "$REPORT_SRC" "$WORK/scripts/bin/report"
   cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
+  cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
   cp "$REPORT_HELPER_SRC" "$WORK/scripts/helpers/report_helpers.sh"
-  chmod +x "$WORK/scripts/bin/report"
+  cat > "$WORK/scripts/helpers/ckstyle.sh" <<'EOF'
+#!/usr/bin/env bash
+bt_ckstyle() {
+  printf '%s\n' "$@" > style-args.txt
+  echo "See reports/style-test.md for details."
+  exit 0
+}
+EOF
+  cat > "$WORK/scripts/bin/lsbranch" <<'EOF'
+#!/usr/bin/env bash
+mkdir -p "$BRITETEST_LSBRANCH_REPORT_DIR"
+report="$BRITETEST_LSBRANCH_REPORT_DIR/$BRITETEST_LSBRANCH_REPORT_PREFIX-test.md"
+cat > "$report" <<'REPORT'
+# Branch Report
+
+| **Branch** | **Type** | **Status** |
+| --- | --- | --- |
+| dev/report-tests-v1.0.0 | local | clean |
+REPORT
+printf 'See %s for details.\n' "${report#"$PWD"/}"
+EOF
+  chmod +x "$WORK/scripts/bin/report" "$WORK/scripts/helpers/ckstyle.sh" \
+    "$WORK/scripts/bin/lsbranch"
 
   (
     cd "$WORK"
@@ -96,6 +127,104 @@ report_test_init() {
     git add payload.txt
     git commit -m "push delta seed" >/dev/null 2>&1
     git push origin dev/report-tests-v1.0.0 >/dev/null 2>&1
+
+    remote_push_tip="$(git rev-parse origin/dev/report-tests-v1.0.0)"
+    remote_push_previous="$(git rev-parse "${remote_push_tip}^")"
+    git notes --ref=briteTest-remote-workflow append -m \
+      "--- briteTest workflow ---
+Workflow-Type: push
+Workflow-Time: 2026-08-16 11:59:59
+Workflow-Branch: dev/report-tests-v1.0.0
+Workflow-User: testuser <test@example.com>
+Command-Line: push -t 5
+Summary: Pushed 1 commit(s) to origin/dev/report-tests-v1.0.0
+Details: Previous-Remote-Tip: $remote_push_previous; Pushed-Tip: $remote_push_tip; Commits: 1; Files: 1 modified, 0 added, 0 deleted" \
+      "$remote_push_tip" >/dev/null 2>&1
+    git push origin \
+      refs/notes/briteTest-remote-workflow:refs/notes/briteTest-remote-workflow \
+      >/dev/null 2>&1
+
+    git commit --allow-empty \
+      -m "mrgup activity" \
+      >/dev/null 2>&1
+    git notes --ref=briteTest-workflow append -m \
+      "--- briteTest workflow ---
+Workflow-Type: mrgup
+Workflow-Time: 2026-08-16 12:00:01
+Workflow-Branch: dev/report-tests-v1.0.0
+Workflow-User: testuser <test@example.com>
+Command-Line: mrgup -o
+Summary: mrgup activity
+Source-Branch: dev/source-v1.0.0
+Target-Branch: v1.0.0
+PR: 42
+Status: Current branch merged into parent branch
+Method: Squash merge created by mrgup
+CI-CD: ci build SUCCESS" \
+      HEAD >/dev/null 2>&1
+
+    git commit --allow-empty \
+      -m "copyfix activity" \
+      >/dev/null 2>&1
+    git notes --ref=briteTest-workflow append -m \
+      "--- briteTest workflow ---
+Workflow-Type: copyfix
+Workflow-Time: 2026-08-16 12:00:02
+Workflow-Branch: dev/report-tests-v1.0.0
+Workflow-User: testuser <test@example.com>
+Command-Line: copyfix fix/source-v1.0.0
+Summary: copyfix activity
+Source-Branch: fix/source-v1.0.0
+Target-Branch: dev/report-tests-v1.0.0
+Commits-Copied: 2
+Files-Modified: 1
+Files-Added: 1
+Files-Deleted: 0
+Status: Fix commits copied to target branch
+Method: Cherry-pick created by copyfix" \
+      HEAD >/dev/null 2>&1
+
+    git commit --allow-empty \
+      -m "mrgdown activity" \
+      -m $'## Workflow Metadata\n\nCommand-Line: mrgdown -f\nSource-Branch: v1.0.0\nTarget-Branch: dev/report-tests-v1.0.0\nParent-Commits-Integrated: 2\nFiles-Modified: 1\nFiles-Added: 1\nFiles-Deleted: 0\nStatus: Parent branch merged into current branch\nMethod: Merge commit (--no-ff) created by mrgdown' \
+      >/dev/null 2>&1
+
+    git notes --ref=briteTest-workflow append -m \
+      "--- briteTest workflow ---
+Workflow-Type: pull
+Workflow-Time: 2026-08-16 12:00:04
+Workflow-Branch: dev/report-tests-v1.0.0
+Workflow-User: testuser <test@example.com>
+Command-Line: pull -v
+Summary: pull activity
+Record-Group: appended pair
+Status: recorded pull details with --- briteTest workflow --- marker" \
+  HEAD >/dev/null 2>&1
+
+    retarget_tip="$(git rev-parse HEAD)"
+    git notes --ref=briteTest-workflow append -m \
+  "--- briteTest workflow ---
+Workflow-Type: retarget
+Workflow-Time: 2026-08-16 12:00:08
+Workflow-Branch: dev/report-tests-v1.0.0
+Workflow-User: testuser <test@example.com>
+Command-Line: retarget -c move\\ branch dev/report-tests-v1.0.0 v1.1.0
+Summary: retarget activity
+Old-Parent: v1.0.0
+New-Parent: v1.1.0
+Retargeted-Tip: $retarget_tip
+Record-Group: appended pair
+Comment: move branch" \
+  HEAD >/dev/null 2>&1
+
+    git notes --ref=briteTest-workflow append -m \
+      "--- briteTest workflow ---
+Workflow-Type: push
+Workflow-Time: 2026-08-16 12:00:09
+Workflow-Branch: dev/report-tests-v1.0.0
+Workflow-User: testuser <test@example.com>
+Command-Line: push
+Status: malformed fixture missing summary" HEAD >/dev/null 2>&1
 
     git checkout -b sandbox/report-other >/dev/null 2>&1
     echo "other" > other.txt

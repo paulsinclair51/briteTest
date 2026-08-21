@@ -39,10 +39,31 @@ run_in_work_capture() {
   echo "$rc"
 }
 
+run_in_work_capture_streams() {
+  # Usage: run_in_work_capture_streams <stdout> <stderr> <args...>
+  local stdout_file="$1"
+  local stderr_file="$2"
+  shift 2
+  set +e
+  (
+    cd "$WORK"
+    bash "$WORK/scripts/bin/chbranch" "$@"
+  ) >"$stdout_file" 2>"$stderr_file"
+  local rc=$?
+  set -e
+  echo "$rc"
+}
+
 assert_contains() {
   local text="$1"
   local file="$2"
   grep -Fq -- "$text" "$file" || fail "expected '$text' in $file"
+}
+
+assert_matches() {
+  local pattern="$1"
+  local file="$2"
+  grep -Eq -- "$pattern" "$file" || fail "expected pattern '$pattern' in $file"
 }
 
 for dep in bash git grep mktemp timeout; do
@@ -111,8 +132,20 @@ chmod +x "$WORK/scripts/bin/chbranch"
 rc=$(run_in_work_capture "$TMPDIR/help.out" -h)
 [[ "$rc" -eq 0 ]] || fail "chbranch -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
-assert_contains "8   Running outside a Git repository." "$TMPDIR/help.out"
-assert_contains "9   Required command is not available (git or timeout)." \
+assert_contains "Status tags:" "$TMPDIR/help.out"
+assert_contains "[local only]" "$TMPDIR/help.out"
+assert_contains "[remote only]" "$TMPDIR/help.out"
+assert_contains "[synced]" "$TMPDIR/help.out"
+assert_contains "[invalid name]" "$TMPDIR/help.out"
+assert_contains "[diverged from remote: N/M]" "$TMPDIR/help.out"
+assert_contains "[ahead of parent by N]" "$TMPDIR/help.out"
+assert_contains "[behind parent by N]" "$TMPDIR/help.out"
+assert_contains "[diverged from parent: N/M]" "$TMPDIR/help.out"
+assert_contains "[parent: NAME]" "$TMPDIR/help.out"
+assert_contains "[parent unavailable: NAME]" "$TMPDIR/help.out"
+assert_matches '^[[:space:]]*8[[:space:]]+Running outside a Git repository\.$' \
+  "$TMPDIR/help.out"
+assert_matches '^[[:space:]]*9[[:space:]]+Required command is not available \(git or timeout\)\.$' \
   "$TMPDIR/help.out"
 pass "help output"
 
@@ -144,17 +177,37 @@ rc=$(run_in_work_capture "$TMPDIR/invalid-branch.out" 'bad..branch')
 assert_contains "Invalid branch name" "$TMPDIR/invalid-branch.out"
 pass "argument validation"
 
+# Help/status use stdout; errors use stderr.
+rc=$(run_in_work_capture_streams "$TMPDIR/stream-error.out" \
+  "$TMPDIR/stream-error.err" --badopt)
+[[ "$rc" -eq 1 ]] || fail "stream error test should exit 1 (got $rc)"
+assert_contains "Usage:" "$TMPDIR/stream-error.out"
+assert_contains "Unknown option" "$TMPDIR/stream-error.err"
+if grep -Fq "Unknown option" "$TMPDIR/stream-error.out"; then
+  fail "argument error should not be written to stdout"
+fi
+pass "error output stream"
+
 # Selecting the current local branch is a successful no-op.
 rc=$(run_in_work_capture "$TMPDIR/current-local.out" dev/local-only)
 [[ "$rc" -eq 0 ]] || fail "current local branch should exit 0 (got $rc)"
-assert_contains "Changed to local dev/local-only branch." \
+assert_contains "Changed to dev/local-only branch." \
   "$TMPDIR/current-local.out"
+assert_contains "[local only] [current]" \
+  "$TMPDIR/current-local.out"
+rc=$(run_in_work_capture_streams "$TMPDIR/stream-success.out" \
+  "$TMPDIR/stream-success.err" dev/local-only)
+[[ "$rc" -eq 0 ]] || fail "stream success test should exit 0 (got $rc)"
+assert_contains "Changed to dev/local-only branch." \
+  "$TMPDIR/stream-success.out"
+[[ ! -s "$TMPDIR/stream-success.err" ]] || \
+  fail "successful selection should not write to stderr"
 pass "current local branch"
 
 # Omitting BRANCH defaults to the current local branch.
 rc=$(run_in_work_capture "$TMPDIR/implicit-current.out")
 [[ "$rc" -eq 0 ]] || fail "implicit current branch should exit 0 (got $rc)"
-assert_contains "Changed to local dev/local-only branch." \
+assert_contains "Changed to dev/local-only branch." \
   "$TMPDIR/implicit-current.out"
 pass "implicit current branch"
 
@@ -180,6 +233,8 @@ rc=$(run_in_work_capture "$TMPDIR/dirty-switch.out" dev/target)
 assert_contains "has uncommitted changes" "$TMPDIR/dirty-switch.out"
 rc=$(run_in_work_capture "$TMPDIR/dirty-current.out" dev/local-only)
 [[ "$rc" -eq 0 ]] || fail "dirty current branch should exit 0 (got $rc)"
+assert_contains "[local only] [current] [uncommitted]" \
+  "$TMPDIR/dirty-current.out"
 (
   cd "$WORK"
   git restore README.md
@@ -189,25 +244,194 @@ pass "dirty worktree handling"
 # Local mode switches to a writable local branch.
 rc=$(run_in_work_capture "$TMPDIR/local-success.out" -l dev/target)
 [[ "$rc" -eq 0 ]] || fail "local switch should exit 0 (got $rc)"
-assert_contains "Changed to local dev/target branch." \
+assert_contains "Changed to dev/target branch." \
   "$TMPDIR/local-success.out"
+assert_contains "[local] [current] [synced]" "$TMPDIR/local-success.out"
 [[ "$(git -C "$WORK" symbolic-ref --short HEAD)" == "dev/target" ]] || \
   fail "expected local branch dev/target"
 pass "local branch switch"
 
+# Parent tags compare the selected commit with its policy-defined parent.
+(
+  cd "$WORK"
+  git branch dev/parent-behind-v1.0.0 v1.0.0
+  git switch -c dev/parent-relation-v1.0.0 v1.0.0 >/dev/null 2>&1
+  git commit --allow-empty -m "advance selected branch" >/dev/null 2>&1
+  git push origin v1.0.0 dev/parent-relation-v1.0.0 >/dev/null 2>&1
+)
+rc=$(run_in_work_capture "$TMPDIR/parent-ahead.out" \
+  dev/parent-relation-v1.0.0)
+[[ "$rc" -eq 0 ]] || fail "parent-ahead selection should exit 0 (got $rc)"
+assert_contains "[ahead of parent by 1]" "$TMPDIR/parent-ahead.out"
+assert_contains "[parent: v1.0.0]" "$TMPDIR/parent-ahead.out"
+(
+  cd "$WORK"
+  git switch v1.0.0 >/dev/null 2>&1
+  git commit --allow-empty -m "advance parent branch" >/dev/null 2>&1
+)
+# Remote selection compares with the remote parent, not a newer local parent.
+rc=$(run_in_work_capture "$TMPDIR/remote-parent.out" -r \
+  dev/parent-relation-v1.0.0)
+[[ "$rc" -eq 0 ]] || fail "remote-parent selection should exit 0 (got $rc)"
+assert_contains "[parent: v1.0.0] [ahead of parent by 1]" \
+  "$TMPDIR/remote-parent.out"
+git -C "$WORK" push origin --delete v1.0.0 \
+  dev/parent-relation-v1.0.0 >/dev/null 2>&1
+rc=$(run_in_work_capture "$TMPDIR/parent-behind.out" \
+  dev/parent-behind-v1.0.0)
+[[ "$rc" -eq 0 ]] || fail "parent-behind selection should exit 0 (got $rc)"
+assert_contains "[behind parent by 1]" "$TMPDIR/parent-behind.out"
+rc=$(run_in_work_capture "$TMPDIR/parent-diverged.out" \
+  dev/parent-relation-v1.0.0)
+[[ "$rc" -eq 0 ]] || fail "parent-diverged selection should exit 0 (got $rc)"
+assert_contains "[diverged from parent: 1/1]" \
+  "$TMPDIR/parent-diverged.out"
+(
+  cd "$WORK"
+  git switch dev/target >/dev/null 2>&1
+  git branch -D dev/parent-behind-v1.0.0 \
+    dev/parent-relation-v1.0.0 >/dev/null 2>&1
+  git branch -f v1.0.0 main >/dev/null 2>&1
+)
+pass "parent relationship status"
+
+# A policy-resolved parent can be named even when its ref is unavailable.
+(
+  cd "$WORK"
+  git branch dev/missing-parent-v2.0.0 main
+)
+rc=$(run_in_work_capture "$TMPDIR/parent-unavailable.out" \
+  dev/missing-parent-v2.0.0)
+[[ "$rc" -eq 0 ]] || \
+  fail "unavailable-parent selection should exit 0 (got $rc)"
+assert_contains "[parent unavailable: v2.0.0]" \
+  "$TMPDIR/parent-unavailable.out"
+git -C "$WORK" switch dev/target >/dev/null 2>&1
+git -C "$WORK" branch -D dev/missing-parent-v2.0.0 >/dev/null 2>&1
+pass "unavailable parent status"
+
+# Uncommitted worktree state takes precedence over commit synchronization.
+echo "uncommitted tracked change" >> "$WORK/README.md"
+rc=$(run_in_work_capture "$TMPDIR/local-uncommitted.out" dev/target)
+[[ "$rc" -eq 0 ]] || fail "uncommitted current branch should exit 0 (got $rc)"
+assert_contains "[local] [current] [uncommitted]" \
+  "$TMPDIR/local-uncommitted.out"
+if grep -Fq "[synced]" "$TMPDIR/local-uncommitted.out"; then
+  fail "uncommitted branch should not be labeled synced"
+fi
+for internal_status in staged unstaged; do
+  if grep -Fq "[$internal_status]" "$TMPDIR/local-uncommitted.out"; then
+    fail "output should not expose $internal_status status"
+  fi
+done
+git -C "$WORK" restore README.md
+pass "uncommitted status precedence"
+
+# Local selection remains available when remote status cannot be refreshed.
+(
+  cd "$WORK"
+  git switch dev/local-only >/dev/null 2>&1
+  git remote set-url origin "$TMPDIR/missing-status-origin.git"
+)
+rc=$(run_in_work_capture "$TMPDIR/local-offline.out" dev/local-only)
+[[ "$rc" -eq 0 ]] || fail "offline local selection should exit 0 (got $rc)"
+assert_contains "Changed to dev/local-only branch." \
+  "$TMPDIR/local-offline.out"
+assert_contains "[local] [current] [offline]" "$TMPDIR/local-offline.out"
+git -C "$WORK" remote set-url origin "$ORIGIN"
+pass "local offline status indicator"
+
+rc=$(run_in_work_capture "$TMPDIR/local-target-setup.out" dev/target)
+[[ "$rc" -eq 0 ]] || fail "remote mode setup should exit 0 (got $rc)"
+
 # Remote mode refreshes origin and checks out the remote branch detached.
 rc=$(run_in_work_capture "$TMPDIR/remote-success.out" -r dev/target)
 [[ "$rc" -eq 0 ]] || fail "remote switch should exit 0 (got $rc)"
-assert_contains "Changed to remote dev/target branch." \
+assert_contains "Changed to dev/target branch." \
+  "$TMPDIR/remote-success.out"
+assert_contains "[remote] [current] [read-only] [synced]" \
   "$TMPDIR/remote-success.out"
 [[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
   fail "expected detached HEAD in remote mode"
 pass "remote branch switch"
 
+# Refreshing the current remote snapshot requires a clean worktree.
+NO_REMOTE_BIN="$TMPDIR/no-remote-bin"
+REMOTE_CALL_MARKER="$TMPDIR/dirty-remote-call"
+mkdir -p "$NO_REMOTE_BIN"
+cat > "$NO_REMOTE_BIN/git" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "ls-remote" || "$1" == "fetch" ]]; then
+  : > "${REMOTE_CALL_MARKER:?}"
+  exit 99
+fi
+exec "${REAL_GIT:?}" "$@"
+EOF
+chmod +x "$NO_REMOTE_BIN/git"
+echo "dirty remote snapshot" >> "$WORK/README.md"
+set +e
+(
+  cd "$WORK"
+  PATH="$NO_REMOTE_BIN:$PATH" REAL_GIT="$REAL_GIT" \
+    REMOTE_CALL_MARKER="$REMOTE_CALL_MARKER" \
+    bash "$WORK/scripts/bin/chbranch" -r dev/target
+) >"$TMPDIR/dirty-current-remote.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 2 ]] || \
+  fail "dirty current remote snapshot should exit 2 (got $rc)"
+assert_contains "changes that have not been committed" \
+  "$TMPDIR/dirty-current-remote.out"
+[[ ! -e "$REMOTE_CALL_MARKER" ]] || \
+  fail "dirty remote selection should not query or fetch the remote"
+(
+  cd "$WORK"
+  git restore README.md
+)
+pass "dirty remote snapshot refresh blocked"
+
+# Re-selecting a remote snapshot refreshes the remote ref and moves HEAD when
+# the remote branch has advanced.
+(
+  cd "$WORK"
+  git switch dev/target >/dev/null 2>&1
+  git commit --allow-empty -m "advance remote snapshot" >/dev/null 2>&1
+  advanced_remote_tip="$(git rev-parse HEAD)"
+  git push origin dev/target >/dev/null 2>&1
+  git switch --detach HEAD^ >/dev/null 2>&1
+  printf '%s\n' "$advanced_remote_tip" > "$TMPDIR/advanced-remote-tip"
+)
+rc=$(run_in_work_capture "$TMPDIR/remote-refresh.out" -r dev/target)
+[[ "$rc" -eq 0 ]] || fail "remote refresh should exit 0 (got $rc)"
+[[ "$(git -C "$WORK" rev-parse HEAD)" == \
+  "$(cat "$TMPDIR/advanced-remote-tip")" ]] || \
+  fail "expected refreshed snapshot to match the advanced remote tip"
+pass "existing remote snapshot refresh"
+
+# Resolving an omitted branch from a uniquely identifiable detached snapshot
+# must not update remembered state until the requested selection succeeds.
+(
+  cd "$WORK"
+  git config --local --unset-all chbranch.lastBranch >/dev/null 2>&1 || true
+)
+echo "dirty failed selection" >> "$WORK/README.md"
+rc=$(run_in_work_capture "$TMPDIR/failed-implicit.out")
+[[ "$rc" -eq 2 ]] || fail "dirty implicit switch should exit 2 (got $rc)"
+if git -C "$WORK" config --local --get chbranch.lastBranch >/dev/null 2>&1; then
+  fail "failed branch selection should not update remembered branch state"
+fi
+(
+  cd "$WORK"
+  git restore README.md
+)
+pass "remember branch only after success"
+
 # Default mode falls back to a remote-only branch and remains detached.
 rc=$(run_in_work_capture "$TMPDIR/default-remote-only.out" dev/remote-only)
 [[ "$rc" -eq 0 ]] || fail "default remote-only switch should exit 0 (got $rc)"
-assert_contains "Changed to remote dev/remote-only branch." \
+assert_contains "Changed to dev/remote-only branch." \
+  "$TMPDIR/default-remote-only.out"
+assert_contains "[remote only] [current] [read-only]" \
   "$TMPDIR/default-remote-only.out"
 [[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
   fail "expected detached HEAD for default remote-only branch"
@@ -216,42 +440,226 @@ assert_contains "Changed to remote dev/remote-only branch." \
   fail "expected HEAD to match origin/dev/remote-only"
 pass "default remote-only branch switch"
 
-# Protected local branches are checked out detached according to policy.
+# Protected local branches remain attached in explicit local mode.
 rc=$(run_in_work_capture "$TMPDIR/protected-success.out" -l main)
 [[ "$rc" -eq 0 ]] || fail "protected local switch should exit 0 (got $rc)"
-assert_contains "Changed to local main branch." \
+assert_contains "Changed to main branch." \
   "$TMPDIR/protected-success.out"
-[[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
-  fail "expected detached HEAD for protected local branch"
+if grep -Fq "[parent" "$TMPDIR/protected-success.out"; then
+  fail "main should not output a parent status"
+fi
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" == "main" ]] || \
+  fail "expected attached HEAD for protected local branch"
 pass "protected branch policy"
 
-# Default mode also checks out a protected local branch detached.
+# Default mode is local-first and keeps a protected local branch attached.
 rc=$(run_in_work_capture "$TMPDIR/protected-default.out" dev/target)
 [[ "$rc" -eq 0 ]] || fail "setup switch should exit 0 (got $rc)"
 rc=$(run_in_work_capture "$TMPDIR/protected-default.out" main)
 [[ "$rc" -eq 0 ]] || \
   fail "default protected switch should exit 0 (got $rc)"
-assert_contains "Changed to local main branch." \
+assert_contains "Changed to main branch." \
   "$TMPDIR/protected-default.out"
-[[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
-  fail "expected detached HEAD for default protected branch"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" == "main" ]] || \
+  fail "expected attached HEAD for default protected branch"
 pass "default protected branch policy"
 
-# Version branches are protected and checked out detached.
+# Protected version branches remain attached in default local mode.
 rc=$(run_in_work_capture "$TMPDIR/version-setup.out" dev/target)
 [[ "$rc" -eq 0 ]] || fail "version setup switch should exit 0 (got $rc)"
 rc=$(run_in_work_capture "$TMPDIR/version-protected.out" v1.0.0)
 [[ "$rc" -eq 0 ]] || fail "version branch should exit 0 (got $rc)"
-assert_contains "Changed to local v1.0.0 branch." \
+assert_contains "Changed to v1.0.0 branch." \
   "$TMPDIR/version-protected.out"
-[[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
-  fail "expected detached HEAD for protected version branch"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" == "v1.0.0" ]] || \
+  fail "expected attached HEAD for protected version branch"
 pass "version branch policy"
+
+# Clean protected local branches fast-forward when their remote advances.
+PROTECTED_PEER="$TMPDIR/protected-peer"
+git clone "$ORIGIN" "$PROTECTED_PEER" >/dev/null 2>&1
+(
+  cd "$PROTECTED_PEER"
+  git config user.name "remote-testuser"
+  git config user.email "remote-test@example.com"
+  git checkout main >/dev/null 2>&1
+  echo "remote protected update" > PROTECTED_REMOTE.md
+  git add PROTECTED_REMOTE.md
+  git commit -m "advance protected remote" >/dev/null 2>&1
+  git push origin main >/dev/null 2>&1
+  git rev-parse HEAD > "$TMPDIR/protected-remote-tip"
+)
+rc=$(run_in_work_capture "$TMPDIR/remote-ahead-local.out" -r main)
+[[ "$rc" -eq 0 ]] || fail "remote-ahead selection should exit 0 (got $rc)"
+assert_contains "[ahead of local by 1]" "$TMPDIR/remote-ahead-local.out"
+rc=$(run_in_work_capture "$TMPDIR/protected-refresh.out" main)
+[[ "$rc" -eq 0 ]] || fail "protected refresh should exit 0 (got $rc)"
+[[ "$(git -C "$WORK" rev-parse main)" == \
+  "$(cat "$TMPDIR/protected-remote-tip")" ]] || \
+  fail "protected local branch should fast-forward to origin/main"
+assert_contains "[local] [current] [read-only] [synced]" \
+  "$TMPDIR/protected-refresh.out"
+pass "protected local branch refresh"
+
+# A dirty current protected branch is rejected before refresh.
+echo "dirty protected branch" >> "$WORK/README.md"
+protected_tip_before="$(git -C "$WORK" rev-parse main)"
+rc=$(run_in_work_capture "$TMPDIR/protected-dirty.out" main)
+[[ "$rc" -eq 2 ]] || fail "dirty protected selection should exit 2 (got $rc)"
+assert_contains "has uncommitted changes" "$TMPDIR/protected-dirty.out"
+[[ "$(git -C "$WORK" rev-parse main)" == "$protected_tip_before" ]] || \
+  fail "dirty protected branch should remain unchanged"
+git -C "$WORK" restore README.md
+pass "dirty protected branch handling"
+
+# A protected branch ahead of its remote remains unchanged.
+(
+  cd "$WORK"
+  git commit --allow-empty -m "local protected advance" >/dev/null 2>&1
+)
+protected_tip_before="$(git -C "$WORK" rev-parse main)"
+rc=$(run_in_work_capture_streams "$TMPDIR/protected-ahead.out" \
+  "$TMPDIR/protected-ahead.err" main)
+[[ "$rc" -eq 0 ]] || fail "ahead protected selection should exit 0 (got $rc)"
+assert_contains "was not refreshed because it is ahead of origin/main" \
+  "$TMPDIR/protected-ahead.out"
+assert_contains "[ahead of remote by 1]" "$TMPDIR/protected-ahead.out"
+[[ ! -s "$TMPDIR/protected-ahead.err" ]] || \
+  fail "non-fatal refresh warning should not be written to stderr"
+[[ "$(git -C "$WORK" rev-parse main)" == "$protected_tip_before" ]] || \
+  fail "ahead protected branch should remain unchanged"
+rc=$(run_in_work_capture "$TMPDIR/remote-behind-local.out" -r main)
+[[ "$rc" -eq 0 ]] || fail "remote-behind selection should exit 0 (got $rc)"
+assert_contains "[behind local by 1]" "$TMPDIR/remote-behind-local.out"
+rc=$(run_in_work_capture "$TMPDIR/restore-ahead-local.out" -l main)
+[[ "$rc" -eq 0 ]] || fail "restore ahead local should exit 0 (got $rc)"
+pass "ahead protected refresh warning"
+
+# A protected branch diverged from its remote remains unchanged.
+(
+  cd "$PROTECTED_PEER"
+  git pull --ff-only origin main >/dev/null 2>&1
+  echo "diverged remote update" > PROTECTED_DIVERGED.md
+  git add PROTECTED_DIVERGED.md
+  git commit -m "diverge protected remote" >/dev/null 2>&1
+  git push origin main >/dev/null 2>&1
+)
+protected_tip_before="$(git -C "$WORK" rev-parse main)"
+rc=$(run_in_work_capture "$TMPDIR/protected-diverged.out" main)
+[[ "$rc" -eq 0 ]] || \
+  fail "diverged protected selection should exit 0 (got $rc)"
+assert_contains "was not refreshed because it has diverged from origin/main" \
+  "$TMPDIR/protected-diverged.out"
+assert_contains "[diverged from remote: 1/1]" \
+  "$TMPDIR/protected-diverged.out"
+[[ "$(git -C "$WORK" rev-parse main)" == "$protected_tip_before" ]] || \
+  fail "diverged protected branch should remain unchanged"
+rc=$(run_in_work_capture "$TMPDIR/remote-diverged-local.out" -r main)
+[[ "$rc" -eq 0 ]] || fail "remote diverged selection should exit 0 (got $rc)"
+assert_contains "[diverged from local: 1/1]" \
+  "$TMPDIR/remote-diverged-local.out"
+rc=$(run_in_work_capture "$TMPDIR/restore-diverged-local.out" -l main)
+[[ "$rc" -eq 0 ]] || fail "restore diverged local should exit 0 (got $rc)"
+pass "diverged protected refresh warning"
+
+# Missing and unreachable protected remotes warn without failing selection.
+rc=$(run_in_work_capture "$TMPDIR/protected-missing.out" v1.0.0)
+[[ "$rc" -eq 0 ]] || fail "missing protected remote should exit 0 (got $rc)"
+assert_contains "was not refreshed because origin/v1.0.0 does not exist" \
+  "$TMPDIR/protected-missing.out"
+git -C "$WORK" remote set-url origin "$TMPDIR/missing-protected-origin.git"
+rc=$(run_in_work_capture "$TMPDIR/protected-unreachable.out" v1.0.0)
+[[ "$rc" -eq 0 ]] || \
+  fail "unreachable protected remote should exit 0 (got $rc)"
+assert_contains "was not refreshed because the remote is not reachable" \
+  "$TMPDIR/protected-unreachable.out"
+assert_contains "[offline]" "$TMPDIR/protected-unreachable.out"
+git -C "$WORK" remote set-url origin "$ORIGIN"
+pass "protected remote availability warnings"
+
+# A protected refresh timeout warns and leaves the branch selected.
+PROTECTED_TIMEOUT_BIN="$TMPDIR/protected-timeout-bin"
+mkdir -p "$PROTECTED_TIMEOUT_BIN"
+cat > "$PROTECTED_TIMEOUT_BIN/timeout" <<'EOF'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  if [[ "$arg" == "ls-remote" ]]; then
+    exit 124
+  fi
+done
+exec "${REAL_TIMEOUT:?}" "$@"
+EOF
+chmod +x "$PROTECTED_TIMEOUT_BIN/timeout"
+set +e
+(
+  cd "$WORK"
+  PATH="$PROTECTED_TIMEOUT_BIN:$PATH" REAL_TIMEOUT="$REAL_TIMEOUT" \
+    bash "$WORK/scripts/bin/chbranch" -t 1 v1.0.0
+) > "$TMPDIR/protected-timeout.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 0 ]] || fail "protected refresh timeout should exit 0 (got $rc)"
+assert_contains "was not refreshed because the remote request timed out" \
+  "$TMPDIR/protected-timeout.out"
+assert_contains "[offline]" "$TMPDIR/protected-timeout.out"
+pass "protected refresh timeout warning"
+
+# Restore the disposable main branch fixture for subsequent policy tests.
+(
+  cd "$WORK"
+  git switch dev/target >/dev/null 2>&1
+  git branch -f main origin/main >/dev/null 2>&1
+)
+
+# A failed fast-forward operation warns and preserves the selected local tip.
+(
+  cd "$PROTECTED_PEER"
+  git pull --ff-only origin main >/dev/null 2>&1
+  echo "failed update remote" > PROTECTED_UPDATE_FAILED.md
+  git add PROTECTED_UPDATE_FAILED.md
+  git commit -m "advance remote for failed update" >/dev/null 2>&1
+  git push origin main >/dev/null 2>&1
+)
+protected_tip_before="$(git -C "$WORK" rev-parse main)"
+PROTECTED_UPDATE_BIN="$TMPDIR/protected-update-bin"
+mkdir -p "$PROTECTED_UPDATE_BIN"
+cat > "$PROTECTED_UPDATE_BIN/git" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "merge" ]]; then
+  exit 1
+fi
+exec "${REAL_GIT:?}" "$@"
+EOF
+chmod +x "$PROTECTED_UPDATE_BIN/git"
+set +e
+(
+  cd "$WORK"
+  PATH="$PROTECTED_UPDATE_BIN:$PATH" REAL_GIT="$REAL_GIT" \
+    bash "$WORK/scripts/bin/chbranch" main
+) > "$TMPDIR/protected-update-failed.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 0 ]] || fail "failed protected update should exit 0 (got $rc)"
+assert_contains "was not refreshed because the fast-forward update failed" \
+  "$TMPDIR/protected-update-failed.out"
+assert_contains "[behind remote by 1]" \
+  "$TMPDIR/protected-update-failed.out"
+[[ "$(git -C "$WORK" symbolic-ref --short HEAD)" == "main" ]] || \
+  fail "failed protected update should leave main selected"
+[[ "$(git -C "$WORK" rev-parse main)" == "$protected_tip_before" ]] || \
+  fail "failed protected update should preserve the local tip"
+(
+  cd "$WORK"
+  git switch dev/target >/dev/null 2>&1
+  git branch -f main origin/main >/dev/null 2>&1
+)
+pass "protected refresh update-failure warning"
 
 # Existing policy-invalid local branches can be inspected only as detached.
 rc=$(run_in_work_capture "$TMPDIR/invalid-local.out" -l v1.0.1)
 [[ "$rc" -eq 0 ]] || fail "policy-invalid local branch should exit 0 (got $rc)"
-assert_contains "Changed to local v1.0.1 branch." "$TMPDIR/invalid-local.out"
+assert_contains "Changed to v1.0.1 branch." "$TMPDIR/invalid-local.out"
+assert_contains "[read-only] [invalid name]" "$TMPDIR/invalid-local.out"
 [[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
   fail "expected detached HEAD for policy-invalid local branch"
 [[ "$(git -C "$WORK" rev-parse HEAD)" == \
@@ -262,8 +670,9 @@ pass "policy-invalid local branch is read-only"
 # Existing policy-invalid remote branches can be inspected only as detached.
 rc=$(run_in_work_capture "$TMPDIR/invalid-remote.out" -r dev/invalid-v1.0.1)
 [[ "$rc" -eq 0 ]] || fail "policy-invalid remote branch should exit 0 (got $rc)"
-assert_contains "Changed to remote dev/invalid-v1.0.1 branch." \
+assert_contains "Changed to dev/invalid-v1.0.1 branch." \
   "$TMPDIR/invalid-remote.out"
+assert_contains "[read-only] [invalid name]" "$TMPDIR/invalid-remote.out"
 [[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
   fail "expected detached HEAD for policy-invalid remote branch"
 [[ "$(git -C "$WORK" rev-parse HEAD)" == \
@@ -274,7 +683,7 @@ pass "policy-invalid remote branch is read-only"
 # Explicit remote mode keeps protected remote branches detached.
 rc=$(run_in_work_capture "$TMPDIR/protected-remote.out" -r main)
 [[ "$rc" -eq 0 ]] || fail "protected remote switch should exit 0 (got $rc)"
-assert_contains "Changed to remote main branch." \
+assert_contains "Changed to main branch." \
   "$TMPDIR/protected-remote.out"
 [[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
   fail "expected detached HEAD for protected remote branch"

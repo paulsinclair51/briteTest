@@ -12,6 +12,7 @@ export LC_ALL=C
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 REPORT_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_helpers.sh"
+HISTORY_HELPER_SRC="$REPO_ROOT/scripts/helpers/history_log.sh"
 
 pass() {
   echo "PASS: $1"
@@ -43,11 +44,14 @@ for dep in bash git grep mktemp; do
 done
 
 [[ -f "$REPORT_HELPER_SRC" ]] || fail "missing helper: $REPORT_HELPER_SRC"
+[[ -f "$HISTORY_HELPER_SRC" ]] || fail "missing helper: $HISTORY_HELPER_SRC"
 
 # shellcheck source=scripts/helpers/common.sh
 source "$REPO_ROOT/scripts/helpers/common.sh"
 # shellcheck source=scripts/helpers/report_helpers.sh
 source "$REPORT_HELPER_SRC"
+# shellcheck source=scripts/helpers/history_log.sh
+source "$HISTORY_HELPER_SRC"
 
 TMPDIR="$(mktemp -d)"
 cleanup() {
@@ -63,7 +67,7 @@ seed_repo() {
     cd "$repo"
     git config user.name "testuser"
     git config user.email "test@example.com"
-    mkdir -p reports/branch
+    mkdir -p reports
     echo "seed" > README.md
     git add README.md reports
     git commit -m "seed repo" >/dev/null 2>&1
@@ -73,16 +77,16 @@ seed_repo() {
 # 1) Deletion tracking should record the exact relative path.
 DELETE_REPO="$TMPDIR/delete-repo"
 seed_repo "$DELETE_REPO"
-echo "obsolete report" > "$DELETE_REPO/reports/branch/old-report.md"
+echo "obsolete report" > "$DELETE_REPO/reports/old-report.md"
 deleted_reports=()
 bt_report_remove_and_record \
   "$DELETE_REPO" deleted_reports \
-  "$DELETE_REPO/reports/branch/old-report.md" "test report"
-[[ ! -e "$DELETE_REPO/reports/branch/old-report.md" ]] || \
+  "$DELETE_REPO/reports/old-report.md" "test report"
+[[ ! -e "$DELETE_REPO/reports/old-report.md" ]] || \
   fail "old report should be deleted"
 [[ "${#deleted_reports[@]}" -eq 1 ]] || \
   fail "expected one deleted report path to be recorded"
-[[ "${deleted_reports[0]}" == "reports/branch/old-report.md" ]] || \
+[[ "${deleted_reports[0]}" == "reports/old-report.md" ]] || \
   fail "expected recorded deleted report path to be relative"
 pass "delete-and-record helper"
 
@@ -99,33 +103,33 @@ pass "delete-and-record helper"
 # 3) Shared transient report cleanup should remove only matching branch reports.
 cleanup_repo="$TMPDIR/cleanup-repo"
 seed_repo "$cleanup_repo"
-mkdir -p "$cleanup_repo/reports/branch"
-cat > "$cleanup_repo/reports/branch/keep.md" <<'EOF'
+mkdir -p "$cleanup_repo/reports"
+cat > "$cleanup_repo/reports/keep.md" <<'EOF'
 # Keep Report
 
 **Branch:** `feature/other`
 EOF
-cat > "$cleanup_repo/reports/branch/remove.md" <<'EOF'
+cat > "$cleanup_repo/reports/remove.md" <<'EOF'
 # Remove Report
 
 **Branch:** `feature/current`
 EOF
-cat > "$cleanup_repo/reports/branch/source-remove.md" <<'EOF'
+cat > "$cleanup_repo/reports/source-remove.md" <<'EOF'
 # Remove Report
 
 **Source Branch:** `feature/current`
 EOF
 bt_report_cleanup_transient_reports \
-  "$cleanup_repo/reports/branch" \
+  "$cleanup_repo/reports" \
   "feature/current" \
-  "$cleanup_repo/reports/branch/keep.md" \
+  "$cleanup_repo/reports/keep.md" \
   "remove.md" "source-remove.md"
-[[ -f "$cleanup_repo/reports/branch/keep.md" ]] || fail "expected non-matching report to remain"
-[[ -f "$cleanup_repo/reports/branch/remove.md" ]] && fail "expected branch-matching report to be removed"
-[[ -f "$cleanup_repo/reports/branch/source-remove.md" ]] && fail "expected source-branch-matching report to be removed"
+[[ -f "$cleanup_repo/reports/keep.md" ]] || fail "expected non-matching report to remain"
+[[ -f "$cleanup_repo/reports/remove.md" ]] && fail "expected branch-matching report to be removed"
+[[ -f "$cleanup_repo/reports/source-remove.md" ]] && fail "expected source-branch-matching report to be removed"
 
 # 4) Shared report names include process identity, and locks serialize writers.
-unique_path="$(bt_report_unique_path "/tmp/reports" "push-d" "20260802-120000" "12345")"
+unique_path="$(bt_report_retained_path "/tmp/reports" "push-d" "20260802-120000" "12345")"
 [[ "$unique_path" == "/tmp/reports/push-d-20260802-120000-12345.md" ]] || \
   fail "unexpected unique report path: $unique_path"
 
@@ -143,5 +147,30 @@ set -e
 [[ "$lock_rc" -eq 1 ]] || fail "expected competing report lock to time out"
 bt_report_release_lock "$lock_fd"
 pass "shared report naming and locking"
+
+# 5) Structured workflow events should validate fields and normalize values.
+(
+  cd "$DELETE_REPO"
+  bt_record_workflow_event "pull" "feature/current" "pull -v" \
+    "Synchronized branch" "HEAD" \
+    "Synchronized" "1" \
+    "Status" $'line one\nline two'
+)
+event_note="$(git -C "$DELETE_REPO" notes --ref=briteTest-workflow show HEAD)"
+assert_contains "Workflow-Type: pull" <(printf '%s\n' "$event_note")
+assert_contains "Synchronized: 1" <(printf '%s\n' "$event_note")
+assert_contains "Status: line one line two" <(printf '%s\n' "$event_note")
+
+set +e
+(
+  cd "$DELETE_REPO"
+  bt_record_workflow_event "pull" "feature/current" "pull" \
+    "Invalid event" "HEAD" "MissingValue"
+) >/dev/null 2>&1
+invalid_event_rc=$?
+set -e
+[[ "$invalid_event_rc" -eq 2 ]] || \
+  fail "expected malformed workflow fields to return 2"
+pass "structured workflow event validation"
 
 echo "All report helper tests passed."

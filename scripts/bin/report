@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# report - Generate workflow reports from git commit history.
+# report - Generate the specified type of report.
 #
 # See usage below for details, or run: report -h
 #
@@ -11,52 +11,132 @@
 usage() {
   cat <<'EOF'
 Usage:
-  report [OPTIONS]
+  report [OPTIONS] [TYPE]
   report {-h | --help}
 
-Generate workflow reports from git commit history and commit metadata trailers.
+Generate a report as specified by the TYPE argument:
+  - repo generates a repository-level report of repo status,
+    branches (local and remote).
+
+  - branch generates a report of activity for the current
+    branch (local or remote snapshot). An activity is a commit,
+    pull, push, mrgup, mrgdown, copyfix, or retarget.
+
+  - style generates a report of style violations for the current branch.
+
+Prerequisites for a repo report:
+  - Current branch must be a local or remote snapshot branch.
+
+Prerequisites for a branch report:
+  - Current branch must be a local or remote snapshot branch.
+
+Prerequisites for a style report:
+  - Current branch must be a local branch.
+
+Arguments:
+  TYPE        Report type: repo, branch, or style (default: branch).
+              TYPE may appear before or after options, but may be specified
+              only once.
 
 Options:
   -h, --help  Output this help to stdout and exit (other options
               and arguments are ignored).
-  -T TYPE     Event type filter (default: commit).
-              Supported: commit, push, all
-  -b REF      Git branch/ref to inspect (default: current branch)
-  -u USER     Filter by user (literal substring match)
-  -q TEXT     Filter by literal text in subject/body
-  -l N        Limit results to N entries (0 = no limit, default: 0)
-  -r          Sort ascending (oldest first, default: newest first)
-  -o FILE     Write results to FILE instead of stdout
-  -v          Verbose output (includes metadata and body snippets)
+  -v          Output progress and diagnostics to stdout.
 
-Examples:
+Additional options only for a repo report:
+  -t SEC      Remote timeout in seconds (default: 10 seconds).
+              SEC must be an integer greater than 0.
+
+Additional options only for a branch report:
+  -l N        Limit the report to N matching activities (default: 1).
+              N must be 0 or an integer greater than 0; 0 means all matching
+              activities are included. The newest N matches
+              are selected. In report, listed newest to oldest.
+  -q TEXT     Include activity whose summary or details contain TEXT.
+              Matching is case-insensitive.
+  -r          Report for the remote, if there is one, of the current branch.
+              If the current branch is a remote snapshot, the report is for the
+              current state of the remote and not the snapshot.
+  -t SEC      Remote timeout in seconds (default: 10 seconds).
+              SEC must be an integer greater than 0. Only allowed if
+              the -r option is specified
+  -u USER     Include activity whose associated user contains USER.
+              Matching is case-insensitive. Activity without a recorded user
+              does not match.
+
+Additional options only for a style report:
+  -f FILE     Check only FILE. May be specified more than once.
+  -i          Run include (.h) checks if applicable to the selected files.
+  -m          Run Markdown document and version consistency checks.
+  -r          Run directory guide README checks.
+  -s          Run source (.c) and script checks.
+
+  If no style check options are provided, all checks are enabled.
+
+Repo Examples:
+  report repo
+  report repo -t 20
+  report repo -v
+
+Branch Examples:
   report
-  report -b dev/release-v1.0.0 -l 25
-  report -u testuser -q "Files-Modified" -l 10
-  report -T push -l 1 -v
-  report -T all -v
+  report branch -u testuser -q "authentication" -l 10
+  report branch -l 2
+  report -l 0
+  report -v
+
+Style Examples:
+  report style
+  report style -m -f docs/md/Guide.md
+  report style -v
+
+Outputs:
+  - Writes errors and diagnostics to stderr.
+  - Writes verbose (-v) progress and diagnostics to stdout.
+  - Writes one untracked report directly in '<repo>/reports/':
+      - 'repo-<datetime>.md' for a repository report.
+      - 'local-<datetime>.md' for a local branch report.
+      - 'remote-<datetime>.md' for a remote branch report.
+      - 'style-<datetime>.md' for a style report.
+    The previous report of the same type is deleted.
+  - Writes 'See <reportpath> for details.' to stdout when a
+    report is written.
+
 
 Exit codes:
-  0   Success
-  1   Argument or validation error
-  3   No entries found matching criteria
+  0    Success (report written, -h/--help).
+  1    Argument or validation error.
+  2-5  Style validation or prerequisite failure.
+  3    No matching branch activity was found.
+  200  Failed to read recorded activity.
+  201  Failed to create or write the report.
 EOF
 }
+
+# High-Level Flow:
+# - Resolve the selected local branch, fetched remote branch, or remote snapshot.
+# - Read recorded commits and completed workflow activity newest first.
+# - Apply user/text filters and select the newest limit.
+# - Write one report of the selected type; never mutate workflow history.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BRANCH_REPORTS_DIR="$REPO_ROOT/reports/branch"
+REPORTS_DIR="$REPO_ROOT/reports"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/report_helpers.sh
 source "$SCRIPT_DIR/../helpers/report_helpers.sh"
 
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_OPERATION_FAILED=3
+readonly EXIT_HISTORY_READ_FAILED=200
+readonly EXIT_REPORT_WRITE_FAILED=201
 
 usage_error() {
   local message="$1"
@@ -70,6 +150,188 @@ is_non_negative_integer() {
   [[ "$1" =~ ^[0-9]+$ ]]
 }
 
+is_positive_integer() {
+  [[ "$1" =~ ^[1-9][0-9]*$ ]]
+}
+
+refresh_remote_branch_report_refs() {
+  local branch="$1"
+  local remote_output=""
+  local remote_branch_ref="refs/heads/$branch"
+  local remote_notes_ref="refs/notes/briteTest-remote-workflow"
+
+  if ! remote_output="$(bt_run_remote_command git ls-remote origin \
+    "$remote_branch_ref" "$remote_notes_ref" 2>/dev/null)"; then
+    bt_warn "Failed to query origin for remote branch report"
+    exit "$EXIT_HISTORY_READ_FAILED"
+  fi
+  if ! printf '%s\n' "$remote_output" | awk -v ref="$remote_branch_ref" \
+    '$2 == ref { found = 1 } END { exit !found }'; then
+    usage_error "Remote branch 'origin/$branch' is not available"
+  fi
+
+  if ! bt_run_remote_command git fetch origin \
+    "+${remote_branch_ref}:refs/remotes/origin/$branch" \
+    >/dev/null 2>&1; then
+    bt_warn "Failed to refresh remote branch 'origin/$branch'"
+    exit "$EXIT_HISTORY_READ_FAILED"
+  fi
+
+  if printf '%s\n' "$remote_output" | awk -v ref="$remote_notes_ref" \
+    '$2 == ref { found = 1 } END { exit !found }'; then
+    if ! bt_run_remote_command git fetch origin \
+      "+${remote_notes_ref}:${remote_notes_ref}" >/dev/null 2>&1; then
+      bt_warn "Failed to refresh remote workflow history"
+      exit "$EXIT_HISTORY_READ_FAILED"
+    fi
+  else
+    git update-ref -d "$remote_notes_ref" >/dev/null 2>&1 || {
+      bt_warn "Failed to reset unavailable remote workflow history"
+      exit "$EXIT_HISTORY_READ_FAILED"
+    }
+  fi
+}
+
+resolve_remote_snapshot_ref() {
+  local remote_refs=""
+  local remote_count=""
+  local remembered_branch=""
+
+  remote_refs="$(git for-each-ref --format='%(refname:short)' \
+    --points-at HEAD refs/remotes/origin 2>/dev/null | \
+    grep -v '^origin/HEAD$' || true)"
+  remote_count="$(printf '%s\n' "$remote_refs" | sed '/^$/d' | \
+    wc -l | tr -d ' ')"
+  remembered_branch="$(git config --local --get chbranch.lastBranch \
+    2>/dev/null || true)"
+
+  if [[ "$remote_count" == "1" ]]; then
+    printf '%s\n' "$remote_refs" | sed '/^$/d' | head -n 1
+    return 0
+  fi
+  if [[ "$remote_count" -gt 1 && -n "$remembered_branch" ]] && \
+    printf '%s\n' "$remote_refs" | grep -Fxq "origin/$remembered_branch"; then
+    printf 'origin/%s\n' "$remembered_branch"
+    return 0
+  fi
+  return 1
+}
+
+remove_stale_reports() {
+  local current_report="$1"
+  shift
+  local old_report=""
+  local pattern=""
+  local -a matching_reports=()
+
+  for pattern in "$@"; do
+    mapfile -t matching_reports < <(compgen -G "$pattern" || true)
+    for old_report in "${matching_reports[@]}"; do
+      [[ "$old_report" == "$current_report" ]] && continue
+      git -C "$REPO_ROOT" ls-files --error-unmatch -- \
+        "${old_report#"${REPO_ROOT}"/}" \
+        >/dev/null 2>&1 || rm -f "$old_report"
+    done
+  done
+}
+
+generate_repository_report() {
+  local current_ref=""
+  local head_commit=""
+  local integrity="pass"
+  local local_branch_count=""
+  local remote_branch_count=""
+  local remote_url=""
+  local report_file=""
+  local report_rel=""
+  local report_lock_fd=""
+  local worktree_status="clean"
+  local branch_output=""
+  local branch_report=""
+  local branch_report_dir=""
+  local -a branch_report_args=(-a -b -t "$REMOTE_TIMEOUT")
+  local -a staged_reports=()
+
+  [[ "$VERBOSE" == false ]] || branch_report_args+=(-v)
+
+  current_ref="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
+  if [[ -z "$current_ref" ]]; then
+    current_ref="detached at $(git rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+  fi
+  head_commit="$(git rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+  remote_url="$(git remote get-url origin 2>/dev/null || printf 'not configured')"
+  local_branch_count="$(git for-each-ref --format='%(refname)' refs/heads | wc -l | tr -d ' ')"
+  remote_branch_count="$(git for-each-ref --format='%(refname)' refs/remotes/origin | \
+    awk '!/\/HEAD$/ { count++ } END { print count + 0 }')"
+  [[ -z "$(git status --porcelain 2>/dev/null)" ]] || worktree_status="dirty"
+  git fsck --no-dangling --no-progress >/dev/null 2>&1 || integrity="fail"
+
+  bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_WRITE_FAILED"
+  if ! branch_report_dir="$(mktemp -d)"; then
+    bt_warn "Failed to create temporary directory for branch status"
+    exit "$EXIT_REPORT_WRITE_FAILED"
+  fi
+  if ! branch_output="$(BRITETEST_LSBRANCH_REPORT_DIR="$branch_report_dir" \
+    BRITETEST_LSBRANCH_REPORT_PREFIX="repo-branches" \
+    "$SCRIPT_DIR/lsbranch" "${branch_report_args[@]}")"; then
+    rm -rf "$branch_report_dir"
+    bt_warn "Failed to collect branch status for repository report"
+    exit "$EXIT_REPORT_WRITE_FAILED"
+  fi
+  if [[ "$VERBOSE" == true ]]; then
+    printf '%s\n' "$branch_output" | \
+      sed '/repo-branches-.* for details\./d'
+  fi
+
+  shopt -s nullglob
+  staged_reports=("$branch_report_dir"/repo-branches-*.md)
+  shopt -u nullglob
+  if [[ "${#staged_reports[@]}" -ne 1 ]]; then
+    rm -rf "$branch_report_dir"
+    bt_warn "Repository branch status report was not generated as expected"
+    exit "$EXIT_REPORT_WRITE_FAILED"
+  fi
+  branch_report="${staged_reports[0]}"
+
+  if ! bt_report_acquire_lock "$REPO_ROOT" "report-repo" 10 \
+    report_lock_fd; then
+    rm -rf "$branch_report_dir"
+    bt_warn "Timed out waiting for repository report write lock"
+    exit "$EXIT_REPORT_WRITE_FAILED"
+  fi
+  report_file="$REPORTS_DIR/repo-$(date '+%Y%m%d-%H%M%S').md"
+  report_rel="${report_file#"${REPO_ROOT}"/}"
+  if ! {
+    printf '# Repository Report\n\n'
+    printf '**Repository:** `%s`  \n' "$(basename "$REPO_ROOT")"
+    printf '**Generated:** %s  \n' "$RUN_TS_DISPLAY"
+    printf '**Current Ref:** `%s`  \n' "$current_ref"
+    printf '**HEAD:** `%s`  \n' "$head_commit"
+    printf '**Origin:** `%s`\n\n' "$remote_url"
+    printf '## Health\n\n'
+    printf '| Check | Status |\n| --- | --- |\n'
+    printf '| Git object integrity | %s |\n' "$integrity"
+    printf '| Working tree | %s |\n' "$worktree_status"
+    printf '| Local branches | %s |\n' "$local_branch_count"
+    printf '| Remote branches | %s |\n\n' "$remote_branch_count"
+    printf '## Branch Status\n\n'
+    sed '1,2d' "$branch_report"
+  } > "$report_file"; then
+    rm -rf "$branch_report_dir"
+    bt_report_release_lock "$report_lock_fd"
+    bt_warn "Failed to write report: $report_rel"
+    exit "$EXIT_REPORT_WRITE_FAILED"
+  fi
+
+  rm -rf "$branch_report_dir"
+  remove_stale_reports "$report_file" \
+    "$REPORTS_DIR/repo-*.md" "$REPORTS_DIR/repository/repo-*.md"
+  bt_report_release_lock "$report_lock_fd"
+
+  printf 'See %s for details.\n' "$report_rel"
+  exit 0
+}
+
 contains_ci() {
   local haystack="$1"
   local needle="$2"
@@ -81,393 +343,66 @@ contains_ci() {
   [[ "$hay_lc" == *"$needle_lc"* ]]
 }
 
-build_commit_note() {
-  local file_path="$1"
-  local added="$2"
-  local removed="$3"
-  local change_text
-  local scope_text
+entry_matches_filters() {
+  local entry_type="$1"
+  local entry_user="$2"
+  local entry_text="$3"
 
-  if [[ "$added" -gt 0 && "$removed" -eq 0 ]]; then
-    change_text="Added new content"
-  elif [[ "$added" -eq 0 && "$removed" -gt 0 ]]; then
-    change_text="Removed existing content"
-  else
-    change_text="Updated existing content"
-  fi
+  [[ "$TYPE_FILTER" == "all" || "$entry_type" == "$TYPE_FILTER" ]] || \
+    return 1
+  [[ -z "$FILTER_USER" ]] || contains_ci "$entry_user" "$FILTER_USER" || \
+    return 1
+  [[ -z "$FILTER_TEXT" ]] || contains_ci "$entry_text" "$FILTER_TEXT"
+}
 
-  case "$file_path" in
-    *.md)
-      scope_text="documentation"
-      ;;
-    scripts/bin/* | scripts/helpers/* | *.sh)
-      scope_text="script logic"
-      ;;
-    src/*.[ch] | include/*.[ch])
-      scope_text="C source implementation"
+activity_type() {
+  local command_line="$1"
+  local command_name="${command_line%% *}"
+
+  case "$command_name" in
+    pull|push|mrgup|mrgdown|copyfix|retarget)
+      printf '%s\n' "$command_name"
       ;;
     *)
-      scope_text="file content"
+      printf 'commit\n'
       ;;
   esac
-
-  printf '%s in %s\n' "$change_text" "$scope_text"
 }
 
-get_total_lines_for_commit_file() {
-  local commit_hash="$1"
-  local file_path="$2"
-
-  if git cat-file -e "${commit_hash}:${file_path}" >/dev/null 2>&1; then
-    git show "${commit_hash}:${file_path}" | wc -l | tr -d ' '
-  else
-    printf ''
-  fi
+workflow_note_records() {
+  awk '
+    /^--- briteTest workflow ---$/ {
+      if (record != "") {
+        records[++count] = record
+      }
+      record = $0 ORS
+      next
+    }
+    record != "" {
+      record = record $0 ORS
+    }
+    END {
+      if (record != "") {
+        records[++count] = record
+      }
+      for (item = count; item >= 1; item--) {
+        printf "%s%c", records[item], 30
+      }
+    }
+  '
 }
 
-append_commit_table_header() {
-  local out_file="$1"
-
-  cat >> "$out_file" <<'EOF'
-| **File** | **Added** | **Deleted** | **Net** | **Total** | **Notes** |
-| --- | --- | --- | --- | --- | --- |
-EOF
+workflow_event_details() {
+  awk '
+    /^--- briteTest workflow ---$/ { next }
+    /^(Workflow-Type|Workflow-Time|Workflow-Branch|Workflow-User|Command-Line|Summary):/ {
+      next
+    }
+    NF > 0 { print }
+  '
 }
 
-write_commit_report_row() {
-  local out_file="$1"
-  local file_path="$2"
-  local added="$3"
-  local removed="$4"
-  local total_lines="$5"
-  local notes="$6"
-  local net
-
-  net=$((added - removed))
-  printf '| %s | %s | %s | %+d | %s | %s |\n' \
-    "$file_path" "$added" "$removed" \
-    "$net" "$total_lines" "$notes" >> "$out_file"
-}
-
-extract_user_comment_from_body() {
-  local body="$1"
-  local in_section=false
-  local line=""
-  local comment=""
-
-  while IFS= read -r line; do
-    if [[ "$line" == "## User Comment" ]]; then
-      in_section=true
-      continue
-    fi
-    if [[ "$in_section" == true && "$line" == "## Summary" ]]; then
-      break
-    fi
-    if [[ "$in_section" != true ]]; then
-      continue
-    fi
-
-    if [[ "$line" == "> "* ]]; then
-      line="${line#> }"
-    elif [[ "$line" == ">" ]]; then
-      line=""
-    else
-      continue
-    fi
-
-    if [[ -z "$comment" ]]; then
-      comment="$line"
-    else
-      comment+=$'\n'
-      comment+="$line"
-    fi
-  done <<< "$body"
-
-  printf '%s' "$comment"
-}
-
-escape_markdown_table_cell() {
-  local text="$1"
-
-  text="${text//$'\n'/<br>}"
-  text="${text//|/\\|}"
-  text="${text//$'\r'/}"
-
-  printf '%s' "$text"
-}
-
-build_command_line_with_comment() {
-  local command_template="$1"
-  local user_comment="$2"
-  local user_comment_oneline=""
-
-  user_comment_oneline="${user_comment//$'\n'/\\n}"
-
-  if [[ -z "$command_template" ]]; then
-    command_template="commit -- <user-comment>"
-  fi
-
-  printf '%s' "${command_template//<user-comment>/$user_comment_oneline}"
-}
-
-build_commit_timestamp_token() {
-  local date_text="$1"
-  printf '%s' "$date_text" | tr -d '-' | tr -d ':' | tr ' ' '-'
-}
-
-resolve_unique_commit_hash_token() {
-  local full_hash="$1"
-  local length=7
-  local token=""
-  local resolved=""
-
-  full_hash="$(printf '%s' "$full_hash" | tr -d '\r\n')"
-
-  while [[ "$length" -le 40 ]]; do
-    token="${full_hash:0:$length}"
-    resolved="$(git rev-parse --verify --quiet "${token}^{commit}" 2>/dev/null || true)"
-    resolved="$(printf '%s' "$resolved" | tr -d '\r\n')"
-    if [[ "$resolved" == "$full_hash" ]]; then
-      printf '%s' "$token"
-      return 0
-    fi
-    length=$((length + 1))
-  done
-
-  printf '%s' "$full_hash"
-}
-
-write_legacy_single_commit_report() {
-  local out_file="$1"
-  local target_ref="$2"
-  local short_hash="$3"
-  local full_hash="$4"
-  local files_modified="$5"
-  local files_added="$6"
-  local files_deleted="$7"
-  local command_line="$8"
-  local commit_date_text="$9"
-
-  local summary_text
-  local total_rows
-
-  total_rows=$(( ${files_modified:-0} + ${files_added:-0} + ${files_deleted:-0} ))
-  summary_text="${files_modified:-0} modified, ${files_added:-0} added, ${files_deleted:-0} deleted, and ${total_rows} total."
-
-  cat > "$out_file" <<EOF
-# Commit Report
-
-**Commit:** \`${full_hash}\` at ${commit_date_text}.
-
-**Command:** \`${command_line}\`
-
-**Branch:** \`${target_ref}\` (local)
-
-**Files:** ${summary_text}
-EOF
-
-  printf '\n## Commit\n\n' >> "$out_file"
-  append_commit_table_header "$out_file"
-
-  while IFS=$'\t' read -r added removed file_path; do
-    [[ -n "$file_path" ]] || continue
-
-    if [[ "$added" == "-" || "$added" == "" ]]; then
-      added=0
-    fi
-    if [[ "$removed" == "-" || "$removed" == "" ]]; then
-      removed=0
-    fi
-
-    local total_lines
-    local notes
-    total_lines="$(get_total_lines_for_commit_file "$full_hash" "$file_path")"
-    notes="$(build_commit_note "$file_path" "$added" "$removed")"
-    notes="${notes//|/\\|}"
-
-    write_commit_report_row "$out_file" "$file_path" \
-      "$added" "$removed" "$total_lines" "$notes"
-  done < <(git show --pretty='' --numstat "$full_hash")
-}
-
-resolve_legacy_report_path() {
-  local commit_timestamp_token="$1"
-  local commit_hash_token="$2"
-
-  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_INVALID_ARGUMENT"
-  printf '%s/commit-%s-%s.md\n' "$BRANCH_REPORTS_DIR" "$commit_timestamp_token" "$commit_hash_token"
-}
-
-resolve_push_report_path() {
-  local push_timestamp_token="$1"
-  local push_hash_token="$2"
-
-  bt_report_dir_enable_writes "$BRANCH_REPORTS_DIR" "$EXIT_INVALID_ARGUMENT"
-  printf '%s/push-%s-%s.md\n' "$BRANCH_REPORTS_DIR" "$push_timestamp_token" "$push_hash_token"
-}
-
-get_total_lines_for_ref_file() {
-  local ref_hash="$1"
-  local file_path="$2"
-
-  if git cat-file -e "${ref_hash}:${file_path}" >/dev/null 2>&1; then
-    git show "${ref_hash}:${file_path}" | wc -l | tr -d ' '
-  else
-    printf '0'
-  fi
-}
-
-emit_last_push_report() {
-  local target_ref="$1"
-  local output_file="$2"
-
-  local push_reflog_ref="refs/remotes/origin/${target_ref}"
-  local push_rows=""
-  local latest_push_tip=""
-  local previous_push_tip=""
-  local latest_push_time=""
-  local latest_push_time_token=""
-  local latest_push_hash_token=""
-  local commits_pushed=0
-  local report_path=""
-  local report_rel=""
-  local file_path=""
-  local files_pushed=0
-  local added=0
-  local deleted=0
-  local net=0
-  local total_lines=0
-  local num_added=""
-  local num_deleted=""
-  local _rest=""
-
-  push_rows="$(git reflog show --grep-reflog='update by push' \
-    --date=format:'%Y-%m-%d %H:%M:%S' --format='%H%x1f%ad' \
-    "$push_reflog_ref" 2>/dev/null || true)"
-  if [[ -z "$push_rows" ]]; then
-    bt_warn "No push history found for ${target_ref}"
-    exit "$EXIT_OPERATION_FAILED"
-  fi
-
-  latest_push_tip="$(printf '%s\n' "$push_rows" | head -n 1 | awk -F $'\x1f' '{print $1}')"
-  previous_push_tip="$(printf '%s\n' "$push_rows" | head -n 2 | tail -n 1 | awk -F $'\x1f' '{print $1}')"
-  latest_push_time="$(printf '%s\n' "$push_rows" | head -n 1 | awk -F $'\x1f' '{print $2}')"
-
-  if [[ -z "$latest_push_tip" || -z "$previous_push_tip" ]]; then
-    bt_warn "Insufficient push history to reconstruct last push for ${target_ref}"
-    exit "$EXIT_OPERATION_FAILED"
-  fi
-
-  if ! git rev-parse --verify "$latest_push_tip^{commit}" >/dev/null 2>&1 || \
-     ! git rev-parse --verify "$previous_push_tip^{commit}" >/dev/null 2>&1; then
-    bt_warn "Unable to resolve push history commits for ${target_ref}"
-    exit "$EXIT_OPERATION_FAILED"
-  fi
-
-  commits_pushed="$(git rev-list --count "${previous_push_tip}..${latest_push_tip}" 2>/dev/null || echo 0)"
-  if [[ "$commits_pushed" == "0" ]]; then
-    bt_warn "No commits found in last push range for ${target_ref}"
-    exit "$EXIT_OPERATION_FAILED"
-  fi
-
-  files_pushed="$(git diff --name-only --find-renames "${previous_push_tip}..${latest_push_tip}" 2>/dev/null | sed '/^$/d' | wc -l | tr -d ' ')"
-  [[ "$files_pushed" =~ ^[0-9]+$ ]] || files_pushed=0
-
-  latest_push_time_token="$(build_commit_timestamp_token "$latest_push_time")"
-  latest_push_hash_token="$(resolve_unique_commit_hash_token "$latest_push_tip")"
-
-  if [[ -n "$output_file" ]]; then
-    report_path="$output_file"
-    mkdir -p "$(dirname "$report_path")"
-  else
-    report_path="$(resolve_push_report_path "$latest_push_time_token" "$latest_push_hash_token")"
-  fi
-
-  cat > "$report_path" <<EOF
-# Push Report
-
-**Push Tip:** \`${latest_push_tip}\` at ${latest_push_time}.
-**Command:** \`push\`  
-**Branch:** \`${target_ref}\`  
-**Commits:** ${commits_pushed}  
-**Files:** ${files_pushed}
-
-<details>
-<summary><strong>Commits</strong></summary>
-
-## Commits
-
-| Commit Hash | DateTime | Comment |
-| --- | --- | --- |
-EOF
-
-  while IFS= read -r commit_hash; do
-    [[ -n "$commit_hash" ]] || continue
-    commit_date="$(git log -1 --format='%ci' "$commit_hash" 2>/dev/null || true)"
-    commit_body="$(git log -1 --format=%B "$commit_hash" 2>/dev/null || true)"
-    commit_comment="$(extract_user_comment_from_body "$commit_body")"
-    if [[ -z "$commit_comment" ]]; then
-      commit_comment="$(git log -1 --format=%s "$commit_hash" 2>/dev/null || true)"
-    fi
-    commit_comment="$(escape_markdown_table_cell "$commit_comment")"
-    printf '| `%s` | %s | %s |\n' "$commit_hash" "$commit_date" "$commit_comment" >> "$report_path"
-  done < <(git rev-list --reverse "${previous_push_tip}..${latest_push_tip}" 2>/dev/null || true)
-
-  cat >> "$report_path" <<EOF
-
-</details>
-
-<details>
-<summary><strong>Files</strong></summary>
-
-## Files
-
-| File | Commit | Added | Deleted | Net | Total Lines |
-| --- | --- | ---: | ---: | ---: | ---: |
-EOF
-
-  while IFS= read -r file_path; do
-    [[ -n "$file_path" ]] || continue
-
-    added=0
-    deleted=0
-    while IFS=$'\t' read -r num_added num_deleted _rest; do
-      [[ "$num_added" =~ ^[0-9]+$ ]] && added=$((added + num_added))
-      [[ "$num_deleted" =~ ^[0-9]+$ ]] && deleted=$((deleted + num_deleted))
-    done < <(git diff --numstat --find-renames "${previous_push_tip}..${latest_push_tip}" -- "$file_path" 2>/dev/null || true)
-
-    net=$((added - deleted))
-    total_lines="$(get_total_lines_for_ref_file "$latest_push_tip" "$file_path")"
-    commit_hash="$(git log -1 --format='%h' "${previous_push_tip}..${latest_push_tip}" -- "$file_path" 2>/dev/null || true)"
-    printf '| `%s` | `%s` | %s | %s | %s | %s |\n' \
-      "$file_path" "$commit_hash" "$added" "$deleted" "$net" "$total_lines" >> "$report_path"
-  done < <(git diff --name-only --find-renames "${previous_push_tip}..${latest_push_tip}" 2>/dev/null || true)
-
-  {
-    echo
-    echo "</details>"
-  } >> "$report_path"
-
-  if [[ "$VERBOSE" == true ]]; then
-    {
-      echo
-      echo "## Commit Details"
-      echo
-      git log --oneline "${previous_push_tip}..${latest_push_tip}" | sed 's/^/- /'
-    } >> "$report_path"
-  fi
-
-  if [[ -n "$output_file" ]]; then
-    bt_success "Results written to $output_file"
-  else
-    report_rel="${report_path#"${REPO_ROOT}"/}"
-    bt_success "Results written to $report_rel"
-  fi
-  bt_success "Found 1 matching entries"
-  exit 0
-}
-
-extract_trailer_value() {
+recorded_field_value() {
   local body="$1"
   local key="$2"
   local value=""
@@ -482,97 +417,152 @@ extract_trailer_value() {
   printf '%s' "$value"
 }
 
-build_verbose_entry() {
-  local short_hash="$1"
-  local full_hash="$2"
-  local date_text="$3"
-  local author_name="$4"
-  local author_email="$5"
-  local subject="$6"
-  local body="$7"
-  local files_modified="$8"
-  local files_added="$9"
-  local files_deleted="${10}"
-  local lines_added="${11}"
-  local lines_deleted="${12}"
-  local pr_number="${13}"
-  local command_line="${14}"
+recorded_change_summary() {
+  local body="$1"
+  local field=""
+  local value=""
+  local found=false
 
-  printf -- '- [%s] %s %s\n' "$date_text" "$short_hash" "$subject"
-  printf -- '  - Commit: %s\n' "$full_hash"
-  printf -- '  - Author: %s <%s>\n' "$author_name" "$author_email"
-  if [[ -n "$command_line" ]]; then
-    printf -- '  - Command line: %s\n' "$command_line"
-  fi
-  if [[ -n "$files_modified" || -n "$files_added" || -n "$files_deleted" ]]; then
-    printf -- '  - Files: modified=%s, added=%s, deleted=%s\n' \
-      "${files_modified:-0}" "${files_added:-0}" "${files_deleted:-0}"
-  fi
-  if [[ -n "$lines_added" || -n "$lines_deleted" ]]; then
-    printf -- '  - Lines: added=%s, deleted=%s\n' \
-      "${lines_added:-0}" "${lines_deleted:-0}"
-  fi
-  if [[ -n "$pr_number" ]]; then
-    printf -- '  - PR: %s\n' "$pr_number"
-  fi
+  bt_git_reset_change_summary
+  for field in Files-Modified Files-Deleted Files-Added Files-Renamed \
+    Files-Renamed-Modified Directories-Deleted Directories-Added \
+    Directories-Renamed; do
+    value="$(recorded_field_value "$body" "$field")"
+    [[ "$value" =~ ^[0-9]+$ ]] || value=0
+    [[ "$value" -gt 0 ]] && found=true
+    # shellcheck disable=SC2034  # Consumed by bt_format_change_summary.
+    case "$field" in
+      Files-Modified) BT_CHANGE_MODIFIED_FILES="$value" ;;
+      Files-Deleted) BT_CHANGE_DELETED_FILES="$value" ;;
+      Files-Added) BT_CHANGE_ADDED_FILES="$value" ;;
+      Files-Renamed) BT_CHANGE_RENAMED_FILES="$value" ;;
+      Files-Renamed-Modified) BT_CHANGE_RENAMED_MODIFIED_FILES="$value" ;;
+      Directories-Deleted) BT_CHANGE_DELETED_DIRECTORIES="$value" ;;
+      Directories-Added) BT_CHANGE_ADDED_DIRECTORIES="$value" ;;
+      Directories-Renamed) BT_CHANGE_RENAMED_DIRECTORIES="$value" ;;
+    esac
+  done
 
-  if [[ -n "$body" ]]; then
-    printf -- '  - Body:\n'
-    while IFS= read -r line; do
-      printf -- '    %s\n' "$line"
-    done <<< "$body"
-  fi
+  [[ "$found" == true ]] || return 0
+  bt_format_change_summary
 }
 
-TYPE_FILTER="commit"
-TARGET_REF=""
+workflow_record_missing_fields() {
+  local record="$1"
+  local field=""
+  local missing_fields=""
+  local value=""
+
+  for field in Workflow-Type Workflow-Time Workflow-Branch Workflow-User \
+    Command-Line Summary; do
+    value="$(recorded_field_value "$record" "$field")"
+    [[ -n "$value" ]] && continue
+    [[ -z "$missing_fields" ]] || missing_fields+=", "
+    missing_fields+="$field"
+  done
+
+  printf '%s' "$missing_fields"
+}
+
+REPORT_TYPE="branch"
+REPORT_TYPE_SPECIFIED=false
+REMOTE_TIMEOUT=10
+REMOTE_TIMEOUT_SPECIFIED=false
+REMOTE_BRANCH_REPORT=false
+TYPE_FILTER="all"
 FILTER_USER=""
 FILTER_TEXT=""
-LIMIT=0
-REVERSE=false
-OUTPUT_FILE=""
+LIMIT=1
 VERBOSE=false
+declare -a ORIGINAL_ARGS=("$@")
+declare -a STYLE_ARGS=()
+
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+done
+
+for ((index=0; index < ${#ORIGINAL_ARGS[@]}; index++)); do
+  arg="${ORIGINAL_ARGS[index]}"
+  case "$arg" in
+    -u|-q|-l|-t|-f)
+      ((index += 1))
+      ;;
+    repo|branch|style)
+      [[ "$REPORT_TYPE_SPECIFIED" == false ]] || \
+        usage_error "TYPE may be specified only once"
+      REPORT_TYPE="$arg"
+      REPORT_TYPE_SPECIFIED=true
+      ;;
+    -*)
+      ;;
+    *)
+      usage_error "Unsupported TYPE '$arg'"
+      ;;
+  esac
+done
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    -T)
-      [[ $# -ge 2 ]] || usage_error "Option -T requires TYPE"
-      TYPE_FILTER="$2"
-      shift 2
-      ;;
-    -b)
-      [[ $# -ge 2 ]] || usage_error "Option -b requires REF"
-      TARGET_REF="$2"
-      shift 2
+    repo|branch|style)
+      shift
       ;;
     -u)
+      [[ "$REPORT_TYPE" == "branch" ]] || \
+        usage_error "Option -u requires TYPE branch"
       [[ $# -ge 2 ]] || usage_error "Option -u requires USER"
       FILTER_USER="$2"
       shift 2
       ;;
     -q)
+      [[ "$REPORT_TYPE" == "branch" ]] || \
+        usage_error "Option -q requires TYPE branch"
       [[ $# -ge 2 ]] || usage_error "Option -q requires TEXT"
       FILTER_TEXT="$2"
       shift 2
       ;;
     -l)
+      [[ "$REPORT_TYPE" == "branch" ]] || \
+        usage_error "Option -l requires TYPE branch"
       [[ $# -ge 2 ]] || usage_error "Option -l requires N"
       is_non_negative_integer "$2" || usage_error "N for -l must be an integer >= 0"
       LIMIT="$2"
       shift 2
       ;;
-    -r)
-      REVERSE=true
+    -t)
+      [[ "$REPORT_TYPE" == "repo" || "$REPORT_TYPE" == "branch" ]] || \
+        usage_error "Option -t requires TYPE repo or TYPE branch with -r"
+      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC"
+      is_positive_integer "$2" || \
+        usage_error "SEC for -t must be an integer > 0"
+      REMOTE_TIMEOUT="$2"
+      REMOTE_TIMEOUT_SPECIFIED=true
+      shift 2
+      ;;
+    -f)
+      [[ "$REPORT_TYPE" == "style" ]] || \
+        usage_error "Option -f requires TYPE style"
+      [[ $# -ge 2 ]] || usage_error "Option -f requires FILE"
+      STYLE_ARGS+=("$2")
+      shift 2
+      ;;
+    -i|-m|-s)
+      [[ "$REPORT_TYPE" == "style" ]] || \
+        usage_error "Option $1 requires TYPE style"
+      STYLE_ARGS+=("$1")
       shift
       ;;
-    -o)
-      [[ $# -ge 2 ]] || usage_error "Option -o requires FILE"
-      OUTPUT_FILE="$2"
-      shift 2
+    -r)
+      if [[ "$REPORT_TYPE" == "style" ]]; then
+        STYLE_ARGS+=(-r)
+      elif [[ "$REPORT_TYPE" == "branch" ]]; then
+        REMOTE_BRANCH_REPORT=true
+      else
+        usage_error "Option -r requires TYPE branch or TYPE style"
+      fi
+      shift
       ;;
     -v)
       VERBOSE=true
@@ -582,152 +572,213 @@ while [[ $# -gt 0 ]]; do
       usage_error "Unknown option: $1"
       ;;
     *)
-      usage_error "Unknown argument: $1"
+      usage_error "Unexpected argument: $1"
       ;;
   esac
 done
 
-case "$TYPE_FILTER" in
-  commit|push|all)
-    ;;
-  *)
-    usage_error "Unsupported TYPE '$TYPE_FILTER' (supported: commit, push, all)"
-    ;;
-esac
+if [[ "$REPORT_TYPE" == "branch" && "$REMOTE_TIMEOUT_SPECIFIED" == true && \
+  "$REMOTE_BRANCH_REPORT" == false ]]; then
+  usage_error "Option -t requires -r for TYPE branch"
+fi
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT"
 
-if [[ -z "$TARGET_REF" ]]; then
-  TARGET_REF="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+if [[ "$REPORT_TYPE" == "style" ]]; then
+  [[ "$VERBOSE" == false ]] || STYLE_ARGS+=(-v)
+  # shellcheck source=helpers/ckstyle.sh
+  source "$SCRIPT_DIR/../helpers/ckstyle.sh"
+  bt_ckstyle "${STYLE_ARGS[@]}"
+fi
+
+if [[ "$REPORT_TYPE" == "repo" ]]; then
+  generate_repository_report
+fi
+
+CURRENT_REF="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
+TARGET_REF="$CURRENT_REF"
+HISTORY_REF="$CURRENT_REF"
+WORKFLOW_NOTES_REF="briteTest-workflow"
+BRANCH_REPORT_PREFIX="local"
+SNAPSHOT_HISTORY_REF=""
+SNAPSHOT_TARGET_REF=""
+if [[ -z "$CURRENT_REF" ]]; then
+  if ! SNAPSHOT_HISTORY_REF="$(resolve_remote_snapshot_ref)"; then
+    usage_error "Could not resolve current remote snapshot branch"
+  fi
+  SNAPSHOT_TARGET_REF="${SNAPSHOT_HISTORY_REF#origin/}"
+fi
+
+if [[ "$REMOTE_BRANCH_REPORT" == true ]]; then
+  TARGET_REF="${CURRENT_REF:-$SNAPSHOT_TARGET_REF}"
+  refresh_remote_branch_report_refs "$TARGET_REF"
+  HISTORY_REF="origin/$TARGET_REF"
+  WORKFLOW_NOTES_REF="briteTest-remote-workflow"
+  BRANCH_REPORT_PREFIX="remote"
+elif [[ -z "$TARGET_REF" ]]; then
+  BRANCH_REPORT_PREFIX="remote"
+  WORKFLOW_NOTES_REF="briteTest-remote-workflow"
+  HISTORY_REF="$SNAPSHOT_HISTORY_REF"
+  TARGET_REF="$SNAPSHOT_TARGET_REF"
 fi
 [[ -n "$TARGET_REF" ]] || usage_error "Could not resolve current branch/ref"
 
-if ! git rev-parse --verify "$TARGET_REF" >/dev/null 2>&1; then
-  usage_error "Git ref not found: $TARGET_REF"
-fi
-
-if [[ "$TYPE_FILTER" == "push" ]]; then
-  if [[ "$VERBOSE" != true || "$LIMIT" -ne 1 ]]; then
-    usage_error "TYPE 'push' requires -l 1 -v"
-  fi
-  emit_last_push_report "$TARGET_REF" "$OUTPUT_FILE"
+if ! git rev-parse --verify "$HISTORY_REF" >/dev/null 2>&1; then
+  usage_error "Selected branch is not available: $TARGET_REF"
 fi
 
 log_format='%H%x1f%h%x1f%ad%x1f%an%x1f%ae%x1f%s%x1f%B%x1e'
 git_log_args=(
-  "$TARGET_REF"
+  "$HISTORY_REF"
   --date=format:'%Y-%m-%d %H:%M:%S'
   --pretty=format:"$log_format"
 )
-if [[ "$REVERSE" == true ]]; then
-  git_log_args+=(--reverse)
+if ! history="$(git log "${git_log_args[@]}" 2>/dev/null)"; then
+  bt_warn "Failed to read repository history"
+  exit "$EXIT_HISTORY_READ_FAILED"
 fi
 
-if [[ -z "$(git log "${git_log_args[@]}")" ]]; then
-  bt_warn "No commit entries found"
-  exit "$EXIT_OPERATION_FAILED"
-fi
-
-rendered_output=""
-match_count=0
-first_match_short_hash=""
-first_match_full_hash=""
-first_match_files_modified=""
-first_match_files_added=""
-first_match_files_deleted=""
-first_match_date_text=""
-first_match_command_line=""
-first_match_body=""
+entries=()
 
 while IFS= read -r -d $'\x1e' row; do
+  while [[ "$row" == $'\n'* ]]; do
+    row="${row#$'\n'}"
+  done
   [[ -n "$row" ]] || continue
   sep=$'\x1f'
-  full_hash="${row%%$sep*}"
-  row="${row#*$sep}"
-  short_hash="${row%%$sep*}"
-  row="${row#*$sep}"
-  date_text="${row%%$sep*}"
-  row="${row#*$sep}"
-  author_name="${row%%$sep*}"
-  row="${row#*$sep}"
-  author_email="${row%%$sep*}"
-  row="${row#*$sep}"
-  subject="${row%%$sep*}"
-  body="${row#*$sep}"
+  full_hash="${row%%"$sep"*}"
+  row="${row#*"$sep"}"
+  short_hash="${row%%"$sep"*}"
+  row="${row#*"$sep"}"
+  date_text="${row%%"$sep"*}"
+  row="${row#*"$sep"}"
+  author_name="${row%%"$sep"*}"
+  row="${row#*"$sep"}"
+  author_email="${row%%"$sep"*}"
+  row="${row#*"$sep"}"
+  subject="${row%%"$sep"*}"
+  body="${row#*"$sep"}"
 
-  if [[ "$TYPE_FILTER" == "commit" ]] && [[ "$subject" != *" committed by "* ]]; then
+  note="$(git notes --ref="$WORKFLOW_NOTES_REF" show "$full_hash" 2>/dev/null || true)"
+  if [[ -n "$note" ]]; then
+    while IFS= read -r -d $'\x1e' note_record; do
+      missing_note_fields="$(workflow_record_missing_fields "$note_record")"
+      if [[ -n "$missing_note_fields" ]]; then
+        if [[ "$VERBOSE" == true ]]; then
+          bt_warn "Skipping malformed workflow record on $short_hash; missing: $missing_note_fields"
+        fi
+        continue
+      fi
+      note_type="$(recorded_field_value "$note_record" "Workflow-Type")"
+      note_date="$(recorded_field_value "$note_record" "Workflow-Time")"
+      note_branch="$(recorded_field_value "$note_record" "Workflow-Branch")"
+      note_user="$(recorded_field_value "$note_record" "Workflow-User")"
+      note_command="$(recorded_field_value "$note_record" "Command-Line")"
+      note_summary="$(recorded_field_value "$note_record" "Summary")"
+      note_details="$(printf '%s\n' "$note_record" | workflow_event_details)"
+      change_summary="$(recorded_change_summary "$note_record")"
+
+      [[ "$note_branch" == "$TARGET_REF" ]] || continue
+      if ! entry_matches_filters "$note_type" "$note_user" \
+        "$note_summary $note_details $note_command"; then
+        continue
+      fi
+
+      printf -v entry '## %s: %s\n\n' "$note_type" "$note_date"
+      printf -v line '**Commit:** `%s`  \n**User:** %s  \n**Summary:** %s\n' \
+        "$short_hash" "$note_user" "$note_summary"
+      entry+="$line"
+      if [[ -n "$change_summary" ]]; then
+        printf -v line '**Changes:** %s  \n' "$change_summary"
+        entry+="$line"
+      fi
+      printf -v line '\n**Command:** `%s`\n' "$note_command"
+      entry+="$line"
+      if [[ -n "$note_details" ]]; then
+        entry+=$'\n### Details\n\n'
+        entry+="$note_details"
+        entry+=$'\n'
+      fi
+      entries+=("$entry")
+
+      if [[ "$LIMIT" -gt 0 && "${#entries[@]}" -ge "$LIMIT" ]]; then
+        break
+      fi
+    done < <(printf '%s\n' "$note" | workflow_note_records)
+  fi
+
+  if [[ "$LIMIT" -gt 0 && "${#entries[@]}" -ge "$LIMIT" ]]; then
+    break
+  fi
+
+  command_line="$(recorded_field_value "$body" "Command-Line")"
+  change_summary="$(recorded_change_summary "$body")"
+  entry_type="$(activity_type "$command_line")"
+  if ! entry_matches_filters "$entry_type" "$author_name $author_email" \
+    "$subject $body"; then
     continue
   fi
 
-  if [[ -n "$FILTER_USER" ]]; then
-    if ! contains_ci "$author_name $author_email $subject $body" "$FILTER_USER"; then
-      continue
-    fi
+  printf -v entry '## %s: %s\n\n' "$entry_type" "$date_text"
+  printf -v line '**Commit:** `%s`  \n**User:** %s <%s>  \n**Summary:** %s\n' \
+    "$short_hash" "$author_name" "$author_email" "$subject"
+  entry+="$line"
+  if [[ -n "$change_summary" ]]; then
+    printf -v line '**Changes:** %s  \n' "$change_summary"
+    entry+="$line"
   fi
-
-  if [[ -n "$FILTER_TEXT" ]]; then
-    if ! contains_ci "$subject $body" "$FILTER_TEXT"; then
-      continue
-    fi
+  if [[ -n "$command_line" ]]; then
+    printf -v line '\n**Command:** `%s`\n' "$command_line"
+    entry+="$line"
   fi
-
-  files_modified="$(extract_trailer_value "$body" "Files-Modified")"
-  files_added="$(extract_trailer_value "$body" "Files-Added")"
-  files_deleted="$(extract_trailer_value "$body" "Files-Deleted")"
-  lines_added="$(extract_trailer_value "$body" "Lines-Added")"
-  lines_deleted="$(extract_trailer_value "$body" "Lines-Deleted")"
-  pr_number="$(extract_trailer_value "$body" "PR")"
-  command_line="$(extract_trailer_value "$body" "Command-Line")"
-
-  if [[ "$VERBOSE" == true ]]; then
-    rendered_output+="$(build_verbose_entry "$short_hash" "$full_hash" "$date_text" "$author_name" "$author_email" "$subject" "$body" "$files_modified" "$files_added" "$files_deleted" "$lines_added" "$lines_deleted" "$pr_number" "$command_line")"
-  else
-    line="[$date_text] $short_hash $subject"
-    if [[ -n "$pr_number" ]]; then
-      line+=" (PR: $pr_number)"
-    fi
-    rendered_output+="$line"
-    rendered_output+=$'\n'
+  if [[ -n "$body" ]]; then
+    entry+=$'\n### Details\n\n'
+    entry+="$body"
+    entry+=$'\n'
   fi
+  entries+=("$entry")
 
-  match_count=$((match_count + 1))
-  if [[ "$match_count" -eq 1 ]]; then
-    first_match_short_hash="$short_hash"
-    first_match_full_hash="$full_hash"
-    first_match_date_text="$date_text"
-    first_match_files_modified="$files_modified"
-    first_match_files_added="$files_added"
-    first_match_files_deleted="$files_deleted"
-    first_match_command_line="$command_line"
-    first_match_body="$body"
-  fi
-  if [[ "$LIMIT" -gt 0 && "$match_count" -ge "$LIMIT" ]]; then
+  if [[ "$LIMIT" -gt 0 && "${#entries[@]}" -ge "$LIMIT" ]]; then
     break
   fi
-done < <(git log "${git_log_args[@]}")
+done < <(printf '%s' "$history")
 
-if [[ "$match_count" -eq 0 ]]; then
-  bt_warn "No entries found matching criteria"
+if [[ "${#entries[@]}" -eq 0 ]]; then
+  bt_warn "No matching activity was found"
   exit "$EXIT_OPERATION_FAILED"
 fi
 
-if [[ "$match_count" -eq 1 && "$LIMIT" -eq 1 && "$VERBOSE" == true ]]; then
-  first_match_comment="$(extract_user_comment_from_body "$first_match_body")"
-  first_match_command_line_full="$(build_command_line_with_comment "$first_match_command_line" "$first_match_comment")"
-  first_match_timestamp_token="$(build_commit_timestamp_token "$first_match_date_text")"
-  first_match_hash_token="$(resolve_unique_commit_hash_token "$first_match_full_hash")"
-  legacy_report_file="$(resolve_legacy_report_path "$first_match_timestamp_token" "$first_match_hash_token")"
-  write_legacy_single_commit_report "$legacy_report_file" "$TARGET_REF" \
-    "$first_match_short_hash" "$first_match_full_hash" \
-    "$first_match_files_modified" "$first_match_files_added" \
-    "$first_match_files_deleted" "$first_match_command_line_full" \
-    "$first_match_date_text"
-  report_rel="${legacy_report_file#"${REPO_ROOT}"/}"
-  bt_success "Results written to $report_rel"
-elif [[ -n "$OUTPUT_FILE" ]]; then
-  printf '%s\n' "$rendered_output" > "$OUTPUT_FILE"
-  bt_success "Results written to $OUTPUT_FILE"
-else
-  printf '\n%s\n\n' "$rendered_output"
+report_lock_fd=""
+
+bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_WRITE_FAILED"
+if ! bt_report_acquire_lock "$REPO_ROOT" \
+  "report-$BRANCH_REPORT_PREFIX" 10 report_lock_fd; then
+  bt_warn "Timed out waiting for $BRANCH_REPORT_PREFIX report write lock"
+  exit "$EXIT_REPORT_WRITE_FAILED"
+fi
+report_timestamp="$(date '+%Y%m%d-%H%M%S')"
+report_file="$REPORTS_DIR/${BRANCH_REPORT_PREFIX}-${report_timestamp}.md"
+report_rel="${report_file#"${REPO_ROOT}"/}"
+if ! {
+  printf '# Branch History Report\n\n'
+  printf '**Branch:** `%s`  \n' "$TARGET_REF"
+  printf '**Type:** `%s`  \n' "$TYPE_FILTER"
+  printf '**Generated:** %s\n\n' "$RUN_TS_DISPLAY"
+  for entry in "${entries[@]}"; do
+    printf '%s\n' "$entry"
+  done
+} > "$report_file"; then
+  bt_report_release_lock "$report_lock_fd"
+  bt_warn "Failed to write report: $report_rel"
+  exit "$EXIT_REPORT_WRITE_FAILED"
 fi
 
-bt_success "Found $match_count matching entries"
+remove_stale_reports "$report_file" \
+  "$REPORTS_DIR/${BRANCH_REPORT_PREFIX}-*.md" \
+  "$REPORTS_DIR/branch/history-*.md"
+bt_report_release_lock "$report_lock_fd"
+
+if [[ "$VERBOSE" == true ]]; then
+  bt_info "Found ${#entries[@]} matching activities"
+fi
+printf 'See %s for details.\n' "$report_rel"
 exit 0

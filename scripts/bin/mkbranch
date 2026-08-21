@@ -174,7 +174,7 @@ Options:
                     'version' branch).
   -t SEC            Remote operation timeout in seconds (default: 10).
                     SEC must be an integer greater than 0.
-  -v                Verbose output.
+  -v                Output progress and diagnostics to stdout.
 
   For commit comment options '-c TOKEN' and '-- TOKEN...':
     - These are mutually exclusive.
@@ -227,23 +227,24 @@ Validate (-d):
 Verbose (-v):
   - Print additional progress and decision details.
 
-Examples: Basic usage.
+Examples:
+  # Basic usage.
   mkbranch fix/bug-v2.1.0 v2.1.0
   mkbranch -r dev/feature-a-v2.0.0
 
-Examples: With -c comment.
+  # With -c comment.
   mkbranch fix/memory-leak-v1.1.0 v1.1.0 -c "Fix critical memory leak."
   mkbranch -r dev/feature-b-v2.3.0 v2.3.0 -c "Add minor new dashboard feature."
 
-Examples: With Unix-style comment.
+  # With Unix-style comment.
   mkbranch fix/login-bug-v1.0.0 v1.0.0 -- Fix critical memory leak.
   mkbranch -r dev/dashboard-v2.3.0 v2.3.0 -- Add minor new dashboard feature.
 
-Examples: Validation mode for invalid mkbranch.
+  # Validation mode for invalid mkbranch.
   mkbranch -d redesign main
   mkbranch -d -r hotfix v2.0.0
 
-Examples: Verbose mode.
+  # Verbose mode.
   mkbranch -v dev/fix-bug-v2.1.0 v2.1.0
   mkbranch -v -r dev/feature-a-v2.0.0 v2.0.0
 

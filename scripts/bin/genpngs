@@ -34,17 +34,14 @@ For each document-derived PNG:
   - The temporary SVG is then deleted.
 
 Options:
-  -v            Enable verbose diagnostics to stderr.
-  -h            Output this help to stdout and exit (other options
-                and arguments are ignored).
-  --help        Output this help to stdout and exit (other options
-                and arguments are ignored).
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
+  -v          Output progress and diagnostics to stderr.
 
-Exit codes:
-  0  Success (includes help output).
-  1  Invalid option or argument.
-  2  Missing dependency (rsvg-convert).
-  3  PNG generation command failed.
+Examples:
+  genpngs
+  genpngs -h
+  genpngs --help
 
 Outputs:
   - If generated PNG content differs (or no existing PNG exists), writes:
@@ -58,10 +55,11 @@ Outputs:
   - If PNG files were added or updated, run the commit script to commit
     those changes.
 
-Examples:
-  genpngs
-  genpngs -h
-  genpngs --help
+Exit codes:
+  0  Success (includes help output).
+  1  Invalid option or argument.
+  2  Missing dependency (rsvg-convert).
+  3  PNG generation command failed.
 EOF
 }
 

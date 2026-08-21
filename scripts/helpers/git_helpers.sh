@@ -29,8 +29,364 @@ bt_run_remote_command() {
   "$@"
 }
 
+bt_git_preferred_branch_ref() {
+  local mode="$1"
+  local branch="$2"
+
+  if [[ "$mode" == "remote" ]] && \
+    git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+    printf 'refs/remotes/origin/%s\n' "$branch"
+  elif git show-ref --verify --quiet "refs/heads/$branch"; then
+    printf 'refs/heads/%s\n' "$branch"
+  elif git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+    printf 'refs/remotes/origin/%s\n' "$branch"
+  fi
+}
+
+bt_git_format_tracking_relation_tag() {
+  local mode="$1"
+  local ahead="$2"
+  local behind="$3"
+  local has_uncommitted="$4"
+
+  [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
+
+  if [[ "$ahead" -eq 0 && "$behind" -eq 0 ]]; then
+    [[ "$has_uncommitted" == false ]] && printf '[synced]'
+  elif [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
+    if [[ "$mode" == "local" ]]; then
+      printf '[ahead of remote by %s]' "$ahead"
+    else
+      printf '[behind local by %s]' "$ahead"
+    fi
+  elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
+    if [[ "$mode" == "local" ]]; then
+      printf '[behind remote by %s]' "$behind"
+    else
+      printf '[ahead of local by %s]' "$behind"
+    fi
+  elif [[ "$mode" == "local" ]]; then
+    printf '[diverged from remote: %s/%s]' "$ahead" "$behind"
+  else
+    printf '[diverged from local: %s/%s]' "$behind" "$ahead"
+  fi
+  return 0
+}
+
+bt_git_format_parent_relation_tags() {
+  local parent="$1"
+  local ahead="$2"
+  local behind="$3"
+  local available="$4"
+
+  [[ -n "$parent" ]] || return 0
+  if [[ "$available" != true ]]; then
+    printf '[parent unavailable: %s]' "$parent"
+    return 0
+  fi
+
+  printf '[parent: %s]' "$parent"
+  [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
+
+  if [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
+    printf ' [ahead of parent by %s]' "$ahead"
+  elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
+    printf ' [behind parent by %s]' "$behind"
+  elif [[ "$ahead" -gt 0 && "$behind" -gt 0 ]]; then
+    printf ' [diverged from parent: %s/%s]' "$ahead" "$behind"
+  fi
+  return 0
+}
+
+bt_git_tracking_relation_tag() {
+  local mode="$1"
+  local local_ref="$2"
+  local remote_ref="$3"
+  local has_uncommitted="$4"
+  local ahead=0
+  local behind=0
+  local counts=""
+
+  counts=$(git rev-list --left-right --count \
+    "$local_ref...$remote_ref" 2>/dev/null || true)
+  read -r ahead behind <<< "$counts"
+  bt_git_format_tracking_relation_tag \
+    "$mode" "$ahead" "$behind" "$has_uncommitted"
+}
+
+bt_git_parent_relation_tags() {
+  local mode="$1"
+  local branch="$2"
+  local selected_ref="$3"
+  local parent=""
+  local parent_ref=""
+  local ahead=0
+  local behind=0
+  local counts=""
+  local available=false
+
+  parent=$(bt_resolve_parent_branch "$branch" "main" 2>/dev/null || true)
+  [[ -n "$parent" ]] || return 0
+  parent_ref=$(bt_git_preferred_branch_ref "$mode" "$parent")
+
+  if [[ -n "$parent_ref" ]]; then
+    available=true
+    counts=$(git rev-list --left-right --count \
+      "$selected_ref...$parent_ref" 2>/dev/null || true)
+    read -r ahead behind <<< "$counts"
+  fi
+  bt_git_format_parent_relation_tags \
+    "$parent" "$ahead" "$behind" "$available"
+}
+
+bt_git_reset_change_summary() {
+  BT_CHANGE_MODIFIED_FILES=0
+  BT_CHANGE_DELETED_FILES=0
+  BT_CHANGE_ADDED_FILES=0
+  BT_CHANGE_RENAMED_FILES=0
+  BT_CHANGE_RENAMED_MODIFIED_FILES=0
+  BT_CHANGE_DELETED_DIRECTORIES=0
+  BT_CHANGE_ADDED_DIRECTORIES=0
+  BT_CHANGE_RENAMED_DIRECTORIES=0
+}
+
+bt_git_list_parent_directories() {
+  local files_file="$1"
+  local output_file="$2"
+  local file_path=""
+  local directory=""
+
+  : > "$output_file"
+  while IFS= read -r file_path; do
+    directory="${file_path%/*}"
+    while [[ "$directory" != "$file_path" && "$directory" != "." ]]; do
+      printf '%s\n' "$directory" >> "$output_file"
+      file_path="$directory"
+      directory="${file_path%/*}"
+    done
+  done < "$files_file"
+  sort -u -o "$output_file" "$output_file"
+}
+
+bt_git_collect_change_summary_from_files() {
+  local status_file="$1"
+  local old_files="$2"
+  local new_files="$3"
+  local old_directories=""
+  local new_directories=""
+  local renamed_directory_pairs=""
+  local renamed_old_directories=""
+  local renamed_new_directories=""
+  local status=""
+  local old_path=""
+  local new_path=""
+  local old_directory=""
+  local new_directory=""
+  local directory=""
+
+  bt_git_reset_change_summary
+  old_directories="$(mktemp)"
+  new_directories="$(mktemp)"
+  renamed_directory_pairs="$(mktemp)"
+  renamed_old_directories="$(mktemp)"
+  renamed_new_directories="$(mktemp)"
+  bt_git_list_parent_directories "$old_files" "$old_directories"
+  bt_git_list_parent_directories "$new_files" "$new_directories"
+
+  exec 8<"$status_file"
+  while IFS= read -r -d '' status <&8; do
+    case "$status" in
+      A*)
+        IFS= read -r -d '' new_path <&8 || new_path=""
+        ((++BT_CHANGE_ADDED_FILES))
+        ;;
+      D*)
+        IFS= read -r -d '' old_path <&8 || old_path=""
+        ((++BT_CHANGE_DELETED_FILES))
+        ;;
+      R*)
+        IFS= read -r -d '' old_path <&8 || old_path=""
+        IFS= read -r -d '' new_path <&8 || new_path=""
+        if [[ "$status" == "R100" ]]; then
+          ((++BT_CHANGE_RENAMED_FILES))
+        else
+          ((++BT_CHANGE_RENAMED_MODIFIED_FILES))
+        fi
+        old_directory="${old_path%/*}"
+        new_directory="${new_path%/*}"
+        if [[ "$old_directory" != "$old_path" && \
+          "$new_directory" != "$new_path" && \
+          "$old_directory" != "$new_directory" ]]; then
+          printf '%s\t%s\n' "$old_directory" "$new_directory" \
+            >> "$renamed_directory_pairs"
+        fi
+        ;;
+      *)
+        IFS= read -r -d '' new_path <&8 || new_path=""
+        ((++BT_CHANGE_MODIFIED_FILES))
+        ;;
+    esac
+  done
+  exec 8<&-
+
+  sort -u -o "$renamed_directory_pairs" "$renamed_directory_pairs"
+  cut -f1 "$renamed_directory_pairs" | sort -u \
+    > "$renamed_old_directories"
+  cut -f2 "$renamed_directory_pairs" | sort -u \
+    > "$renamed_new_directories"
+  BT_CHANGE_RENAMED_DIRECTORIES="$(wc -l \
+    < "$renamed_directory_pairs" | tr -d ' ')"
+
+  while IFS= read -r directory; do
+    [[ -n "$directory" ]] || continue
+    grep -Fxq -- "$directory" "$new_directories" && continue
+    grep -Fxq -- "$directory" "$renamed_old_directories" && continue
+    ((++BT_CHANGE_DELETED_DIRECTORIES))
+  done < "$old_directories"
+  while IFS= read -r directory; do
+    [[ -n "$directory" ]] || continue
+    grep -Fxq -- "$directory" "$old_directories" && continue
+    grep -Fxq -- "$directory" "$renamed_new_directories" && continue
+    ((++BT_CHANGE_ADDED_DIRECTORIES))
+  done < "$new_directories"
+
+  rm -f "$old_directories" "$new_directories" \
+    "$renamed_directory_pairs" "$renamed_old_directories" \
+    "$renamed_new_directories"
+}
+
+bt_git_collect_ref_change_summary() {
+  local old_ref="$1"
+  local new_ref="$2"
+  local status_file=""
+  local old_files=""
+  local new_files=""
+  local excluded_files=""
+  local excluded_path=""
+  local -a pathspecs=(-- .)
+
+  shift 2
+  excluded_files="$(mktemp)"
+  for excluded_path in "$@"; do
+    [[ -n "$excluded_path" ]] || continue
+    excluded_path="${excluded_path#./}"
+    printf '%s\n' "$excluded_path" >> "$excluded_files"
+    pathspecs+=(":(exclude)$excluded_path")
+  done
+
+  status_file="$(mktemp)"
+  old_files="$(mktemp)"
+  new_files="$(mktemp)"
+  git diff --name-status -z --find-renames "$old_ref" "$new_ref" \
+    "${pathspecs[@]}" > "$status_file" 2>/dev/null || true
+  git ls-tree -r --name-only "$old_ref" > "$old_files" 2>/dev/null || true
+  git ls-tree -r --name-only "$new_ref" > "$new_files" 2>/dev/null || true
+  if [[ -s "$excluded_files" ]]; then
+    grep -Fvx -f "$excluded_files" "$old_files" > "${old_files}.filtered" || true
+    grep -Fvx -f "$excluded_files" "$new_files" > "${new_files}.filtered" || true
+    mv "${old_files}.filtered" "$old_files"
+    mv "${new_files}.filtered" "$new_files"
+  fi
+  bt_git_collect_change_summary_from_files "$status_file" "$old_files" "$new_files"
+  rm -f "$status_file" "$old_files" "$new_files" "$excluded_files"
+}
+
+bt_git_collect_worktree_change_summary() {
+  local status_file=""
+  local old_files=""
+  local new_files=""
+  local file_path=""
+
+  status_file="$(mktemp)"
+  old_files="$(mktemp)"
+  new_files="$(mktemp)"
+  git diff HEAD --name-status -z --find-renames > "$status_file" 2>/dev/null || true
+  while IFS= read -r -d '' file_path; do
+    printf 'A\0%s\0' "$file_path" >> "$status_file"
+  done < <(git ls-files --others --exclude-standard -z 2>/dev/null || true)
+  git ls-tree -r --name-only HEAD > "$old_files" 2>/dev/null || true
+  while IFS= read -r -d '' file_path; do
+    [[ -e "$file_path" || -L "$file_path" ]] && printf '%s\n' "$file_path"
+  done < <(git ls-files -co --exclude-standard -z 2>/dev/null || true) \
+    | sort -u > "$new_files"
+  bt_git_collect_change_summary_from_files "$status_file" "$old_files" "$new_files"
+  rm -f "$status_file" "$old_files" "$new_files"
+}
+
+bt_format_change_summary() {
+  local -a parts=()
+  local output=""
+  local index=0
+
+  bt_append_change_summary_part() {
+    local count="$1"
+    local singular="$2"
+    local plural="$3"
+    [[ "$count" -gt 0 ]] || return 0
+    if [[ "$count" -eq 1 ]]; then
+      parts+=("$count $singular")
+    else
+      parts+=("$count $plural")
+    fi
+  }
+
+  bt_append_change_summary_part "$BT_CHANGE_MODIFIED_FILES" \
+    "modified file" "modified files"
+  bt_append_change_summary_part "$BT_CHANGE_DELETED_FILES" \
+    "deleted file" "deleted files"
+  bt_append_change_summary_part "$BT_CHANGE_ADDED_FILES" \
+    "added file" "added files"
+  bt_append_change_summary_part "$BT_CHANGE_RENAMED_FILES" \
+    "renamed file" "renamed files"
+  bt_append_change_summary_part "$BT_CHANGE_RENAMED_MODIFIED_FILES" \
+    "renamed/modified file" "renamed/modified files"
+  bt_append_change_summary_part "$BT_CHANGE_DELETED_DIRECTORIES" \
+    "deleted directory" "deleted directories"
+  bt_append_change_summary_part "$BT_CHANGE_ADDED_DIRECTORIES" \
+    "added directory" "added directories"
+  bt_append_change_summary_part "$BT_CHANGE_RENAMED_DIRECTORIES" \
+    "renamed directory" "renamed directories"
+
+  if [[ "${#parts[@]}" -eq 0 ]]; then
+    printf 'no changes'
+    return 0
+  fi
+  if [[ "${#parts[@]}" -eq 1 ]]; then
+    printf '%s' "${parts[0]}"
+    return 0
+  fi
+  for ((index = 0; index < ${#parts[@]}; index++)); do
+    if [[ "$index" -gt 0 ]]; then
+      if [[ "$index" -eq $((${#parts[@]} - 1)) ]]; then
+        output+=" and "
+      else
+        output+=", "
+      fi
+    fi
+    output+="${parts[index]}"
+  done
+  printf '%s' "$output"
+}
+
 bt_get_current_branch() {
   git rev-parse --abbrev-ref HEAD 2>/dev/null
+}
+
+bt_copyfix_state_dir_for_branch() {
+  local branch="$1"
+  local common_dir=""
+
+  common_dir="$(git rev-parse --path-format=absolute --git-common-dir \
+    2>/dev/null)" || return 1
+  printf '%s/briteTest-copyfix-state/%s\n' "$common_dir" "$branch"
+}
+
+bt_is_copyfix_in_progress() {
+  local branch="$1"
+  local state_dir=""
+
+  state_dir="$(bt_copyfix_state_dir_for_branch "$branch")" || return 1
+  [[ -d "$state_dir" ]]
 }
 
 bt_git_is_repository() {

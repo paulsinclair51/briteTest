@@ -54,7 +54,7 @@ extract_report_hash() {
 
 latest_report() {
   local repo="$1"
-  find "$repo/reports/branch" -maxdepth 1 -type f -name 'commit*.md' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
+  find "$repo/reports" -maxdepth 1 -type f -name 'commit*.md' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
 }
 
 commit_test_init() {
@@ -88,7 +88,7 @@ commit_test_init() {
   git init --bare "$ORIGIN" >/dev/null 2>&1
   git clone "$ORIGIN" "$WORK" >/dev/null 2>&1
 
-  mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/config" "$WORK/reports/branch"
+  mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers" "$WORK/config" "$WORK/reports"
   cp "$COMMIT_SRC" "$WORK/scripts/bin/commit"
   cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
   cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
@@ -109,8 +109,8 @@ EOF
 
     echo "seed" > README.md
     cat > .gitignore <<'GITIGNORE'
-reports/branch/branch-*.md
-reports/branch/commit-*.md
+reports/branch-*.md
+reports/commit-*.md
 GITIGNORE
     git add README.md scripts config reports .gitignore
     git commit -m "seed repo" >/dev/null 2>&1

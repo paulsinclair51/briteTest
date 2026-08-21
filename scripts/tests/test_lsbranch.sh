@@ -31,15 +31,8 @@ run_capture() {
   echo "$rc"
 }
 
-extract_report_path() {
-  local infile="$1"
-  sed -n -E \
-    -e 's/^Report (branch-[^ ]+\.md) committed(\/pushed)?\.$/reports\/branch\/\1/p' \
-    -e 's/^See (reports\/branch\/branch-[^ ]+\.md) for details\.$/\1/p' \
-    "$infile" | tail -n 1
-}
-
 AUTO_STASH_LABEL=""
+STATUS_TEST_REFS=()
 
 cleanup_auto_stash() {
   local line=""
@@ -59,14 +52,31 @@ cleanup_auto_stash() {
   AUTO_STASH_LABEL=""
 }
 
+cleanup_status_test_refs() {
+  local ref
+
+  for ref in "${STATUS_TEST_REFS[@]}"; do
+    git update-ref -d "$ref" >/dev/null 2>&1 || true
+  done
+}
+
 TMPDIR="$(mktemp -d)"
-trap 'cleanup_auto_stash; rm -rf "$TMPDIR"' EXIT
+trap 'cleanup_auto_stash; cleanup_status_test_refs; rm -rf "$TMPDIR"' EXIT
 REAL_GIT="$(command -v git)"
 
 # 1) Help output
 rc=$(run_capture "$TMPDIR/help.out" "$LSBRANCH" -h)
 [[ "$rc" -eq 0 ]] || fail "lsbranch -h should exit 0"
 grep -q '^Usage:' "$TMPDIR/help.out" || fail "lsbranch -h should print Usage"
+for status_tag in \
+  "[local only]" "[remote only]" "[uncommitted]" "[invalid name]" \
+  "[offline]" "[synced]" "[diverged from remote: N/M]" \
+  "[diverged from local: N/M]" "[parent: NAME]" \
+  "[parent unavailable: NAME]" "[diverged from parent: N/M]" \
+  "[auto-stash: N]" "[PRs: N]"; do
+  grep -Fq "$status_tag" "$TMPDIR/help.out" || \
+    fail "lsbranch help should document $status_tag"
+done
 pass "help output"
 
 # 2) -a -r should include remote view output and not claim no branches for "*"
@@ -102,21 +112,23 @@ grep -q '\[local\]' "$TMPDIR/local.out" || \
   fail "lsbranch -a -l should include [local] output"
 pass "-a -l local-only output"
 
-# 4) Current branch marker should be a trailing * in the report
-# (not malformed markdown)
-rc=$(run_capture "$TMPDIR/default.out" "$LSBRANCH")
+# 4) Normal use should write only branch status to stdout
+reports_before="$(find "$SCRIPT_DIR/../../reports" -maxdepth 1 \
+  -type f -name 'branch-*.md' -printf '%f\n' | sort)"
+rc=$(run_capture "$TMPDIR/default.out" "$LSBRANCH" -b)
 [[ "$rc" -eq 0 ]] || fail "lsbranch should exit 0"
-report_rel=$(extract_report_path "$TMPDIR/default.out")
-[[ -n "$report_rel" ]] || \
-  fail "lsbranch output should include generated report path"
-report_path="$SCRIPT_DIR/../../$report_rel"
-[[ -f "$report_path" ]] || fail "generated report file should exist"
-
 current_branch=$(git rev-parse --abbrev-ref HEAD)
-grep -Eq "\\| ${current_branch}(\\*|<span[^>]*>\\*</span>) \\| local \\|" "$report_path" || \
-  fail "current branch should be marked with trailing * in local \
-  report row"
-pass "current branch report marker"
+grep -Eq "^${current_branch}\\* \\[local\\] \\[current\\]" \
+  "$TMPDIR/default.out" || \
+  fail "current branch should be marked with a trailing * in stdout"
+if grep -q '^See .* for details\.$' "$TMPDIR/default.out"; then
+  fail "lsbranch should not output a report path"
+fi
+reports_after="$(find "$SCRIPT_DIR/../../reports" -maxdepth 1 \
+  -type f -name 'branch-*.md' -printf '%f\n' | sort)"
+[[ "$reports_after" == "$reports_before" ]] || \
+  fail "lsbranch should not create or remove branch reports"
+pass "stdout-only branch status"
 
 # 5) BRANCH mode allows only -v/-b; local/remote filters are
 # invalid in BRANCH mode
@@ -149,7 +161,8 @@ done)
   fail "need one clean tracked file for dirty-worktree smoke test"
 cp "$scratch_file" "$backup_file"
 trap 'rm -rf "$TMPDIR"; if [[ -f "$backup_file" && \
-  -n "${scratch_file:-}" ]]; then cp "$backup_file" "$scratch_file"; fi; cleanup_auto_stash' EXIT
+  -n "${scratch_file:-}" ]]; then cp "$backup_file" "$scratch_file"; fi; \
+  cleanup_auto_stash; cleanup_status_test_refs' EXIT
 printf '\nlsbranch dirty smoke test\n' >> "$scratch_file"
 rc=$(run_capture "$TMPDIR/dirty.out" "$LSBRANCH" -a -l -b)
 [[ "$rc" -eq 0 ]] || fail "lsbranch -a -l -b should exit 0 with a dirty worktree"
@@ -158,6 +171,12 @@ if grep -q '\[check failed\]' "$TMPDIR/dirty.out"; then
 branches when the worktree is dirty"
 fi
 current_branch=$(git rev-parse --abbrev-ref HEAD)
+grep -Eq "^${current_branch}[*] \[local\] \[current\] \[uncommitted\]" \
+  "$TMPDIR/dirty.out" || \
+  fail "dirty current branch should be marked [uncommitted]"
+if grep -Eq '\[(dirty|staged|unstaged)\]' "$TMPDIR/dirty.out"; then
+  fail "stdout should not expose dirty/staged/unstaged status tags"
+fi
 if [[ "$current_branch" != "v1.0.0" ]]; then
   grep -q '^v1.0.0 \[local\] \[read-only\]' "$TMPDIR/dirty.out" || \
     fail "non-current local protected branches should be marked [read-only]"
@@ -196,17 +215,121 @@ rc=$(run_capture "$TMPDIR/auto_stash.out" "$LSBRANCH" "$current_branch" -b)
 grep -Eq '\[auto-stash: [1-9][0-9]*\]' "$TMPDIR/auto_stash.out" || \
   fail "lsbranch stdout should indicate branch-matching auto-stash"
 
-auto_stash_report_rel=$(extract_report_path "$TMPDIR/auto_stash.out")
-[[ -n "$auto_stash_report_rel" ]] || \
-  fail "auto-stash run should generate a report"
-auto_stash_report_path="$SCRIPT_DIR/../../$auto_stash_report_rel"
-grep -Eq "\\| ${current_branch}(\\*|<span[^>]*>\\*</span>) \\| local \\| .*auto-stash:[1-9][0-9]*" "$auto_stash_report_path" || \
-  fail "report local row should include auto-stash status annotation"
-
 cleanup_auto_stash
 pass "branch auto-stash indicator"
 
-# 9) Verbose mode and the report should surface degraded fetch/PR lookups
+# 9) Compact status tags cover tracking relations and branch availability.
+STATUS_BIN="$TMPDIR/status-bin"
+mkdir -p "$STATUS_BIN"
+cat > "$STATUS_BIN/git" <<EOF
+#!/usr/bin/env bash
+if [[ "\$1" == "fetch" && "\${2:-}" == "origin" ]]; then
+  exit 0
+fi
+exec "$REAL_GIT" "\$@"
+EOF
+cat > "$STATUS_BIN/gh" <<'EOF'
+#!/usr/bin/env bash
+echo 0
+EOF
+chmod +x "$STATUS_BIN/git" "$STATUS_BIN/gh"
+
+status_parent="v1.0.0"
+status_parent_tip=$(git rev-parse "$status_parent")
+status_tree=$(git rev-parse "$status_parent_tip^{tree}")
+status_local_tip=$(printf 'lsbranch local status fixture\n' | \
+  git -c user.name=lsbranch-test -c user.email=lsbranch@example.com \
+    commit-tree "$status_tree" -p "$status_parent_tip")
+status_remote_tip=$(printf 'lsbranch remote status fixture\n' | \
+  git -c user.name=lsbranch-test -c user.email=lsbranch@example.com \
+    commit-tree "$status_tree" -p "$status_parent_tip")
+status_branch="dev/lsbranch-status-v1.0.0"
+status_local_ref="refs/heads/$status_branch"
+status_remote_ref="refs/remotes/origin/$status_branch"
+STATUS_TEST_REFS+=("$status_local_ref" "$status_remote_ref")
+
+git update-ref "$status_local_ref" "$status_local_tip"
+git update-ref "$status_remote_ref" "$status_parent_tip"
+rc=$(run_capture "$TMPDIR/status-ahead.out" env PATH="$STATUS_BIN:$PATH" \
+  "$LSBRANCH" "$status_branch" -b)
+[[ "$rc" -eq 0 ]] || fail "ahead status fixture should exit 0"
+grep -Fq "[ahead of remote by 1]" "$TMPDIR/status-ahead.out" || \
+  fail "local row should report ahead of remote"
+grep -Fq "[behind local by 1]" "$TMPDIR/status-ahead.out" || \
+  fail "remote row should report behind local"
+grep -Fq "[parent: v1.0.0] [ahead of parent by 1]" \
+  "$TMPDIR/status-ahead.out" || fail "row should report parent identity"
+
+git update-ref "$status_local_ref" "$status_parent_tip"
+git update-ref "$status_remote_ref" "$status_remote_tip"
+rc=$(run_capture "$TMPDIR/status-behind.out" env PATH="$STATUS_BIN:$PATH" \
+  "$LSBRANCH" "$status_branch" -b)
+[[ "$rc" -eq 0 ]] || fail "behind status fixture should exit 0"
+grep -Fq "[behind remote by 1]" "$TMPDIR/status-behind.out" || \
+  fail "local row should report behind remote"
+grep -Fq "[ahead of local by 1]" "$TMPDIR/status-behind.out" || \
+  fail "remote row should report ahead of local"
+
+git update-ref "$status_local_ref" "$status_local_tip"
+rc=$(run_capture "$TMPDIR/status-diverged.out" env PATH="$STATUS_BIN:$PATH" \
+  "$LSBRANCH" "$status_branch" -b)
+[[ "$rc" -eq 0 ]] || fail "diverged status fixture should exit 0"
+grep -Fq "[diverged from remote: 1/1]" "$TMPDIR/status-diverged.out" || \
+  fail "local row should report divergence from remote"
+grep -Fq "[diverged from local: 1/1]" "$TMPDIR/status-diverged.out" || \
+  fail "remote row should report divergence from local"
+
+git update-ref "$status_remote_ref" "$status_local_tip"
+rc=$(run_capture "$TMPDIR/status-synced.out" env PATH="$STATUS_BIN:$PATH" \
+  "$LSBRANCH" "$status_branch" -b)
+[[ "$rc" -eq 0 ]] || fail "synced status fixture should exit 0"
+grep -Fq "[synced]" "$TMPDIR/status-synced.out" || \
+  fail "matching local and remote histories should report synced"
+rc=$(run_capture "$TMPDIR/status-remote-filter.out" \
+  env PATH="$STATUS_BIN:$PATH" "$LSBRANCH" "${status_branch}*" -r -b)
+[[ "$rc" -eq 0 ]] || fail "remote-filter status fixture should exit 0"
+grep -Fq "[remote] [read-only] [synced]" \
+  "$TMPDIR/status-remote-filter.out" || \
+  fail "remote-only listing should retain tracked synchronization status"
+
+git update-ref -d "$status_remote_ref"
+rc=$(run_capture "$TMPDIR/status-local-only.out" \
+  env PATH="$STATUS_BIN:$PATH" "$LSBRANCH" "$status_branch" -b)
+[[ "$rc" -eq 0 ]] || fail "local-only status fixture should exit 0"
+grep -Fq "[local only]" "$TMPDIR/status-local-only.out" || \
+  fail "branch without a remote should report local only"
+
+git update-ref -d "$status_local_ref"
+git update-ref "$status_remote_ref" "$status_remote_tip"
+rc=$(run_capture "$TMPDIR/status-remote-only.out" \
+  env PATH="$STATUS_BIN:$PATH" "$LSBRANCH" "$status_branch" -b)
+[[ "$rc" -eq 0 ]] || fail "remote-only status fixture should exit 0"
+grep -Fq "[remote only] [read-only]" "$TMPDIR/status-remote-only.out" || \
+  fail "branch without a local branch should report remote only/read-only"
+
+invalid_branch="dev/lsbranch-invalid-v1.0.1"
+invalid_ref="refs/heads/$invalid_branch"
+STATUS_TEST_REFS+=("$invalid_ref")
+git update-ref "$invalid_ref" "$status_local_tip"
+rc=$(run_capture "$TMPDIR/status-invalid.out" env PATH="$STATUS_BIN:$PATH" \
+  "$LSBRANCH" "$invalid_branch" -b)
+[[ "$rc" -eq 0 ]] || fail "invalid-name status fixture should exit 0"
+grep -Fq "[read-only] [invalid name]" "$TMPDIR/status-invalid.out" || \
+  fail "invalid branch should report read-only and invalid name"
+
+missing_parent_branch="dev/lsbranch-parent-v99.0.0"
+missing_parent_ref="refs/heads/$missing_parent_branch"
+STATUS_TEST_REFS+=("$missing_parent_ref")
+git update-ref "$missing_parent_ref" "$status_local_tip"
+rc=$(run_capture "$TMPDIR/status-parent-unavailable.out" \
+  env PATH="$STATUS_BIN:$PATH" "$LSBRANCH" "$missing_parent_branch" -b)
+[[ "$rc" -eq 0 ]] || fail "unavailable-parent fixture should exit 0"
+grep -Fq "[parent unavailable: v99.0.0]" \
+  "$TMPDIR/status-parent-unavailable.out" || \
+  fail "missing parent branch should report parent unavailable"
+pass "chbranch-compatible status tags"
+
+# 10) Verbose mode should surface degraded fetch/PR lookups
 FAKEBIN="$TMPDIR/fakebin"
 mkdir -p "$FAKEBIN"
 cat > "$FAKEBIN/git" <<EOF
@@ -233,16 +356,8 @@ grep -q "Warning: Failed to fetch remote; remote status may use cached refs from
   fail "verbose output should include fetch diagnostics"
 grep -q "Warning: Failed to query pull requests for 'main'; PR column shown as N/A." "$TMPDIR/degraded.out" || \
   fail "verbose output should include PR diagnostics"
-degraded_report_rel=$(extract_report_path "$TMPDIR/degraded.out")
-[[ -n "$degraded_report_rel" ]] || \
-  fail "degraded run should still generate a report"
-degraded_report_path="$SCRIPT_DIR/../../$degraded_report_rel"
-grep -q '^## Warnings$' "$degraded_report_path" || \
-  fail "report should include a warnings section when helpers degrade"
-grep -q "Failed to fetch remote; remote status may use cached refs from your last successful remote update." "$degraded_report_path" || \
-  fail "report should include fetch warning"
-grep -q "Failed to query pull requests for 'main'; PR column shown as N/A." "$degraded_report_path" || \
-  fail "report should include PR warning"
+grep -Fq "[offline]" "$TMPDIR/degraded.out" || \
+  fail "degraded remote rows should be marked [offline]"
 pass "degraded helper diagnostics"
 
 echo "All lsbranch smoke tests passed."

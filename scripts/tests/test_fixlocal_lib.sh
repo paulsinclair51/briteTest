@@ -79,8 +79,8 @@ EOF
     cat > "$repo/reports/README.md" <<'EOF'
 # Reports
 EOF
-    mkdir -p "$repo/reports/repository"
-    cat > "$repo/reports/repository/README.md" <<'EOF'
+    mkdir -p "$repo/reports"
+    cat > "$repo/reports/README.md" <<'EOF'
 # Repository Reports
 EOF
     cat > "$repo/include/runnerapi.h" <<'EOF'
@@ -104,8 +104,8 @@ EOF
     cat > "$repo/reports/README.md" <<'EOF'
 # Reports
 EOF
-    mkdir -p "$repo/reports/repository"
-    cat > "$repo/reports/repository/README.md" <<'EOF'
+    mkdir -p "$repo/reports"
+    cat > "$repo/reports/README.md" <<'EOF'
 # Repository Reports
 EOF
     git -C "$repo" add README.md scripts reports config
@@ -160,7 +160,7 @@ attach_reachable_origin() {
 
 latest_report() {
   local repo="$1"
-  find "$repo/reports/repository" -maxdepth 1 -type f -name 'repository-*.md' | sort | tail -n 1
+  find "$repo/reports" -maxdepth 1 -type f -name 'repository-*.md' | sort | tail -n 1
 }
 
 fixlocal_test_init() {

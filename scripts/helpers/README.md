@@ -16,7 +16,10 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 **ckrole.sh**: Check role for the user.
 
-**common_utils.sh**: Shared utility helpers.
+**ckstyle.sh**: Internal style validation and report helper used by
+`<repo>/scripts/bin/report`. Exposes `bt_ckstyle()`, validates documents,
+headers, sources, scripts, directory guides, and version consistency, and
+writes the latest `style-<datetime>.md` report.
 
 **common.sh**: Shared output and branch-detection helpers.
 - `bt_info()` - Print info message
@@ -24,6 +27,8 @@ See `<repo>/README.md` for an introduction to briteTest.
 - `bt_error_exit()` - Print error and exit
 - `bt_get_current_branch()` - Get current branch name
 - `ensure_hooks_installed()` - Verify/install Git hooks
+
+**common_utils.sh**: Shared utility helpers.
 
 **git_helpers.sh**: Shared branch lookup and resolution helpers.
 - Branch validation functions
