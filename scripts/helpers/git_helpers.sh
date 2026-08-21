@@ -29,6 +29,116 @@ bt_run_remote_command() {
   "$@"
 }
 
+bt_git_preferred_branch_ref() {
+  local mode="$1"
+  local branch="$2"
+
+  if [[ "$mode" == "remote" ]] && \
+    git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+    printf 'refs/remotes/origin/%s\n' "$branch"
+  elif git show-ref --verify --quiet "refs/heads/$branch"; then
+    printf 'refs/heads/%s\n' "$branch"
+  elif git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+    printf 'refs/remotes/origin/%s\n' "$branch"
+  fi
+}
+
+bt_git_format_tracking_relation_tag() {
+  local mode="$1"
+  local ahead="$2"
+  local behind="$3"
+  local has_uncommitted="$4"
+
+  [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
+
+  if [[ "$ahead" -eq 0 && "$behind" -eq 0 ]]; then
+    [[ "$has_uncommitted" == false ]] && printf '[synced]'
+  elif [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
+    if [[ "$mode" == "local" ]]; then
+      printf '[ahead of remote by %s]' "$ahead"
+    else
+      printf '[behind local by %s]' "$ahead"
+    fi
+  elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
+    if [[ "$mode" == "local" ]]; then
+      printf '[behind remote by %s]' "$behind"
+    else
+      printf '[ahead of local by %s]' "$behind"
+    fi
+  elif [[ "$mode" == "local" ]]; then
+    printf '[diverged from remote: %s/%s]' "$ahead" "$behind"
+  else
+    printf '[diverged from local: %s/%s]' "$behind" "$ahead"
+  fi
+  return 0
+}
+
+bt_git_format_parent_relation_tags() {
+  local parent="$1"
+  local ahead="$2"
+  local behind="$3"
+  local available="$4"
+
+  [[ -n "$parent" ]] || return 0
+  if [[ "$available" != true ]]; then
+    printf '[parent unavailable: %s]' "$parent"
+    return 0
+  fi
+
+  printf '[parent: %s]' "$parent"
+  [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
+
+  if [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
+    printf ' [ahead of parent by %s]' "$ahead"
+  elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
+    printf ' [behind parent by %s]' "$behind"
+  elif [[ "$ahead" -gt 0 && "$behind" -gt 0 ]]; then
+    printf ' [diverged from parent: %s/%s]' "$ahead" "$behind"
+  fi
+  return 0
+}
+
+bt_git_tracking_relation_tag() {
+  local mode="$1"
+  local local_ref="$2"
+  local remote_ref="$3"
+  local has_uncommitted="$4"
+  local ahead=0
+  local behind=0
+  local counts=""
+
+  counts=$(git rev-list --left-right --count \
+    "$local_ref...$remote_ref" 2>/dev/null || true)
+  read -r ahead behind <<< "$counts"
+  bt_git_format_tracking_relation_tag \
+    "$mode" "$ahead" "$behind" "$has_uncommitted"
+}
+
+bt_git_parent_relation_tags() {
+  local mode="$1"
+  local branch="$2"
+  local selected_ref="$3"
+  local parent=""
+  local parent_ref=""
+  local ahead=0
+  local behind=0
+  local counts=""
+  local available=false
+
+  parent=$(bt_resolve_parent_branch "$branch" "main" 2>/dev/null || true)
+  [[ -n "$parent" ]] || return 0
+  parent_ref=$(bt_git_preferred_branch_ref "$mode" "$parent")
+
+  if [[ -n "$parent_ref" ]]; then
+    available=true
+    counts=$(git rev-list --left-right --count \
+      "$selected_ref...$parent_ref" 2>/dev/null || true)
+    read -r ahead behind <<< "$counts"
+  fi
+  bt_git_format_parent_relation_tags \
+    "$parent" "$ahead" "$behind" "$available"
+}
+
 bt_git_reset_change_summary() {
   BT_CHANGE_MODIFIED_FILES=0
   BT_CHANGE_DELETED_FILES=0

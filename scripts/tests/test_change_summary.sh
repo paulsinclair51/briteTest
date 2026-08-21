@@ -20,6 +20,24 @@ fail() {
   exit 1
 }
 
+[[ "$(bt_git_format_tracking_relation_tag local 0 0 false)" == \
+  "[synced]" ]] || fail "synced tracking tag"
+[[ -z "$(bt_git_format_tracking_relation_tag local 0 0 true)" ]] || \
+  fail "uncommitted tracking tag suppression"
+[[ "$(bt_git_format_tracking_relation_tag local 2 0 false)" == \
+  "[ahead of remote by 2]" ]] || fail "local-ahead tracking tag"
+[[ "$(bt_git_format_tracking_relation_tag remote 2 0 false)" == \
+  "[behind local by 2]" ]] || fail "remote-behind tracking tag"
+[[ "$(bt_git_format_tracking_relation_tag local 2 3 false)" == \
+  "[diverged from remote: 2/3]" ]] || fail "local tracking divergence tag"
+[[ "$(bt_git_format_tracking_relation_tag remote 2 3 false)" == \
+  "[diverged from local: 3/2]" ]] || fail "remote tracking divergence tag"
+[[ "$(bt_git_format_parent_relation_tags v1.0.0 2 3 true)" == \
+  "[parent: v1.0.0] [diverged from parent: 2/3]" ]] || \
+  fail "parent divergence tags"
+[[ "$(bt_git_format_parent_relation_tags v2.0.0 0 0 false)" == \
+  "[parent unavailable: v2.0.0]" ]] || fail "unavailable parent tag"
+
 cat > "$TMPDIR/old-files" <<'EOF'
 same.txt
 deleted-root.txt

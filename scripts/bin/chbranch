@@ -69,7 +69,8 @@ Outputs:
   - Writes errors and guidance to stderr.
 
 Status tags:
-  [local]                       Selected the local branch; a remote also exists.
+  [local]                       Selected the local branch; a remote also exists
+                                or current remote status is unavailable.
   [local only]                  Selected a local branch with no remote branch.
   [remote]                      Selected the remote snapshot; a local also exists.
   [remote only]                 Selected a remote snapshot with no local branch.
@@ -89,15 +90,15 @@ Status tags:
                                 and M remote-only commits.
   [diverged from local: N/M]    Remote and local have diverged; N remote-only
                                 and M local-only commits.
-  [ahead of parent by N]        Selected branch has N commits not on its parent.
-  [behind parent by N]          Parent has N commits not on the selected branch.
-  [diverged from parent: N/M]   Selected branch and parent have diverged; N
-                                selected-only and M parent-only commits.
   [parent: NAME]                NAME is the selected branch's parent.
   [parent unavailable: NAME]    NAME is the selected branch's parent, but that
                                 branch is not available locally or among
                                 downloaded remote branches. It may not have
                                 been fetched, or it may have been deleted.
+  [ahead of parent by N]        Selected branch has N commits not on its parent.
+  [behind parent by N]          Parent has N commits not on the selected branch.
+  [diverged from parent: N/M]   Selected branch and parent have diverged; N
+                                selected-only and M parent-only commits.
 
 Exit codes:
   0    Success (changed to or refreshed the specified branch, reselected the
@@ -212,88 +213,6 @@ ensure_required_commands() {
   done
 }
 
-branch_relation_tag() {
-  local mode="$1"
-  local local_ref="$2"
-  local remote_ref="$3"
-  local has_uncommitted="$4"
-  local ahead=0
-  local behind=0
-  local counts=""
-
-  counts="$(git rev-list --left-right --count \
-    "$local_ref...$remote_ref" 2>/dev/null || true)"
-  read -r ahead behind <<< "$counts"
-  [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
-
-  if [[ "$ahead" -eq 0 && "$behind" -eq 0 ]]; then
-    [[ "$has_uncommitted" == false ]] && printf '[synced]'
-  elif [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
-    if [[ "$mode" == "local" ]]; then
-      printf '[ahead of remote by %s]' "$ahead"
-    else
-      printf '[behind local by %s]' "$ahead"
-    fi
-  elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
-    if [[ "$mode" == "local" ]]; then
-      printf '[behind remote by %s]' "$behind"
-    else
-      printf '[ahead of local by %s]' "$behind"
-    fi
-  elif [[ "$mode" == "local" ]]; then
-    printf '[diverged from remote: %s/%s]' "$ahead" "$behind"
-  else
-    printf '[diverged from local: %s/%s]' "$behind" "$ahead"
-  fi
-  return 0
-}
-
-parent_relation_tag() {
-  local mode="$1"
-  local branch="$2"
-  local selected_ref="$3"
-  local parent=""
-  local parent_ref=""
-  local ahead=0
-  local behind=0
-  local counts=""
-
-  parent="$(bt_resolve_parent_branch "$branch" "main")"
-  [[ -n "$parent" ]] || return 0
-
-  if [[ "$mode" == "remote" ]]; then
-    if git rev-parse --verify "refs/remotes/origin/$parent" >/dev/null 2>&1; then
-      parent_ref="refs/remotes/origin/$parent"
-    elif git rev-parse --verify "refs/heads/$parent" >/dev/null 2>&1; then
-      parent_ref="refs/heads/$parent"
-    fi
-  elif git rev-parse --verify "refs/heads/$parent" >/dev/null 2>&1; then
-    parent_ref="refs/heads/$parent"
-  elif git rev-parse --verify "refs/remotes/origin/$parent" >/dev/null 2>&1; then
-    parent_ref="refs/remotes/origin/$parent"
-  fi
-  if [[ -z "$parent_ref" ]]; then
-    printf '[parent unavailable: %s]' "$parent"
-    return 0
-  fi
-
-  printf '[parent: %s]' "$parent"
-
-  counts="$(git rev-list --left-right --count \
-    "$selected_ref...$parent_ref" 2>/dev/null || true)"
-  read -r ahead behind <<< "$counts"
-  [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
-
-  if [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
-    printf ' [ahead of parent by %s]' "$ahead"
-  elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
-    printf ' [behind parent by %s]' "$behind"
-  elif [[ "$ahead" -gt 0 && "$behind" -gt 0 ]]; then
-    printf ' [diverged from parent: %s/%s]' "$ahead" "$behind"
-  fi
-  return 0
-}
-
 emit_success_changed() {
   local mode="$1"
   local branch="$2"
@@ -332,13 +251,14 @@ emit_success_changed() {
     tags+=("[offline]")
   elif git rev-parse --verify "$local_ref" >/dev/null 2>&1 && \
     git rev-parse --verify "$remote_ref" >/dev/null 2>&1; then
-    relation_tag="$(branch_relation_tag \
+    relation_tag="$(bt_git_tracking_relation_tag \
       "$mode" "$local_ref" "$remote_ref" "$has_uncommitted")"
     [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
   fi
 
   [[ "$mode" == "remote" ]] && selected_ref="$remote_ref"
-  parent_tag="$(parent_relation_tag "$mode" "$branch" "$selected_ref")"
+  parent_tag="$(bt_git_parent_relation_tags \
+    "$mode" "$branch" "$selected_ref")"
   [[ -z "$parent_tag" ]] || tags+=("$parent_tag")
 
   echo "Changed to $branch branch. ${tags[*]}"

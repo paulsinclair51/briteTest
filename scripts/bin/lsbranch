@@ -755,17 +755,6 @@ ensure_remote_refs_fetched() {
   esac
 }
 
-# shellcheck disable=SC2317  # Called during report row formatting.
-format_zero_as_dash() {
-  local value="$1"
-
-  if [[ "$value" =~ ^[0-9]+$ && "$value" -eq 0 ]]; then
-    echo "-"
-  else
-    echo "$value"
-  fi
-}
-
 format_zero_as_blank() {
   local value="$1"
 
@@ -1105,88 +1094,6 @@ format_ahead_behind_segments() {
   fi
 }
 
-tracking_relation_tag() {
-  local mode="$1"
-  local branch="$2"
-  local has_uncommitted="$3"
-  local ahead=0
-  local behind=0
-  local counts=""
-
-  counts=$(git rev-list --left-right --count \
-    "$branch...origin/$branch" 2>/dev/null || true)
-  read -r ahead behind <<< "$counts"
-  [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
-
-  if [[ "$ahead" -eq 0 && "$behind" -eq 0 ]]; then
-    [[ "$has_uncommitted" == false ]] && printf '[synced]'
-  elif [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
-    if [[ "$mode" == "local" ]]; then
-      printf '[ahead of remote by %s]' "$ahead"
-    else
-      printf '[behind local by %s]' "$ahead"
-    fi
-  elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
-    if [[ "$mode" == "local" ]]; then
-      printf '[behind remote by %s]' "$behind"
-    else
-      printf '[ahead of local by %s]' "$behind"
-    fi
-  elif [[ "$mode" == "local" ]]; then
-    printf '[diverged from remote: %s/%s]' "$ahead" "$behind"
-  else
-    printf '[diverged from local: %s/%s]' "$behind" "$ahead"
-  fi
-  return 0
-}
-
-parent_status_tags() {
-  local mode="$1"
-  local branch="$2"
-  local parent=""
-  local selected_ref="$branch"
-  local parent_ref=""
-  local ahead=0
-  local behind=0
-  local counts=""
-
-  parent=$(bt_resolve_parent_branch "$branch" "main" 2>/dev/null || true)
-  [[ -n "$parent" ]] || return 0
-
-  if [[ "$mode" == "remote" ]]; then
-    selected_ref="origin/$branch"
-    if has_remote_branch "$parent"; then
-      parent_ref="origin/$parent"
-    elif has_local_branch "$parent"; then
-      parent_ref="$parent"
-    fi
-  elif has_local_branch "$parent"; then
-    parent_ref="$parent"
-  elif has_remote_branch "$parent"; then
-    parent_ref="origin/$parent"
-  fi
-
-  if [[ -z "$parent_ref" ]]; then
-    printf '[parent unavailable: %s]' "$parent"
-    return 0
-  fi
-
-  printf '[parent: %s]' "$parent"
-  counts=$(git rev-list --left-right --count \
-    "$selected_ref...$parent_ref" 2>/dev/null || true)
-  read -r ahead behind <<< "$counts"
-  [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
-
-  if [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
-    printf ' [ahead of parent by %s]' "$ahead"
-  elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
-    printf ' [behind parent by %s]' "$behind"
-  elif [[ "$ahead" -gt 0 && "$behind" -gt 0 ]]; then
-    printf ' [diverged from parent: %s/%s]' "$ahead" "$behind"
-  fi
-  return 0
-}
-
 build_compact_status_tags() {
   local mode="$1"
   local branch="$2"
@@ -1200,6 +1107,7 @@ build_compact_status_tags() {
   local mode_tag="$mode"
   local relation_tag=""
   local parent_tags=""
+  local selected_ref="$branch"
   local -a tags=()
 
   if [[ "$mode" == "local" && "$branch_type" == "local" && \
@@ -1228,12 +1136,14 @@ build_compact_status_tags() {
     ( "$mode" == "remote" || "$include_remote_rows" == true ) ]]; then
     tags+=("[offline]")
   elif [[ "$branch_type" == "local (tracking origin)" ]]; then
-    relation_tag=$(tracking_relation_tag \
-      "$mode" "$branch" "$has_uncommitted")
+    relation_tag=$(bt_git_tracking_relation_tag \
+      "$mode" "$branch" "origin/$branch" "$has_uncommitted")
     [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
   fi
 
-  parent_tags=$(parent_status_tags "$mode" "$branch")
+  [[ "$mode" == "remote" ]] && selected_ref="origin/$branch"
+  parent_tags=$(bt_git_parent_relation_tags \
+    "$mode" "$branch" "$selected_ref")
   [[ -z "$parent_tags" ]] || tags+=("$parent_tags")
 
   if [[ "$mode" == "local" && "$auto_stash_count" =~ ^[0-9]+$ && \
