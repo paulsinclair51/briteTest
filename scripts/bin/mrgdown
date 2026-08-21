@@ -130,6 +130,11 @@ PARENT_BRANCH=""
 MERGE_UPDATED_FILES=0
 MERGE_ADDED_FILES=0
 MERGE_DELETED_FILES=0
+MERGE_RENAMED_FILES=0
+MERGE_RENAMED_MODIFIED_FILES=0
+MERGE_DELETED_DIRECTORIES=0
+MERGE_ADDED_DIRECTORIES=0
+MERGE_RENAMED_DIRECTORIES=0
 MERGE_FILE_SUMMARY_TEXT=""
 OPERATION_STARTED=false
 ERROR_REPORT_WRITTEN=false
@@ -191,27 +196,19 @@ release_report_lock() {
 }
 
 collect_staged_merge_file_summary() {
-  MERGE_UPDATED_FILES=0
-  MERGE_ADDED_FILES=0
-  MERGE_DELETED_FILES=0
+  local staged_tree=""
 
-  while IFS=$'\t' read -r status _; do
-    case "$status" in
-      M|R*|C*)
-        MERGE_UPDATED_FILES=$((MERGE_UPDATED_FILES + 1))
-        ;;
-      A)
-        MERGE_ADDED_FILES=$((MERGE_ADDED_FILES + 1))
-        ;;
-      D)
-        MERGE_DELETED_FILES=$((MERGE_DELETED_FILES + 1))
-        ;;
-    esac
-  done < <(git diff --cached --name-status --find-renames 2>/dev/null || true)
-
-  MERGE_FILE_SUMMARY_TEXT="${MERGE_UPDATED_FILES} modified, "\
-"${MERGE_ADDED_FILES} added, and "\
-"${MERGE_DELETED_FILES} deleted files"
+  staged_tree="$(git write-tree 2>/dev/null)" || return 1
+  bt_git_collect_ref_change_summary HEAD "$staged_tree"
+  MERGE_UPDATED_FILES="$BT_CHANGE_MODIFIED_FILES"
+  MERGE_DELETED_FILES="$BT_CHANGE_DELETED_FILES"
+  MERGE_ADDED_FILES="$BT_CHANGE_ADDED_FILES"
+  MERGE_RENAMED_FILES="$BT_CHANGE_RENAMED_FILES"
+  MERGE_RENAMED_MODIFIED_FILES="$BT_CHANGE_RENAMED_MODIFIED_FILES"
+  MERGE_DELETED_DIRECTORIES="$BT_CHANGE_DELETED_DIRECTORIES"
+  MERGE_ADDED_DIRECTORIES="$BT_CHANGE_ADDED_DIRECTORIES"
+  MERGE_RENAMED_DIRECTORIES="$BT_CHANGE_RENAMED_DIRECTORIES"
+  MERGE_FILE_SUMMARY_TEXT="$(bt_format_change_summary)"
 }
 
 cleanup_success_transient_reports() {
@@ -652,6 +649,11 @@ Parent-Commits-Integrated: $commits_to_merge
 Files-Modified: $MERGE_UPDATED_FILES
 Files-Added: $MERGE_ADDED_FILES
 Files-Deleted: $MERGE_DELETED_FILES
+Files-Renamed: $MERGE_RENAMED_FILES
+Files-Renamed-Modified: $MERGE_RENAMED_MODIFIED_FILES
+Directories-Deleted: $MERGE_DELETED_DIRECTORIES
+Directories-Added: $MERGE_ADDED_DIRECTORIES
+Directories-Renamed: $MERGE_RENAMED_DIRECTORIES
 Status: Parent branch merged into current branch
 Method: Merge commit (--no-ff) created by mrgdown" >/dev/null 2>&1; then
   bt_error_exit "$EXIT_NOT_FOUND" \

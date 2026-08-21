@@ -256,7 +256,7 @@ set -e
 [[ "$rc" -eq 0 ]] || fail "copyfix dry-run should exit 0 (got $rc)"
 [[ "$(git -C "$WORK" rev-parse dev/target-v1.0.0)" == "$target_tip_before" ]] || \
   fail "copyfix dry-run should not update the target"
-grep -Fq "0 modified, 1 added, and 0 deleted files to be copied." "$TMPDIR/dry-run.out" || \
+grep -Fq "1 added file to be copied." "$TMPDIR/dry-run.out" || \
   fail "dry-run output should include file summary"
 dry_report="$(latest_report 'copyfix-d-*.md')"
 [[ -f "$dry_report" ]] || fail "copyfix dry-run should create a report"
@@ -264,7 +264,7 @@ grep -Fq "**Branch:** \`dev/target-v1.0.0\`" "$dry_report" || \
   fail "dry-run report should belong to the target branch"
 grep -Fq "**Target Branch:** \`dev/target-v1.0.0\`" "$dry_report" || \
   fail "dry-run report should identify the target branch"
-grep -Fq '**Summary:** 0 modified, 1 added, and 0 deleted files to be copied.' "$dry_report" || \
+grep -Fq '**Summary:** 1 added file to be copied.' "$dry_report" || \
   fail "dry-run report should include file summary"
 echo "PASS: dry-run report belongs to target branch"
 
@@ -294,7 +294,7 @@ copy_note="$(git -C "$WORK" notes --ref=briteTest-workflow show \
   fail "copyfix event should record its branches"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/target-v1.0.0" ]] || \
   fail "copyfix should remain on the target branch"
-grep -Fq "0 modified, 1 added, and 0 deleted files copied." "$TMPDIR/custom-comment.out" || \
+grep -Fq "1 added file copied." "$TMPDIR/custom-comment.out" || \
   fail "copy output should include file summary"
 grep -Fq "Run report for details." "$TMPDIR/custom-comment.out" || \
   fail "successful copyfix should defer details to report"
@@ -372,8 +372,8 @@ set -e
   fail "rename copyfix should remain on the target branch"
 [[ -z "$(git -C "$WORK" status --porcelain)" ]] || \
   fail "rename copyfix should leave the target worktree clean"
-grep -Fq "1 modified, 0 added, and 0 deleted files copied." "$TMPDIR/rename.out" || \
-  fail "rename copy should count rename as modified"
+grep -Fq "1 renamed file copied." "$TMPDIR/rename.out" || \
+  fail "rename copy should count a pure rename separately"
 echo "PASS: rename-based copy summary is counted correctly"
 
 set +e
@@ -553,7 +553,7 @@ set -e
 [[ "$rc" -eq 0 ]] || fail "copyfix --continue should exit 0 (got $rc)"
 [[ "$(git -C "$WORK" show dev/conflict-target-v1.0.0:README.md)" == \
   "resolved conflict" ]] || fail "continued copyfix should update the target branch"
-grep -Eq "files copied\\." "$TMPDIR/continue.out" || \
+grep -Eq "files? copied\\." "$TMPDIR/continue.out" || \
   fail "continued copyfix should report the copied file summary"
 grep -Fq "Run report for details." "$TMPDIR/continue.out" || \
   fail "continued copyfix should defer details to report"

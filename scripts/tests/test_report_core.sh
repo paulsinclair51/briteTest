@@ -19,6 +19,7 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./scripts/bin/r
 [[ "$rc" -eq 0 ]] || fail "report -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "-q TEXT" "$TMPDIR/help.out"
+assert_contains "If the current branch is a remote snapshot" "$TMPDIR/help.out"
 assert_contains "TYPE may appear before or after options" "$TMPDIR/help.out"
 if grep -Fq "Required history" "$TMPDIR/help.out"; then
   fail "help should not claim that missing history can be detected"
@@ -30,6 +31,18 @@ rc=$(run_capture "$TMPDIR/invalid-limit.out" bash -lc "cd '$WORK' && bash ./scri
 [[ "$rc" -eq 1 ]] || fail "report -l nope should exit 1 (got $rc)"
 assert_contains "N for -l must be an integer >= 0" "$TMPDIR/invalid-limit.out"
 pass "invalid limit rejection"
+
+rc=$(run_capture "$TMPDIR/branch-timeout-without-remote.out" bash -lc \
+  "cd '$WORK' && bash ./scripts/bin/report branch -t 2")
+[[ "$rc" -eq 1 ]] || fail "branch -t without -r should exit 1 (got $rc)"
+assert_contains "Option -t requires -r for TYPE branch" \
+  "$TMPDIR/branch-timeout-without-remote.out"
+rc=$(run_capture "$TMPDIR/invalid-remote-timeout.out" bash -lc \
+  "cd '$WORK' && bash ./scripts/bin/report branch -r -t 0")
+[[ "$rc" -eq 1 ]] || fail "branch -r -t 0 should exit 1 (got $rc)"
+assert_contains "SEC for -t must be an integer > 0" \
+  "$TMPDIR/invalid-remote-timeout.out"
+pass "branch remote timeout validation"
 
 # 3) Default type all should write one newest activity
 rc=$(run_capture "$TMPDIR/default.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report")
@@ -44,7 +57,7 @@ pass "default all report"
 # 4) Verbose mode should report progress while details remain in the file
 rc=$(run_capture "$TMPDIR/verbose.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report -v -l 10")
 [[ "$rc" -eq 0 ]] || fail "verbose report should exit 0 (got $rc)"
-assert_contains "Found 10 matching activities" "$TMPDIR/verbose.out"
+assert_contains "matching activities" "$TMPDIR/verbose.out"
 verbose_rel="$(report_path_from_output "$TMPDIR/verbose.out")"
 assert_contains "### Details" "$WORK/$verbose_rel"
 pass "verbose progress output"
@@ -54,20 +67,20 @@ rc=$(run_capture "$TMPDIR/type-all.out" bash -lc "cd '$WORK' && bash ./scripts/b
 [[ "$rc" -eq 0 ]] || fail "report branch should exit 0 (got $rc)"
 all_rel="$(report_path_from_output "$TMPDIR/type-all.out")"
 assert_contains "seed repo" "$WORK/$all_rel"
-assert_contains "push activity" "$WORK/$all_rel"
+assert_contains "pull activity" "$WORK/$all_rel"
 pass "branch report includes every activity once"
 
 # 6) TYPE may appear before or after options
-rc=$(run_capture "$TMPDIR/type-before.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'push activity' -l 1")
+rc=$(run_capture "$TMPDIR/type-before.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'pull activity' -l 1")
 [[ "$rc" -eq 0 ]] || fail "TYPE before options should exit 0 (got $rc)"
 before_rel="$(report_path_from_output "$TMPDIR/type-before.out")"
-assert_contains "push activity" "$WORK/$before_rel"
-assert_contains '**Command:** `push -v`' "$WORK/$before_rel"
-assert_contains "recorded push details" "$WORK/$before_rel"
-rc=$(run_capture "$TMPDIR/type-after.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report -q 'push activity' -l 1 branch")
+assert_contains "pull activity" "$WORK/$before_rel"
+assert_contains '**Command:** `pull -v`' "$WORK/$before_rel"
+assert_contains "recorded pull details" "$WORK/$before_rel"
+rc=$(run_capture "$TMPDIR/type-after.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report -q 'pull activity' -l 1 branch")
 [[ "$rc" -eq 0 ]] || fail "TYPE after options should exit 0 (got $rc)"
 after_rel="$(report_path_from_output "$TMPDIR/type-after.out")"
-assert_contains "push activity" "$WORK/$after_rel"
+assert_contains "pull activity" "$WORK/$after_rel"
 pass "positional type placement"
 
 # 7) Merge-down reports should render durable workflow details

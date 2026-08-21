@@ -13,6 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 REPORT_SRC="$REPO_ROOT/scripts/bin/report"
 COMMON_HELPER_SRC="$REPO_ROOT/scripts/helpers/common.sh"
+GIT_HELPER_SRC="$REPO_ROOT/scripts/helpers/git_helpers.sh"
 REPORT_HELPER_SRC="$REPO_ROOT/scripts/helpers/report_helpers.sh"
 
 pass() {
@@ -71,6 +72,7 @@ report_test_init() {
   mkdir -p "$WORK/scripts/bin" "$WORK/scripts/helpers"
   cp "$REPORT_SRC" "$WORK/scripts/bin/report"
   cp "$COMMON_HELPER_SRC" "$WORK/scripts/helpers/common.sh"
+  cp "$GIT_HELPER_SRC" "$WORK/scripts/helpers/git_helpers.sh"
   cp "$REPORT_HELPER_SRC" "$WORK/scripts/helpers/report_helpers.sh"
   cat > "$WORK/scripts/helpers/ckstyle.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -128,7 +130,7 @@ EOF
 
     remote_push_tip="$(git rev-parse origin/dev/report-tests-v1.0.0)"
     remote_push_previous="$(git rev-parse "${remote_push_tip}^")"
-    git notes --ref=briteTest-workflow append -m \
+    git notes --ref=briteTest-remote-workflow append -m \
       "--- briteTest workflow ---
 Workflow-Type: push
 Workflow-Time: 2026-08-16 11:59:59
@@ -138,6 +140,9 @@ Command-Line: push -t 5
 Summary: Pushed 1 commit(s) to origin/dev/report-tests-v1.0.0
 Details: Previous-Remote-Tip: $remote_push_previous; Pushed-Tip: $remote_push_tip; Commits: 1; Files: 1 modified, 0 added, 0 deleted" \
       "$remote_push_tip" >/dev/null 2>&1
+    git push origin \
+      refs/notes/briteTest-remote-workflow:refs/notes/briteTest-remote-workflow \
+      >/dev/null 2>&1
 
     git commit --allow-empty \
       -m "mrgup activity" \
@@ -184,17 +189,17 @@ Method: Cherry-pick created by copyfix" \
       -m $'## Workflow Metadata\n\nCommand-Line: mrgdown -f\nSource-Branch: v1.0.0\nTarget-Branch: dev/report-tests-v1.0.0\nParent-Commits-Integrated: 2\nFiles-Modified: 1\nFiles-Added: 1\nFiles-Deleted: 0\nStatus: Parent branch merged into current branch\nMethod: Merge commit (--no-ff) created by mrgdown' \
       >/dev/null 2>&1
 
-    for workflow_type in push pull; do
-      git notes --ref=briteTest-workflow append -m \
-        "--- briteTest workflow ---
-Workflow-Type: $workflow_type
-Workflow-Time: 2026-08-16 12:00:0${#workflow_type}
+    git notes --ref=briteTest-workflow append -m \
+      "--- briteTest workflow ---
+Workflow-Type: pull
+Workflow-Time: 2026-08-16 12:00:04
 Workflow-Branch: dev/report-tests-v1.0.0
 Workflow-User: testuser <test@example.com>
-Command-Line: $workflow_type -v
-Summary: $workflow_type activity
-Status: recorded $workflow_type details" HEAD >/dev/null 2>&1
-    done
+Command-Line: pull -v
+Summary: pull activity
+Record-Group: appended pair
+Status: recorded pull details with --- briteTest workflow --- marker" \
+  HEAD >/dev/null 2>&1
 
     retarget_tip="$(git rev-parse HEAD)"
     git notes --ref=briteTest-workflow append -m \
@@ -208,8 +213,18 @@ Summary: retarget activity
 Old-Parent: v1.0.0
 New-Parent: v1.1.0
 Retargeted-Tip: $retarget_tip
+Record-Group: appended pair
 Comment: move branch" \
   HEAD >/dev/null 2>&1
+
+    git notes --ref=briteTest-workflow append -m \
+      "--- briteTest workflow ---
+Workflow-Type: push
+Workflow-Time: 2026-08-16 12:00:09
+Workflow-Branch: dev/report-tests-v1.0.0
+Workflow-User: testuser <test@example.com>
+Command-Line: push
+Status: malformed fixture missing summary" HEAD >/dev/null 2>&1
 
     git checkout -b sandbox/report-other >/dev/null 2>&1
     echo "other" > other.txt

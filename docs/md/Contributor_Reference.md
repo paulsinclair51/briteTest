@@ -280,6 +280,12 @@ report is written directly in `reports/` as `repo-<datetime>.md`,
 `local-<datetime>.md`, `remote-<datetime>.md`, or `style-<datetime>.md`.
 Only one report with each filename prefix is kept. Local and remote reports
 are retained independently.
+
+Use `report branch -r [-t SEC]` to refresh and report the remote corresponding
+to the current local branch or remote snapshot without changing the checked-out
+branch, detached snapshot, or worktree. For a remote snapshot, `-r` reports the
+current remote state rather than the snapshot state. The timeout defaults to
+10 seconds.
 </details>
 
 <details>
@@ -381,12 +387,12 @@ release <version> [OPTIONS]
 
 #### 1.1.12. retarget
 
-**Purpose:** Retarget a targeted branch to a different version branch.
+**Purpose:** Retarget a targeted branch locally to a different version branch.
 
 **Usage:**
 
 ```bash
-retarget <branch_name> <new_version>
+retarget [-r] <branch_name> <new_version>
 ```
 
 **Notes:**

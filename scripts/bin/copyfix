@@ -181,32 +181,31 @@ COMMITS=""
 FILES_MODIFIED=0
 FILES_ADDED=0
 FILES_DELETED=0
+FILES_RENAMED=0
+FILES_RENAMED_MODIFIED=0
+DIRECTORIES_DELETED=0
+DIRECTORIES_ADDED=0
+DIRECTORIES_RENAMED=0
+FILE_COPY_SUMMARY=""
 
 format_file_copy_summary() {
   local suffix="$1"
-  printf '%s modified, %s added, and %s deleted files %s.' \
-    "$FILES_MODIFIED" "$FILES_ADDED" "$FILES_DELETED" "$suffix"
+  printf '%s %s.' "$FILE_COPY_SUMMARY" "$suffix"
 }
 
 compute_file_copy_counts() {
   local source_branch="$1"
   local target_branch="$2"
-  local status=""
-
-  FILES_MODIFIED=0
-  FILES_ADDED=0
-  FILES_DELETED=0
-
-  while IFS=$'\t' read -r status _; do
-    [[ -n "$status" ]] || continue
-    case "$status" in
-      A*) FILES_ADDED=$((FILES_ADDED + 1)) ;;
-      D*) FILES_DELETED=$((FILES_DELETED + 1)) ;;
-      R*) FILES_MODIFIED=$((FILES_MODIFIED + 1)) ;;
-      *) FILES_MODIFIED=$((FILES_MODIFIED + 1)) ;;
-    esac
-  done < <(git diff --name-status --find-renames \
-    "$target_branch..$source_branch" 2>/dev/null || true)
+  bt_git_collect_ref_change_summary "$target_branch" "$source_branch"
+  FILES_MODIFIED="$BT_CHANGE_MODIFIED_FILES"
+  FILES_DELETED="$BT_CHANGE_DELETED_FILES"
+  FILES_ADDED="$BT_CHANGE_ADDED_FILES"
+  FILES_RENAMED="$BT_CHANGE_RENAMED_FILES"
+  FILES_RENAMED_MODIFIED="$BT_CHANGE_RENAMED_MODIFIED_FILES"
+  DIRECTORIES_DELETED="$BT_CHANGE_DELETED_DIRECTORIES"
+  DIRECTORIES_ADDED="$BT_CHANGE_ADDED_DIRECTORIES"
+  DIRECTORIES_RENAMED="$BT_CHANGE_RENAMED_DIRECTORIES"
+  FILE_COPY_SUMMARY="$(bt_format_change_summary)"
 }
 
 format_command_line() {
@@ -447,6 +446,15 @@ save_copyfix_state() {
   printf '%s\n' "$FILES_MODIFIED" > "$COPYFIX_STATE_DIR/files-modified"
   printf '%s\n' "$FILES_ADDED" > "$COPYFIX_STATE_DIR/files-added"
   printf '%s\n' "$FILES_DELETED" > "$COPYFIX_STATE_DIR/files-deleted"
+  printf '%s\n' "$FILES_RENAMED" > "$COPYFIX_STATE_DIR/files-renamed"
+  printf '%s\n' "$FILES_RENAMED_MODIFIED" \
+    > "$COPYFIX_STATE_DIR/files-renamed-modified"
+  printf '%s\n' "$DIRECTORIES_DELETED" \
+    > "$COPYFIX_STATE_DIR/directories-deleted"
+  printf '%s\n' "$DIRECTORIES_ADDED" \
+    > "$COPYFIX_STATE_DIR/directories-added"
+  printf '%s\n' "$DIRECTORIES_RENAMED" \
+    > "$COPYFIX_STATE_DIR/directories-renamed"
 }
 
 apply_copy_comment() {
@@ -480,6 +488,11 @@ record_copyfix_success() {
     "Files-Modified" "$FILES_MODIFIED" \
     "Files-Added" "$FILES_ADDED" \
     "Files-Deleted" "$FILES_DELETED" \
+    "Files-Renamed" "$FILES_RENAMED" \
+    "Files-Renamed-Modified" "$FILES_RENAMED_MODIFIED" \
+    "Directories-Deleted" "$DIRECTORIES_DELETED" \
+    "Directories-Added" "$DIRECTORIES_ADDED" \
+    "Directories-Renamed" "$DIRECTORIES_RENAMED" \
     "Status" "Fix commits copied to target branch" \
     "Method" "Cherry-pick created by copyfix"; then
     bt_error_exit "$EXIT_GIT_FAILED" \
@@ -659,6 +672,25 @@ if [[ "$CONTINUE_MODE" == true ]]; then
   FILES_ADDED="$(cat "$COPYFIX_STATE_DIR/files-added" 2>/dev/null || echo 0)"
   FILES_DELETED="$(cat "$COPYFIX_STATE_DIR/files-deleted" 2>/dev/null || \
     echo 0)"
+  FILES_RENAMED="$(cat "$COPYFIX_STATE_DIR/files-renamed" 2>/dev/null || \
+    echo 0)"
+  FILES_RENAMED_MODIFIED="$(cat \
+    "$COPYFIX_STATE_DIR/files-renamed-modified" 2>/dev/null || echo 0)"
+  DIRECTORIES_DELETED="$(cat \
+    "$COPYFIX_STATE_DIR/directories-deleted" 2>/dev/null || echo 0)"
+  DIRECTORIES_ADDED="$(cat \
+    "$COPYFIX_STATE_DIR/directories-added" 2>/dev/null || echo 0)"
+  DIRECTORIES_RENAMED="$(cat \
+    "$COPYFIX_STATE_DIR/directories-renamed" 2>/dev/null || echo 0)"
+  BT_CHANGE_MODIFIED_FILES="$FILES_MODIFIED"
+  BT_CHANGE_DELETED_FILES="$FILES_DELETED"
+  BT_CHANGE_ADDED_FILES="$FILES_ADDED"
+  BT_CHANGE_RENAMED_FILES="$FILES_RENAMED"
+  BT_CHANGE_RENAMED_MODIFIED_FILES="$FILES_RENAMED_MODIFIED"
+  BT_CHANGE_DELETED_DIRECTORIES="$DIRECTORIES_DELETED"
+  BT_CHANGE_ADDED_DIRECTORIES="$DIRECTORIES_ADDED"
+  BT_CHANGE_RENAMED_DIRECTORIES="$DIRECTORIES_RENAMED"
+  FILE_COPY_SUMMARY="$(bt_format_change_summary)"
   if [[ -n "$TARGET_BRANCH" && "$current_branch" != "$TARGET_BRANCH" ]]; then
     bt_error_exit "$EXIT_OPERATION_FAILED" \
       "Current branch must match the saved target branch for --continue:" \

@@ -18,6 +18,7 @@ bt_push_workflow() (
   local exit_nothing_to_push=10
   local exit_push_failed=200
   local exit_report_failed=201
+  local exit_pr_finalize_failed=202
 
   local repo_root=""
   local reports_dir=""
@@ -38,6 +39,12 @@ bt_push_workflow() (
   local pushed_modified_files=0
   local pushed_added_files=0
   local pushed_deleted_files=0
+  local pushed_renamed_files=0
+  local pushed_renamed_modified_files=0
+  local pushed_deleted_directories=0
+  local pushed_added_directories=0
+  local pushed_renamed_directories=0
+  local pushed_change_summary=""
   local -a original_args=("$@")
 
   bt_push_error_exit() {
@@ -383,6 +390,8 @@ EOF
 **Commits:** ${commits_ahead}  
 **Files:** ${files_count}
 
+**Changes:** ${pushed_change_summary}
+
 <details>
 <summary><strong>Commits</strong></summary>
 
@@ -500,45 +509,20 @@ EOF
   }
 
   bt_push_collect_stdout_summary_counts() {
-    local status=""
-    local _rest=""
-
-    pushed_modified_files=0
-    pushed_added_files=0
-    pushed_deleted_files=0
-
     if [[ "$mrgup_mode" == true && "$dry_run" == true ]]; then
-      while IFS=$'\t' read -r status _rest; do
-        [[ -n "$status" ]] || continue
-        case "$status" in
-          A*)
-            pushed_added_files=$((pushed_added_files + 1))
-            ;;
-          D*)
-            pushed_deleted_files=$((pushed_deleted_files + 1))
-            ;;
-          *)
-            pushed_modified_files=$((pushed_modified_files + 1))
-            ;;
-        esac
-      done < <(git diff --name-status --find-renames "${current_branch}" "${push_content_ref}" 2>/dev/null || true)
-      return
+      bt_git_collect_ref_change_summary "$current_branch" "$push_content_ref"
+    else
+      bt_git_collect_ref_change_summary "$remote_branch_tip" "$push_content_ref"
     fi
-
-    while IFS=$'\t' read -r status _rest; do
-      [[ -n "$status" ]] || continue
-      case "$status" in
-        A*)
-          pushed_added_files=$((pushed_added_files + 1))
-          ;;
-        D*)
-          pushed_deleted_files=$((pushed_deleted_files + 1))
-          ;;
-        *)
-          pushed_modified_files=$((pushed_modified_files + 1))
-          ;;
-      esac
-    done < <(git diff --name-status --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)
+    pushed_modified_files="$BT_CHANGE_MODIFIED_FILES"
+    pushed_deleted_files="$BT_CHANGE_DELETED_FILES"
+    pushed_added_files="$BT_CHANGE_ADDED_FILES"
+    pushed_renamed_files="$BT_CHANGE_RENAMED_FILES"
+    pushed_renamed_modified_files="$BT_CHANGE_RENAMED_MODIFIED_FILES"
+    pushed_deleted_directories="$BT_CHANGE_DELETED_DIRECTORIES"
+    pushed_added_directories="$BT_CHANGE_ADDED_DIRECTORIES"
+    pushed_renamed_directories="$BT_CHANGE_RENAMED_DIRECTORIES"
+    pushed_change_summary="$(bt_format_change_summary)"
   }
 
   while [[ $# -gt 0 ]]; do
@@ -606,8 +590,32 @@ EOF
   [[ -n "$remote_branch_tip" ]] || bt_push_error_exit "$exit_remote_branch_not_found" \
     "Remote branch '$current_branch' not found on origin"
 
+  if declare -F bt_refresh_remote_workflow_history >/dev/null 2>&1 && \
+    ! bt_refresh_remote_workflow_history; then
+    bt_push_error_exit "$exit_report_failed" \
+      "Failed to refresh remote report history before push"
+  fi
+
   commits_ahead="$(git rev-list --count "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || echo 0)"
   if [[ "$commits_ahead" == "0" ]]; then
+    if [[ "$dry_run" == false ]] && \
+      declare -F bt_push_has_pending_mrgup_pr >/dev/null 2>&1 && \
+      bt_push_has_pending_mrgup_pr; then
+      local pending_pr_state=""
+      if ! pending_pr_state="$(bt_push_get_mrgup_pr_state)"; then
+        bt_push_error_exit "$exit_pr_finalize_failed" \
+          "Remote branch is current, but its pull request state could not be read"
+      fi
+      if [[ "$pending_pr_state" == "OPEN" ]]; then
+        if bt_push_finalize_mrgup_pr "$push_content_ref"; then
+          echo "Remote $current_branch already contains the local mrgup result."
+          echo "Finalized pull request for $current_branch."
+          exit 0
+        fi
+        bt_push_error_exit "$exit_pr_finalize_failed" \
+          "Remote branch is current, but its pull request could not be finalized"
+      fi
+    fi
     bt_emit_error "Local ${current_branch} branch has no changes to push."
     bt_push_emit_guidance "commit changes before rerunning push."
     exit "$exit_nothing_to_push"
@@ -628,16 +636,40 @@ EOF
   fi
 
   if [[ "$dry_run" == true ]]; then
-    bt_push_generate_report
     bt_push_collect_stdout_summary_counts
-    echo "Dry-run: push to remote $current_branch: ${pushed_modified_files} modified, ${pushed_added_files} added, and ${pushed_deleted_files} deleted files."
+    bt_push_generate_report
+    echo "Dry-run: push to remote $current_branch: ${pushed_change_summary}."
     echo "See ${report_file#"${repo_root}"/} for details."
     exit 0
   fi
 
+  bt_push_collect_stdout_summary_counts
+  if declare -F bt_record_remote_workflow_event >/dev/null 2>&1; then
+    if ! bt_record_remote_workflow_event "push" "$current_branch" \
+      "${BT_PUSH_COMMAND_LINE:-push}" \
+      "Pushed ${commits_ahead} commit(s) to origin/$current_branch" \
+      "$push_content_ref" \
+      "Previous-Remote-Tip" "$remote_branch_tip" \
+      "Pushed-Tip" "$push_content_ref" \
+      "Commits" "$commits_ahead" \
+      "Files-Modified" "$pushed_modified_files" \
+      "Files-Deleted" "$pushed_deleted_files" \
+      "Files-Added" "$pushed_added_files" \
+      "Files-Renamed" "$pushed_renamed_files" \
+      "Files-Renamed-Modified" "$pushed_renamed_modified_files" \
+      "Directories-Deleted" "$pushed_deleted_directories" \
+      "Directories-Added" "$pushed_added_directories" \
+      "Directories-Renamed" "$pushed_renamed_directories"; then
+      bt_push_error_exit "$exit_report_failed" \
+        "Push was not started because its report history could not be recorded"
+    fi
+  fi
+
   local push_output=""
   if ! push_output="$(bt_run_remote_command env GIT_BYPASS_HOOKS=true \
-    git push origin "$current_branch" 2>&1)"; then
+    git push --atomic origin "$current_branch" \
+      refs/notes/briteTest-remote-workflow:refs/notes/briteTest-remote-workflow \
+      2>&1)"; then
     printf '%s\n' "$push_output" >&2
     bt_push_generate_error_report "Failed to push branch '$current_branch' to remote" "push failed" "$push_output"
     bt_push_error_exit "$exit_push_failed" "Failed to push branch '$current_branch' to remote"
@@ -645,23 +677,15 @@ EOF
 
   bt_push_cleanup_success_transient_reports
 
-  bt_push_collect_stdout_summary_counts
   local pushed_tip_short=""
   pushed_tip_short="$(git rev-parse --short=7 "$push_content_ref" 2>/dev/null || true)"
   [[ -n "$pushed_tip_short" ]] || pushed_tip_short="${push_content_ref:0:7}"
-  if declare -F bt_record_workflow_event >/dev/null 2>&1; then
-    if ! bt_record_workflow_event "push" "$current_branch" \
-      "${BT_PUSH_COMMAND_LINE:-push}" \
-      "Pushed ${commits_ahead} commit(s) to origin/$current_branch" \
-      "$push_content_ref" \
-      "Previous-Remote-Tip" "$remote_branch_tip" \
-      "Pushed-Tip" "$push_content_ref" \
-      "Commits" "$commits_ahead" \
-      "Files" "${pushed_modified_files} modified, ${pushed_added_files} added, ${pushed_deleted_files} deleted"; then
-      bt_push_error_exit "$exit_report_failed" \
-        "Push completed, but its report history could not be recorded"
+  if declare -F bt_push_finalize_mrgup_pr >/dev/null 2>&1; then
+    if ! bt_push_finalize_mrgup_pr "$push_content_ref"; then
+      bt_push_error_exit "$exit_pr_finalize_failed" \
+        "Push completed, but its pull request could not be finalized"
     fi
   fi
-  echo "Pushed (${pushed_tip_short}) to remote $current_branch: ${pushed_modified_files} modified, ${pushed_added_files} added, and ${pushed_deleted_files} deleted files."
-  echo "Run chbranch -r $current_branch, then run report for details."
+  echo "Pushed (${pushed_tip_short}) to remote $current_branch: ${pushed_change_summary}."
+  echo "Run report -r for details."
 )

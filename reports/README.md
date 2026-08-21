@@ -11,10 +11,10 @@ See `<repo>/README.md` for an introduction to briteTest.
 ## Files
 
 **<workflow>-d-<datetime>.md**: Latest untracked dry-run report from `pull`, `mrgup`,
-`mrgdown`, or `copyfix`, including a parent push preview from `mrgup`.
+`mrgdown`, or `copyfix`.
 
 **<workflow>-e-<datetime>.md**: Latest untracked error report from `pull`, `mrgup`,
-`mrgdown`, or `copyfix`, including a parent push failure from `mrgup`.
+`mrgdown`, or `copyfix`.
 
 **local-<datetime>.md**: Latest untracked activity report for a local branch from
 `<repo>/scripts/bin/report`.
@@ -23,7 +23,7 @@ qe
 
 **recovery-<datetime>-<id>.md**: Latest untracked remote recovery report.
 
-**remote-<datetime>.md**: Latest untracked activity report for a remote snapshot branch
+**remote-<datetime>.md**: Latest untracked activity report for a remote branch
 from `<repo>/scripts/bin/report`.
 
 **repo-<datetime>.md**: Latest untracked repository health and branch status report from
