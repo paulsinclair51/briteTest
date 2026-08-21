@@ -74,12 +74,13 @@ Status tags:
   [remote]                      Selected the remote snapshot; a local also exists.
   [remote only]                 Selected a remote snapshot with no local branch.
   [current]                     This is the currently selected branch.
-  [uncommitted]                 The local worktree has uncommitted changes.
+  [uncommitted]                 There are changes that have not been committed.
   [read-only]                   The selected branch must not be modified.
   [invalid name]                Branch name violates repository naming rules.
   [offline]                     Remote status could not be retrieved.
-  [synced]                      Local and remote committed histories match, and
-                                the local worktree has no uncommitted changes.
+  [synced]                      Local and remote committed histories match. If
+                                this is the selected local branch, it also has
+                                no uncommitted changes.
   [ahead of remote by N]        Local has N commits not on the remote.
   [behind remote by N]          Remote has N commits not on the local branch.
   [ahead of local by N]         Remote has N commits not on the local branch.
@@ -757,7 +758,7 @@ ensure_no_uncommitted_changes() {
       "$msg"
   fi
 
-  msg="Working tree has uncommitted changes. Commit or undo changes first "
+  msg="There are changes that have not been committed. Commit or undo them "
   msg+="before switching."
   bt_error_exit "$EXIT_DIRTY_WORKTREE" \
     "$msg"

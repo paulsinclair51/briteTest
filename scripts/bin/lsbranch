@@ -25,14 +25,6 @@ its parent branch.
 Use -a or PATTERN to list the status of branches matching "*"
 or PATTERN, respectively.
 
-Output includes:
-  - Branch name; `*` marks the current branch and `!` marks a name that
-    violates naming rules.
-  - Local or remote type and applicable state tags such as current, dirty,
-    read-only, staged, unstaged, synced, diverged, or unknown.
-  - Ahead/behind, unpushed commit, pull request, and auto-stash tags when
-    applicable.
-
 Arguments:
   BRANCH      Check branch with name BRANCH.
   PATTERN     Filter branches by quoted (") glob pattern on
@@ -92,6 +84,44 @@ Outputs:
   - When remote is unreachable, remote fields use cached local
     remote refs from your last successful remote update and this is noted
     in stdout.
+
+Branch markers:
+  *                             Current branch.
+  !                             Branch name violates repository naming rules.
+
+Status tags:
+  [local]                       Local branch; a remote branch also exists or
+                                current remote status is unavailable.
+  [local only]                  Local branch with no remote branch.
+  [remote]                      Remote branch; a local branch also exists.
+  [remote only]                 Remote branch with no local branch.
+  [current]                     This is the currently selected branch.
+  [uncommitted]                 There are changes that have not been committed.
+  [read-only]                   The branch must not be modified.
+  [invalid name]                Branch name violates repository naming rules.
+  [offline]                     Current remote status could not be retrieved;
+                                cached remote information may be displayed.
+  [synced]                      Local and remote committed histories match. If
+                                this is the current local branch, it also has
+                                no uncommitted changes.
+  [ahead of remote by N]        Local has N commits not on the remote.
+  [behind remote by N]          Remote has N commits not on the local branch.
+  [ahead of local by N]         Remote has N commits not on the local branch.
+  [behind local by N]           Local has N commits not on the remote.
+  [diverged from remote: N/M]   Local and remote have diverged; N local-only
+                                and M remote-only commits.
+  [diverged from local: N/M]    Remote and local have diverged; N remote-only
+                                and M local-only commits.
+  [parent: NAME]                NAME is the branch's parent.
+  [parent unavailable: NAME]    NAME is the branch's parent, but that branch is
+                                unavailable locally and among downloaded remote
+                                branches; it may be unfetched or deleted.
+  [ahead of parent by N]        Branch has N commits not on its parent.
+  [behind parent by N]          Parent has N commits not on the branch.
+  [diverged from parent: N/M]   Branch and parent have diverged; N branch-only
+                                and M parent-only commits.
+  [auto-stash: N]               N saved automatic stashes exist for the branch.
+  [PRs: N]                      N open pull requests exist for the branch.
 
 Exit codes:
   0   Success.
@@ -250,56 +280,16 @@ capture_initial_worktree_status() {
     2>/dev/null || true)"
 }
 
-# Branch naming rule validators
-# Main:  main
-# Version: v#.#.# (e.g., v1.0.0, v10.5.9)
-# Targeted: (dev|fix)/<desc>-v#.#.# (e.g., dev/auth-fix-v1.0.0)
-# Contributor: [<type>/]<desc> (e.g., feature/new-login, jsmith/bug-fix)
+# Version-name matcher used only to sort version candidates for reports.
 is_version_branch() {
   local branch="$1"
   [[ "$branch" =~ ^v([1-9][0-9]?)\.([0-9]|[1-9][0-9]?)\.([0-9]|[1-9][0-9]?)$ ]]
 }
 
-is_main_branch() {
-  local branch="$1"
-  [[ "$branch" == "main" ]]
-}
-
-is_targeted_branch() {
-  local branch="$1"
-  local desc='[a-z0-9]+(-[a-z0-9]+)*'
-  local targeted_branch_re
-
-  targeted_branch_re="^(dev|fix)/${desc}-v([1-9][0-9]?)\\."
-  targeted_branch_re+="(0|[1-9][0-9]?)\\.(0|[1-9][0-9]?)$"
-  [[ "$branch" =~ $targeted_branch_re ]]
-}
-
-is_contributor_branch() {
-  local branch="$1"
-  local desc='[a-z0-9]+(-[a-z0-9]+)*'
-  local type='[a-z][a-z]{0,29}'
-
-  [[ "$branch" =~ ^((${type}/)?${desc})$ && "$branch" != "main" ]]
-}
-
-is_protected_branch() {
-  local branch="$1"
-
-  if is_main_branch "$branch" || is_version_branch "$branch"; then
-    return 0
-  fi
-  return 1
-}
-
 branch_violates_naming_rules() {
   local branch="$1"
 
-  if is_main_branch "$branch" || is_version_branch "$branch" ||
-    is_targeted_branch "$branch" || is_contributor_branch "$branch"; then
-    return 1
-  fi
-  return 0
+  ! bt_is_valid_branch_name "$branch"
 }
 
 branch_name_display() {
@@ -1115,6 +1105,149 @@ format_ahead_behind_segments() {
   fi
 }
 
+tracking_relation_tag() {
+  local mode="$1"
+  local branch="$2"
+  local has_uncommitted="$3"
+  local ahead=0
+  local behind=0
+  local counts=""
+
+  counts=$(git rev-list --left-right --count \
+    "$branch...origin/$branch" 2>/dev/null || true)
+  read -r ahead behind <<< "$counts"
+  [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
+
+  if [[ "$ahead" -eq 0 && "$behind" -eq 0 ]]; then
+    [[ "$has_uncommitted" == false ]] && printf '[synced]'
+  elif [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
+    if [[ "$mode" == "local" ]]; then
+      printf '[ahead of remote by %s]' "$ahead"
+    else
+      printf '[behind local by %s]' "$ahead"
+    fi
+  elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
+    if [[ "$mode" == "local" ]]; then
+      printf '[behind remote by %s]' "$behind"
+    else
+      printf '[ahead of local by %s]' "$behind"
+    fi
+  elif [[ "$mode" == "local" ]]; then
+    printf '[diverged from remote: %s/%s]' "$ahead" "$behind"
+  else
+    printf '[diverged from local: %s/%s]' "$behind" "$ahead"
+  fi
+  return 0
+}
+
+parent_status_tags() {
+  local mode="$1"
+  local branch="$2"
+  local parent=""
+  local selected_ref="$branch"
+  local parent_ref=""
+  local ahead=0
+  local behind=0
+  local counts=""
+
+  parent=$(bt_resolve_parent_branch "$branch" "main" 2>/dev/null || true)
+  [[ -n "$parent" ]] || return 0
+
+  if [[ "$mode" == "remote" ]]; then
+    selected_ref="origin/$branch"
+    if has_remote_branch "$parent"; then
+      parent_ref="origin/$parent"
+    elif has_local_branch "$parent"; then
+      parent_ref="$parent"
+    fi
+  elif has_local_branch "$parent"; then
+    parent_ref="$parent"
+  elif has_remote_branch "$parent"; then
+    parent_ref="origin/$parent"
+  fi
+
+  if [[ -z "$parent_ref" ]]; then
+    printf '[parent unavailable: %s]' "$parent"
+    return 0
+  fi
+
+  printf '[parent: %s]' "$parent"
+  counts=$(git rev-list --left-right --count \
+    "$selected_ref...$parent_ref" 2>/dev/null || true)
+  read -r ahead behind <<< "$counts"
+  [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
+
+  if [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
+    printf ' [ahead of parent by %s]' "$ahead"
+  elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
+    printf ' [behind parent by %s]' "$behind"
+  elif [[ "$ahead" -gt 0 && "$behind" -gt 0 ]]; then
+    printf ' [diverged from parent: %s/%s]' "$ahead" "$behind"
+  fi
+  return 0
+}
+
+build_compact_status_tags() {
+  local mode="$1"
+  local branch="$2"
+  local branch_type="$3"
+  local is_current="$4"
+  local repo_status="$5"
+  local auto_stash_count="$6"
+  local pr_count="$7"
+  local include_remote_rows="$8"
+  local has_uncommitted=false
+  local mode_tag="$mode"
+  local relation_tag=""
+  local parent_tags=""
+  local -a tags=()
+
+  if [[ "$mode" == "local" && "$branch_type" == "local" && \
+    "$FETCH_FAILED" == false ]]; then
+    mode_tag="local only"
+  elif [[ "$mode" == "remote" ]] && ! has_local_branch "$branch"; then
+    mode_tag="remote only"
+  fi
+  tags+=("[$mode_tag]")
+
+  if [[ "$mode" == "local" && "$is_current" == true ]]; then
+    tags+=("[current]")
+    if [[ "$repo_status" == "dirty" ]]; then
+      has_uncommitted=true
+      tags+=("[uncommitted]")
+    fi
+  fi
+  if [[ "$mode" == "remote" ]] || bt_is_read_only_branch "$branch"; then
+    tags+=("[read-only]")
+  fi
+  if branch_violates_naming_rules "$branch"; then
+    tags+=("[invalid name]")
+  fi
+
+  if [[ "$FETCH_FAILED" == true && \
+    ( "$mode" == "remote" || "$include_remote_rows" == true ) ]]; then
+    tags+=("[offline]")
+  elif [[ "$branch_type" == "local (tracking origin)" ]]; then
+    relation_tag=$(tracking_relation_tag \
+      "$mode" "$branch" "$has_uncommitted")
+    [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
+  fi
+
+  parent_tags=$(parent_status_tags "$mode" "$branch")
+  [[ -z "$parent_tags" ]] || tags+=("$parent_tags")
+
+  if [[ "$mode" == "local" && "$auto_stash_count" =~ ^[0-9]+$ && \
+    "$auto_stash_count" -gt 0 ]]; then
+    tags+=("[auto-stash: $auto_stash_count]")
+  fi
+  if [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 && \
+    ( "$mode" == "remote" || "$include_remote_rows" == false ) ]]; then
+    tags+=("[PRs: $pr_count]")
+  fi
+
+  printf '%s' "${tags[*]}"
+}
+
 # Report generation and output formatting
 generate_report_header() {
   local report_header_cols
@@ -1319,110 +1452,32 @@ check_branch_status() {
       fi
     fi
 
-  # Build and print compact status line(s)
+  # Build and print compact status line(s). Report rows below retain detailed
+  # staged/unstaged counts; stdout uses the shared user-facing status vocabulary.
   if [[ "$branch_type" == "local (tracking origin)" &&
     "$include_local_rows" == true && "$include_remote_rows" == true ]]; then
-    local local_tags=("[local]")
-    local remote_tags=("[remote]")
-    local split_rows=false
-    local local_status_sig remote_status_sig
-
-    [[ "$is_current" == true ]] && local_tags+=("[current]")
-    if [[ "$is_current" == true ]]; then
-      [[ "$repo_status" == "dirty" ]] && local_tags+=("[dirty]")
-      [[ "$staged_count" =~ ^[0-9]+$ && "$staged_count" -gt 0 ]] && \
-        local_tags+=("[staged]")
-      [[ "$unstaged_count" =~ ^[0-9]+$ && "$unstaged_count" -gt 0 ]] && \
-        local_tags+=("[unstaged]")
-    elif bt_is_read_only_branch "$branch"; then
-      local_tags+=("[read-only]")
-    fi
-    [[ "$auto_stash_count" =~ ^[0-9]+$ && "$auto_stash_count" -gt 0 ]] && \
-      local_tags+=("[auto-stash: $auto_stash_count]")
-    [[ "$unpushed_count" =~ ^[0-9]+$ && "$unpushed_count" -gt 0 ]] && \
-        local_tags+=("[ahead of remote by $unpushed_count]")
-      [[ "$parent_behind_count" =~ ^[0-9]+$ && \
-        "$parent_behind_count" -gt 0 ]] && \
-        local_tags+=("[behind parent by $parent_behind_count]")
-      [[ "$parent_ahead_count" =~ ^[0-9]+$ && \
-        "$parent_ahead_count" -gt 0 ]] && \
-        local_tags+=("[ahead of parent by $parent_ahead_count]")
-
-    [[ "$behind_count" =~ ^[0-9]+$ && "$behind_count" -gt 0 ]] && \
-      remote_tags+=("[ahead of local by $behind_count]")
-      [[ "$parent_behind_count" =~ ^[0-9]+$ && \
-        "$parent_behind_count" -gt 0 ]] && \
-        remote_tags+=("[behind parent by $parent_behind_count]")
-      [[ "$parent_ahead_count" =~ ^[0-9]+$ && \
-        "$parent_ahead_count" -gt 0 ]] && \
-        remote_tags+=("[ahead of parent by $parent_ahead_count]")
-    [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 ]] && \
-      remote_tags+=("[PRs: $pr_count]")
-
-    local_status_sig="${local_tags[*]}"
-    remote_status_sig="${remote_tags[*]}"
-    if [[ "$local_status_sig" != "[local]" ||
-      "$remote_status_sig" != "[remote]" ]]; then
-      split_rows=true
-    fi
-
-    if [[ "$split_rows" == true ]]; then
-      printf '%s %s\n' "$branch_status_display_local" "${local_tags[*]}"
-      printf '%s %s\n' "$branch_status_display_remote" "${remote_tags[*]}"
-    else
-      printf '%s [local] [remote]\n' "$branch_status_display"
-    fi
+    printf '%s %s\n' "$branch_status_display_local" \
+      "$(build_compact_status_tags local "$branch" "$branch_type" \
+        "$is_current" "$repo_status" "$auto_stash_count" "$pr_count" true)"
+    printf '%s %s\n' "$branch_status_display_remote" \
+      "$(build_compact_status_tags remote "$branch" "$branch_type" \
+        false "$repo_status" "$auto_stash_count" "$pr_count" true)"
   elif [[ "$branch_type" == "local (tracking origin)" &&
     "$include_remote_rows" == true ]]; then
-    local tags=("[remote]")
-    [[ "$behind_count" =~ ^[0-9]+$ && "$behind_count" -gt 0 ]] && \
-      tags+=("[ahead of local by $behind_count]")
-      [[ "$parent_behind_count" =~ ^[0-9]+$ && \
-        "$parent_behind_count" -gt 0 ]] && \
-        tags+=("[behind parent by $parent_behind_count]")
-      [[ "$parent_ahead_count" =~ ^[0-9]+$ && \
-        "$parent_ahead_count" -gt 0 ]] && \
-        tags+=("[ahead of parent by $parent_ahead_count]")
-    [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 ]] && \
-      tags+=("[PRs: $pr_count]")
-    printf '%s %s\n' "$branch_status_display_remote" "${tags[*]}"
+    printf '%s %s\n' "$branch_status_display_remote" \
+      "$(build_compact_status_tags remote "$branch" "$branch_type" \
+        false "$repo_status" "$auto_stash_count" "$pr_count" true)"
   else
-    local tags=()
     if [[ "$include_remote_rows" == true &&
       "$include_local_rows" == false ]]; then
-      tags+=("[remote]")
-    elif [[ "$branch_type" == "remote" ]]; then
-      tags+=("[remote]")
+      printf '%s %s\n' "$branch_status_display_remote" \
+        "$(build_compact_status_tags remote "$branch" "$branch_type" \
+          false "$repo_status" "$auto_stash_count" "$pr_count" true)"
     else
-      tags+=("[local]")
-    fi
-    if [[ "$include_local_rows" == true ]]; then
-      [[ "$is_current" == true ]] && tags+=("[current]")
-      if [[ "$is_current" == true ]]; then
-        [[ "$repo_status" == "dirty" ]] && tags+=("[dirty]")
-        [[ "$staged_count" =~ ^[0-9]+$ && "$staged_count" -gt 0 ]] && \
-          tags+=("[staged]")
-        [[ "$unstaged_count" =~ ^[0-9]+$ && "$unstaged_count" -gt 0 ]] && \
-          tags+=("[unstaged]")
-      elif bt_is_read_only_branch "$branch"; then
-        tags+=("[read-only]")
-      fi
-      [[ "$auto_stash_count" =~ ^[0-9]+$ && "$auto_stash_count" -gt 0 ]] && \
-        tags+=("[auto-stash: $auto_stash_count]")
-    fi
-    [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 ]] && \
-      tags+=("[PRs: $pr_count]")
-      [[ "$parent_behind_count" =~ ^[0-9]+$ && \
-        "$parent_behind_count" -gt 0 ]] && \
-        tags+=("[behind parent by $parent_behind_count]")
-      [[ "$parent_ahead_count" =~ ^[0-9]+$ && \
-        "$parent_ahead_count" -gt 0 ]] && \
-        tags+=("[ahead of parent by $parent_ahead_count]")
-    if [[ "$include_remote_rows" == true &&
-      "$include_local_rows" == false ]]; then
-      printf '%s %s\n' "$branch_status_display_remote" "${tags[*]}"
-    else
-      printf '%s %s\n' "$branch_status_display_local" "${tags[*]}"
+      printf '%s %s\n' "$branch_status_display_local" \
+        "$(build_compact_status_tags local "$branch" "$branch_type" \
+          "$is_current" "$repo_status" "$auto_stash_count" "$pr_count" \
+          "$include_remote_rows")"
     fi
   fi
 
@@ -1545,13 +1600,14 @@ check_remote_branch_status() {
   ensure_remote_refs_fetched
 
   # Get PR status and last commit
-  local pr_count created_date last_commit_date base_reference
+  local pr_count created_date last_commit_date base_reference branch_type
   local divergence_counts remote_status remote_ahead remote_behind
   local remote_ahead_behind
   pr_count=$(get_pending_pr_count "$branch") || pr_count="N/A"
   created_date=$(get_branch_created_date "$branch" "remote")
   last_commit_date=$(get_branch_last_commit_date "$branch" "remote")
   base_reference=$(get_remote_comparison_target "$branch")
+  branch_type=$(get_branch_type "$branch") || branch_type="remote"
   [[ -z "$created_date" ]] && created_date=""
   [[ -z "$last_commit_date" ]] && last_commit_date=""
 
@@ -1574,20 +1630,10 @@ check_remote_branch_status() {
     remote_status="synced"
   fi
 
-  # Build and print compact status line
-  local tags=("[remote]")
-  if [[ "$remote_ahead" =~ ^[0-9]+$ && "$remote_behind" =~ ^[0-9]+$ ]]; then
-    if [[ "$remote_ahead" -gt 0 && "$remote_behind" -gt 0 ]]; then
-      tags+=("[diverged ${remote_ahead}/${remote_behind} vs ${base_reference}]")
-    elif [[ "$remote_behind" -gt 0 ]]; then
-      tags+=("[behind ${remote_behind} of ${base_reference}]")
-    elif [[ "$remote_ahead" -gt 0 ]]; then
-      tags+=("[ahead ${remote_ahead} of ${base_reference}]")
-    fi
-  fi
-  [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 ]] && \
-    tags+=("[PRs: $pr_count]")
-  printf '%s %s\n' "$branch_status_display" "${tags[*]}"
+  # Build and print compact status line.
+  printf '%s %s\n' "$branch_status_display" \
+    "$(build_compact_status_tags remote "$branch" "$branch_type" false \
+      "$remote_status" 0 "$pr_count" true)"
 
   local pr_count_display
   pr_count_display=$(format_zero_as_blank "$pr_count")
@@ -1936,10 +1982,11 @@ $FOOTER_INVALID_LINE
 **Parent**: Parent branch reference for the row when applicable (for example,
 \`main\` or \`v1.0.0\`).
 
-**Status**: \`clean\`, \`dirty\`, or \`not checked out\` for local worktree
+**Status**: \`clean\`, \`dirty\`, or \`not checked out\` for local branch
 state, \`synced\` or \`diverged\` for tracked-branch state, or \`unknown\`.
-For local branches, \`dirty\` reflects any working tree change including
-untracked files. Status includes \`; auto-stash:N\` when branch-matching
+For the current local branch, \`dirty\` means there are changes that have not
+been committed, including untracked files. Status includes
+\`; auto-stash:N\` when branch-matching
 legacy auto-stashes exist (label:
 \`chcurrent-auto:BRANCH:TIMESTAMP\`).
 

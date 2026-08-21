@@ -380,7 +380,8 @@ rc=$?
 set -e
 [[ "$rc" -eq 2 ]] || \
   fail "dirty current remote snapshot should exit 2 (got $rc)"
-assert_contains "has uncommitted changes" "$TMPDIR/dirty-current-remote.out"
+assert_contains "changes that have not been committed" \
+  "$TMPDIR/dirty-current-remote.out"
 [[ ! -e "$REMOTE_CALL_MARKER" ]] || \
   fail "dirty remote selection should not query or fetch the remote"
 (
