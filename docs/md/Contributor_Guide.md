@@ -1113,6 +1113,9 @@ Updates are made through `scripts/bin/pushup` only:
   whether publication occurred. Restore connectivity and retry. Do not edit
   the participating branches or remove `.git/briteTest/pushup.state` while the
   workflow is incomplete.
+- The configured remote timeout applies to validation and the first parent
+  publication attempt. After that attempt starts, remote verification,
+  continuation, and source synchronization use three times that timeout.
 - For targeted-to-version push-up workflows, run `pushup` only after the current
   source commit is approved. Any additional source commit requires approval
   again.

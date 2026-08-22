@@ -367,7 +367,8 @@ pushup --continue
   workflow that may have published its parent.
 - `-c TOKEN` - Custom pushup commit comment.
 - `-o` - Repository-owner override for eligible targeted-to-version paths.
-- `-t SEC` - Remote timeout in seconds.
+- `-t SEC` - Remote timeout in seconds. After parent publication starts,
+  subsequent remote access uses three times this value.
 - `-v` - Verbose output.
 
 </details>

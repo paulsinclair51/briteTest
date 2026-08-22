@@ -75,6 +75,18 @@ cp "$REPO_ROOT/scripts/helpers/common.sh" \
   "$REPO_ROOT/scripts/helpers/history_log.sh" "$WORK/scripts/helpers/"
 chmod +x "$WORK/scripts/bin/pushup"
 
+REAL_TIMEOUT="$(command -v timeout)"
+export REAL_TIMEOUT
+export PUSHUP_TEST_WORK="$WORK"
+mkdir -p "$TMPDIR/bin"
+cat > "$TMPDIR/bin/timeout" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$1" >> "$PUSHUP_TEST_WORK/.timeout-calls"
+exec "$REAL_TIMEOUT" "$@"
+EOF
+chmod +x "$TMPDIR/bin/timeout"
+export PATH="$TMPDIR/bin:$PATH"
+
 printf 'base\n' > "$WORK/content.txt"
 git -C "$WORK" add content.txt
 git -C "$WORK" commit -m base >/dev/null
@@ -95,6 +107,14 @@ cat > "$WORK/scripts/bin/push" <<'EOF'
 #!/usr/bin/env bash
 set -e
 branch="$(git branch --show-current)"
+timeout_seconds=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t) timeout_seconds="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+printf 'push-%s %s\n' "$branch" "$timeout_seconds" >> .remote-timeouts
 if [[ -f .fail-parent-push && "$branch" == main ]]; then
   exit 80
 fi
@@ -111,6 +131,14 @@ EOF
 cat > "$WORK/scripts/bin/pulldown" <<'EOF'
 #!/usr/bin/env bash
 set -e
+timeout_seconds=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t) timeout_seconds="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+printf 'pulldown %s\n' "$timeout_seconds" >> .remote-timeouts
 if [[ -f .fail-sync-once ]]; then
   rm -f .fail-sync-once
   exit 81
@@ -128,7 +156,7 @@ source_tip="$(git -C "$WORK" rev-parse feature)"
 parent_tip="$(git -C "$WORK" rev-parse main)"
 touch "$WORK/.fail-parent-push"
 status="$(run_capture "$TMPDIR/rollback.out" bash -c \
-  "cd '$WORK' && ./scripts/bin/pushup")"
+  "cd '$WORK' && ./scripts/bin/pushup -t 7")"
 [[ "$status" -eq 4 ]] || fail "pre-publication failure should exit 4, got $status"
 [[ "$(git -C "$WORK" branch --show-current)" == feature ]] || \
   fail "rollback should restore source checkout"
@@ -139,6 +167,8 @@ status="$(run_capture "$TMPDIR/rollback.out" bash -c \
 [[ ! -f "$WORK/.git/briteTest/pushup.state" ]] || \
   fail "rollback should remove pushup state"
 assert_contains "No local push-up changes were retained" "$TMPDIR/rollback.out"
+assert_contains "push-main 7" "$WORK/.remote-timeouts"
+assert_contains "21s" "$WORK/.timeout-calls"
 echo "PASS: pre-publication failure restores local state"
 
 rm -f "$WORK/.fail-parent-push"
@@ -152,6 +182,12 @@ assert_contains "parent was published" "$TMPDIR/finalize-fail.out"
 status="$(run_capture "$TMPDIR/finalize-continue.out" bash -c \
   "cd '$WORK' && ./scripts/bin/pushup --continue")"
 [[ "$status" -eq 0 ]] || fail "finalization continuation should complete, got $status"
+assert_contains "push-main 10" "$WORK/.remote-timeouts"
+assert_contains "push-main 30" "$WORK/.remote-timeouts"
+assert_contains "pulldown 30" "$WORK/.remote-timeouts"
+assert_contains "push-feature 30" "$WORK/.remote-timeouts"
+assert_contains "30s" "$WORK/.timeout-calls"
+echo "PASS: remote reaccess triples custom and default timeouts"
 echo "PASS: published parent with failed finalization resumes safely"
 
 # An incomplete state file must never be guessed at or silently removed.

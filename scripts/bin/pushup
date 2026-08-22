@@ -34,6 +34,7 @@ readonly EXIT_PREPUBLICATION_FAILED=4
 readonly EXIT_PARTIAL=5
 readonly EXIT_INTERNAL=200
 readonly STATE_VERSION=1
+readonly REMOTE_REACCESS_MULTIPLIER=3
 
 usage() {
   cat <<'EOF'
@@ -63,6 +64,8 @@ Crash and interruption recovery:
     roll back local refs. Restore connectivity and rerun the indicated command.
   - Do not edit branches or remove <git-dir>/briteTest/pushup.state while a
     push-up workflow is incomplete.
+  - After parent publication starts, later remote access uses three times the
+    configured timeout to allow additional time for recovery and verification.
 
 Options:
   --continue    Continue a partially completed push-up workflow.
@@ -111,12 +114,19 @@ set_phase() {
 
 remote_tip_checked() {
   local branch="$1"
+  local timeout_seconds="$2"
   local output=""
 
-  if ! output="$(git ls-remote --exit-code origin "refs/heads/$branch" 2>/dev/null)"; then
+  if ! output="$(BT_REMOTE_TIMEOUT_SECONDS="$timeout_seconds" \
+    bt_run_remote_command git ls-remote --exit-code origin \
+    "refs/heads/$branch" 2>/dev/null)"; then
     return 1
   fi
   awk 'NR == 1 { print $1 }' <<< "$output"
+}
+
+extended_remote_timeout() {
+  printf '%s\n' "$(( $(state_get timeout) * REMOTE_REACCESS_MULTIPLIER ))"
 }
 
 local_tip() {
@@ -219,9 +229,11 @@ prepared_parent_tip() {
 remote_branch_contains() {
   local branch="$1"
   local commit="$2"
+  local timeout_seconds="$3"
 
   [[ -n "$commit" ]] || return 1
-  git fetch --quiet --no-tags origin \
+  BT_REMOTE_TIMEOUT_SECONDS="$timeout_seconds" bt_run_remote_command \
+    git fetch --quiet --no-tags origin \
     "refs/heads/$branch:refs/remotes/origin/$branch" 2>/dev/null || return 2
   git merge-base --is-ancestor "$commit" "refs/remotes/origin/$branch" \
     >/dev/null 2>&1
@@ -247,7 +259,7 @@ fast_forward_local_parent() {
 
 reconcile_state() {
   local phase source_branch parent_branch parent_remote
-  local prepared_tip source_local source_remote
+  local prepared_tip source_local source_remote timeout_seconds
   phase="$(state_get phase)"
   source_branch="$(state_get source)"
   parent_branch="$(state_get parent)"
@@ -266,7 +278,11 @@ reconcile_state() {
 
   if [[ "$phase" == parent-publishing || \
     "$phase" == publication-uncertain || "$phase" == parent-prepared ]]; then
-    if ! parent_remote="$(remote_tip_checked "$parent_branch")"; then
+    timeout_seconds="$(state_get timeout)"
+    [[ "$phase" == parent-prepared ]] || \
+      timeout_seconds="$(extended_remote_timeout)"
+    if ! parent_remote="$(remote_tip_checked "$parent_branch" \
+      "$timeout_seconds")"; then
       set_phase publication-uncertain
       write_partial_report \
         "The parent publication state cannot be verified while origin is unavailable." \
@@ -278,7 +294,8 @@ reconcile_state() {
       phase=parent-published
     elif [[ -n "$prepared_tip" ]]; then
       local contains_status=0
-      remote_branch_contains "$parent_branch" "$prepared_tip" || \
+      remote_branch_contains "$parent_branch" "$prepared_tip" \
+        "$timeout_seconds" || \
         contains_status=$?
       if [[ "$contains_status" -eq 0 ]]; then
         if ! fast_forward_local_parent "$parent_branch"; then
@@ -315,7 +332,8 @@ reconcile_state() {
   phase="$(state_get phase)"
   if [[ "$phase" == source-selected || "$phase" == source-sync-failed ]]; then
     source_local="$(local_tip "$source_branch")"
-    if ! parent_remote="$(remote_tip_checked "$parent_branch")"; then
+    if ! parent_remote="$(remote_tip_checked "$parent_branch" \
+      "$(extended_remote_timeout)")"; then
       write_partial_report \
         "The published parent cannot be read while origin is unavailable." \
         "Restore remote access before continuing source synchronization."
@@ -334,7 +352,8 @@ reconcile_state() {
   if [[ "$phase" == source-publishing || \
     "$phase" == source-publish-failed || "$phase" == source-synchronized ]]; then
     source_local="$(local_tip "$source_branch")"
-    if source_remote="$(remote_tip_checked "$source_branch")" && \
+    if source_remote="$(remote_tip_checked "$source_branch" \
+      "$(extended_remote_timeout)")" && \
       [[ -n "$source_local" && "$source_remote" == "$source_local" ]]; then
       set_phase source-published
     elif [[ "$phase" == source-publishing ]]; then
@@ -477,13 +496,14 @@ prepare_parent() {
 }
 
 run_push() {
-  local -a args=(-t "$(state_get timeout)")
+  local timeout_seconds="$1"
+  local -a args=(-t "$timeout_seconds")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
   "$SCRIPT_DIR/push" "${args[@]}"
 }
 
 run_push_finalization_retry() {
-  local -a args=(-t "$(state_get timeout)")
+  local -a args=(-t "$(extended_remote_timeout)")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
   BT_PUSHUP_FINALIZATION_RETRY=true "$SCRIPT_DIR/push" "${args[@]}"
 }
@@ -494,14 +514,15 @@ publish_parent() {
   local_tip="$(git rev-parse "refs/heads/$parent_branch" 2>/dev/null || true)"
   state_set prepared-parent-tip "$local_tip"
   set_phase parent-publishing
-  if run_push; then
+  if run_push "$(state_get timeout)"; then
     set_phase parent-published
     return 0
   else
     push_status=$?
   fi
 
-  published_tip="$(remote_tip_checked "$parent_branch" || true)"
+  published_tip="$(remote_tip_checked "$parent_branch" \
+    "$(extended_remote_timeout)" || true)"
   if [[ -n "$published_tip" && "$published_tip" == "$local_tip" ]]; then
     if [[ "$push_status" -eq 202 ]]; then
       set_phase parent-finalization-failed
@@ -556,7 +577,7 @@ select_source() {
 }
 
 synchronize_source() {
-  local -a args=(-f -t "$(state_get timeout)")
+  local -a args=(-f -t "$(extended_remote_timeout)")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
   if "$SCRIPT_DIR/pulldown" "${args[@]}"; then
     set_phase source-synchronized
@@ -600,12 +621,13 @@ publish_source() {
   source_branch="$(state_get source)"
   local_tip="$(git rev-parse HEAD 2>/dev/null || true)"
   set_phase source-publishing
-  if run_push; then
+  if run_push "$(extended_remote_timeout)"; then
     set_phase source-published
     return 0
   fi
 
-  published_tip="$(remote_tip "$source_branch" || true)"
+  published_tip="$(remote_tip_checked "$source_branch" \
+    "$(extended_remote_timeout)" || true)"
   if [[ -n "$published_tip" && "$published_tip" == "$local_tip" ]]; then
     set_phase source-published
     return 0
@@ -613,9 +635,10 @@ publish_source() {
 
   if [[ -n "$published_tip" ]] && \
     ! git merge-base --is-ancestor "$published_tip" HEAD >/dev/null 2>&1; then
-    local -a pull_args=(-t "$(state_get timeout)")
+    local -a pull_args=(-t "$(extended_remote_timeout)")
     [[ "$(state_get verbose)" == true ]] && pull_args+=(-v)
-    if "$SCRIPT_DIR/pull" "${pull_args[@]}" && run_push; then
+    if "$SCRIPT_DIR/pull" "${pull_args[@]}" && \
+      run_push "$(extended_remote_timeout)"; then
       set_phase source-published
       return 0
     fi
