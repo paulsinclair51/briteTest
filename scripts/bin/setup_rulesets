@@ -50,7 +50,7 @@ EOF
 
 # These rulesets enforce properties GitHub can verify from a ref update:
 # protected refs cannot be deleted or rewritten. Conditional PR, role, and
-# source/target merge requirements remain authoritative in mrgup because
+# source/target merge requirements remain authoritative in pushup because
 # GitHub cannot determine which local wrapper initiated a user-authenticated
 # push.
 

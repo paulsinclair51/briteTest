@@ -54,7 +54,9 @@ make test-lsbranch
 make test-gendocs
 make test-fixrepo
 make test-mkbranch
-make test-mrgdown
+make test-pulldown
+make test-pushup
+make test-pushup-parent
 make test-report-helpers
 make test-all-scripts
 ```
@@ -66,7 +68,7 @@ bash ./scripts/tests/test_lsbranch.sh
 bash ./scripts/tests/test_gendocs.sh
 bash ./scripts/tests/test_fixrepo.sh
 bash ./scripts/tests/test_mkbranch.sh
-bash ./scripts/tests/test_mrgdown.sh
+bash ./scripts/tests/test_pulldown.sh
 bash ./scripts/tests/test_retarget.sh
 bash ./scripts/tests/test_undo.sh
 bash ./scripts/tests/test_commit.sh

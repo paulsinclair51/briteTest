@@ -84,32 +84,32 @@ assert_contains "pull activity" "$WORK/$after_rel"
 pass "positional type placement"
 
 # 7) Merge-down reports should render durable workflow details
-rc=$(run_capture "$TMPDIR/mrgdown.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'mrgdown activity'")
-[[ "$rc" -eq 0 ]] || fail "mrgdown report should exit 0 (got $rc)"
-mrgdown_rel="$(report_path_from_output "$TMPDIR/mrgdown.out")"
-assert_contains "mrgdown activity" "$WORK/$mrgdown_rel"
-assert_contains '**Command:** `mrgdown -f`' "$WORK/$mrgdown_rel"
-assert_contains "Source-Branch: v1.0.0" "$WORK/$mrgdown_rel"
-assert_contains "Target-Branch: dev/report-tests-v1.0.0" "$WORK/$mrgdown_rel"
-assert_contains "Parent-Commits-Integrated: 2" "$WORK/$mrgdown_rel"
-assert_contains "Files-Modified: 1" "$WORK/$mrgdown_rel"
-assert_contains "Status: Parent branch merged into current branch" "$WORK/$mrgdown_rel"
-assert_contains "Method: Merge commit (--no-ff) created by mrgdown" "$WORK/$mrgdown_rel"
-pass "mrgdown report details"
+rc=$(run_capture "$TMPDIR/pulldown.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'pulldown activity'")
+[[ "$rc" -eq 0 ]] || fail "pulldown report should exit 0 (got $rc)"
+pulldown_rel="$(report_path_from_output "$TMPDIR/pulldown.out")"
+assert_contains "pulldown activity" "$WORK/$pulldown_rel"
+assert_contains '**Command:** `pulldown -f`' "$WORK/$pulldown_rel"
+assert_contains "Source-Branch: v1.0.0" "$WORK/$pulldown_rel"
+assert_contains "Target-Branch: dev/report-tests-v1.0.0" "$WORK/$pulldown_rel"
+assert_contains "Parent-Commits-Integrated: 2" "$WORK/$pulldown_rel"
+assert_contains "Files-Modified: 1" "$WORK/$pulldown_rel"
+assert_contains "Status: Parent branch merged into current branch" "$WORK/$pulldown_rel"
+assert_contains "Method: Merge commit (--no-ff) created by pulldown" "$WORK/$pulldown_rel"
+pass "pulldown report details"
 
 # 8) Merge-up reports should render durable workflow details
-rc=$(run_capture "$TMPDIR/mrgup.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'mrgup activity'")
-[[ "$rc" -eq 0 ]] || fail "mrgup report should exit 0 (got $rc)"
-mrgup_rel="$(report_path_from_output "$TMPDIR/mrgup.out")"
-assert_contains "mrgup activity" "$WORK/$mrgup_rel"
-assert_contains '**Command:** `mrgup -o`' "$WORK/$mrgup_rel"
-assert_contains "Source-Branch: dev/source-v1.0.0" "$WORK/$mrgup_rel"
-assert_contains "Target-Branch: v1.0.0" "$WORK/$mrgup_rel"
-assert_contains "PR: 42" "$WORK/$mrgup_rel"
-assert_contains "Status: Current branch merged into parent branch" "$WORK/$mrgup_rel"
-assert_contains "Method: Squash merge created by mrgup" "$WORK/$mrgup_rel"
-assert_contains "CI-CD: ci build SUCCESS" "$WORK/$mrgup_rel"
-pass "mrgup report details"
+rc=$(run_capture "$TMPDIR/pushup.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'pushup activity'")
+[[ "$rc" -eq 0 ]] || fail "pushup report should exit 0 (got $rc)"
+pushup_rel="$(report_path_from_output "$TMPDIR/pushup.out")"
+assert_contains "pushup activity" "$WORK/$pushup_rel"
+assert_contains '**Command:** `pushup -o`' "$WORK/$pushup_rel"
+assert_contains "Source-Branch: dev/source-v1.0.0" "$WORK/$pushup_rel"
+assert_contains "Target-Branch: v1.0.0" "$WORK/$pushup_rel"
+assert_contains "PR: 42" "$WORK/$pushup_rel"
+assert_contains "Status: Current branch merged into parent branch" "$WORK/$pushup_rel"
+assert_contains "Method: Squash merge created by pushup" "$WORK/$pushup_rel"
+assert_contains "CI-CD: ci build SUCCESS" "$WORK/$pushup_rel"
+pass "pushup report details"
 
 # 9) Copyfix reports should render durable workflow details
 rc=$(run_capture "$TMPDIR/copyfix.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report branch -q 'copyfix activity'")

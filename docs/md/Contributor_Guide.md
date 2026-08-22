@@ -193,11 +193,12 @@ This repository uses a release-oriented branching model with four branch types:
 - `[<type>/]<description>` - Contributor branches
 
 **Valid Merge Up Paths:**
-- contributor -> contributor (optional PR/review by contributors, mrgup by the contributor)
-- contributor -> targeted (optional PR/review by contributors, mrgup by the contributor)
-- targeted -> version (required approved PR, mrgup by an approver)
-- targeted -> version with `mrgup -o` (PR optional, repository owner only)
-- version -> `origin/main` (no PR, mrgup by an approver)
+- contributor -> contributor (optional PR/review by contributors, `pushup` by the contributor)
+- contributor -> targeted (optional PR/review by contributors, `pushup` by the contributor)
+- targeted -> version (required approved PR for the current commit; `pushup`
+  by the contributor, reviewer, or approver using that clone)
+- targeted -> version with `pushup -o` (PR optional, repository owner only)
+- version -> `origin/main` (no PR, `pushup` by an approver)
 - main -> any (not allowed)
 
 **Branch Presence Rules (Local/Remote):**
@@ -216,20 +217,22 @@ This repository uses a release-oriented branching model with four branch types:
   in read-only mode and removed with `rmbranch`; they cannot be used for edits
   or commits.
 
-**Merge-Up Safety Preconditions (`mrgup`):**
+**Merge-Up Safety Preconditions (`pushup`):**
 - remote must be connected/reachable.
 - current local branch must be in sync with its remote when a remote branch exists.
 - current branch must not be behind its parent.
 - parent local/remote must be in sync when both parent refs exist.
 
-**PR Requirements (`mrgup` is authoritative):**
+**PR Requirements (`pushup` is authoritative):**
 - A PR is required only for a targeted branch merged to a version branch
   without `-o`.
-- The repository owner may use `mrgup -o` for a targeted-to-version merge;
+- The repository owner may use `pushup -o` for a targeted-to-version merge;
   that operation does not require a PR or approver role.
 - PRs are optional for contributor-to-contributor,
   contributor-to-targeted, and version-to-main merges.
-- If an optional PR exists, `mrgup` still validates its state and approval.
+- If an optional PR exists, `pushup` still validates its state and approval.
+- Approval applies to the current source commit. Any additional source commit
+  requires review and approval again before `pushup`.
 
 Role naming used in this guide is: users, contributors, reviewers, approvers,
 and repository owner.
@@ -287,7 +290,7 @@ and non-fast-forward updates of protected branches.
 
 ### 3.2. Primary Prevention Layer
 
-Pull-request workflows run before a PR merge. `mrgup` performs the authoritative
+Pull-request workflows run before a PR merge. `pushup` performs the authoritative
 merge-path, role, and conditional PR checks for the script-based workflow:
 
 PASS: **Valid commits:** Allowed to proceed
@@ -679,9 +682,11 @@ If identity cannot be resolved, role checks fail by design.
 - Access all scripts/code for reading
 
 **Cannot:**
-- Merge to main or version branches
+- Merge directly to main or version branches outside the approved `pushup`
+  workflow
 - Create releases
-- Run approver-only scripts (`mrgup`, `release`, `fixrepo`)
+- Run approver-only `pushup` paths such as version-to-main
+- Run other approver-only scripts (`release`, `fixrepo`)
 - Modify workflow/security configuration
 
 #### REVIEWER (R)
@@ -697,9 +702,9 @@ If identity cannot be resolved, role checks fail by design.
 - Check code style compliance (`ckstyle`)
 
 **Cannot:**
-- Merge to protected branches
+- Merge to protected branches without an approved current source commit
 - Create releases
-- Run approver-only scripts
+- Run approver-only `pushup` paths or other approver-only scripts
 
 #### APPROVER (A)
 
@@ -710,7 +715,8 @@ If identity cannot be resolved, role checks fail by design.
 **Additional:**
 - Merge PRs to main and version branches
 - Create official releases and version tags
-- Run approver-only scripts (`mrgup`, `release`, `fixrepo`, `rebrand`, `replacetext`)
+- Run approver-only `pushup` paths and other approver-only scripts (`release`,
+  `fixrepo`, `rebrand`, `replacetext`)
 - Modify repository configuration (with override)
 
 **Requirements:**
@@ -748,7 +754,7 @@ Security controls expected for contributor workflows:
 
 - **Branch protection:** GitHub rulesets prevent deletion and
   non-fast-forward updates of `main` and `v<M>.<m>.0` branches.
-- **Merge policy:** `mrgup` enforces merge paths, roles, synchronization, and
+- **Merge policy:** `pushup` enforces merge paths, roles, synchronization, and
   the targeted-to-version PR requirement. GitHub rulesets cannot express that
   source/target-dependent PR rule without breaking allowed version-to-main
   and repository-owner override operations.
@@ -768,7 +774,7 @@ Security controls expected for contributor workflows:
 - **Auditability:** approver-level actions and protected operations must remain
    traceable through workflow/script logs.
 
-GitHub cannot distinguish a user running `mrgup` from the same user issuing an
+GitHub cannot distinguish a user running `pushup` from the same user issuing an
 equivalent direct Git push. Consequently, script-only invocation is enforced
 locally as a guardrail and monitored by push workflows; deletion and history
 rewrite restrictions are the server-authoritative controls. The repository owner
@@ -1082,22 +1088,33 @@ Protected branches require:
   continuing workflows that require a clean branch
 - prohibited by GitHub ruleset: non-fast-forward updates
 - prohibited by GitHub ruleset: deletions
-- required by `mrgup`: approved PR for targeted-to-version merges without `-o`
-- optional PR: version-to-main merges and owner `mrgup -o` merges
+- required by `pushup`: approved PR for targeted-to-version merges without `-o`
+- optional PR: version-to-main merges and owner `pushup -o` merges
 
 The protected base branch is `origin/main`; version branches are local protected branches.
 Neither may receive direct commits or direct GitHub.com edits.
-Updates are made through `scripts/bin/mrgup` only:
+Updates are made through `scripts/bin/pushup` only:
 
-- Use `scripts/bin/mrgdown` in the source branch first when synchronization is needed
-- Resolve conflicts in the source branch before running `mrgup`
-- Merge to protected parent using `mrgup`
-- When the parent is protected, approver role is required
-  unless the repository owner uses the targeted-to-version `mrgup -o` override.
+- Use `scripts/bin/pulldown` first if the source is behind its parent.
+- Resolve source conflicts before running `pushup`.
+- `pushup` validates policy, prepares and publishes the parent, returns to the
+  source, merges the published parent down, and publishes the source.
+- Before parent publication, a failure restores the original local branch tips.
+- After parent publication, a failure writes a `pushup-e` report describing
+  completed and pending steps. Address its guidance and run
+  `pushup --continue`.
+- For targeted-to-version push-up workflows, run `pushup` only after the current
+  source commit is approved. Any additional source commit requires approval
+  again.
+- If another user publishes the same parent first, `pushup` rejects its stale
+  publication attempt without overwriting remote history.
+- Version-to-main remains approver-only. The repository owner may use the
+  targeted-to-version `pushup -o` override without a PR.
 - The owner override only authorizes the merge workflow; it does not permit direct
   editing of protected or script-managed branches in GitHub.com.
 - A separate local `override on` recovery mode is reserved for exceptional
   repository-repair or maintenance work, not for routine direct branch changes.
+
 </details>
 
 <details>

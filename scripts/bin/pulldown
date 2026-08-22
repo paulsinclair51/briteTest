@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# mrgdown - Merge parent branch into current branch.
+# pulldown - Merge parent branch into current branch.
 #
-# See usage below for details, or run: mrgdown -h
+# See usage below for details, or run: pulldown -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -11,8 +11,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mrgdown [OPTIONS] [-- TOKEN...]
-  mrgdown {-h | --help}
+  pulldown [OPTIONS] [-- TOKEN...]
+  pulldown {-h | --help}
 
 Merge the parent branch of the current branch into the current branch
 to sync with latest changes.
@@ -27,11 +27,11 @@ Prerequisites:
   - If there are changes, use the commit or undo workflow first.
   - The current branch must not have an unfinished copyfix operation.
 
-Protected branches (cannot run mrgdown):
+Protected branches (cannot run pulldown):
   - main
   - v<M>.<m>.0 version branches created from main.
 
-Allowed branches (can use mrgdown):
+Allowed branches (can use pulldown):
   - Unprotected branches with an identified parent branch.
 
 Features:
@@ -72,23 +72,23 @@ Options:
 
 Examples:
   # Merge down.
-  mrgdown
+  pulldown
 
   # Merge down with verbose output.
-  mrgdown -v
+  pulldown -v
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
   - No-work prerequisite failures do not generate or delete reports.
-  - After a successful non-dry-run mrgdown, records history for the report
+  - After a successful non-dry-run pulldown, records history for the report
     command and writes 'Run report for details.' to stdout. It does not write
     an immediate merge report.
   - A dry-run report is written (untracked) locally to:
-        <repo>/reports/mrgdown-d-<datetime>.md
+        <repo>/reports/pulldown-d-<datetime>.md
   - If a non-dry-run operation fails after merge work starts, writes an
     untracked error report to:
-        <repo>/reports/mrgdown-e-<datetime>.md
+        <repo>/reports/pulldown-e-<datetime>.md
     Usage and prerequisite failures do not create reports.
 
 Exit codes:
@@ -181,7 +181,7 @@ disable_reports_write_access() {
 }
 
 acquire_report_lock() {
-  if ! bt_report_acquire_lock "$REPO_ROOT" "mrgdown" 10 REPORT_LOCK_FD; then
+  if ! bt_report_acquire_lock "$REPO_ROOT" "pulldown" 10 REPORT_LOCK_FD; then
     bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
       "Timed out waiting 10s for report write lock." \
       "retry the operation after the report lock becomes available."
@@ -225,8 +225,8 @@ cleanup_old_transient_reports() {
     "$REPORTS_DIR" \
     "$CURRENT_BRANCH" \
     "$REPORT_FILE" \
-    "mrgdown-d-*.md" \
-    "mrgdown-e-*.md"
+    "pulldown-d-*.md" \
+    "pulldown-e-*.md"
 }
 
 generate_dry_run_report() {
@@ -239,7 +239,7 @@ generate_dry_run_report() {
   acquire_report_lock
   enable_reports_write_access
 
-  REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "mrgdown-d" \
+  REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "pulldown-d" \
     "$RUN_TS_FILE")"
   cleanup_old_transient_reports
 
@@ -275,7 +275,7 @@ generate_error_report() {
   acquire_report_lock
   enable_reports_write_access
 
-  REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "mrgdown-e" \
+  REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "pulldown-e" \
     "$RUN_TS_FILE")"
   cleanup_old_transient_reports
 
@@ -353,7 +353,7 @@ skip_merge_down_and_exit() {
 }
 
 format_command_line() {
-  bt_format_command_line "mrgdown" "${ORIGINAL_ARGS[@]}"
+  bt_format_command_line "pulldown" "${ORIGINAL_ARGS[@]}"
 }
 
 # Default options
@@ -370,7 +370,7 @@ ensure_clean_worktree() {
   if bt_is_worktree_dirty; then
     bt_emit_prerequisite_failure "$EXIT_NOT_FOUND" \
       "Current branch has uncommitted changes." \
-      "commit or undo changes, then rerun mrgdown."
+      "commit or undo changes, then rerun pulldown."
   fi
 }
 
@@ -381,7 +381,7 @@ auto_resolve_history_log_conflicts() {
 
   [[ -n "$conflicted_files" ]] || return 1
 
-  # Only auto-resolve known mrgup/mrgdown history artifacts.
+  # Only auto-resolve known pushup/pulldown history artifacts.
   while IFS= read -r file; do
     [[ -n "$file" ]] || continue
     if [[ ! "$file" =~ ^logs/.+_history\.md$ ]]; then
@@ -511,7 +511,7 @@ fi
 if bt_is_copyfix_in_progress "$CURRENT_BRANCH"; then
   bt_emit_prerequisite_failure "$EXIT_OPERATION_FAILED" \
     "Current branch '$CURRENT_BRANCH' has an unfinished copyfix operation." \
-    "complete it with 'copyfix --continue' before rerunning mrgdown."
+    "complete it with 'copyfix --continue' before rerunning pulldown."
 fi
 
 if [[ "$OWNER_OVERRIDE" == true ]]; then
@@ -537,7 +537,7 @@ if bt_is_protected_branch "$CURRENT_BRANCH"; then
   else
     bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
       "Cannot sync up on protected branch '$CURRENT_BRANCH'." \
-      "use mrgup to merge changes to this branch."
+      "use pushup to merge changes to this branch."
   fi
 fi
 
@@ -576,7 +576,7 @@ commits_to_merge=$(git rev-list --count "HEAD..origin/$PARENT_BRANCH" \
 if [[ "$commits_to_merge" == "0" ]]; then
   bt_emit_prerequisite_failure "$EXIT_NOTHING_TO_MERGE" \
     "Parent branch '$PARENT_BRANCH' has no changes to merge into '$CURRENT_BRANCH'." \
-    "rerun mrgdown after parent changes are available."
+    "rerun pulldown after parent changes are available."
 fi
 
 bt_info "Commits to merge: $commits_to_merge"
@@ -655,7 +655,7 @@ Directories-Deleted: $MERGE_DELETED_DIRECTORIES
 Directories-Added: $MERGE_ADDED_DIRECTORIES
 Directories-Renamed: $MERGE_RENAMED_DIRECTORIES
 Status: Parent branch merged into current branch
-Method: Merge commit (--no-ff) created by mrgdown" >/dev/null 2>&1; then
+Method: Merge commit (--no-ff) created by pulldown" >/dev/null 2>&1; then
   bt_error_exit "$EXIT_NOT_FOUND" \
     "Merge applied, but failed to create merge commit"
 fi

@@ -67,9 +67,11 @@ the current branch.
 
 **mkbranch**: Create branches with policy validation.
 
-**mrgdown**: Merge parent branch into current branch.
+**pulldown**: Merge parent branch into current branch.
 
-**mrgup**: Merge current branch to its parent branch.
+**pushup**: Push the current branch up to its parent, publish the parent,
+resynchronize the source branch, and publish the source. Partial push-up workflows
+are recorded and resumed with `pushup --continue`.
 
 **override**: Repository owner only. Toggle local or remote-repair authorization
 for this clone (`override on` / `override off`, and `override -r on`). Use

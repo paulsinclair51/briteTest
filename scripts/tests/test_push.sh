@@ -108,6 +108,9 @@ EOF
 rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./scripts/bin/push -h")
 [[ "$rc" -eq 0 ]] || fail "push -h should exit 0 (got $rc)"
 assert_contains "-t SEC" "$TMPDIR/help.out"
+assert_contains "A contributor may push a protected parent" "$TMPDIR/help.out"
+assert_contains "If another user pushes the same parent first" \
+  "$TMPDIR/help.out"
 pass "help output"
 
 copyfix_state_root="$(git -C "$WORK" rev-parse \
@@ -230,7 +233,7 @@ pass "policy-invalid branch gate"
 
 # Internal helper modes are not options of the direct push command.
 rc=$(run_capture "$TMPDIR/internal-option.out" env GITHUB_ACTOR=testuser \
-  bash -lc "cd '$WORK' && bash ./scripts/bin/push -d --mrgup dev/fake-v1.0.0 -t 5")
+  bash -lc "cd '$WORK' && bash ./scripts/bin/push -d --pushup dev/fake-v1.0.0 -t 5")
 [[ "$rc" -eq 1 ]] || fail "direct internal option should exit 1 (got $rc)"
 assert_contains "Internal push workflow options cannot be used" "$TMPDIR/internal-option.out"
 pass "internal helper option rejected by direct push"
@@ -366,31 +369,39 @@ local_tip="$(git -C "$WORK" rev-parse HEAD)"
 [[ "$remote_tip" == "$local_tip" ]] || fail "remote tip should match local tip after push"
 pass "real push"
 
-# A local mrgup event authorizes an approver to publish its protected parent
+# A local pushup event authorizes an approver to publish its protected parent
 # and finalizes the associated PR only after the branch push succeeds.
-MRGUP_ORIGIN="$TMPDIR/mrgup-origin.git"
-MRGUP_WORK="$TMPDIR/mrgup-work"
-MRGUP_BIN="$TMPDIR/mrgup-bin"
-git init --bare "$MRGUP_ORIGIN" >/dev/null 2>&1
-git clone "file://$MRGUP_ORIGIN" "$MRGUP_WORK" >/dev/null 2>&1
-mkdir -p "$MRGUP_WORK/scripts/bin" "$MRGUP_WORK/scripts/helpers" \
-  "$MRGUP_WORK/config" "$MRGUP_WORK/reports" "$MRGUP_BIN"
-cp "$PUSH_SRC" "$MRGUP_WORK/scripts/bin/push"
-cp "$COMMON_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/common.sh"
-cp "$GIT_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/git_helpers.sh"
-cp "$GITHUB_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/github_helpers.sh"
-cp "$HISTORY_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/history_log.sh"
-cp "$REPORT_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/report_helpers.sh"
-cp "$REPORT_SYNC_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/report_sync.sh"
-cp "$PUSH_WORKFLOW_HELPER_SRC" "$MRGUP_WORK/scripts/helpers/push_workflow.sh"
-cat > "$MRGUP_WORK/config/contributors.md" <<'EOF'
+PUSHUP_ORIGIN="$TMPDIR/pushup-origin.git"
+PUSHUP_WORK="$TMPDIR/pushup-work"
+PUSHUP_BIN="$TMPDIR/pushup-bin"
+git init --bare "$PUSHUP_ORIGIN" >/dev/null 2>&1
+git clone "file://$PUSHUP_ORIGIN" "$PUSHUP_WORK" >/dev/null 2>&1
+mkdir -p "$PUSHUP_WORK/scripts/bin" "$PUSHUP_WORK/scripts/helpers" \
+  "$PUSHUP_WORK/config" "$PUSHUP_WORK/reports" "$PUSHUP_BIN"
+cp "$PUSH_SRC" "$PUSHUP_WORK/scripts/bin/push"
+cp "$COMMON_HELPER_SRC" "$PUSHUP_WORK/scripts/helpers/common.sh"
+cp "$GIT_HELPER_SRC" "$PUSHUP_WORK/scripts/helpers/git_helpers.sh"
+cp "$GITHUB_HELPER_SRC" "$PUSHUP_WORK/scripts/helpers/github_helpers.sh"
+cp "$HISTORY_HELPER_SRC" "$PUSHUP_WORK/scripts/helpers/history_log.sh"
+cp "$REPORT_HELPER_SRC" "$PUSHUP_WORK/scripts/helpers/report_helpers.sh"
+cp "$REPORT_SYNC_HELPER_SRC" "$PUSHUP_WORK/scripts/helpers/report_sync.sh"
+cp "$PUSH_WORKFLOW_HELPER_SRC" "$PUSHUP_WORK/scripts/helpers/push_workflow.sh"
+cat > "$PUSHUP_WORK/config/contributors.md" <<'EOF'
 - testapprover, A
+- testcontributor, C
 EOF
-cat > "$MRGUP_BIN/gh" <<'EOF'
+cat > "$PUSHUP_BIN/gh" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$FAKE_GH_LOG"
 
-if [[ "$1 $2" == "pr view" && "$*" == *"--json state"* ]]; then
+if [[ "$1 $2" == "pr view" && "$*" == *"headRefOid"* ]]; then
+  if [[ -f "$FAKE_GH_STATE_DIR/stale-$3" ]]; then
+    review_decision="REVIEW_REQUIRED"
+  else
+    review_decision="APPROVED"
+  fi
+  echo -e "OPEN\tfalse\t${FAKE_PUSHUP_SOURCE:?}\t${FAKE_PUSHUP_TARGET:?}\t${FAKE_PUSHUP_SOURCE_TIP:?}\t${review_decision}\t"
+elif [[ "$1 $2" == "pr view" && "$*" == *"--json state"* ]]; then
   if [[ -f "$FAKE_GH_STATE_DIR/closed-$3" ]]; then
     echo "CLOSED"
   else
@@ -414,14 +425,22 @@ elif [[ "$1 $2" == "pr close" ]]; then
     exit 1
   fi
   touch "$FAKE_GH_STATE_DIR/closed-$3"
+elif [[ "$1" == "api" && "$*" == *"/pulls/"*"/reviews"* ]]; then
+  endpoint=""
+  for arg in "$@"; do
+    [[ "$arg" == repos/*/pulls/*/reviews ]] && endpoint="$arg"
+  done
+  pr_number="${endpoint%/reviews}"
+  pr_number="${pr_number##*/}"
+  [[ ! -f "$FAKE_GH_STATE_DIR/stale-$pr_number" ]] && echo 1001
 fi
 exit 0
 EOF
-chmod +x "$MRGUP_BIN/gh" "$MRGUP_WORK/scripts/bin/push"
-FAKE_GH_STATE_DIR="$TMPDIR/mrgup-gh-state"
+chmod +x "$PUSHUP_BIN/gh" "$PUSHUP_WORK/scripts/bin/push"
+FAKE_GH_STATE_DIR="$TMPDIR/pushup-gh-state"
 mkdir -p "$FAKE_GH_STATE_DIR"
 (
-  cd "$MRGUP_WORK"
+  cd "$PUSHUP_WORK"
   git config user.name testapprover
   git config user.email approver@example.com
   echo seed > README.md
@@ -433,70 +452,150 @@ mkdir -p "$FAKE_GH_STATE_DIR"
   git push -u origin v1.0.0 >/dev/null 2>&1
   echo merged > merged.txt
   git add merged.txt
-  git commit -m "local mrgup result" >/dev/null 2>&1
+  git commit -m "local pushup result" >/dev/null 2>&1
+  source_tip="1111111111111111111111111111111111111111"
   source scripts/helpers/history_log.sh
-  bt_record_workflow_event "mrgup" "v1.0.0" "mrgup" \
+  bt_record_workflow_event "pushup" "v1.0.0" "pushup" \
     "Merged dev/feature-v1.0.0 into v1.0.0" HEAD \
     "Source-Branch" "dev/feature-v1.0.0" \
+    "Source-Tip" "$source_tip" \
     "Target-Branch" "v1.0.0" "PR" "42"
 )
-FAKE_GH_LOG="$TMPDIR/mrgup-gh.log"
-rc=$(run_capture "$TMPDIR/mrgup-push.out" env GITHUB_ACTOR=testapprover \
+FAKE_GH_LOG="$TMPDIR/pushup-gh.log"
+rc=$(run_capture "$TMPDIR/pushup-push.out" env GITHUB_ACTOR=testcontributor \
   FAKE_GH_LOG="$FAKE_GH_LOG" FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" \
-  PATH="$MRGUP_BIN:$PATH" \
-  bash -c "cd '$MRGUP_WORK' && bash ./scripts/bin/push -t 5")
-[[ "$rc" -eq 0 ]] || fail "push should publish pending mrgup (got $rc)"
-assert_contains "Pushed (" "$TMPDIR/mrgup-push.out"
+  FAKE_PUSHUP_SOURCE=dev/feature-v1.0.0 FAKE_PUSHUP_TARGET=v1.0.0 \
+  FAKE_PUSHUP_SOURCE_TIP=1111111111111111111111111111111111111111 \
+  PATH="$PUSHUP_BIN:$PATH" \
+  bash -c "cd '$PUSHUP_WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 0 ]] || fail "push should publish pending pushup (got $rc)"
+assert_contains "Pushed (" "$TMPDIR/pushup-push.out"
 assert_contains "pr comment 42" "$FAKE_GH_LOG"
 assert_contains "pr close 42" "$FAKE_GH_LOG"
-[[ "$(git -C "$MRGUP_WORK" rev-parse v1.0.0)" == \
-  "$(git --git-dir="$MRGUP_ORIGIN" rev-parse refs/heads/v1.0.0)" ]] || \
-  fail "push should publish the local mrgup parent tip"
-pass "mrgup publication and PR finalization"
+[[ "$(git -C "$PUSHUP_WORK" rev-parse v1.0.0)" == \
+  "$(git --git-dir="$PUSHUP_ORIGIN" rev-parse refs/heads/v1.0.0)" ]] || \
+  fail "push should publish the local pushup parent tip"
+pass "approved contributor pushup publication and PR finalization"
 
 # A failed close occurs after the atomic branch/history publication. A rerun
 # with no commits retries only PR finalization and does not duplicate comments.
 (
-  cd "$MRGUP_WORK"
+  cd "$PUSHUP_WORK"
   echo retry > retry.txt
   git add retry.txt
-  git commit -m "mrgup close retry" >/dev/null 2>&1
+  git commit -m "pushup close retry" >/dev/null 2>&1
+  source_tip="2222222222222222222222222222222222222222"
   source scripts/helpers/history_log.sh
-  bt_record_workflow_event "mrgup" "v1.0.0" "mrgup" \
+  bt_record_workflow_event "pushup" "v1.0.0" "pushup" \
     "Merged dev/retry-v1.0.0 into v1.0.0" HEAD \
     "Source-Branch" "dev/retry-v1.0.0" \
+    "Source-Tip" "$source_tip" \
     "Target-Branch" "v1.0.0" "PR" "43"
 )
-retry_tip="$(git -C "$MRGUP_WORK" rev-parse HEAD)"
-rc=$(run_capture "$TMPDIR/mrgup-close-fail.out" env \
+retry_tip="$(git -C "$PUSHUP_WORK" rev-parse HEAD)"
+rc=$(run_capture "$TMPDIR/pushup-close-fail.out" env \
   GITHUB_ACTOR=testapprover FAKE_GH_LOG="$FAKE_GH_LOG" \
   FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" FAKE_GH_FAIL_CLOSE_ONCE=true \
-  PATH="$MRGUP_BIN:$PATH" \
-  bash -c "cd '$MRGUP_WORK' && bash ./scripts/bin/push -t 5")
+  FAKE_PUSHUP_SOURCE=dev/retry-v1.0.0 FAKE_PUSHUP_TARGET=v1.0.0 \
+  FAKE_PUSHUP_SOURCE_TIP=2222222222222222222222222222222222222222 \
+  PATH="$PUSHUP_BIN:$PATH" \
+  bash -c "cd '$PUSHUP_WORK' && bash ./scripts/bin/push -t 5")
 [[ "$rc" -eq 202 ]] || fail "failed PR close should exit 202 (got $rc)"
-[[ "$(git --git-dir="$MRGUP_ORIGIN" rev-parse refs/heads/v1.0.0)" == \
+[[ "$(git --git-dir="$PUSHUP_ORIGIN" rev-parse refs/heads/v1.0.0)" == \
   "$retry_tip" ]] || fail "failed PR close should leave the branch published"
-remote_retry_note="$(git --git-dir="$MRGUP_ORIGIN" notes \
+remote_retry_note="$(git --git-dir="$PUSHUP_ORIGIN" notes \
   --ref=briteTest-remote-workflow show "$retry_tip" 2>/dev/null || true)"
 [[ "$remote_retry_note" == *"Workflow-Type: push"* ]] || \
   fail "failed PR close should leave remote history published"
 
-rc=$(run_capture "$TMPDIR/mrgup-close-retry.out" env \
+rc=$(run_capture "$TMPDIR/pushup-close-retry.out" env \
   GITHUB_ACTOR=testapprover FAKE_GH_LOG="$FAKE_GH_LOG" \
   FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" FAKE_GH_FAIL_CLOSE_ONCE=true \
-  PATH="$MRGUP_BIN:$PATH" \
-  bash -c "cd '$MRGUP_WORK' && bash ./scripts/bin/push -t 5")
+  FAKE_PUSHUP_SOURCE=dev/retry-v1.0.0 FAKE_PUSHUP_TARGET=v1.0.0 \
+  FAKE_PUSHUP_SOURCE_TIP=2222222222222222222222222222222222222222 \
+  PATH="$PUSHUP_BIN:$PATH" \
+  bash -c "cd '$PUSHUP_WORK' && bash ./scripts/bin/push -t 5")
 [[ "$rc" -eq 0 ]] || fail "no-change PR close retry should succeed (got $rc)"
-assert_contains "Finalized pull request" "$TMPDIR/mrgup-close-retry.out"
+assert_contains "Finalized pull request" "$TMPDIR/pushup-close-retry.out"
 [[ "$(grep -Fc 'pr comment 43' "$FAKE_GH_LOG")" -eq 1 ]] || \
   fail "PR close retry should not duplicate its publication comment"
 
-rc=$(run_capture "$TMPDIR/mrgup-closed-noop.out" env \
+rc=$(run_capture "$TMPDIR/pushup-closed-noop.out" env \
   GITHUB_ACTOR=testapprover FAKE_GH_LOG="$FAKE_GH_LOG" \
-  FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" PATH="$MRGUP_BIN:$PATH" \
-  bash -c "cd '$MRGUP_WORK' && bash ./scripts/bin/push -t 5")
-[[ "$rc" -eq 10 ]] || fail "closed mrgup no-work push should exit 10 (got $rc)"
-pass "mrgup PR finalization recovery"
+  FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" \
+  FAKE_PUSHUP_SOURCE=dev/retry-v1.0.0 FAKE_PUSHUP_TARGET=v1.0.0 \
+  FAKE_PUSHUP_SOURCE_TIP=2222222222222222222222222222222222222222 \
+  PATH="$PUSHUP_BIN:$PATH" \
+  bash -c "cd '$PUSHUP_WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 10 ]] || fail "closed pushup no-work push should exit 10 (got $rc)"
+pass "pushup PR finalization recovery"
+
+# Approval changed after pushup blocks protected-parent push before publication.
+(
+  cd "$PUSHUP_WORK"
+  echo stale > stale.txt
+  git add stale.txt
+  git commit -m "stale approval result" >/dev/null 2>&1
+  source scripts/helpers/history_log.sh
+  bt_record_workflow_event "pushup" "v1.0.0" "pushup" \
+    "Merged dev/stale-v1.0.0 into v1.0.0" HEAD \
+    "Source-Branch" "dev/stale-v1.0.0" \
+    "Source-Tip" "3333333333333333333333333333333333333333" \
+    "Target-Branch" "v1.0.0" "PR" "44"
+)
+touch "$FAKE_GH_STATE_DIR/stale-44"
+stale_remote_before="$(git --git-dir="$PUSHUP_ORIGIN" rev-parse \
+  refs/heads/v1.0.0)"
+rc=$(run_capture "$TMPDIR/pushup-stale-approval.out" env \
+  GITHUB_ACTOR=testcontributor FAKE_GH_LOG="$FAKE_GH_LOG" \
+  FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" \
+  FAKE_PUSHUP_SOURCE=dev/stale-v1.0.0 FAKE_PUSHUP_TARGET=v1.0.0 \
+  FAKE_PUSHUP_SOURCE_TIP=3333333333333333333333333333333333333333 \
+  PATH="$PUSHUP_BIN:$PATH" \
+  bash -c "cd '$PUSHUP_WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 202 ]] || fail "stale approval push should exit 202 (got $rc)"
+assert_contains "no longer approved for the source commit" \
+  "$TMPDIR/pushup-stale-approval.out"
+[[ "$(git --git-dir="$PUSHUP_ORIGIN" rev-parse refs/heads/v1.0.0)" == \
+  "$stale_remote_before" ]] || \
+  fail "stale approval must not update the protected parent"
+pass "stale approval blocks protected parent push"
+
+# A competing parent update is rejected atomically with recovery guidance.
+(
+  cd "$PUSHUP_WORK"
+  source scripts/helpers/history_log.sh
+  bt_record_workflow_event "pushup" "v1.0.0" "pushup" \
+    "Merged dev/race-v1.0.0 into v1.0.0" HEAD \
+    "Source-Branch" "dev/race-v1.0.0" \
+    "Source-Tip" "4444444444444444444444444444444444444444" \
+    "Target-Branch" "v1.0.0" "PR" "45"
+)
+cat > "$PUSHUP_ORIGIN/hooks/pre-receive" <<'EOF'
+#!/usr/bin/env bash
+while read -r _old _new ref; do
+  if [[ "$ref" == "refs/heads/v1.0.0" ]]; then
+    echo "remote parent changed (fetch first)" >&2
+    exit 1
+  fi
+done
+exit 0
+EOF
+chmod +x "$PUSHUP_ORIGIN/hooks/pre-receive"
+rc=$(run_capture "$TMPDIR/pushup-parent-race.out" env \
+  GITHUB_ACTOR=testcontributor FAKE_GH_LOG="$FAKE_GH_LOG" \
+  FAKE_GH_STATE_DIR="$FAKE_GH_STATE_DIR" \
+  FAKE_PUSHUP_SOURCE=dev/race-v1.0.0 FAKE_PUSHUP_TARGET=v1.0.0 \
+  FAKE_PUSHUP_SOURCE_TIP=4444444444444444444444444444444444444444 \
+  PATH="$PUSHUP_BIN:$PATH" \
+  bash -c "cd '$PUSHUP_WORK' && bash ./scripts/bin/push -t 5")
+[[ "$rc" -eq 200 ]] || fail "competing parent push should exit 200 (got $rc)"
+assert_contains "Remote parent branch 'v1.0.0' changed" \
+  "$TMPDIR/pushup-parent-race.out"
+assert_contains "run pulldown, obtain approval for the updated source commit" \
+  "$TMPDIR/pushup-parent-race.out"
+rm -f "$PUSHUP_ORIGIN/hooks/pre-receive"
+pass "competing parent push gives safe retry guidance"
 
 # 11) Non-dry push should fail with 200 and write a failed push report.
 cat > "$ORIGIN/hooks/pre-receive" <<'EOF'

@@ -72,8 +72,8 @@ see [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) and
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.6. [report](#116-report)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.7. [mkbranch](#117-mkbranch)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. [pull](#118-pull)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.9. [mrgdown](#119-mrgdown)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.10. [mrgup](#1110-mrgup)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.9. [pulldown](#119-pulldown)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.10. [pushup](#1110-pushup)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.11. [retarget](#1111-retarget)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.12. [review](#1112-review)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.13. [rmbranch](#1113-rmbranch)<br>
@@ -331,36 +331,42 @@ pull [BRANCHNAME]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.9. mrgdown</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.9. pulldown</summary>
 
-#### 1.1.9. mrgdown
+#### 1.1.9. pulldown
 
 **Purpose:** Merge parent branch into current branch to sync changes.
 
 **Usage:**
 
 ```bash
-mrgdown [OPTIONS]
+pulldown [OPTIONS]
 ```
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.10. mrgup</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.10. pushup</summary>
 
-#### 1.1.10. mrgup
+#### 1.1.10. pushup
 
-**Purpose:** Merge current branch to its inferred parent branch.
+**Purpose:** Push the current branch up to its parent, publish both updated
+branches, and leave the resynchronized source branch selected.
 
 **Usage:**
 
 ```bash
-mrgup [OPTIONS]
+pushup [OPTIONS]
+pushup --continue
 ```
 
 **Options:**
 
-- `-m, --message <msg>` - Custom merge message
-- `-v, --verbose` - Verbose output
+- `--continue` - Resume a pushup that passed parent publication.
+- `-c TOKEN` - Custom pushup commit comment.
+- `-o` - Repository-owner override for eligible targeted-to-version paths.
+- `-t SEC` - Remote timeout in seconds.
+- `-v` - Verbose output.
+
 </details>
 
 <details>
@@ -1092,7 +1098,7 @@ git push origin --delete <branch>  # [ERROR] BLOCKED
 ```bash
 commit -m "msg" -p                 # [OK] Commit + push
 push                               # [OK] Push current branch
-mrgup                              # [OK] Merge-up workflow
+pushup                              # [OK] Merge-up workflow
 rmbranch <branch> -r               # [OK] Delete remote branch
 ```
 
@@ -1126,8 +1132,8 @@ git merge --no-ff            # [ERROR] BLOCKED
 **What to use instead:**
 
 ```bash
-mrgdown                      # [OK] Merge parent branch into current branch
-mrgup                        # [OK] Merge current branch up to parent workflow
+pulldown                      # [OK] Merge parent branch into current branch
+pushup                        # [OK] Merge current branch up to parent workflow
 ```
 
 **Error message shown:**
@@ -1135,7 +1141,7 @@ mrgup                        # [OK] Merge current branch up to parent workflow
 ```
 [ERROR] Direct git merge operations are not allowed.
 
-  Use the 'mrgdown' script instead:
+  Use the 'pulldown' script instead:
    ...
 ```
 </details>
@@ -1219,7 +1225,7 @@ mkclone           - Clone the repository
 commit            - Create and sign commits with optional push (-p)
 copyfix           - Copy fix commits between branches
 pull         - Sync with remote repository
-mrgdown           - Sync down from main branch
+pulldown           - Sync down from main branch
 undo              - Undo uncommitted changes
 report            - Check branch history
 lsbranch          - List branches and status
@@ -1237,7 +1243,7 @@ review            - Create/update draft PRs and start review (`-s`)
 
 **Approver (A) Scripts** - Inherits all Reviewer + Contributor scripts, plus:
 ```
-mrgup             - Merge branches to parent/protected branches (requires override)
+pushup             - Merge branches to parent/protected branches (requires override)
 release           - Create releases and version tags (requires override)
 fixlocal, fixremote - Repair repository state (requires override)
 rebrand           - Update branding across repository (requires override)
@@ -1258,7 +1264,7 @@ replacetext       - Replace text globally across repo (requires override)
 **Example Role Check:**
 ```bash
 # If you are a Contributor and run:
-mrgup
+pushup
 
 # Script will fail:
 [ERROR] This operation requires Approver role
@@ -1269,7 +1275,7 @@ mrgup
 Role checks are enforced by script-level policy gates and shared role helpers.
 Current enforcement patterns include:
 
-- Approver checks for protected merge/release paths (for example in `mrgup`).
+- Approver checks for protected merge/release paths (for example in `pushup`).
 - Contributor-role checks for branch mutation operations (for example in `rmbranch`).
 - Repository-owner override controls where supported (for example `-o`,
   and local override mode via `override on/off`).
@@ -1289,7 +1295,7 @@ operation-specific approval controls.
 Use script help for exact current behavior:
 
 ```bash
-mrgup -h
+pushup -h
 release -h
 fixlocal -h
 rmbranch -h

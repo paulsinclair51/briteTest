@@ -43,8 +43,12 @@ writes the latest `style-<datetime>.md` report.
 **install_git_hooks.sh**: Install git hooks.
 
 **push_workflow.sh**: Shared branch publication and push-report workflow.
-- Accepts prerequisite-validated context from `push` or `mrgup`.
+
+- Accepts prerequisite-validated context from `push` or the pushup engine.
 - Checks remote state and writes push or push-preview reports.
+
+**pushup_parent.sh**: Internal push-up engine used only by `pushup` to
+validate policy and prepare the local parent commit before publication.
 
 **rbac.sh**: check rbac.
 

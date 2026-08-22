@@ -95,7 +95,7 @@ pass "delete-and-record helper"
   fail "expected trailing period helper to append a period"
 [[ "$(bt_ensure_trailing_period "Hello.")" == "Hello." ]] || \
   fail "expected trailing period helper to preserve an existing period"
-[[ "$(bt_format_command_line "mrgdown" "-v" "two words")" == "mrgdown -v two\ words" ]] || \
+[[ "$(bt_format_command_line "pulldown" "-v" "two words")" == "pulldown -v two\ words" ]] || \
   fail "expected command-line formatter to shell-escape arguments"
 [[ "$(bt_trim_whitespace "  keep this  ")" == "keep this" ]] || \
   fail "expected whitespace trimming helper to normalize surrounding whitespace"

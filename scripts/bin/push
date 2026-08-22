@@ -21,7 +21,7 @@ and writes a report under <repo>/reports/.
 
 Policy:
   - Remote branches are read-only for editing in this workflow.
-  - Changes are made on local branches, then published with push.
+  - Changes are made on local branches, then pushed with push.
   - A local branch may exist without a corresponding remote branch.
 
 Prerequisites:
@@ -30,11 +30,13 @@ Prerequisites:
   - The remote (origin) must be connected and reachable.
   - The current branch must be a local branch.
   - The current branch must be a targeted or contributor branch, and
-    must not be the main or a version branch, except when publishing a local
-    mrgup result recorded on that protected parent branch.
+    must not be the main or a version branch, except when pushing a local
+    pushup result recorded on that protected parent branch.
   - The current branch must have no uncommitted changes.
     - If there are changes, run the commit or undo command first.
   - The current branch must not have an unfinished copyfix operation.
+  - A contributor may push a protected parent only for a recorded pushup result
+    whose source commit still has current PR approval.
 
 Remote state requirements:
   - The remote branch must exist.
@@ -42,6 +44,9 @@ Remote state requirements:
     must be unpushed committed changes).
   - The current branch and its remote must not have diverged.
     - If they have diverged, run pull to synchronize first.
+  - If another user pushes the same parent first, return to the source branch,
+    run pulldown, obtain approval for the updated source commit, then rerun
+    pushup and push.
 
 Options:
   -d            Dry-run. Validates preconditions and reports what
@@ -72,8 +77,8 @@ Outputs:
   - No report is written when a non-dry-run push succeeds. Older dry-run and
     error reports for the current branch are deleted.
   - After a successful non-dry-run push, records history for the report
-    command in remote workflow history. When the pushed tip is a local mrgup
-    result, push comments on and closes its associated PR after publication.
+    command in remote workflow history. When the pushed tip is a local pushup
+    result, push comments on and closes its associated PR after pushing.
   - For a dry-run, writes an untracked report locally to:
       '<repo>/reports/push-d-<datetime>.md'
   - If a non-dry-run operation fails after push work starts, writes an
@@ -125,7 +130,7 @@ done
 
 for arg in "$@"; do
   case "$arg" in
-    --mrgup|--preview-ref)
+    --pushup|--preview-ref)
       usage
       echo >&2
       echo "Internal push workflow options cannot be used with the push"
@@ -151,10 +156,11 @@ source "$SCRIPT_DIR/../helpers/report_sync.sh"
 source "$SCRIPT_DIR/../helpers/push_workflow.sh"
 
 PUSH_WORKFLOW_ARGS=()
-PENDING_MRGUP=false
-PENDING_MRGUP_SOURCE=""
-PENDING_MRGUP_TARGET=""
-PENDING_MRGUP_PR=""
+PENDING_PUSHUP=false
+PENDING_PUSHUP_SOURCE=""
+PENDING_PUSHUP_SOURCE_TIP=""
+PENDING_PUSHUP_TARGET=""
+PENDING_PUSHUP_PR=""
 
 push_error_exit() {
   local code="$1"
@@ -227,7 +233,7 @@ push_require_approver_role() {
     "$repo_root/config/contributors.md"
 }
 
-push_load_pending_mrgup() {
+push_load_pending_pushup() {
   local current_branch="$1"
   local note=""
   local workflow_type=""
@@ -235,34 +241,75 @@ push_load_pending_mrgup() {
   note="$(git notes --ref=briteTest-workflow show HEAD 2>/dev/null || true)"
   [[ -n "$note" ]] || return 0
   workflow_type="$(bt_workflow_note_field "$note" "Workflow-Type")"
-  [[ "$workflow_type" == "mrgup" ]] || return 0
+  [[ "$workflow_type" == "pushup" ]] || return 0
 
-  PENDING_MRGUP_TARGET="$(bt_workflow_note_field "$note" "Target-Branch")"
-  [[ "$PENDING_MRGUP_TARGET" == "$current_branch" ]] || return 0
-  PENDING_MRGUP_SOURCE="$(bt_workflow_note_field "$note" "Source-Branch")"
-  PENDING_MRGUP_PR="$(bt_workflow_note_field "$note" "PR")"
-  PENDING_MRGUP=true
+  PENDING_PUSHUP_TARGET="$(bt_workflow_note_field "$note" "Target-Branch")"
+  [[ "$PENDING_PUSHUP_TARGET" == "$current_branch" ]] || return 0
+  PENDING_PUSHUP_SOURCE="$(bt_workflow_note_field "$note" "Source-Branch")"
+  PENDING_PUSHUP_SOURCE_TIP="$(bt_workflow_note_field "$note" "Source-Tip")"
+  PENDING_PUSHUP_PR="$(bt_workflow_note_field "$note" "PR")"
+  PENDING_PUSHUP=true
 }
 
-bt_push_has_pending_mrgup_pr() {
-  [[ "$PENDING_MRGUP" == true && -n "$PENDING_MRGUP_PR" && \
-    "$PENDING_MRGUP_PR" != "none" ]]
+bt_push_has_pending_pushup_pr() {
+  [[ "$PENDING_PUSHUP" == true && -n "$PENDING_PUSHUP_PR" && \
+    "$PENDING_PUSHUP_PR" != "none" ]]
 }
 
-bt_push_get_mrgup_pr_state() {
-  bt_run_remote_command gh pr view "$PENDING_MRGUP_PR" \
+bt_push_get_pushup_pr_state() {
+  bt_run_remote_command gh pr view "$PENDING_PUSHUP_PR" \
     --json state --jq '.state' 2>/dev/null
 }
 
-bt_push_finalize_mrgup_pr() {
+bt_push_validate_pushup_pr_approval() {
+  local fields=""
+  local state=""
+  local is_draft=""
+  local head_ref=""
+  local base_ref=""
+  local head_oid=""
+  local review_decision=""
+  local merged_at=""
+  local approval_id=""
+
+  bt_push_has_pending_pushup_pr || return 0
+  [[ -n "$PENDING_PUSHUP_SOURCE_TIP" ]] || return 1
+
+  if ! fields="$(bt_run_remote_command gh pr view "$PENDING_PUSHUP_PR" \
+    --json state,isDraft,headRefName,headRefOid,baseRefName,reviewDecision,mergedAt \
+    --jq '[.state, (.isDraft|tostring), .headRefName, .baseRefName, \
+      .headRefOid, .reviewDecision, (.mergedAt // "")] | @tsv' \
+    2>/dev/null)"; then
+    return 1
+  fi
+  IFS=$'\t' read -r state is_draft head_ref base_ref head_oid \
+    review_decision merged_at <<< "$fields"
+
+  [[ "$state" == "OPEN" && "$is_draft" != "true" && -z "$merged_at" && \
+    "$head_ref" == "$PENDING_PUSHUP_SOURCE" && \
+    "$base_ref" == "$PENDING_PUSHUP_TARGET" && \
+    "$head_oid" == "$PENDING_PUSHUP_SOURCE_TIP" && \
+    "$review_decision" == "APPROVED" ]] || return 1
+
+  if ! approval_id="$(bt_run_remote_command gh api --paginate \
+    "repos/{owner}/{repo}/pulls/$PENDING_PUSHUP_PR/reviews" \
+    --jq ".[] | select(.state == \"APPROVED\" and .commit_id == \"$head_oid\") | .id" \
+    2>/dev/null)"; then
+    return 1
+  fi
+  [[ -n "$approval_id" ]]
+}
+
+bt_push_finalize_pushup_pr() {
   local pushed_tip="$1"
   local body_file=""
   local comment_bodies=""
-  local marker="<!-- briteTest-mrgup-published:${pushed_tip} -->"
+  local marker="<!-- briteTest-pushup-published:${pushed_tip} -->"
 
-  bt_push_has_pending_mrgup_pr || return 0
+  bt_push_has_pending_pushup_pr || return 0
+  bt_push_validate_pushup_pr_approval || return 1
 
-  if ! comment_bodies="$(bt_run_remote_command gh pr view "$PENDING_MRGUP_PR" \
+  if ! comment_bodies="$(bt_run_remote_command gh pr view "$PENDING_PUSHUP_PR" \
     --json comments --jq '.comments[].body' 2>/dev/null)"; then
     return 1
   fi
@@ -272,15 +319,15 @@ bt_push_finalize_mrgup_pr() {
     cat > "$body_file" <<EOF
 $marker
 
-## mrgup Published
+## pushup Published
 
-Source branch: \`$PENDING_MRGUP_SOURCE\`
+Source branch: \`$PENDING_PUSHUP_SOURCE\`
 
-Parent branch: \`$PENDING_MRGUP_TARGET\`
+Parent branch: \`$PENDING_PUSHUP_TARGET\`
 
 Published tip: \`$pushed_tip\`
 EOF
-    if ! bt_run_remote_command gh pr comment "$PENDING_MRGUP_PR" \
+    if ! bt_run_remote_command gh pr comment "$PENDING_PUSHUP_PR" \
       --body-file "$body_file" >/dev/null 2>&1; then
       rm -f "$body_file"
       return 1
@@ -288,7 +335,7 @@ EOF
     rm -f "$body_file"
   fi
 
-  if ! bt_run_remote_command gh pr close "$PENDING_MRGUP_PR" \
+  if ! bt_run_remote_command gh pr close "$PENDING_PUSHUP_PR" \
     >/dev/null 2>&1; then
     return 1
   fi
@@ -363,31 +410,38 @@ push_validate_prerequisites() {
       "Not on a local branch. Use 'chbranch' to switch to a local non-protected branch, then retry." \
       "switch to a local branch and rerun push."
   fi
-  push_load_pending_mrgup "$current_branch"
+  push_load_pending_pushup "$current_branch"
   if ! push_require_contributor_role; then
     bt_emit_prerequisite_failure 2 \
       "User is not a contributor." \
       "use an account and merge path authorized by repository policy, then rerun push."
   fi
   if bt_is_protected_branch "$current_branch" && \
-    [[ "$PENDING_MRGUP" != true ]]; then
+    [[ "$PENDING_PUSHUP" != true ]]; then
     bt_emit_prerequisite_failure 3 \
       "Cannot push protected branch '$current_branch' via push. Use the standard release workflow" \
       "for protected branches."
   fi
+  if bt_push_has_pending_pushup_pr && \
+    ! bt_push_validate_pushup_pr_approval; then
+    bt_emit_prerequisite_failure 202 \
+      "Pull request #$PENDING_PUSHUP_PR is no longer approved for the source commit merged by pushup." \
+      "review and approve the current source commit, rerun pushup, then rerun push."
+  fi
   if bt_is_protected_branch "$current_branch" && \
-    ! push_require_approver_role; then
+    ! push_require_approver_role && \
+    ! bt_push_has_pending_pushup_pr; then
     bt_emit_prerequisite_failure 2 \
-      "Publishing merged protected branch '$current_branch' requires an approver." \
-      "use an approver account and rerun push."
+      "Pushing merged protected branch '$current_branch' requires an approver or a contributor with a PR approved for the recorded source commit." \
+      "restore current PR approval or use an approver account, then rerun push."
   fi
   if bt_is_read_only_branch "$current_branch" && \
-    [[ "$PENDING_MRGUP" != true ]]; then
+    [[ "$PENDING_PUSHUP" != true ]]; then
     bt_emit_prerequisite_failure 3 \
       "Cannot push policy-invalid read-only branch '$current_branch'." \
       "switch to a valid targeted or contributor branch and rerun push."
   fi
-  if [[ "$PENDING_MRGUP" != true ]] && \
+  if [[ "$PENDING_PUSHUP" != true ]] && \
     ! push_is_targeted_branch "$current_branch" && \
     ! push_is_contributor_branch "$current_branch"; then
     bt_emit_prerequisite_failure 1 \
@@ -395,10 +449,10 @@ push_validate_prerequisites() {
       "chbranch or mkbranch to switch to a supported local branch, then retry."
   fi
 
-  if [[ "$PENDING_MRGUP" == true && -n "$PENDING_MRGUP_PR" && \
-    "$PENDING_MRGUP_PR" != "none" ]] && ! command -v gh >/dev/null 2>&1; then
+  if [[ "$PENDING_PUSHUP" == true && -n "$PENDING_PUSHUP_PR" && \
+    "$PENDING_PUSHUP_PR" != "none" ]] && ! command -v gh >/dev/null 2>&1; then
     bt_emit_prerequisite_failure 1 \
-      "GitHub CLI is required to finalize pull request #$PENDING_MRGUP_PR." \
+      "GitHub CLI is required to finalize pull request #$PENDING_PUSHUP_PR." \
       "install gh and rerun push."
   fi
   if bt_is_copyfix_in_progress "$current_branch"; then

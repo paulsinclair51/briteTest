@@ -92,8 +92,14 @@ test-lsbranch:
 test-mkbranch:
 	bash ./scripts/tests/test_mkbranch.sh
 
-test-mrgdown:
-	bash ./scripts/tests/test_mrgdown.sh
+test-pulldown:
+	bash ./scripts/tests/test_pulldown.sh
+
+test-pushup:
+	bash ./scripts/tests/test_pushup.sh
+
+test-pushup-parent:
+	bash ./scripts/tests/test_pushup_parent.sh
 
 test-report-helpers:
 	bash ./scripts/tests/test_report_helpers.sh
@@ -116,4 +122,4 @@ genpngs:
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run lint-md check-doc test-gendocs test-fixlocal test-fixremote test-lsbranch test-mkbranch test-mrgdown test-report-helpers test-report-style test-genpngs test-all-scripts gendocs genpngs clean
+.PHONY: all run lint-md check-doc test-gendocs test-fixlocal test-fixremote test-lsbranch test-mkbranch test-pulldown test-pushup test-pushup-parent test-report-helpers test-report-style test-genpngs test-all-scripts gendocs genpngs clean

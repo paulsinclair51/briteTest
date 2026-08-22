@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# undo - uncommitted changes, commit, push, copyfix, pull, mrgdown,
-#        mrgup, or release.
+# undo - uncommitted changes, commit, push, copyfix, pull, pulldown,
+#        or release.
 #
 # See usage below for details, or run: undo -h
 #
@@ -15,7 +15,7 @@ Usage:
   undo [OPTIONS] [TYPE]
   undo {-h | --help}
 
-Undo recent operations: uncommitted changes, commit, or mrgdown.
+Undo recent operations: uncommitted changes, commit, or pulldown.
 
 Prerequisites:
   - If the current branch is a targeted or contributor branch, the
@@ -30,18 +30,15 @@ Prerequisites:
     read-only branch can still be undone and the user can then change to
     another branch. Use rmbranch to delete invalid branches if needed.
   - For undo uncommitted, the current branch may be local or remote.
-  - For undo commit, pull, or mrgdown, the current branch must be local and
+  - For undo commit, pull, or pulldown, the current branch must be local and
     must have no uncommitted changes (undo uncommitted first and
-    rerun undo commit, pull, or mrgdown).
+    rerun undo commit, pull, or pulldown).
   - For undo push, the current branch must be the remote branch that was
     the target of the push and must have no uncommitted changes
     (undo uncommitted first and rerun undo push).
   - For undo copyfix, the current branch must be local, must be the branch
     to which the copyfix was the target and must have no uncommitted changes
     (undo uncommitted first and rerun undo copyfix).
-  - For undo mrgup, the current branch must be local, must be the parent
-    branch of the merge up and must have no uncommitted changes
-    (undo uncommitted first and rerun undo mrgup).
   - For undo release, the current branch must be the branch
     from which the release was made and must have no accidental uncommitted
     changes (undo uncommitted first and rerun undo release).
@@ -59,8 +56,7 @@ Arguments:
                   copyfix      Undo last copyfix (revert working tree and reset
                   to
                                previous commit).
-                  mrgdown      Undo last merge down.
-                  mrgup        Undo last merge up.
+                  pulldown      Undo last merge down.
                   release      Undo last release (delete local and remote tag,
                                and delete GitHub release if it exists).
 
@@ -92,13 +88,13 @@ Examples:
   undo
 
   # Undo last merge down.
-  undo mrgdown
+  undo pulldown
 
    # Undo last commit with a comment.
   undo commit -c "Undo incorrect change."
 
   # Undo merge down with verbose output.
-  undo mrgdown -v
+  undo pulldown -v
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
@@ -106,15 +102,11 @@ Outputs:
   - Writes an undo report if successful to:
       '<repo>/reports/undo-<TYPE>-YYYYMMDD-HHMMSS-<pid>.md'
     The report is written locally based on the TYPE being undone:
-      - For undo uncommitted, commit, pull, copyfix,and mrgdown, the undo report
+      - For undo uncommitted, commit, pull, copyfix,and pulldown, the undo report
       is
         written to the current branch.
       - For undo push, the undo report is written to the remote branch for
         the current branch.
-      - For undo mrgup, the undo report is written locally to the parent
-        branch of the current branch. Also, an undo push report is written to
-        the
-        parent's remote branch if one exists.
       - For undo release, the undo report is written to the remote branch
         for the current branch.
   - Writes an error report if unsuccessful (and -d not specified) to the
@@ -134,8 +126,7 @@ Exit codes:
   5    No pull to undo.
   6    No push to undo.
   7    No copyfix to undo.
-  8    No mrgdown to undo.
-  9    No mrgup to undo.
+  8    No pulldown to undo.
   10   No release to undo.
   11   Configuration error.
   200  Git operation failed (e.g., revert, reset, or push)
@@ -173,8 +164,7 @@ readonly EXIT_NO_COMMIT=4
 readonly EXIT_NO_PULL=5
 readonly EXIT_NO_PUSH=6
 readonly EXIT_NO_COPYFIX=7
-readonly EXIT_NO_MRGDOWN=8
-readonly EXIT_NO_MRGUP=9
+readonly EXIT_NO_PULLDOWN=8
 readonly EXIT_NO_RELEASE=10
 readonly EXIT_CONFIG_ERROR=11
 readonly EXIT_GIT_OPERATION_FAILED=200
@@ -253,12 +243,8 @@ confirm_undo() {
 }
 
 undo_merge() {
-  local op_type="${1:-mrgdown}"
-  local not_found_code="$EXIT_NO_MRGDOWN"
-
-  if [[ "$op_type" == "mrgup" ]]; then
-    not_found_code="$EXIT_NO_MRGUP"
-  fi
+  local op_type="${1:-pulldown}"
+  local not_found_code="$EXIT_NO_PULLDOWN"
 
   local current_branch
   current_branch=$(bt_get_current_branch || \
@@ -562,11 +548,8 @@ case "$UNDO_TYPE" in
   uncommitted)
     undo_uncommitted
     ;;
-  mrgdown)
-    undo_merge "mrgdown"
-    ;;
-  mrgup)
-    undo_merge "mrgup"
+  pulldown)
+    undo_merge "pulldown"
     ;;
   pull)
     undo_reset_hard_head "pull" "$EXIT_NO_PULL"
@@ -585,7 +568,7 @@ case "$UNDO_TYPE" in
     ;;
   *)
     usage_error "Unknown undo type: $UNDO_TYPE" \
-      "(valid: uncommitted, commit, pull, push, copyfix, mrgdown, mrgup," \
+      "(valid: uncommitted, commit, pull, push, copyfix, pulldown," \
       "release)"
     ;;
 esac

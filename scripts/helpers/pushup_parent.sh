@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 
-# mrgup - Merge current branch to its parent branch with
-# approval tracking.
-#
-# See usage below for details, or run: mrgup -h
+# Internal parent-preparation engine for pushup.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -12,8 +9,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  mrgup [OPTIONS] [-- TOKEN...]
-  mrgup {-h | --help}
+  pushup [OPTIONS] [-- TOKEN...]
+  pushup {-h | --help}
 
 Merge the current branch up to its local parent branch. The merge remains local
 until push is run from the parent branch.
@@ -32,17 +29,18 @@ Prerequisites:
       branch, and the user must be a contributor, reviewer, or approver.
     - If the current branch is a targeted branch, its parent branch must be
       a version branch. If -o is specified, the user must be the repository
-      owner; otherwise, the user must be an approver.
+      owner; otherwise, the user must be a contributor, reviewer, or approver
+      and the PR must be approved for the current commit.
     - If the current branch is a version branch, its parent branch must be
       the main branch, and the user must be an approver.
   - Local/remote and branch synchronization:
     - The current branch must be a local branch with no uncommitted changes.
       Use the commit or undo commands to commit or undo local changes before
-      running mrgup.
+      running pushup.
     - The current branch must not have an unfinished copyfix operation.
     - The current branch must not be behind its parent branch. Use the
-      mrgdown command to merge the parent branch into the current branch
-      before running mrgup.
+      pulldown command to merge the parent branch into the current branch
+      before running pushup.
     - The parent branch for the current branch must exist locally and be
       available for checkout.
     - A protected branch (either the current branch or its parent branch) must
@@ -52,7 +50,7 @@ Prerequisites:
         the default of 10 seconds).
     - The local branch must match its remote exactly; it cannot be ahead,
       behind, or diverged. Use the pull and push commands to synchronize
-      a local branch with its remote branch before running mrgup.
+      a local branch with its remote branch before running pushup.
   - PR requirements:
     - With -o, a PR is optional for merges up to a version branch.
     - Without -o, a PR is required for merges up to a version branch.
@@ -62,13 +60,26 @@ Prerequisites:
       branch, base=parent branch, have no outstanding Changes Requested,
       be approved, and not already be merged.
 
-Mrgup behavior:
+Pushup behavior:
   - Combines changes into a single commit on the local parent branch.
   - Leaves the local parent branch checked out for review and testing.
   - Does not modify local source branches, remote branches, or PR state.
-  - Records source branch and PR metadata for push to use when publishing.
+  - Records source branch and PR metadata for push to use when pushing.
   - CI/CD results attached to an associated PR are copied into reports when
     available.
+  - After pushup, the source and parent histories normally diverge even though
+    the source changes were merged.
+  - A new source commit after approval requires review and approval again
+    before pushup can run.
+  - An approved contributor can run pushup from the source clone, then run push
+    from the parent branch. push verifies the same source commit is still
+    approved before updating the parent.
+  - If another user pushes the parent first, return to the source branch, run
+    pulldown, obtain approval for the updated source commit, then rerun pushup
+    and push.
+  - Review and test the parent, then run push from the parent. If development
+    continues on the source branch, change back to it and run pulldown only
+    after the parent has been pushed.
 
 Options:
   -c TOKEN           Commit comment from TOKEN.
@@ -92,16 +103,16 @@ Options:
     - For a quoted token, whitespace in the token is preserved and the
       quotes are removed.
     - For example, the following both have the same commit comment:
-        mrgup -- do "  keep   this spacing  " for commit comment.
-        mrgup -c "do   keep   this spacing   for commit comment."
+        pushup -- do "  keep   this spacing  " for commit comment.
+        pushup -c "do   keep   this spacing   for commit comment."
     - The resulting commit comment from TOKEN or TOKEN... must include at least
       one non-whitespace character.
     - Always ensure that the commit comment accurately reflects the changes
       being committed to the parent branch.
 
-If a commit comment is not specified, mrgup uses the PR title when
+If a commit comment is not specified, pushup uses the PR title when
 available; otherwise, a default commit comment is used:
-  - mrgup with -o option merging a targeted branch up to its
+  - pushup with -o option merging a targeted branch up to its
     corresponding parent version branch:
         "<targeted_branch> merged to <parent_branch> by owner <user>."
   - Approver merging a version branch up to the main branch:
@@ -119,19 +130,19 @@ Common failure reasons:
 Examples:
   # Merge a targeted branch to its parent version branch, using the PR title
   # as the commit comment.
-  mrgup
+  pushup
 
   # Preview the merge.
-  mrgup -d
+  pushup -d
 
   # Merge with a '-c' commit comment.
-  mrgup -c "My commit comment."
+  pushup -c "My commit comment."
 
   # Merge with a '--' commit comment.
-  mrgup -- "Merge parser fixes."
+  pushup -- "Merge parser fixes."
 
   # Merge with verbose output.
-  mrgup -v
+  pushup -v
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
@@ -139,16 +150,16 @@ Outputs:
   - No reports are written when there are usage or prerequisite failures.
     Older dry-run and error reports for the current branch are not deleted.
   - No-work prerequisite failures do not generate or delete reports.
-  - After a successful non-dry-run mrgup, records history for the report
+  - After a successful non-dry-run pushup, records history for the report
     command, leaves the parent checked out, and tells the user to run report
     locally or push when ready. It does not write an immediate merge report.
   - If a non-dry-run operation fails after merge work starts, an
     untracked error report is written locally at:
-      <repo>/reports/mrgup-e-<datetime>.md
+      <repo>/reports/pushup-e-<datetime>.md
   - If -d was specified, an untracked dry-run report is written locally at:
-        <repo>/reports/mrgup-d-<datetime>.md
+        <repo>/reports/pushup-d-<datetime>.md
   - When a dry-run or error report is written,
-    older mrgup dry-run/error reports for the current branch are removed.
+    older pushup dry-run/error reports for the current branch are removed.
   - CI/CD results if available from an associated PR are included in dry-run
     and error reports and the successful PR comment.
 
@@ -169,13 +180,12 @@ Exit codes:
   9    A contributor-branch merge is requested by a user who is not a
   contributor,
        reviewer, or approver.
-  10   A targeted- or version-branch merge is requested by a user who is not
-       an approver and -o is not specified.
+  10   The user does not have the role required for the requested merge path.
   11   The current branch is not checked out as a local branch.
   12   The current branch has uncommitted changes.
   13   The current branch is behind its parent branch. Use the
-       mrgdown command to merge the parent branch into the current branch
-       before running mrgup.
+       pulldown command to merge the parent branch into the current branch
+       before running pushup.
   14   The parent branch for the current branch does not exist locally.
   15   The parent branch for the current branch is not available for
        checkout in this worktree.
@@ -201,9 +211,11 @@ Exit codes:
   32   PR has outstanding changes requested. Checked when a PR is found.
   33   PR is not yet approved. Checked when a PR is found.
   34   PR is already merged. Checked when a PR is found.
-  35   Another mrgup process holds the repository run lock.
+  35   Another pushup process holds the repository run lock.
   36   Merge-up skipped because -e was specified.
   37   No changes are available to merge into the parent branch.
+  38   The current branch has an unfinished copyfix operation.
+  39   The PR head commit does not match the current branch commit.
   200  GitHub identity query failed.
   201  A required GitHub PR query failed.
     202  Git operation failed while checking branch state, during the merge,
@@ -283,6 +295,7 @@ readonly EXIT_RUN_LOCKED=35
 readonly EXIT_WORKFLOW_SKIPPED=36
 readonly EXIT_NOTHING_TO_MERGE=37
 readonly EXIT_COPYFIX_IN_PROGRESS=38
+readonly EXIT_PR_HEAD_COMMIT_MISMATCH=39
 readonly EXIT_GITHUB_IDENTITY_FAILED=200
 readonly EXIT_GITHUB_PR_QUERY_FAILED=201
 readonly EXIT_GIT_OPERATION_FAILED=202
@@ -314,11 +327,13 @@ OWNER_OVERRIDE_ACTIVE=false
 MESSAGE_SOURCE=""
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 CURRENT_SOURCE_REF=""
+CURRENT_SOURCE_TIP=""
 REMOTE_TIMEOUT_SECONDS=10
 PARENT_CHECKOUT_ACTIVE=false
 VERIFY_LAST_ERROR=""
 VERIFY_FAILURE_KIND=""
 CI_CD_REPORT_DETAILS="No associated PR; CI/CD checks were not queried."
+APPROVED_SOURCE_TIP=""
 LOCK_FILE=""
 LOCK_HELD=false
 OPERATION_STARTED=false
@@ -362,7 +377,7 @@ bt_emit_guidance_joined() {
 }
 
 format_command_line() {
-  bt_format_command_line "mrgup" "${ORIGINAL_ARGS[@]}"
+  bt_format_command_line "pushup" "${ORIGINAL_ARGS[@]}"
 }
 
 current_checked_out_branch() {
@@ -386,9 +401,9 @@ bt_run_remote_cmd() {
 }
 
 acquire_report_lock() {
-  if ! bt_report_acquire_lock "$REPO_ROOT" "mrgup" 10 REPORT_LOCK_FD; then
+  if ! bt_report_acquire_lock "$REPO_ROOT" "pushup" 10 REPORT_LOCK_FD; then
     bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" \
-      "Timed out waiting for the mrgup report lock"
+      "Timed out waiting for the pushup report lock"
   fi
 }
 
@@ -403,7 +418,7 @@ skip_merge_up_and_exit() {
 
   acquire_report_lock
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_LOCAL_REPORT_FAILED" >/dev/null 2>&1 || true
-  REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "mrgup-e" "$RUN_TS_FILE")"
+  REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "pushup-e" "$RUN_TS_FILE")"
   bt_report_write_header "$REPORT_FILE" "Merge-Up Error Report" "$RUN_TS_DISPLAY" "$(format_command_line)" >/dev/null 2>&1 || true
   cat >> "$REPORT_FILE" <<EOF
 **Branch:** \`${CURRENT_BRANCH:-unknown}\`
@@ -429,8 +444,8 @@ cleanup_old_transient_reports() {
     "$REPORTS_DIR" \
     "$CURRENT_BRANCH" \
     "$REPORT_FILE" \
-    "mrgup-d-*.md" \
-    "mrgup-e-*.md"
+    "pushup-d-*.md" \
+    "pushup-e-*.md"
 }
 
 print_merge_change_summary() {
@@ -486,7 +501,7 @@ build_dry_run_push_preview_ref() {
       "'$parent_branch'"
   fi
 
-  preview_commit="$(printf '%s\n' "mrgup dry-run preview for $current_branch to $parent_branch" | git commit-tree "$preview_tree" -p "$parent_tip" 2>/dev/null || true)"
+  preview_commit="$(printf '%s\n' "pushup dry-run preview for $current_branch to $parent_branch" | git commit-tree "$preview_tree" -p "$parent_tip" 2>/dev/null || true)"
   if [[ -z "$preview_commit" ]]; then
     git reset --hard "$parent_tip" >/dev/null 2>&1 || true
     bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
@@ -503,9 +518,9 @@ acquire_run_lock() {
   local lock_path=""
   local existing_pid=""
 
-  lock_path="$(git rev-parse --git-path mrgup.run.lock 2>/dev/null || true)"
+  lock_path="$(git rev-parse --git-path pushup.run.lock 2>/dev/null || true)"
   if [[ -z "$lock_path" ]]; then
-    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Unable to resolve repository lock path for mrgup"
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Unable to resolve repository lock path for pushup"
   fi
 
   LOCK_FILE="$lock_path"
@@ -526,19 +541,19 @@ acquire_run_lock() {
   existing_pid="$(cat "$LOCK_FILE" 2>/dev/null || true)"
   if [[ "$existing_pid" =~ ^[0-9]+$ ]]; then
     bt_error_exit "$EXIT_RUN_LOCKED" \
-      "Another mrgup run appears active (pid $existing_pid). Verify with" \
-      "'ps -p $existing_pid -o comm='. If no mrgup process is running," \
-      "remove stale lock '.git/mrgup.run.lock' and rerun mrgup"
+      "Another pushup run appears active (pid $existing_pid). Verify with" \
+      "'ps -p $existing_pid -o comm='. If no pushup process is running," \
+      "remove stale lock '.git/pushup.run.lock' and rerun pushup"
   fi
 
-  bt_error_exit "$EXIT_RUN_LOCKED" "Another mrgup run appears active. If no run is active, remove " \
-    "stale lock '.git/mrgup.run.lock' and rerun mrgup"
+  bt_error_exit "$EXIT_RUN_LOCKED" "Another pushup run appears active. If no run is active, remove " \
+    "stale lock '.git/pushup.run.lock' and rerun pushup"
 }
 
 release_run_lock() {
   if [[ "$LOCK_HELD" == true && -n "$LOCK_FILE" ]]; then
     if ! rm -f "$LOCK_FILE" >/dev/null 2>&1; then
-      echo "Warning: failed to remove mrgup lock '$LOCK_FILE'; remove it" \
+      echo "Warning: failed to remove pushup lock '$LOCK_FILE'; remove it" \
            "manually before the next run." >&2
       return 1
     fi
@@ -555,56 +570,56 @@ print_failure_guidance() {
     "$EXIT_PR_NOT_OPEN"|"$EXIT_PR_DRAFT"|"$EXIT_PR_HEAD_MISMATCH"|\
     "$EXIT_PR_BASE_MISMATCH"|"$EXIT_PR_HAS_CHANGES_REQUESTED"|\
     "$EXIT_PR_NOT_APPROVED"|"$EXIT_PR_ALREADY_MERGED")
-      bt_emit_guidance_joined "fix PR state/approval for this branch and rerun mrgup"
+      bt_emit_guidance_joined "fix PR state/approval for this branch and rerun pushup"
       ;;
     "$EXIT_CURRENT_NOT_CHECKED_OUT"|"$EXIT_CURRENT_UNCOMMITTED")
-      bt_emit_guidance_joined "commit or undo changes, then rerun mrgup"
+      bt_emit_guidance_joined "commit or undo changes, then rerun pushup"
       ;;
     "$EXIT_CURRENT_BEHIND_REMOTE"|"$EXIT_CURRENT_AHEAD_REMOTE"|"$EXIT_CURRENT_DIVERGED_REMOTE"|\
     "$EXIT_PARENT_BEHIND_REMOTE"|"$EXIT_PARENT_AHEAD_REMOTE"|"$EXIT_PARENT_DIVERGED_REMOTE"|\
     "$EXIT_CURRENT_BEHIND_PARENT")
       bt_emit_guidance_joined "sync branches (fetch/rebase or merge parent as" \
-                       "needed), resolve divergence, then rerun mrgup"
+                       "needed), resolve divergence, then rerun pushup"
       ;;
     "$EXIT_PARENT_MISSING"|"$EXIT_PARENT_CHECKOUT_FAILED")
       bt_emit_guidance_joined "fetch or create the local parent branch, make it" \
-                       "available in this worktree, then rerun mrgup"
+                       "available in this worktree, then rerun pushup"
       ;;
     "$EXIT_CURRENT_PROTECTED_REMOTE_MISSING"|"$EXIT_PARENT_PROTECTED_REMOTE_MISSING")
       bt_emit_guidance_joined "fetch or publish the protected branch so its origin" \
-                       "ref exists, then rerun mrgup"
+                       "ref exists, then rerun pushup"
       ;;
     "$EXIT_REMOTE_UNCONFIGURED")
-      bt_emit_guidance_joined "configure the origin remote, then rerun mrgup"
+      bt_emit_guidance_joined "configure the origin remote, then rerun pushup"
       ;;
     "$EXIT_REMOTE_UNREACHABLE"|"$EXIT_REMOTE_TIMEOUT")
-      bt_emit_guidance_joined "restore remote connectivity (origin) and rerun mrgup"
+      bt_emit_guidance_joined "restore remote connectivity (origin) and rerun pushup"
       ;;
     "$EXIT_NOT_REPOSITORY_OWNER"|"$EXIT_OWNER_OVERRIDE_INVALID_BRANCH"|\
     "$EXIT_NOT_CONTRIBUTOR"|"$EXIT_NOT_APPROVER")
       bt_emit_guidance_joined "use an account and merge path authorized by" \
-                       "repository policy, then rerun mrgup"
+                       "repository policy, then rerun pushup"
       ;;
     "$EXIT_GITHUB_IDENTITY_FAILED"|"$EXIT_GITHUB_PR_QUERY_FAILED")
       bt_emit_guidance_joined "verify GitHub CLI authentication and access, then" \
-                       "rerun mrgup"
+                       "rerun pushup"
       ;;
     "$EXIT_RUN_LOCKED")
-      bt_emit_guidance_joined "wait for the active mrgup process to finish, or" \
+      bt_emit_guidance_joined "wait for the active pushup process to finish, or" \
                        "remove a stale lock after verifying no process is" \
                        "active"
       ;;
     "$EXIT_GIT_OPERATION_FAILED")
       bt_emit_guidance_joined "if merge conflicts occurred, resolve conflicts," \
-                       "ensure a clean branch state, then rerun mrgup"
+                       "ensure a clean branch state, then rerun pushup"
       ;;
     "$EXIT_PR_CLOSE_FAILED")
-      bt_emit_guidance_joined "merge completed but PR closure failed; rerun mrgup" \
+      bt_emit_guidance_joined "merge completed but PR closure failed; rerun pushup" \
                        "to retry closing the PR"
       ;;
     *)
       bt_emit_guidance_joined "review the error above, correct the reported issue," \
-                       "then rerun mrgup"
+                       "then rerun pushup"
       ;;
   esac
 }
@@ -635,9 +650,9 @@ restore_current_branch_on_failure() {
   if [[ "$restored" == true ]]; then
     cleanup_tracked_changes_after_failure
     cleanup_untracked_history_after_failure
-    bt_warn "mrgup failed; restored working branch to '$CURRENT_BRANCH'"
+    bt_warn "pushup failed; restored working branch to '$CURRENT_BRANCH'"
   else
-    bt_warn "mrgup failed and could not restore branch '$CURRENT_BRANCH'" \
+    bt_warn "pushup failed and could not restore branch '$CURRENT_BRANCH'" \
             "automatically"
   fi
 }
@@ -646,7 +661,7 @@ cleanup_tracked_changes_after_failure() {
   # Preflight requires a clean worktree, so tracked changes after restoration
   # belong to this failed operation. Untracked workflow reports are preserved.
   if ! git restore --source=HEAD --staged --worktree -- . >/dev/null 2>&1; then
-    bt_warn "Could not fully restore tracked files after the failed mrgup" \
+    bt_warn "Could not fully restore tracked files after the failed pushup" \
             "operation"
   fi
 }
@@ -676,7 +691,7 @@ on_exit_restore_branch_if_needed() {
   fi
 
   # Keep the run lock through restoration and report generation so another
-  # mrgup cannot begin while this run is still repairing local state.
+  # pushup cannot begin while this run is still repairing local state.
   restore_current_branch_on_failure "$exit_code" || true
 
   if [[ "$exit_code" -ne 0 && "$OPERATION_STARTED" == true ]]; then
@@ -684,7 +699,7 @@ on_exit_restore_branch_if_needed() {
   fi
 
   if ! release_run_lock; then
-    echo "Warning: mrgup cleanup did not complete successfully." >&2
+    echo "Warning: pushup cleanup did not complete successfully." >&2
   fi
   if [[ "$exit_code" -ne 0 && "$exit_code" -ne "$EXIT_PR_MISSING" && \
     "$exit_code" -ne "$EXIT_CURRENT_UNCOMMITTED" ]]; then
@@ -781,7 +796,7 @@ verify_ref_at_commit() {
 bt_is_worktree_dirty_except_merge_report() {
   local status_line
   local report_rel=""
-  local mrgup_report_re='^\?\? reports/mrgup(-d|-e)?-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md$'
+  local pushup_report_re='^\?\? reports/pushup(-d|-e)?-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md$'
   local push_report_re='^\?\? reports/push(-d|-e)?-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md$'
   local dirty_found=false
 
@@ -789,7 +804,7 @@ bt_is_worktree_dirty_except_merge_report() {
 
   while IFS= read -r status_line; do
     [[ -n "$status_line" ]] || continue
-    if [[ "$status_line" =~ $mrgup_report_re ]]; then
+    if [[ "$status_line" =~ $pushup_report_re ]]; then
       continue
     fi
     if [[ "$status_line" =~ $push_report_re ]]; then
@@ -848,7 +863,7 @@ verify_post_merge_sync() {
   fi
 
   if bt_is_worktree_dirty_except_merge_report; then
-    set_verify_failure "worktree_dirty" "worktree is dirty after mrgup"
+    set_verify_failure "worktree_dirty" "worktree is dirty after pushup"
     return 1
   fi
 
@@ -1098,7 +1113,7 @@ warn_downstream_targeted_branches_behind_version() {
 
   if [[ ${#behind_branches[@]} -gt 0 ]]; then
     bt_warn "Downstream sync needed: ${#behind_branches[@]} targeted" \
-            "branch(es) are now behind '$version_branch'. Run mrgdown on" \
+            "branch(es) are now behind '$version_branch'. Run pulldown on" \
             "each affected branch."
     if [[ "$VERBOSE" == true ]]; then
       for branch in "${behind_branches[@]}"; do
@@ -1272,7 +1287,7 @@ ${CI_CD_REPORT_DETAILS}
 ## Merge Details
 
 - **Status:** Current branch merged into parent branch.
-- **Method:** Squash merge created by mrgup.
+- **Method:** Squash merge created by pushup.
 - **Guidance:** Review merged changes and run tests before sharing.
 
 EOF
@@ -1293,7 +1308,7 @@ generate_dry_run_report() {
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_LOCAL_REPORT_FAILED"
 
   REPORT_FILE="$(bt_report_transient_path \
-    "$REPORTS_DIR" "mrgup-d" "$RUN_TS_FILE")"
+    "$REPORTS_DIR" "pushup-d" "$RUN_TS_FILE")"
   cleanup_old_transient_reports
 
   if ! bt_report_write_header "$REPORT_FILE" "Merge-Up Report" \
@@ -1338,7 +1353,7 @@ generate_error_report() {
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_LOCAL_REPORT_FAILED"
 
   REPORT_FILE="$(bt_report_transient_path \
-    "$REPORTS_DIR" "mrgup-e" "$RUN_TS_FILE")"
+    "$REPORTS_DIR" "pushup-e" "$RUN_TS_FILE")"
   cleanup_old_transient_reports
 
   if ! bt_report_write_header "$REPORT_FILE" "Merge-Up Error Report" \
@@ -1365,7 +1380,7 @@ ${CI_CD_REPORT_DETAILS}
 
 ## Guidance
 
-- Resolve the reported issue and rerun mrgup.
+- Resolve the reported issue and rerun pushup.
 
 EOF
   then
@@ -1409,8 +1424,15 @@ ensure_merge_actor_authorized() {
   if is_contributor_branch "$current_branch"; then
     if ! is_contributor "$actor"; then
       bt_error_exit "$EXIT_NOT_CONTRIBUTOR" \
-        "User '$actor' is not a contributor and cannot merge a contributor" \
-        "branch"
+        "User '$actor' is not a contributor and cannot merge '$current_branch'"
+    fi
+    return 0
+  fi
+
+  if is_targeted_branch "$current_branch"; then
+    if ! is_contributor "$actor"; then
+      bt_error_exit "$EXIT_NOT_APPROVER" \
+        "User '$actor' is not a contributor and cannot merge '$current_branch'"
     fi
     return 0
   fi
@@ -1456,9 +1478,9 @@ get_pr_validation_fields() {
     "$EXIT_GITHUB_PR_QUERY_FAILED" \
     "Failed to query metadata for pull request #$pr_number" \
     gh pr view "$pr_number" \
-    --json state,isDraft,headRefName,baseRefName,reviewDecision,mergedAt \
+    --json state,isDraft,headRefName,headRefOid,baseRefName,reviewDecision,mergedAt \
     --jq '[.state, (.isDraft|tostring), .headRefName, .baseRefName, \
-      .reviewDecision, (.mergedAt // "")] | @tsv'
+      .headRefOid, .reviewDecision, (.mergedAt // "")] | @tsv'
 
   printf '%s\n' "$fields"
 }
@@ -1472,6 +1494,7 @@ validate_pr_for_merge() {
   local is_draft=""
   local head_ref=""
   local base_ref=""
+  local head_oid=""
   local review_decision=""
   local merged_at=""
 
@@ -1481,7 +1504,8 @@ validate_pr_for_merge() {
       "Pull request #$pr_number is missing required metadata"
   fi
 
-  IFS=$'\t' read -r state is_draft head_ref base_ref review_decision merged_at <<< "$fields"
+  IFS=$'\t' read -r state is_draft head_ref base_ref head_oid \
+    review_decision merged_at <<< "$fields"
 
   if [[ -n "$merged_at" || "$state" == "MERGED" ]]; then
     bt_error_exit "$EXIT_PR_ALREADY_MERGED" \
@@ -1502,6 +1526,12 @@ validate_pr_for_merge() {
       "'$current_branch'"
   fi
 
+  if [[ "$head_oid" != "$CURRENT_SOURCE_TIP" ]]; then
+    bt_error_exit "$EXIT_PR_HEAD_COMMIT_MISMATCH" \
+      "Pull request #$pr_number head commit does not match current branch " \
+      "'$current_branch'"
+  fi
+
   if [[ "$base_ref" != "$parent_branch" ]]; then
     bt_error_exit "$EXIT_PR_BASE_MISMATCH" \
       "Pull request #$pr_number base is not parent branch " \
@@ -1516,6 +1546,18 @@ validate_pr_for_merge() {
   if [[ "$review_decision" != "APPROVED" ]]; then
     bt_error_exit "$EXIT_PR_NOT_APPROVED" "Pull request #$pr_number is not approved"
   fi
+
+  local approval_id=""
+  bt_gh_capture_or_exit approval_id "$EXIT_REMOTE_TIMEOUT" \
+    "$EXIT_GITHUB_PR_QUERY_FAILED" \
+    "Failed to verify approval for pull request #$pr_number" \
+    gh api --paginate "repos/{owner}/{repo}/pulls/$pr_number/reviews" \
+    --jq ".[] | select(.state == \"APPROVED\" and .commit_id == \"$head_oid\") | .id"
+  if [[ -z "$approval_id" ]]; then
+    bt_error_exit "$EXIT_PR_NOT_APPROVED" \
+      "Pull request #$pr_number is not approved for its current commit"
+  fi
+  APPROVED_SOURCE_TIP="$head_oid"
 }
 
 collect_ci_cd_results() {
@@ -1557,12 +1599,12 @@ ensure_clean_worktree() {
   fi
 
   remaining="$(printf '%s\n' "$status_lines" | \
-    grep -Ev '^(\\?\\?|[ MARCUD?!][ MARCUD?!]) reports/(mrgup|push)(-d|-e)?-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md$' || true)"
+    grep -Ev '^(\\?\\?|[ MARCUD?!][ MARCUD?!]) reports/(pushup|push)(-d|-e)?-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md$' || true)"
 
   if [[ -n "$remaining" ]]; then
     bt_emit_prerequisite_failure "$EXIT_CURRENT_UNCOMMITTED" \
       "Current branch has uncommitted changes." \
-      "commit or undo changes, then rerun mrgup."
+      "commit or undo changes, then rerun pushup."
   fi
 }
 
@@ -1718,11 +1760,16 @@ if ! has_local_branch "$CURRENT_BRANCH"; then
     "Current branch '$CURRENT_BRANCH' is not checked out locally"
 fi
 CURRENT_SOURCE_REF="$CURRENT_BRANCH"
+CURRENT_SOURCE_TIP="$(git rev-parse "$CURRENT_BRANCH" 2>/dev/null || true)"
+if [[ -z "$CURRENT_SOURCE_TIP" ]]; then
+  bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+    "Failed to resolve current branch commit for '$CURRENT_BRANCH'"
+fi
 
 if bt_is_copyfix_in_progress "$CURRENT_BRANCH"; then
   bt_emit_prerequisite_failure "$EXIT_COPYFIX_IN_PROGRESS" \
     "Current branch '$CURRENT_BRANCH' has an unfinished copyfix operation." \
-    "complete it with 'copyfix --continue' before rerunning mrgup."
+    "complete it with 'copyfix --continue' before rerunning pushup."
 fi
 
 bt_info "Current local branch $CURRENT_BRANCH"
@@ -1820,7 +1867,7 @@ ensure_current_up_to_date_with_parent "$CURRENT_BRANCH" "$PARENT_BRANCH"
 if git diff --quiet "$PARENT_BRANCH" "$CURRENT_BRANCH"; then
   bt_emit_prerequisite_failure "$EXIT_NOTHING_TO_MERGE" \
     "Current branch '$CURRENT_BRANCH' has no changes to merge into '$PARENT_BRANCH'." \
-    "make changes before rerunning mrgup."
+    "make changes before rerunning pushup."
 fi
 
 # Determine whether a PR is required for this merge path.
@@ -1840,7 +1887,7 @@ if [[ "$PR_REQUIRED" == true ]]; then
   if [[ -z "$PR_NUMBER" ]]; then
     bt_emit_prerequisite_failure "$EXIT_PR_MISSING" \
       "$CURRENT_BRANCH does not have an approved pull request (PR)." \
-      "create or approve a pull request for this branch and rerun mrgup."
+      "create or approve a pull request for this branch and rerun pushup."
   fi
   bt_info "Found PR #$PR_NUMBER"
 
@@ -1966,14 +2013,15 @@ cleanup_old_transient_reports
 OPERATION_STARTED=false
 
 ci_history_details="$(printf '%s' "$CI_CD_REPORT_DETAILS" | tr '\n' ' ')"
-if ! bt_record_workflow_event "mrgup" "$PARENT_BRANCH" \
+if ! bt_record_workflow_event "pushup" "$PARENT_BRANCH" \
   "$(format_command_line)" \
   "$COMMIT_MESSAGE" "$MERGE_COMMIT_SHA" \
   "Source-Branch" "$CURRENT_BRANCH" \
+  "Source-Tip" "$APPROVED_SOURCE_TIP" \
   "Target-Branch" "$PARENT_BRANCH" \
   "PR" "${PR_NUMBER:-none}" \
   "Status" "Current branch merged into parent branch" \
-  "Method" "Squash merge created by mrgup" \
+  "Method" "Squash merge created by pushup" \
   "CI-CD" "$ci_history_details"; then
   bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" \
     "Merge-up completed, but its report history could not be recorded"

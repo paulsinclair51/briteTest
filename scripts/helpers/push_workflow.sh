@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Shared push workflow used by push and mrgup.
+# Shared push workflow used by push and pushup.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
 # High-Level Flow:
-# - Provides a shared push workflow for both the push and mrgup commands.
+# - Provides a shared push workflow for both the push and pushup commands.
 
 bt_push_workflow() (
   set -euo pipefail
@@ -32,7 +32,7 @@ bt_push_workflow() (
   local source_branch=""
   local dry_run=false
   local error_run=false
-  local mrgup_mode=false
+  local pushup_mode=false
   local verbose=false
   local report_lock_fd=""
   local report_lock_held=false
@@ -57,7 +57,7 @@ bt_push_workflow() (
   bt_push_emit_guidance() {
     local message="$1"
 
-    if [[ "$mrgup_mode" == true ]]; then
+    if [[ "$pushup_mode" == true ]]; then
       return 0
     fi
 
@@ -97,8 +97,8 @@ bt_push_workflow() (
     local arg=""
     local skip_next=false
 
-    if [[ "$mrgup_mode" == true ]]; then
-      formatted="mrgup"
+    if [[ "$pushup_mode" == true ]]; then
+      formatted="pushup"
     fi
     for arg in "${original_args[@]}"; do
       if [[ "$skip_next" == true ]]; then
@@ -106,7 +106,7 @@ bt_push_workflow() (
         continue
       fi
       case "$arg" in
-        --mrgup|--preview-ref)
+        --pushup|--preview-ref)
           skip_next=true
           continue
           ;;
@@ -509,7 +509,7 @@ EOF
   }
 
   bt_push_collect_stdout_summary_counts() {
-    if [[ "$mrgup_mode" == true && "$dry_run" == true ]]; then
+    if [[ "$pushup_mode" == true && "$dry_run" == true ]]; then
       bt_git_collect_ref_change_summary "$current_branch" "$push_content_ref"
     else
       bt_git_collect_ref_change_summary "$remote_branch_tip" "$push_content_ref"
@@ -527,9 +527,9 @@ EOF
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --mrgup)
-        [[ $# -ge 2 ]] || bt_push_error_exit "$exit_invalid_argument" "Internal --mrgup option requires a source branch"
-        mrgup_mode=true
+      --pushup)
+        [[ $# -ge 2 ]] || bt_push_error_exit "$exit_invalid_argument" "Internal --pushup option requires a source branch"
+        pushup_mode=true
         source_branch="$2"
         shift 2
         ;;
@@ -562,15 +562,15 @@ EOF
     esac
   done
 
-  if [[ -n "$source_branch" && "$mrgup_mode" != true ]]; then
-    bt_push_error_exit "$exit_invalid_argument" "Invalid mrgup workflow mode"
+  if [[ -n "$source_branch" && "$pushup_mode" != true ]]; then
+    bt_push_error_exit "$exit_invalid_argument" "Invalid pushup workflow mode"
   fi
   if [[ "$push_content_ref" != "HEAD" ]]; then
-    if [[ "$mrgup_mode" != true || "$dry_run" != true ]]; then
-      bt_push_error_exit "$exit_invalid_argument" "Push preview ref is allowed only for an mrgup dry run"
+    if [[ "$pushup_mode" != true || "$dry_run" != true ]]; then
+      bt_push_error_exit "$exit_invalid_argument" "Push preview ref is allowed only for an pushup dry run"
     fi
     push_content_ref="$(git rev-parse --verify "$push_content_ref" 2>/dev/null || true)"
-    [[ -n "$push_content_ref" ]] || bt_push_error_exit "$exit_invalid_argument" "Unable to resolve mrgup push preview ref"
+    [[ -n "$push_content_ref" ]] || bt_push_error_exit "$exit_invalid_argument" "Unable to resolve pushup push preview ref"
   fi
 
   repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
@@ -599,16 +599,16 @@ EOF
   commits_ahead="$(git rev-list --count "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || echo 0)"
   if [[ "$commits_ahead" == "0" ]]; then
     if [[ "$dry_run" == false ]] && \
-      declare -F bt_push_has_pending_mrgup_pr >/dev/null 2>&1 && \
-      bt_push_has_pending_mrgup_pr; then
+      declare -F bt_push_has_pending_pushup_pr >/dev/null 2>&1 && \
+      bt_push_has_pending_pushup_pr; then
       local pending_pr_state=""
-      if ! pending_pr_state="$(bt_push_get_mrgup_pr_state)"; then
+      if ! pending_pr_state="$(bt_push_get_pushup_pr_state)"; then
         bt_push_error_exit "$exit_pr_finalize_failed" \
           "Remote branch is current, but its pull request state could not be read"
       fi
       if [[ "$pending_pr_state" == "OPEN" ]]; then
-        if bt_push_finalize_mrgup_pr "$push_content_ref"; then
-          echo "Remote $current_branch already contains the local mrgup result."
+        if bt_push_finalize_pushup_pr "$push_content_ref"; then
+          echo "Remote $current_branch already contains the local pushup result."
           echo "Finalized pull request for $current_branch."
           exit 0
         fi
@@ -643,6 +643,13 @@ EOF
     exit 0
   fi
 
+  if declare -F bt_push_has_pending_pushup_pr >/dev/null 2>&1 && \
+    bt_push_has_pending_pushup_pr && \
+    ! bt_push_validate_pushup_pr_approval; then
+    bt_push_error_exit "$exit_pr_finalize_failed" \
+      "Pull request approval changed before the pushup result could be pushed"
+  fi
+
   bt_push_collect_stdout_summary_counts
   if declare -F bt_record_remote_workflow_event >/dev/null 2>&1; then
     if ! bt_record_remote_workflow_event "push" "$current_branch" \
@@ -672,6 +679,13 @@ EOF
       2>&1)"; then
     printf '%s\n' "$push_output" >&2
     bt_push_generate_error_report "Failed to push branch '$current_branch' to remote" "push failed" "$push_output"
+    if [[ "${PENDING_PUSHUP:-false}" == true ]] && \
+      grep -Eqi 'fetch first|non-fast-forward|stale info|remote.*changed' \
+        <<< "$push_output"; then
+      bt_emit_error "Remote parent branch '$current_branch' changed before this pushup result could be pushed."
+      bt_push_emit_guidance "switch to '$PENDING_PUSHUP_SOURCE', run pulldown, obtain approval for the updated source commit, then rerun pushup and push."
+      exit "$exit_push_failed"
+    fi
     bt_push_error_exit "$exit_push_failed" "Failed to push branch '$current_branch' to remote"
   fi
 
@@ -680,8 +694,8 @@ EOF
   local pushed_tip_short=""
   pushed_tip_short="$(git rev-parse --short=7 "$push_content_ref" 2>/dev/null || true)"
   [[ -n "$pushed_tip_short" ]] || pushed_tip_short="${push_content_ref:0:7}"
-  if declare -F bt_push_finalize_mrgup_pr >/dev/null 2>&1; then
-    if ! bt_push_finalize_mrgup_pr "$push_content_ref"; then
+  if declare -F bt_push_finalize_pushup_pr >/dev/null 2>&1; then
+    if ! bt_push_finalize_pushup_pr "$push_content_ref"; then
       bt_push_error_exit "$exit_pr_finalize_failed" \
         "Push completed, but its pull request could not be finalized"
     fi

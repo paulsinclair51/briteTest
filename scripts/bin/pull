@@ -620,7 +620,7 @@ warn_branch_behind_parent() {
     if bt_is_protected_branch "$branch"; then
       bt_info "Protected branches require an approver-managed merge workflow."
     else
-      bt_info "Run: mrgdown"
+      bt_info "Run: pulldown"
     fi
   fi
 }

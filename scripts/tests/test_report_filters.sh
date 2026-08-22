@@ -20,7 +20,7 @@ rc=$(run_capture "$TMPDIR/user-filter.out" bash -lc "cd '$WORK' && bash ./script
 user_rel="$(report_path_from_output "$TMPDIR/user-filter.out")"
 assert_contains "committed by contributor testuser" "$WORK/$user_rel"
 rc=$(run_capture "$TMPDIR/user-filter-false-positive.out" bash -lc \
-	"cd '$WORK' && bash ./scripts/bin/report branch -u 'mrgup activity' -l 0")
+	"cd '$WORK' && bash ./scripts/bin/report branch -u 'pushup activity' -l 0")
 [[ "$rc" -eq 3 ]] || \
 	fail "user filter should not match activity text (got $rc)"
 assert_contains "No matching activity was found" \

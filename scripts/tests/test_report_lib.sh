@@ -145,21 +145,21 @@ Details: Previous-Remote-Tip: $remote_push_previous; Pushed-Tip: $remote_push_ti
       >/dev/null 2>&1
 
     git commit --allow-empty \
-      -m "mrgup activity" \
+      -m "pushup activity" \
       >/dev/null 2>&1
     git notes --ref=briteTest-workflow append -m \
       "--- briteTest workflow ---
-Workflow-Type: mrgup
+Workflow-Type: pushup
 Workflow-Time: 2026-08-16 12:00:01
 Workflow-Branch: dev/report-tests-v1.0.0
 Workflow-User: testuser <test@example.com>
-Command-Line: mrgup -o
-Summary: mrgup activity
+Command-Line: pushup -o
+Summary: pushup activity
 Source-Branch: dev/source-v1.0.0
 Target-Branch: v1.0.0
 PR: 42
 Status: Current branch merged into parent branch
-Method: Squash merge created by mrgup
+Method: Squash merge created by pushup
 CI-CD: ci build SUCCESS" \
       HEAD >/dev/null 2>&1
 
@@ -185,8 +185,8 @@ Method: Cherry-pick created by copyfix" \
       HEAD >/dev/null 2>&1
 
     git commit --allow-empty \
-      -m "mrgdown activity" \
-      -m $'## Workflow Metadata\n\nCommand-Line: mrgdown -f\nSource-Branch: v1.0.0\nTarget-Branch: dev/report-tests-v1.0.0\nParent-Commits-Integrated: 2\nFiles-Modified: 1\nFiles-Added: 1\nFiles-Deleted: 0\nStatus: Parent branch merged into current branch\nMethod: Merge commit (--no-ff) created by mrgdown' \
+      -m "pulldown activity" \
+      -m $'## Workflow Metadata\n\nCommand-Line: pulldown -f\nSource-Branch: v1.0.0\nTarget-Branch: dev/report-tests-v1.0.0\nParent-Commits-Integrated: 2\nFiles-Modified: 1\nFiles-Added: 1\nFiles-Deleted: 0\nStatus: Parent branch merged into current branch\nMethod: Merge commit (--no-ff) created by pulldown' \
       >/dev/null 2>&1
 
     git notes --ref=briteTest-workflow append -m \

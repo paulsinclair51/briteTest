@@ -31,7 +31,7 @@ Prerequisites:
 Note: To make changes to main, a version branch (v<M>.<m>.0), or a
 remote snapshot, first make the changes in a local targeted or contributor branch, run
 commit, and then run push. Run review on a targeted branch to start a pull
-request. An approver can then use mrgup to apply changes to its parent branch.
+request. An approver can then use pushup to apply changes to its parent branch.
 
 Arguments:
   None.
@@ -109,7 +109,7 @@ Exit codes:
       is not allowed for a protected (main or version) branch.
       Make changes, run 'commit', and then run 'push' on a targeted or
       contributor branch. Run 'review' in targeted branch to start a review
-      (pull request) and 'mrgup' workflow to apply changes to the corresponding
+      (pull request) and 'pushup' workflow to apply changes to the corresponding
       version branch.
   5   Commit must run on a local branch. If current state is remote-only,
       create/switch to a local branch first (for example, via chbranch).

@@ -105,7 +105,7 @@ Workflow:
          push
 
   5. If the branch needs to be brought up to date with parent changes:
-         mrgdown
+         pulldown
 
   6. Alternatively to using the PR UI, respond to a specific review comment:
          feedback view
@@ -173,7 +173,7 @@ Workflow Scenarios:
   commit -c "Clarify null input handling."
   push
   # If the branch needs to be merged with parent changes:
-  mrgdown
+  pulldown
 
   Scenario 4: Disagreement with feedback
   ----------------------------------------
@@ -191,7 +191,7 @@ Remote Workflow (Codespaces, SSH, etc.):
   - Use `feedback respond` to communicate feedback without using PR UI.
   - Use `commit` to create your follow-up commits.
   - Use `push` to publish changes to remote.
-  - Use `mrgdown` to sync with parent branch changes when needed.
+  - Use `pulldown` to sync with parent branch changes when needed.
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.

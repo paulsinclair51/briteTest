@@ -148,7 +148,7 @@ after_hash="$(cd "$WORK" && git rev-parse HEAD)"
 [[ "$before_hash" == "$after_hash" ]] || fail "dry-run should not change HEAD"
 pass "dry-run and -c option handling"
 
-# 6) mrgdown should be accepted as a valid type.
+# 6) pulldown should be accepted as a valid type.
 (
   cd "$WORK"
   git checkout -b dev/topic-v1.0.0 >/dev/null 2>&1
@@ -158,9 +158,9 @@ pass "dry-run and -c option handling"
   git checkout main >/dev/null 2>&1
   git merge --no-ff dev/topic-v1.0.0 -m "Merge branch 'dev/topic-v1.0.0'" >/dev/null 2>&1
 )
-rc=$(run_capture "$TMPDIR/mrgdown-dry-run.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/undo -d mrgdown")
-[[ "$rc" -eq 0 ]] || fail "undo -d mrgdown should exit 0 (got $rc)"
-assert_contains "Dry-run: would revert merge commit" "$TMPDIR/mrgdown-dry-run.out"
-pass "mrgdown type support"
+rc=$(run_capture "$TMPDIR/pulldown-dry-run.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./scripts/bin/undo -d pulldown")
+[[ "$rc" -eq 0 ]] || fail "undo -d pulldown should exit 0 (got $rc)"
+assert_contains "Dry-run: would revert merge commit" "$TMPDIR/pulldown-dry-run.out"
+pass "pulldown type support"
 
 echo "All undo smoke tests passed."
