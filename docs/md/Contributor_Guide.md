@@ -54,7 +54,7 @@ This document is the task-oriented guide for routine contribution work.
 
 | Version | Date | Comment | Author/Editor |
 |----------|------|---------|---------------|
-| v1.0.0 | 2026-07-09 | Initial verison. | Paul Sinclair |
+| v1.0.0 | 2026-07-09 | Initial version. | Paul Sinclair |
 </details><br>
 </details>
 
@@ -78,10 +78,6 @@ This document is the task-oriented guide for routine contribution work.
    4.3. [Review and Approval](#43-review-and-approval)<br>
    4.4. [Push Up an Approved Change](#44-push-up-an-approved-change)<br>
 5. [Branches and Permissions](#5-branches-and-permissions)<br>
-   5.1. [Branch Types](#51-branch-types)<br>
-   5.2. [Allowed Push-Up Paths](#52-allowed-push-up-paths)<br>
-   5.3. [Roles](#53-roles)<br>
-   5.4. [File Access](#54-file-access)<br>
 6. [Quality Requirements](#6-quality-requirements)<br>
 7. [Signing Commits](#7-signing-commits)<br>
 8. [Protected Branches and Releases](#8-protected-branches-and-releases)<br>
@@ -314,75 +310,17 @@ recovery, see [Interrupted Pushup](#102-interrupted-pushup).
 
 ## 5. Branches and Permissions
 
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.1. Branch Types</summary>
+Create routine work on a contributor branch. Use a targeted `dev/` or `fix/`
+branch when the work belongs to a specific version. Do not work directly on
+`main` or a version branch.
 
-### 5.1. Branch Types
+The parent branch and your repository permission determine whether `pushup`
+requires a pull request and approval. If a command reports that your branch,
+permission, or destination is not allowed, do not bypass it; select the correct
+branch or ask an approver for help.
 
-| Branch type | Naming pattern | Purpose |
-|-------------|----------------|---------|
-| Main | `main` | Production-ready protected branch |
-| Version | `v<M>.<m>.0` | Protected work for a release line |
-| Targeted | `dev/<desc>-<version>` or `fix/<desc>-<version>` | Work for one version |
-| Contributor | `[<type>/]<description>` | General contribution work |
-
-Contributors make changes on local targeted or contributor branches.
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.2. Allowed Push-Up Paths</summary>
-
-### 5.2. Allowed Push-Up Paths
-
-- Contributor to contributor: pull request optional; contributor may run
-  `pushup`.
-- Contributor to targeted: pull request optional; contributor may run
-  `pushup`.
-- Targeted to version: approved pull request required; contributor, reviewer,
-  or approver may run `pushup` from the participating clone.
-- Targeted to version with `pushup -o`: pull request optional; owner only.
-- Version to `main`: no pull request required; approver only.
-- `main` to another branch: not allowed.
-
-If an optional pull request exists, `pushup` validates its state and approval.
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.3. Roles</summary>
-
-### 5.3. Roles
-
-| Role | Routine capabilities |
-|------|----------------------|
-| Public | Read, clone, and fork the repository |
-| User | Read repository content as a read-only collaborator |
-| Contributor | Create branches, commit, push, and open pull requests |
-| Reviewer | Contributor capabilities plus review and feedback workflows |
-| Approver | Reviewer capabilities plus protected push-up and release workflows |
-| Repository owner | Repository administration and supported owner overrides |
-
-Commands requiring a specific permission need a resolvable GitHub login that
-matches `config/contributors.md`. Authenticate with `gh auth login`, set
-`GITHUB_ACTOR`, or configure `git config user.name` with your GitHub login.
-
-The repository owner is not automatically an approver. A command supporting
-`-o` may grant a temporary owner override for that command only.
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.4. File Access</summary>
-
-### 5.4. File Access
-
-| Path | Public | User | Contributor | Reviewer | Approver | Owner |
-|------|--------|------|-------------|----------|----------|-------|
-| `docs/md/`, `docs/branding/`, `src/`, `include/`, `examples/` | R | R | RW | RW | RW | RW |
-| `scripts/bin/`, `scripts/helpers/` | R | R | RW | RW | RW* | RW |
-| `.github/workflows/`, branch-protection settings | R | R | - | - | RW* | RW |
-| `config/contributors.md`, governance and policy documents | R | R | RW | RW | RW* | RW |
-
-`RW*` requires the applicable protected workflow or explicit approval.
-</details>
+For exact branch patterns, allowed push-up paths, roles, and path permissions,
+see [Branch and Permission Reference](./Contributor_Reference.md#2-branch-and-permission-reference).
 </details>
 
 <details>
@@ -479,13 +417,11 @@ workflow syntax. When a check fails, read its first actionable error, correct
 and test the problem locally, then run `commit` and `push`.
 
 `setupclone` configures local hooks that prevent accidental direct commits,
-pushes, and pulls
-. Project commands perform policy and permission checks and
+pushes, and pulls. Project commands perform policy and permission checks and
 invoke Git safely. Contributors do not need to know or set internal hook-bypass
 variables.
 
-If local safeguards are missing, run `setupclone`. The command
-`git config core.hooksPath` should then report `scripts/helpers/.githooks`.
+If local safeguards are missing, run `setupclone` to restore them.
 </details>
 
 <details>

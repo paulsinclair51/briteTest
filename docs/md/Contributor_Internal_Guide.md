@@ -2,10 +2,9 @@
 
 #### Version: v1.0.0
 
-This document covers the internal contributor workflow, repository protection model,
-role enforcement, repair policy, and operational details that are not intended for
-routine contributor use. It complements the public Contributor Guide and the public
-Contributor Reference.
+This document explains protected repository policy, repair decisions, and
+exceptional administrative procedures for maintainers, approvers, and repository
+owners. It is not part of the routine contributor workflow.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -40,9 +39,8 @@ SOFTWARE.
 
 ## Preface
 
-This document is intended for contributors, reviewers, approvers, and repository
-owners who need the policy details for internal enforcement, repair workflows,
-and GitHub-side protection model.
+This document is intended for maintainers, approvers, and repository owners who
+manage policy enforcement, repair workflows, or GitHub-side protections.
 
 For the public contribution workflow, see the [Contributor_Guide.md](./Contributor_Guide.md).
 For script-level details, see the [Contributor_Reference.md](./Contributor_Reference.md).
@@ -70,6 +68,7 @@ For the internal implementation reference, see the [Contributor_Internal_Referen
 4. [Remote Repair Procedure](#4-remote-repair-procedure)<br>
 5. [Override Semantics](#5-override-semantics)<br>
 6. [Internal Operational Notes](#6-internal-operational-notes)<br>
+7. [GitHub Validation Architecture](#7-github-validation-architecture)<br>
 </details>
 
 <details>
@@ -207,4 +206,31 @@ Prerequisites for `override`:
 
 Keep this document aligned with the repository policy whenever workflows, rulesets,
 or protected branch policy change.
+</details>
+
+<details>
+<summary><strong>7. GitHub Validation Architecture</strong></summary>
+
+## 7. GitHub Validation Architecture
+
+GitHub validation has two operational layers:
+
+1. Pull-request workflows reject invalid content, commit metadata, signatures,
+  protected-file changes, and other policy violations before publication.
+2. Protected-branch workflows verify and record pushes, tags, and other protected
+  repository events after publication.
+
+When changing validation behavior:
+
+1. Put reusable checks in the appropriate helper rather than duplicating shell
+  logic across workflow files.
+2. Add or update the workflow under `.github/workflows/`.
+3. Test the workflow on a contributor or targeted branch.
+4. Update required checks and rulesets when the workflow name or protection role
+  changes.
+5. Update the Internal Reference when helper contracts, environment variables, or
+  hook behavior change.
+
+For implementation names and contracts, see
+[Internal Helpers and Hooks](./Contributor_Internal_Reference.md#5-internal-helpers-and-hooks).
 </details>

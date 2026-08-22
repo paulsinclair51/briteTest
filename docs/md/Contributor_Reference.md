@@ -2,7 +2,8 @@
 
 #### Version: v1.0.0
 
-Comprehensive reference for all scripts and helper tools used in repository development.
+Reference for supported repository commands, branch rules, permissions, exit
+statuses, and user troubleshooting.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -107,37 +108,15 @@ see [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) and
    1.2. [Repository and Clone Management](#12-repository-and-clone-management)<br>
    1.3. [Documentation and Branding](#13-documentation-and-branding)<br>
 
-2. [Internal Helper Reference (`scripts/helpers/`)](#2-internal-helper-reference-scriptshelpers)<br>
-   2.1. [Validation Helpers](#21-validation-helpers)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.1. [ckbranchname.sh](#211-ckbranchnamesh)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.2. [ckrole.sh](#212-ckrolesh)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.3. [rbac.sh](#213-rbacsh)<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.4. [validation_helpers.sh](#214-validation_helperssh)<br>
-   2.2. [Git and GitHub Helpers](#22-git-and-github-helpers)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.1. [git_helpers.sh](#221-git_helperssh)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.2. [github_helpers.sh](#222-github_helperssh)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.3. [history_log.sh](#223-history_logsh)<br>
-   2.3. [Core Utilities](#23-core-utilities)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3.1. [common.sh](#231-commonsh)<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3.2. [common_utils.sh](#232-common_utilssh)<br>
-   2.4. [Documentation Generators](#24-documentation-generators)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.4.1. [gendocx.sh](#241-gendocxsh)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.4.2. [genpdf.sh](#242-genpdfsh)<br>
-   2.5. [Git Hooks Infrastructure](#25-git-hooks-infrastructure)<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.1. [install_git_hooks.sh](#251-install_git_hookssh)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.2. [post-checkout](#252-post-checkout)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.3. [pre-commit](#253-pre-commit)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.4. [pre-push](#254-pre-push)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.5. [pre-merge-commit](#255-pre-merge-commit)<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.6. [githook_helper.sh](#256-githook_helpersh)<br>
+2. [Branch and Permission Reference](#2-branch-and-permission-reference)<br>
+   2.1. [Branch Types](#21-branch-types)<br>
+   2.2. [Allowed Push-Up Paths](#22-allowed-push-up-paths)<br>
+   2.3. [Roles](#23-roles)<br>
+   2.4. [File Access](#24-file-access)<br>
 
-3. [Script-Based Access Control](#3-script-based-access-control)<br>
-   3.1. [Role Permissions Matrix](#31-role-permissions-matrix)<br>
-   3.2. [Protected Script Rule](#32-protected-script-rule)<br>
+3. [Command Permission Checks](#3-command-permission-checks)<br>
 
-4. [Environment Variables](#4-environment-variables)<br>
-   4.1. [GitHub Actions Environment](#41-github-actions-environment)<br>
-   4.2. [Custom Variables](#42-custom-variables)<br>
+4. [User Environment](#4-user-environment)<br>
 
 5. [Exit Codes](#5-exit-codes)<br>
    5.1. [Common Exit Codes](#51-common-exit-codes)<br>
@@ -149,13 +128,7 @@ see [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) and
       [Version Check Fails](#version-check-fails)<br>
       [Permission Denied](#permission-denied)<br>
       [Role Check Fails for Known Approver/Reviewer](#role-check-fails-for-known-approverreviewer)<br>
-      [Git Command Failures](#git-command-failures)<br>
-
-7. [GitHub Actions Workflow Architecture](#7-github-actions-workflow-architecture)<br>
-   7.1. [Architecture Overview](#71-architecture-overview)<br>
-   7.2. [Layered Validation Approach](#72-layered-validation-approach)<br>
-   7.3. [Helper Script Library](#73-helper-script-library)<br>
-   7.4. [Adding New Validations](#74-adding-new-validations)<br>
+      [Repository Operation Fails](#repository-operation-fails)<br>
 </details>
 
 <details>
@@ -839,565 +812,105 @@ replacetext [OPTIONS]
 </details>
 
 <details>
-<summary><strong>2. Internal Helper Reference (scripts/helpers/)</strong></summary>
+<summary><strong>2. Branch and Permission Reference</strong></summary>
 
-## 2. Internal Helper Reference (scripts/helpers/)
+## 2. Branch and Permission Reference
 
-Helper modules and utilities located in `scripts/helpers/` designed to
-be sourced or called by other scripts and workflows.
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1. Validation Helpers</summary>
-
-### 2.1. Validation Helpers
+Use these tables to look up branch names, supported push-up paths, repository
+permissions, and path access. For procedural guidance, see
+[Branches and Permissions](./Contributor_Guide.md#5-branches-and-permissions).
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.1. ckbranchname.sh</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1. Branch Types</summary>
 
-#### 2.1.1. ckbranchname.sh
+### 2.1. Branch Types
 
-**Purpose:** Validates branch names against repository naming conventions.
+| Branch type | Naming pattern | Purpose |
+|-------------|----------------|---------|
+| Main | `main` | Production-ready protected branch |
+| Version | `v<M>.<m>.0` | Protected work for a release line |
+| Targeted | `dev/<desc>-<version>` or `fix/<desc>-<version>` | Work for one version |
+| Contributor | `[<type>/]<description>` | General contribution work |
 
-**Usage:**
-
-```bash
-bash scripts/helpers/ckbranchname.sh "<branch_name>"
-```
-
-**Exit Codes:**
-
-- `1` - Valid main branch name
-- `2` - Valid version branch (format: `v<M>.<m>.0`)
-- `3` - Valid targeted branch (format: `dev/<desc>-<version>` or `fix/<desc>-<version>`)
-- `4` - Valid contributor branch (format: `[<type>/]<description>`)
-- `5` - Invalid branch name
-
-**Branch Type Codes:**
-
-| Code | Type | Format | Purpose |
-|------|------|--------|----------|
-| 1 | main | `main` | Protected base branch |
-| 2 | version | `v<M>.<m>.0` | Protected version branch |
-| 3 | targeted | `dev/fix/<desc>-<version>` | Target-specific work |
-| 4 | contributor | `[<type>/]<description>` | General work branch |
-| 5 | invalid | Any other | Invalid naming |
+Changes are made on local targeted or contributor branches. `main` and version
+branches are protected publication destinations.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.2. ckrole.sh</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.2. Allowed Push-Up Paths</summary>
 
-#### 2.1.2. ckrole.sh
+### 2.2. Allowed Push-Up Paths
 
-**Purpose:** Validates user roles and permissions.
+| Source | Parent | Pull Request | Who May Run `pushup` |
+|--------|--------|--------------|----------------------|
+| Contributor | Contributor | Optional | Contributor or higher |
+| Contributor | Targeted | Optional | Contributor or higher |
+| Targeted | Version | Approved PR required | Contributor or higher |
+| Targeted | Version with `-o` | Optional | Repository owner only |
+| Version | `main` | Not required | Approver |
 
-**Usage:**
-
-```bash
-bash scripts/helpers/ckrole.sh "<role>"
-```
-
-**Arguments:**
-
-- `<role>` - Role to check: `contributor`, `reviewer`, or `approver`
-
-**Exit Codes:**
-
-- `0` - User has the specified role
-- `1` - User does not have the role
-
-**Identity Resolution Order:**
-
-1. `GITHUB_ACTOR` environment variable
-2. `gh api user --jq '.login'` (GitHub CLI)
-3. `git config user.name`
-4. `USER` environment variable
-
-**Environment Variables:**
-
-- `GITHUB_ACTOR` - GitHub username (preferred)
-- `CKROLE_TRUSTED_ACTORS` - Comma-separated allowed bot accounts
+Pushing up from `main` is not allowed. When an optional pull request exists,
+`pushup` validates its current state and approval.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.3. rbac.sh</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.3. Roles</summary>
 
-#### 2.1.3. rbac.sh
+### 2.3. Roles
 
-**Purpose:** Role-based access control implementation for script execution.
+| Role | Routine Capabilities |
+|------|----------------------|
+| Public | Read, clone, and fork the repository |
+| User | Read repository content as a read-only collaborator |
+| Contributor | Create branches, commit, push, and open pull requests |
+| Reviewer | Contributor capabilities plus review and feedback workflows |
+| Approver | Reviewer capabilities plus protected push-up and release workflows |
+| Repository owner | Repository administration and supported owner overrides |
 
-**Functions:**
-
-- User role verification
-- Permission enforcement
-- Policy validation
+Commands requiring a specific permission resolve the GitHub login and match it
+against `config/contributors.md`. Repository ownership does not automatically
+grant the approver permission.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.4. validation_helpers.sh</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.4. File Access</summary>
 
-#### 2.1.4. validation_helpers.sh
+### 2.4. File Access
 
-**Purpose:** General validation utility functions for scripts.
+| Path | Public | User | Contributor | Reviewer | Approver | Owner |
+|------|--------|------|-------------|----------|----------|-------|
+| `docs/md/`, `docs/branding/`, `src/`, `include/`, `examples/` | R | R | RW | RW | RW | RW |
+| `scripts/bin/`, `scripts/helpers/` | R | R | RW | RW | RW* | RW |
+| `.github/workflows/`, branch-protection settings | R | R | - | - | RW* | RW |
+| `config/contributors.md`, governance and policy documents | R | R | RW | RW | RW* | RW |
 
-**Functions:**
-
-- Input validation
-- Format checking
-- State verification
+`RW*` requires the applicable protected workflow or explicit approval.
 </details>
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.2. Git and GitHub Helpers</summary>
+<summary><strong>3. Command Permission Checks</strong></summary>
 
-### 2.2. Git and GitHub Helpers
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.1. git_helpers.sh</summary>
-
-#### 2.2.1. git_helpers.sh
-
-**Purpose:** Shared Git branch and repository operation helpers.
-
-**Functions:**
-
-- Branch lookup and resolution
-- Parent branch detection
-- Protected branch checks
-- Git state operations
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.2. github_helpers.sh</summary>
-
-#### 2.2.2. github_helpers.sh
-
-**Purpose:** Shared GitHub CLI pull-request and status helpers.
-
-**Functions:**
-
-- PR lookup and status
-- Status check validation
-- Approver verification
-- GitHub API integration
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.2.3. history_log.sh</summary>
-
-#### 2.2.3. history_log.sh
-
-**Purpose:** Shared branch-history markdown logging helpers.
-
-**Functions:**
-
-- Log merge operations
-- Track branch modifications
-- Generate history reports
-</details>
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.3. Core Utilities</summary>
-
-### 2.3. Core Utilities
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3.1. common.sh</summary>
-
-#### 2.3.1. common.sh
-
-**Purpose:** Shared output and branch-detection helpers for consistent messaging.
-
-**Functions:**
-
-- `bt_info()` - Print info message
-- `bt_success()` - Print success message
-- `bt_error_exit()` - Print error and exit
-- `bt_get_current_branch()` - Get current branch name
-- `ensure_hooks_installed()` - Verify/install Git hooks
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3.2. common_utils.sh</summary>
-
-#### 2.3.2. common_utils.sh
-
-**Purpose:** Common utility functions shared across scripts.
-
-**Functions:**
-
-- Path manipulation
-- String utilities
-- File operations
-- General helpers
-</details>
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.4. Documentation Generators</summary>
-
-### 2.4. Documentation Generators
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.4.1. gendocx.sh</summary>
-
-#### 2.4.1. gendocx.sh
-
-**Purpose:** Generate DOCX files from PDF sources.
-
-**Usage:**
-
-```bash
-bash scripts/helpers/gendocx.sh <pdf_file> [<output_file>]
-```
-
-**Requirements:**
-
-- PDF to DOCX conversion tools
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.4.2. genpdf.sh</summary>
-
-#### 2.4.2. genpdf.sh
-
-**Purpose:** Generate PDF files from Markdown sources.
-
-**Usage:**
-
-```bash
-bash scripts/helpers/genpdf.sh <markdown_file> [<output_file>]
-```
-
-**Requirements:**
-
-- Markdown to PDF conversion tools (pandoc, etc.)
-</details>
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;2.5. Git Hooks Infrastructure</summary>
-
-### 2.5. Git Hooks Infrastructure
-
-Git hooks automate configuration and enforce the script-based workflow. All hooks are versioned in `scripts/helpers/.githooks/` and configured via Git's `core.hooksPath` mechanism. The hook entrypoints keep the canonical Git hook names without `.sh` because Git resolves those names directly; shared logic can still live in `.sh` helpers such as `githook_helper.sh`.
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.1. install_git_hooks.sh</summary>
-
-#### 2.5.1. install_git_hooks.sh
-
-**Purpose:** Configure Git to use hooks from the versioned `.githooks/` directory via `core.hooksPath`.
-
-**Usage:**
-
-```bash
-bash scripts/helpers/install_git_hooks.sh [--silent]
-```
-
-**Options:**
-
-- `--silent` - Suppress output (for use in automated workflows)
-
-**What it does:**
-
-- Configures `git config core.hooksPath scripts/helpers/.githooks`
-- Makes all hook files executable
-- Works in both fresh clones and existing repositories
-
-**Exit codes:**
-
-- `0` - Git hooks configured successfully
-- `1` - Could not determine repository root
-- `2` - .git directory not found
-- `3` - .githooks directory not found
-- `4` - Failed to set core.hooksPath
-
-**Called by:**
-
-- `setupclone` - Automatically during clone setup
-- `mkclone` - Automatically during repository cloning
-- `post-checkout` hook - As fallback safety net
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.2. post-checkout</summary>
-
-#### 2.5.2. post-checkout
-
-**Purpose:** Auto-configure git identity and ensure hooks are installed after clone and checkout.
-
-**Triggers:** After `git clone`, `git checkout`, or any git operation that changes working tree
-
-**What it does:**
-
-1. Queries GitHub API via `gh cli` to get your GitHub login
-2. Sets `git config --local user.name` to your GitHub login (not display name)
-3. Verifies `core.hooksPath` is configured
-
-**Why it matters:**
-
-- Prevents git user.name truncation issues
-- Ensures commits are attributed to your GitHub login
-- Runs automatically on every clone without user action
-
-**Example:**
-
-```bash
-# After git clone, hook runs automatically
-# You see your git config updated:
-$ git config --local user.name
-paulsinclair51
-```
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.3. pre-commit</summary>
-
-#### 2.5.3. pre-commit
-
-**Purpose:** Block direct `git add` and `git commit` operations to enforce script-based commits.
-
-**Triggers:** Before `git add` or `git commit` command
-
-**What it blocks:**
-
-```bash
-git add <file>           # [ERROR] BLOCKED
-git commit -m "msg"      # [ERROR] BLOCKED
-git rm <file>            # [ERROR] BLOCKED
-```
-
-**What to use instead:**
-
-```bash
-commit -m "Your message"           # [OK] Correct approach
-commit -m "Message" -p             # [OK] Commit + push
-```
-
-**How to bypass (scripts only):**
-
-Scripts automatically set `GIT_BYPASS_HOOKS=true` before git operations.
-
-**Error message shown:**
-
-```
-[ERROR] Direct git add/commit/rm operations are not allowed.
-
-   Use the 'commit' script instead:
-   
-     commit -m "Your commit message"
-     commit -m "Message" -p    # Commit and push
-   
-   For help:
-     commit -h
-```
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.4. pre-push</summary>
-
-#### 2.5.4. pre-push
-
-**Purpose:** Block direct `git push` operations to enforce script-based push workflows.
-
-**Triggers:** Before `git push` command
-
-**What it blocks:**
-
-```bash
-git push origin <branch>           # [ERROR] BLOCKED
-git push --force-with-lease        # [ERROR] BLOCKED
-git push origin --delete <branch>  # [ERROR] BLOCKED
-```
-
-**What to use instead:**
-
-```bash
-commit -m "msg" -p                 # [OK] Commit + push
-push                               # [OK] Push current branch
-pushup                              # [OK] Push up to the parent branch
-rmbranch <branch> -r               # [OK] Delete remote branch
-```
-
-**Error message shown:**
-
-```
-[ERROR] Direct git push operations are not allowed.
-
-   Use the appropriate script instead:
-   ...
-```
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.5. pre-merge-commit</summary>
-
-#### 2.5.5. pre-merge-commit
-
-**Purpose:** Block direct `git merge` operations to enforce script-based merge workflows.
-
-**Triggers:** Before `git merge` command creates a merge commit
-
-**What it blocks:**
-
-```bash
-git merge <branch>           # [ERROR] BLOCKED
-git merge --squash           # [ERROR] BLOCKED
-git merge --no-ff            # [ERROR] BLOCKED
-```
-
-**What to use instead:**
-
-```bash
-pulldown                      # [OK] Merge parent branch into current branch
-pushup                        # [OK] Merge current branch up to parent workflow
-```
-
-**Error message shown:**
-
-```
-[ERROR] Direct git merge operations are not allowed.
-
-  Use the 'pulldown' script instead:
-   ...
-```
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5.6. githook_helper.sh</summary>
-
-#### 2.5.6. githook_helper.sh
-
-**Purpose:** Provide common enforcement logic shared by all Git hooks.
-
-**Usage:**
-
-Sourced by other hooks, not called directly:
-
-```bash
-source "scripts/helpers/.githooks/githook_helper.sh"
-check_bypass "git commit" "commit"
-```
-
-**Functions provided:**
-
-- `check_bypass <operation> [suggested_script]` - Check if bypass flag set and show error if blocked
-- `hook_name` - Get current hook name
-- `git_command_in_progress` - Check if git command is in progress
-
-**How it works:**
-
-1. Checks `GIT_BYPASS_HOOKS` environment variable
-2. If set to `true`, allows operation (script is running)
-3. If not set, blocks operation and shows error guidance
-
-**Bypass flag usage (internal):**
-
-```bash
-# Scripts use this pattern:
-export GIT_BYPASS_HOOKS=true
-git add files...
-git commit -m "msg"
-unset GIT_BYPASS_HOOKS
-```
-
-**Security model:**
-
-- Only scripts can set `GIT_BYPASS_HOOKS`
-- Environment variable is unset immediately after operation
-- Direct user git commands cannot bypass hooks
-</details>
-</details>
-</details>
-
-<details>
-<summary><strong>3. Script-Based Access Control</strong></summary>
-
-## 3. Script-Based Access Control
+## 3. Command Permission Checks
 
 Commands check repository permissions before performing restricted operations.
 The exact requirement is documented by each command's `-h` output.
 
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Role Permissions Matrix</summary>
-
-### 3.1. Role Permissions Matrix
-
-| Permission | Typical Capabilities |
-|------------|----------------------|
-| Contributor | Branch modification, validation, documentation, and reporting |
-| Reviewer | Contributor capabilities plus review feedback |
-| Approver | Reviewer capabilities plus protected branch and release operations |
-| Repository owner | Exceptional recovery controls where a command supports them |
-
 Identity is resolved from the authenticated GitHub user and matched against
-`config/contributors.md`. For contributor-facing permission guidance, see the
-[Contributor Guide](./Contributor_Guide.md). For enforcement and owner
-recovery details, see the
-[Contributor Internal Reference](./Contributor_Internal_Reference.md).
+`config/contributors.md`. See [Roles](#23-roles) for the capability summary.
+Protected operations may add approval or repository-owner checks; those checks
+do not grant the caller a different repository permission.
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.2. Protected Script Rule</summary>
+<summary><strong>4. User Environment</strong></summary>
 
-### 3.2. Protected Script Rule
+## 4. User Environment
 
-Protected operations must pass permission checks, and some commands add
-operation-specific approval controls.
-
-Use script help for exact current behavior:
-
-```bash
-pushup -h
-release -h
-fixlocal -h
-rmbranch -h
-```
-
-Repository owner override controls are explicit and local to the invoking
-command or clone; they do not grant a different repository permission.
-</details>
-</details>
-
-<details>
-<summary><strong>4. Environment Variables</strong></summary>
-
-## 4. Environment Variables
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;4.1. GitHub Actions Environment</summary>
-
-### 4.1. GitHub Actions Environment
-
-These variables are automatically set by GitHub Actions:
-
-| Variable | Purpose | Example |
-|----------|---------|----------|
-| `GITHUB_ACTOR` | GitHub username of workflow trigger | `paulsinclair51` |
-| `GITHUB_EVENT_NAME` | Type of event | `pull_request`, `push` |
-| `GITHUB_REF_NAME` | Branch or tag name | `main`, `v1.0.0` |
-| `GITHUB_BASE_REF` | Target branch (PR only) | `main` |
-| `GITHUB_HEAD_REF` | Source branch (PR only) | `dev/feature-v1.0.0` |
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;4.2. Custom Variables</summary>
-
-### 4.2. Custom Variables
-
-Variables used by briteTest scripts:
-
-| Variable | Purpose | Default |
-|----------|---------|----------|
-| `CKROLE_TRUSTED_ACTORS` | Comma-separated allowed bots | Empty |
-| `CONTRIBUTORS_FILE` | Path to contributors config | `config/contributors.md` |
-| `BRAND_HISTORY` | Path to brand history log | `logs/brand_history.md` |
-| `GITHUB_ACTOR` | Preferred GitHub login for role checks | Environment-specific |
-
-For role-gated scripts, ensure one of the supported identity sources resolves to a valid GitHub login in `config/contributors.md`.
-</details>
+Commands normally resolve identity through the authenticated GitHub CLI. Set
+`GITHUB_ACTOR` to your GitHub login only when that identity cannot be resolved
+automatically. The login must appear in `config/contributors.md` for commands
+that require a repository permission.
 </details>
 
 <details>
@@ -1528,8 +1041,8 @@ For other scripts, run with `-h` or `--help` to view exit code documentation.
 **Solution:**
 
 1. Check branch name format
-2. Run: `bash scripts/helpers/ckbranchname.sh "<name>"`
-3. Fix naming to match required format
+2. Run `mkbranch -h` to review the supported patterns
+3. Retry `mkbranch` with a valid branch and parent
 
 #### Version Check Fails
 
@@ -1548,9 +1061,7 @@ For other scripts, run with `-h` or `--help` to view exit code documentation.
 
 **Solution:**
 
-```bash
-chmod +x scripts/bin/* scripts/helpers/*
-```
+Run `setupclone` to restore command permissions and local configuration.
 
 #### Role Check Fails for Known Approver/Reviewer
 
@@ -1564,35 +1075,15 @@ chmod +x scripts/bin/* scripts/helpers/*
 	- or `gh auth login`
 	- or `git config user.name <login>`
 
-#### Git Command Failures
+#### Repository Operation Fails
 
-**Error:** `fatal: bad revision` or similar git errors
+**Error:** A project command reports invalid repository or branch state
 
 **Solution:**
 
-1. Verify you're in the repository root: `pwd`
-2. Verify git is initialized: `ls -la .git`
-3. Fetch latest refs: `git fetch --all`
-4. Try command again
+1. Run the command again with `-v` when supported
+2. Run `fixlocal` for local clone, worktree, or tracking problems
+3. See the [Repair Decision Tree](./Contributor_Internal_Guide.md#2-repair-decision-tree)
+   if the local repair does not resolve the issue
 </details>
-</details>
-
-<details>
-<summary><strong>7. GitHub Actions Workflow Architecture</strong></summary>
-
-## 7. GitHub Actions Workflow Architecture
-
-Pull-request workflows validate proposed changes before they reach protected
-branches. Protected-branch workflows then record and verify repository events.
-Shared checks live in `scripts/helpers/`, principally `common_utils.sh` and
-`validation_helpers.sh`.
-
-| Layer | Trigger | Purpose |
-|-------|---------|---------|
-| Pull-request validation | Pull request activity | Reject invalid content, commits, signatures, or protected-file changes |
-| Protected-branch audit | Pushes and tags | Verify and record protected repository activity |
-
-Workflow files are under `.github/workflows/`. For implementation details and
-the process for changing validation, see the
-[Contributor Internal Reference](./Contributor_Internal_Reference.md).
 </details>
