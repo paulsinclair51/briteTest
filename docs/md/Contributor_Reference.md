@@ -350,7 +350,9 @@ pulldown [OPTIONS]
 #### 1.1.10. pushup
 
 **Purpose:** Push the current branch up to its parent, publish both updated
-branches, and leave the resynchronized source branch selected.
+branches, and leave the resynchronized source branch selected. Interrupted
+prepublication work is recovered by rerunning `pushup`; work that may have
+published the parent is resumed with `pushup --continue`.
 
 **Usage:**
 
@@ -361,7 +363,8 @@ pushup --continue
 
 **Options:**
 
-- `--continue` - Resume a pushup that passed parent publication.
+- `--continue` - Reconcile saved local and remote tips and resume a push-up
+  workflow that may have published its parent.
 - `-c TOKEN` - Custom pushup commit comment.
 - `-o` - Repository-owner override for eligible targeted-to-version paths.
 - `-t SEC` - Remote timeout in seconds.

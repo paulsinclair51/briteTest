@@ -1103,6 +1103,16 @@ Updates are made through `scripts/bin/pushup` only:
 - After parent publication, a failure writes a `pushup-e` report describing
   completed and pending steps. Address its guidance and run
   `pushup --continue`.
+- After a crash or abort before parent publication, rerun `pushup`. It verifies
+  that its prepared parent commit is absent remotely, restores the original
+  local refs, and restarts validation.
+- If parent publication may have occurred, plain `pushup` refuses to restart.
+  Run `pushup --continue`; it compares exact local and remote tips and resumes
+  the first incomplete step.
+- When origin is unavailable, recovery retains state rather than guessing
+  whether publication occurred. Restore connectivity and retry. Do not edit
+  the participating branches or remove `.git/briteTest/pushup.state` while the
+  workflow is incomplete.
 - For targeted-to-version push-up workflows, run `pushup` only after the current
   source commit is approved. Any additional source commit requires approval
   again.

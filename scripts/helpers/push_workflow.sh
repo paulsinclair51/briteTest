@@ -614,6 +614,12 @@ EOF
         fi
         bt_push_error_exit "$exit_pr_finalize_failed" \
           "Remote branch is current, but its pull request could not be finalized"
+      elif [[ "${BT_PUSHUP_FINALIZATION_RETRY:-false}" == true && \
+        ( "$pending_pr_state" == "CLOSED" || \
+          "$pending_pr_state" == "MERGED" ) ]]; then
+        echo "Remote $current_branch already contains the local pushup result."
+        echo "Pull request for $current_branch is already finalized."
+        exit 0
       fi
     fi
     bt_emit_error "Local ${current_branch} branch has no changes to push."
