@@ -2,7 +2,7 @@
 
 #### Version: v1.0.0
 
-Comprehensive reference for all scripts and helper tools used in briteTest development.
+Comprehensive reference for all scripts and helper tools used in repository development.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -62,38 +62,52 @@ see [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) and
 
 ## Table of Contents
 
-1. [scripts/bin/](#1-scriptsbin)<br>
-   1.1. [Workflow Management](#11-workflow-management)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.1. [chbranch](#111-chbranch)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.2. [commit](#112-commit)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.3. [copyfix](#113-copyfix)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.4. [feedback](#114-feedback)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.5. [lsbranch](#115-lsbranch)<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.6. [report](#116-report)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.7. [mkbranch](#117-mkbranch)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.8. [pull](#118-pull)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.9. [pulldown](#119-pulldown)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.10. [pushup](#1110-pushup)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.11. [retarget](#1111-retarget)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.12. [review](#1112-review)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.13. [rmbranch](#1113-rmbranch)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.14. [undo](#1114-undo)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.15. [release](#1115-release)<br>
-   1.2. [Repository and Clone Management](#12-repository-and-clone-management)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. [fixlocal](#121-fixlocal)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. [fixremote](#122-fixremote)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. [setupclone](#123-setupclone)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. [mkclone](#124-mkclone)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. [mkfork](#125-mkfork)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.6. [rmclone](#126-rmclone)<br>
-   1.3. [Documentation and Branding](#13-documentation-and-branding)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.1. [ckstyle](#131-ckstyle)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.2. [gendocs](#132-gendocs)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.3. [genpngs](#133-genpngs)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.4. [rebrand](#134-rebrand)<br>
-   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.5. [replacetext](#135-replacetext)<br>
+**Find by task**
 
-2. [scripts/helpers/](#2-scriptshelpers)<br>
+- **Set up:** [`mkclone`](#124-mkclone), [`setupclone`](#123-setupclone),
+  [`mkfork`](#125-mkfork), [`setup_rulesets`](#129-setup_rulesets)
+- **Work on a change:** [`chbranch`](#111-chbranch),
+  [`mkbranch`](#117-mkbranch), [`commit`](#112-commit),
+  [`push`](#1116-push), [`pull`](#118-pull),
+  [`pulldown`](#119-pulldown)
+- **Review and publish:** [`review`](#1113-review),
+  [`feedback`](#114-feedback), [`pushup`](#1110-pushup),
+  [`retarget`](#1112-retarget), [`release`](#1111-release)
+- **Inspect and undo:** [`lsbranch`](#115-lsbranch),
+  [`report`](#116-report), [`undo`](#1115-undo),
+  [`rmbranch`](#1114-rmbranch)
+- **Repair:** [`fixlocal`](#121-fixlocal), [`fixrepo`](#127-fixrepo),
+  [`fixremote`](#122-fixremote), [`override`](#128-override)
+- **Documentation and branding:** [`report style`](#131-report-style),
+  [`gendocs`](#132-gendocs), [`genpngs`](#133-genpngs),
+  [`rebrand`](#134-rebrand), [`replacetext`](#135-replacetext)
+
+**Commands A-Z**
+
+| Command | Reference | Command | Reference |
+|---------|-----------|---------|-----------|
+| `chbranch` | [1.1.1](#111-chbranch) | `mkfork` | [1.2.5](#125-mkfork) |
+| `commit` | [1.1.2](#112-commit) | `override` | [1.2.8](#128-override) |
+| `copyfix` | [1.1.3](#113-copyfix) | `pull` | [1.1.8](#118-pull) |
+| `feedback` | [1.1.4](#114-feedback) | `pulldown` | [1.1.9](#119-pulldown) |
+| `fixlocal` | [1.2.1](#121-fixlocal) | `push` | [1.1.16](#1116-push) |
+| `fixremote` | [1.2.2](#122-fixremote) | `pushup` | [1.1.10](#1110-pushup) |
+| `fixrepo` | [1.2.7](#127-fixrepo) | `rebrand` | [1.3.4](#134-rebrand) |
+| `gendocs` | [1.3.2](#132-gendocs) | `release` | [1.1.11](#1111-release) |
+| `genpngs` | [1.3.3](#133-genpngs) | `replacetext` | [1.3.5](#135-replacetext) |
+| `lsbranch` | [1.1.5](#115-lsbranch) | `report` | [1.1.6](#116-report) |
+| `mkbranch` | [1.1.7](#117-mkbranch) | `retarget` | [1.1.12](#1112-retarget) |
+| `mkclone` | [1.2.4](#124-mkclone) | `review` | [1.1.13](#1113-review) |
+| `rmbranch` | [1.1.14](#1114-rmbranch) | `setup_rulesets` | [1.2.9](#129-setup_rulesets) |
+| `rmclone` | [1.2.6](#126-rmclone) | `setupclone` | [1.2.3](#123-setupclone) |
+| `undo` | [1.1.15](#1115-undo) | | |
+
+1. [Command Reference (`scripts/bin/`)](#1-command-reference-scriptsbin)<br>
+   1.1. [Workflow Management](#11-workflow-management)<br>
+   1.2. [Repository and Clone Management](#12-repository-and-clone-management)<br>
+   1.3. [Documentation and Branding](#13-documentation-and-branding)<br>
+
+2. [Internal Helper Reference (`scripts/helpers/`)](#2-internal-helper-reference-scriptshelpers)<br>
    2.1. [Validation Helpers](#21-validation-helpers)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.1. [ckbranchname.sh](#211-ckbranchnamesh)<br>
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.2. [ckrole.sh](#212-ckrolesh)<br>
@@ -131,11 +145,11 @@ see [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) and
 
 6. [Troubleshooting](#6-troubleshooting)<br>
    6.1. [Common Issues](#61-common-issues)<br>
-      6.1.1. [Branch Creation Fails](#611-branch-creation-fails)<br>
-      6.1.2. [Version Check Fails](#612-version-check-fails)<br>
-      6.1.3. [Permission Denied](#613-permission-denied)<br>
-      6.1.4. [Role Check Fails for Known Approver/Reviewer](#614-role-check-fails-for-known-approverreviewer)<br>
-      6.1.5. [Git Command Failures](#615-git-command-failures)<br>
+      [Branch Creation Fails](#branch-creation-fails)<br>
+      [Version Check Fails](#version-check-fails)<br>
+      [Permission Denied](#permission-denied)<br>
+      [Role Check Fails for Known Approver/Reviewer](#role-check-fails-for-known-approverreviewer)<br>
+      [Git Command Failures](#git-command-failures)<br>
 
 7. [GitHub Actions Workflow Architecture](#7-github-actions-workflow-architecture)<br>
    7.1. [Architecture Overview](#71-architecture-overview)<br>
@@ -145,9 +159,9 @@ see [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) and
 </details>
 
 <details>
-<summary><strong>1. scripts/bin/</strong></summary>
+<summary><strong>1. Command Reference (scripts/bin/)</strong></summary>
 
-## 1. scripts/bin/
+## 1. Command Reference (scripts/bin/)
 
 Standalone executable scripts located in `scripts/bin/`. For full usage
 information, run any script with `-h` or `--help`.
@@ -466,13 +480,39 @@ rmbranch <branch_name> [OPTIONS]
 
 #### 1.1.15. undo
 
-**Purpose:** Undo recent merge, release, or commit operations.
+**Purpose:** Undo recent pull-down, release, commit, push, pull, or uncommitted
+changes.
 
 **Usage:**
 
 ```bash
 undo [OPTIONS]
 ```
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.16. push</summary>
+
+#### 1.1.16. push
+
+**Purpose:** Push commits on the current local targeted or contributor branch
+to its corresponding remote branch.
+
+**Usage:**
+
+```bash
+push [OPTIONS]
+```
+
+**Key Options:**
+
+- `-d` - Validate and report what would be pushed without publishing it.
+- `-e` - Generate an error report for testing and diagnostics.
+- `-t SEC` - Set the remote reachability timeout.
+- `-v` - Show progress and diagnostics.
+
+**Related Commands:** Run `commit` before `push`, `pull` when local and remote
+branches have diverged, and `report` to inspect recorded activity.
 </details>
 </details>
 
@@ -616,6 +656,74 @@ rmclone <clone_path> [OPTIONS]
 
 - `-f, --force` - Override validation checks
 </details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.7. fixrepo</summary>
+
+#### 1.2.7. fixrepo
+
+**Purpose:** Check repository health, apply safe repairs, and generate a
+repository report. One additional clone may be checked in the same run.
+
+**Usage:**
+
+```bash
+fixrepo [OPTIONS] [<clone-path>]
+```
+
+**Key Options:**
+
+- `-d` - Report issues without attempting repairs.
+- `-q` - Use reduced-cost diagnostics.
+- `-t SEC` - Set the remote timeout; use `0` to skip remote checks.
+- `-v` - Show the generated report.
+
+**Related Commands:** Use `fixlocal` first for an isolated local problem and
+`fixremote` only to recover a damaged remote from a known-good clone.
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.8. override</summary>
+
+#### 1.2.8. override
+
+**Purpose:** Enable or disable an exceptional repository-owner recovery mode
+for the current clone or a temporary remote repair authorization window.
+
+**Usage:**
+
+```bash
+override [-r] [-t SEC] on
+override off
+```
+
+**Key Options:**
+
+- `-r` - Enable the remote repair authorization window with `on`.
+- `-t SEC` - Set the remote reachability timeout.
+- `-v` - Show progress and diagnostics.
+
+Use `fixlocal`, `fixrepo`, and `fixremote` before `override` when possible.
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.9. setup_rulesets</summary>
+
+#### 1.2.9. setup_rulesets
+
+**Purpose:** Create, update, or verify the GitHub rulesets that protect `main`
+and version branches.
+
+**Usage:**
+
+```bash
+setup_rulesets [--check] [OWNER/REPOSITORY]
+```
+
+**Key Option:** `--check` verifies the live rulesets without changing them.
+
+The authenticated GitHub user must have repository administration permission.
+</details>
 </details>
 
 <details>
@@ -668,7 +776,8 @@ report style [OPTIONS]
 gendocs [OPTIONS]
 ```
 
-**Output:** Generated documents in `build/` directory
+**Default Output:** PDF files in `docs/pdf/` and DOCX files in `docs/docx/`.
+Use positional output-directory arguments to choose other locations.
 </details>
 
 <details>
@@ -714,7 +823,7 @@ rebrand [OPTIONS]
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.5. replacetext</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.5. replacetext</summary>
 
 #### 1.3.5. replacetext
 
@@ -730,9 +839,9 @@ replacetext [OPTIONS]
 </details>
 
 <details>
-<summary><strong>2. scripts/helpers/</strong></summary>
+<summary><strong>2. Internal Helper Reference (scripts/helpers/)</strong></summary>
 
-## 2. scripts/helpers/
+## 2. Internal Helper Reference (scripts/helpers/)
 
 Helper modules and utilities located in `scripts/helpers/` designed to
 be sourced or called by other scripts and workflows.
@@ -826,7 +935,7 @@ bash scripts/helpers/ckrole.sh "<role>"
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1.4. validation_helpers.sh</summary>
 
-### 2.1.4. validation_helpers.sh
+#### 2.1.4. validation_helpers.sh
 
 **Purpose:** General validation utility functions for scripts.
 
@@ -1108,7 +1217,7 @@ git push origin --delete <branch>  # [ERROR] BLOCKED
 ```bash
 commit -m "msg" -p                 # [OK] Commit + push
 push                               # [OK] Push current branch
-pushup                              # [OK] Merge-up workflow
+pushup                              # [OK] Push up to the parent branch
 rmbranch <branch> -r               # [OK] Delete remote branch
 ```
 
@@ -1208,90 +1317,26 @@ unset GIT_BYPASS_HOOKS
 
 ## 3. Script-Based Access Control
 
-Role-based script permissions are enforced by helper checks and protected script wrappers.
+Commands check repository permissions before performing restricted operations.
+The exact requirement is documented by each command's `-h` output.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;3.1. Role Permissions Matrix</summary>
 
 ### 3.1. Role Permissions Matrix
 
-briteTest implements hierarchical role-based access control: **Approver (A)** > **Reviewer (R)** > **Contributor (C)**
+| Permission | Typical Capabilities |
+|------------|----------------------|
+| Contributor | Branch modification, validation, documentation, and reporting |
+| Reviewer | Contributor capabilities plus review feedback |
+| Approver | Reviewer capabilities plus protected branch and release operations |
+| Repository owner | Exceptional recovery controls where a command supports them |
 
-#### Capabilities by Role
-
-| Script Capability | Contributor (C) | Reviewer (R) | Approver (A) |
-|------------------|-----------------|--------------|--------------| 
-| Branch and commit operations | [OK] | [OK] | [OK] |
-| Review operations | [NO] | [OK] | [OK] |
-| Retarget operations | [NO] | [NO] | [OK] |
-| Protected operations (merge/release/repair) | [NO] | [NO] | [OK] (override required) |
-
-#### Scripts by Role
-
-**Contributor (C) Scripts** - Basic contributor access
-```
-mkbranch          - Create new feature branches from parent
-mkclone           - Clone the repository
-commit            - Create and sign commits with optional push (-p)
-copyfix           - Copy fix commits between branches
-pull         - Sync with remote repository
-pulldown           - Sync down from main branch
-undo              - Undo uncommitted changes
-report            - Check branch history
-lsbranch          - List branches and status
-ckstyle           - Check code style compliance
-gendocs           - Generate PDF/DOCX documentation
-genpngs           - Generate PNG branding from SVG
-setupclone        - Setup clone environment
-```
-
-**Reviewer (R) Scripts** - Inherits all Contributor scripts, plus:
-```
-feedback          - Provide code review feedback on PRs
-review            - Create/update draft PRs and start review (`-s`)
-```
-
-**Approver (A) Scripts** - Inherits all Reviewer + Contributor scripts, plus:
-```
-pushup             - Merge branches to parent/protected branches (requires override)
-release           - Create releases and version tags (requires override)
-fixlocal, fixremote - Repair repository state (requires override)
-rebrand           - Update branding across repository (requires override)
-replacetext       - Replace text globally across repo (requires override)
-```
-
-#### How Role Checking Works
-
-1. User's GitHub login is resolved from (in order):
-   - `GITHUB_ACTOR` environment variable
-   - `gh auth login` via GitHub CLI
-   - `git config user.name` (must be GitHub login, not display name)
-
-2. Login is matched against `config/contributors.md` to determine role (C/R/A)
-
-3. Script checks required role and either executes or fails with permission error
-
-**Example Role Check:**
-```bash
-# If you are a Contributor and run:
-pushup
-
-# Script will fail:
-[ERROR] This operation requires Approver role
-```
-
-#### Protected Operations and Overrides
-
-Role checks are enforced by script-level policy gates and shared role helpers.
-Current enforcement patterns include:
-
-- Approver checks for protected merge/release paths (for example in `pushup`).
-- Contributor-role checks for branch mutation operations (for example in `rmbranch`).
-- Repository-owner override controls where supported (for example `-o`,
-  and local override mode via `override on/off`).
-
-Role checks are evaluated before operation-specific controls. Override options
-do not grant non-owner/non-approver users additional access.
+Identity is resolved from the authenticated GitHub user and matched against
+`config/contributors.md`. For contributor-facing permission guidance, see the
+[Contributor Guide](./Contributor_Guide.md). For enforcement and owner
+recovery details, see the
+[Contributor Internal Reference](./Contributor_Internal_Reference.md).
 </details>
 
 <details>
@@ -1299,7 +1344,7 @@ do not grant non-owner/non-approver users additional access.
 
 ### 3.2. Protected Script Rule
 
-Protected operations must pass role-gate checks, and some commands add
+Protected operations must pass permission checks, and some commands add
 operation-specific approval controls.
 
 Use script help for exact current behavior:
@@ -1312,7 +1357,7 @@ rmbranch -h
 ```
 
 Repository owner override controls are explicit and local to the invoking
-command/clone; they are not a general permission bypass.
+command or clone; they do not grant a different repository permission.
 </details>
 </details>
 
@@ -1492,10 +1537,10 @@ For other scripts, run with `-h` or `--help` to view exit code documentation.
 
 **Solution:**
 
-1. Run: `scripts/bin/ckversions`
+1. Run: `report style -m`
 2. Review the differences reported
 3. Manually update version numbers in affected files
-4. Re-run `scripts/bin/ckversions` to verify
+4. Re-run `report style -m` to verify
 
 #### Permission Denied
 
@@ -1537,163 +1582,17 @@ chmod +x scripts/bin/* scripts/helpers/*
 
 ## 7. GitHub Actions Workflow Architecture
 
-### 7.1. Architecture Overview
+Pull-request workflows validate proposed changes before they reach protected
+branches. Protected-branch workflows then record and verify repository events.
+Shared checks live in `scripts/helpers/`, principally `common_utils.sh` and
+`validation_helpers.sh`.
 
-briteTest uses a **defense-in-depth** validation approach with two layers of GitHub Actions workflows:
+| Layer | Trigger | Purpose |
+|-------|---------|---------|
+| Pull-request validation | Pull request activity | Reject invalid content, commits, signatures, or protected-file changes |
+| Protected-branch audit | Pushes and tags | Verify and record protected repository activity |
 
-**Primary Layer (Prevention)** - Blocks invalid PRs before merge
-- `validate-pull-request.yml` - PR content validation
-- `validate-commit-message.yml` - Commit message format
-- `validate-gpg-signature.yml` - Signed commits required
-- `validate-file-changes.yml` - Protected file changes blocked
-- `validate-secrets.yml` - Secret scanning
-- `validate-code-quality.yml` - Code standards
-- `+4 more prevention workflows` - Specialized validation (license headers, file size, workflows, authors)
-
-**Secondary Layer (Audit)** - Creates compliance log after merge
-- `validate-merge.yml` - Log merge operations
-- `validate-rebase.yml` - Log rebase operations  
-- `validate-force-push.yml` - Log force push operations
-- `validate-cherry-pick.yml` - Log cherry-pick operations
-- `+1 more audit workflow` - Tag operations logging
-
-### 7.2. Layered Validation Approach
-
-```
-[=============================================================]
-  LAYER 1: PRIMARY - Prevention (PR Blocks)
-  Runs on: pull_request (opened, synchronize, reopened)
-  Result: Fails PR if any validation fails
-  + 10 prevention workflows covering all key validations
-[=============================================================]
-                            |
-                    All Checks Pass
-                            |
-          PR Approved and Ready to Merge
-                            |
-[=============================================================]
-  LAYER 2: SECONDARY - Audit (Compliance Logging)
-  Runs on: push (to main and version branches)
-  Result: Creates audit log entry in reports/
-  + 5 audit workflows tracking protected-branch activity
-[=============================================================]
-                            |
-              Audit Trail Recorded
-```
-
-**Benefits of this approach:**
-- Failures detected early (before merge)
-- Issues fixed in PRs (not production)
-- Audit trail shows who changed what, when
-- Compliance visibility for code governance
-- Easy to add new validations without modifying old workflows
-
-### 7.3. Helper Script Library
-
-Workflows use centralized helper scripts to reduce duplication and share validation logic:
-
-```
-scripts/helpers/
-+-- common_utils.sh
-|   +-- log_info, log_error, log_section
-|   +-- assert_set, assert_file_exists
-|   +-- timer_start, timer_end
-|   +-- string_contains, string_equals
-|   +-- array_contains
-|   +-- git_log_range, git_changed_files
-|   +-- print_success, print_failure
-|
-+-- validation_helpers.sh
-|   +-- validate_commit_message() - Check commit format
-|   +-- validate_all_commit_messages() - Check PR commits
-|   +-- scan_for_secrets() - Pattern matching for secrets
-|   +-- check_file_size() - File size limits
-|   +-- validate_license_header() - License text presence
-|   +-- validate_shell_format() - Shell script syntax
-|   +-- validate_c_format() - C/H file syntax
-|
-+-- Domain-Specific Helpers
-|   +-- ckbranchname.sh - Branch naming validation
-|   +-- ckrole.sh - User role verification
-|   +-- rbac.sh - Role-based access control
-|   +-- Others - Repository-specific checks
-```
-
-**Key principles:**
-- Functions are reusable and standalone
-- Clear return codes (0=success, 1=failure)
-- Documented with inline comments
-- Efficient (fail fast, minimize git operations)
-- Tested in workflows before merge
-
-### 7.4. Adding New Validations
-
-To add a new validation workflow:
-
-**1. Implement validation function** in `scripts/helpers/validation_helpers.sh`:
-
-```bash
-# validate_my_check: Description of what is validated
-#
-# Args: $1 = parameter (e.g., commit hash, file path)
-# Returns: 0 if valid, 1 if invalid (non-zero)
-# 
-validate_my_check() {
-  local param=$1
-  
-  # Your validation logic
-  if [[ condition ]]; then
-    return 0  # Valid
-  else
-    return 1  # Invalid
-  fi
-}
-```
-
-**2. Create workflow file** `.github/workflows/validate-mycheck.yml`:
-
-```yaml
-name: Validate My Check
-
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Full history for comparisons
-
-      - name: Source helpers
-        run: |
-          source scripts/helpers/common_utils.sh
-          source scripts/helpers/validation_helpers.sh
-
-      - name: Run validation
-        run: |
-          timer_start
-          log_section "My Check"
-          
-          if validate_my_check "param"; then
-            print_success "My check passed"
-            timer_end "my_check"
-          else
-            print_failure "My check failed"
-            exit 1
-          fi
-```
-
-**3. Register in branch protection rules:**
-
-Add the new workflow to GitHub branch protection settings for `main` and version branches.
-
-**4. Test and iterate:**
-
-- Push to a test branch to verify workflow runs
-- Fix any issues and re-push
-- Once working, create PR for review
+Workflow files are under `.github/workflows/`. For implementation details and
+the process for changing validation, see the
+[Contributor Internal Reference](./Contributor_Internal_Reference.md).
 </details>
