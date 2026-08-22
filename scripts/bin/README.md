@@ -12,6 +12,9 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ### Setup and Installation
 
+**setup_rulesets**: Configure repository rulesets for protected branch and tag
+policy. Repository owner and GitHub administration access are required.
+
 **setupclone**: Setup clone environment `<repo>/scripts/bin/` to PATH.
 
 ### Document and Brand Management
@@ -30,13 +33,13 @@ See `<repo>/README.md` for an introduction to briteTest.
 integrity issues. It validates the current clone and applies only safe local
 repairs.
 
-**fixrepo**: Broader repository-wide validation across the current repo and an
-optional second clone. Use after fixlocal if the issue may extend beyond the
-current working copy.
-
 **fixremote**: Remote-recovery workflow. Use only when the error is in the remote
 (origin) repository or when a protected ref/object must be recovered from a
 known-clean clone.
+
+**fixrepo**: Broader repository-wide validation across the current repo and an
+optional second clone. Use after fixlocal if the issue may extend beyond the
+current working copy.
 
 **mkclone**: Clone the repository with optional target naming.
 
@@ -48,11 +51,10 @@ override.
 
 ### Branch and Workflow Management
 
-**chbranch**: Change to specified local branch as current branch
-(blocks `main` which is not allowed to have a local branch).
-When local branch doesn't exist, creates local tracking branch from
-origin/<branch>` if it exists and is available.
-List can include cached remote-only branches.
+**chbranch**: Select an existing local branch or a fresh read-only remote
+snapshot. Local branches are preferred by default, including protected
+branches. A local protected branch is refreshed only by a safe fast-forward;
+protected branches and remote snapshots remain read-only.
 
 **commit**: Commit and optionally push changes to remote.
 
@@ -63,15 +65,7 @@ the current branch.
 
 **lsbranch**: List a branch or branches and their status.
 
-**report**: Generate repository health, branch activity, and style reports.
-
 **mkbranch**: Create branches with policy validation.
-
-**pulldown**: Merge parent branch into current branch.
-
-**pushup**: Push the current branch up to its parent, publish the parent,
-resynchronize the source branch, and publish the source. Partial push-up workflows
-are recorded and resumed with `pushup --continue`.
 
 **override**: Repository owner only. Toggle local or remote-repair authorization
 for this clone (`override on` / `override off`, and `override -r on`). Use
@@ -82,10 +76,18 @@ protection.
 
 **pull**: Pull from remote to current branch (which must be local).
 
+**pulldown**: Merge parent branch into current branch.
+
 **push**: Push from current branch (which must be local) to its
 corresponding remote branch.
 
+**pushup**: Push the current branch up to its parent, publish the parent,
+resynchronize the source branch, and publish the source. Partial push-up workflows
+are recorded and resumed with `pushup --continue`.
+
 **release**: Create and publish releases.
+
+**report**: Generate repository health, branch activity, and style reports.
 
 **retarget**: Retarget a targeted branch locally; use `-r` to publish it.
 targeted branch is renamed to have its version as the specified version.

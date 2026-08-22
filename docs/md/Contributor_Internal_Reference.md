@@ -180,6 +180,7 @@ override -r on
 **Important:** the actual remote repair still requires GitHub admin authority and
 must be performed by the appropriate server-side admin workflow.
 </details>
+</details>
 
 <details>
 <summary><strong>2. Role and Access Assumptions</strong></summary>
@@ -197,6 +198,7 @@ must be performed by the appropriate server-side admin workflow.
   remote override state.
 - Actual remote-side repair still requires repository admin or organization admin
   permissions in GitHub.
+</details>
 
 <details>
 <summary><strong>3. GitHub Server-Side Controls</strong></summary>
@@ -214,6 +216,7 @@ policies, not by local scripts alone:
 In practical terms, the repository owner may need to make a protected branch
 temporarily editable through GitHub admin controls, complete the repair, then
 restore the protection immediately.
+</details>
 
 <details>
 <summary><strong>4. Operational Notes and Security Boundaries</strong></summary>
@@ -232,5 +235,4 @@ restore the protection immediately.
 
 This document records the explicit limitations of the owner override and the
 server-side administrative authority required for protected remote repair.
-</details>
 </details>

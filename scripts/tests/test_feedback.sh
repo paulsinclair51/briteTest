@@ -59,7 +59,13 @@ fi
 
 case "$*" in
   *"pr list"*)
-    if [[ "$*" == *"--state closed"* ]]; then
+    if [[ "$*" == *"--base main"* ]]; then
+      if [[ "${FAKE_APPROVED_QUERY_FAIL:-false}" == true ]]; then
+        exit 1
+      elif [[ "${FAKE_APPROVED_SIBLING:-false}" == true ]]; then
+        printf '12\tdev/other-v1.0.0\n'
+      fi
+    elif [[ "$*" == *"--state closed"* ]]; then
       if [[ "${FAKE_GH_STATE:-open}" == "closed" ]]; then
         echo "7"
       else
@@ -72,6 +78,10 @@ case "$*" in
         echo ""
       fi
     fi
+    exit 0
+    ;;
+  *"pr view 7 --json baseRefName"*)
+    echo "main"
     exit 0
     ;;
   *"pulls/7/comments"*)
@@ -163,6 +173,23 @@ assert_contains "reply to a specific review comment" "$TMPDIR/help.out"
 assert_contains "Mark a specific review thread" "$TMPDIR/help.out"
 pass "help advertises review-thread support"
 
+rc=$(run_capture "$TMPDIR/unauthorized.out" open env \
+  GITHUB_ACTOR=outsider bash -c "cd '$WORK' && bash ./scripts/bin/feedback view")
+[[ "$rc" -eq 4 ]] || fail "feedback by an unconfigured user should exit 4 (got $rc)"
+assert_contains "not listed as contributor, reviewer, or approver" \
+  "$TMPDIR/unauthorized.out"
+pass "feedback requires contributor role"
+
+git -C "$WORK" branch v1.0.0
+git -C "$WORK" checkout v1.0.0 >/dev/null 2>&1
+rc=$(run_capture "$TMPDIR/invalid-branch.out" open env \
+  GITHUB_ACTOR=reviewer1 bash -c "cd '$WORK' && bash ./scripts/bin/feedback view")
+[[ "$rc" -eq 2 ]] || fail "feedback on an invalid branch should exit 2 (got $rc)"
+assert_contains "is not a contributor or targeted branch" \
+  "$TMPDIR/invalid-branch.out"
+git -C "$WORK" checkout dev/review-v1.0.0 >/dev/null 2>&1
+pass "feedback requires a contributor or targeted branch"
+
 rc=$(run_capture "$TMPDIR/view.out" open env GITHUB_ACTOR=reviewer1 bash -c "cd '$WORK' && bash ./scripts/bin/feedback view")
 [[ "$rc" -eq 0 ]] || fail "feedback view should exit 0 (got $rc)"
 assert_contains "[101] reviewer1 src/auth.sh:12" "$TMPDIR/view.out"
@@ -231,9 +258,28 @@ assert_contains "resolveReviewThread" "$TMPDIR/gh.log"
 assert_contains "thread-abc" "$TMPDIR/gh.log"
 pass "thread resolution uses the review thread id"
 
+: > "$TMPDIR/gh.log"
+rc=$(run_capture "$TMPDIR/approve-blocked.out" open env \
+  GITHUB_ACTOR=testapprover FAKE_APPROVED_SIBLING=true bash -c \
+  "cd '$WORK' && bash ./scripts/bin/feedback approve -- 'Looks good to me.'")
+[[ "$rc" -eq 3 ]] || fail "approval with pending sibling should exit 3 (got $rc)"
+assert_contains "PR #12 ('dev/other-v1.0.0') is already approved" \
+  "$TMPDIR/approve-blocked.out"
+assert_not_contains "pr review 7 --approve" "$TMPDIR/gh.log"
+pass "approve waits for an approved PR targeting the same parent"
+
+rc=$(run_capture "$TMPDIR/approve-query-fail.out" open env \
+  GITHUB_ACTOR=testapprover FAKE_APPROVED_QUERY_FAIL=true bash -c \
+  "cd '$WORK' && bash ./scripts/bin/feedback approve -- 'Looks good to me.'")
+[[ "$rc" -eq 4 ]] || fail "failed pending-approval query should exit 4 (got $rc)"
+assert_contains "Failed to check approved PRs targeting 'main'" \
+  "$TMPDIR/approve-query-fail.out"
+pass "approve fails closed when sibling approval state is unavailable"
+
 rc=$(run_capture "$TMPDIR/approve.out" open env GITHUB_ACTOR=testapprover bash -c "cd '$WORK' && bash ./scripts/bin/feedback approve -- 'Looks good to me.'")
 [[ "$rc" -eq 0 ]] || fail "feedback approve should exit 0 (got $rc)"
 assert_contains "PR #7 approved" "$TMPDIR/approve.out"
+assert_contains "pr list --state open --base main" "$TMPDIR/gh.log"
 assert_contains "pr review 7 --approve --body Looks good to me." "$TMPDIR/gh.log"
 pass "approve action submits an approval review"
 

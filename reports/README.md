@@ -10,18 +10,22 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 ## Files
 
-**<workflow>-d-<datetime>.md**: Latest untracked dry-run report from `pull`, `mrgup`,
-`mrgdown`, or `copyfix`.
+**<workflow>-d-<datetime>.md**: Latest untracked dry-run report from `pull`,
+`pushup`, `pulldown`, or `copyfix`.
 
-**<workflow>-e-<datetime>.md**: Latest untracked error report from `pull`, `mrgup`,
-`mrgdown`, or `copyfix`.
+**<workflow>-e-<datetime>.md**: Latest untracked error report from `pull`,
+`pushup`, `pulldown`, or `copyfix`.
 
 **local-<datetime>.md**: Latest untracked activity report for a local branch from
 `<repo>/scripts/bin/report`.
-qe
+
 **rebrand-<datetime>-<id>.md**: Latest untracked brand update report.
 
 **recovery-<datetime>-<id>.md**: Latest untracked remote recovery report.
+
+**release-d-<datetime>.md**: Latest release dry-run report.
+
+**release-e-<datetime>.md**: Latest release error-run report.
 
 **remote-<datetime>.md**: Latest untracked activity report for a remote branch
 from `<repo>/scripts/bin/report`.
@@ -30,10 +34,6 @@ from `<repo>/scripts/bin/report`.
 `<repo>/scripts/bin/report`.
 
 **repository-<datetime>-<id>.md**: Repository diagnostic report.
-
-**release-d-<datetime>.md**: Latest release dry-run report.
-
-**release-e-<datetime>.md**: Latest release error-run report.
 
 **retarget-e-<datetime>.md**: Latest retarget error-run report.
 

@@ -396,6 +396,28 @@ EOF
     "$repo/logs/helpers.log"
 }
 
+test_gendocs_pdf_only_dry_run() {
+  phase "gendocs PDF-only dry run"
+
+  local repo
+  repo=$(make_gendocs_repo repo_pdf_dry_run)
+
+  cat > "$repo/docs/md/alpha.md" <<'EOF'
+# Alpha
+EOF
+
+  bash "$repo/scripts/bin/gendocs" -n -p > \
+    "$tmpdir/gendocs_pdf_dry_run.out"
+
+  assert_contains "Dry-run: $repo/docs/md/alpha.md" \
+    "$tmpdir/gendocs_pdf_dry_run.out"
+  assert_contains "Planned PDF generation." \
+    "$tmpdir/gendocs_pdf_dry_run.out"
+  assert_file_not_exists "$repo/docs/pdf/alpha.pdf"
+  assert_file_not_exists "$repo/docs/md/.md_metadata"
+  assert_file_not_exists "$repo/logs/helpers.log"
+}
+
 test_gendocs_toolcheck() {
   phase "gendocs toolcheck"
 
@@ -541,6 +563,7 @@ run_all_tests() {
   test_help_and_usage
   test_gendocs_help
   test_gendocs_default_pipeline
+  test_gendocs_pdf_only_dry_run
   test_gendocs_toolcheck
   test_gendocs_docx_only_pdf_source
   test_gendocs_missing_helper

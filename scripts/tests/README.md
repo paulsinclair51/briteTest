@@ -14,6 +14,13 @@ and high-signal output contracts.
 
 ## Files
 
+**test_*.sh**: miscellaneous test helpers for policy, propagation, and
+fixlocal core/remote/retention.
+
+**test_\<bin_script\>.sh**: Smoke tests for a script in
+`<repo>/scripts/bin/` covering help output, verified cleanup,
+report summaries, and repository layout skip behavior.
+
 **test_commit_lib.sh**: Smoke tests for `<repo>/scripts/bin/fixrepo`
 covering help output, verified cleanup, report summaries, and briteTest
 layout skip behavior.
@@ -21,13 +28,6 @@ layout skip behavior.
 **test_fixlocal_lib.sh**: Smoke tests for `<repo>/scripts/bin/fixrepo`
 covering help output, verified cleanup, report summaries, and briteTest
 layout skip behavior.
-
-**test_*.sh**: miscellaneous test helpers for policy, propagation, and
-fixlocal core/remote/retention.
-
-**test_\<bin_script\>.sh**: Smoke tests for a script in
-`<repo>/scripts/bin/` covering help output, verified cleanup,
-report summaries, and repository layout skip behavior.
 
 **test_report_helpers.sh**: Focused tests for
 `<repo>/scripts/helpers/report_helpers.sh` covering exact deleted-report

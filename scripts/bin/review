@@ -498,8 +498,7 @@ parse_args() {
       exit 0
       ;;
     approve | disapprove)
-      usage_error "Review approval actions moved to feedback. Use"
-      usage_error "'feedback approve' or 'feedback disapprove' instead."
+      usage_error "Review approval actions moved to feedback. Use 'feedback approve' or 'feedback disapprove' instead"
       ;;
     -T | --title)
       [[ $# -ge 2 ]] || usage_error "Option -T requires a title argument"
@@ -796,7 +795,7 @@ if [[ "$VERBOSE" == true ]]; then
     gh pr view "$EXISTING_PR" --json number,title,state,isDraft,url \
     --jq '{number:.number, title:.title, state:.state, draft:.isDraft, '\
 'url:.url}'
-  echo "$local_pr_details" | sed 's/^/  /'
+  printf '  %s\n' "${local_pr_details//$'\n'/$'\n  '}"
 fi
 
 if [[ "$OPEN_BROWSER" == true ]]; then

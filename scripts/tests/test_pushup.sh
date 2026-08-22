@@ -201,6 +201,38 @@ assert_contains "state is incomplete" "$TMPDIR/incomplete-state.out"
 rm -f "$WORK/.git/briteTest/pushup.state"
 echo "PASS: incomplete state fails closed"
 
+# If origin disappears while a parent push result is uncertain, continuation
+# must retain state until remote history can prove whether publication occurred.
+add_feature_change "network recovery feature"
+source_tip="$(git -C "$WORK" rev-parse feature)"
+parent_tip="$(git -C "$WORK" rev-parse main)"
+git -C "$WORK" checkout main >/dev/null
+git -C "$WORK" merge --squash feature >/dev/null
+git -C "$WORK" commit -m "network recovery preparation" >/dev/null
+prepared_tip="$(git -C "$WORK" rev-parse main)"
+write_state parent-publishing "$source_tip" "$parent_tip" "$prepared_tip"
+mv "$ORIGIN" "$ORIGIN.offline"
+status="$(run_capture "$TMPDIR/network-offline.out" bash -c \
+  "cd '$WORK' && ./scripts/bin/pushup --continue")"
+[[ "$status" -eq 5 ]] || fail "offline recovery should exit 5, got $status"
+[[ -f "$WORK/.git/briteTest/pushup.state" ]] || \
+  fail "offline recovery should retain state"
+[[ "$(git config --file "$WORK/.git/briteTest/pushup.state" \
+  --get pushup.phase)" == publication-uncertain ]] || \
+  fail "offline recovery should record publication uncertainty"
+assert_contains "origin is unavailable" "$TMPDIR/network-offline.out"
+mv "$ORIGIN.offline" "$ORIGIN"
+status="$(run_capture "$TMPDIR/network-reconnected.out" bash -c \
+  "cd '$WORK' && ./scripts/bin/pushup --continue")"
+[[ "$status" -eq 4 ]] || \
+  fail "nonpublication after reconnect should roll back with exit 4, got $status"
+[[ ! -f "$WORK/.git/briteTest/pushup.state" ]] || \
+  fail "proven nonpublication should clear state after rollback"
+status="$(run_capture "$TMPDIR/network-restart.out" bash -c \
+  "cd '$WORK' && ./scripts/bin/pushup")"
+[[ "$status" -eq 0 ]] || fail "pushup should restart after rollback, got $status"
+echo "PASS: network loss retains uncertain state until safe recovery"
+
 # Simulate a hard crash after the helper committed locally but before the
 # coordinator changed phase from initialized. Plain pushup must roll back and
 # restart because the prepared commit is not remote.

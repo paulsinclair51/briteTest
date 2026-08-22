@@ -162,19 +162,21 @@ information, run any script with `-h` or `--help`.
 
 #### 1.1.1 chbranch
 
-**Purpose:** Change to specified local branch as current branch.
+**Purpose:** Select a local branch or a read-only snapshot of a remote branch.
 
 **Usage:**
 
 ```bash
-chbranch BRANCH
+chbranch [-l | -r] [-t SEC] [-v] [BRANCH]
 ```
 
 **Notes:**
 
-- Blocks checkout to `main` (remote-only branch)
-- Creates local tracking branch if it doesn't exist
-- Can include cached remote-only branches
+- Prefers an existing local branch when neither `-l` nor `-r` is specified.
+- `-l` requires an existing local branch; `-r` selects a fresh read-only
+  snapshot of an existing remote branch.
+- Local protected branches may be selected and are refreshed only by a safe
+  fast-forward. Protected branches and remote snapshots are read-only.
 </details>
 
 <details>
@@ -242,6 +244,8 @@ feedback [ACTION] [OPTIONS] [-- TOKEN...]
 - `feedback respond -i <id> -c <text>` replies to a specific review comment.
 - `feedback resolve -i <id>` resolves the matching review thread.
 - `feedback approve` and `feedback disapprove` submit final approval decisions.
+  Approval is refused while another open approved PR targets the same parent
+  branch, or when GitHub cannot verify that no such PR exists.
 </details>
 
 <details>
@@ -313,7 +317,7 @@ mkbranch -r BRANCH [PARENTBRANCH]
 
 - **Contributor:** `[<type>/]<description>` (type: dev, fix, feature, docs)
 - **Targeted:** `dev/<description>-<version>` or `fix/<description>-<version>`
-- **Version:** `v<M>.<m>.<p>` (approvers only)
+- **Version:** `v<M>.<m>.0` (approvers only)
 </details>
 
 <details>
@@ -326,8 +330,13 @@ mkbranch -r BRANCH [PARENTBRANCH]
 **Usage:**
 
 ```bash
-pull [BRANCHNAME]
+pull [OPTIONS]
 ```
+
+`pull` synchronizes the current local branch with its corresponding remote;
+it does not accept a branch-name argument. Use `-d` for a dry run, `-o` for an
+owner-authorized version-branch pull, `-t SEC` for the remote timeout, and `-v`
+for verbose output.
 </details>
 
 <details>
@@ -370,7 +379,6 @@ pushup --continue
 - `-t SEC` - Remote timeout in seconds. After parent publication starts,
   subsequent remote access uses three times this value.
 - `-v` - Verbose output.
-
 </details>
 
 <details>
@@ -449,7 +457,7 @@ rmbranch <branch_name> [OPTIONS]
 
 **Protected Branches (Cannot Delete):**
 
-- `main` (remote-only base branch)
+- `main` (protected base branch, locally and remotely)
 - `v*` (version branches)
 </details>
 
@@ -503,7 +511,6 @@ fixlocal [OPTIONS]
 - 2: User is not authorized (requires contributor role or higher)
 - 3: Issues detected - one or more were not fixable
 - 100: Missing required helper files, dependencies, or configuration
-
 </details>
 
 <details>
@@ -536,7 +543,6 @@ fixremote [OPTIONS] <clone-path>
 - 3: Recovery failed - see report for details
 - 100: Missing required dependencies or configuration files
 - 200: Git operation failed during recovery
-
 </details>
 
 <details>
@@ -752,7 +758,7 @@ bash scripts/helpers/ckbranchname.sh "<branch_name>"
 **Exit Codes:**
 
 - `1` - Valid main branch name
-- `2` - Valid version branch (format: `v<M>.<m>.<p>`)
+- `2` - Valid version branch (format: `v<M>.<m>.0`)
 - `3` - Valid targeted branch (format: `dev/<desc>-<version>` or `fix/<desc>-<version>`)
 - `4` - Valid contributor branch (format: `[<type>/]<description>`)
 - `5` - Invalid branch name
@@ -761,8 +767,8 @@ bash scripts/helpers/ckbranchname.sh "<branch_name>"
 
 | Code | Type | Format | Purpose |
 |------|------|--------|----------|
-| 1 | main | `main` | Remote-only base branch |
-| 2 | version | `v<M>.<m>.<p>` | Protected version branch |
+| 1 | main | `main` | Protected base branch |
+| 2 | version | `v<M>.<m>.0` | Protected version branch |
 | 3 | targeted | `dev/fix/<desc>-<version>` | Target-specific work |
 | 4 | contributor | `[<type>/]<description>` | General work branch |
 | 5 | invalid | Any other | Invalid naming |

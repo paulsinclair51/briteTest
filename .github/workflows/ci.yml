@@ -40,16 +40,9 @@ jobs:
       - name: Checkout # BriteTest repository code.
         uses: actions/checkout@v4
 
-      - name: Apply brand name replacements
-        run: scripts/bin/replacetext docs/branding/brand.txt
-
-      - name: Validate directory README format
-        run: ./scripts/bin/ckdirectory_guides
-
-      - name: Validate major release consistency
-        run: ./scripts/bin/ckversions
-
-      - name: Validate docs canonical form
+      - name: Validate documentation
+        env:
+          BT_CI_DOC_CHECK: "true"
         run: make check-doc
 
       - name: Install PDF generation dependency
@@ -59,7 +52,8 @@ jobs:
 
       - name: Generate docs PDFs (excluding docs/md/README.md)
         run: |
-          bash ./scripts/bin/genpdf -i "*.md" -x "README.md" docs/md docs/pdf
+          bash ./scripts/helpers/genpdf.sh \
+            -i "*.md" -x "README.md" docs/md docs/pdf
 
       - name: Run report helper tests
         run: make test-report-helpers

@@ -808,13 +808,15 @@ for src in "${sources[@]}"; do
     fi
 
     if [[ $pdf_only -eq 1 ]]; then
-      if ! bash "$gendocx_script" "${docx_opts[@]}" "$target_pdf" \
-          "$tmp_docx"; then
-        exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
-          "gendocx helper failed while validating DOCX " \
-          "generation from PDF: $target_pdf"
+      if [[ $dry_run -eq 0 ]]; then
+        if ! bash "$gendocx_script" "${docx_opts[@]}" "$target_pdf" \
+            "$tmp_docx"; then
+          exit_with "$EXIT_INTERNAL_GENDOCX_FAILED" \
+            "gendocx helper failed while validating DOCX " \
+            "generation from PDF: $target_pdf"
+        fi
+        rm -f "$tmp_docx"
       fi
-      rm -f "$tmp_docx"
       continue
     fi
 
@@ -847,17 +849,23 @@ for src in "${sources[@]}"; do
   fi
 done
 
-tmp_meta_file="$(mktemp)"
-for rel in "${!curr_meta[@]}"; do
-  printf '%s %s\n' "$rel" "${curr_meta["$rel"]}"
-done | sort > "$tmp_meta_file"
-mv -f "$tmp_meta_file" "$meta_file"
+if [[ $dry_run -eq 0 ]]; then
+  tmp_meta_file="$(mktemp)"
+  for rel in "${!curr_meta[@]}"; do
+    printf '%s %s\n' "$rel" "${curr_meta["$rel"]}"
+  done | sort > "$tmp_meta_file"
+  mv -f "$tmp_meta_file" "$meta_file"
+fi
 
 if [[ $docx_only -eq 1 ]]; then
   log_info "Generated DOCX files."
 elif [[ $pdf_only -eq 1 ]]; then
-  log_info "Generated PDF files and validated DOCX conversion " \
-    "via temporary outputs."
+  if [[ $dry_run -eq 1 ]]; then
+    log_info "Planned PDF generation."
+  else
+    log_info "Generated PDF files and validated DOCX conversion " \
+      "via temporary outputs."
+  fi
 else
   log_info "Generated PDF and DOCX files."
 fi

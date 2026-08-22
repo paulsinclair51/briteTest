@@ -35,9 +35,11 @@ Actions:
               when -i ID is provided. Alternatively, use the PR UI (-b
               option) to respond.
   resolve     Mark a specific review thread (identified by -i ID) as
-              resolved. Reviewer or  approver roles required. 
+              resolved. The root comment author or an approver may resolve it.
               Alternatively, use the PR UI (-b option) to resolve.
   approve     Approve the current branch PR. Approver role required.
+              Refuses approval while another open approved PR targets the
+              same parent branch, or when that state cannot be verified.
               Do not use PR UI (-b option) to approve.
   disapprove  Disapprove the current branch PR. Approver role required.
               Do not use PR UI (-b option) to disapprove.
@@ -505,31 +507,58 @@ require_approver_login() {
   echo "$login"
 }
 
-update_for_feedback() {
-  local branch
-  
-  branch=$(bt_get_current_branch || \
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch.")
-  bt_info "Current branch: $branch"
-  
-  if [[ -z "$COMMENT" ]]; then
-    usage_error "Comment required. Use -c or -- to provide comment."
+validate_feedback_prerequisites() {
+  local branch login
+
+  [[ -f config/contributors.md ]] || \
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "Configuration file not found: config/contributors.md"
+
+  login=$(bt_require_login) || \
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "Unable to determine GitHub login identity"
+  bt_require_min_role_or_exit "$login" "contributor" \
+    "config/contributors.md" "$EXIT_CONFIG_ERROR" \
+    "User '$login' is not listed as contributor, reviewer, or approver"
+
+  branch=$(bt_get_current_branch || true)
+  [[ -n "$branch" && "$branch" != HEAD ]] || \
+    bt_error_exit "$EXIT_NOT_FOUND" \
+      "Current checkout is detached; switch to a local contributor or targeted branch"
+  git show-ref --verify --quiet "refs/heads/$branch" || \
+    bt_error_exit "$EXIT_NOT_FOUND" "Current branch '$branch' is not local"
+  if ! bt_is_contributor_branch "$branch" && \
+    ! bt_is_targeted_branch "$branch"; then
+    bt_error_exit "$EXIT_NOT_FOUND" \
+      "Current branch '$branch' is not a contributor or targeted branch"
   fi
-  
-  bt_info "Staging changes..."
-  if ! git add . 2>&1; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to stage changes."
-  fi
-  
-  # Check if there are changes to commit
-  if ! git diff --cached --quiet; then
-    bt_info "Committing feedback fixes..."
-    if ! git commit -m "$COMMENT" 2>&1; then
-      bt_error_exit "$EXIT_NOT_FOUND" "Failed to commit changes."
-    fi
-    bt_success "Changes committed: $COMMENT"
-  else
-    bt_warn "No staged changes to commit"
+}
+
+ensure_parent_has_no_pending_approval() {
+  local pr_number="$1"
+  local parent_branch=""
+  local pending_approval=""
+
+  bt_gh_capture_or_exit parent_branch \
+    "$EXIT_CONFIG_ERROR" "$EXIT_CONFIG_ERROR" \
+    "Failed to determine the parent branch for PR #$pr_number" \
+    gh pr view "$pr_number" --json baseRefName --jq '.baseRefName'
+  [[ -n "$parent_branch" && "$parent_branch" != null ]] || \
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "PR #$pr_number does not identify a parent branch"
+
+  bt_gh_capture_or_exit pending_approval \
+    "$EXIT_CONFIG_ERROR" "$EXIT_CONFIG_ERROR" \
+    "Failed to check approved PRs targeting '$parent_branch'" \
+    gh pr list --state open --base "$parent_branch" \
+    --json number,headRefName,reviewDecision \
+    --jq ".[] | select(.number != $pr_number and .reviewDecision == \"APPROVED\") | [.number, .headRefName] | @tsv"
+
+  if [[ -n "$pending_approval" ]]; then
+    local pending_number pending_branch
+    IFS=$'\t' read -r pending_number pending_branch <<< "$pending_approval"
+    bt_error_exit "$EXIT_OPERATION_FAILED" \
+      "Delay approval: PR #$pending_number ('$pending_branch') is already approved and has not completed pushup to '$parent_branch'"
   fi
 }
 
@@ -550,6 +579,10 @@ review_current_pr() {
 
   if [[ -z "$pr_number" ]]; then
     bt_error_exit "$EXIT_OPERATION_FAILED" "No PR found for branch '$branch'."
+  fi
+
+  if [[ "$action" == "approve" ]]; then
+    ensure_parent_has_no_pending_approval "$pr_number"
   fi
 
   if [[ -z "$review_body" ]]; then
@@ -581,34 +614,6 @@ review_current_pr() {
     bt_success "PR #$pr_number approved"
   else
     bt_success "Changes requested on PR #$pr_number"
-  fi
-}
-
-sync_to_pr() {
-  local branch
-  
-  branch=$(bt_get_current_branch || \
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch.")
-  bt_info "Current branch: $branch"
-  
-  bt_info "Pushing changes to remote..."
-  if ! bt_run_remote_command git push origin "$branch" 2>&1; then
-    bt_error_exit "$EXIT_NOT_FOUND" "Failed to push changes."
-  fi
-  
-  bt_success "Changes pushed to PR"
-  
-  # Propagate repository history from remote if available
-  history_status=0
-  bt_propagate_repository_history || history_status=$?
-  case "$history_status" in
-    0) ;;
-    1) bt_info "Updated repository history from remote." ;;
-    *) ;;
-  esac
-  
-  if command -v gh &> /dev/null; then
-    bt_info "PR updated and ready for review."
   fi
 }
 
@@ -822,6 +827,8 @@ fi
 if [[ -z "$ACTION" ]]; then
   usage_error "ACTION required (view, respond, resolve, approve, or disapprove), unless using -b alone."
 fi
+
+validate_feedback_prerequisites
 
 # Dispatch to appropriate function
 case "$ACTION" in

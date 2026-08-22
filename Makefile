@@ -75,7 +75,7 @@ lint-md:
 		xargs -0 npx -y markdownlint-cli --config config/markdownlint.json
 
 check-doc:
-	bash ./scripts/bin/ckdocs
+	bash ./scripts/bin/report style -m -r
 
 test-gendocs:
 	bash ./scripts/tests/test_gendocs.sh

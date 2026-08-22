@@ -15,13 +15,13 @@ See `<repo>/README.md` for an introduction to briteTest.
 
 **Contributor_Guide.md**: Public contributor process and standards.
 
-**Contributor_Reference.md**: Public contributor reference to scripts and concepts.
-
 **Contributor_Internal_Guide.md**: Internal repository protection, override, and
 repair policy.
 
 **Contributor_Internal_Reference.md**: Internal script and workflow reference for
 repair and admin operations.
+
+**Contributor_Reference.md**: Public contributor reference to scripts and concepts.
 
 **Documentation_Guide.md**: Index of documents and the repository layout.
 

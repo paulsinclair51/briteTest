@@ -92,6 +92,7 @@ level of the model; this document captures the internal enforcement model.
 
 These rules are intended to preserve auditability and to keep repository mutations
 bound to known project workflows rather than direct branch editing.
+</details>
 
 <details>
 <summary><strong>2. Repair Decision Tree</strong></summary>
@@ -114,6 +115,7 @@ known:
 
 This order keeps the repair scope narrow first and only expands to broader or
 remote recovery steps when the local repository is clean and the issue remains.
+</details>
 
 <details>
 <summary><strong>3. Protected Branch and Ruleset Model</strong></summary>
@@ -135,6 +137,7 @@ The ruleset model is intentionally conservative:
 
 This means that a contributor or owner cannot rely on local config to bypass
 repository protection. Only an actual GitHub-side admin authority can do that.
+</details>
 
 <details>
 <summary><strong>4. Remote Repair Procedure</strong></summary>
@@ -160,6 +163,7 @@ override.
 This process must be explicit, logged, and temporary. Routine direct edits to
 protected or script-managed branches remain blocked unless there is an explicit
 server-side exception approved by repository administrators.
+</details>
 
 <details>
 <summary><strong>5. Override Semantics</strong></summary>
@@ -185,6 +189,7 @@ Prerequisites for `override`:
 - The remote must be reachable within the configured timeout for remote repair.
 - For remote repair mode, the caller must also have GitHub repository admin or
   organization admin authority.
+</details>
 
 <details>
 <summary><strong>6. Internal Operational Notes</strong></summary>
@@ -202,5 +207,4 @@ Prerequisites for `override`:
 
 Keep this document aligned with the repository policy whenever workflows, rulesets,
 or protected branch policy change.
-</details>
 </details>

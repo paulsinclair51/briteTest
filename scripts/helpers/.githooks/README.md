@@ -2,13 +2,13 @@
 
 Directory containing git hook scripts.
 
-Git requires hook entrypoints to use the canonical hook names (for example
-`pre-commit` and `pre-push`), so those files intentionally do not use a
-`.sh` suffix. Shared hook logic lives in `githook_helper.sh`.
-
 Copyright (c) 2026 Paul Sinclair  
 SPDX-License-Identifier: MIT  
 For license details, see `<repo>/LICENSE`.
+
+Git requires hook entrypoints to use the canonical hook names (for example
+`pre-commit` and `pre-push`), so those files intentionally do not use a
+`.sh` suffix. Shared hook logic lives in `githook_helper.sh`.
 
 See `<repo>/README.md` for an introduction to briteTest.
 

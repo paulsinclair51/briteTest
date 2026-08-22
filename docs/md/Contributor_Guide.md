@@ -42,7 +42,8 @@ on enhancing and maintaining briteTest.
 
 For detailed script reference information, see the [Contributor_Reference.md](./Contributor_Reference.md).
 
-For an in-depth analysis of the SCM system, see [SCM_REVIEW.md](../SCM_REVIEW.md).
+For internal SCM policy and recovery details, see
+[Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md).
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;Document Version History</summary>
@@ -170,9 +171,11 @@ Then type a leading command prefix and press Tab to list choices; use
 Alt+n and Alt+p to cycle forward and backward through those choices.
 
 - **Setup/installation:** `setupclone`
-- **Document/brand:** `ckstyle`, `gendocs`, `genpngs`, `replacephrases`, `updatebrand`
+- **Document/brand:** `gendocs`, `genpngs`, `replacetext`, `rebrand`
 - **Repository/fork/clone:** `mkfork`, `mkclone`, `rmclone`, `fixrepo`
-- **Branch/workflow:** `ckbranch_history`, `chcurrent`, `lsbranch`, `mkbranch`, `commit`, `copyfix`, `mkfeedback`, `mergetoparent`, `mkpullrequest`, `chtarget`, `mkrelease`, `syncfromremote`, `syncfromparent`, `undo`, `rmbranch`
+- **Branch/workflow:** `chbranch`, `lsbranch`, `mkbranch`, `commit`, `copyfix`,
+  `feedback`, `review`, `pull`, `pulldown`, `push`, `pushup`, `report`,
+  `retarget`, `release`, `undo`, `rmbranch`
 - **Owner controls:** `override` (toggle repository-owner unrestricted mode for this clone); `override -r` (temporary remote repair authorization window for GitHub-side repair workflows)
 </details>
 </details>
@@ -185,7 +188,7 @@ Alt+n and Alt+p to cycle forward and backward through those choices.
 This repository uses a release-oriented branching model with four branch types:
 
 **Protected Branches** (Effectively read-only; no direct commits, force-push, or deletion):
-- `main` - Production-ready code (remote-only; use `origin/main` for Git commands)
+- `main` - Production-ready protected branch; `origin/main` is canonical
 - `v<M>.<m>.0` - Version branches (e.g., v1.0.0, v2.1.0)
 
 **Unprotected Branches** (Direct commits allowed, PRs optional):
@@ -198,11 +201,12 @@ This repository uses a release-oriented branching model with four branch types:
 - targeted -> version (required approved PR for the current commit; `pushup`
   by the contributor, reviewer, or approver using that clone)
 - targeted -> version with `pushup -o` (PR optional, repository owner only)
-- version -> `origin/main` (no PR, `pushup` by an approver)
+- version -> `main` (no PR, `pushup` by an approver)
 - main -> any (not allowed)
 
 **Branch Presence Rules (Local/Remote):**
-- `main`: remote-only by policy (`origin/main`). A local `main` branch is not required.
+- `main`: remote branch required; a local read-only branch is required when
+  `main` is the immediate `pushup` parent and may be selected with `chbranch`.
 - `v<M>.<m>.0` version branches: remote branch required; local branch optional.
 - targeted (`dev/...`, `fix/...`) branches: local and remote branches are required for merge workflows.
 - contributor branches: local branch required; remote branch optional while developing,
@@ -233,6 +237,10 @@ This repository uses a release-oriented branching model with four branch types:
 - If an optional PR exists, `pushup` still validates its state and approval.
 - Approval applies to the current source commit. Any additional source commit
   requires review and approval again before `pushup`.
+- Before approving a PR, check for another approved PR whose `pushup` targets
+  the same parent branch. If that PR has not completed `pushup`, delay the new
+  approval until it completes or is no longer approved. `feedback approve`
+  performs this check and refuses overlapping approval.
 
 Role naming used in this guide is: users, contributors, reviewers, approvers,
 and repository owner.
@@ -384,7 +392,7 @@ scripts/bin/mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
 ### 4.2. Making Changes
 
 ```bash
-scripts/bin/chcurrent BRANCH
+scripts/bin/chbranch BRANCH
 # Edit files...
 scripts/bin/commit -- Feature: add new capability.
 ```
@@ -415,7 +423,7 @@ not be any untracked or uncommitted changes for the local branch
 (if there are, use the commit or undo scripts prior to the merge).
 
 ```bash
-scripts/bin/chcurrent BRANCH
+scripts/bin/chbranch BRANCH
 scripts/bin/mrgremote
 ```
 
@@ -616,7 +624,8 @@ briteTest uses a six-tier access model for public repository safety:
 | `.github/workflows/`, branch-protection settings | R | R | - | - | RW* | RW |
 | `config/contributors.md`, governance/policy docs | R | R | RW | RW | RW* | RW |
 
-**Write access is script-controlled** (`mkbranch`, `commit`, `mkpullrequest`, `mergetoparent`, `chtarget`, `mkrelease`) rather than direct protected-branch git operations.
+**Write access is script-controlled** (`mkbranch`, `commit`, `review`, `pushup`,
+`retarget`, `release`) rather than direct protected-branch git operations.
 Direct user git commands that modify repository state are blocked by hooks for
 users, contributors, reviewers, and approvers.
 </details>
@@ -626,7 +635,7 @@ users, contributors, reviewers, and approvers.
 
 ### 5.2. Identity Prerequisites for Role-Gated Scripts
 
-Role-gated scripts (for example `mergetoparent` and `mkrelease`) require a
+Role-gated scripts (for example `pushup` and `release`) require a
 resolvable GitHub login that matches an entry in `config/contributors.md`.
 
 Configure at least one of these identity sources:
@@ -961,7 +970,7 @@ Use `make test-all-scripts` before PRs, and verify versioned file edits in `git 
 
 - **Brand name:** briteTest
 - **Distinctive camelCase** aligns with `bT` monogram
-- Update branding with: `scripts/bin/updatebrand`
+- Update branding with: `scripts/bin/rebrand`
 </details>
 
 <details>
@@ -1061,7 +1070,10 @@ See `.github/CODEOWNERS` for details.
 5. GitHub runs validation workflows automatically.
 6. Respond to feedback with `feedback view`, `feedback respond`, and `feedback resolve`.
 7. Push follow-up fixes and run `review -s` again only if review requests must be refreshed.
-8. Once approved and checks pass, approver merges.
+8. Run `feedback approve`; it delays approval when another approved PR
+  targeting the same parent branch has not completed `pushup`.
+9. Once approved and checks pass, complete `pushup` before another PR targeting
+  the same parent branch is approved.
 </details>
 </details>
 
@@ -1091,8 +1103,9 @@ Protected branches require:
 - required by `pushup`: approved PR for targeted-to-version merges without `-o`
 - optional PR: version-to-main merges and owner `pushup -o` merges
 
-The protected base branch is `origin/main`; version branches are local protected branches.
-Neither may receive direct commits or direct GitHub.com edits.
+The canonical protected base branch is `origin/main`; local `main` and version
+branches are protected working refs used by scripts. None may receive direct
+commits or direct GitHub.com edits.
 Updates are made through `scripts/bin/pushup` only:
 
 - Use `scripts/bin/pulldown` first if the source is behind its parent.
@@ -1127,7 +1140,6 @@ Updates are made through `scripts/bin/pushup` only:
   editing of protected or script-managed branches in GitHub.com.
 - A separate local `override on` recovery mode is reserved for exceptional
   repository-repair or maintenance work, not for routine direct branch changes.
-
 </details>
 
 <details>
@@ -1243,9 +1255,31 @@ Protected branches (main, v*.0) cannot be deleted.
 
 ### 18.3. Merge and Reviews
 
+**Q: "What if the system stops or the network connection is lost during
+`pushup`?"
+
+**A:** Restore the system or network connection, then use the command indicated
+by the saved workflow state:
+
+- If the interruption occurred before parent publication, rerun `pushup`.
+- If parent publication started or may have succeeded, run
+  `pushup --continue`.
+- If continuation proves that publication did not occur, it restores the saved
+  local refs and stops. Rerun `pushup` to start the workflow again.
+- If unsure, rerun `pushup`. It safely recovers prepublication work or refuses
+  with instructions to run `pushup --continue` when remote work may have begun.
+- If origin is still unavailable, stop and restore connectivity. `pushup`
+  retains its state and does not guess whether publication succeeded.
+
+Do not edit the participating branches or delete
+`.git/briteTest/pushup.state` while recovery is pending. Repeated continuation
+is safe because `pushup` verifies exact local and remote commit state before
+resuming.
+
 **Q: "PR is blocked by validation checks"
 
 **A:** Look at the failing check:
+
 1. Click on the red X next to the workflow
 2. Read the error message
 3. Fix locally
@@ -1445,7 +1479,7 @@ scripts/bin/rmbranch mywork/feature
 
 - **This guide:** `docs/md/Contributor_Guide.md`
 - **Script reference:** `docs/md/Contributor_Reference.md`
-- **SCM deep dive:** `docs/SCM_REVIEW.md`
+- **Internal SCM guide:** `docs/md/Contributor_Internal_Guide.md`
 - **Issue:** Open an issue on GitHub
 - **Question:** Start a discussion on GitHub Discussions
 </details>
@@ -1457,7 +1491,8 @@ scripts/bin/rmbranch mywork/feature
 ## Related Documents
 
 - [Contributor_Reference.md](./Contributor_Reference.md) - Script reference and tools
-- [SCM_REVIEW.md](../SCM_REVIEW.md) - Detailed SCM system analysis
+- [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) - Internal
+  SCM policy and recovery
 - [README.md](../../README.md) - Project overview
 </details>
 

@@ -136,34 +136,46 @@ repo_root="$(cd "$CKSTYLE_HELPER_DIR/../.." && pwd)"
 cd "$repo_root"
 
 CONTRIBUTORS_FILE="$repo_root/config/contributors.md"
+CI_DOC_CHECK=false
+if [[ "${BT_CI_DOC_CHECK:-false}" == true && \
+  "${GITHUB_ACTIONS:-false}" == true && "$CHECK_DOCUMENTS" == true && \
+  "$CHECK_GUIDES" == true && "$CHECK_INCLUDES" == false && \
+  "$CHECK_SOURCES" == false ]]; then
+  CI_DOC_CHECK=true
+fi
 
 CURRENT_BRANCH="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
-if [[ -z "$CURRENT_BRANCH" ]]; then
+if [[ "$CI_DOC_CHECK" == false && -z "$CURRENT_BRANCH" ]]; then
   bt_emit_prerequisite_failure "$CKSTYLE_EXIT_NOT_LOCAL_BRANCH" \
     "Current branch must be a local branch." \
     "Use 'chbranch' to switch to a local targeted or contributor branch," \
     "then rerun 'report style'."
 fi
 
-if ! bt_is_targeted_branch "$CURRENT_BRANCH" && \
+if [[ "$CI_DOC_CHECK" == false ]] && \
+  ! bt_is_targeted_branch "$CURRENT_BRANCH" && \
   ! bt_is_contributor_branch "$CURRENT_BRANCH"; then
   bt_emit_prerequisite_failure "$CKSTYLE_EXIT_BRANCH_POLICY" \
     "Current branch '$CURRENT_BRANCH' must be a targeted or contributor" \
     "branch (not main or a version branch)."
 fi
 
-if [[ ! -f "$CONTRIBUTORS_FILE" ]]; then
+if [[ "$CI_DOC_CHECK" == false && ! -f "$CONTRIBUTORS_FILE" ]]; then
   bt_emit_prerequisite_failure "$CKSTYLE_EXIT_NOT_AUTHORIZED" \
     "Configuration file not found: $CONTRIBUTORS_FILE"
 fi
-ACTOR_LOGIN="$(bt_require_login || true)"
-if [[ -z "$ACTOR_LOGIN" ]]; then
+ACTOR_LOGIN=""
+if [[ "$CI_DOC_CHECK" == false ]]; then
+  ACTOR_LOGIN="$(bt_require_login || true)"
+fi
+if [[ "$CI_DOC_CHECK" == false && -z "$ACTOR_LOGIN" ]]; then
   bt_emit_prerequisite_failure "$CKSTYLE_EXIT_NOT_AUTHORIZED" \
     "Unable to determine GitHub login identity for permission check." \
     "Set GITHUB_ACTOR or run 'gh auth login', then rerun 'report style'."
 fi
 ACTOR_EMAIL="$(git config user.email 2>/dev/null || true)"
-if ! bt_contributors_has_min_role_by_login_or_email \
+if [[ "$CI_DOC_CHECK" == false ]] && \
+  ! bt_contributors_has_min_role_by_login_or_email \
   "$ACTOR_LOGIN" "$ACTOR_EMAIL" "contributor" "$CONTRIBUTORS_FILE"; then
   bt_emit_prerequisite_failure "$CKSTYLE_EXIT_NOT_AUTHORIZED" \
     "User '$ACTOR_LOGIN' is not authorized to run report style (requires" \
