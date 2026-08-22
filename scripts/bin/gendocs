@@ -53,7 +53,7 @@ Arguments:
   <document>[.md|.pdf]: Optional specification of source file(s):
     - If not specified, default is repository root docs/md/*.md.
     - Default extension is '.md' and '.pdf' is only allowed if option
-      '-x' is specified.
+      '-d' is specified.
     - If '.pdf' is specified, <source> is <document>.pdf; otherwise,
       <source> is <document>.md
     - <source> must be one of the following:
@@ -98,18 +98,19 @@ Options:
       Useful for diagnostics and testing.
   -c  Convert details/summary lines to PDF-friendly form instead of
       removing details/summary lines. Default is to remove them.
-  -d  Dry-run showing planned conversions without writing output files.
+  -d  Output only .docx files. If source is .md, a temporary .pdf
+      is generated for intermediate conversion and then discarded.
   -f  Force regeneration even if the source is in docs/md/ and has
       not changed since the last time its .pdf was generated.
   -h, --help  Output this help to stdout and exit (other options and
               arguments are ignored).
+  -n  Dry-run showing planned conversions without writing output files.
   -p  Output only .pdf files. For validation, a temporary .docx is
       generated from each .pdf and then discarded.
   -T  Tool check: report backends (see -b option) status and exit.
       When -T is used, no options other than -b are allowed.
   -v  Verbose mode: print backend diagnostics to stderr.
-  -x  Output only .docx files. If source is .md, a temporary .pdf
-      is generated for intermediate conversion and then discarded.
+  -x  Exclude files matching the specified pattern. May be repeated.
 
 Notes:
   - Change detection for a source '.md' in repository root docs/md/
@@ -123,7 +124,7 @@ Examples:
   gendocs docs/md/briteTest.md
   gendocs Documentation_Guide
   gendocs -p docs/md
-  gendocs -d docs/pdf
+  gendocs -n docs/md
   gendocs -d docs/pdf/briteTest.pdf docs/docx
   gendocs docs/md build/pdf build/docx
   gendocs '*.md'
@@ -140,6 +141,10 @@ Exit codes:
   1   Invalid option or argument.
   2   Input not found.
   3   No source files to process.
+  4   User must be a contributor, reviewer, or approver.
+  5   Current branch must be local.
+  6   Current branch must be targeted or contributor.
+  7   Current branch has uncommitted changes.
   100 Internal setup error: helper script missing.
   110 Internal helper/toolchain check failed.
   111 Internal helper failure: genpdf helper returned non-zero.
@@ -236,6 +241,10 @@ EXIT_SUCCESS=0
 EXIT_INVALID_ARGUMENT=1
 EXIT_INPUT_NOT_FOUND=2
 EXIT_INPUT_EMPTY=3
+EXIT_NOT_AUTHORIZED=4
+EXIT_NOT_LOCAL_BRANCH=5
+EXIT_BRANCH_POLICY=6
+EXIT_DIRTY_WORKTREE=7
 EXIT_INTERNAL_HELPER_MISSING=100
 EXIT_INTERNAL_TOOLCHECK_FAILED=110
 EXIT_INTERNAL_GENPDF_FAILED=111
@@ -254,6 +263,10 @@ status_message_for_code() {
     "$EXIT_INVALID_ARGUMENT") echo "STATUS[1]: usage error" ;;
     "$EXIT_INPUT_NOT_FOUND") echo "STATUS[2]: input not found" ;;
     "$EXIT_INPUT_EMPTY") echo "STATUS[3]: no source files to process" ;;
+    "$EXIT_NOT_AUTHORIZED") echo "STATUS[4]: contributor role required" ;;
+    "$EXIT_NOT_LOCAL_BRANCH") echo "STATUS[5]: local branch required" ;;
+    "$EXIT_BRANCH_POLICY") echo "STATUS[6]: branch policy violation" ;;
+    "$EXIT_DIRTY_WORKTREE") echo "STATUS[7]: uncommitted changes" ;;
     "$EXIT_INTERNAL_HELPER_MISSING")
       echo "STATUS[100]: internal setup error (helper script missing)"
       ;;
@@ -393,6 +406,42 @@ run_toolcheck() {
   fi
 
   exit_with "$EXIT_SUCCESS"
+}
+
+validate_conversion_prerequisites() {
+  local branch login email
+  local contributors_file="$repo_root/config/contributors.md"
+
+  [[ -f "$contributors_file" ]] || \
+    exit_with "$EXIT_NOT_AUTHORIZED" \
+      "Configuration file not found: $contributors_file"
+
+  login="$(cd "$repo_root" && bt_require_login || true)"
+  email="$(git -C "$repo_root" config user.email 2>/dev/null || true)"
+  [[ -n "$login" ]] || \
+    exit_with "$EXIT_NOT_AUTHORIZED" \
+      "Unable to determine GitHub login identity."
+  bt_contributors_has_min_role_by_login_or_email \
+    "$login" "$email" "contributor" "$contributors_file" || \
+    exit_with "$EXIT_NOT_AUTHORIZED" \
+      "User '$login' is not a contributor, reviewer, or approver."
+
+  branch="$(cd "$repo_root" && bt_get_current_branch || true)"
+  [[ -n "$branch" && "$branch" != HEAD ]] || \
+    exit_with "$EXIT_NOT_LOCAL_BRANCH" \
+      "Current checkout must be a local branch."
+  git -C "$repo_root" show-ref --verify --quiet "refs/heads/$branch" || \
+    exit_with "$EXIT_NOT_LOCAL_BRANCH" \
+      "Current branch '$branch' is not local."
+  if ! bt_is_targeted_branch "$branch" && \
+    ! bt_is_contributor_branch "$branch"; then
+    exit_with "$EXIT_BRANCH_POLICY" \
+      "Current branch '$branch' must be a targeted or contributor branch."
+  fi
+
+  [[ -z "$(git -C "$repo_root" status --porcelain --untracked-files=all)" ]] || \
+    exit_with "$EXIT_DIRTY_WORKTREE" \
+      "Current branch has uncommitted changes; run commit or undo first."
 }
 
 segment_glob_match() {
@@ -621,6 +670,8 @@ if [[ $tool_check -eq 1 ]]; then
   run_toolcheck
 fi
 
+validate_conversion_prerequisites
+
 mkdir -p "$pdf_out_dir" "$docx_out_dir"
 
 declare -A prev_meta=()
@@ -723,6 +774,33 @@ sources=("${filtered_sources[@]}")
   exit_with "$EXIT_INPUT_EMPTY" \
     "No source files matched include/exclude filters."
 
+if [[ $docx_only -eq 1 ]]; then
+  declare -A docx_target_sources=()
+  for src in "${sources[@]}"; do
+    b="$(basename "$src")"
+    base="${b%.*}"
+    rel_subdir=''
+    if [[ $recursive -eq 1 && $keep_structure -eq 1 ]]; then
+      if [[ "$src" == "$docs_dir"/* ]]; then
+        rel_subdir="$(dirname "${src#"$docs_dir/"}")"
+      elif [[ -n "$doc_arg" && -d "$doc_arg" && \
+        "$src" == "$doc_arg"/* ]]; then
+        rel_subdir="$(dirname "${src#"$doc_arg/"}")"
+      fi
+    fi
+    target_docx="${out1:-$docx_out_dir}"
+    if [[ -n "$rel_subdir" && "$rel_subdir" != "." ]]; then
+      target_docx="$target_docx/$rel_subdir"
+    fi
+    target_docx="$target_docx/${base}.docx"
+    if [[ -n "${docx_target_sources[$target_docx]+x}" ]]; then
+      exit_with "$EXIT_INVALID_ARGUMENT" \
+        "Sources '${docx_target_sources[$target_docx]}' and '$src' map to the same DOCX output: $target_docx"
+    fi
+    docx_target_sources["$target_docx"]="$src"
+  done
+fi
+
 for src in "${sources[@]}"; do
   b="$(basename "$src")"
 
@@ -742,7 +820,11 @@ for src in "${sources[@]}"; do
   fi
 
   pdf_base="${out1:-$pdf_out_dir}"
-  docx_base="${out2:-$docx_out_dir}"
+  if [[ $docx_only -eq 1 ]]; then
+    docx_base="${out1:-$docx_out_dir}"
+  else
+    docx_base="${out2:-$docx_out_dir}"
+  fi
   if [[ -n "$rel_subdir" && "$rel_subdir" != "." ]]; then
     pdf_base="$pdf_base/$rel_subdir"
     docx_base="$docx_base/$rel_subdir"
@@ -750,6 +832,11 @@ for src in "${sources[@]}"; do
 
   target_pdf="$pdf_base/${base}.pdf"
   target_docx="$docx_base/${base}.docx"
+
+  if [[ $docx_only -eq 1 && $dry_run -eq 1 ]]; then
+    log_info "Dry-run: $src -> $target_docx"
+    continue
+  fi
 
   if [[ "$src" == *.md ]]; then
     rel="${src#"$docs_dir"/}"

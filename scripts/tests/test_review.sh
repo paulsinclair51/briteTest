@@ -37,6 +37,7 @@ for dep in bash git grep mktemp; do
 done
 
 [[ -f "$REVIEW_SRC" ]] || fail "missing script: $REVIEW_SRC"
+[[ -x "$REVIEW_SRC" ]] || fail "review must be executable: $REVIEW_SRC"
 
 TMPDIR="$(mktemp -d)"
 cleanup() {
@@ -256,6 +257,7 @@ clear_gh_log
 rc=$(run_capture "$TMPDIR/create_draft.out" none bash -c "cd '$WORK' && bash ./scripts/bin/review -T 'WIP Feature'")
 [[ "$rc" -eq 1 ]] || fail "review create without description should fail (got $rc)"
 assert_contains "PR description is required when creating a new PR" "$TMPDIR/create_draft.out"
+assert_contains "use -c TOKEN or -- TOKEN..." "$TMPDIR/create_draft.out"
 pass "create path requires a description"
 
 clear_gh_log

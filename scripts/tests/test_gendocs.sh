@@ -109,6 +109,8 @@ repo_root=$(cd "$(dirname "$0")/../.." && pwd)
 gendocs_script="$repo_root/scripts/bin/gendocs"
 genpdf_helper="$repo_root/scripts/helpers/genpdf.sh"
 gendocx_helper="$repo_root/scripts/helpers/gendocx.sh"
+common_helper="$repo_root/scripts/helpers/common.sh"
+git_helper="$repo_root/scripts/helpers/git_helpers.sh"
 
 for script in "$gendocs_script" "$genpdf_helper" "$gendocx_helper"; do
   [[ -f "$script" ]] || fail "missing required script: $script"
@@ -117,6 +119,15 @@ done
 tmpdir=$(mktemp -d)
 cleanup() {
   rm -rf "$tmpdir"
+}
+
+commit_fixture_changes() {
+  local repo=$1
+  local status
+  git -C "$repo" add -A
+  git -C "$repo" commit -q -m "update gendocs fixture"
+  status="$(git -C "$repo" status --porcelain --untracked-files=all)"
+  [[ -z "$status" ]] || fail "gendocs fixture is dirty after commit: $status"
 }
 trap cleanup EXIT
 
@@ -246,6 +257,18 @@ EOF
   chmod +x "$repo/scripts/bin/gendocs" \
     "$repo/scripts/helpers/genpdf.sh" \
     "$repo/scripts/helpers/gendocx.sh"
+  cp "$common_helper" "$repo/scripts/helpers/common.sh"
+  cp "$git_helper" "$repo/scripts/helpers/git_helpers.sh"
+  mkdir -p "$repo/config"
+  printf '%s\n' '- testuser, C, test@example.com' > \
+    "$repo/config/contributors.md"
+  git -C "$repo" init -q
+  git -C "$repo" config user.name testuser
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" branch -M main
+  git -C "$repo" add -A
+  git -C "$repo" commit -q -m "seed gendocs fixture"
+  git -C "$repo" checkout -q -b dev/gendocs-tests-v1.0.0
   printf '%s\n' "$repo"
 }
 
@@ -368,6 +391,9 @@ test_gendocs_help() {
   bash "$repo/scripts/bin/gendocs" -h > "$tmpdir/gendocs_help.out"
   assert_matches '^Simple Usage:$' "$tmpdir/gendocs_help.out"
   assert_contains "gendocs [-b <backend>] -T" "$tmpdir/gendocs_help.out"
+  assert_contains "-n  Dry-run" "$tmpdir/gendocs_help.out"
+  assert_contains "-d  Output only .docx files" "$tmpdir/gendocs_help.out"
+  assert_contains "-x  Exclude files matching" "$tmpdir/gendocs_help.out"
 }
 
 test_gendocs_default_pipeline() {
@@ -382,6 +408,8 @@ EOF
   cat > "$repo/docs/md/README.md" <<'EOF'
 # Ignore Me
 EOF
+
+  commit_fixture_changes "$repo"
 
   bash "$repo/scripts/bin/gendocs" > "$tmpdir/gendocs_default.out"
 
@@ -405,6 +433,8 @@ test_gendocs_pdf_only_dry_run() {
   cat > "$repo/docs/md/alpha.md" <<'EOF'
 # Alpha
 EOF
+
+  commit_fixture_changes "$repo"
 
   bash "$repo/scripts/bin/gendocs" -n -p > \
     "$tmpdir/gendocs_pdf_dry_run.out"
@@ -437,20 +467,66 @@ test_gendocs_docx_only_pdf_source() {
   repo=$(make_gendocs_repo repo_docx_only)
 
   printf 'pdf bytes\n' > "$repo/docs/pdf/existing.pdf"
+  commit_fixture_changes "$repo"
 
   bash "$repo/scripts/bin/gendocs" -d \
-    "$repo/docs/pdf/existing.pdf" "$repo/docs/docx" \
+    "$repo/docs/pdf/existing.pdf" "$repo/custom-docx" \
     > "$tmpdir/gendocs_docx_only.out"
 
-  assert_file_exists "$repo/docs/docx/existing.docx"
+  assert_file_exists "$repo/custom-docx/existing.docx"
   assert_contains \
-    "gendocx $repo/docs/pdf/existing.pdf -> $repo/docs/docx/existing.docx" \
+    "gendocx $repo/docs/pdf/existing.pdf -> $repo/custom-docx/existing.docx" \
     "$repo/logs/helpers.log"
   if grep -Fq "genpdf" "$repo/logs/helpers.log"; then
     fail \
       "did not expect genpdf helper to be used for direct pdf -> "
       "docx conversion"
   fi
+}
+
+test_gendocs_docx_target_collision() {
+  phase "gendocs rejects duplicate DOCX targets"
+
+  local repo rc
+  repo=$(make_gendocs_repo repo_docx_collision)
+  printf '# Markdown source\n' > "$repo/docs/md/same.md"
+  printf 'pdf source\n' > "$repo/docs/md/same.pdf"
+  commit_fixture_changes "$repo"
+
+  rc=$(run_capture "$tmpdir/gendocs_docx_collision.out" \
+    bash "$repo/scripts/bin/gendocs" -d "$repo/docs/md")
+  [[ "$rc" -eq 1 ]] || fail "expected DOCX collision exit 1, got $rc"
+  assert_contains "map to the same DOCX output" \
+    "$tmpdir/gendocs_docx_collision.out"
+  assert_file_not_exists "$repo/docs/docx/same.docx"
+}
+
+test_gendocs_prerequisites() {
+  phase "gendocs conversion prerequisites"
+
+  local repo rc
+  repo=$(make_gendocs_repo repo_prerequisites)
+  printf '# Alpha\n' > "$repo/docs/md/alpha.md"
+  commit_fixture_changes "$repo"
+
+  git -C "$repo" config user.name unknown
+  git -C "$repo" config user.email unknown@example.com
+  rc=$(run_capture "$tmpdir/gendocs_role.out" \
+    bash "$repo/scripts/bin/gendocs" -n)
+  [[ "$rc" -eq 4 ]] || fail "expected unauthorized exit 4, got $rc"
+
+  git -C "$repo" config user.name testuser
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" checkout -q main
+  rc=$(run_capture "$tmpdir/gendocs_branch.out" \
+    bash "$repo/scripts/bin/gendocs" -n)
+  [[ "$rc" -eq 6 ]] || fail "expected branch-policy exit 6, got $rc"
+
+  git -C "$repo" checkout -q dev/gendocs-tests-v1.0.0
+  printf 'dirty\n' >> "$repo/docs/md/alpha.md"
+  rc=$(run_capture "$tmpdir/gendocs_dirty.out" \
+    bash "$repo/scripts/bin/gendocs" -n)
+  [[ "$rc" -eq 7 ]] || fail "expected dirty-worktree exit 7, got $rc"
 }
 
 test_gendocs_missing_helper() {
@@ -566,6 +642,8 @@ run_all_tests() {
   test_gendocs_pdf_only_dry_run
   test_gendocs_toolcheck
   test_gendocs_docx_only_pdf_source
+  test_gendocs_docx_target_collision
+  test_gendocs_prerequisites
   test_gendocs_missing_helper
   test_gendocs_genpdf_helper_reorders_first_png
   test_gendocs_genpdf_helper_passthrough_when_png_is_first_line

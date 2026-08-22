@@ -550,7 +550,7 @@ ensure_parent_has_no_pending_approval() {
   bt_gh_capture_or_exit pending_approval \
     "$EXIT_CONFIG_ERROR" "$EXIT_CONFIG_ERROR" \
     "Failed to check approved PRs targeting '$parent_branch'" \
-    gh pr list --state open --base "$parent_branch" \
+    gh pr list --state open --base "$parent_branch" --limit 1000 \
     --json number,headRefName,reviewDecision \
     --jq ".[] | select(.number != $pr_number and .reviewDecision == \"APPROVED\") | [.number, .headRefName] | @tsv"
 

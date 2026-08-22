@@ -3,7 +3,7 @@
 #### Version: v1.0.0
 
 This guide explains how contributors, reviewers, and approvers prepare, test,
-review, and publish changes to briteTest.
+review, and publish changes to the repository.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -97,11 +97,11 @@ This document is the task-oriented guide for routine contribution work.
 
 ## 1. Introduction
 
-briteTest uses project commands in `scripts/bin/` to perform repository-changing
+The repository provides commands in `scripts/bin/` to perform repository-changing
 actions. Contributors, reviewers, and approvers must use these commands instead
 of direct Git commands for branch modification operations.
 
-The project commands validate each action, enforce repository policy, and
+The commands validate each action, enforce repository policy, and
 provide recovery guidance. After `setupclone`, the commands are normally
 available by name. You may also run them by path, such as
 `scripts/bin/commit`.
@@ -130,8 +130,7 @@ Run any command with `-h` for current usage, prerequisites, and exit statuses.
 
 ### 2.1. Set Up Your Clone
 
-1. Create the clone with `mkclone`. It configures the project commands and
-   local safeguards required by the workflow.
+1. Create the clone with `mkclone`. It configures the commands and local safeguards required by the workflow.
 2. Enter the new repository directory.
 3. Authenticate the GitHub CLI with `gh auth login`.
 4. Confirm that your GitHub login appears in `config/contributors.md`.

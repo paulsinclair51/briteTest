@@ -746,8 +746,7 @@ fi
 # PR description is required for create flows (including dry-run create).
 if [[ -z "$EXISTING_PR" ]] && [[ "$DELETE_DRAFT" == false ]] && \
   [[ -z "$CUSTOM_DESCRIPTION" ]]; then
-  usage_error "PR description is required when creating a new PR (use -c"
-  usage_error " TOKEN or -- TOKEN...)"
+  usage_error "PR description is required when creating a new PR (use -c TOKEN or -- TOKEN...)"
 fi
 
 if [[ -n "$EXISTING_PR" ]]; then

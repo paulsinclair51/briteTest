@@ -84,6 +84,13 @@ make_fixture_repo() {
   cp "$LOGO_PNG_SRC" "$repo/docs/branding/Test_Guide.png"
   cp "$RUNNER_HEADER_SRC" "$repo/include/runnerapi.h"
   cp "$RUNNER_SOURCE_SRC" "$repo/src/runnerapi.c"
+  cat > "$repo/scripts/bin/samplecommand" <<'EOF'
+#!/usr/bin/env bash
+
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+EOF
   printf '%s\n' '- testuser, C, test@example.com' > \
     "$repo/config/contributors.md"
   chmod +x "$repo/scripts/bin/report"
@@ -98,6 +105,7 @@ make_fixture_repo() {
     docs/branding/Release_v1.0.0.png \
     docs/branding/Test_Guide.png \
     include/runnerapi.h \
+    scripts/bin/samplecommand \
     src/runnerapi.c
   git -C "$repo" commit -q -m "seed ckstyle fixture"
   git -C "$repo" checkout -q -b dev/style-tests-v1.0.0
@@ -190,7 +198,26 @@ header_basename_report="$(latest_report "$WORK")"
 assert_contains "- Selected files: 1" "$header_basename_report"
 pass "header basename selection"
 
-# 8) Missing corresponding branding PNG should fail validation with exit 2.
+# 8) Extensionless public commands should be checked as scripts.
+reset_report_dir "$WORK"
+rc=$(run_capture "$TMPDIR/extensionless-script.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report style -s -f scripts/bin/samplecommand")
+[[ "$rc" -eq 0 ]] || fail "extensionless script check should exit 0 (got $rc)"
+extensionless_report="$(latest_report "$WORK")"
+assert_contains "- Selected files: 1" "$extensionless_report"
+pass "extensionless public script selection"
+
+# 9) Fix branches must preserve the main branch major.minor version.
+git -C "$WORK" checkout -q -b fix/style-tests-v1.0.0
+sed -i '0,/1\.0\.0/s//2.0.0/' "$WORK/include/runnerapi.h"
+rc=$(run_capture "$TMPDIR/fix-version.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report style -m -i -f include/runnerapi.h")
+[[ "$rc" -eq 2 ]] || fail "fix branch version mismatch should exit 2 (got $rc)"
+fix_version_report="$(latest_report "$WORK")"
+assert_contains "fix branch policy violation: major.minor changed from main" \
+  "$fix_version_report"
+git -C "$WORK" checkout -q dev/style-tests-v1.0.0
+pass "fix branch version policy"
+
+# 10) Missing corresponding branding PNG should fail validation with exit 2.
 rm -f "$WORK/docs/branding/Release_v1.0.0.png"
 rc=$(run_capture "$TMPDIR/missing-png.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report style -m -f docs/md/Release_v1.0.0.md")
 [[ "$rc" -eq 2 ]] || fail "style missing-PNG failure should exit 2 (got $rc)"
@@ -200,7 +227,7 @@ missing_png_report="$(latest_report "$WORK")"
 assert_contains "missing PNG matching docs/md/Release_v1.0.0.md" "$missing_png_report"
 pass "missing matching PNG"
 
-# 9) A modified doc fixture should fail validation with exit 2.
+# 11) A modified doc fixture should fail validation with exit 2.
 cp "$LOGO_PNG_SRC" "$WORK/docs/branding/Release_v1.0.0.png"
 sed -i 's/SPDX-License-Identifier: MIT/SPDX-License-Identifier: Apache-2.0/' \
   "$WORK/docs/md/Release_v1.0.0.md"

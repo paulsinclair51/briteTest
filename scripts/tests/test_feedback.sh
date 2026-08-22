@@ -279,7 +279,7 @@ pass "approve fails closed when sibling approval state is unavailable"
 rc=$(run_capture "$TMPDIR/approve.out" open env GITHUB_ACTOR=testapprover bash -c "cd '$WORK' && bash ./scripts/bin/feedback approve -- 'Looks good to me.'")
 [[ "$rc" -eq 0 ]] || fail "feedback approve should exit 0 (got $rc)"
 assert_contains "PR #7 approved" "$TMPDIR/approve.out"
-assert_contains "pr list --state open --base main" "$TMPDIR/gh.log"
+assert_contains "pr list --state open --base main --limit 1000" "$TMPDIR/gh.log"
 assert_contains "pr review 7 --approve --body Looks good to me." "$TMPDIR/gh.log"
 pass "approve action submits an approval review"
 

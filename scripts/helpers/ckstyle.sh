@@ -308,7 +308,8 @@ count_eligible_selected_files() {
     fi
 
     if [[ "$CHECK_SOURCES" == true ]]; then
-      if [[ "$rel" == src/*.c || "$rel" == *.sh || "$rel" == */*.sh ]]; then
+      if [[ "$rel" == src/*.c || "$rel" == *.sh || "$rel" == */*.sh || \
+        ( "$rel" == scripts/bin/* && "$rel" != scripts/bin/*.* ) ]]; then
         eligible["$rel"]=1
       fi
     fi
@@ -1714,7 +1715,7 @@ selected_files_abs_by_kind() {
       selected_files_abs '^include/.*\.h$'
       ;;
     scripts)
-      selected_files_abs '(^|/).*[.]sh$'
+      selected_files_abs '(^scripts/bin/[^/.]+$|(^|/).*[.]sh$)'
       ;;
     src)
       selected_files_abs '^src/.*\.c$'
@@ -1810,7 +1811,7 @@ collect_selected_semver_pairs() {
   local kind="$1"
   local mode="$2"
   local base_ref="$3"
-  local file semver
+  local file rel semver
   local header_semver_re
   local source_semver_re
 
@@ -1823,19 +1824,20 @@ collect_selected_semver_pairs() {
     if ! ensure_file_readable "$file" "read"; then
       continue
     fi
+    rel="${file#"$repo_root"/}"
 
     case "$mode" in
       doc)
-        semver="$(git show "$base_ref":"$file" 2>/dev/null | head -n 220 | \
+        semver="$(git show "$base_ref":"$rel" 2>/dev/null | head -n 220 | \
           grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
         ;;
       header)
-        semver="$(git show "$base_ref":"$file" 2>/dev/null | grep -Ei \
+        semver="$(git show "$base_ref":"$rel" 2>/dev/null | grep -Ei \
           "$header_semver_re" | \
           grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
         ;;
       source)
-        semver="$(git show "$base_ref":"$file" 2>/dev/null | grep -Ei \
+        semver="$(git show "$base_ref":"$rel" 2>/dev/null | grep -Ei \
           "$source_semver_re" | \
           grep -Eo '[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1 || true)"
         ;;
@@ -1931,8 +1933,8 @@ run_versions_checks() {
 
   current_branch="$(current_branch_for_policy)"
   branch_type=""
-  if [[ "$current_branch" == patch/* ]]; then
-    branch_type="patch"
+  if [[ "$current_branch" == fix/* ]]; then
+    branch_type="fix"
   elif [[ "$current_branch" == minor/* ]]; then
     branch_type="minor"
   elif [[ "$current_branch" == major/* ]]; then
@@ -1970,12 +1972,12 @@ run_versions_checks() {
     [[ -z "$current_semver" ]] && continue
 
     case "$branch_type" in
-      patch)
+      fix)
         current_major_minor="$(extract_major_minor "$current_semver")"
         if [[ "$current_major_minor" != \
           "$(extract_major_minor "$main_semver")" ]]; then
           add_issue "$file" \
-            "patch branch policy violation: major.minor changed from main" \
+            "fix branch policy violation: major.minor changed from main" \
             " ($main_semver -> $current_semver)"
         fi
         ;;
