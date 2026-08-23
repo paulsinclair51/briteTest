@@ -353,10 +353,9 @@ Run relevant tests and, when practical, the complete suite with `make run`.
 
 **Versioning and branding**
 
-briteTest uses `M.m.p` version numbers. Patch releases contain fixes, minor
+The repository uses `M.m.p` version numbers. Patch releases contain fixes, minor
 releases add backward-compatible features, and major releases contain breaking
-changes. Update branding through `rebrand`; preserve the `briteTest` name and
-capitalization.
+changes. Update branding through `rebrand`.
 </details>
 
 <details>
