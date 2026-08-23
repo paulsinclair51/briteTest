@@ -119,8 +119,6 @@ see [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) and
 4. [User Environment](#4-user-environment)<br>
 
 5. [Exit Codes](#5-exit-codes)<br>
-   5.1. [Common Exit Codes](#51-common-exit-codes)<br>
-   5.2. [Script-Specific Codes](#52-script-specific-codes)<br>
 
 6. [Troubleshooting](#6-troubleshooting)<br>
    6.1. [Common Issues](#61-common-issues)<br>
@@ -147,7 +145,7 @@ information, run any script with `-h` or `--help`.
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.1. chbranch</summary>
 
-#### 1.1.1 chbranch
+#### 1.1.1. chbranch
 
 **Purpose:** Select a local branch or a read-only snapshot of a remote branch.
 
@@ -171,18 +169,22 @@ chbranch [-l | -r] [-t SEC] [-v] [BRANCH]
 
 #### 1.1.2. commit
 
-**Purpose:** Commit changes with optional push to remote.
+**Purpose:** Commit changes to the current local targeted or contributor branch.
 
 **Usage:**
 
 ```bash
-commit [OPTIONS]
+commit [OPTIONS] [-- TOKEN...]
 ```
 
-**Options:**
+**Key Options:**
 
-- `-p, --push` - Push after commit
-- `-m, --message <msg>` - Custom commit message
+- `-c TOKEN` or `-- TOKEN...` - Add a user comment to the generated commit
+  message.
+- `-d` - Generate a dry-run report without committing.
+- `-v` - Show progress and diagnostics.
+
+Run `push` separately to publish the commit.
 </details>
 
 <details>
@@ -245,12 +247,15 @@ feedback [ACTION] [OPTIONS] [-- TOKEN...]
 **Usage:**
 
 ```bash
-lsbranch [<pattern>]
+lsbranch [-b] [-v]
+lsbranch BRANCH [-b] [-v]
+lsbranch {-a | PATTERN} [-b] [-i] [-l] [-r] [-v] [-x PATTERN]
 ```
 
 **Arguments:**
 
-- `<pattern>` - Optional: Branch name pattern to filter
+- `BRANCH` - Show one branch and its parent.
+- `PATTERN` - Show branches matching a quoted glob pattern.
 </details>
 
 <details>
@@ -289,16 +294,19 @@ current remote state rather than the snapshot state. The timeout defaults to
 **Usage:**
 
 ```bash
-mkbranch -r BRANCH [PARENTBRANCH]
+mkbranch [OPTIONS] <newbranch> [<parentbranch>] [-- TOKEN...]
 ```
 
-**Arguments:**
+**Key Options:**
 
-- `-r` - Create the branch (required)
-- `BRANCH` - Name for the new branch
-- `PARENTBRANCH` - Parent branch (if BRANCH is a targeted branch, defaults
-  to version branch corresponding to the target version BRANCH; otherwise,
-  otherwise, PARENTBRANCH must be specified).
+- `-d` - Validate without creating a branch.
+- `-l` - Create only a local branch.
+- `-r` - Also create the remote branch; this is the default for version
+  branches.
+- `-c TOKEN` or `-- TOKEN...` - Set the branch-creation comment.
+
+For a targeted branch, the parent defaults to the version in its name. Other
+branch types use the parent rules described by `mkbranch -h`.
 
 **Branch Naming Guide:**
 
@@ -331,13 +339,17 @@ for verbose output.
 
 #### 1.1.9. pulldown
 
-**Purpose:** Merge parent branch into current branch to sync changes.
+**Purpose:** Pull parent-branch changes down into the current branch.
 
 **Usage:**
 
 ```bash
-pulldown [OPTIONS]
+pulldown [OPTIONS] [-- TOKEN...]
 ```
+
+Use `-d` for a dry run, `-c TOKEN` or `-- TOKEN...` for the commit comment,
+`-o` for an eligible owner-authorized version-branch operation, and `-t SEC`
+for the remote timeout.
 </details>
 
 <details>
@@ -353,7 +365,7 @@ published the parent is resumed with `pushup --continue`.
 **Usage:**
 
 ```bash
-pushup [OPTIONS]
+pushup [OPTIONS] [-- TOKEN...]
 pushup --continue
 ```
 
@@ -369,7 +381,7 @@ pushup --continue
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.11 release</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1.11. release</summary>
 
 #### 1.1.11. release
 
@@ -378,13 +390,14 @@ pushup --continue
 **Usage:**
 
 ```bash
-release <version> [OPTIONS]
+release [OPTIONS] VERSION
 ```
 
 **Notes:**
 
 - Approver role required
-- Creates version branch and tags
+- Validates the current protected branch, then creates and publishes an
+  annotated tag and GitHub release
 </details>
 
 <details>
@@ -397,7 +410,7 @@ release <version> [OPTIONS]
 **Usage:**
 
 ```bash
-retarget [-r] <branch_name> <new_version>
+retarget [OPTIONS] <targeted-branch> <new-parent-version> [-- TOKEN...]
 ```
 
 **Notes:**
@@ -439,13 +452,16 @@ review [OPTIONS] [-- TOKEN...]
 **Usage:**
 
 ```bash
-rmbranch <branch_name> [OPTIONS]
+rmbranch [OPTIONS] <branchname> [-- TOKEN...]
 ```
 
 **Protected Branches (Cannot Delete):**
 
-- `main` (protected base branch, locally and remotely)
-- `v*` (version branches)
+- Remote `main` and version branches cannot be deleted.
+- Local protected branches may be removed when they exist locally.
+
+Use `-l`, `-r`, or `-a` to select local, remote, or both locations. Use `-f`
+only to remove a local branch with unmerged commits.
 </details>
 
 <details>
@@ -459,8 +475,11 @@ changes.
 **Usage:**
 
 ```bash
-undo [OPTIONS]
+undo [OPTIONS] [TYPE]
 ```
+
+`TYPE` may be `uncommitted`, `commit`, `pull`, `push`, `copyfix`, `pulldown`,
+or `release`; it defaults to `uncommitted`.
 </details>
 
 <details>
@@ -522,7 +541,11 @@ fixlocal [OPTIONS]
 - 0: Success - no issues or all issues fixed
 - 1: Invalid option or argument
 - 2: User is not authorized (requires contributor role or higher)
-- 3: Issues detected - one or more were not fixable
+- 3: Remote is not configured
+- 4: Remote is unreachable
+- 5: Remote connectivity check timed out
+- 6: One or more issues were not fixable
+- 7: Dry run found only issues that a normal run can fix
 - 100: Missing required helper files, dependencies, or configuration
 </details>
 
@@ -568,7 +591,7 @@ fixremote [OPTIONS] <clone-path>
 **Usage:**
 
 ```bash
-bash scripts/bin/setupclone [OPTIONS]
+bash scripts/bin/setupclone [-t SEC]
 ```
 
 **Functions:**
@@ -589,8 +612,10 @@ bash scripts/bin/setupclone [OPTIONS]
 **Usage:**
 
 ```bash
-mkclone [<target_name>]
+mkclone [OPTIONS] [directory]
 ```
+
+The default directory is `BriteTest`. Use `-t SEC` to set the remote timeout.
 </details>
 
 <details>
@@ -606,10 +631,13 @@ mkclone [<target_name>]
 mkfork [OPTIONS]
 ```
 
-**Options:**
+**Key Options:**
 
-- Upstream remote configuration
-- User as approver setup
+- `-c` - Delete an incomplete or misconfigured existing fork instead of
+  completing its configuration.
+- `-d` - Show the planned operation without creating a fork.
+- `-t SEC` - Set the remote timeout.
+- `-v` - Show progress and diagnostics.
 </details>
 
 <details>
@@ -622,12 +650,14 @@ mkfork [OPTIONS]
 **Usage:**
 
 ```bash
-rmclone <clone_path> [OPTIONS]
+rmclone [OPTIONS] <clone-path>
 ```
 
 **Options:**
 
-- `-f, --force` - Override validation checks
+- `-d, --dry-run` - Show the checks and deletion plan.
+- `-O, --override` - Override safety checks and remove the clone.
+- `-t SEC` - Set the remote timeout.
 </details>
 
 <details>
@@ -763,12 +793,8 @@ Use positional output-directory arguments to choose other locations.
 **Usage:**
 
 ```bash
-genpngs [<svg_file_or_dir>]
+genpngs
 ```
-
-**Arguments:**
-
-- `<svg_file_or_dir>` - Optional: Specific SVG or directory (default: `docs/branding/`)
 
 **Requirements:**
 
@@ -785,7 +811,7 @@ genpngs [<svg_file_or_dir>]
 **Usage:**
 
 ```bash
-rebrand [OPTIONS]
+rebrand [-d] [-t SEC]
 ```
 
 **Workflow:**
@@ -805,7 +831,8 @@ rebrand [OPTIONS]
 **Usage:**
 
 ```bash
-replacetext [OPTIONS]
+replacetext [-d] [-r] [-t SEC] [MAPPINGS]
+replacetext [-d] [-r] [-t SEC] FIND REPLACE [FIND REPLACE]...
 ```
 </details>
 </details>
@@ -877,14 +904,18 @@ grant the approver permission.
 
 ### 2.4. File Access
 
-| Path | Public | User | Contributor | Reviewer | Approver | Owner |
-|------|--------|------|-------------|----------|----------|-------|
+| Path or Setting | Public | User | Contributor | Reviewer | Approver | Owner |
+|-----------------|--------|------|-------------|----------|----------|-------|
 | `docs/md/`, `docs/branding/`, `src/`, `include/`, `examples/` | R | R | RW | RW | RW | RW |
-| `scripts/bin/`, `scripts/helpers/` | R | R | RW | RW | RW* | RW |
-| `.github/workflows/`, branch-protection settings | R | R | - | - | RW* | RW |
-| `config/contributors.md`, governance and policy documents | R | R | RW | RW | RW* | RW |
+| `scripts/bin/`, `scripts/helpers/` | R | R | RW | RW | RW | RW |
+| `config/contributors.md` | R | R | - | - | RW | RW |
+| `.github/workflows/` | R | R | - | - | - | RW* |
+| GitHub rulesets and branch-protection settings | R | R | - | - | - | RW* |
 
-`RW*` requires the applicable protected workflow or explicit approval.
+The table describes supported repository workflows, not raw filesystem access.
+`RW*` requires GitHub repository administration permission and the applicable
+exceptional protected-change procedure. Repository roles do not themselves
+grant GitHub administration permission.
 </details>
 </details>
 
@@ -918,110 +949,11 @@ that require a repository permission.
 
 ## 5. Exit Codes
 
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.1. Common Exit Codes</summary>
+Exit status `0` means success. Every nonzero status is command-specific; the
+same number may describe different failures in different commands.
 
-### 5.1. Common Exit Codes
-
-| Code | Common Meaning |
-|------|----------|
-| 0 | Success |
-| 1 | Argument/option error or validation failure |
-| 2 | Git operation failed or invalid usage |
-| 3 | Resource not found or operation not allowed |
-| 4 | Conflict detected or API error |
-| 5 | Permission/authorization error or operation failed |
-| 6+ | Script-specific errors (see individual script documentation) |
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.2. Script-Specific Codes</summary>
-
-### 5.2. Script-Specific Codes
-
-**report style**
-
-| Code | Meaning |
-|------|----------|
-| 0 | Success (no validation issues) |
-| 1 | Invalid option or argument |
-| 2 | Validation issues found |
-
-**commit**
-
-| Code | Meaning |
-|------|----------|
-| 0 | Success |
-| 1 | Invalid option or argument |
-| 2 | Could not detect current branch |
-| 3 | Not on a local branch |
-| 5 | Current branch is protected |
-| 6 | Commit message missing |
-| 7 | Commit message empty |
-| 8 | Contributors list missing |
-| 9 | Could not detect GitHub identity |
-| 10 | Not authorized for commit |
-| 11 | Could not inspect working tree |
-| 12 | Could not stage or commit changes |
-| 14 | Push failed |
-| 15 | Branch divergence not auto-resolved |
-
-**mkbranch**
-
-| Code | Meaning |
-|------|----------|
-| 0 | Success |
-| 1 | Arguments/options invalid |
-| 2 | Invalid branch name |
-| 3 | Invalid option |
-| 4 | Conflicting options |
-| 5 | Git operation failed |
-| 6 | Local parent branch doesn't exist |
-| 7 | Remote parent branch doesn't exist |
-| 8 | Local branch already exists |
-| 9 | Remote branch already exists |
-| 10 | Validation failed |
-
-**rmbranch**
-
-| Code | Meaning |
-|------|----------|
-| 0 | Success |
-| 1 | Argument error |
-| 2 | Git operation failed |
-| 3 | Branch does not exist |
-| 4 | Local deleted, remote protected |
-| 5 | Remote branch is protected |
-| 6 | Branch has unmerged commits |
-| 7 | User not authorized |
-| 8 | Local deletion blocked |
-
-**review**
-
-| Code | Meaning |
-|------|----------|
-| 0 | Success |
-| 1 | Argument or validation error |
-| 2 | Git operation failed |
-| 3 | Cannot create PR from main branch |
-| 4 | GitHub API error |
-| 5 | Configuration error |
-
-**chbranch**
-
-| Code | Meaning |
-|------|----------|
-| 0 | Success |
-| 1 | Argument or validation error |
-| 2 | Branch already current |
-| 3 | Branch does not exist |
-| 4 | Remote branch does not exist |
-| 5 | Branch operation failed |
-| 6 | Current branch is dirty |
-| 7 | Remote branch unreachable |
-
-For other scripts, run with `-h` or `--help` to view exit code documentation.
-</details>
+Run `COMMAND -h` to view the current exit statuses for that command. This keeps
+automation and troubleshooting aligned with the executable interface.
 </details>
 
 <details>

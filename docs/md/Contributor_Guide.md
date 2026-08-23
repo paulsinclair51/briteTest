@@ -141,10 +141,10 @@ If you already have a clone, run `setupclone` to configure it.
 
 ### 2.2. Make Your First Contribution
 
-1. Create your contributor branch and its remote copy:
+1. Create your targeted work branch and its remote copy:
 
    ```bash
-   mkbranch -r mywork/description main
+  mkbranch -r dev/description-v1.0.0 v1.0.0
    ```
 
 2. Edit the files and run the relevant tests. To run the complete suite:

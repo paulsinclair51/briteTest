@@ -175,8 +175,12 @@ override off
 
 **Behavior:**
 
-- Local override mode affects local enforcement that is tied to the current clone.
-- Remote repair mode records a temporary server-side repair authorization window.
+- Local override mode sets `brite.ownerOverride` in the clone and permits the
+  repository owner through local hook enforcement.
+- Remote repair mode sets `brite.remoteRepairOverride` in the clone after
+  verifying remote reachability; it does not create server-side state.
+- `override -r on` does not enable local unrestricted mode. `override off`
+  disables both clone-local values.
 - The script does not bypass GitHub rulesets or branch protection.
 
 **Important:** the actual remote repair still requires GitHub admin authority and

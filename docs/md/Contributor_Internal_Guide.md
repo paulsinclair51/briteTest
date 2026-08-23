@@ -173,11 +173,15 @@ The `override` script is intentionally narrow in scope:
 
 - `override` without `-r` is local clone-only recovery for exceptional local
   work in the current checkout.
-- `override -r` is a remote repair authorization marker for an owner-admin remote
-  repair workflow.
+- `override -r` records a clone-local authorization marker for an owner-admin
+  remote repair workflow; it does not create server-side state.
 - `override` does not bypass GitHub rulesets, server-side branch protection, or
   the repository scripts themselves.
 - The override must be turned off after the repair window ends.
+
+Local unrestricted mode and remote repair authorization are independent Git
+configuration values in the clone. `override -r on` does not enable local
+unrestricted mode. `override off` clears both values.
 
 Prerequisites for `override`:
 
