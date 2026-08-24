@@ -153,12 +153,12 @@ pass "help overrides arguments"
 mkdir -p "$TMPDIR/not-a-repo"
 rc=$(run_capture "$TMPDIR/repo-outside.out" bash -lc \
   "cd '$TMPDIR/not-a-repo' && bash '$WORK/scripts/bin/report' repo")
-[[ "$rc" -eq 7 ]] || fail "report repo outside git should exit 7 (got $rc)"
+[[ "$rc" -eq 5 ]] || fail "report repo outside git should exit 5 (got $rc)"
 assert_contains "local or remote snapshot branch as the current branch" \
   "$TMPDIR/repo-outside.out"
 rc=$(run_capture "$TMPDIR/branch-outside.out" bash -lc \
   "cd '$TMPDIR/not-a-repo' && bash '$WORK/scripts/bin/report' branch")
-[[ "$rc" -eq 7 ]] || fail "report branch outside git should exit 7 (got $rc)"
+[[ "$rc" -eq 5 ]] || fail "report branch outside git should exit 5 (got $rc)"
 assert_contains "local or remote snapshot branch as the current branch" \
   "$TMPDIR/branch-outside.out"
 pass "outside repository exit"

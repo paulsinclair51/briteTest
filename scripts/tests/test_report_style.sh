@@ -174,7 +174,7 @@ pass "long option rejection"
 rm -rf "$WORK/reports"
 printf 'blocked by test\n' > "$WORK/reports"
 rc=$(run_capture "$TMPDIR/report-io.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report style -m -f docs/md/Release_v1.0.0.md")
-[[ "$rc" -eq 200 ]] || fail "style report I/O failure should exit 200 (got $rc)"
+[[ "$rc" -eq 201 ]] || fail "style report I/O failure should exit 201 (got $rc)"
 assert_contains "unable to create report directory" "$TMPDIR/report-io.out"
 pass "report I/O failure"
 
@@ -210,29 +210,29 @@ pass "extensionless public script selection"
 git -C "$WORK" checkout -q -b fix/style-tests-v1.0.0
 sed -i '0,/1\.0\.0/s//2.0.0/' "$WORK/include/runnerapi.h"
 rc=$(run_capture "$TMPDIR/fix-version.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report style -m -i -f include/runnerapi.h")
-[[ "$rc" -eq 2 ]] || fail "fix branch version mismatch should exit 2 (got $rc)"
+[[ "$rc" -eq 3 ]] || fail "fix branch version mismatch should exit 3 (got $rc)"
 fix_version_report="$(latest_report "$WORK")"
 assert_contains "fix branch policy violation: major.minor changed from main" \
   "$fix_version_report"
 git -C "$WORK" checkout -q dev/style-tests-v1.0.0
 pass "fix branch version policy"
 
-# 10) Missing corresponding branding PNG should fail validation with exit 2.
+# 10) Missing corresponding branding PNG should fail validation with exit 3.
 rm -f "$WORK/docs/branding/Release_v1.0.0.png"
 rc=$(run_capture "$TMPDIR/missing-png.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report style -m -f docs/md/Release_v1.0.0.md")
-[[ "$rc" -eq 2 ]] || fail "style missing-PNG failure should exit 2 (got $rc)"
+[[ "$rc" -eq 3 ]] || fail "style missing-PNG failure should exit 3 (got $rc)"
 assert_contains "Validation found" "$TMPDIR/missing-png.out"
 missing_png_report="$(latest_report "$WORK")"
 [[ -f "$missing_png_report" ]] || fail "expected missing-PNG report to be created"
 assert_contains "missing PNG matching docs/md/Release_v1.0.0.md" "$missing_png_report"
 pass "missing matching PNG"
 
-# 11) A modified doc fixture should fail validation with exit 2.
+# 11) A modified doc fixture should fail validation with exit 3.
 cp "$LOGO_PNG_SRC" "$WORK/docs/branding/Release_v1.0.0.png"
 sed -i 's/SPDX-License-Identifier: MIT/SPDX-License-Identifier: Apache-2.0/' \
   "$WORK/docs/md/Release_v1.0.0.md"
 rc=$(run_capture "$TMPDIR/invalid-doc.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report style -m -f docs/md/Release_v1.0.0.md")
-[[ "$rc" -eq 2 ]] || fail "style validation failure should exit 2 (got $rc)"
+[[ "$rc" -eq 3 ]] || fail "style validation failure should exit 3 (got $rc)"
 assert_contains "Validation found" "$TMPDIR/invalid-doc.out"
 assert_contains "<repo>/reports/style-" "$TMPDIR/invalid-doc.out"
 assert_contains "See <repo>/reports/style-" "$TMPDIR/invalid-doc.out"
