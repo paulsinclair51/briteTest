@@ -220,6 +220,7 @@ emit_success_changed() {
   local tracking_local_ref="$local_ref"
   local remote_ref="refs/remotes/origin/$branch"
   local comparison_branch="$branch"
+  local display_branch="$branch"
   local selected_ref="$local_ref"
   local relation_tag=""
   local parent_tag=""
@@ -229,6 +230,7 @@ emit_success_changed() {
   if [[ "$mode" == "remote" ]]; then
     mode_tag="remote snapshot"
     comparison_branch="${REMOTE_SOURCE_BRANCH:-$branch}"
+    display_branch="$comparison_branch"
     remote_ref="refs/remotes/origin/$comparison_branch"
     tracking_local_ref="refs/heads/$comparison_branch"
   elif [[ "$SELECTED_REMOTE_STATE" == "missing" ]]; then
@@ -246,7 +248,7 @@ emit_success_changed() {
   if [[ "$mode" == "remote" ]] || bt_is_read_only_branch "$branch"; then
     tags+=("[read-only]")
   fi
-  if ! bt_is_valid_branch_name "$branch"; then
+  if ! bt_is_valid_branch_name "$comparison_branch"; then
     tags+=("[invalid name]")
   fi
 
@@ -264,7 +266,7 @@ emit_success_changed() {
     "$mode" "$comparison_branch" "$selected_ref")"
   [[ -z "$parent_tag" ]] || tags+=("$parent_tag")
 
-  echo "Changed to $branch branch. ${tags[*]}"
+  echo "Changed to $display_branch branch. ${tags[*]}"
 
   if [[ "$mode" == "remote" ]] || bt_is_read_only_branch "$branch"; then
     echo "Warning: do not modify, rename, or delete files in this branch."

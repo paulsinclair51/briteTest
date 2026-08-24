@@ -343,7 +343,7 @@ rc=$(run_in_work_capture "$TMPDIR/local-target-setup.out" dev/target)
 # Remote mode refreshes origin and checks out a named local copy.
 rc=$(run_in_work_capture "$TMPDIR/remote-success.out" -r dev/target)
 [[ "$rc" -eq 0 ]] || fail "remote switch should exit 0 (got $rc)"
-assert_contains "Changed to r-dev/target branch." \
+assert_contains "Changed to dev/target branch." \
   "$TMPDIR/remote-success.out"
 assert_contains "[remote snapshot] [current] [read-only]" \
   "$TMPDIR/remote-success.out"
@@ -466,7 +466,7 @@ pass "remember branch only after success"
 # Default mode falls back to a remote branch and creates a named local copy.
 rc=$(run_in_work_capture "$TMPDIR/default-remote-only.out" dev/remote-only)
 [[ "$rc" -eq 0 ]] || fail "default remote-only switch should exit 0 (got $rc)"
-assert_contains "Changed to r-dev/remote-only branch." \
+assert_contains "Changed to dev/remote-only branch." \
   "$TMPDIR/default-remote-only.out"
 assert_contains "[remote snapshot] [current] [read-only]" \
   "$TMPDIR/default-remote-only.out"
@@ -707,7 +707,7 @@ pass "policy-invalid local branch is read-only"
 # Existing policy-invalid remote branches are represented by named local copies.
 rc=$(run_in_work_capture "$TMPDIR/invalid-remote.out" -r dev/invalid-v1.0.1)
 [[ "$rc" -eq 0 ]] || fail "policy-invalid remote branch should exit 0 (got $rc)"
-assert_contains "Changed to r-dev/invalid-v1.0.1 branch." \
+assert_contains "Changed to dev/invalid-v1.0.1 branch." \
   "$TMPDIR/invalid-remote.out"
 assert_contains "[read-only] [invalid name]" "$TMPDIR/invalid-remote.out"
 [[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == \
@@ -721,7 +721,7 @@ pass "policy-invalid remote branch is read-only"
 # Explicit remote mode creates named local copies of protected remote branches.
 rc=$(run_in_work_capture "$TMPDIR/protected-remote.out" -r main)
 [[ "$rc" -eq 0 ]] || fail "protected remote switch should exit 0 (got $rc)"
-assert_contains "Changed to r-main branch." \
+assert_contains "Changed to main branch." \
   "$TMPDIR/protected-remote.out"
 [[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "r-main" ]] || \
   fail "expected named local copy for protected remote branch"
