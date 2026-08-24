@@ -106,13 +106,13 @@ Outputs:
 Exit codes:
   0    Success (report written, -h/--help).
   1    Argument or validation error.
-  2    Style report found validation issues.
-  3    Style report is not authorized for the current user.
-  4    Style report requires a local targeted or contributor branch
+  2    Style report requires a local targeted or contributor branch
        as the current branch.
-  5    No matching branch activity was found.
-  6    Repo and branch reports require a local or remote snapshot
+  3    Style report found validation issues.
+  4    Style report is not authorized for the current user.
+  5    Repo and branch reports require a local or remote snapshot
        branch as the current branch.
+  6    No matching activity was found for branch report.
   200  Failed to read recorded activity.
   201  Failed to create or write the report.
 EOF
