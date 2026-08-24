@@ -23,3 +23,5 @@ See `<repo>/README.md` for an introduction to briteTest.
 None.
 
 lsbranch dirty smoke test
+
+lsbranch dirty smoke test

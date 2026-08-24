@@ -104,8 +104,7 @@ bt_get_current_branch() {
   if ! branch="$(bt_get_current_branch_raw)"; then
     return 1
   fi
-  if [[ "$branch" == r-* ]] && \
-    git show-ref --verify --quiet "refs/remotes/origin/${branch#r-}"; then
+  if [[ "$branch" == r-* ]]; then
     printf '%s\n' "${branch#r-}"
   else
     printf '%s\n' "$branch"
@@ -118,9 +117,7 @@ bt_get_current_branch_for_repo() {
 
   branch="$(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null)" || \
     return 1
-  if [[ "$branch" == r-* ]] && \
-    git -C "$repo" show-ref --verify --quiet \
-      "refs/remotes/origin/${branch#r-}"; then
+  if [[ "$branch" == r-* ]]; then
     printf '%s\n' "${branch#r-}"
   else
     printf '%s\n' "$branch"
@@ -130,8 +127,7 @@ bt_get_current_branch_for_repo() {
 bt_is_internal_remote_copy() {
   local branch="$1"
 
-  [[ "$branch" == r-* ]] && \
-    git show-ref --verify --quiet "refs/remotes/origin/${branch#r-}"
+  [[ "$branch" == r-* ]]
 }
 
 bt_is_current_internal_remote_copy() {

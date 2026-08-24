@@ -47,6 +47,23 @@ assert_contains "Guidance: make changes before rerunning commit." "$TMPDIR/noop.
   fail "commit prerequisite failure should preserve stale error reports"
 pass "no-work commit prerequisite"
 
+# Internal remote snapshot branches use their source name in commit errors.
+git -C "$WORK" branch "r-dev/commit-tests-v1.0.0" \
+  "dev/commit-tests-v1.0.0" >/dev/null 2>&1
+git -C "$WORK" switch "r-dev/commit-tests-v1.0.0" >/dev/null 2>&1
+rc=$(run_capture "$TMPDIR/remote-snapshot.out" env GITHUB_ACTOR=testuser \
+  bash -lc "cd '$WORK' && bash ./scripts/bin/commit -d -c 'snapshot test'")
+[[ "$rc" -eq 5 ]] || \
+  fail "remote snapshot commit should exit 5 (got $rc)"
+assert_contains "local 'dev/commit-tests-v1.0.0'" \
+  "$TMPDIR/remote-snapshot.out"
+if grep -Fq "r-dev/commit-tests-v1.0.0" "$TMPDIR/remote-snapshot.out"; then
+  fail "commit error should not expose internal r- branch"
+fi
+git -C "$WORK" switch dev/commit-tests-v1.0.0 >/dev/null 2>&1
+git -C "$WORK" branch -D r-dev/commit-tests-v1.0.0 >/dev/null 2>&1
+pass "remote snapshot branch name normalization"
+
 rc=$(run_capture "$TMPDIR/invalid-timeout.out" bash -lc "cd '$WORK' && bash ./scripts/bin/commit -t nope -d -c 'invalid timeout'")
 [[ "$rc" -eq 1 ]] || fail "unsupported -t should exit 1 (got $rc)"
 assert_contains "Unknown option: -t" "$TMPDIR/invalid-timeout.out"

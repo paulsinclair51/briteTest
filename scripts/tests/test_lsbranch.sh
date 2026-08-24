@@ -241,10 +241,10 @@ branches when the worktree is dirty"
 fi
 current_branch="$(source "$SCRIPT_DIR/../helpers/common.sh"; \
   bt_get_current_branch_or_empty)"
-grep -Eq "^${current_branch}[*] \\[current\\]" \
+grep -Eq "^${current_branch} \\[current\\]" \
   "$TMPDIR/dirty.out" || \
   fail "dirty current branch should be marked [uncommitted]"
-grep -Eq "^${current_branch}[*].* \\[uncommitted\\]" \
+grep -Eq "^${current_branch} .*\\[uncommitted\\]" \
   "$TMPDIR/dirty.out" || \
   fail "dirty current branch should be marked [uncommitted]"
 if grep -Eq '\[(dirty|staged|unstaged)\]' "$TMPDIR/dirty.out"; then
