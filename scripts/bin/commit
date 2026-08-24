@@ -693,11 +693,17 @@ resolve_current_branch_context() {
   local remote_branches
   local remote_count
   local remote_name
+  local raw_local_branch
 
-  local_branch="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
+  raw_local_branch="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
+  local_branch="$(bt_get_current_branch)"
   if [[ -n "$local_branch" ]]; then
     CURRENT_BRANCH="$local_branch"
-    CURRENT_BRANCH_MODE="local"
+    if bt_is_internal_remote_copy "$raw_local_branch"; then
+      CURRENT_BRANCH_MODE="remote snapshot"
+    else
+      CURRENT_BRANCH_MODE="local"
+    fi
     return 0
   fi
 
