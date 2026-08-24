@@ -93,7 +93,6 @@ Outputs:
   - Writes warnings and diagnostics to stdout; writes errors to stderr.
 
 Branch markers:
-  *                             Current branch.
   !                             Branch name violates repository naming rules.
 
 Status tags:
@@ -343,10 +342,6 @@ branch_name_status_display() {
   if branch_violates_naming_rules "$branch"; then
     display+="!"
   fi
-  if [[ "$is_current" == true ]]; then
-    display+="*"
-  fi
-
   printf '%s\n' "$display"
 }
 
@@ -1769,8 +1764,7 @@ else
   fi
 fi
 
-FOOTER_BRANCH_LINE='**Branch**: Indicates the branch name. '
-FOOTER_BRANCH_LINE+='* indicates this is the current branch.'
+FOOTER_BRANCH_LINE='**Branch**: Indicates the branch name.'
 FOOTER_INVALID_LINE='! after branch name indicates the name '
 FOOTER_INVALID_LINE+='violates naming rules.'
 

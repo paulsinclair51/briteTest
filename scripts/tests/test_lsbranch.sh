@@ -150,9 +150,9 @@ rc=$(run_capture "$TMPDIR/default.out" "$LSBRANCH")
 [[ "$rc" -eq 0 ]] || fail "lsbranch should exit 0"
 current_branch="$(source "$SCRIPT_DIR/../helpers/common.sh"; \
   bt_get_current_branch_or_empty)"
-grep -Eq "^${current_branch}\\* \\[current\\]" \
+grep -Eq "^${current_branch} \\[current\\]" \
   "$TMPDIR/default.out" || \
-  fail "current branch should be marked with a trailing * in stdout"
+  fail "current branch should be marked with [current] in stdout"
 if grep -q '^See .* for details\.$' "$TMPDIR/default.out"; then
   fail "lsbranch should not output a report path"
 fi
@@ -169,7 +169,7 @@ git switch --detach "refs/remotes/origin/$snapshot_branch" >/dev/null 2>&1 || \
   fail "could not create remote snapshot fixture"
 rc=$(run_capture "$TMPDIR/remote-snapshot.out" "$LSBRANCH")
 [[ "$rc" -eq 0 ]] || fail "remote snapshot status should exit 0"
-grep -Fq "${snapshot_branch}* [current]" \
+grep -Fq "${snapshot_branch} [current]" \
   "$TMPDIR/remote-snapshot.out" || \
   fail "current remote snapshot should be labeled [remote snapshot]"
 grep -Fq "[remote snapshot]" "$TMPDIR/remote-snapshot.out" || \
@@ -185,7 +185,7 @@ git switch "r-$snapshot_branch" >/dev/null 2>&1 || \
   fail "could not select internal remote snapshot branch"
 rc=$(run_capture "$TMPDIR/internal-remote-snapshot.out" "$LSBRANCH")
 [[ "$rc" -eq 0 ]] || fail "internal remote snapshot status should exit 0"
-grep -Fq "${snapshot_branch}* [current]" \
+grep -Fq "${snapshot_branch} [current]" \
   "$TMPDIR/internal-remote-snapshot.out" || \
   fail "lsbranch should display the source branch for an internal snapshot"
 grep -Fq "[remote snapshot]" "$TMPDIR/internal-remote-snapshot.out" || \

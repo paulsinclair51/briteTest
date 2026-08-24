@@ -267,7 +267,7 @@ emit_success_changed() {
   parent_tag="$(bt_git_parent_relation_tags \
     "$mode" "$comparison_branch" "$selected_ref")"
   [[ -z "$parent_tag" ]] || tags+=("$parent_tag")
-  echo "$display_branch* ${tags[*]}"
+  echo "$display_branch ${tags[*]}"
 
   if [[ "$mode" == "remote" ]] || bt_is_read_only_branch "$branch"; then
     echo "Warning: do not modify, rename, or delete files in this branch."
