@@ -237,7 +237,8 @@ emit_success_changed() {
   elif [[ "$SELECTED_REMOTE_STATE" == "missing" ]]; then
     mode_tag="local only"
   fi
-  tags+=("[$mode_tag]" "[current]")
+  tags+=("[current]" "[$mode_tag]")
+  [[ "$refreshed" == true ]] && tags+=("[refreshed]")
 
   if [[ "$mode" == "local" ]]; then
     status_output="$(git status --porcelain 2>/dev/null || true)"
@@ -266,8 +267,6 @@ emit_success_changed() {
   parent_tag="$(bt_git_parent_relation_tags \
     "$mode" "$comparison_branch" "$selected_ref")"
   [[ -z "$parent_tag" ]] || tags+=("$parent_tag")
-  [[ "$refreshed" == true ]] && tags+=("[refreshed]")
-
   echo "$display_branch* ${tags[*]}"
 
   if [[ "$mode" == "remote" ]] || bt_is_read_only_branch "$branch"; then

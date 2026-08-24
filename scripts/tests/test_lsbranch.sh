@@ -148,8 +148,9 @@ reports_before="$(find "$SCRIPT_DIR/../../reports" -maxdepth 1 \
   -type f -name 'branch-*.md' -printf '%f\n' | sort)"
 rc=$(run_capture "$TMPDIR/default.out" "$LSBRANCH")
 [[ "$rc" -eq 0 ]] || fail "lsbranch should exit 0"
-current_branch=$(git rev-parse --abbrev-ref HEAD)
-grep -Eq "^${current_branch}\\* \\[local\\] \\[current\\]" \
+current_branch="$(source "$SCRIPT_DIR/../helpers/common.sh"; \
+  bt_get_current_branch_or_empty)"
+grep -Eq "^${current_branch}\\* \\[current\\]" \
   "$TMPDIR/default.out" || \
   fail "current branch should be marked with a trailing * in stdout"
 if grep -q '^See .* for details\.$' "$TMPDIR/default.out"; then
@@ -168,8 +169,10 @@ git switch --detach "refs/remotes/origin/$snapshot_branch" >/dev/null 2>&1 || \
   fail "could not create remote snapshot fixture"
 rc=$(run_capture "$TMPDIR/remote-snapshot.out" "$LSBRANCH")
 [[ "$rc" -eq 0 ]] || fail "remote snapshot status should exit 0"
-grep -Fq "${snapshot_branch}* [remote snapshot] [current]" \
+grep -Fq "${snapshot_branch}* [current]" \
   "$TMPDIR/remote-snapshot.out" || \
+  fail "current remote snapshot should be labeled [remote snapshot]"
+grep -Fq "[remote snapshot]" "$TMPDIR/remote-snapshot.out" || \
   fail "current remote snapshot should be labeled [remote snapshot]"
 git switch "$snapshot_branch" >/dev/null 2>&1 || \
   fail "could not restore branch after remote snapshot fixture"
@@ -182,9 +185,11 @@ git switch "r-$snapshot_branch" >/dev/null 2>&1 || \
   fail "could not select internal remote snapshot branch"
 rc=$(run_capture "$TMPDIR/internal-remote-snapshot.out" "$LSBRANCH")
 [[ "$rc" -eq 0 ]] || fail "internal remote snapshot status should exit 0"
-grep -Fq "${snapshot_branch}* [remote snapshot] [current]" \
+grep -Fq "${snapshot_branch}* [current]" \
   "$TMPDIR/internal-remote-snapshot.out" || \
   fail "lsbranch should display the source branch for an internal snapshot"
+grep -Fq "[remote snapshot]" "$TMPDIR/internal-remote-snapshot.out" || \
+  fail "lsbranch should label an internal snapshot"
 if grep -Eq '^r-' "$TMPDIR/internal-remote-snapshot.out"; then
   fail "lsbranch should hide internal r- branches"
 fi
@@ -234,8 +239,12 @@ if grep -q '\[check failed\]' "$TMPDIR/dirty.out"; then
   fail "lsbranch -a -l should not emit [check failed] for local \
 branches when the worktree is dirty"
 fi
-current_branch=$(git rev-parse --abbrev-ref HEAD)
-grep -Eq "^${current_branch}[*] \[local\] \[current\] \[uncommitted\]" \
+current_branch="$(source "$SCRIPT_DIR/../helpers/common.sh"; \
+  bt_get_current_branch_or_empty)"
+grep -Eq "^${current_branch}[*] \\[current\\]" \
+  "$TMPDIR/dirty.out" || \
+  fail "dirty current branch should be marked [uncommitted]"
+grep -Eq "^${current_branch}[*].* \\[uncommitted\\]" \
   "$TMPDIR/dirty.out" || \
   fail "dirty current branch should be marked [uncommitted]"
 if grep -Eq '\[(dirty|staged|unstaged)\]' "$TMPDIR/dirty.out"; then
@@ -248,7 +257,7 @@ if [[ "$current_branch" != "v1.0.0" ]]; then
     fail "non-current local protected branches should not be marked [read-only]"
   fi
 else
-  grep -q '^v1.0.0\* \[local\] \[current\]' "$TMPDIR/dirty.out" || \
+  grep -q '^v1.0.0\* \[current\] \[local\]' "$TMPDIR/dirty.out" || \
     fail "current protected branch should be shown as current"
 fi
 if grep -q '\[not checked out\]' "$TMPDIR/dirty.out"; then

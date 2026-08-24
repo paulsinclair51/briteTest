@@ -1009,8 +1009,6 @@ build_compact_status_tags() {
   elif [[ "$mode" == "remote" ]] && ! has_local_branch "$branch"; then
     mode_tag="remote only"
   fi
-  tags+=("[$mode_tag]")
-
   if [[ "$is_current" == true ]]; then
     tags+=("[current]")
     if [[ "$repo_status" == "dirty" ]]; then
@@ -1018,6 +1016,7 @@ build_compact_status_tags() {
       tags+=("[uncommitted]")
     fi
   fi
+  tags+=("[$mode_tag]")
   if [[ "$is_current" == true ]]; then
     if [[ "$mode" == "remote" || "$CURRENT_IS_REMOTE_SNAPSHOT" == true ]] || \
       bt_is_read_only_branch "$branch"; then

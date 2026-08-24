@@ -192,7 +192,7 @@ rc=$(run_in_work_capture "$TMPDIR/current-local.out" dev/local-only)
 [[ "$rc" -eq 0 ]] || fail "current local branch should exit 0 (got $rc)"
 assert_contains "dev/local-only*" \
   "$TMPDIR/current-local.out"
-assert_contains "[local only] [current]" \
+assert_contains "[current] [local only]" \
   "$TMPDIR/current-local.out"
 rc=$(run_in_work_capture_streams "$TMPDIR/stream-success.out" \
   "$TMPDIR/stream-success.err" dev/local-only)
@@ -232,7 +232,7 @@ rc=$(run_in_work_capture "$TMPDIR/dirty-switch.out" dev/target)
 assert_contains "has uncommitted changes" "$TMPDIR/dirty-switch.out"
 rc=$(run_in_work_capture "$TMPDIR/dirty-current.out" dev/local-only)
 [[ "$rc" -eq 0 ]] || fail "dirty current branch should exit 0 (got $rc)"
-assert_contains "[local only] [current] [uncommitted]" \
+assert_contains "[current] [local only] [uncommitted]" \
   "$TMPDIR/dirty-current.out"
 (
   cd "$WORK"
@@ -245,7 +245,7 @@ rc=$(run_in_work_capture "$TMPDIR/local-success.out" -l dev/target)
 [[ "$rc" -eq 0 ]] || fail "local switch should exit 0 (got $rc)"
 assert_contains "dev/target*" \
   "$TMPDIR/local-success.out"
-assert_contains "[local] [current]" "$TMPDIR/local-success.out"
+assert_contains "[current] [local]" "$TMPDIR/local-success.out"
 [[ "$(git -C "$WORK" symbolic-ref --short HEAD)" == "dev/target" ]] || \
   fail "expected local branch dev/target"
 pass "local branch switch"
@@ -313,7 +313,7 @@ pass "unavailable parent status"
 echo "uncommitted tracked change" >> "$WORK/README.md"
 rc=$(run_in_work_capture "$TMPDIR/local-uncommitted.out" dev/target)
 [[ "$rc" -eq 0 ]] || fail "uncommitted current branch should exit 0 (got $rc)"
-assert_contains "[local] [current] [uncommitted]" \
+assert_contains "[current] [local] [uncommitted]" \
   "$TMPDIR/local-uncommitted.out"
 for internal_status in staged unstaged; do
   if grep -Fq "[$internal_status]" "$TMPDIR/local-uncommitted.out"; then
@@ -333,7 +333,7 @@ rc=$(run_in_work_capture "$TMPDIR/local-offline.out" dev/local-only)
 [[ "$rc" -eq 0 ]] || fail "offline local selection should exit 0 (got $rc)"
 assert_contains "dev/local-only*" \
   "$TMPDIR/local-offline.out"
-assert_contains "[local] [current] [offline]" "$TMPDIR/local-offline.out"
+assert_contains "[current] [local] [offline]" "$TMPDIR/local-offline.out"
 git -C "$WORK" remote set-url origin "$ORIGIN"
 pass "local offline status indicator"
 
@@ -345,7 +345,7 @@ rc=$(run_in_work_capture "$TMPDIR/remote-success.out" -r dev/target)
 [[ "$rc" -eq 0 ]] || fail "remote switch should exit 0 (got $rc)"
 assert_contains "dev/target*" \
   "$TMPDIR/remote-success.out"
-assert_contains "[remote snapshot] [current] [read-only]" \
+assert_contains "[current] [remote snapshot] [read-only]" \
   "$TMPDIR/remote-success.out"
 [[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "r-dev/target" ]] || \
   fail "expected named local remote copy in remote mode"
@@ -353,7 +353,7 @@ pass "remote branch switch"
 
 rc=$(run_in_work_capture "$TMPDIR/remote-refreshed.out" -r dev/target)
 [[ "$rc" -eq 0 ]] || fail "remote snapshot refresh should exit 0 (got $rc)"
-assert_contains "dev/target* [remote snapshot] [current] [read-only]" \
+assert_contains "dev/target* [current] [remote snapshot] [refreshed] [read-only]" \
   "$TMPDIR/remote-refreshed.out"
 assert_contains "[refreshed]" "$TMPDIR/remote-refreshed.out"
 pass "current remote snapshot refresh status"
@@ -475,7 +475,7 @@ rc=$(run_in_work_capture "$TMPDIR/default-remote-only.out" dev/remote-only)
 [[ "$rc" -eq 0 ]] || fail "default remote-only switch should exit 0 (got $rc)"
 assert_contains "dev/remote-only*" \
   "$TMPDIR/default-remote-only.out"
-assert_contains "[remote snapshot] [current] [read-only]" \
+assert_contains "[current] [remote snapshot] [read-only]" \
   "$TMPDIR/default-remote-only.out"
 [[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == \
   "r-dev/remote-only" ]] || fail "expected named local copy for remote branch"
@@ -541,7 +541,7 @@ rc=$(run_in_work_capture "$TMPDIR/protected-refresh.out" main)
 [[ "$(git -C "$WORK" rev-parse main)" == \
   "$(cat "$TMPDIR/protected-remote-tip")" ]] || \
   fail "protected local branch should fast-forward to origin/main"
-assert_contains "[local] [current] [read-only]" \
+assert_contains "[current] [local] [read-only]" \
   "$TMPDIR/protected-refresh.out"
 pass "protected local branch refresh"
 

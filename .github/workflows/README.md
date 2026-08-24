@@ -21,3 +21,5 @@ See `<repo>/README.md` for an introduction to briteTest.
 ## Subdirectories
 
 None.
+
+lsbranch dirty smoke test
