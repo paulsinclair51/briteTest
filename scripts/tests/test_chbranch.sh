@@ -135,7 +135,6 @@ assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "Status tags:" "$TMPDIR/help.out"
 assert_contains "[local only]" "$TMPDIR/help.out"
 assert_contains "[remote only]" "$TMPDIR/help.out"
-assert_contains "[synced]" "$TMPDIR/help.out"
 assert_contains "[invalid name]" "$TMPDIR/help.out"
 assert_contains "[diverged from remote: N/M]" "$TMPDIR/help.out"
 assert_contains "[ahead of parent by N]" "$TMPDIR/help.out"
@@ -246,7 +245,7 @@ rc=$(run_in_work_capture "$TMPDIR/local-success.out" -l dev/target)
 [[ "$rc" -eq 0 ]] || fail "local switch should exit 0 (got $rc)"
 assert_contains "Changed to dev/target branch." \
   "$TMPDIR/local-success.out"
-assert_contains "[local] [current] [synced]" "$TMPDIR/local-success.out"
+assert_contains "[local] [current]" "$TMPDIR/local-success.out"
 [[ "$(git -C "$WORK" symbolic-ref --short HEAD)" == "dev/target" ]] || \
   fail "expected local branch dev/target"
 pass "local branch switch"
@@ -316,9 +315,6 @@ rc=$(run_in_work_capture "$TMPDIR/local-uncommitted.out" dev/target)
 [[ "$rc" -eq 0 ]] || fail "uncommitted current branch should exit 0 (got $rc)"
 assert_contains "[local] [current] [uncommitted]" \
   "$TMPDIR/local-uncommitted.out"
-if grep -Fq "[synced]" "$TMPDIR/local-uncommitted.out"; then
-  fail "uncommitted branch should not be labeled synced"
-fi
 for internal_status in staged unstaged; do
   if grep -Fq "[$internal_status]" "$TMPDIR/local-uncommitted.out"; then
     fail "output should not expose $internal_status status"
@@ -349,7 +345,7 @@ rc=$(run_in_work_capture "$TMPDIR/remote-success.out" -r dev/target)
 [[ "$rc" -eq 0 ]] || fail "remote switch should exit 0 (got $rc)"
 assert_contains "Changed to dev/target branch." \
   "$TMPDIR/remote-success.out"
-assert_contains "[remote snapshot] [current] [read-only] [synced]" \
+assert_contains "[remote snapshot] [current] [read-only]" \
   "$TMPDIR/remote-success.out"
 [[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
   fail "expected detached HEAD in remote mode"
@@ -518,7 +514,7 @@ rc=$(run_in_work_capture "$TMPDIR/protected-refresh.out" main)
 [[ "$(git -C "$WORK" rev-parse main)" == \
   "$(cat "$TMPDIR/protected-remote-tip")" ]] || \
   fail "protected local branch should fast-forward to origin/main"
-assert_contains "[local] [current] [read-only] [synced]" \
+assert_contains "[local] [current] [read-only]" \
   "$TMPDIR/protected-refresh.out"
 pass "protected local branch refresh"
 

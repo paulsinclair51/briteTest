@@ -52,7 +52,7 @@ bt_git_format_tracking_relation_tag() {
   [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
 
   if [[ "$ahead" -eq 0 && "$behind" -eq 0 ]]; then
-    [[ "$has_uncommitted" == false ]] && printf '[synced]'
+    return 0
   elif [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
     if [[ "$mode" == "local" ]]; then
       printf '[ahead of remote by %s]' "$ahead"

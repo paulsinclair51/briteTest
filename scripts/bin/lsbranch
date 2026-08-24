@@ -110,9 +110,6 @@ Status tags:
   [offline]                     Current remote status could not be retrieved;
                                 cached remote information is displayed when
                                 available.
-  [synced]                      Local and remote committed histories match. If
-                                this is the current local branch, it also has
-                                no uncommitted changes.
   [ahead of remote by N]        Local has N commits not on the remote.
   [behind remote by N]          Remote has N commits not on the local branch.
   [ahead of local by N]         Remote has N commits not on the local branch.
@@ -1009,8 +1006,11 @@ build_compact_status_tags() {
       tags+=("[uncommitted]")
     fi
   fi
-  if [[ "$mode" == "remote" ]] || bt_is_read_only_branch "$branch"; then
-    tags+=("[read-only]")
+  if [[ "$is_current" == true ]]; then
+    if [[ "$mode" == "remote" || "$CURRENT_IS_REMOTE_SNAPSHOT" == true ]] || \
+      bt_is_read_only_branch "$branch"; then
+      tags+=("[read-only]")
+    fi
   fi
   if branch_violates_naming_rules "$branch"; then
     tags+=("[invalid name]")

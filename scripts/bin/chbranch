@@ -79,9 +79,6 @@ Status tags:
   [read-only]                   The selected branch must not be modified.
   [invalid name]                Branch name violates repository naming rules.
   [offline]                     Remote status could not be retrieved.
-  [synced]                      Local and remote committed histories match. If
-                                this is the selected local branch, it also has
-                                no uncommitted changes.
   [ahead of remote by N]        Local has N commits not on the remote.
   [behind remote by N]          Remote has N commits not on the local branch.
   [ahead of local by N]         Remote has N commits not on the local branch.

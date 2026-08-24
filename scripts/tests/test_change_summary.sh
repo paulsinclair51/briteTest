@@ -20,10 +20,10 @@ fail() {
   exit 1
 }
 
-[[ "$(bt_git_format_tracking_relation_tag local 0 0 false)" == \
-  "[synced]" ]] || fail "synced tracking tag"
+[[ -z "$(bt_git_format_tracking_relation_tag local 0 0 false)" ]] || \
+  fail "zero-difference tracking tag should be omitted"
 [[ -z "$(bt_git_format_tracking_relation_tag local 0 0 true)" ]] || \
-  fail "uncommitted tracking tag suppression"
+  fail "uncommitted zero-difference tracking tag should be omitted"
 [[ "$(bt_git_format_tracking_relation_tag local 2 0 false)" == \
   "[ahead of remote by 2]" ]] || fail "local-ahead tracking tag"
 [[ "$(bt_git_format_tracking_relation_tag remote 2 0 false)" == \

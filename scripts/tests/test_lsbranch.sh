@@ -70,7 +70,7 @@ rc=$(run_capture "$TMPDIR/help.out" "$LSBRANCH" -h)
 grep -q '^Usage:' "$TMPDIR/help.out" || fail "lsbranch -h should print Usage"
 for status_tag in \
   "[local only]" "[remote only]" "[uncommitted]" "[invalid name]" \
-  "[offline]" "[synced]" "[diverged from remote: N/M]" \
+  "[offline]" "[diverged from remote: N/M]" \
   "[diverged from local: N/M]" "[parent: NAME]" \
   "[parent unavailable: NAME]" "[diverged from parent: N/M]" \
   "[auto-stash: N]" "[PRs: N]"; do
@@ -222,8 +222,11 @@ if grep -Eq '\[(dirty|staged|unstaged)\]' "$TMPDIR/dirty.out"; then
   fail "stdout should not expose dirty/staged/unstaged status tags"
 fi
 if [[ "$current_branch" != "v1.0.0" ]]; then
-  grep -q '^v1.0.0 \[local\] \[read-only\]' "$TMPDIR/dirty.out" || \
-    fail "non-current local protected branches should be marked [read-only]"
+  grep -q '^v1.0.0 \[local\]' "$TMPDIR/dirty.out" || \
+    fail "non-current local protected branches should be listed"
+  if grep -q '^v1.0.0 \[local\].*\[read-only\]' "$TMPDIR/dirty.out"; then
+    fail "non-current local protected branches should not be marked [read-only]"
+  fi
 else
   grep -q '^v1.0.0\* \[local\] \[current\]' "$TMPDIR/dirty.out" || \
     fail "current protected branch should be shown as current"
@@ -329,12 +332,13 @@ git update-ref "$status_remote_ref" "$status_local_tip"
 rc=$(run_capture "$TMPDIR/status-synced.out" env PATH="$STATUS_BIN:$PATH" \
   "$LSBRANCH" "$status_branch")
 [[ "$rc" -eq 0 ]] || fail "synced status fixture should exit 0"
-grep -Fq "[synced]" "$TMPDIR/status-synced.out" || \
-  fail "matching local and remote histories should report synced"
+if grep -Fq "[synced]" "$TMPDIR/status-synced.out"; then
+  fail "matching local and remote histories should omit synced"
+fi
 rc=$(run_capture "$TMPDIR/status-remote-filter.out" \
   env PATH="$STATUS_BIN:$PATH" "$LSBRANCH" "${status_branch}*" -r)
 [[ "$rc" -eq 0 ]] || fail "remote-filter status fixture should exit 0"
-grep -Fq "[remote] [read-only] [synced]" \
+grep -Fq "[remote]" \
   "$TMPDIR/status-remote-filter.out" || \
   fail "remote-only listing should retain tracked synchronization status"
 
@@ -350,8 +354,11 @@ git update-ref "$status_remote_ref" "$status_remote_tip"
 rc=$(run_capture "$TMPDIR/status-remote-only.out" \
   env PATH="$STATUS_BIN:$PATH" "$LSBRANCH" "$status_branch")
 [[ "$rc" -eq 0 ]] || fail "remote-only status fixture should exit 0"
-grep -Fq "[remote only] [read-only]" "$TMPDIR/status-remote-only.out" || \
-  fail "branch without a local branch should report remote only/read-only"
+grep -Fq "[remote only]" "$TMPDIR/status-remote-only.out" || \
+  fail "branch without a local branch should report remote only"
+if grep -Fq "[remote only] [read-only]" "$TMPDIR/status-remote-only.out"; then
+  fail "non-current remote-only branches should not be marked [read-only]"
+fi
 
 invalid_branch="dev/lsbranch-invalid-v1.0.1"
 invalid_ref="refs/heads/$invalid_branch"
@@ -360,8 +367,11 @@ git update-ref "$invalid_ref" "$status_local_tip"
 rc=$(run_capture "$TMPDIR/status-invalid.out" env PATH="$STATUS_BIN:$PATH" \
   "$LSBRANCH" "$invalid_branch")
 [[ "$rc" -eq 0 ]] || fail "invalid-name status fixture should exit 0"
-grep -Fq "[read-only] [invalid name]" "$TMPDIR/status-invalid.out" || \
-  fail "invalid branch should report read-only and invalid name"
+grep -Fq "[invalid name]" "$TMPDIR/status-invalid.out" || \
+  fail "invalid branch should report invalid name"
+if grep -Fq "[read-only] [invalid name]" "$TMPDIR/status-invalid.out"; then
+  fail "non-current invalid branches should not be marked [read-only]"
+fi
 
 missing_parent_branch="dev/lsbranch-parent-v99.0.0"
 missing_parent_ref="refs/heads/$missing_parent_branch"
