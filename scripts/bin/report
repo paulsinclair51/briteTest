@@ -106,8 +106,13 @@ Outputs:
 Exit codes:
   0    Success (report written, -h/--help).
   1    Argument or validation error.
-  2-5  Style validation or prerequisite failure.
-  3    No matching branch activity was found.
+  2    Style report found validation issues.
+  3    Style report is not authorized for the current user.
+  4    Style report requires a local targeted or contributor branch
+       as the current branch.
+  5    No matching branch activity was found.
+  6    Repo and branch reports require a local or remote snapshot
+       branch as the current branch.
   200  Failed to read recorded activity.
   201  Failed to create or write the report.
 EOF
@@ -124,6 +129,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 REPORTS_DIR="$REPO_ROOT/reports"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
 
 # shellcheck source=helpers/common.sh
@@ -134,7 +140,8 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 source "$SCRIPT_DIR/../helpers/report_helpers.sh"
 
 readonly EXIT_INVALID_ARGUMENT=1
-readonly EXIT_OPERATION_FAILED=3
+readonly EXIT_NO_MATCH=6
+readonly EXIT_CURRENT_BRANCH_REQUIRED=7
 readonly EXIT_HISTORY_READ_FAILED=200
 readonly EXIT_REPORT_WRITE_FAILED=201
 
@@ -144,6 +151,13 @@ usage_error() {
   echo >&2
   echo "$message. See usage above for details." >&2
   exit "$EXIT_INVALID_ARGUMENT"
+}
+
+ensure_git_repository() {
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_CURRENT_BRANCH_REQUIRED" \
+      "Repo and branch reports require a local or remote snapshot branch as the current branch."
+  fi
 }
 
 is_non_negative_integer() {
@@ -249,7 +263,7 @@ generate_repository_report() {
   local branch_output=""
   local branch_report=""
   local branch_report_dir=""
-  local -a branch_report_args=(-a -b -t "$REMOTE_TIMEOUT")
+  local -a branch_report_args=(-a -t "$REMOTE_TIMEOUT")
   local -a staged_reports=()
 
   [[ "$VERBOSE" == false ]] || branch_report_args+=(-v)
@@ -271,9 +285,9 @@ generate_repository_report() {
     bt_warn "Failed to create temporary directory for branch status"
     exit "$EXIT_REPORT_WRITE_FAILED"
   fi
-  if ! branch_output="$(BRITETEST_LSBRANCH_REPORT_DIR="$branch_report_dir" \
-    BRITETEST_LSBRANCH_REPORT_PREFIX="repo-branches" \
-    "$SCRIPT_DIR/lsbranch" "${branch_report_args[@]}")"; then
+  if ! branch_output="$(bt_run_lsbranch_mode report \
+    "$SCRIPT_DIR/lsbranch" "$branch_report_dir" repo-branches \
+    "${branch_report_args[@]}")"; then
     rm -rf "$branch_report_dir"
     bt_warn "Failed to collect branch status for repository report"
     exit "$EXIT_REPORT_WRITE_FAILED"
@@ -299,7 +313,8 @@ generate_repository_report() {
     bt_warn "Timed out waiting for repository report write lock"
     exit "$EXIT_REPORT_WRITE_FAILED"
   fi
-  report_file="$REPORTS_DIR/repo-$(date '+%Y%m%d-%H%M%S').md"
+  report_file="$(bt_report_transient_path \
+    "$REPORTS_DIR" repo "$RUN_TS_FILE")"
   report_rel="${report_file#"${REPO_ROOT}"/}"
   if ! {
     printf '# Repository Report\n\n'
@@ -583,6 +598,8 @@ if [[ "$REPORT_TYPE" == "branch" && "$REMOTE_TIMEOUT_SPECIFIED" == true && \
 fi
 export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT"
 
+ensure_git_repository
+
 if [[ "$REPORT_TYPE" == "style" ]]; then
   [[ "$VERBOSE" == false ]] || STYLE_ARGS+=(-v)
   # shellcheck source=helpers/ckstyle.sh
@@ -744,7 +761,7 @@ done < <(printf '%s' "$history")
 
 if [[ "${#entries[@]}" -eq 0 ]]; then
   bt_warn "No matching activity was found"
-  exit "$EXIT_OPERATION_FAILED"
+  exit "$EXIT_NO_MATCH"
 fi
 
 report_lock_fd=""
@@ -755,8 +772,8 @@ if ! bt_report_acquire_lock "$REPO_ROOT" \
   bt_warn "Timed out waiting for $BRANCH_REPORT_PREFIX report write lock"
   exit "$EXIT_REPORT_WRITE_FAILED"
 fi
-report_timestamp="$(date '+%Y%m%d-%H%M%S')"
-report_file="$REPORTS_DIR/${BRANCH_REPORT_PREFIX}-${report_timestamp}.md"
+report_file="$(bt_report_transient_path \
+  "$REPORTS_DIR" "$BRANCH_REPORT_PREFIX" "$RUN_TS_FILE")"
 report_rel="${report_file#"${REPO_ROOT}"/}"
 if ! {
   printf '# Branch History Report\n\n'

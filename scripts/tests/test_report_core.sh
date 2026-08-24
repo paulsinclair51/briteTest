@@ -150,6 +150,19 @@ rc=$(run_capture "$TMPDIR/help-overrides.out" bash -lc "cd '$WORK' && bash ./scr
 assert_contains "Usage:" "$TMPDIR/help-overrides.out"
 pass "help overrides arguments"
 
+mkdir -p "$TMPDIR/not-a-repo"
+rc=$(run_capture "$TMPDIR/repo-outside.out" bash -lc \
+  "cd '$TMPDIR/not-a-repo' && bash '$WORK/scripts/bin/report' repo")
+[[ "$rc" -eq 7 ]] || fail "report repo outside git should exit 7 (got $rc)"
+assert_contains "local or remote snapshot branch as the current branch" \
+  "$TMPDIR/repo-outside.out"
+rc=$(run_capture "$TMPDIR/branch-outside.out" bash -lc \
+  "cd '$TMPDIR/not-a-repo' && bash '$WORK/scripts/bin/report' branch")
+[[ "$rc" -eq 7 ]] || fail "report branch outside git should exit 7 (got $rc)"
+assert_contains "local or remote snapshot branch as the current branch" \
+  "$TMPDIR/branch-outside.out"
+pass "outside repository exit"
+
 # 13) Repo reports include repository health and delegated branch status
 rc=$(run_capture "$TMPDIR/repo.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report repo -t 2")
 [[ "$rc" -eq 0 ]] || fail "repo report should exit 0 (got $rc)"

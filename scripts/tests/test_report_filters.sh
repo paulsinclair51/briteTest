@@ -21,7 +21,7 @@ user_rel="$(report_path_from_output "$TMPDIR/user-filter.out")"
 assert_contains "committed by contributor testuser" "$WORK/$user_rel"
 rc=$(run_capture "$TMPDIR/user-filter-false-positive.out" bash -lc \
 	"cd '$WORK' && bash ./scripts/bin/report branch -u 'pushup activity' -l 0")
-[[ "$rc" -eq 3 ]] || \
+[[ "$rc" -eq 6 ]] || \
 	fail "user filter should not match activity text (got $rc)"
 assert_contains "No matching activity was found" \
 	"$TMPDIR/user-filter-false-positive.out"
@@ -29,7 +29,7 @@ pass "user literal filtering"
 
 # 2) Literal filter should handle regex-like text safely
 rc=$(run_capture "$TMPDIR/literal.out" bash -lc "cd '$WORK' && bash ./scripts/bin/report -q '['")
-[[ "$rc" -eq 3 ]] || fail "literal regex-like filter should exit 3 when unmatched (got $rc)"
+[[ "$rc" -eq 6 ]] || fail "literal regex-like filter should exit 6 when unmatched (got $rc)"
 assert_contains "No matching activity was found" "$TMPDIR/literal.out"
 pass "literal text filter robustness"
 

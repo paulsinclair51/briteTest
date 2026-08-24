@@ -247,15 +247,22 @@ feedback [ACTION] [OPTIONS] [-- TOKEN...]
 **Usage:**
 
 ```bash
-lsbranch [-b] [-v]
-lsbranch BRANCH [-b] [-v]
-lsbranch {-a | PATTERN} [-b] [-i] [-l] [-r] [-v] [-x PATTERN]
+lsbranch [-t SEC] [-v]
+lsbranch BRANCH [-t SEC] [-v]
+lsbranch {-a | PATTERN} [-i] [-l] [-r] [-t SEC] [-v] [-x PATTERN]
 ```
 
 **Arguments:**
 
 - `BRANCH` - Show one branch and its parent.
 - `PATTERN` - Show branches matching a quoted glob pattern.
+- `-a` and `PATTERN` are mutually exclusive; `-a` includes all branches.
+- `-i` lists only invalid branches after include and exclude filtering.
+- `-x PATTERN` excludes matching branches, even when they match the include
+  pattern.
+- `-l` and `-r` select local and remote branches; if neither is specified,
+  both are selected.
+- A pattern with no matches exits with status `2`.
 </details>
 
 <details>

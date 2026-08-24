@@ -6,6 +6,247 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+bt_run_lsbranch_mode() {
+  local mode="$1"
+  local lsbranch_path="$2"
+  local report_dir="$3"
+  local report_prefix="$4"
+  shift 4
+
+  [[ "$mode" == "report" ]] || return 2
+  [[ -n "$lsbranch_path" && -x "$lsbranch_path" ]] || return 2
+  [[ -n "$report_dir" && -n "$report_prefix" ]] || return 2
+  "$lsbranch_path" --report "$report_dir" "$report_prefix" "$@"
+}
+
+bt_report_capture_command_output() {
+  local stdout_var="$1"
+  local stderr_var="$2"
+  shift 2
+
+  local stdout_file=""
+  local stderr_file=""
+  local rc=0
+
+  if ! stdout_file=$(mktemp); then
+    printf -v "$stdout_var" '%s' ""
+    printf -v "$stderr_var" '%s' "mktemp failed for stdout"
+    return 1
+  fi
+  if ! stderr_file=$(mktemp); then
+    rm -f "$stdout_file"
+    printf -v "$stdout_var" '%s' ""
+    printf -v "$stderr_var" '%s' "mktemp failed for stderr"
+    return 1
+  fi
+
+  set +e
+  "$@" >"$stdout_file" 2>"$stderr_file"
+  rc=$?
+  set -e
+
+  printf -v "$stdout_var" '%s' "$(<"$stdout_file")"
+  printf -v "$stderr_var" '%s' "$(<"$stderr_file")"
+  rm -f "$stdout_file" "$stderr_file" || true
+  return "$rc"
+}
+
+bt_report_record_diagnostic() {
+  local message="$1"
+  local detail="${2:-}"
+
+  if declare -F record_diagnostic >/dev/null 2>&1; then
+    record_diagnostic "$message" "$detail"
+    return 0
+  fi
+
+  if [[ -n "$detail" ]]; then
+    bt_report_warn "$message ($detail)"
+  else
+    bt_report_warn "$message"
+  fi
+}
+
+bt_lsbranch_has_local_branch() {
+  local branch="$1"
+  git show-ref --verify --quiet "refs/heads/$branch"
+}
+
+bt_lsbranch_has_remote_branch() {
+  local branch="$1"
+  git show-ref --verify --quiet "refs/remotes/origin/$branch"
+}
+
+matches_glob() {
+  local text="$1"
+  local pattern="$2"
+  # shellcheck disable=SC2053  # pattern is intentionally treated as glob.
+  [[ "$text" == $pattern ]]
+}
+
+append_unique_branch_line() {
+  local existing_list="$1"
+  local candidate="$2"
+
+  [[ -n "$candidate" ]] || {
+    printf '%s' "$existing_list"
+    return 0
+  }
+
+  if [[ -z "$existing_list" ]]; then
+    printf '%s' "$candidate"
+    return 0
+  fi
+
+  if printf '%s\n' "$existing_list" | grep -Fxq "$candidate"; then
+    printf '%s' "$existing_list"
+  else
+    printf '%s\n%s' "$existing_list" "$candidate"
+  fi
+}
+
+apply_exclude_filter() {
+  local branches="$1"
+  local exclude_pattern="$2"
+
+  if [[ -z "$exclude_pattern" ]]; then
+    printf '%s\n' "$branches"
+    return 0
+  fi
+
+  while IFS= read -r branch; do
+    [[ -n "$branch" ]] || continue
+    if ! matches_glob "$branch" "$exclude_pattern"; then
+      echo "$branch"
+    fi
+  done <<< "$branches"
+}
+
+get_remote_branches() {
+  local pattern="$1"
+  local refs_output=""
+  local refs_error=""
+
+  if ! bt_report_capture_command_output \
+    refs_output refs_error \
+    git for-each-ref --format='%(refname:short)' refs/remotes/origin; then
+    bt_report_record_diagnostic \
+      "Failed to enumerate remote branches; remote rows may be incomplete." \
+      "$refs_error"
+    echo ""
+    return 0
+  fi
+
+  while IFS= read -r branch; do
+    [[ -n "$branch" ]] || continue
+    [[ "$branch" == "origin" ]] && continue
+    [[ "$branch" == "origin/HEAD" ]] && continue
+    branch="${branch#origin/}"
+    [[ -z "$branch" ]] && continue
+    if matches_glob "$branch" "$pattern"; then
+      echo "$branch"
+    fi
+  done <<< "$refs_output" | sort
+}
+
+get_local_branches() {
+  local pattern="$1"
+  local refs_output=""
+  local refs_error=""
+
+  if ! bt_report_capture_command_output \
+    refs_output refs_error \
+    git for-each-ref --format='%(refname:short)' refs/heads; then
+    bt_report_record_diagnostic \
+      "Failed to enumerate local branches; local rows may be incomplete." \
+      "$refs_error"
+    echo ""
+    return 0
+  fi
+
+  while IFS= read -r branch; do
+    [[ -n "$branch" ]] || continue
+    if matches_glob "$branch" "$pattern"; then
+      echo "$branch"
+    fi
+  done <<< "$refs_output" | sort
+}
+
+get_remote_only_branches() {
+  local pattern="$1"
+  get_remote_branches "$pattern" | while IFS= read -r branch; do
+    [[ -n "$branch" ]] || continue
+    if ! bt_lsbranch_has_local_branch "$branch"; then
+      echo "$branch"
+    fi
+  done | sort || echo ""
+}
+
+bt_collect_lsbranch_mode_branches() {
+  local mode="$1"
+  local target_branch="$2"
+  local current_branch="$3"
+  local branch_pattern="$4"
+  local exclude_pattern="$5"
+  local -n local_out="$6"
+  local -n remote_out="$7"
+  local -n remote_only_out="$8"
+  local candidate_branch=""
+  local parent_branch=""
+  local basis_branch=""
+  local local_branches=""
+  local remote_branches=""
+  local remote_only_branches=""
+
+  local_out=""
+  remote_out=""
+  remote_only_out=""
+
+  case "$mode" in
+    target)
+      basis_branch="$target_branch"
+      ;;
+    current)
+      basis_branch="$current_branch"
+      ;;
+    pattern)
+      local_branches=$(get_local_branches "$branch_pattern")
+      remote_branches=$(get_remote_branches "$branch_pattern")
+      remote_only_branches=$(get_remote_only_branches "$branch_pattern")
+
+      local_out=$(apply_exclude_filter "$local_branches" "$exclude_pattern")
+      remote_out=$(apply_exclude_filter "$remote_branches" "$exclude_pattern")
+      remote_only_out=$(apply_exclude_filter \
+        "$remote_only_branches" "$exclude_pattern")
+      return 0
+      ;;
+    *)
+      return 2
+      ;;
+  esac
+
+  parent_branch="$(bt_resolve_parent_branch "$basis_branch" "main" \
+    2>/dev/null || true)"
+
+  for candidate_branch in "$basis_branch" "$parent_branch"; do
+    [[ -n "$candidate_branch" ]] || continue
+
+    if bt_lsbranch_has_local_branch "$candidate_branch"; then
+      local_out="$(append_unique_branch_line \
+        "$local_out" "$candidate_branch")"
+    fi
+
+    if bt_lsbranch_has_remote_branch "$candidate_branch"; then
+      remote_out="$(append_unique_branch_line \
+        "$remote_out" "$candidate_branch")"
+      if ! bt_lsbranch_has_local_branch "$candidate_branch"; then
+        remote_only_out="$(append_unique_branch_line \
+          "$remote_only_out" "$candidate_branch")"
+      fi
+    fi
+  done
+}
+
 bt_report_warn() {
   if declare -F bt_warn >/dev/null 2>&1; then
     bt_warn "$1"

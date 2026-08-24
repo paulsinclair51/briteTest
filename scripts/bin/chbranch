@@ -383,7 +383,7 @@ fetch_remote_branch_ref() {
 
   verbose_info "Found origin/$branch. Fetching branch metadata..."
   if bt_run_remote_command git fetch origin \
-    "$branch:refs/remotes/origin/$branch" >/dev/null 2>&1; then
+    "+refs/heads/$branch:refs/remotes/origin/$branch" >/dev/null 2>&1; then
     rc=0
   else
     rc=$?
@@ -647,11 +647,16 @@ parse_args() {
     arg_error "Options -l and -r are mutually exclusive"
   fi
 
+}
+
+resolve_branch_argument() {
+  if [[ -n "$BRANCH_ARG" ]]; then
+    return 0
+  fi
+
+  BRANCH_ARG="$(current_branch_name_or_empty)"
   if [[ -z "$BRANCH_ARG" ]]; then
-    BRANCH_ARG="$(current_branch_name_or_empty)"
-    if [[ -z "$BRANCH_ARG" ]]; then
-      arg_error "BRANCH is required when current branch name cannot be resolved"
-    fi
+    arg_error "BRANCH is required when current branch name cannot be resolved"
   fi
 }
 
@@ -694,8 +699,9 @@ main() {
 
   show_help_if_requested "$@"
   ensure_required_commands
-  ensure_git_repository
   parse_args "$@"
+  ensure_git_repository
+  resolve_branch_argument
   export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
 
   TARGET_BRANCH="$BRANCH_ARG"

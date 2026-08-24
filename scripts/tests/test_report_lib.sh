@@ -84,8 +84,10 @@ bt_ckstyle() {
 EOF
   cat > "$WORK/scripts/bin/lsbranch" <<'EOF'
 #!/usr/bin/env bash
-mkdir -p "$BRITETEST_LSBRANCH_REPORT_DIR"
-report="$BRITETEST_LSBRANCH_REPORT_DIR/$BRITETEST_LSBRANCH_REPORT_PREFIX-test.md"
+report_dir="$2"
+report_prefix="$3"
+mkdir -p "$report_dir"
+report="$report_dir/$report_prefix-test.md"
 cat > "$report" <<'REPORT'
 # Branch Report
 

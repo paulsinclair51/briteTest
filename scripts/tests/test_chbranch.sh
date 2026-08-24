@@ -408,6 +408,27 @@ rc=$(run_in_work_capture "$TMPDIR/remote-refresh.out" -r dev/target)
   fail "expected refreshed snapshot to match the advanced remote tip"
 pass "existing remote snapshot refresh"
 
+# A rewritten remote branch should still refresh the remote snapshot instead
+# of being misclassified as unreachable.
+(
+  cd "$WORK"
+  stale_remote_tip="$(git rev-parse refs/remotes/origin/dev/target)"
+  git switch dev/target >/dev/null 2>&1
+  git reset --hard main >/dev/null 2>&1
+  git commit --allow-empty -m "rewrite remote snapshot" >/dev/null 2>&1
+  rewritten_remote_tip="$(git rev-parse HEAD)"
+  git push --force origin dev/target >/dev/null 2>&1
+  git update-ref refs/remotes/origin/dev/target "$stale_remote_tip"
+  git switch --detach refs/remotes/origin/dev/target >/dev/null 2>&1
+  printf '%s\n' "$rewritten_remote_tip" > "$TMPDIR/rewritten-remote-tip"
+)
+rc=$(run_in_work_capture "$TMPDIR/remote-rewrite.out" -r dev/target)
+[[ "$rc" -eq 0 ]] || fail "remote rewrite refresh should exit 0 (got $rc)"
+[[ "$(git -C "$WORK" rev-parse HEAD)" == \
+  "$(cat "$TMPDIR/rewritten-remote-tip")" ]] || \
+  fail "expected refreshed snapshot to match the rewritten remote tip"
+pass "rewritten remote snapshot refresh"
+
 # Resolving an omitted branch from a uniquely identifiable detached snapshot
 # must not update remembered state until the requested selection succeeds.
 (
@@ -784,6 +805,16 @@ rc=$?
 set -e
 [[ "$rc" -eq 8 ]] || fail "outside repository should exit 8 (got $rc)"
 assert_contains "inside a git repository" "$TMPDIR/not-repo.out"
+set +e
+(
+  cd "$TMPDIR/not-a-repo"
+  bash "$CHBRANCH_SRC" --badopt
+) >"$TMPDIR/not-repo-badopt.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 1 ]] || \
+  fail "outside repository invalid option should exit 1 (got $rc)"
+assert_contains "Unknown option" "$TMPDIR/not-repo-badopt.out"
 pass "outside repository exit"
 
 # Missing required utilities are user-environment errors.
