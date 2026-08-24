@@ -1189,6 +1189,12 @@ emit_branch_status_lines() {
   local pr_count="$8"
   local local_display="$9"
   local remote_display="${10}"
+  local remote_is_current=false
+
+  if [[ "$CURRENT_IS_REMOTE_SNAPSHOT" == true && \
+    "$branch" == "$ORIGINAL_BRANCH" ]]; then
+    remote_is_current=true
+  fi
 
   if [[ "$branch_type" == "local (tracking origin)" &&
     "$include_local_rows" == true && "$include_remote_rows" == true ]]; then
@@ -1197,17 +1203,20 @@ emit_branch_status_lines() {
         "$is_current" "$repo_status" "$auto_stash_count" "$pr_count" true)"
     printf '%s %s\n' "$remote_display" \
       "$(build_compact_status_tags remote "$branch" "$branch_type" \
-        false "$repo_status" "$auto_stash_count" "$pr_count" true)"
+        "$remote_is_current" "$repo_status" "$auto_stash_count" \
+        "$pr_count" true)"
   elif [[ "$branch_type" == "local (tracking origin)" &&
     "$include_remote_rows" == true ]]; then
     printf '%s %s\n' "$remote_display" \
       "$(build_compact_status_tags remote "$branch" "$branch_type" \
-        false "$repo_status" "$auto_stash_count" "$pr_count" true)"
+        "$remote_is_current" "$repo_status" "$auto_stash_count" \
+        "$pr_count" true)"
   elif [[ "$include_remote_rows" == true && \
     "$include_local_rows" == false ]]; then
     printf '%s %s\n' "$remote_display" \
       "$(build_compact_status_tags remote "$branch" "$branch_type" \
-        false "$repo_status" "$auto_stash_count" "$pr_count" true)"
+        "$remote_is_current" "$repo_status" "$auto_stash_count" \
+        "$pr_count" true)"
   else
     printf '%s %s\n' "$local_display" \
       "$(build_compact_status_tags local "$branch" "$branch_type" \
@@ -1711,7 +1720,8 @@ if [[ "$NO_ARG_MODE" == true ]]; then
     while IFS= read -r branch; do
       [[ -n "$branch" ]] || continue
       _is_current=false
-      [[ "$branch" == "$ORIGINAL_BRANCH" ]] && _is_current=true
+      [[ "$branch" == "$ORIGINAL_BRANCH" && \
+        "$CURRENT_IS_REMOTE_SNAPSHOT" == false ]] && _is_current=true
       check_branch_status \
         "$branch" "$OUTPUT_FILE" "$_is_current" true true || true
     done <<< "$BRANCHES_TO_CHECK"
@@ -1734,7 +1744,8 @@ else
       while IFS= read -r branch; do
         if [[ -n "$branch" ]]; then
           _is_current=false
-          [[ "$branch" == "$ORIGINAL_BRANCH" ]] && _is_current=true
+          [[ "$branch" == "$ORIGINAL_BRANCH" && \
+            "$CURRENT_IS_REMOTE_SNAPSHOT" == false ]] && _is_current=true
           check_branch_status \
             "$branch" "$OUTPUT_FILE" "$_is_current" \
             "$INCLUDE_LOCAL" "$INCLUDE_REMOTE" || true
@@ -1756,7 +1767,8 @@ else
       while IFS= read -r branch; do
         if [[ -n "$branch" ]]; then
           _is_current=false
-          [[ "$branch" == "$ORIGINAL_BRANCH" ]] && _is_current=true
+          [[ "$branch" == "$ORIGINAL_BRANCH" && \
+            "$CURRENT_IS_REMOTE_SNAPSHOT" == true ]] && _is_current=true
           check_remote_branch_status "$branch" "$_is_current" || true
         fi
       done <<< "$remote_to_check"
