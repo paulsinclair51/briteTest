@@ -349,7 +349,7 @@ rc=$(run_in_work_capture "$TMPDIR/remote-success.out" -r dev/target)
 [[ "$rc" -eq 0 ]] || fail "remote switch should exit 0 (got $rc)"
 assert_contains "Changed to dev/target branch." \
   "$TMPDIR/remote-success.out"
-assert_contains "[remote] [current] [read-only] [synced]" \
+assert_contains "[remote snapshot] [current] [read-only] [synced]" \
   "$TMPDIR/remote-success.out"
 [[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
   fail "expected detached HEAD in remote mode"

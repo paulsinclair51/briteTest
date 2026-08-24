@@ -161,7 +161,20 @@ reports_after="$(find "$SCRIPT_DIR/../../reports" -maxdepth 1 \
   fail "lsbranch should not create or remove branch reports"
 pass "stdout-only branch status"
 
-# 7) BRANCH mode allows only -v; local/remote filters are
+# 7) A detached checkout at a remote-tracking ref is a remote snapshot.
+snapshot_branch="$(git rev-parse --abbrev-ref HEAD)"
+git switch --detach "refs/remotes/origin/$snapshot_branch" >/dev/null 2>&1 || \
+  fail "could not create remote snapshot fixture"
+rc=$(run_capture "$TMPDIR/remote-snapshot.out" "$LSBRANCH")
+[[ "$rc" -eq 0 ]] || fail "remote snapshot status should exit 0"
+grep -Fq "${snapshot_branch}* [remote snapshot] [current]" \
+  "$TMPDIR/remote-snapshot.out" || \
+  fail "current remote snapshot should be labeled [remote snapshot]"
+git switch "$snapshot_branch" >/dev/null 2>&1 || \
+  fail "could not restore branch after remote snapshot fixture"
+pass "current remote snapshot status"
+
+# 8) BRANCH mode allows only -v; local/remote filters are
 # invalid in BRANCH mode
 rc=$(run_capture "$TMPDIR/branch_mode_invalid.out" "$LSBRANCH" "v1.0.0" -l)
 [[ "$rc" -eq 1 ]] || fail "lsbranch 'v1.0.0' -l should exit 1"

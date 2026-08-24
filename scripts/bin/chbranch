@@ -72,7 +72,7 @@ Status tags:
   [local]                       Selected the local branch; a remote also exists
                                 or current remote status is unavailable.
   [local only]                  Selected a local branch with no remote branch.
-  [remote]                      Selected the remote snapshot; a local also exists.
+  [remote snapshot]             Selected the remote snapshot; a local also exists.
   [remote only]                 Selected a remote snapshot with no local branch.
   [current]                     This is the currently selected branch.
   [uncommitted]                 There are changes that have not been committed.
@@ -226,10 +226,14 @@ emit_success_changed() {
   local mode_tag="$mode"
   local -a tags=()
 
-  if [[ "$mode" == "local" && "$SELECTED_REMOTE_STATE" == "missing" ]]; then
+  if [[ "$mode" == "remote" ]]; then
+    if branch_exists_local "$branch"; then
+      mode_tag="remote snapshot"
+    else
+      mode_tag="remote only"
+    fi
+  elif [[ "$SELECTED_REMOTE_STATE" == "missing" ]]; then
     mode_tag="local only"
-  elif [[ "$mode" == "remote" ]] && ! branch_exists_local "$branch"; then
-    mode_tag="remote only"
   fi
   tags+=("[$mode_tag]" "[current]")
 

@@ -99,6 +99,7 @@ Branch markers:
 Status tags:
   [local]                       Local branch; a remote branch also exists or
                                 current remote status is unavailable.
+  [remote snapshot]             Current branch is a remote snapshot.
   [local only]                  Local branch with no remote branch.
   [remote]                      Remote branch; a local branch also exists.
   [remote only]                 Remote branch with no local branch.
@@ -222,6 +223,7 @@ FETCH_FAILED=false
 WARNINGS_FILE=""
 AUTO_STASH_INDEX_READY=false
 INITIAL_STATUS_PORCELAIN=""
+CURRENT_IS_REMOTE_SNAPSHOT=false
 declare -A AUTO_STASH_COUNTS=()
 
 # Validate temporary file creation for diagnostics
@@ -349,6 +351,37 @@ branch_name_status_display() {
   fi
 
   printf '%s\n' "$display"
+}
+
+resolve_current_branch_name() {
+  local current_branch=""
+  local remote_branches=""
+  local remote_count=""
+
+  current_branch="$(bt_get_current_branch_or_empty)"
+  if [[ "$current_branch" != "HEAD" && -n "$current_branch" ]]; then
+    printf '%s\n' "$current_branch"
+    return 0
+  fi
+
+  remote_branches=$(git for-each-ref --format='%(refname:short)' \
+    --points-at HEAD refs/remotes/origin 2>/dev/null | \
+    grep -v '^origin/HEAD$' || true)
+  remote_count=$(printf '%s\n' "$remote_branches" | sed '/^$/d' | \
+    wc -l | tr -d ' ')
+  if [[ "$remote_count" == "1" ]]; then
+    printf '%s\n' "${remote_branches#origin/}"
+    return 0
+  fi
+
+  printf '%s\n' "$current_branch"
+}
+
+is_current_remote_snapshot() {
+  [[ "$(bt_get_current_branch_or_empty)" == "HEAD" ]] || return 1
+  [[ "$(git for-each-ref --format='%(refname)' --points-at HEAD \
+    refs/remotes/origin 2>/dev/null | grep -v '^refs/remotes/origin/HEAD$' | \
+    sed '/^$/d' | wc -l | tr -d ' ')" == "1" ]]
 }
 
 get_branch_created_date() {
@@ -958,7 +991,10 @@ build_compact_status_tags() {
   local selected_ref="$branch"
   local -a tags=()
 
-  if [[ "$mode" == "local" && "$branch_type" == "local" && \
+  if [[ "$mode" == "local" && "$is_current" == true && \
+    "$CURRENT_IS_REMOTE_SNAPSHOT" == true ]]; then
+    mode_tag="remote snapshot"
+  elif [[ "$mode" == "local" && "$branch_type" == "local" && \
     "$FETCH_FAILED" == false ]]; then
     mode_tag="local only"
   elif [[ "$mode" == "remote" ]] && ! has_local_branch "$branch"; then
@@ -1586,8 +1622,11 @@ if [[ "$GENERATE_REPORT" == true ]]; then
 fi
 
 # Get current branch to restore later
-ORIGINAL_BRANCH=$(bt_get_current_branch ||
+ORIGINAL_BRANCH=$(resolve_current_branch_name ||
   bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch.")
+if is_current_remote_snapshot; then
+  CURRENT_IS_REMOTE_SNAPSHOT=true
+fi
 
 # Refresh remote refs before discovery so listings include newly created remote
 # branches and exclude refs deleted from the remote.
