@@ -174,6 +174,25 @@ git switch "$snapshot_branch" >/dev/null 2>&1 || \
   fail "could not restore branch after remote snapshot fixture"
 pass "current remote snapshot status"
 
+# Internal r- branches are hidden and displayed through their source branch.
+git branch -f "r-$snapshot_branch" "$snapshot_branch" >/dev/null 2>&1 || \
+  fail "could not create internal remote snapshot branch"
+git switch "r-$snapshot_branch" >/dev/null 2>&1 || \
+  fail "could not select internal remote snapshot branch"
+rc=$(run_capture "$TMPDIR/internal-remote-snapshot.out" "$LSBRANCH")
+[[ "$rc" -eq 0 ]] || fail "internal remote snapshot status should exit 0"
+grep -Fq "${snapshot_branch}* [remote snapshot] [current]" \
+  "$TMPDIR/internal-remote-snapshot.out" || \
+  fail "lsbranch should display the source branch for an internal snapshot"
+if grep -Eq '^r-' "$TMPDIR/internal-remote-snapshot.out"; then
+  fail "lsbranch should hide internal r- branches"
+fi
+git switch "$snapshot_branch" >/dev/null 2>&1 || \
+  fail "could not restore branch after internal snapshot fixture"
+git branch -D "r-$snapshot_branch" >/dev/null 2>&1 || \
+  fail "could not remove internal remote snapshot fixture"
+pass "internal remote snapshot display"
+
 # 8) BRANCH mode allows only -v; local/remote filters are
 # invalid in BRANCH mode
 rc=$(run_capture "$TMPDIR/branch_mode_invalid.out" "$LSBRANCH" "v1.0.0" -l)

@@ -166,6 +166,7 @@ get_local_branches() {
 
   while IFS= read -r branch; do
     [[ -n "$branch" ]] || continue
+    [[ "$branch" == r-* ]] && continue
     if matches_glob "$branch" "$pattern"; then
       echo "$branch"
     fi

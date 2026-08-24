@@ -356,6 +356,11 @@ resolve_current_branch_name() {
   local remote_count=""
 
   current_branch="$(bt_get_current_branch_or_empty)"
+  if [[ "$current_branch" == r-* ]] && \
+    has_remote_branch "${current_branch#r-}"; then
+    printf '%s\n' "${current_branch#r-}"
+    return 0
+  fi
   if [[ "$current_branch" != "HEAD" && -n "$current_branch" ]]; then
     printf '%s\n' "$current_branch"
     return 0
@@ -375,7 +380,12 @@ resolve_current_branch_name() {
 }
 
 is_current_remote_snapshot() {
-  [[ "$(bt_get_current_branch_or_empty)" == "HEAD" ]] || return 1
+  local current_branch="$(bt_get_current_branch_or_empty)"
+  if [[ "$current_branch" == r-* ]] && \
+    has_remote_branch "${current_branch#r-}"; then
+    return 0
+  fi
+  [[ "$current_branch" == "HEAD" ]] || return 1
   [[ "$(git for-each-ref --format='%(refname)' --points-at HEAD \
     refs/remotes/origin 2>/dev/null | grep -v '^refs/remotes/origin/HEAD$' | \
     sed '/^$/d' | wc -l | tr -d ' ')" == "1" ]]
@@ -777,7 +787,10 @@ get_branch_base_reference() {
     {
       git for-each-ref --format='%(refname:short)' refs/heads
       git for-each-ref --format='%(refname:short)' refs/remotes/origin
-    } | sort -u
+    } | while IFS= read -r ref; do
+      [[ "$ref" == r-* ]] && continue
+      printf '%s\n' "$ref"
+    done | sort -u
   )
 
   if [[ -z "$best_base" ]]; then
@@ -988,8 +1001,7 @@ build_compact_status_tags() {
   local selected_ref="$branch"
   local -a tags=()
 
-  if [[ "$mode" == "local" && "$is_current" == true && \
-    "$CURRENT_IS_REMOTE_SNAPSHOT" == true ]]; then
+  if [[ "$is_current" == true && "$CURRENT_IS_REMOTE_SNAPSHOT" == true ]]; then
     mode_tag="remote snapshot"
   elif [[ "$mode" == "local" && "$branch_type" == "local" && \
     "$FETCH_FAILED" == false ]]; then
@@ -999,7 +1011,7 @@ build_compact_status_tags() {
   fi
   tags+=("[$mode_tag]")
 
-  if [[ "$mode" == "local" && "$is_current" == true ]]; then
+  if [[ "$is_current" == true ]]; then
     tags+=("[current]")
     if [[ "$repo_status" == "dirty" ]]; then
       has_uncommitted=true
@@ -1411,6 +1423,7 @@ check_branch_status() {
 
 check_remote_branch_status() {
   local branch="$1"
+  local is_current="${2:-false}"
 
   if [[ "$INVALID_ONLY" == true ]] &&
     ! branch_violates_naming_rules "$branch"; then
@@ -1419,7 +1432,7 @@ check_remote_branch_status() {
 
   local branch_status_display
   local branch_report_display
-  branch_status_display=$(branch_name_status_display "$branch" "false")
+  branch_status_display=$(branch_name_status_display "$branch" "$is_current")
   branch_report_display="$branch_status_display"
   if branch_violates_naming_rules "$branch"; then
     INVALID_BRANCHES_FOUND=$((INVALID_BRANCHES_FOUND + 1))
@@ -1460,7 +1473,7 @@ check_remote_branch_status() {
 
   # Build and print compact status line.
   printf '%s %s\n' "$branch_status_display" \
-    "$(build_compact_status_tags remote "$branch" "$branch_type" false \
+    "$(build_compact_status_tags remote "$branch" "$branch_type" "$is_current" \
       "$remote_status" 0 "$pr_count" true)"
 
   local pr_count_display
@@ -1713,7 +1726,9 @@ if [[ "$NO_ARG_MODE" == true ]]; then
   if [[ -n "$REMOTE_ONLY" ]]; then
     while IFS= read -r branch; do
       [[ -n "$branch" ]] || continue
-      check_remote_branch_status "$branch" "$OUTPUT_FILE" || true
+      _is_current=false
+      [[ "$branch" == "$ORIGINAL_BRANCH" ]] && _is_current=true
+      check_remote_branch_status "$branch" "$_is_current" || true
     done <<< "$REMOTE_ONLY"
   fi
 else
@@ -1746,7 +1761,9 @@ else
     if [[ -n "$remote_to_check" ]]; then
       while IFS= read -r branch; do
         if [[ -n "$branch" ]]; then
-          check_remote_branch_status "$branch" "$OUTPUT_FILE" || true
+          _is_current=false
+          [[ "$branch" == "$ORIGINAL_BRANCH" ]] && _is_current=true
+          check_remote_branch_status "$branch" "$_is_current" || true
         fi
       done <<< "$remote_to_check"
     fi

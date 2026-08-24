@@ -134,7 +134,7 @@ rc=$(run_in_work_capture "$TMPDIR/help.out" -h)
 assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "Status tags:" "$TMPDIR/help.out"
 assert_contains "[local only]" "$TMPDIR/help.out"
-assert_contains "[remote only]" "$TMPDIR/help.out"
+assert_contains "[remote snapshot]" "$TMPDIR/help.out"
 assert_contains "[invalid name]" "$TMPDIR/help.out"
 assert_contains "[diverged from remote: N/M]" "$TMPDIR/help.out"
 assert_contains "[ahead of parent by N]" "$TMPDIR/help.out"
@@ -340,18 +340,18 @@ pass "local offline status indicator"
 rc=$(run_in_work_capture "$TMPDIR/local-target-setup.out" dev/target)
 [[ "$rc" -eq 0 ]] || fail "remote mode setup should exit 0 (got $rc)"
 
-# Remote mode refreshes origin and checks out the remote branch detached.
+# Remote mode refreshes origin and checks out a named local copy.
 rc=$(run_in_work_capture "$TMPDIR/remote-success.out" -r dev/target)
 [[ "$rc" -eq 0 ]] || fail "remote switch should exit 0 (got $rc)"
-assert_contains "Changed to dev/target branch." \
+assert_contains "Changed to r-dev/target branch." \
   "$TMPDIR/remote-success.out"
 assert_contains "[remote snapshot] [current] [read-only]" \
   "$TMPDIR/remote-success.out"
-[[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
-  fail "expected detached HEAD in remote mode"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "r-dev/target" ]] || \
+  fail "expected named local remote copy in remote mode"
 pass "remote branch switch"
 
-# Refreshing the current remote snapshot requires a clean worktree.
+# Refreshing the current remote copy requires a clean worktree.
 NO_REMOTE_BIN="$TMPDIR/no-remote-bin"
 REMOTE_CALL_MARKER="$TMPDIR/dirty-remote-call"
 mkdir -p "$NO_REMOTE_BIN"
@@ -364,7 +364,7 @@ fi
 exec "${REAL_GIT:?}" "$@"
 EOF
 chmod +x "$NO_REMOTE_BIN/git"
-echo "dirty remote snapshot" >> "$WORK/README.md"
+echo "dirty remote copy" >> "$WORK/README.md"
 set +e
 (
   cd "$WORK"
@@ -376,7 +376,7 @@ rc=$?
 set -e
 [[ "$rc" -eq 2 ]] || \
   fail "dirty current remote snapshot should exit 2 (got $rc)"
-assert_contains "changes that have not been committed" \
+assert_contains "has uncommitted changes" \
   "$TMPDIR/dirty-current-remote.out"
 [[ ! -e "$REMOTE_CALL_MARKER" ]] || \
   fail "dirty remote selection should not query or fetch the remote"
@@ -386,7 +386,7 @@ assert_contains "changes that have not been committed" \
 )
 pass "dirty remote snapshot refresh blocked"
 
-# Re-selecting a remote snapshot refreshes the remote ref and moves HEAD when
+# Re-selecting a remote copy refreshes the local branch when
 # the remote branch has advanced.
 (
   cd "$WORK"
@@ -399,12 +399,14 @@ pass "dirty remote snapshot refresh blocked"
 )
 rc=$(run_in_work_capture "$TMPDIR/remote-refresh.out" -r dev/target)
 [[ "$rc" -eq 0 ]] || fail "remote refresh should exit 0 (got $rc)"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "r-dev/target" ]] || \
+  fail "expected refreshed remote copy to remain named"
 [[ "$(git -C "$WORK" rev-parse HEAD)" == \
   "$(cat "$TMPDIR/advanced-remote-tip")" ]] || \
   fail "expected refreshed snapshot to match the advanced remote tip"
 pass "existing remote snapshot refresh"
 
-# A rewritten remote branch should still refresh the remote snapshot instead
+# A rewritten remote branch should still refresh the remote copy instead
 # of being misclassified as unreachable.
 (
   cd "$WORK"
@@ -420,22 +422,40 @@ pass "existing remote snapshot refresh"
 )
 rc=$(run_in_work_capture "$TMPDIR/remote-rewrite.out" -r dev/target)
 [[ "$rc" -eq 0 ]] || fail "remote rewrite refresh should exit 0 (got $rc)"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "r-dev/target" ]] || \
+  fail "expected rewritten remote copy to remain named"
 [[ "$(git -C "$WORK" rev-parse HEAD)" == \
   "$(cat "$TMPDIR/rewritten-remote-tip")" ]] || \
   fail "expected refreshed snapshot to match the rewritten remote tip"
 pass "rewritten remote snapshot refresh"
 
-# Resolving an omitted branch from a uniquely identifiable detached snapshot
-# must not update remembered state until the requested selection succeeds.
+# Leaving a remote snapshot uses the source branch name and removes its
+# internal local copy.
+rc=$(run_in_work_capture "$TMPDIR/leave-remote-copy.out")
+[[ "$rc" -eq 0 ]] || fail "leaving remote copy should exit 0 (got $rc)"
+assert_contains "Changed to dev/target branch." \
+  "$TMPDIR/leave-remote-copy.out"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "dev/target" ]] || \
+  fail "bare chbranch should select the source branch"
+if git -C "$WORK" show-ref --verify --quiet refs/heads/r-dev/target; then
+  fail "leaving remote snapshot should remove its internal branch"
+fi
+pass "remote snapshot source selection and cleanup"
+
+# An omitted branch after leaving a remote snapshot uses the source branch,
+# not the internal r- branch.
 (
   cd "$WORK"
   git config --local --unset-all chbranch.lastBranch >/dev/null 2>&1 || true
 )
 echo "dirty failed selection" >> "$WORK/README.md"
 rc=$(run_in_work_capture "$TMPDIR/failed-implicit.out")
-[[ "$rc" -eq 2 ]] || fail "dirty implicit switch should exit 2 (got $rc)"
-if git -C "$WORK" config --local --get chbranch.lastBranch >/dev/null 2>&1; then
-  fail "failed branch selection should not update remembered branch state"
+[[ "$rc" -eq 0 ]] || fail "dirty source selection should exit 0 (got $rc)"
+assert_contains "Changed to dev/target branch." \
+  "$TMPDIR/failed-implicit.out"
+if [[ "$(git -C "$WORK" config --local --get chbranch.lastBranch)" != \
+  "dev/target" ]]; then
+  fail "implicit selection should remember the source branch"
 fi
 (
   cd "$WORK"
@@ -443,15 +463,15 @@ fi
 )
 pass "remember branch only after success"
 
-# Default mode falls back to a remote-only branch and remains detached.
+# Default mode falls back to a remote branch and creates a named local copy.
 rc=$(run_in_work_capture "$TMPDIR/default-remote-only.out" dev/remote-only)
 [[ "$rc" -eq 0 ]] || fail "default remote-only switch should exit 0 (got $rc)"
-assert_contains "Changed to dev/remote-only branch." \
+assert_contains "Changed to r-dev/remote-only branch." \
   "$TMPDIR/default-remote-only.out"
-assert_contains "[remote only] [current] [read-only]" \
+assert_contains "[remote snapshot] [current] [read-only]" \
   "$TMPDIR/default-remote-only.out"
-[[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
-  fail "expected detached HEAD for default remote-only branch"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == \
+  "r-dev/remote-only" ]] || fail "expected named local copy for remote branch"
 [[ "$(git -C "$WORK" rev-parse HEAD)" == \
   "$(git -C "$WORK" rev-parse refs/remotes/origin/dev/remote-only)" ]] || \
   fail "expected HEAD to match origin/dev/remote-only"
@@ -684,26 +704,27 @@ assert_contains "[read-only] [invalid name]" "$TMPDIR/invalid-local.out"
   fail "expected HEAD to match local v1.0.1"
 pass "policy-invalid local branch is read-only"
 
-# Existing policy-invalid remote branches can be inspected only as detached.
+# Existing policy-invalid remote branches are represented by named local copies.
 rc=$(run_in_work_capture "$TMPDIR/invalid-remote.out" -r dev/invalid-v1.0.1)
 [[ "$rc" -eq 0 ]] || fail "policy-invalid remote branch should exit 0 (got $rc)"
-assert_contains "Changed to dev/invalid-v1.0.1 branch." \
+assert_contains "Changed to r-dev/invalid-v1.0.1 branch." \
   "$TMPDIR/invalid-remote.out"
 assert_contains "[read-only] [invalid name]" "$TMPDIR/invalid-remote.out"
-[[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
-  fail "expected detached HEAD for policy-invalid remote branch"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == \
+  "r-dev/invalid-v1.0.1" ]] || \
+  fail "expected named local copy for policy-invalid remote branch"
 [[ "$(git -C "$WORK" rev-parse HEAD)" == \
   "$(git -C "$WORK" rev-parse refs/remotes/origin/dev/invalid-v1.0.1)" ]] || \
   fail "expected HEAD to match origin/dev/invalid-v1.0.1"
 pass "policy-invalid remote branch is read-only"
 
-# Explicit remote mode keeps protected remote branches detached.
+# Explicit remote mode creates named local copies of protected remote branches.
 rc=$(run_in_work_capture "$TMPDIR/protected-remote.out" -r main)
 [[ "$rc" -eq 0 ]] || fail "protected remote switch should exit 0 (got $rc)"
-assert_contains "Changed to main branch." \
+assert_contains "Changed to r-main branch." \
   "$TMPDIR/protected-remote.out"
-[[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
-  fail "expected detached HEAD for protected remote branch"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "r-main" ]] || \
+  fail "expected named local copy for protected remote branch"
 [[ "$(git -C "$WORK" rev-parse HEAD)" == \
   "$(git -C "$WORK" rev-parse refs/remotes/origin/main)" ]] || \
   fail "expected HEAD to match origin/main"

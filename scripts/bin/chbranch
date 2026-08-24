@@ -20,8 +20,8 @@ Prerequisites:
   - The current branch must not have any uncommitted changes except when
     selecting the current local non-protected branch. Use commit or undo
     first.
-  - If changing to a remote branch, the remote must be reachable and the branch
-    must exist on the remote.
+  - If changing to a remote snapshot branch, the remote must be reachable
+    and the branch must exist on the remote.
   - If changing to a local branch, it must exist locally.
 
 Arguments:
@@ -47,6 +47,7 @@ Notes:
   - The local branch is preferred by default, including for protected branches
     main and v<M>.<m>.0.
   - A remote snapshot is refreshed each time it is selected.
+  - For a remote snapshot, the terminal prompt shows r-<branch>.
   - A local protected branch is refreshed each time it is selected when
     it can be safely updated to match its remote. If it is ahead of or has
     diverged from its remote, the remote is missing or unreachable, the remote
@@ -73,7 +74,6 @@ Status tags:
                                 or current remote status is unavailable.
   [local only]                  Selected a local branch with no remote branch.
   [remote snapshot]             Selected the remote snapshot; a local also exists.
-  [remote only]                 Selected a remote snapshot with no local branch.
   [current]                     This is the currently selected branch.
   [uncommitted]                 There are changes that have not been committed.
   [read-only]                   The selected branch must not be modified.
@@ -168,6 +168,7 @@ readonly REMOTE_REF_TIMEOUT=3
 
 VERBOSE=false
 REMOTE_TIMEOUT_SECONDS=10
+REMOTE_SOURCE_BRANCH=""
 # Result of the latest remote query for the branch being selected. Status-only
 # local queries remain non-fatal and map network, authentication, and timeout
 # failures to "offline".
@@ -216,7 +217,9 @@ emit_success_changed() {
   local status_output=""
   local has_uncommitted=false
   local local_ref="refs/heads/$branch"
+  local tracking_local_ref="$local_ref"
   local remote_ref="refs/remotes/origin/$branch"
+  local comparison_branch="$branch"
   local selected_ref="$local_ref"
   local relation_tag=""
   local parent_tag=""
@@ -224,11 +227,10 @@ emit_success_changed() {
   local -a tags=()
 
   if [[ "$mode" == "remote" ]]; then
-    if branch_exists_local "$branch"; then
-      mode_tag="remote snapshot"
-    else
-      mode_tag="remote only"
-    fi
+    mode_tag="remote snapshot"
+    comparison_branch="${REMOTE_SOURCE_BRANCH:-$branch}"
+    remote_ref="refs/remotes/origin/$comparison_branch"
+    tracking_local_ref="refs/heads/$comparison_branch"
   elif [[ "$SELECTED_REMOTE_STATE" == "missing" ]]; then
     mode_tag="local only"
   fi
@@ -250,16 +252,16 @@ emit_success_changed() {
 
   if [[ "$SELECTED_REMOTE_STATE" == "offline" ]]; then
     tags+=("[offline]")
-  elif git rev-parse --verify "$local_ref" >/dev/null 2>&1 && \
+  elif git rev-parse --verify "$tracking_local_ref" >/dev/null 2>&1 && \
     git rev-parse --verify "$remote_ref" >/dev/null 2>&1; then
     relation_tag="$(bt_git_tracking_relation_tag \
-      "$mode" "$local_ref" "$remote_ref" "$has_uncommitted")"
+      "$mode" "$tracking_local_ref" "$remote_ref" "$has_uncommitted")"
     [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
   fi
 
   [[ "$mode" == "remote" ]] && selected_ref="$remote_ref"
   parent_tag="$(bt_git_parent_relation_tags \
-    "$mode" "$branch" "$selected_ref")"
+    "$mode" "$comparison_branch" "$selected_ref")"
   [[ -z "$parent_tag" ]] || tags+=("$parent_tag")
 
   echo "Changed to $branch branch. ${tags[*]}"
@@ -280,6 +282,13 @@ ensure_git_repository() {
 branch_exists_local() {
   local branch="$1"
   git show-ref --verify --quiet "refs/heads/$branch"
+}
+
+is_remote_copy_branch() {
+  local branch="$1"
+
+  [[ "$branch" == r-* ]] || return 1
+  git show-ref --verify --quiet "refs/remotes/origin/${branch#r-}"
 }
 
 current_local_branch() {
@@ -315,6 +324,10 @@ current_branch_name_or_empty() {
 
   local_branch="$(current_local_branch)"
   if [[ -n "$local_branch" ]]; then
+    if is_remote_copy_branch "$local_branch"; then
+      echo "${local_branch#r-}"
+      return 0
+    fi
     echo "$local_branch"
     return 0
   fi
@@ -506,13 +519,21 @@ switch_local() {
   remember_last_branch "$branch"
 }
 
-switch_remote() {
+switch_remote_copy() {
   local branch="$1"
+  local local_branch="r-$branch"
 
-  verbose_info "Switching to remote branch 'origin/$branch'"
-  if ! git switch --detach "origin/$branch" >/dev/null 2>&1; then
+  REMOTE_SOURCE_BRANCH="$branch"
+
+  verbose_info "Switching to local remote copy '$local_branch'"
+  if branch_exists_local "$local_branch"; then
+    if ! git switch -C "$local_branch" "origin/$branch" >/dev/null 2>&1; then
+      bt_error_exit "$EXIT_CHANGE_FAILED" \
+        "Failed to refresh local remote copy '$local_branch'"
+    fi
+  elif ! git switch -c "$local_branch" "origin/$branch" >/dev/null 2>&1; then
     bt_error_exit "$EXIT_CHANGE_FAILED" \
-      "Failed to switch to remote branch 'origin/$branch'"
+      "Failed to create local remote copy '$local_branch'"
   fi
   remember_last_branch "$branch"
 }
@@ -526,6 +547,15 @@ switch_local_snapshot() {
       "Failed to switch to read-only local branch '$branch'"
   fi
   remember_last_branch "$branch"
+}
+
+remove_previous_remote_copy() {
+  local previous_branch="$1"
+  local selected_branch="$2"
+
+  [[ "$previous_branch" == r-* ]] || return 0
+  [[ "$previous_branch" != "$selected_branch" ]] || return 0
+  git branch -D "$previous_branch" >/dev/null 2>&1 || true
 }
 
 refresh_selected_local_protected_branch() {
@@ -696,6 +726,7 @@ main() {
   local detach_local=false
   local desired_mode="local"
   local curr_branch
+  local previous_remote_copy=""
   local msg=""
 
   show_help_if_requested "$@"
@@ -708,7 +739,8 @@ main() {
   TARGET_BRANCH="$BRANCH_ARG"
   validate_git_branch_name "$TARGET_BRANCH"
 
-  if bt_is_read_only_branch "$TARGET_BRANCH"; then
+  if bt_is_read_only_branch "$TARGET_BRANCH" && \
+    ! is_remote_copy_branch "$TARGET_BRANCH"; then
     detach_local=true
   fi
 
@@ -737,9 +769,13 @@ main() {
   fi
 
   curr_branch="$(current_local_branch)"
+  if is_remote_copy_branch "$curr_branch"; then
+    previous_remote_copy="$curr_branch"
+  fi
   if [[ "$desired_mode" == "local" && "$detach_local" == false && \
     "$curr_branch" == "$TARGET_BRANCH" ]]; then
-    if [[ "$protected_branch" == true ]]; then
+    if [[ "$protected_branch" == true ]] || \
+      is_remote_copy_branch "$TARGET_BRANCH"; then
       ensure_no_uncommitted_changes "$curr_branch"
     fi
     remember_last_branch "$TARGET_BRANCH"
@@ -764,19 +800,12 @@ main() {
     fi
   fi
 
-  if [[ "$desired_mode" == "remote" ]] && \
-    is_current_remote_branch "$TARGET_BRANCH"; then
-    remember_last_branch "$TARGET_BRANCH"
-    emit_success_changed "remote" "$TARGET_BRANCH"
-    exit 0
-  fi
-
-  # Remote mode always selects a detached snapshot. Local mode detaches only
+  # Remote mode selects a named local copy. Local mode detaches only
   # for names outside repository branch policy; protected locals stay attached
   # so downstream commands can identify the checked-out branch.
   if [[ "$desired_mode" == "remote" ]]; then
-    switch_remote "$TARGET_BRANCH"
-    emit_success_changed "remote" "$TARGET_BRANCH"
+    switch_remote_copy "$TARGET_BRANCH"
+    emit_success_changed "remote" "r-$TARGET_BRANCH"
   elif [[ "$detach_local" == true ]]; then
     switch_local_snapshot "$TARGET_BRANCH"
     finish_local_selection "$TARGET_BRANCH" false
@@ -784,6 +813,9 @@ main() {
     switch_local "$TARGET_BRANCH"
     finish_local_selection "$TARGET_BRANCH" "$protected_branch"
   fi
+
+  remove_previous_remote_copy "$previous_remote_copy" \
+    "$(current_local_branch)"
 }
 
 main "$@"
