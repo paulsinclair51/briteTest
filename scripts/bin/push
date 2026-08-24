@@ -404,6 +404,11 @@ push_validate_prerequisites() {
   fi
 
   current_branch="$(bt_get_current_branch || true)"
+  if bt_is_current_internal_remote_copy; then
+    bt_emit_prerequisite_failure 3 \
+      "Current branch '$current_branch' is a read-only remote snapshot." \
+      "switch to a local targeted or contributor branch, then retry push."
+  fi
   if [[ -z "$current_branch" || "$current_branch" == "HEAD" ]] || \
     ! git show-ref --verify --quiet "refs/heads/$current_branch"; then
     bt_emit_prerequisite_failure 1 \

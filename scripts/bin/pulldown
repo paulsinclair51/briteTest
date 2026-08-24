@@ -504,6 +504,11 @@ fi
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
+if bt_is_current_internal_remote_copy; then
+  bt_emit_prerequisite_failure "$EXIT_NOT_FOUND" \
+    "Current branch '$CURRENT_BRANCH' is a read-only remote snapshot." \
+    "use 'chbranch -r $CURRENT_BRANCH' to refresh it, or switch to a local branch."
+fi
 if [[ "$VERBOSE" == true ]]; then
   bt_info "Current local branch $CURRENT_BRANCH."
 fi

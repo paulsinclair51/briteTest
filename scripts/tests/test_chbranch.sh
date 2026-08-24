@@ -190,14 +190,14 @@ pass "error output stream"
 # Selecting the current local branch is a successful no-op.
 rc=$(run_in_work_capture "$TMPDIR/current-local.out" dev/local-only)
 [[ "$rc" -eq 0 ]] || fail "current local branch should exit 0 (got $rc)"
-assert_contains "Changed to dev/local-only branch." \
+assert_contains "dev/local-only*" \
   "$TMPDIR/current-local.out"
 assert_contains "[local only] [current]" \
   "$TMPDIR/current-local.out"
 rc=$(run_in_work_capture_streams "$TMPDIR/stream-success.out" \
   "$TMPDIR/stream-success.err" dev/local-only)
 [[ "$rc" -eq 0 ]] || fail "stream success test should exit 0 (got $rc)"
-assert_contains "Changed to dev/local-only branch." \
+assert_contains "dev/local-only*" \
   "$TMPDIR/stream-success.out"
 [[ ! -s "$TMPDIR/stream-success.err" ]] || \
   fail "successful selection should not write to stderr"
@@ -206,7 +206,7 @@ pass "current local branch"
 # Omitting BRANCH defaults to the current local branch.
 rc=$(run_in_work_capture "$TMPDIR/implicit-current.out")
 [[ "$rc" -eq 0 ]] || fail "implicit current branch should exit 0 (got $rc)"
-assert_contains "Changed to dev/local-only branch." \
+assert_contains "dev/local-only*" \
   "$TMPDIR/implicit-current.out"
 pass "implicit current branch"
 
@@ -243,7 +243,7 @@ pass "dirty worktree handling"
 # Local mode switches to a writable local branch.
 rc=$(run_in_work_capture "$TMPDIR/local-success.out" -l dev/target)
 [[ "$rc" -eq 0 ]] || fail "local switch should exit 0 (got $rc)"
-assert_contains "Changed to dev/target branch." \
+assert_contains "dev/target*" \
   "$TMPDIR/local-success.out"
 assert_contains "[local] [current]" "$TMPDIR/local-success.out"
 [[ "$(git -C "$WORK" symbolic-ref --short HEAD)" == "dev/target" ]] || \
@@ -331,7 +331,7 @@ pass "uncommitted status precedence"
 )
 rc=$(run_in_work_capture "$TMPDIR/local-offline.out" dev/local-only)
 [[ "$rc" -eq 0 ]] || fail "offline local selection should exit 0 (got $rc)"
-assert_contains "Changed to dev/local-only branch." \
+assert_contains "dev/local-only*" \
   "$TMPDIR/local-offline.out"
 assert_contains "[local] [current] [offline]" "$TMPDIR/local-offline.out"
 git -C "$WORK" remote set-url origin "$ORIGIN"
@@ -343,13 +343,20 @@ rc=$(run_in_work_capture "$TMPDIR/local-target-setup.out" dev/target)
 # Remote mode refreshes origin and checks out a named local copy.
 rc=$(run_in_work_capture "$TMPDIR/remote-success.out" -r dev/target)
 [[ "$rc" -eq 0 ]] || fail "remote switch should exit 0 (got $rc)"
-assert_contains "Changed to dev/target branch." \
+assert_contains "dev/target*" \
   "$TMPDIR/remote-success.out"
 assert_contains "[remote snapshot] [current] [read-only]" \
   "$TMPDIR/remote-success.out"
 [[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "r-dev/target" ]] || \
   fail "expected named local remote copy in remote mode"
 pass "remote branch switch"
+
+rc=$(run_in_work_capture "$TMPDIR/remote-refreshed.out" -r dev/target)
+[[ "$rc" -eq 0 ]] || fail "remote snapshot refresh should exit 0 (got $rc)"
+assert_contains "dev/target* [remote snapshot] [current] [read-only]" \
+  "$TMPDIR/remote-refreshed.out"
+assert_contains "[refreshed]" "$TMPDIR/remote-refreshed.out"
+pass "current remote snapshot refresh status"
 
 # Refreshing the current remote copy requires a clean worktree.
 NO_REMOTE_BIN="$TMPDIR/no-remote-bin"
@@ -433,7 +440,7 @@ pass "rewritten remote snapshot refresh"
 # internal local copy.
 rc=$(run_in_work_capture "$TMPDIR/leave-remote-copy.out")
 [[ "$rc" -eq 0 ]] || fail "leaving remote copy should exit 0 (got $rc)"
-assert_contains "Changed to dev/target branch." \
+assert_contains "dev/target*" \
   "$TMPDIR/leave-remote-copy.out"
 [[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "dev/target" ]] || \
   fail "bare chbranch should select the source branch"
@@ -451,7 +458,7 @@ pass "remote snapshot source selection and cleanup"
 echo "dirty failed selection" >> "$WORK/README.md"
 rc=$(run_in_work_capture "$TMPDIR/failed-implicit.out")
 [[ "$rc" -eq 0 ]] || fail "dirty source selection should exit 0 (got $rc)"
-assert_contains "Changed to dev/target branch." \
+assert_contains "dev/target*" \
   "$TMPDIR/failed-implicit.out"
 if [[ "$(git -C "$WORK" config --local --get chbranch.lastBranch)" != \
   "dev/target" ]]; then
@@ -466,7 +473,7 @@ pass "remember branch only after success"
 # Default mode falls back to a remote branch and creates a named local copy.
 rc=$(run_in_work_capture "$TMPDIR/default-remote-only.out" dev/remote-only)
 [[ "$rc" -eq 0 ]] || fail "default remote-only switch should exit 0 (got $rc)"
-assert_contains "Changed to dev/remote-only branch." \
+assert_contains "dev/remote-only*" \
   "$TMPDIR/default-remote-only.out"
 assert_contains "[remote snapshot] [current] [read-only]" \
   "$TMPDIR/default-remote-only.out"
@@ -480,7 +487,7 @@ pass "default remote-only branch switch"
 # Protected local branches remain attached in explicit local mode.
 rc=$(run_in_work_capture "$TMPDIR/protected-success.out" -l main)
 [[ "$rc" -eq 0 ]] || fail "protected local switch should exit 0 (got $rc)"
-assert_contains "Changed to main branch." \
+assert_contains "main*" \
   "$TMPDIR/protected-success.out"
 if grep -Fq "[parent" "$TMPDIR/protected-success.out"; then
   fail "main should not output a parent status"
@@ -495,7 +502,7 @@ rc=$(run_in_work_capture "$TMPDIR/protected-default.out" dev/target)
 rc=$(run_in_work_capture "$TMPDIR/protected-default.out" main)
 [[ "$rc" -eq 0 ]] || \
   fail "default protected switch should exit 0 (got $rc)"
-assert_contains "Changed to main branch." \
+assert_contains "main*" \
   "$TMPDIR/protected-default.out"
 [[ "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" == "main" ]] || \
   fail "expected attached HEAD for default protected branch"
@@ -506,7 +513,7 @@ rc=$(run_in_work_capture "$TMPDIR/version-setup.out" dev/target)
 [[ "$rc" -eq 0 ]] || fail "version setup switch should exit 0 (got $rc)"
 rc=$(run_in_work_capture "$TMPDIR/version-protected.out" v1.0.0)
 [[ "$rc" -eq 0 ]] || fail "version branch should exit 0 (got $rc)"
-assert_contains "Changed to v1.0.0 branch." \
+assert_contains "v1.0.0*" \
   "$TMPDIR/version-protected.out"
 [[ "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" == "v1.0.0" ]] || \
   fail "expected attached HEAD for protected version branch"
@@ -695,7 +702,7 @@ pass "protected refresh update-failure warning"
 # Existing policy-invalid local branches can be inspected only as detached.
 rc=$(run_in_work_capture "$TMPDIR/invalid-local.out" -l v1.0.1)
 [[ "$rc" -eq 0 ]] || fail "policy-invalid local branch should exit 0 (got $rc)"
-assert_contains "Changed to v1.0.1 branch." "$TMPDIR/invalid-local.out"
+assert_contains "v1.0.1*" "$TMPDIR/invalid-local.out"
 assert_contains "[read-only] [invalid name]" "$TMPDIR/invalid-local.out"
 [[ -z "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" ]] || \
   fail "expected detached HEAD for policy-invalid local branch"
@@ -707,7 +714,7 @@ pass "policy-invalid local branch is read-only"
 # Existing policy-invalid remote branches are represented by named local copies.
 rc=$(run_in_work_capture "$TMPDIR/invalid-remote.out" -r dev/invalid-v1.0.1)
 [[ "$rc" -eq 0 ]] || fail "policy-invalid remote branch should exit 0 (got $rc)"
-assert_contains "Changed to dev/invalid-v1.0.1 branch." \
+assert_contains "dev/invalid-v1.0.1*" \
   "$TMPDIR/invalid-remote.out"
 assert_contains "[read-only] [invalid name]" "$TMPDIR/invalid-remote.out"
 [[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == \
@@ -721,7 +728,7 @@ pass "policy-invalid remote branch is read-only"
 # Explicit remote mode creates named local copies of protected remote branches.
 rc=$(run_in_work_capture "$TMPDIR/protected-remote.out" -r main)
 [[ "$rc" -eq 0 ]] || fail "protected remote switch should exit 0 (got $rc)"
-assert_contains "Changed to main branch." \
+assert_contains "main*" \
   "$TMPDIR/protected-remote.out"
 [[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "r-main" ]] || \
   fail "expected named local copy for protected remote branch"

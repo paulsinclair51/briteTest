@@ -368,34 +368,13 @@ bt_format_change_summary() {
   printf '%s' "$output"
 }
 
-bt_get_current_branch() {
-  local branch=""
-
-  if ! branch="$(bt_get_current_branch_raw)"; then
-    return 1
-  fi
-  if [[ "$branch" == r-* ]] && \
-    git show-ref --verify --quiet "refs/remotes/origin/${branch#r-}"; then
-    printf '%s\n' "${branch#r-}"
-  else
-    printf '%s\n' "$branch"
-  fi
-}
-
-bt_get_current_branch_raw() {
-  git rev-parse --abbrev-ref HEAD 2>/dev/null
-}
-
-bt_is_internal_remote_copy() {
-  local branch="$1"
-
-  [[ "$branch" == r-* ]] && \
-    git show-ref --verify --quiet "refs/remotes/origin/${branch#r-}"
-}
-
 bt_copyfix_state_dir_for_branch() {
   local branch="$1"
   local common_dir=""
+
+  if bt_is_internal_remote_copy "$branch"; then
+    branch="${branch#r-}"
+  fi
 
   common_dir="$(git rev-parse --path-format=absolute --git-common-dir \
     2>/dev/null)" || return 1

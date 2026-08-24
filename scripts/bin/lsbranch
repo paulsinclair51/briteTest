@@ -380,7 +380,7 @@ resolve_current_branch_name() {
 }
 
 is_current_remote_snapshot() {
-  local current_branch="$(bt_get_current_branch_or_empty)"
+  local current_branch="$(bt_get_current_branch_raw 2>/dev/null || true)"
   if [[ "$current_branch" == r-* ]] && \
     has_remote_branch "${current_branch#r-}"; then
     return 0

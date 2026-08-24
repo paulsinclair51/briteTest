@@ -172,7 +172,7 @@ bt_propagate_repository_history() {
   local local_sha remote_sha current_branch
   
   # Determine current branch (used for descriptive output if needed)
-  current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+  current_branch=$(bt_get_current_branch_or_empty || echo "unknown")
   
   # Check 1: Can we reach remote?
   if ! bt_history_run_remote_command git ls-remote origin >/dev/null 2>&1; then

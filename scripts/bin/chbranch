@@ -214,6 +214,7 @@ ensure_required_commands() {
 emit_success_changed() {
   local mode="$1"
   local branch="$2"
+  local refreshed="${3:-false}"
   local status_output=""
   local has_uncommitted=false
   local local_ref="refs/heads/$branch"
@@ -265,8 +266,9 @@ emit_success_changed() {
   parent_tag="$(bt_git_parent_relation_tags \
     "$mode" "$comparison_branch" "$selected_ref")"
   [[ -z "$parent_tag" ]] || tags+=("$parent_tag")
+  [[ "$refreshed" == true ]] && tags+=("[refreshed]")
 
-  echo "Changed to $display_branch branch. ${tags[*]}"
+  echo "$display_branch* ${tags[*]}"
 
   if [[ "$mode" == "remote" ]] || bt_is_read_only_branch "$branch"; then
     echo "Warning: do not modify, rename, or delete files in this branch."
@@ -729,6 +731,7 @@ main() {
   local desired_mode="local"
   local curr_branch
   local previous_remote_copy=""
+  local refreshing_remote_copy=false
   local msg=""
 
   show_help_if_requested "$@"
@@ -773,6 +776,10 @@ main() {
   curr_branch="$(current_local_branch)"
   if is_remote_copy_branch "$curr_branch"; then
     previous_remote_copy="$curr_branch"
+    if [[ "$FORCE_REMOTE" == true && \
+      "$TARGET_BRANCH" == "${curr_branch#r-}" ]]; then
+      refreshing_remote_copy=true
+    fi
   fi
   if [[ "$desired_mode" == "local" && "$detach_local" == false && \
     "$curr_branch" == "$TARGET_BRANCH" ]]; then
@@ -807,7 +814,8 @@ main() {
   # so downstream commands can identify the checked-out branch.
   if [[ "$desired_mode" == "remote" ]]; then
     switch_remote_copy "$TARGET_BRANCH"
-    emit_success_changed "remote" "r-$TARGET_BRANCH"
+    emit_success_changed "remote" "r-$TARGET_BRANCH" \
+      "$refreshing_remote_copy"
   elif [[ "$detach_local" == true ]]; then
     switch_local_snapshot "$TARGET_BRANCH"
     finish_local_selection "$TARGET_BRANCH" false

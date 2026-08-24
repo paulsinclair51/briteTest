@@ -22,23 +22,27 @@ headers, sources, scripts, directory guides, and version consistency, and
 writes the latest `style-<datetime>.md` report.
 
 **common.sh**: Shared output and branch-detection helpers.
-- `bt_info()` - Print info message
-- `bt_success()` - Print success message
-- `bt_error_exit()` - Print error and exit
-- `bt_get_current_branch()` - Get current branch name
-- `ensure_hooks_installed()` - Verify/install Git hooks
+- `bt_info()` - Print info message.
+- `bt_success()` - Print success message.
+- `bt_error_exit()` - Print error and exit.
+- `bt_get_current_branch()` - Get the user-facing current branch name.
+- `bt_get_current_branch_raw()` - Get the actual checked-out branch or HEAD.
+- `bt_get_current_branch_for_repo()` - Get a normalized branch name for a repo path.
+- `bt_is_internal_remote_copy()` - Detect an internal `r-<branch>` snapshot branch.
+- `bt_is_current_internal_remote_copy()` - Detect the current internal snapshot.
+- `ensure_hooks_installed()` - Verify/install Git hooks.
 
 **common_utils.sh**: Shared utility helpers.
 
 **git_helpers.sh**: Shared branch lookup and resolution helpers.
-- Branch validation functions
-- Parent branch detection
-- Protected branch checks
+- Branch validation functions.
+- Parent branch detection.
+- Protected branch checks.
 
 **github_helpers.sh**: Shared GitHub CLI pull-request lookup helpers.
-- PR lookup and status functions
-- Status check validation
-- Approver verification
+- PR lookup and status functions.
+- Status check validation.
+- Approver verification.
 
 **install_git_hooks.sh**: Install git hooks.
 

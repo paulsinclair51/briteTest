@@ -162,7 +162,8 @@ reports_after="$(find "$SCRIPT_DIR/../../reports" -maxdepth 1 \
 pass "stdout-only branch status"
 
 # 7) A detached checkout at a remote-tracking ref is a remote snapshot.
-snapshot_branch="$(git rev-parse --abbrev-ref HEAD)"
+snapshot_branch="$(source "$SCRIPT_DIR/../helpers/common.sh"; \
+  bt_get_current_branch_or_empty)"
 git switch --detach "refs/remotes/origin/$snapshot_branch" >/dev/null 2>&1 || \
   fail "could not create remote snapshot fixture"
 rc=$(run_capture "$TMPDIR/remote-snapshot.out" "$LSBRANCH")

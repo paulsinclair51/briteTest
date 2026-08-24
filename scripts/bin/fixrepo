@@ -516,8 +516,8 @@ check_working_directory() {
   append_section "Working Directory Status"
 
   local current_branch
-  current_branch="$(git -C "$CURRENT_REPO" rev-parse --abbrev-ref HEAD \
-    2>/dev/null || echo 'unknown')"
+  current_branch="$(bt_get_current_branch_for_repo "$CURRENT_REPO" || \
+    echo 'unknown')"
 
   local status_output
   status_output="$(git -C "$CURRENT_REPO" status --porcelain 2>/dev/null \

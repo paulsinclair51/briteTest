@@ -144,7 +144,7 @@ if [[ "${BT_CI_DOC_CHECK:-false}" == true && \
   CI_DOC_CHECK=true
 fi
 
-CURRENT_BRANCH="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
+CURRENT_BRANCH="$(bt_get_current_branch_or_empty)"
 if [[ "$CI_DOC_CHECK" == false && -z "$CURRENT_BRANCH" ]]; then
   bt_emit_prerequisite_failure "$CKSTYLE_EXIT_NOT_LOCAL_BRANCH" \
     "Current branch must be a local branch." \

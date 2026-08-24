@@ -91,7 +91,54 @@ bt_emit_prerequisite_failure() {
 }
 
 bt_get_current_branch_or_empty() {
-  git rev-parse --abbrev-ref HEAD 2>/dev/null || true
+  bt_get_current_branch || true
+}
+
+bt_get_current_branch_raw() {
+  git rev-parse --abbrev-ref HEAD 2>/dev/null
+}
+
+bt_get_current_branch() {
+  local branch=""
+
+  if ! branch="$(bt_get_current_branch_raw)"; then
+    return 1
+  fi
+  if [[ "$branch" == r-* ]] && \
+    git show-ref --verify --quiet "refs/remotes/origin/${branch#r-}"; then
+    printf '%s\n' "${branch#r-}"
+  else
+    printf '%s\n' "$branch"
+  fi
+}
+
+bt_get_current_branch_for_repo() {
+  local repo="$1"
+  local branch=""
+
+  branch="$(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null)" || \
+    return 1
+  if [[ "$branch" == r-* ]] && \
+    git -C "$repo" show-ref --verify --quiet \
+      "refs/remotes/origin/${branch#r-}"; then
+    printf '%s\n' "${branch#r-}"
+  else
+    printf '%s\n' "$branch"
+  fi
+}
+
+bt_is_internal_remote_copy() {
+  local branch="$1"
+
+  [[ "$branch" == r-* ]] && \
+    git show-ref --verify --quiet "refs/remotes/origin/${branch#r-}"
+}
+
+bt_is_current_internal_remote_copy() {
+  local branch=""
+
+  branch="$(bt_get_current_branch_raw 2>/dev/null || true)"
+  [[ "$branch" == r-* ]] && bt_is_internal_remote_copy "$branch"
 }
 
 bt_normalize_login() {

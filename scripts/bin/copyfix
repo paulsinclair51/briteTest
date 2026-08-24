@@ -756,6 +756,11 @@ fi
 SOURCE_BRANCH="$SOURCE_BRANCH_ARG"
 TARGET_BRANCH=$(bt_get_current_branch || \
   bt_error_exit "$EXIT_GIT_FAILED" "Failed to determine current branch")
+if bt_is_current_internal_remote_copy; then
+  bt_emit_prerequisite_failure "$EXIT_OPERATION_FAILED" \
+    "Current branch '$TARGET_BRANCH' is a read-only remote snapshot." \
+    "switch to a local targeted branch before running copyfix."
+fi
 bt_info "Target branch: $TARGET_BRANCH"
 bt_info "Source branch: $SOURCE_BRANCH"
 

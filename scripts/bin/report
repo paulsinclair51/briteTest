@@ -268,7 +268,7 @@ generate_repository_report() {
 
   [[ "$VERBOSE" == false ]] || branch_report_args+=(-v)
 
-  current_ref="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
+  current_ref="$(bt_get_current_branch_or_empty)"
   if [[ -z "$current_ref" ]]; then
     current_ref="detached at $(git rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
   fi
@@ -611,7 +611,12 @@ if [[ "$REPORT_TYPE" == "repo" ]]; then
   generate_repository_report
 fi
 
-CURRENT_REF="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
+CURRENT_REF="$(bt_get_current_branch_raw 2>/dev/null || true)"
+if [[ "$CURRENT_REF" != "HEAD" && -n "$CURRENT_REF" ]]; then
+  CURRENT_REF="$(bt_get_current_branch_or_empty)"
+else
+  CURRENT_REF=""
+fi
 TARGET_REF="$CURRENT_REF"
 HISTORY_REF="$CURRENT_REF"
 WORKFLOW_NOTES_REF="briteTest-workflow"

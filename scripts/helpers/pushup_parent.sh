@@ -1749,6 +1749,11 @@ acquire_run_lock
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit "$EXIT_CURRENT_NOT_CHECKED_OUT" "Failed to determine current branch")
+if bt_is_current_internal_remote_copy; then
+  bt_emit_prerequisite_failure "$EXIT_INVALID_CURRENT_BRANCH" \
+    "Current branch '$CURRENT_BRANCH' is a read-only remote snapshot." \
+    "switch to a local targeted branch before running pushup."
+fi
 
 if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
   bt_error_exit "$EXIT_CURRENT_NOT_CHECKED_OUT" \

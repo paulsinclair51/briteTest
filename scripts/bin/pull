@@ -768,6 +768,12 @@ else
     "run pull from a Git worktree."
 fi
 
+if bt_is_current_internal_remote_copy; then
+  bt_emit_prerequisite_failure "$EXIT_NOT_LOCAL_BRANCH" \
+    "Current branch '$CURRENT_BRANCH' is a read-only remote snapshot." \
+    "use 'chbranch -r $CURRENT_BRANCH' to refresh it, or switch to a local branch."
+fi
+
 if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
   if is_rebase_in_progress; then
     REBASE_IN_PROGRESS_AT_START=true

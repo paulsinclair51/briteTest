@@ -194,7 +194,7 @@ log_undo_to_history() {
   local details="$2"
 
   local current_branch
-  current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+  current_branch=$(bt_get_current_branch_or_empty || echo "main")
   [[ "$current_branch" == "HEAD" ]] && current_branch="main"
   local history_file
   history_file="$REPO_ROOT/$(bt_branch_to_history_file "$current_branch")"
@@ -529,6 +529,11 @@ fi
 # Validate current branch conforms to naming conventions
 current_branch=$(bt_get_current_branch || echo "main")
 [[ "$current_branch" == "HEAD" ]] && current_branch="main"
+if bt_is_current_internal_remote_copy; then
+  bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
+    "Current branch '$current_branch' is a read-only remote snapshot." \
+    "switch to a writable local branch before running undo."
+fi
 if [[ "$UNDO_TYPE" != "uncommitted" ]] && \
   ! validate_branch_name "$current_branch" "current branch"; then
   usage_error "Current branch does not conform to naming conventions"

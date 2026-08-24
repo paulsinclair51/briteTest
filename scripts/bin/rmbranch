@@ -137,8 +137,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-_LOG_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
-[[ "$_LOG_BRANCH" == "HEAD" ]] && _LOG_BRANCH="main"
 COMMON_HELPER="$SCRIPT_DIR/../helpers/common.sh"
 HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
 CKROLE_HELPER="$SCRIPT_DIR/../helpers/ckrole.sh"
@@ -162,6 +160,8 @@ if ! source "$COMMON_HELPER"; then
   bt_emit_error "Failed to load helper: $COMMON_HELPER"
   exit 2
 fi
+_LOG_BRANCH=$(bt_get_current_branch_or_empty || echo "main")
+[[ "$_LOG_BRANCH" == "HEAD" ]] && _LOG_BRANCH="main"
 # shellcheck source=helpers/history_log.sh
 if ! source "$HISTORY_HELPER"; then
   bt_emit_error "Failed to load helper: $HISTORY_HELPER"
@@ -519,7 +519,7 @@ if [[ "$MODE" == "local" || "$MODE" == "both" ]]; then
     info "Deleting local branch..."
     
     # Check if we're currently on the branch
-    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    CURRENT_BRANCH=$(bt_get_current_branch_or_empty)
     if [[ "$CURRENT_BRANCH" == "$BRANCHNAME" ]]; then
       info "Switching away from '$BRANCHNAME' before deletion..."
       if [[ "$BRANCHNAME" != "main" ]] && local_branch_exists "main"; then
