@@ -95,8 +95,7 @@ Document formats:
 - **.pdf**: Portable Document Format useful as a portable and printable
   form of a document. A .pdf file is generated from an .md file.
 
-- **.docx**: MS Word DOCX format. A briteTest .docx file is generated
-  from a .pdf file.
+- **.docx**: MS Word DOCX format. A .docx file is generated from a .pdf file.
 </details>
 
 <details>

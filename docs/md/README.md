@@ -27,7 +27,7 @@ repair and admin operations.
 
 **Glossary_Reference.md**: Glossary of project terms and testing terms.
 
-**Guide.md**: briteTest introductory guide and quick start example.
+**Guide.md**: Introductory guide and quick start example.
 `<repo>/README.md` is a link to this file.
 
 **Release_\<version\>.md**: Release documents for release versions.
