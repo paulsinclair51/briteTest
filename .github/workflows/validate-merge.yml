@@ -102,7 +102,7 @@ jobs:
           set -euo pipefail
 
           # Get the current branch type
-          branch_result=$(bash scripts/helpers/ckbranchname.sh "$REF_NAME" 2>/dev/null; echo $?)
+          branch_result=$(bash briteRepo/helpers/ckbranchname.sh "$REF_NAME" 2>/dev/null; echo $?)
 
           # Helper function to get branch type name
           get_type_name() {
@@ -137,7 +137,7 @@ jobs:
             
             if [[ "$merge_source" != "unknown" ]]; then
               # Validate source branch type
-              source_result=$(bash scripts/helpers/ckbranchname.sh "$merge_source" 2>/dev/null; echo $?)
+              source_result=$(bash briteRepo/helpers/ckbranchname.sh "$merge_source" 2>/dev/null; echo $?)
               source_type_name=$(get_type_name "$source_result")
 
               echo "Merge detected:"

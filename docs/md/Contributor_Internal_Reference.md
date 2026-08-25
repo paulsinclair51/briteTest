@@ -249,7 +249,7 @@ server-side administrative authority required for protected remote repair.
 ## 5. Internal Helpers and Hooks
 
 These files are implementation modules, not contributor commands. Public
-workflows must invoke the corresponding command in `scripts/bin/`.
+workflows must invoke the corresponding command in `briteRepo/bin/`.
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;5.1. Helper Modules</summary>
@@ -279,7 +279,7 @@ individual function signatures.
 
 ### 5.2. Git Hooks
 
-Hooks are stored in `scripts/helpers/.githooks/` and selected through
+Hooks are stored in `briteRepo/helpers/.githooks/` and selected through
 `core.hooksPath`.
 
 | Hook | Contract |

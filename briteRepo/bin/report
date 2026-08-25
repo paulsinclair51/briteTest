@@ -1,0 +1,806 @@
+#!/usr/bin/env bash
+
+# report - Generate the specified type of report.
+#
+# See usage below for details, or run: report -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  report [OPTIONS] [TYPE]
+  report {-h | --help}
+
+Generate a report as specified by the TYPE argument:
+  - repo generates a repository-level report of repo status,
+    branches (local and remote).
+
+  - branch generates a report of activity for the current
+    branch (local or remote snapshot). An activity is a commit,
+    pull, push, pushup, pulldown, copyfix, or retarget.
+
+  - style generates a report of style violations for the current branch.
+
+Prerequisites for a repo report:
+  - Current branch must be a local or remote snapshot branch.
+
+Prerequisites for a branch report:
+  - Current branch must be a local or remote snapshot branch.
+
+Prerequisites for a style report:
+  - Current branch must be a local branch.
+
+Arguments:
+  TYPE        Report type: repo, branch, or style (default: branch).
+              TYPE may appear before or after options, but may be specified
+              only once.
+
+Options:
+  -h, --help  Output this help to stdout and exit (other options
+              and arguments are ignored).
+  -v          Output progress and diagnostics to stdout.
+
+Additional options only for a repo report:
+  -t SEC      Remote timeout in seconds (default: 10 seconds).
+              SEC must be an integer greater than 0.
+
+Additional options only for a branch report:
+  -l N        Limit the report to N matching activities (default: 1).
+              N must be 0 or an integer greater than 0; 0 means all matching
+              activities are included. The newest N matches
+              are selected. In report, listed newest to oldest.
+  -q TEXT     Include activity whose summary or details contain TEXT.
+              Matching is case-insensitive.
+  -r          Report for the remote, if there is one, of the current branch.
+              If the current branch is a remote snapshot, the report is for the
+              current state of the remote and not the snapshot.
+  -t SEC      Remote timeout in seconds (default: 10 seconds).
+              SEC must be an integer greater than 0. Only allowed if
+              the -r option is specified
+  -u USER     Include activity whose associated user contains USER.
+              Matching is case-insensitive. Activity without a recorded user
+              does not match.
+
+Additional options only for a style report:
+  -f FILE     Check only FILE. May be specified more than once.
+  -i          Run include (.h) checks if applicable to the selected files.
+  -m          Run Markdown document and version consistency checks.
+  -r          Run directory guide README checks.
+  -s          Run source (.c) and script checks.
+
+  If no style check options are provided, all checks are enabled.
+
+Repo Examples:
+  report repo
+  report repo -t 20
+  report repo -v
+
+Branch Examples:
+  report
+  report branch -u testuser -q "authentication" -l 10
+  report branch -l 2
+  report -l 0
+  report -v
+
+Style Examples:
+  report style
+  report style -m -f docs/md/Guide.md
+  report style -v
+
+Outputs:
+  - Writes errors and diagnostics to stderr.
+  - Writes verbose (-v) progress and diagnostics to stdout.
+  - Writes one untracked report directly in '<repo>/reports/':
+      - 'repo-<datetime>.md' for a repository report.
+      - 'local-<datetime>.md' for a local branch report.
+      - 'remote-<datetime>.md' for a remote branch report.
+      - 'style-<datetime>.md' for a style report.
+    The previous report of the same type is deleted.
+  - Writes 'See <reportpath> for details.' to stdout when a
+    report is written.
+
+
+Exit codes:
+  0    Success (report written, -h/--help).
+  1    Argument or validation error.
+  2    Style report requires a local targeted or contributor branch
+       as the current branch.
+  3    Style report found validation issues.
+  4    Style report is not authorized for the current user.
+  5    Repo and branch reports require a local or remote snapshot
+       branch as the current branch.
+  6    No matching activity was found for branch report.
+  200  Failed to read recorded activity.
+  201  Failed to create or write the report.
+EOF
+}
+
+# High-Level Flow:
+# - Resolve the selected local branch, fetched remote branch, or remote snapshot.
+# - Read recorded commits and completed workflow activity newest first.
+# - Apply user/text filters and select the newest limit.
+# - Write one report of the selected type; never mutate workflow history.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPORTS_DIR="$REPO_ROOT/reports"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/report_helpers.sh
+source "$SCRIPT_DIR/../helpers/report_helpers.sh"
+
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NO_MATCH=6
+readonly EXIT_CURRENT_BRANCH_REQUIRED=5
+readonly EXIT_HISTORY_READ_FAILED=200
+readonly EXIT_REPORT_WRITE_FAILED=201
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "$message. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
+ensure_git_repository() {
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_CURRENT_BRANCH_REQUIRED" \
+      "Repo and branch reports require a local or remote snapshot branch as the current branch."
+  fi
+}
+
+is_non_negative_integer() {
+  [[ "$1" =~ ^[0-9]+$ ]]
+}
+
+is_positive_integer() {
+  [[ "$1" =~ ^[1-9][0-9]*$ ]]
+}
+
+refresh_remote_branch_report_refs() {
+  local branch="$1"
+  local remote_output=""
+  local remote_branch_ref="refs/heads/$branch"
+  local remote_notes_ref="refs/notes/briteRepo-remote-workflow"
+
+  if ! remote_output="$(bt_run_remote_command git ls-remote origin \
+    "$remote_branch_ref" "$remote_notes_ref" 2>/dev/null)"; then
+    bt_warn "Failed to query origin for remote branch report"
+    exit "$EXIT_HISTORY_READ_FAILED"
+  fi
+  if ! printf '%s\n' "$remote_output" | awk -v ref="$remote_branch_ref" \
+    '$2 == ref { found = 1 } END { exit !found }'; then
+    usage_error "Remote branch 'origin/$branch' is not available"
+  fi
+
+  if ! bt_run_remote_command git fetch origin \
+    "+${remote_branch_ref}:refs/remotes/origin/$branch" \
+    >/dev/null 2>&1; then
+    bt_warn "Failed to refresh remote branch 'origin/$branch'"
+    exit "$EXIT_HISTORY_READ_FAILED"
+  fi
+
+  if printf '%s\n' "$remote_output" | awk -v ref="$remote_notes_ref" \
+    '$2 == ref { found = 1 } END { exit !found }'; then
+    if ! bt_run_remote_command git fetch origin \
+      "+${remote_notes_ref}:${remote_notes_ref}" >/dev/null 2>&1; then
+      bt_warn "Failed to refresh remote workflow history"
+      exit "$EXIT_HISTORY_READ_FAILED"
+    fi
+  else
+    git update-ref -d "$remote_notes_ref" >/dev/null 2>&1 || {
+      bt_warn "Failed to reset unavailable remote workflow history"
+      exit "$EXIT_HISTORY_READ_FAILED"
+    }
+  fi
+}
+
+resolve_remote_snapshot_ref() {
+  local remote_refs=""
+  local remote_count=""
+  local remembered_branch=""
+
+  remote_refs="$(git for-each-ref --format='%(refname:short)' \
+    --points-at HEAD refs/remotes/origin 2>/dev/null | \
+    grep -v '^origin/HEAD$' || true)"
+  remote_count="$(printf '%s\n' "$remote_refs" | sed '/^$/d' | \
+    wc -l | tr -d ' ')"
+  remembered_branch="$(git config --local --get chbranch.lastBranch \
+    2>/dev/null || true)"
+
+  if [[ "$remote_count" == "1" ]]; then
+    printf '%s\n' "$remote_refs" | sed '/^$/d' | head -n 1
+    return 0
+  fi
+  if [[ "$remote_count" -gt 1 && -n "$remembered_branch" ]] && \
+    printf '%s\n' "$remote_refs" | grep -Fxq "origin/$remembered_branch"; then
+    printf 'origin/%s\n' "$remembered_branch"
+    return 0
+  fi
+  return 1
+}
+
+remove_stale_reports() {
+  local current_report="$1"
+  shift
+  local old_report=""
+  local pattern=""
+  local -a matching_reports=()
+
+  for pattern in "$@"; do
+    mapfile -t matching_reports < <(compgen -G "$pattern" || true)
+    for old_report in "${matching_reports[@]}"; do
+      [[ "$old_report" == "$current_report" ]] && continue
+      git -C "$REPO_ROOT" ls-files --error-unmatch -- \
+        "${old_report#"${REPO_ROOT}"/}" \
+        >/dev/null 2>&1 || rm -f "$old_report"
+    done
+  done
+}
+
+generate_repository_report() {
+  local current_ref=""
+  local head_commit=""
+  local integrity="pass"
+  local local_branch_count=""
+  local remote_branch_count=""
+  local remote_url=""
+  local report_file=""
+  local report_rel=""
+  local report_lock_fd=""
+  local worktree_status="clean"
+  local branch_output=""
+  local branch_report=""
+  local branch_report_dir=""
+  local -a branch_report_args=(-a -t "$REMOTE_TIMEOUT")
+  local -a staged_reports=()
+
+  [[ "$VERBOSE" == false ]] || branch_report_args+=(-v)
+
+  current_ref="$(bt_get_current_branch_or_empty)"
+  if [[ -z "$current_ref" ]]; then
+    current_ref="detached at $(git rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+  fi
+  head_commit="$(git rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+  remote_url="$(git remote get-url origin 2>/dev/null || printf 'not configured')"
+  local_branch_count="$(git for-each-ref --format='%(refname)' refs/heads | wc -l | tr -d ' ')"
+  remote_branch_count="$(git for-each-ref --format='%(refname)' refs/remotes/origin | \
+    awk '!/\/HEAD$/ { count++ } END { print count + 0 }')"
+  [[ -z "$(git status --porcelain 2>/dev/null)" ]] || worktree_status="dirty"
+  git fsck --no-dangling --no-progress >/dev/null 2>&1 || integrity="fail"
+
+  bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_WRITE_FAILED"
+  if ! branch_report_dir="$(mktemp -d)"; then
+    bt_warn "Failed to create temporary directory for branch status"
+    exit "$EXIT_REPORT_WRITE_FAILED"
+  fi
+  if ! branch_output="$(bt_run_lsbranch_mode report \
+    "$SCRIPT_DIR/lsbranch" "$branch_report_dir" repo-branches \
+    "${branch_report_args[@]}")"; then
+    rm -rf "$branch_report_dir"
+    bt_warn "Failed to collect branch status for repository report"
+    exit "$EXIT_REPORT_WRITE_FAILED"
+  fi
+  if [[ "$VERBOSE" == true ]]; then
+    printf '%s\n' "$branch_output" | \
+      sed '/repo-branches-.* for details\./d'
+  fi
+
+  shopt -s nullglob
+  staged_reports=("$branch_report_dir"/repo-branches-*.md)
+  shopt -u nullglob
+  if [[ "${#staged_reports[@]}" -ne 1 ]]; then
+    rm -rf "$branch_report_dir"
+    bt_warn "Repository branch status report was not generated as expected"
+    exit "$EXIT_REPORT_WRITE_FAILED"
+  fi
+  branch_report="${staged_reports[0]}"
+
+  if ! bt_report_acquire_lock "$REPO_ROOT" "report-repo" 10 \
+    report_lock_fd; then
+    rm -rf "$branch_report_dir"
+    bt_warn "Timed out waiting for repository report write lock"
+    exit "$EXIT_REPORT_WRITE_FAILED"
+  fi
+  report_file="$(bt_report_transient_path \
+    "$REPORTS_DIR" repo "$RUN_TS_FILE")"
+  report_rel="${report_file#"${REPO_ROOT}"/}"
+  if ! {
+    printf '# Repository Report\n\n'
+    printf '**Repository:** `%s`  \n' "$(basename "$REPO_ROOT")"
+    printf '**Generated:** %s  \n' "$RUN_TS_DISPLAY"
+    printf '**Current Ref:** `%s`  \n' "$current_ref"
+    printf '**HEAD:** `%s`  \n' "$head_commit"
+    printf '**Origin:** `%s`\n\n' "$remote_url"
+    printf '## Health\n\n'
+    printf '| Check | Status |\n| --- | --- |\n'
+    printf '| Git object integrity | %s |\n' "$integrity"
+    printf '| Working tree | %s |\n' "$worktree_status"
+    printf '| Local branches | %s |\n' "$local_branch_count"
+    printf '| Remote branches | %s |\n\n' "$remote_branch_count"
+    printf '## Branch Status\n\n'
+    sed '1,2d' "$branch_report"
+  } > "$report_file"; then
+    rm -rf "$branch_report_dir"
+    bt_report_release_lock "$report_lock_fd"
+    bt_warn "Failed to write report: $report_rel"
+    exit "$EXIT_REPORT_WRITE_FAILED"
+  fi
+
+  rm -rf "$branch_report_dir"
+  remove_stale_reports "$report_file" \
+    "$REPORTS_DIR/repo-*.md" "$REPORTS_DIR/repository/repo-*.md"
+  bt_report_release_lock "$report_lock_fd"
+
+  printf 'See %s for details.\n' "$report_rel"
+  exit 0
+}
+
+contains_ci() {
+  local haystack="$1"
+  local needle="$2"
+  local hay_lc=""
+  local needle_lc=""
+
+  hay_lc="$(printf '%s' "$haystack" | tr '[:upper:]' '[:lower:]')"
+  needle_lc="$(printf '%s' "$needle" | tr '[:upper:]' '[:lower:]')"
+  [[ "$hay_lc" == *"$needle_lc"* ]]
+}
+
+entry_matches_filters() {
+  local entry_type="$1"
+  local entry_user="$2"
+  local entry_text="$3"
+
+  [[ "$TYPE_FILTER" == "all" || "$entry_type" == "$TYPE_FILTER" ]] || \
+    return 1
+  [[ -z "$FILTER_USER" ]] || contains_ci "$entry_user" "$FILTER_USER" || \
+    return 1
+  [[ -z "$FILTER_TEXT" ]] || contains_ci "$entry_text" "$FILTER_TEXT"
+}
+
+activity_type() {
+  local command_line="$1"
+  local command_name="${command_line%% *}"
+
+  case "$command_name" in
+    pull|push|pushup|pulldown|copyfix|retarget)
+      printf '%s\n' "$command_name"
+      ;;
+    *)
+      printf 'commit\n'
+      ;;
+  esac
+}
+
+workflow_note_records() {
+  awk '
+    /^--- briteRepo workflow ---$/ {
+      if (record != "") {
+        records[++count] = record
+      }
+      record = $0 ORS
+      next
+    }
+    record != "" {
+      record = record $0 ORS
+    }
+    END {
+      if (record != "") {
+        records[++count] = record
+      }
+      for (item = count; item >= 1; item--) {
+        printf "%s%c", records[item], 30
+      }
+    }
+  '
+}
+
+workflow_event_details() {
+  awk '
+    /^--- briteRepo workflow ---$/ { next }
+    /^(Workflow-Type|Workflow-Time|Workflow-Branch|Workflow-User|Command-Line|Summary):/ {
+      next
+    }
+    NF > 0 { print }
+  '
+}
+
+recorded_field_value() {
+  local body="$1"
+  local key="$2"
+  local value=""
+  local line=""
+
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^${key}:[[:space:]]*(.*)$ ]]; then
+      value="${BASH_REMATCH[1]}"
+    fi
+  done <<< "$body"
+
+  printf '%s' "$value"
+}
+
+recorded_change_summary() {
+  local body="$1"
+  local field=""
+  local value=""
+  local found=false
+
+  bt_git_reset_change_summary
+  for field in Files-Modified Files-Deleted Files-Added Files-Renamed \
+    Files-Renamed-Modified Directories-Deleted Directories-Added \
+    Directories-Renamed; do
+    value="$(recorded_field_value "$body" "$field")"
+    [[ "$value" =~ ^[0-9]+$ ]] || value=0
+    [[ "$value" -gt 0 ]] && found=true
+    # shellcheck disable=SC2034  # Consumed by bt_format_change_summary.
+    case "$field" in
+      Files-Modified) BT_CHANGE_MODIFIED_FILES="$value" ;;
+      Files-Deleted) BT_CHANGE_DELETED_FILES="$value" ;;
+      Files-Added) BT_CHANGE_ADDED_FILES="$value" ;;
+      Files-Renamed) BT_CHANGE_RENAMED_FILES="$value" ;;
+      Files-Renamed-Modified) BT_CHANGE_RENAMED_MODIFIED_FILES="$value" ;;
+      Directories-Deleted) BT_CHANGE_DELETED_DIRECTORIES="$value" ;;
+      Directories-Added) BT_CHANGE_ADDED_DIRECTORIES="$value" ;;
+      Directories-Renamed) BT_CHANGE_RENAMED_DIRECTORIES="$value" ;;
+    esac
+  done
+
+  [[ "$found" == true ]] || return 0
+  bt_format_change_summary
+}
+
+workflow_record_missing_fields() {
+  local record="$1"
+  local field=""
+  local missing_fields=""
+  local value=""
+
+  for field in Workflow-Type Workflow-Time Workflow-Branch Workflow-User \
+    Command-Line Summary; do
+    value="$(recorded_field_value "$record" "$field")"
+    [[ -n "$value" ]] && continue
+    [[ -z "$missing_fields" ]] || missing_fields+=", "
+    missing_fields+="$field"
+  done
+
+  printf '%s' "$missing_fields"
+}
+
+REPORT_TYPE="branch"
+REPORT_TYPE_SPECIFIED=false
+REMOTE_TIMEOUT=10
+REMOTE_TIMEOUT_SPECIFIED=false
+REMOTE_BRANCH_REPORT=false
+TYPE_FILTER="all"
+FILTER_USER=""
+FILTER_TEXT=""
+LIMIT=1
+VERBOSE=false
+declare -a ORIGINAL_ARGS=("$@")
+declare -a STYLE_ARGS=()
+
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+done
+
+for ((index=0; index < ${#ORIGINAL_ARGS[@]}; index++)); do
+  arg="${ORIGINAL_ARGS[index]}"
+  case "$arg" in
+    -u|-q|-l|-t|-f)
+      ((index += 1))
+      ;;
+    repo|branch|style)
+      [[ "$REPORT_TYPE_SPECIFIED" == false ]] || \
+        usage_error "TYPE may be specified only once"
+      REPORT_TYPE="$arg"
+      REPORT_TYPE_SPECIFIED=true
+      ;;
+    -*)
+      ;;
+    *)
+      usage_error "Unsupported TYPE '$arg'"
+      ;;
+  esac
+done
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    repo|branch|style)
+      shift
+      ;;
+    -u)
+      [[ "$REPORT_TYPE" == "branch" ]] || \
+        usage_error "Option -u requires TYPE branch"
+      [[ $# -ge 2 ]] || usage_error "Option -u requires USER"
+      FILTER_USER="$2"
+      shift 2
+      ;;
+    -q)
+      [[ "$REPORT_TYPE" == "branch" ]] || \
+        usage_error "Option -q requires TYPE branch"
+      [[ $# -ge 2 ]] || usage_error "Option -q requires TEXT"
+      FILTER_TEXT="$2"
+      shift 2
+      ;;
+    -l)
+      [[ "$REPORT_TYPE" == "branch" ]] || \
+        usage_error "Option -l requires TYPE branch"
+      [[ $# -ge 2 ]] || usage_error "Option -l requires N"
+      is_non_negative_integer "$2" || usage_error "N for -l must be an integer >= 0"
+      LIMIT="$2"
+      shift 2
+      ;;
+    -t)
+      [[ "$REPORT_TYPE" == "repo" || "$REPORT_TYPE" == "branch" ]] || \
+        usage_error "Option -t requires TYPE repo or TYPE branch with -r"
+      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC"
+      is_positive_integer "$2" || \
+        usage_error "SEC for -t must be an integer > 0"
+      REMOTE_TIMEOUT="$2"
+      REMOTE_TIMEOUT_SPECIFIED=true
+      shift 2
+      ;;
+    -f)
+      [[ "$REPORT_TYPE" == "style" ]] || \
+        usage_error "Option -f requires TYPE style"
+      [[ $# -ge 2 ]] || usage_error "Option -f requires FILE"
+      STYLE_ARGS+=("$2")
+      shift 2
+      ;;
+    -i|-m|-s)
+      [[ "$REPORT_TYPE" == "style" ]] || \
+        usage_error "Option $1 requires TYPE style"
+      STYLE_ARGS+=("$1")
+      shift
+      ;;
+    -r)
+      if [[ "$REPORT_TYPE" == "style" ]]; then
+        STYLE_ARGS+=(-r)
+      elif [[ "$REPORT_TYPE" == "branch" ]]; then
+        REMOTE_BRANCH_REPORT=true
+      else
+        usage_error "Option -r requires TYPE branch or TYPE style"
+      fi
+      shift
+      ;;
+    -v)
+      VERBOSE=true
+      shift
+      ;;
+    -*)
+      usage_error "Unknown option: $1"
+      ;;
+    *)
+      usage_error "Unexpected argument: $1"
+      ;;
+  esac
+done
+
+if [[ "$REPORT_TYPE" == "branch" && "$REMOTE_TIMEOUT_SPECIFIED" == true && \
+  "$REMOTE_BRANCH_REPORT" == false ]]; then
+  usage_error "Option -t requires -r for TYPE branch"
+fi
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT"
+
+ensure_git_repository
+
+if [[ "$REPORT_TYPE" == "style" ]]; then
+  [[ "$VERBOSE" == false ]] || STYLE_ARGS+=(-v)
+  # shellcheck source=helpers/ckstyle.sh
+  source "$SCRIPT_DIR/../helpers/ckstyle.sh"
+  bt_ckstyle "${STYLE_ARGS[@]}"
+fi
+
+if [[ "$REPORT_TYPE" == "repo" ]]; then
+  generate_repository_report
+fi
+
+CURRENT_REF="$(bt_get_current_branch_raw 2>/dev/null || true)"
+if [[ "$CURRENT_REF" != "HEAD" && -n "$CURRENT_REF" ]]; then
+  CURRENT_REF="$(bt_get_current_branch_or_empty)"
+else
+  CURRENT_REF=""
+fi
+TARGET_REF="$CURRENT_REF"
+HISTORY_REF="$CURRENT_REF"
+WORKFLOW_NOTES_REF="briteRepo-workflow"
+BRANCH_REPORT_PREFIX="local"
+SNAPSHOT_HISTORY_REF=""
+SNAPSHOT_TARGET_REF=""
+if [[ -z "$CURRENT_REF" ]]; then
+  if ! SNAPSHOT_HISTORY_REF="$(resolve_remote_snapshot_ref)"; then
+    usage_error "Could not resolve current remote snapshot branch"
+  fi
+  SNAPSHOT_TARGET_REF="${SNAPSHOT_HISTORY_REF#origin/}"
+fi
+
+if [[ "$REMOTE_BRANCH_REPORT" == true ]]; then
+  TARGET_REF="${CURRENT_REF:-$SNAPSHOT_TARGET_REF}"
+  refresh_remote_branch_report_refs "$TARGET_REF"
+  HISTORY_REF="origin/$TARGET_REF"
+  WORKFLOW_NOTES_REF="briteRepo-remote-workflow"
+  BRANCH_REPORT_PREFIX="remote"
+elif [[ -z "$TARGET_REF" ]]; then
+  BRANCH_REPORT_PREFIX="remote"
+  WORKFLOW_NOTES_REF="briteRepo-remote-workflow"
+  HISTORY_REF="$SNAPSHOT_HISTORY_REF"
+  TARGET_REF="$SNAPSHOT_TARGET_REF"
+fi
+[[ -n "$TARGET_REF" ]] || usage_error "Could not resolve current branch/ref"
+
+if ! git rev-parse --verify "$HISTORY_REF" >/dev/null 2>&1; then
+  usage_error "Selected branch is not available: $TARGET_REF"
+fi
+
+log_format='%H%x1f%h%x1f%ad%x1f%an%x1f%ae%x1f%s%x1f%B%x1e'
+git_log_args=(
+  "$HISTORY_REF"
+  --date=format:'%Y-%m-%d %H:%M:%S'
+  --pretty=format:"$log_format"
+)
+if ! history="$(git log "${git_log_args[@]}" 2>/dev/null)"; then
+  bt_warn "Failed to read repository history"
+  exit "$EXIT_HISTORY_READ_FAILED"
+fi
+
+entries=()
+
+while IFS= read -r -d $'\x1e' row; do
+  while [[ "$row" == $'\n'* ]]; do
+    row="${row#$'\n'}"
+  done
+  [[ -n "$row" ]] || continue
+  sep=$'\x1f'
+  full_hash="${row%%"$sep"*}"
+  row="${row#*"$sep"}"
+  short_hash="${row%%"$sep"*}"
+  row="${row#*"$sep"}"
+  date_text="${row%%"$sep"*}"
+  row="${row#*"$sep"}"
+  author_name="${row%%"$sep"*}"
+  row="${row#*"$sep"}"
+  author_email="${row%%"$sep"*}"
+  row="${row#*"$sep"}"
+  subject="${row%%"$sep"*}"
+  body="${row#*"$sep"}"
+
+  note="$(git notes --ref="$WORKFLOW_NOTES_REF" show "$full_hash" 2>/dev/null || true)"
+  if [[ -n "$note" ]]; then
+    while IFS= read -r -d $'\x1e' note_record; do
+      missing_note_fields="$(workflow_record_missing_fields "$note_record")"
+      if [[ -n "$missing_note_fields" ]]; then
+        if [[ "$VERBOSE" == true ]]; then
+          bt_warn "Skipping malformed workflow record on $short_hash; missing: $missing_note_fields"
+        fi
+        continue
+      fi
+      note_type="$(recorded_field_value "$note_record" "Workflow-Type")"
+      note_date="$(recorded_field_value "$note_record" "Workflow-Time")"
+      note_branch="$(recorded_field_value "$note_record" "Workflow-Branch")"
+      note_user="$(recorded_field_value "$note_record" "Workflow-User")"
+      note_command="$(recorded_field_value "$note_record" "Command-Line")"
+      note_summary="$(recorded_field_value "$note_record" "Summary")"
+      note_details="$(printf '%s\n' "$note_record" | workflow_event_details)"
+      change_summary="$(recorded_change_summary "$note_record")"
+
+      [[ "$note_branch" == "$TARGET_REF" ]] || continue
+      if ! entry_matches_filters "$note_type" "$note_user" \
+        "$note_summary $note_details $note_command"; then
+        continue
+      fi
+
+      printf -v entry '## %s: %s\n\n' "$note_type" "$note_date"
+      printf -v line '**Commit:** `%s`  \n**User:** %s  \n**Summary:** %s\n' \
+        "$short_hash" "$note_user" "$note_summary"
+      entry+="$line"
+      if [[ -n "$change_summary" ]]; then
+        printf -v line '**Changes:** %s  \n' "$change_summary"
+        entry+="$line"
+      fi
+      printf -v line '\n**Command:** `%s`\n' "$note_command"
+      entry+="$line"
+      if [[ -n "$note_details" ]]; then
+        entry+=$'\n### Details\n\n'
+        entry+="$note_details"
+        entry+=$'\n'
+      fi
+      entries+=("$entry")
+
+      if [[ "$LIMIT" -gt 0 && "${#entries[@]}" -ge "$LIMIT" ]]; then
+        break
+      fi
+    done < <(printf '%s\n' "$note" | workflow_note_records)
+  fi
+
+  if [[ "$LIMIT" -gt 0 && "${#entries[@]}" -ge "$LIMIT" ]]; then
+    break
+  fi
+
+  command_line="$(recorded_field_value "$body" "Command-Line")"
+  change_summary="$(recorded_change_summary "$body")"
+  entry_type="$(activity_type "$command_line")"
+  if ! entry_matches_filters "$entry_type" "$author_name $author_email" \
+    "$subject $body"; then
+    continue
+  fi
+
+  printf -v entry '## %s: %s\n\n' "$entry_type" "$date_text"
+  printf -v line '**Commit:** `%s`  \n**User:** %s <%s>  \n**Summary:** %s\n' \
+    "$short_hash" "$author_name" "$author_email" "$subject"
+  entry+="$line"
+  if [[ -n "$change_summary" ]]; then
+    printf -v line '**Changes:** %s  \n' "$change_summary"
+    entry+="$line"
+  fi
+  if [[ -n "$command_line" ]]; then
+    printf -v line '\n**Command:** `%s`\n' "$command_line"
+    entry+="$line"
+  fi
+  if [[ -n "$body" ]]; then
+    entry+=$'\n### Details\n\n'
+    entry+="$body"
+    entry+=$'\n'
+  fi
+  entries+=("$entry")
+
+  if [[ "$LIMIT" -gt 0 && "${#entries[@]}" -ge "$LIMIT" ]]; then
+    break
+  fi
+done < <(printf '%s' "$history")
+
+if [[ "${#entries[@]}" -eq 0 ]]; then
+  bt_warn "No matching activity was found"
+  exit "$EXIT_NO_MATCH"
+fi
+
+report_lock_fd=""
+
+bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_WRITE_FAILED"
+if ! bt_report_acquire_lock "$REPO_ROOT" \
+  "report-$BRANCH_REPORT_PREFIX" 10 report_lock_fd; then
+  bt_warn "Timed out waiting for $BRANCH_REPORT_PREFIX report write lock"
+  exit "$EXIT_REPORT_WRITE_FAILED"
+fi
+report_file="$(bt_report_transient_path \
+  "$REPORTS_DIR" "$BRANCH_REPORT_PREFIX" "$RUN_TS_FILE")"
+report_rel="${report_file#"${REPO_ROOT}"/}"
+if ! {
+  printf '# Branch History Report\n\n'
+  printf '**Branch:** `%s`  \n' "$TARGET_REF"
+  printf '**Type:** `%s`  \n' "$TYPE_FILTER"
+  printf '**Generated:** %s\n\n' "$RUN_TS_DISPLAY"
+  for entry in "${entries[@]}"; do
+    printf '%s\n' "$entry"
+  done
+} > "$report_file"; then
+  bt_report_release_lock "$report_lock_fd"
+  bt_warn "Failed to write report: $report_rel"
+  exit "$EXIT_REPORT_WRITE_FAILED"
+fi
+
+remove_stale_reports "$report_file" \
+  "$REPORTS_DIR/${BRANCH_REPORT_PREFIX}-*.md" \
+  "$REPORTS_DIR/branch/history-*.md"
+bt_report_release_lock "$report_lock_fd"
+
+if [[ "$VERBOSE" == true ]]; then
+  bt_info "Found ${#entries[@]} matching activities"
+fi
+printf 'See %s for details.\n' "$report_rel"
+exit 0

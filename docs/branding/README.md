@@ -6,7 +6,7 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `<repo>/LICENSE`.
 
-See `<repo>/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to the repository.
 
 ## Files
 
@@ -38,7 +38,7 @@ None.
 
 ## Generation
 
-Use `<repo>/scripts/bin/genpngs` to regenerate the PNG files from the SVG sources.
+Use `<repo>/briteRepo/bin/genpngs` to regenerate the PNG files from the SVG sources.
 
 Source-of-truth policy:
 
@@ -85,7 +85,7 @@ On 2026-06-20, the crest and cheek patch were removed by request. #FFF5B5
 removed from palette as it is no longer in use.
 
 On 2026-06-20, PNG exports were added for SVG variants.
-Use `scripts/bin/genpngs` to regenerate them from the SVG sources.
+Use `briteRepo/bin/genpngs` to regenerate them from the SVG sources.
 
 On 2026-06-21, SVG and PNG files added for logo with document title.
 

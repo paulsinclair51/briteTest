@@ -93,14 +93,14 @@ This document is the task-oriented guide for routine contribution work.
 
 ## 1. Introduction
 
-The repository provides commands in `scripts/bin/` to perform repository-changing
+The repository provides commands in `briteRepo/bin/` to perform repository-changing
 actions. Contributors, reviewers, and approvers must use these commands instead
 of direct Git commands for branch modification operations.
 
 The commands validate each action, enforce repository policy, and
 provide recovery guidance. After `setupclone`, the commands are normally
 available by name. You may also run them by path, such as
-`scripts/bin/commit`.
+`briteRepo/bin/commit`.
 
 | Task | Command |
 |------|---------|

@@ -381,11 +381,9 @@ _No terms currently defined._
 - **report header***: Lines of text written at the beginning
   of a test report that include the report title, a timestamp, etc.
 - **`<repo>`**: Repository root directory. In docs and usage examples,
-  `<repo>` denotes a placeholder for the absolute path to the briteTest
-  repository root, i.e., `/workspaces/briteTest`.
+  `<repo>` denotes a placeholder for the absolute path to the repository root.
 - **`<repo_url>`**: Repository URL. In docs and usage examples,
-  `<repo_url>` denotes a placeholder for the briteTest repository URL,
-  i.e., `https://github.com/paulsinclair51/briteTest`.
+  `<repo_url>` denotes a placeholder for the repository URL.
 - **reviewer***: A person listed in `<repo>/config/contributors.md` as a reviewer.
   Note that an reviewer is also a contributor and an approver is also a
   contributor and a reviewer. A reviewer may review changes to briteTest.

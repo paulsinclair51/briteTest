@@ -4,12 +4,12 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `<repo>/LICENSE`.
 
-See `<repo>/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to the repository.
 
 ## Overview
 
-This file defines the allowed contributors to briteTest with their GitHub login
-and briteTest role in the following Contributor section.
+This file defines the allowed contributors to the repository with their GitHub
+login and role in the following Contributor section.
 
 Each entry uses this form:
 

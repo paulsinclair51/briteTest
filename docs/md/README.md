@@ -9,7 +9,7 @@ For license details, see `<repo>/LICENSE`.
 These are the base/master documents. Generated PDF and DOCX documents are in
  `<repo>/docs/pdf` and `<repo>/docs/docx/`, respectively.
 
-See `<repo>/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to the repository.
 
 ## Files
 

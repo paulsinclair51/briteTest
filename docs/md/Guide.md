@@ -299,7 +299,7 @@ improvements.
 
 ### 2.2. For Contributors
 
-To contribute code or documentation to briteTest:
+To contribute code or documentation:
 
 1. **Request contributor access** via [GitHub Discussions](../../discussions)
    or contact the maintainers
@@ -366,7 +366,7 @@ output paths or configuration flags.
 
 ## 5. Report Generation
 
-How briteTest collects pass/fail information and formats it for output.
+How the Runner Framework/API collects pass/fail information and formats it for output.
 </details>
 
 <details>

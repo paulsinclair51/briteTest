@@ -103,7 +103,7 @@ see [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) and
 | `rmclone` | [1.2.6](#126-rmclone) | `setupclone` | [1.2.3](#123-setupclone) |
 | `undo` | [1.1.15](#1115-undo) | | |
 
-1. [Command Reference (`scripts/bin/`)](#1-command-reference-scriptsbin)<br>
+1. [Command Reference (`briteRepo/bin/`)](#1-command-reference-scriptsbin)<br>
    1.1. [Workflow Management](#11-workflow-management)<br>
    1.2. [Repository and Clone Management](#12-repository-and-clone-management)<br>
    1.3. [Documentation and Branding](#13-documentation-and-branding)<br>
@@ -130,11 +130,11 @@ see [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) and
 </details>
 
 <details>
-<summary><strong>1. Command Reference (scripts/bin/)</strong></summary>
+<summary><strong>1. Command Reference (briteRepo/bin/)</strong></summary>
 
-## 1. Command Reference (scripts/bin/)
+## 1. Command Reference (briteRepo/bin/)
 
-Standalone executable scripts located in `scripts/bin/`. For full usage
+Standalone executable scripts located in `briteRepo/bin/`. For full usage
 information, run any script with `-h` or `--help`.
 
 <details>
@@ -598,13 +598,13 @@ fixremote [OPTIONS] <clone-path>
 **Usage:**
 
 ```bash
-bash scripts/bin/setupclone [-t SEC]
+bash briteRepo/bin/setupclone [-t SEC]
 ```
 
 **Functions:**
 
 - Make all scripts executable
-- Add `scripts/bin/` to PATH in `~/.bashrc`
+- Add `briteRepo/bin/` to PATH in `~/.bashrc`
 - Configure Git hooks via `core.hooksPath`
 - Load configuration immediately
 </details>
@@ -622,7 +622,8 @@ bash scripts/bin/setupclone [-t SEC]
 mkclone [OPTIONS] [directory]
 ```
 
-The default directory is `BriteTest`. Use `-t SEC` to set the remote timeout.
+The default directory is the repository name. Use `-t SEC` to set the remote
+timeout.
 </details>
 
 <details>
@@ -914,7 +915,7 @@ grant the approver permission.
 | Path or Setting | Public | User | Contributor | Reviewer | Approver | Owner |
 |-----------------|--------|------|-------------|----------|----------|-------|
 | `docs/md/`, `docs/branding/`, `src/`, `include/`, `examples/` | R | R | RW | RW | RW | RW |
-| `scripts/bin/`, `scripts/helpers/` | R | R | RW | RW | RW | RW |
+| `briteRepo/bin/`, `briteRepo/helpers/` | R | R | RW | RW | RW | RW |
 | `config/contributors.md` | R | R | - | - | RW | RW |
 | `.github/workflows/` | R | R | - | - | - | RW* |
 | GitHub rulesets and branch-protection settings | R | R | - | - | - | RW* |

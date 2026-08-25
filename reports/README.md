@@ -6,7 +6,7 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `<repo>/LICENSE`.
 
-See `<repo>/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to the repository.
 
 ## Files
 
@@ -17,7 +17,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 `pushup`, `pulldown`, or `copyfix`.
 
 **local-<datetime>.md**: Latest untracked activity report for a local branch from
-`<repo>/scripts/bin/report`.
+`<repo>/briteRepo/bin/report`.
 
 **rebrand-<datetime>-<id>.md**: Latest untracked brand update report.
 
@@ -28,17 +28,17 @@ See `<repo>/README.md` for an introduction to briteTest.
 **release-e-<datetime>.md**: Latest release error-run report.
 
 **remote-<datetime>.md**: Latest untracked activity report for a remote branch
-from `<repo>/scripts/bin/report`.
+from `<repo>/briteRepo/bin/report`.
 
 **repo-<datetime>.md**: Latest untracked repository health and branch status report from
-`<repo>/scripts/bin/report`.
+`<repo>/briteRepo/bin/report`.
 
 **repository-<datetime>-<id>.md**: Repository diagnostic report.
 
 **retarget-e-<datetime>.md**: Latest retarget error-run report.
 
 **style-<datetime>.md**: Latest untracked style report from
-`<repo>/scripts/bin/report`.
+`<repo>/briteRepo/bin/report`.
 
 **README.md**: This directory guide.
 

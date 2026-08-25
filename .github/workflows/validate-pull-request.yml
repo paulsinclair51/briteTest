@@ -79,7 +79,7 @@ name: Validate Branch Names on Pull Request
 # - Block deletions
 #
 # This workflow mirrors the branch-naming policy used by
-# <repo>/scripts/bin/mkbranch.
+# <repo>/briteRepo/bin/mkbranch.
 # 
 # For more information, see '<repo>/docs/md/Contributor_Guide.md'.
 #
@@ -118,8 +118,8 @@ jobs:
 
           # Get branch types using ckbranchname.sh helper
           # Exit codes: 1=main, 2=version, 3=targeted, 4=contributor, 5=invalid
-          head_result=$(bash scripts/helpers/ckbranchname.sh "$HEAD_REF" 2>/dev/null; echo $?)
-          base_result=$(bash scripts/helpers/ckbranchname.sh "$BASE_REF" 2>/dev/null; echo $?)
+          head_result=$(bash briteRepo/helpers/ckbranchname.sh "$HEAD_REF" 2>/dev/null; echo $?)
+          base_result=$(bash briteRepo/helpers/ckbranchname.sh "$BASE_REF" 2>/dev/null; echo $?)
 
           # Helper function to get branch type name
           get_type_name() {
@@ -227,7 +227,7 @@ jobs:
           case $head_result in
             # 2. 'version' branch requires approver role
             2)
-              if ! bash scripts/helpers/ckrole.sh approver; then
+              if ! bash briteRepo/helpers/ckrole.sh approver; then
                 echo "Invalid pull request: $GITHUB_ACTOR must be an approver"
                 echo "to pull from version branch $HEAD_REF to $BASE_REF."
                 exit 1
@@ -237,7 +237,7 @@ jobs:
 
             # 3. 'targeted' branch requires approver role
             3)
-              if ! bash scripts/helpers/ckrole.sh approver; then
+              if ! bash briteRepo/helpers/ckrole.sh approver; then
                 echo "Invalid pull request: $GITHUB_ACTOR must be an approver"
                 echo "to pull from targeted branch $HEAD_REF to $BASE_REF."
                 exit 1
@@ -247,7 +247,7 @@ jobs:
 
             # 4. 'contributor' branch requires contributor role
             4)
-              if ! bash scripts/helpers/ckrole.sh contributor; then
+              if ! bash briteRepo/helpers/ckrole.sh contributor; then
                 echo "Invalid pull request: $GITHUB_ACTOR must be a contributor"
                 echo "to pull from contributor branch $HEAD_REF to $BASE_REF."
                 exit 1

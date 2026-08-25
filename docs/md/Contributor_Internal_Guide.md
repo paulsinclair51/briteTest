@@ -121,7 +121,7 @@ remote recovery steps when the local repository is clean and the issue remains.
 
 ## 3. Protected Branch and Ruleset Model
 
-The GitHub ruleset configuration is managed by `scripts/bin/setup_rulesets`.
+The GitHub ruleset configuration is managed by `briteRepo/bin/setup_rulesets`.
 Protected branches are enforced at the server level for:
 
 - `main`

@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout # BriteTest repository code.
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Validate documentation
@@ -52,7 +52,7 @@ jobs:
 
       - name: Generate docs PDFs (excluding docs/md/README.md)
         run: |
-          bash ./scripts/helpers/genpdf.sh \
+          bash ./briteRepo/helpers/genpdf.sh \
             -i "*.md" -x "README.md" docs/md docs/pdf
 
       - name: Run report helper tests

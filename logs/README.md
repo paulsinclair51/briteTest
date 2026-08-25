@@ -6,7 +6,7 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `<repo>/LICENSE`.
 
-See `<repo>/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to the repository.
 
 ## Files
 
@@ -16,7 +16,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 branch.
 
 **fork_history.md**: log of the forks made of this repository using
-`<repo>/scripts/bin/mkfork`.
+`<repo>/briteRepo/bin/mkfork`.
 
 **local_branch_history.md**: log of local branch operations.
 
