@@ -467,9 +467,8 @@ push_validate_prerequisites() {
   fi
   if push_worktree_has_blocking_changes; then
     bt_emit_prerequisite_failure 1 \
-      "Current branch has uncommitted changes. Commit or" \
-      " undo them before running push." \
-      "commit or undo changes, then rerun push."
+      "Current branch has uncommitted changes." \
+      "Commit or undo them before running push."
   fi
   if ! git remote get-url origin >/dev/null 2>&1; then
     bt_emit_prerequisite_failure 4 \

@@ -232,6 +232,8 @@ bt_push_workflow() (
     local num_added=""
     local num_deleted=""
     local rest=""
+    local push_lines_added=0
+    local push_lines_deleted=0
 
     command_text="$(bt_push_format_command_line)"
     bt_push_acquire_report_lock
@@ -360,6 +362,9 @@ EOF
     local num_added=""
     local num_deleted=""
     local rest=""
+    local push_lines_added=0
+    local push_lines_deleted=0
+    local markdown_break="  "
 
     command_text="$(bt_push_format_command_line)"
     if [[ "$dry_run" == true ]]; then
@@ -379,6 +384,10 @@ EOF
 
     files_count="$(git diff --name-only --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null | sed '/^$/d' | wc -l | tr -d ' ')"
     [[ "$files_count" =~ ^[0-9]+$ ]] || files_count=0
+    read -r push_lines_added push_lines_deleted < <(
+      git diff --numstat --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null |
+        awk '{ added += $1; deleted += $2 } END { print added + 0, deleted + 0 }'
+    )
 
     if [[ "$dry_run" == true ]]; then
       cat > "$report_file" <<EOF
@@ -388,14 +397,11 @@ EOF
 **Command:** \`${command_text}\`  
 **Branch:** \`${current_branch}\`  
 **Commits:** ${commits_ahead}  
-**Files:** ${files_count}
-
-**Changes:** ${pushed_change_summary}
+**Changes:** ${pushed_change_summary}${markdown_break}
+**Lines:** ${push_lines_added} added and ${push_lines_deleted} deleted.
 
 <details>
 <summary><strong>Commits</strong></summary>
-
-## Commits
 
 | Commit Hash | DateTime | Comment |
 | --- | --- | --- |
@@ -409,13 +415,10 @@ EOF
           commit_comment="$(bt_push_extract_commit_comment "$commit_body")"
           printf '| `%s` | %s | %s |\n' "$commit_hash" "$commit_date" "$commit_comment"
         done < <(git rev-list --reverse "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)
-        echo
         echo "</details>"
         echo
         echo "<details>"
         echo "<summary><strong>Files</strong></summary>"
-        echo
-        echo "## Files"
         echo
         echo "| File | Commit | Added | Deleted | Net | Total |"
         echo "| --- | --- | ---: | ---: | ---: | ---: |"
