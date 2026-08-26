@@ -442,8 +442,8 @@ EOF
 
 ## 1. push: ${run_ts_display}
 
-**Command:** \`${command_text}\`${markdown_break}
 **Pushed-Tip:** \`To be determined\`${markdown_break}
+**Command:** \`${command_text}\`${markdown_break}
 **User:** ${report_user}${markdown_break}
 **Commits:** ${commits_ahead}${markdown_break}
 **Changes:** ${pushed_change_summary}${markdown_break}
