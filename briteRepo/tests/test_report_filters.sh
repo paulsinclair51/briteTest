@@ -19,6 +19,10 @@ rc=$(run_capture "$TMPDIR/user-filter.out" bash -lc "cd '$WORK' && bash ./briteR
 [[ "$rc" -eq 0 ]] || fail "user filter should exit 0 (got $rc)"
 user_rel="$(report_path_from_output "$TMPDIR/user-filter.out")"
 assert_contains "committed by contributor testuser" "$WORK/$user_rel"
+assert_contains '**Command:** `commit -c' "$WORK/$user_rel"
+if grep -Fq '\\ ' "$WORK/$user_rel"; then
+	fail "user comment should not contain shell-escape backslashes"
+fi
 rc=$(run_capture "$TMPDIR/user-filter-false-positive.out" bash -lc \
 	"cd '$WORK' && bash ./briteRepo/bin/report branch -u 'pushup activity' -l 0")
 [[ "$rc" -eq 6 ]] || \
@@ -40,11 +44,16 @@ text_rel="$(report_path_from_output "$TMPDIR/text-filter.out")"
 if grep -Fq "## Commit Metadata" "$WORK/$text_rel"; then
 	fail "branch report should not render the commit metadata section"
 fi
+if grep -Fq "**Summary:**" "$WORK/$text_rel"; then
+	fail "branch report should not render action summary line"
+fi
+if [[ "$(grep -Fc 'committed by contributor testuser' "$WORK/$text_rel")" -gt 1 ]]; then
+	fail "branch report should not duplicate the commit summary sentence"
+fi
 assert_contains "### Files Affected" "$WORK/$text_rel"
 if grep -Fq "### Directories Affected" "$WORK/$text_rel"; then
 	fail "directory action section should be omitted when no directory add/delete/rename occurred"
 fi
-assert_contains "**Changes:** 1 modified file" "$WORK/$text_rel"
 pass "summary and detail filtering"
 
 # 3b) Directory action section should list only added/deleted/renamed directories
@@ -83,6 +92,13 @@ assert_contains "pull activity" "$WORK/$multiple_rel"
 assert_contains "retarget activity" "$WORK/$multiple_rel"
 [[ "$(grep -c '^## ' "$WORK/$multiple_rel")" -eq 2 ]] || \
 	fail "multiple appended records should render as two activities"
+if ! grep -Eq '^## 1\. ' "$WORK/$multiple_rel" || \
+	! grep -Eq '^## 2\. ' "$WORK/$multiple_rel"; then
+	fail "filtered activities should start at one and increment by one"
+fi
+if grep -Eq '^## 3\. ' "$WORK/$multiple_rel"; then
+	fail "filtered activities should be numbered consecutively"
+fi
 rc=$(run_capture "$TMPDIR/delimiter-detail.out" bash -lc \
 	"cd '$WORK' && bash ./briteRepo/bin/report branch -q '--- briteRepo workflow --- marker'")
 [[ "$rc" -eq 0 ]] || fail "delimiter-like detail report should exit 0 (got $rc)"
@@ -264,6 +280,20 @@ concurrent_report="$(find "$WORK/reports" -maxdepth 1 -type f \
 assert_contains "# Branch History Report" "$concurrent_report"
 [[ "$(grep -c '^## ' "$concurrent_report")" -eq 2 ]] || \
 	fail "concurrent branch report should contain two complete entries"
+if ! awk '
+	BEGIN { seen_first = 0; ok = 0 }
+	/^## / {
+		if (seen_first == 1 && prev_blank == 1) {
+			ok = 1
+			exit
+		}
+		seen_first = 1
+	}
+	{ prev_blank = ($0 ~ /^[[:space:]]*$/) }
+	END { exit ok ? 0 : 1 }
+' "$concurrent_report"; then
+	fail "branch report should include a blank line before each activity section header"
+fi
 pass "concurrent branch report serialization"
 
 echo "All report filter smoke tests passed."

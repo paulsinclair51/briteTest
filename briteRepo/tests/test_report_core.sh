@@ -55,6 +55,9 @@ assert_contains '**Command:** `report`' "$WORK/$default_rel"
 assert_contains '**User:** testuser (contributor)' "$WORK/$default_rel"
 assert_contains "retarget activity" "$WORK/$default_rel"
 [[ "$(grep -c '^## ' "$WORK/$default_rel")" -eq 1 ]] || fail "default limit should be one activity"
+if grep -Fq '**Summary:**' "$WORK/$default_rel"; then
+  fail "action summary line should be omitted"
+fi
 pass "default all report"
 
 # 4) Verbose mode should report progress while details remain in the file
@@ -80,6 +83,10 @@ before_rel="$(report_path_from_output "$TMPDIR/type-before.out")"
 assert_contains "pull activity" "$WORK/$before_rel"
 assert_contains '**Command:** `pull -v`' "$WORK/$before_rel"
 assert_contains "recorded pull details" "$WORK/$before_rel"
+before_command_line="$(grep -n '\*\*Command:\*\* `pull -v`' "$WORK/$before_rel" | head -n 1 | cut -d: -f1 || true)"
+before_user_line="$(grep -n '\*\*User:\*\* testuser (contributor)' "$WORK/$before_rel" | head -n 1 | cut -d: -f1 || true)"
+[[ -n "$before_command_line" && -n "$before_user_line" && "$before_command_line" -lt "$before_user_line" ]] || \
+  fail "action command line should appear before action user line"
 rc=$(run_capture "$TMPDIR/type-after.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -q 'pull activity' -l 1 branch")
 [[ "$rc" -eq 0 ]] || fail "TYPE after options should exit 0 (got $rc)"
 after_rel="$(report_path_from_output "$TMPDIR/type-after.out")"

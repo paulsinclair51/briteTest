@@ -446,6 +446,12 @@ role_name_for_login() {
   role_name_from_code "$role_code"
 }
 
+is_redundant_commit_summary() {
+  local summary="$1"
+
+  [[ "$summary" == *" committed by approver "* ]]
+}
+
 extract_email_from_identity() {
   local identity="$1"
   local email=""
@@ -534,7 +540,7 @@ expand_command_line_placeholders() {
     "$command_line" == *"<user comment>"* ]]; then
     user_comment="$(extract_user_comment_from_body "$body")"
     if [[ -n "$user_comment" ]]; then
-      printf -v quoted_comment '%q' "$user_comment"
+      quoted_comment="$user_comment"
       command_line="${command_line//<user-comment>/$quoted_comment}"
       command_line="${command_line//<user comment>/$quoted_comment}"
     fi
@@ -545,8 +551,13 @@ expand_command_line_placeholders() {
 
 sanitize_commit_body_for_report() {
   local body="$1"
+  local summary="$2"
 
-  printf '%s\n' "$body" | awk '
+  printf '%s\n' "$body" | awk -v summary="$summary" '
+    BEGIN {
+      summary_line = summary
+      skipped_first = 0
+    }
     /^## User Comment[[:space:]]*$/ {
       skip = 1
       next
@@ -563,6 +574,12 @@ sanitize_commit_body_for_report() {
       next
     }
     skip == 0 {
+      if (skipped_first == 0 && $0 ~ /[^[:space:]]/) {
+        skipped_first = 1
+        if ($0 == summary_line) {
+          next
+        }
+      }
       print
     }
   '
@@ -1002,6 +1019,7 @@ if ! history="$(git log "${git_log_args[@]}" 2>/dev/null)"; then
 fi
 
 entries=()
+action_number=0
 
 while IFS= read -r -d $'\x1e' row; do
   while [[ "$row" == $'\n'* ]]; do
@@ -1050,16 +1068,18 @@ while IFS= read -r -d $'\x1e' row; do
         continue
       fi
 
-      printf -v entry '## %s: %s\n\n' "$note_type" "$note_date"
-      printf -v line '**Commit:** `%s`  \n**User:** %s  \n**Summary:** %s\n' \
-        "$short_hash" "$note_user_display" "$note_summary"
+      action_number=$((action_number + 1))
+      printf -v entry '## %d. %s: %s\n\n' "$action_number" "$note_type" "$note_date"
+      printf -v line '**Commit:** `%s`  \n' "$short_hash"
       entry+="$line"
-      if [[ -n "$change_summary" ]]; then
-        printf -v line '**Changes:** %s  \n' "$change_summary"
+      printf -v line '**Command:** `%s`  \n' "$note_command"
+      entry+="$line"
+      printf -v line '**User:** %s\n' "$note_user_display"
+      entry+="$line"
+      if [[ -n "$note_summary" ]]; then
+        printf -v line '\n%s\n' "$note_summary"
         entry+="$line"
       fi
-      printf -v line '\n**Command:** `%s`\n' "$note_command"
-      entry+="$line"
       if [[ -n "$note_details" ]]; then
         entry+=$'\n'
         entry+="$note_details"
@@ -1082,7 +1102,7 @@ while IFS= read -r -d $'\x1e' row; do
   command_line="$(expand_command_line_placeholders "$command_line" "$body")"
   change_summary="$(recorded_change_summary "$body")"
   entry_type="$(activity_type "$command_line")"
-  sanitized_body="$(sanitize_commit_body_for_report "$body")"
+  sanitized_body="$(sanitize_commit_body_for_report "$body" "$subject")"
   action_user_display="$(format_user_with_role "$author_name" "$author_name" "$author_email")"
   affected_tables="$(render_affected_tables "$full_hash")"
   if ! entry_matches_filters "$entry_type" "$author_name $author_email" \
@@ -1090,16 +1110,18 @@ while IFS= read -r -d $'\x1e' row; do
     continue
   fi
 
-  printf -v entry '## %s: %s\n\n' "$entry_type" "$date_text"
-  printf -v line '**Commit:** `%s`  \n**User:** %s  \n**Summary:** %s\n' \
-    "$short_hash" "$action_user_display" "$subject"
+  action_number=$((action_number + 1))
+  printf -v entry '## %d. %s: %s\n\n' "$action_number" "$entry_type" "$date_text"
+  printf -v line '**Commit:** `%s`  \n' "$short_hash"
   entry+="$line"
-  if [[ -n "$change_summary" ]]; then
-    printf -v line '**Changes:** %s  \n' "$change_summary"
+  if [[ -n "$command_line" ]]; then
+    printf -v line '**Command:** `%s`  \n' "$command_line"
     entry+="$line"
   fi
-  if [[ -n "$command_line" ]]; then
-    printf -v line '\n**Command:** `%s`\n' "$command_line"
+  printf -v line '**User:** %s\n' "$action_user_display"
+  entry+="$line"
+  if [[ -n "$subject" ]] && ! is_redundant_commit_summary "$subject"; then
+    printf -v line '\n%s\n' "$subject"
     entry+="$line"
   fi
   if [[ -n "$sanitized_body" ]]; then
@@ -1139,7 +1161,7 @@ if ! {
   printf '**Command:** `%s`  \n' "$REPORT_COMMAND_LINE"
   printf '**User:** %s\n\n' "$REPORT_USER"
   for entry in "${entries[@]}"; do
-    printf '%s\n' "$entry"
+    printf '%s\n\n' "$entry"
   done
 } > "$report_file"; then
   bt_report_release_lock "$report_lock_fd"
