@@ -910,7 +910,7 @@ render_push_summary_tables() {
   local new_directory=""
   local name_status=""
 
-  printf '<details>\n<summary><strong>Commits</strong></summary>\n\n'
+  printf '\n<details>\n<summary><strong>Commits</strong></summary>\n\n'
   printf '| Commit Hash | DateTime | Comment |\n| --- | --- | --- |\n'
   while IFS= read -r commit_hash; do
     [[ -n "$commit_hash" ]] || continue
