@@ -1125,7 +1125,6 @@ while IFS= read -r -d $'\x1e' row; do
     entry+="$line"
   fi
   if [[ -n "$sanitized_body" ]]; then
-    entry+=$'\n'
     entry+="$sanitized_body"
     entry+=$'\n'
   fi
