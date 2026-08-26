@@ -192,6 +192,10 @@ assert_contains '**Branch:** `dev/report-tests-v1.0.0`' "$WORK/$remote_push_rel"
 assert_contains '**Status:** [remote]' "$WORK/$remote_push_rel"
 assert_contains '**Command:** `push -t 5`' "$WORK/$remote_push_rel"
 assert_contains '**Pushed-Tip:** `' "$WORK/$remote_push_rel"
+if ! grep -Eq '^\*\*Pushed-Tip:\*\* `[0-9a-f]{40}`' \
+	"$WORK/$remote_push_rel"; then
+	fail "remote push Pushed-Tip should be a full commit hash"
+fi
 assert_contains '**Commits:** 1' "$WORK/$remote_push_rel"
 assert_contains '**Changes:** 1 modified, 0 added, 0 deleted' "$WORK/$remote_push_rel"
 assert_contains '**Lines:** 1 added and 0 deleted.' "$WORK/$remote_push_rel"

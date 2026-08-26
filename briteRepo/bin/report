@@ -1310,6 +1310,9 @@ while IFS= read -r -d $'\x1e' row; do
           previous_tip="$(workflow_detail_value "$note_details" "Previous-Remote-Tip")"
         [[ -n "$pushed_tip" ]] || \
           pushed_tip="$(workflow_detail_value "$note_details" "Pushed-Tip")"
+        if [[ "$pushed_tip" == "HEAD" ]]; then
+          pushed_tip="$(git rev-parse "$HISTORY_REF" 2>/dev/null || true)"
+        fi
       else
         printf -v line '**Commit:** `%s`  \n' "$full_hash"
       fi
