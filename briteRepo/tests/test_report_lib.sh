@@ -44,7 +44,7 @@ assert_contains() {
 report_path_from_output() {
   local output_file="$1"
 
-  sed -n 's/^See \(reports\/\(local\|remote\)-[0-9]\{8\}-[0-9]\{6\}\.md\) for details\.$/\1/p' \
+  sed -n "s/^See '\(reports\/\(local\|remote\)-[0-9]\{8\}-[0-9]\{6\}\.md\)'\.$/\1/p" \
     "$output_file" | tail -n 1
 }
 
@@ -95,7 +95,7 @@ cat > "$report" <<'REPORT'
 | --- | --- | --- |
 | dev/report-tests-v1.0.0 | local | clean |
 REPORT
-printf 'See %s for details.\n' "${report#"$PWD"/}"
+printf "See '%s'.\n" "${report#"$PWD"/}"
 EOF
   chmod +x "$WORK/briteRepo/bin/report" "$WORK/briteRepo/helpers/ckstyle.sh" \
     "$WORK/briteRepo/bin/lsbranch"

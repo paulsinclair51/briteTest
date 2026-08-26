@@ -50,7 +50,7 @@ fi
 if [[ "$(grep -Fc 'committed by contributor testuser' "$WORK/$text_rel")" -gt 1 ]]; then
 	fail "branch report should not duplicate the commit summary sentence"
 fi
-assert_contains "### Files Affected" "$WORK/$text_rel"
+assert_contains "<summary>Files Affected</summary>" "$WORK/$text_rel"
 if grep -Fq "### Directories Affected" "$WORK/$text_rel"; then
 	fail "directory action section should be omitted when no directory add/delete/rename occurred"
 fi
@@ -75,7 +75,7 @@ rc=$(run_capture "$TMPDIR/directory-actions.out" bash -lc \
 	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'directory action fixture' -l 1")
 [[ "$rc" -eq 0 ]] || fail "directory action report should exit 0 (got $rc)"
 directory_rel="$(report_path_from_output "$TMPDIR/directory-actions.out")"
-assert_contains "### Directories Affected" "$WORK/$directory_rel"
+assert_contains "<summary>Directories Affected</summary>" "$WORK/$directory_rel"
 assert_contains "| Directory | Action |" "$WORK/$directory_rel"
 assert_contains '| `dir-rename` | Renamed to dir-renamed |' "$WORK/$directory_rel"
 assert_contains '| `dir-added` | Added |' "$WORK/$directory_rel"
@@ -189,7 +189,8 @@ remote_push_rel="$(report_path_from_output "$TMPDIR/remote-push.out")"
 	fail "remote report should replace the prior remote report"
 [[ "$(find "$WORK/reports" -maxdepth 1 -type f -name 'remote-*.md' | wc -l | tr -d ' ')" -eq 1 ]] || \
 	fail "only one remote report should remain"
-assert_contains '**Branch:** `dev/report-tests-v1.0.0` (remote)' "$WORK/$remote_push_rel"
+assert_contains '**Branch:** `dev/report-tests-v1.0.0`' "$WORK/$remote_push_rel"
+assert_contains '**Status:** [remote]' "$WORK/$remote_push_rel"
 assert_contains "Pushed 1 commit(s) to origin/dev/report-tests-v1.0.0" \
 	"$WORK/$remote_push_rel"
 assert_contains '**Command:** `push -t 5`' "$WORK/$remote_push_rel"

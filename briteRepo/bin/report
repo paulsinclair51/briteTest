@@ -99,7 +99,7 @@ Outputs:
       - 'remote-<datetime>.md' for a remote branch report.
       - 'style-<datetime>.md' for a style report.
     The previous report of the same type is deleted.
-  - Writes 'See <reportpath> for details.' to stdout when a
+  - Writes 'See <reportpath>' to stdout when a
     report is written.
 
 
@@ -343,7 +343,7 @@ generate_repository_report() {
     "$REPORTS_DIR/repo-*.md" "$REPORTS_DIR/repository/repo-*.md"
   bt_report_release_lock "$report_lock_fd"
 
-  printf 'See %s for details.\n' "$report_rel"
+  printf "See '%s'.\n" "$report_rel"
   exit 0
 }
 
@@ -452,6 +452,52 @@ is_redundant_commit_summary() {
   [[ "$summary" == *" committed by approver "* ]]
 }
 
+branch_status_tags() {
+  local branch="$1"
+  local mode="$2"
+  local local_ref="$branch"
+  local remote_ref="origin/$branch"
+  local branch_tag=""
+  local relation_tag=""
+  local parent_tags=""
+  local has_local=false
+  local has_remote=false
+  local has_uncommitted=false
+
+  git show-ref --verify --quiet "refs/heads/$branch" && has_local=true
+  git show-ref --verify --quiet "refs/remotes/origin/$branch" && has_remote=true
+  if [[ "$mode" == "local" ]] && bt_is_worktree_dirty; then
+    has_uncommitted=true
+  fi
+
+  if [[ "$mode" == "remote" ]]; then
+    if [[ "$has_local" == true ]]; then
+      branch_tag="[remote]"
+    else
+      branch_tag="[remote only]"
+    fi
+    parent_tags="$(bt_git_parent_relation_tags \
+      "remote" "$branch" "$remote_ref")"
+  elif [[ "$has_remote" == true ]]; then
+    branch_tag="[local]"
+    relation_tag="$(bt_git_tracking_relation_tag \
+      "local" "$local_ref" "$remote_ref" false)"
+    parent_tags="$(bt_git_parent_relation_tags \
+      "local" "$branch" "$local_ref")"
+  else
+    branch_tag="[local only]"
+    parent_tags="$(bt_git_parent_relation_tags \
+      "local" "$branch" "$local_ref")"
+  fi
+
+  if [[ "$has_uncommitted" == true ]]; then
+    printf '[uncommitted] '
+  fi
+  printf '%s' "$branch_tag"
+  [[ -z "$relation_tag" ]] || printf ' %s' "$relation_tag"
+  [[ -z "$parent_tags" ]] || printf ' %s' "$parent_tags"
+}
+
 extract_email_from_identity() {
   local identity="$1"
   local email=""
@@ -557,6 +603,7 @@ sanitize_commit_body_for_report() {
     BEGIN {
       summary_line = summary
       skipped_first = 0
+      started = 0
     }
     /^## User Comment[[:space:]]*$/ {
       skip = 1
@@ -570,10 +617,23 @@ sanitize_commit_body_for_report() {
       skip = 0
     }
     skip == 0 && /^## Summary[[:space:]]*$/ {
-      print "### Summary"
       next
     }
     skip == 0 {
+      if (started == 0 && $0 ~ /^[[:space:]]*$/) {
+        next
+      }
+      started = 1
+      if ($0 ~ /^-[[:space:]]+Changes:/) {
+        sub(/^-+[[:space:]]+Changes:[[:space:]]*/, "")
+        print "**Changes:** " $0 "  "
+        next
+      }
+      if ($0 ~ /^-[[:space:]]+Lines:/) {
+        sub(/^-+[[:space:]]+Lines:[[:space:]]*/, "")
+        print "**Lines:** " $0 "  "
+        next
+      }
       if (skipped_first == 0 && $0 ~ /[^[:space:]]/) {
         skipped_first = 1
         if ($0 == summary_line) {
@@ -609,6 +669,7 @@ render_affected_tables() {
   local total_added=0
   local total_deleted=0
   local total_net=0
+  local total_lines=0
   local directories_row_count=0
   local -a files_order=()
   local -a directories_before_order=()
@@ -621,6 +682,7 @@ render_affected_tables() {
 
   declare -A file_added=()
   declare -A file_deleted=()
+  declare -A file_lines=()
   declare -A directories_before=()
   declare -A directories_after=()
   declare -A directories_added=()
@@ -704,33 +766,40 @@ render_affected_tables() {
     files_order+=("$file_path")
     file_added["$file_path"]="$added"
     file_deleted["$file_path"]="$deleted"
+    file_lines["$file_path"]="$(git show "$commit_ref:$file_path" 2>/dev/null |
+      wc -l | tr -d ' ')"
+    [[ "${file_lines[$file_path]}" =~ ^[0-9]+$ ]] || \
+      file_lines["$file_path"]=0
 
     net=$((added - deleted))
     total_added=$((total_added + added))
     total_deleted=$((total_deleted + deleted))
     total_net=$((total_net + net))
+    total_lines=$((total_lines + file_lines[$file_path]))
 
     file_count=$((file_count + 1))
   done <<< "$numstat"
 
-  rendered+=$'\n### Files Affected\n\n'
+  rendered+=$'\n<details>\n<summary>Files Affected</summary>\n\n'
   if [[ "$file_count" -eq 0 ]]; then
     rendered+="None."$'\n'
   else
-    rendered+="| File | Added | Deleted | Net |"$'\n'
-    rendered+="| --- | ---: | ---: | ---: |"$'\n'
+    rendered+="| File | Added | Deleted | Net | Total |"$'\n'
+    rendered+="| --- | ---: | ---: | ---: | ---: |"$'\n'
     for key in "${files_order[@]}"; do
       added="${file_added[$key]}"
       deleted="${file_deleted[$key]}"
       net=$((added - deleted))
-      printf -v line '| `%s` | %s | %s | %+d |\n' \
-        "$key" "$added" "$deleted" "$net"
+      file_lines_value="${file_lines[$key]}"
+      printf -v line '| `%s` | %s | %s | %+d | %s |\n' \
+        "$key" "$added" "$deleted" "$net" "$file_lines_value"
       rendered+="$line"
     done
-    printf -v line '| **Total** | %s | %s | %+d |\n' \
-      "$total_added" "$total_deleted" "$total_net"
+    printf -v line '| **Total** | %s | %s | %+d | %s |\n' \
+      "$total_added" "$total_deleted" "$total_net" "$total_lines"
     rendered+="$line"
   fi
+  rendered+='</details>'$'\n'
 
   for key in "${directories_renamed_order[@]}"; do
     [[ -n "${directories_renamed_to[$key]+x}" ]] && \
@@ -746,7 +815,7 @@ render_affected_tables() {
   done
 
   if [[ "$directories_row_count" -gt 0 ]]; then
-    rendered+=$'\n### Directories Affected\n\n'
+    rendered+=$'\n<details>\n<summary>Directories Affected</summary>\n\n'
     rendered+="| Directory | Action |"$'\n'
     rendered+="| --- | --- |"$'\n'
     for key in "${directories_renamed_order[@]}"; do
@@ -765,6 +834,7 @@ render_affected_tables() {
       printf -v line '| `%s` | Deleted |\n' "$key"
       rendered+="$line"
     done
+    rendered+='</details>'$'\n'
   fi
 
   printf '%s' "$rendered"
@@ -977,6 +1047,7 @@ BRANCH_REPORT_PREFIX="local"
 SNAPSHOT_HISTORY_REF=""
 SNAPSHOT_TARGET_REF=""
 BRANCH_SCOPE_LABEL="local"
+BRANCH_STATUS_TAGS=""
 REPORT_COMMAND_LINE="$(bt_format_command_line "$(basename "$0")" "${ORIGINAL_ARGS[@]}")"
 REPORT_USER_LOGIN="$(bt_resolve_login_or_empty)"
 REPORT_USER="$(format_user_with_role "$REPORT_USER_LOGIN" "$REPORT_USER_LOGIN" "")"
@@ -1006,6 +1077,7 @@ fi
 if ! git rev-parse --verify "$HISTORY_REF" >/dev/null 2>&1; then
   usage_error "Selected branch is not available: $TARGET_REF"
 fi
+BRANCH_STATUS_TAGS="$(branch_status_tags "$TARGET_REF" "$BRANCH_SCOPE_LABEL")"
 
 log_format='%H%x1f%h%x1f%ad%x1f%an%x1f%ae%x1f%s%x1f%B%x1e'
 git_log_args=(
@@ -1070,11 +1142,11 @@ while IFS= read -r -d $'\x1e' row; do
 
       action_number=$((action_number + 1))
       printf -v entry '## %d. %s: %s\n\n' "$action_number" "$note_type" "$note_date"
-      printf -v line '**Commit:** `%s`  \n' "$short_hash"
+      printf -v line '**Commit:** `%s`  \n' "$full_hash"
       entry+="$line"
       printf -v line '**Command:** `%s`  \n' "$note_command"
       entry+="$line"
-      printf -v line '**User:** %s\n' "$note_user_display"
+      printf -v line '**User:** %s  \n' "$note_user_display"
       entry+="$line"
       if [[ -n "$note_summary" ]]; then
         printf -v line '\n%s\n' "$note_summary"
@@ -1103,6 +1175,9 @@ while IFS= read -r -d $'\x1e' row; do
   change_summary="$(recorded_change_summary "$body")"
   entry_type="$(activity_type "$command_line")"
   sanitized_body="$(sanitize_commit_body_for_report "$body" "$subject")"
+  while [[ "$sanitized_body" == $'\n'* ]]; do
+    sanitized_body="${sanitized_body#$'\n'}"
+  done
   action_user_display="$(format_user_with_role "$author_name" "$author_name" "$author_email")"
   affected_tables="$(render_affected_tables "$full_hash")"
   if ! entry_matches_filters "$entry_type" "$author_name $author_email" \
@@ -1112,13 +1187,13 @@ while IFS= read -r -d $'\x1e' row; do
 
   action_number=$((action_number + 1))
   printf -v entry '## %d. %s: %s\n\n' "$action_number" "$entry_type" "$date_text"
-  printf -v line '**Commit:** `%s`  \n' "$short_hash"
+  printf -v line '**Commit:** `%s`  \n' "$full_hash"
   entry+="$line"
   if [[ -n "$command_line" ]]; then
     printf -v line '**Command:** `%s`  \n' "$command_line"
     entry+="$line"
   fi
-  printf -v line '**User:** %s\n' "$action_user_display"
+  printf -v line '**User:** %s  \n' "$action_user_display"
   entry+="$line"
   if [[ -n "$subject" ]] && ! is_redundant_commit_summary "$subject"; then
     printf -v line '\n%s\n' "$subject"
@@ -1154,13 +1229,19 @@ report_file="$(bt_report_transient_path \
 report_rel="${report_file#"${REPO_ROOT}"/}"
 if ! {
   printf '# Branch History Report\n\n'
-  printf '**Branch:** `%s` (%s)  \n' "$TARGET_REF" "$BRANCH_SCOPE_LABEL"
+  printf '**Branch:** `%s`  \n' "$TARGET_REF"
+  printf '**Status:** %s  \n' "$BRANCH_STATUS_TAGS"
   printf '**Type:** `%s`  \n' "$TYPE_FILTER"
   printf '**Generated:** %s  \n' "$RUN_TS_DISPLAY"
   printf '**Command:** `%s`  \n' "$REPORT_COMMAND_LINE"
   printf '**User:** %s\n\n' "$REPORT_USER"
-  for entry in "${entries[@]}"; do
-    printf '%s\n\n' "$entry"
+  for entry_index in "${!entries[@]}"; do
+    printf '%s' "${entries[$entry_index]}"
+    if [[ "$entry_index" -lt $((${#entries[@]} - 1)) ]]; then
+      printf '\n\n'
+    else
+      printf '\n'
+    fi
   done
 } > "$report_file"; then
   bt_report_release_lock "$report_lock_fd"
@@ -1176,5 +1257,5 @@ bt_report_release_lock "$report_lock_fd"
 if [[ "$VERBOSE" == true ]]; then
   bt_info "Found ${#entries[@]} matching activities"
 fi
-printf 'See %s for details.\n' "$report_rel"
+printf "See '%s'.\n" "$report_rel"
 exit 0

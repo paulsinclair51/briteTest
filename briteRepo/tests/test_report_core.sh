@@ -50,10 +50,16 @@ rc=$(run_capture "$TMPDIR/default.out" bash -lc "cd '$WORK' && bash ./briteRepo/
 default_rel="$(report_path_from_output "$TMPDIR/default.out")"
 [[ -n "$default_rel" && -f "$WORK/$default_rel" ]] || fail "default report file was not created"
 assert_contains '**Type:** `all`' "$WORK/$default_rel"
-assert_contains '**Branch:** `dev/report-tests-v1.0.0` (local)' "$WORK/$default_rel"
+assert_contains '**Branch:** `dev/report-tests-v1.0.0`' "$WORK/$default_rel"
+assert_contains '**Status:** [local]' "$WORK/$default_rel"
+if grep -Fq '[current]' "$WORK/$default_rel"; then
+  fail "branch report should not include the current tag"
+fi
 assert_contains '**Command:** `report`' "$WORK/$default_rel"
 assert_contains '**User:** testuser (contributor)' "$WORK/$default_rel"
 assert_contains "retarget activity" "$WORK/$default_rel"
+default_commit_hash="$(git -C "$WORK" rev-parse HEAD)"
+assert_contains "**Commit:** \`$default_commit_hash\`" "$WORK/$default_rel"
 [[ "$(grep -c '^## ' "$WORK/$default_rel")" -eq 1 ]] || fail "default limit should be one activity"
 if grep -Fq '**Summary:**' "$WORK/$default_rel"; then
   fail "action summary line should be omitted"
@@ -65,7 +71,7 @@ rc=$(run_capture "$TMPDIR/verbose.out" bash -lc "cd '$WORK' && bash ./briteRepo/
 [[ "$rc" -eq 0 ]] || fail "verbose report should exit 0 (got $rc)"
 assert_contains "matching activities" "$TMPDIR/verbose.out"
 verbose_rel="$(report_path_from_output "$TMPDIR/verbose.out")"
-assert_contains "### Files Affected" "$WORK/$verbose_rel"
+assert_contains "<summary>Files Affected</summary>" "$WORK/$verbose_rel"
 pass "verbose progress output"
 
 # 5) Branch type with no limit should include generic commits and workflow activity
@@ -176,7 +182,7 @@ pass "outside repository exit"
 # 13) Repo reports include repository health and delegated branch status
 rc=$(run_capture "$TMPDIR/repo.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report repo -t 2")
 [[ "$rc" -eq 0 ]] || fail "repo report should exit 0 (got $rc)"
-repo_rel="$(sed -n 's/^See \(reports\/repo-[^ ]*\.md\) for details\.$/\1/p' \
+repo_rel="$(sed -n "s/^See '\(reports\/repo-[^ ]*\.md\)'\.$/\1/p" \
   "$TMPDIR/repo.out" | tail -n 1)"
 [[ -n "$repo_rel" && -f "$WORK/$repo_rel" ]] || fail "repo report file was not created"
 assert_contains "## Health" "$WORK/$repo_rel"
