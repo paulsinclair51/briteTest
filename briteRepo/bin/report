@@ -417,16 +417,150 @@ workflow_event_details() {
   '
 }
 
-strip_commit_metadata_section() {
+role_name_from_code() {
+  local role_code="$1"
+
+  case "$role_code" in
+    A) printf 'approver' ;;
+    R) printf 'reviewer' ;;
+    C|*) printf 'contributor' ;;
+  esac
+}
+
+role_name_for_login() {
+  local login="$1"
+  local role_code=""
+
+  login="$(bt_normalize_login "$login")"
+  [[ -n "$login" ]] || {
+    printf 'contributor'
+    return 0
+  }
+
+  role_code="$(bt_contributors_get_role_or_empty \
+    "$login" "$REPO_ROOT/config/contributors.md")"
+  if [[ -z "$role_code" ]] && bt_is_repository_owner_login "$login"; then
+    role_code="A"
+  fi
+
+  role_name_from_code "$role_code"
+}
+
+extract_email_from_identity() {
+  local identity="$1"
+  local email=""
+
+  if [[ "$identity" =~ \<([^\>]*)\> ]]; then
+    email="${BASH_REMATCH[1]}"
+  fi
+
+  printf '%s' "$(bt_trim_whitespace "$email")"
+}
+
+extract_login_from_identity() {
+  local identity="$1"
+  local login=""
+  local email=""
+
+  login="${identity%%<*}"
+  login="$(bt_trim_whitespace "$login")"
+  login="$(bt_normalize_login "$login")"
+
+  if [[ -z "$login" ]]; then
+    email="$(extract_email_from_identity "$identity")"
+    if [[ "$email" == *"@"* ]]; then
+      login="$(bt_normalize_login "${email%@*}")"
+    fi
+  fi
+
+  printf '%s' "$login"
+}
+
+format_user_with_role() {
+  local identity="$1"
+  local fallback_login="${2:-}"
+  local fallback_email="${3:-}"
+  local login=""
+  local role_name=""
+
+  login="$(extract_login_from_identity "$identity")"
+  if [[ -z "$login" && -n "$fallback_login" ]]; then
+    login="$(bt_normalize_login "$fallback_login")"
+  fi
+  if [[ -z "$login" && -n "$fallback_email" && "$fallback_email" == *"@"* ]]; then
+    login="$(bt_normalize_login "${fallback_email%@*}")"
+  fi
+  [[ -n "$login" ]] || login="unknown"
+
+  role_name="$(role_name_for_login "$login")"
+  printf '%s (%s)' "$login" "$role_name"
+}
+
+extract_user_comment_from_body() {
   local body="$1"
 
   printf '%s\n' "$body" | awk '
+    /^## User Comment[[:space:]]*$/ {
+      in_comment = 1
+      next
+    }
+    in_comment == 1 && /^## / {
+      in_comment = 0
+    }
+    in_comment == 1 {
+      if ($0 ~ /^>[[:space:]]?/) {
+        sub(/^>[[:space:]]?/, "", $0)
+        if (length($0) > 0) {
+          if (out != "") {
+            out = out " "
+          }
+          out = out $0
+        }
+      }
+    }
+    END {
+      print out
+    }
+  '
+}
+
+expand_command_line_placeholders() {
+  local command_line="$1"
+  local body="$2"
+  local user_comment=""
+  local quoted_comment=""
+
+  if [[ "$command_line" == *"<user-comment>"* || \
+    "$command_line" == *"<user comment>"* ]]; then
+    user_comment="$(extract_user_comment_from_body "$body")"
+    if [[ -n "$user_comment" ]]; then
+      printf -v quoted_comment '%q' "$user_comment"
+      command_line="${command_line//<user-comment>/$quoted_comment}"
+      command_line="${command_line//<user comment>/$quoted_comment}"
+    fi
+  fi
+
+  printf '%s' "$command_line"
+}
+
+sanitize_commit_body_for_report() {
+  local body="$1"
+
+  printf '%s\n' "$body" | awk '
+    /^## User Comment[[:space:]]*$/ {
+      skip = 1
+      next
+    }
     /^## Commit Metadata[[:space:]]*$/ {
       skip = 1
       next
     }
     skip == 1 && /^## / {
       skip = 0
+    }
+    skip == 0 && /^## Summary[[:space:]]*$/ {
+      print "### Summary"
+      next
     }
     skip == 0 {
       print
@@ -826,6 +960,9 @@ BRANCH_REPORT_PREFIX="local"
 SNAPSHOT_HISTORY_REF=""
 SNAPSHOT_TARGET_REF=""
 BRANCH_SCOPE_LABEL="local"
+REPORT_COMMAND_LINE="$(bt_format_command_line "$(basename "$0")" "${ORIGINAL_ARGS[@]}")"
+REPORT_USER_LOGIN="$(bt_resolve_login_or_empty)"
+REPORT_USER="$(format_user_with_role "$REPORT_USER_LOGIN" "$REPORT_USER_LOGIN" "")"
 if [[ -z "$CURRENT_REF" ]]; then
   if ! SNAPSHOT_HISTORY_REF="$(resolve_remote_snapshot_ref)"; then
     usage_error "Could not resolve current remote snapshot branch"
@@ -900,8 +1037,10 @@ while IFS= read -r -d $'\x1e' row; do
       note_branch="$(recorded_field_value "$note_record" "Workflow-Branch")"
       note_user="$(recorded_field_value "$note_record" "Workflow-User")"
       note_command="$(recorded_field_value "$note_record" "Command-Line")"
+      note_command="$(expand_command_line_placeholders "$note_command" "$note_record")"
       note_summary="$(recorded_field_value "$note_record" "Summary")"
       note_details="$(printf '%s\n' "$note_record" | workflow_event_details)"
+      note_user_display="$(format_user_with_role "$note_user")"
       change_summary="$(recorded_change_summary "$note_record")"
       affected_tables="$(render_affected_tables "$full_hash")"
 
@@ -913,7 +1052,7 @@ while IFS= read -r -d $'\x1e' row; do
 
       printf -v entry '## %s: %s\n\n' "$note_type" "$note_date"
       printf -v line '**Commit:** `%s`  \n**User:** %s  \n**Summary:** %s\n' \
-        "$short_hash" "$note_user" "$note_summary"
+        "$short_hash" "$note_user_display" "$note_summary"
       entry+="$line"
       if [[ -n "$change_summary" ]]; then
         printf -v line '**Changes:** %s  \n' "$change_summary"
@@ -922,7 +1061,7 @@ while IFS= read -r -d $'\x1e' row; do
       printf -v line '\n**Command:** `%s`\n' "$note_command"
       entry+="$line"
       if [[ -n "$note_details" ]]; then
-        entry+=$'\n### Details\n\n'
+        entry+=$'\n'
         entry+="$note_details"
         entry+=$'\n'
       fi
@@ -940,9 +1079,11 @@ while IFS= read -r -d $'\x1e' row; do
   fi
 
   command_line="$(recorded_field_value "$body" "Command-Line")"
+  command_line="$(expand_command_line_placeholders "$command_line" "$body")"
   change_summary="$(recorded_change_summary "$body")"
   entry_type="$(activity_type "$command_line")"
-  sanitized_body="$(strip_commit_metadata_section "$body")"
+  sanitized_body="$(sanitize_commit_body_for_report "$body")"
+  action_user_display="$(format_user_with_role "$author_name" "$author_name" "$author_email")"
   affected_tables="$(render_affected_tables "$full_hash")"
   if ! entry_matches_filters "$entry_type" "$author_name $author_email" \
     "$subject $body"; then
@@ -950,8 +1091,8 @@ while IFS= read -r -d $'\x1e' row; do
   fi
 
   printf -v entry '## %s: %s\n\n' "$entry_type" "$date_text"
-  printf -v line '**Commit:** `%s`  \n**User:** %s <%s>  \n**Summary:** %s\n' \
-    "$short_hash" "$author_name" "$author_email" "$subject"
+  printf -v line '**Commit:** `%s`  \n**User:** %s  \n**Summary:** %s\n' \
+    "$short_hash" "$action_user_display" "$subject"
   entry+="$line"
   if [[ -n "$change_summary" ]]; then
     printf -v line '**Changes:** %s  \n' "$change_summary"
@@ -962,7 +1103,7 @@ while IFS= read -r -d $'\x1e' row; do
     entry+="$line"
   fi
   if [[ -n "$sanitized_body" ]]; then
-    entry+=$'\n### Details\n\n'
+    entry+=$'\n'
     entry+="$sanitized_body"
     entry+=$'\n'
   fi
@@ -994,7 +1135,9 @@ if ! {
   printf '# Branch History Report\n\n'
   printf '**Branch:** `%s` (%s)  \n' "$TARGET_REF" "$BRANCH_SCOPE_LABEL"
   printf '**Type:** `%s`  \n' "$TYPE_FILTER"
-  printf '**Generated:** %s\n\n' "$RUN_TS_DISPLAY"
+  printf '**Generated:** %s  \n' "$RUN_TS_DISPLAY"
+  printf '**Command:** `%s`  \n' "$REPORT_COMMAND_LINE"
+  printf '**User:** %s\n\n' "$REPORT_USER"
   for entry in "${entries[@]}"; do
     printf '%s\n' "$entry"
   done

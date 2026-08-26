@@ -51,6 +51,8 @@ default_rel="$(report_path_from_output "$TMPDIR/default.out")"
 [[ -n "$default_rel" && -f "$WORK/$default_rel" ]] || fail "default report file was not created"
 assert_contains '**Type:** `all`' "$WORK/$default_rel"
 assert_contains '**Branch:** `dev/report-tests-v1.0.0` (local)' "$WORK/$default_rel"
+assert_contains '**Command:** `report`' "$WORK/$default_rel"
+assert_contains '**User:** testuser (contributor)' "$WORK/$default_rel"
 assert_contains "retarget activity" "$WORK/$default_rel"
 [[ "$(grep -c '^## ' "$WORK/$default_rel")" -eq 1 ]] || fail "default limit should be one activity"
 pass "default all report"
@@ -60,7 +62,7 @@ rc=$(run_capture "$TMPDIR/verbose.out" bash -lc "cd '$WORK' && bash ./briteRepo/
 [[ "$rc" -eq 0 ]] || fail "verbose report should exit 0 (got $rc)"
 assert_contains "matching activities" "$TMPDIR/verbose.out"
 verbose_rel="$(report_path_from_output "$TMPDIR/verbose.out")"
-assert_contains "### Details" "$WORK/$verbose_rel"
+assert_contains "### Files Affected" "$WORK/$verbose_rel"
 pass "verbose progress output"
 
 # 5) Branch type with no limit should include generic commits and workflow activity
