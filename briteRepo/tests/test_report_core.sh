@@ -50,6 +50,7 @@ rc=$(run_capture "$TMPDIR/default.out" bash -lc "cd '$WORK' && bash ./briteRepo/
 default_rel="$(report_path_from_output "$TMPDIR/default.out")"
 [[ -n "$default_rel" && -f "$WORK/$default_rel" ]] || fail "default report file was not created"
 assert_contains '**Type:** `all`' "$WORK/$default_rel"
+assert_contains '**Branch:** `dev/report-tests-v1.0.0` (local)' "$WORK/$default_rel"
 assert_contains "retarget activity" "$WORK/$default_rel"
 [[ "$(grep -c '^## ' "$WORK/$default_rel")" -eq 1 ]] || fail "default limit should be one activity"
 pass "default all report"

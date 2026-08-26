@@ -198,7 +198,7 @@ bt_push_workflow() (
     for old_report in "$reports_dir"/push-d-*.md "$reports_dir"/push-e-*.md; do
       [[ -e "$old_report" && "$old_report" != "$report_file" ]] || continue
       report_branch="$(grep -E '^\*\*Branch:\*\* ' "$old_report" 2>/dev/null | \
-        sed -nE 's/^\*\*Branch:\*\* `([^`]+)`( \(local\))?[[:space:]]*$/\1/p' | head -n 1 || true)"
+        sed -nE 's/^\*\*Branch:\*\* `([^`]+)`( \((local|remote)\))?[[:space:]]*$/\1/p' | head -n 1 || true)"
       [[ "$report_branch" == "$current_branch" ]] || continue
       chmod u+w "$old_report" >/dev/null 2>&1 || true
       rm -f "$old_report" 2>/dev/null || true

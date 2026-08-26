@@ -417,6 +417,208 @@ workflow_event_details() {
   '
 }
 
+strip_commit_metadata_section() {
+  local body="$1"
+
+  printf '%s\n' "$body" | awk '
+    /^## Commit Metadata[[:space:]]*$/ {
+      skip = 1
+      next
+    }
+    skip == 1 && /^## / {
+      skip = 0
+    }
+    skip == 0 {
+      print
+    }
+  '
+}
+
+render_affected_tables() {
+  local commit_ref="$1"
+  local numstat=""
+  local empty_tree_ref="4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+  local parent_ref=""
+  local tree_ref_before=""
+  local tree_ref_after="$commit_ref"
+  local parent_info=""
+  local name_status=""
+  local line=""
+  local added=""
+  local deleted=""
+  local file_path=""
+  local dir_path=""
+  local old_path=""
+  local new_path=""
+  local old_dir=""
+  local new_dir=""
+  local action_text=""
+  local net=0
+  local file_count=0
+  local total_added=0
+  local total_deleted=0
+  local total_net=0
+  local directories_row_count=0
+  local -a files_order=()
+  local -a directories_before_order=()
+  local -a directories_after_order=()
+  local -a directories_added_order=()
+  local -a directories_deleted_order=()
+  local -a directories_renamed_order=()
+  local rendered=""
+  local key=""
+
+  declare -A file_added=()
+  declare -A file_deleted=()
+  declare -A directories_before=()
+  declare -A directories_after=()
+  declare -A directories_added=()
+  declare -A directories_deleted=()
+  declare -A directories_renamed_to=()
+
+  if ! numstat="$(git show --numstat --format='' --find-renames "$commit_ref" \
+    2>/dev/null || true)"; then
+    numstat=""
+  fi
+
+  parent_info="$(git rev-list --parents -n 1 "$commit_ref" 2>/dev/null || true)"
+  set -- $parent_info
+  if [[ "$#" -ge 2 ]]; then
+    parent_ref="$2"
+  fi
+  tree_ref_before="${parent_ref:-$empty_tree_ref}"
+
+  while IFS= read -r file_path; do
+    [[ -n "$file_path" ]] || continue
+    dir_path="${file_path%/*}"
+    [[ "$dir_path" == "$file_path" ]] && continue
+    if [[ -z "${directories_before[$dir_path]+x}" ]]; then
+      directories_before["$dir_path"]=1
+      directories_before_order+=("$dir_path")
+    fi
+  done < <(git ls-tree -r --name-only "$tree_ref_before" 2>/dev/null || true)
+
+  while IFS= read -r file_path; do
+    [[ -n "$file_path" ]] || continue
+    dir_path="${file_path%/*}"
+    [[ "$dir_path" == "$file_path" ]] && continue
+    if [[ -z "${directories_after[$dir_path]+x}" ]]; then
+      directories_after["$dir_path"]=1
+      directories_after_order+=("$dir_path")
+    fi
+  done < <(git ls-tree -r --name-only "$tree_ref_after" 2>/dev/null || true)
+
+  for key in "${directories_before_order[@]}"; do
+    if [[ -z "${directories_after[$key]+x}" ]]; then
+      directories_deleted["$key"]=1
+      directories_deleted_order+=("$key")
+    fi
+  done
+
+  for key in "${directories_after_order[@]}"; do
+    if [[ -z "${directories_before[$key]+x}" ]]; then
+      directories_added["$key"]=1
+      directories_added_order+=("$key")
+    fi
+  done
+
+  if ! name_status="$(git diff-tree --root -r --name-status --find-renames \
+    --no-commit-id "$commit_ref" 2>/dev/null || true)"; then
+    name_status=""
+  fi
+  while IFS=$'\t' read -r key old_path new_path; do
+    [[ "$key" == R* ]] || continue
+    [[ -n "$old_path" && -n "$new_path" ]] || continue
+    old_dir="${old_path%/*}"
+    new_dir="${new_path%/*}"
+    [[ "$old_dir" == "$old_path" ]] && old_dir=""
+    [[ "$new_dir" == "$new_path" ]] && new_dir=""
+    [[ -n "$old_dir" && -n "$new_dir" ]] || continue
+    [[ "$old_dir" == "$new_dir" ]] && continue
+    if [[ -n "${directories_deleted[$old_dir]+x}" && \
+      -n "${directories_added[$new_dir]+x}" && \
+      -z "${directories_renamed_to[$old_dir]+x}" ]]; then
+      directories_renamed_to["$old_dir"]="$new_dir"
+      directories_renamed_order+=("$old_dir")
+      unset 'directories_deleted[$old_dir]'
+      unset 'directories_added[$new_dir]'
+    fi
+  done <<< "$name_status"
+
+  while IFS=$'\t' read -r added deleted file_path; do
+    [[ -n "$file_path" ]] || continue
+    [[ "$added" =~ ^[0-9]+$ ]] || added=0
+    [[ "$deleted" =~ ^[0-9]+$ ]] || deleted=0
+
+    files_order+=("$file_path")
+    file_added["$file_path"]="$added"
+    file_deleted["$file_path"]="$deleted"
+
+    net=$((added - deleted))
+    total_added=$((total_added + added))
+    total_deleted=$((total_deleted + deleted))
+    total_net=$((total_net + net))
+
+    file_count=$((file_count + 1))
+  done <<< "$numstat"
+
+  rendered+=$'\n### Files Affected\n\n'
+  if [[ "$file_count" -eq 0 ]]; then
+    rendered+="None."$'\n'
+  else
+    rendered+="| File | Added | Deleted | Net |"$'\n'
+    rendered+="| --- | ---: | ---: | ---: |"$'\n'
+    for key in "${files_order[@]}"; do
+      added="${file_added[$key]}"
+      deleted="${file_deleted[$key]}"
+      net=$((added - deleted))
+      printf -v line '| `%s` | %s | %s | %+d |\n' \
+        "$key" "$added" "$deleted" "$net"
+      rendered+="$line"
+    done
+    printf -v line '| **Total** | %s | %s | %+d |\n' \
+      "$total_added" "$total_deleted" "$total_net"
+    rendered+="$line"
+  fi
+
+  for key in "${directories_renamed_order[@]}"; do
+    [[ -n "${directories_renamed_to[$key]+x}" ]] && \
+      directories_row_count=$((directories_row_count + 1))
+  done
+  for key in "${directories_added_order[@]}"; do
+    [[ -n "${directories_added[$key]+x}" ]] && \
+      directories_row_count=$((directories_row_count + 1))
+  done
+  for key in "${directories_deleted_order[@]}"; do
+    [[ -n "${directories_deleted[$key]+x}" ]] && \
+      directories_row_count=$((directories_row_count + 1))
+  done
+
+  if [[ "$directories_row_count" -gt 0 ]]; then
+    rendered+=$'\n### Directories Affected\n\n'
+    rendered+="| Directory | Action |"$'\n'
+    rendered+="| --- | --- |"$'\n'
+    for key in "${directories_renamed_order[@]}"; do
+      [[ -n "${directories_renamed_to[$key]+x}" ]] || continue
+      action_text="Renamed to ${directories_renamed_to[$key]}"
+      printf -v line '| `%s` | %s |\n' "$key" "$action_text"
+      rendered+="$line"
+    done
+    for key in "${directories_added_order[@]}"; do
+      [[ -n "${directories_added[$key]+x}" ]] || continue
+      printf -v line '| `%s` | Added |\n' "$key"
+      rendered+="$line"
+    done
+    for key in "${directories_deleted_order[@]}"; do
+      [[ -n "${directories_deleted[$key]+x}" ]] || continue
+      printf -v line '| `%s` | Deleted |\n' "$key"
+      rendered+="$line"
+    done
+  fi
+
+  printf '%s' "$rendered"
+}
+
 recorded_field_value() {
   local body="$1"
   local key="$2"
@@ -623,6 +825,7 @@ WORKFLOW_NOTES_REF="briteRepo-workflow"
 BRANCH_REPORT_PREFIX="local"
 SNAPSHOT_HISTORY_REF=""
 SNAPSHOT_TARGET_REF=""
+BRANCH_SCOPE_LABEL="local"
 if [[ -z "$CURRENT_REF" ]]; then
   if ! SNAPSHOT_HISTORY_REF="$(resolve_remote_snapshot_ref)"; then
     usage_error "Could not resolve current remote snapshot branch"
@@ -636,11 +839,13 @@ if [[ "$REMOTE_BRANCH_REPORT" == true ]]; then
   HISTORY_REF="origin/$TARGET_REF"
   WORKFLOW_NOTES_REF="briteRepo-remote-workflow"
   BRANCH_REPORT_PREFIX="remote"
+  BRANCH_SCOPE_LABEL="remote"
 elif [[ -z "$TARGET_REF" ]]; then
   BRANCH_REPORT_PREFIX="remote"
   WORKFLOW_NOTES_REF="briteRepo-remote-workflow"
   HISTORY_REF="$SNAPSHOT_HISTORY_REF"
   TARGET_REF="$SNAPSHOT_TARGET_REF"
+  BRANCH_SCOPE_LABEL="remote"
 fi
 [[ -n "$TARGET_REF" ]] || usage_error "Could not resolve current branch/ref"
 
@@ -698,6 +903,7 @@ while IFS= read -r -d $'\x1e' row; do
       note_summary="$(recorded_field_value "$note_record" "Summary")"
       note_details="$(printf '%s\n' "$note_record" | workflow_event_details)"
       change_summary="$(recorded_change_summary "$note_record")"
+      affected_tables="$(render_affected_tables "$full_hash")"
 
       [[ "$note_branch" == "$TARGET_REF" ]] || continue
       if ! entry_matches_filters "$note_type" "$note_user" \
@@ -720,6 +926,7 @@ while IFS= read -r -d $'\x1e' row; do
         entry+="$note_details"
         entry+=$'\n'
       fi
+      entry+="$affected_tables"
       entries+=("$entry")
 
       if [[ "$LIMIT" -gt 0 && "${#entries[@]}" -ge "$LIMIT" ]]; then
@@ -735,6 +942,8 @@ while IFS= read -r -d $'\x1e' row; do
   command_line="$(recorded_field_value "$body" "Command-Line")"
   change_summary="$(recorded_change_summary "$body")"
   entry_type="$(activity_type "$command_line")"
+  sanitized_body="$(strip_commit_metadata_section "$body")"
+  affected_tables="$(render_affected_tables "$full_hash")"
   if ! entry_matches_filters "$entry_type" "$author_name $author_email" \
     "$subject $body"; then
     continue
@@ -752,11 +961,12 @@ while IFS= read -r -d $'\x1e' row; do
     printf -v line '\n**Command:** `%s`\n' "$command_line"
     entry+="$line"
   fi
-  if [[ -n "$body" ]]; then
+  if [[ -n "$sanitized_body" ]]; then
     entry+=$'\n### Details\n\n'
-    entry+="$body"
+    entry+="$sanitized_body"
     entry+=$'\n'
   fi
+  entry+="$affected_tables"
   entries+=("$entry")
 
   if [[ "$LIMIT" -gt 0 && "${#entries[@]}" -ge "$LIMIT" ]]; then
@@ -782,7 +992,7 @@ report_file="$(bt_report_transient_path \
 report_rel="${report_file#"${REPO_ROOT}"/}"
 if ! {
   printf '# Branch History Report\n\n'
-  printf '**Branch:** `%s`  \n' "$TARGET_REF"
+  printf '**Branch:** `%s` (%s)  \n' "$TARGET_REF" "$BRANCH_SCOPE_LABEL"
   printf '**Type:** `%s`  \n' "$TYPE_FILTER"
   printf '**Generated:** %s\n\n' "$RUN_TS_DISPLAY"
   for entry in "${entries[@]}"; do

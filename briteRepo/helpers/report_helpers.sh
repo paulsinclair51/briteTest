@@ -423,6 +423,7 @@ bt_report_cleanup_transient_reports() {
           $0 ~ "^\\*\\*" field "\\*\\* " {
             sub("^\\*\\*" field "\\*\\* ", "", $0)
             gsub(/^`|`$/, "", $0)
+            sub(/ \((local|remote)\)$/, "", $0)
             print $0
             exit
           }

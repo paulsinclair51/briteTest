@@ -37,9 +37,41 @@ pass "literal text filter robustness"
 rc=$(run_capture "$TMPDIR/text-filter.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'Files-Modified: 1'")
 [[ "$rc" -eq 0 ]] || fail "detail text filter should exit 0 (got $rc)"
 text_rel="$(report_path_from_output "$TMPDIR/text-filter.out")"
-assert_contains "Files-Modified: 1" "$WORK/$text_rel"
+if grep -Fq "## Commit Metadata" "$WORK/$text_rel"; then
+	fail "branch report should not render the commit metadata section"
+fi
+assert_contains "### Files Affected" "$WORK/$text_rel"
+if grep -Fq "### Directories Affected" "$WORK/$text_rel"; then
+	fail "directory action section should be omitted when no directory add/delete/rename occurred"
+fi
 assert_contains "**Changes:** 1 modified file" "$WORK/$text_rel"
 pass "summary and detail filtering"
+
+# 3b) Directory action section should list only added/deleted/renamed directories
+(
+	cd "$WORK"
+	mkdir -p dir-rename dir-delete
+	echo "before" > dir-rename/file.txt
+	echo "remove" > dir-delete/old.txt
+	git add dir-rename/file.txt dir-delete/old.txt
+	git commit -m "directory action seed" >/dev/null 2>&1
+	git mv dir-rename dir-renamed
+	mkdir -p dir-added
+	echo "new" > dir-added/new.txt
+	git add dir-added/new.txt
+	git rm -r dir-delete >/dev/null 2>&1
+	git commit -m "directory action fixture" >/dev/null 2>&1
+)
+rc=$(run_capture "$TMPDIR/directory-actions.out" bash -lc \
+	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'directory action fixture' -l 1")
+[[ "$rc" -eq 0 ]] || fail "directory action report should exit 0 (got $rc)"
+directory_rel="$(report_path_from_output "$TMPDIR/directory-actions.out")"
+assert_contains "### Directories Affected" "$WORK/$directory_rel"
+assert_contains "| Directory | Action |" "$WORK/$directory_rel"
+assert_contains '| `dir-rename` | Renamed to dir-renamed |' "$WORK/$directory_rel"
+assert_contains '| `dir-added` | Added |' "$WORK/$directory_rel"
+assert_contains '| `dir-delete` | Deleted |' "$WORK/$directory_rel"
+pass "directory action rendering"
 
 # 4) Multiple appended records should render independently, and delimiter-like
 # text inside a detail value must not split a record.
@@ -81,8 +113,8 @@ pass "malformed workflow record handling"
 rc=$(run_capture "$TMPDIR/newest-first.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -l 2")
 [[ "$rc" -eq 0 ]] || fail "newest-first report should exit 0 (got $rc)"
 newest_first_rel="$(report_path_from_output "$TMPDIR/newest-first.out")"
-newer_line="$(grep -n 'retarget activity' "$WORK/$newest_first_rel" | head -n 1 | cut -d: -f1 || true)"
-older_line="$(grep -n 'pull activity' "$WORK/$newest_first_rel" | head -n 1 | cut -d: -f1 || true)"
+newer_line="$(grep -n 'directory action fixture' "$WORK/$newest_first_rel" | head -n 1 | cut -d: -f1 || true)"
+older_line="$(grep -n 'directory action seed' "$WORK/$newest_first_rel" | head -n 1 | cut -d: -f1 || true)"
 [[ -n "$newer_line" && -n "$older_line" && "$newer_line" -lt "$older_line" ]] || \
 	fail "branch report should write selected activities newest first"
 pass "newest-first branch ordering"
@@ -141,7 +173,7 @@ remote_push_rel="$(report_path_from_output "$TMPDIR/remote-push.out")"
 	fail "remote report should replace the prior remote report"
 [[ "$(find "$WORK/reports" -maxdepth 1 -type f -name 'remote-*.md' | wc -l | tr -d ' ')" -eq 1 ]] || \
 	fail "only one remote report should remain"
-assert_contains '**Branch:** `dev/report-tests-v1.0.0`' "$WORK/$remote_push_rel"
+assert_contains '**Branch:** `dev/report-tests-v1.0.0` (remote)' "$WORK/$remote_push_rel"
 assert_contains "Pushed 1 commit(s) to origin/dev/report-tests-v1.0.0" \
 	"$WORK/$remote_push_rel"
 assert_contains '**Command:** `push -t 5`' "$WORK/$remote_push_rel"
