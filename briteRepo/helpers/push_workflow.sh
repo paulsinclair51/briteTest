@@ -365,8 +365,21 @@ EOF
     local push_lines_added=0
     local push_lines_deleted=0
     local markdown_break="  "
+    local branch_status="[remote]"
+    local parent_tags=""
+    local report_user=""
+    local directory=""
+    local old_directory=""
+    local new_directory=""
+    local directory_action=""
+    local directory_count=0
+    local name_status=""
+    local -a directory_rows=()
+    declare -A before_directories=()
+    declare -A after_directories=()
 
     command_text="$(bt_push_format_command_line)"
+    report_user="$(bt_resolve_login_or_empty)"
     if [[ "$dry_run" == true ]]; then
       report_heading="# Dry-run Push Report"
       push_tip_line="**Push Tip:** \`To be determined\` at ${run_ts_display}."
@@ -388,15 +401,54 @@ EOF
       git diff --numstat --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null |
         awk '{ added += $1; deleted += $2 } END { print added + 0, deleted + 0 }'
     )
+    parent_tags="$(bt_git_parent_relation_tags "remote" "$current_branch" \
+      "origin/$current_branch")"
+    [[ -z "$parent_tags" ]] || branch_status+=" $parent_tags"
+
+    while IFS= read -r file; do
+      [[ -n "$file" ]] || continue
+      directory="${file%/*}"
+      [[ "$directory" == "$file" ]] || before_directories["$directory"]=1
+    done < <(git ls-tree -r --name-only "$remote_branch_tip" 2>/dev/null || true)
+    while IFS= read -r file; do
+      [[ -n "$file" ]] || continue
+      directory="${file%/*}"
+      [[ "$directory" == "$file" ]] || after_directories["$directory"]=1
+    done < <(git ls-tree -r --name-only "$push_content_ref" 2>/dev/null || true)
+    for directory in "${!before_directories[@]}"; do
+      [[ -n "${after_directories[$directory]+x}" ]] || \
+        directory_rows+=("$directory|Deleted")
+    done
+    for directory in "${!after_directories[@]}"; do
+      [[ -n "${before_directories[$directory]+x}" ]] || \
+        directory_rows+=("$directory|Added")
+    done
+    name_status="$(git diff --name-status --find-renames \
+      "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)"
+    while IFS=$'\t' read -r status old_path new_path; do
+      [[ "$status" == R* ]] || continue
+      old_directory="${old_path%/*}"
+      new_directory="${new_path%/*}"
+      [[ "$old_directory" != "$old_path" && \
+        "$new_directory" != "$new_path" && \
+        "$old_directory" != "$new_directory" ]] || continue
+      directory_rows+=("$old_directory|Renamed to $new_directory")
+    done <<< "$name_status"
+    directory_count="${#directory_rows[@]}"
 
     if [[ "$dry_run" == true ]]; then
       cat > "$report_file" <<EOF
 # Dry-run Push Report
 
-**Push Tip:** \`To be determined\` at ${run_ts_display}.
-**Command:** \`${command_text}\`  
-**Branch:** \`${current_branch}\`  
-**Commits:** ${commits_ahead}  
+**Branch:** \`${current_branch}\`${markdown_break}
+**Status:** ${branch_status}${markdown_break}
+
+## 1. push: ${run_ts_display}
+
+**Push Tip:** \`To be determined\`
+**Command:** \`${command_text}\`${markdown_break}
+**User:** ${report_user}${markdown_break}
+**Commits:** ${commits_ahead}${markdown_break}
 **Changes:** ${pushed_change_summary}${markdown_break}
 **Lines:** ${push_lines_added} added and ${push_lines_deleted} deleted.
 
@@ -420,7 +472,7 @@ EOF
         echo "<details>"
         echo "<summary><strong>Files</strong></summary>"
         echo
-        echo "| File | Commit | Added | Deleted | Net | Total |"
+        echo "| File | Commit | Added | Deleted | Net | Lines |"
         echo "| --- | --- | ---: | ---: | ---: | ---: |"
       } >> "$report_file"
 
@@ -453,6 +505,23 @@ EOF
       {
         echo "</details>"
       } >> "$report_file"
+
+      if [[ "$directory_count" -gt 0 ]]; then
+        {
+          echo
+          echo '<details>'
+          echo '<summary><strong>Directories</strong></summary>'
+          echo
+          echo '| Directory | Action |'
+          echo '| --- | --- |'
+          for directory_row in "${directory_rows[@]}"; do
+            directory="${directory_row%%|*}"
+            directory_action="${directory_row#*|}"
+            printf '| `%s` | %s |\n' "$directory" "$directory_action"
+          done
+          echo '</details>'
+        } >> "$report_file"
+      fi
     else
       cat > "$report_file" <<EOF
 # ${report_heading#\# }
