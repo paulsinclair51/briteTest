@@ -840,6 +840,55 @@ render_affected_tables() {
   printf '%s' "$rendered"
 }
 
+render_push_commits() {
+  local previous_tip="$1"
+  local pushed_tip="$2"
+  local parent_action_number="$3"
+  local nested_number=1
+  local parent_hash=""
+  local commit_hash=""
+  local commit_date=""
+  local commit_subject=""
+  local commit_user=""
+  local commit_email=""
+  local commit_command=""
+  local commit_body=""
+  local commit_entry=""
+  local commit_tables=""
+
+  while IFS= read -r commit_hash; do
+    [[ -n "$commit_hash" ]] || continue
+    commit_date="$(git show -s --date=format:'%Y-%m-%d %H:%M:%S' \
+      --format='%ad' "$commit_hash")"
+    commit_subject="$(git show -s --format='%s' "$commit_hash")"
+    commit_user="$(git show -s --format='%an' "$commit_hash")"
+    commit_email="$(git show -s --format='%ae' "$commit_hash")"
+    commit_body="$(git show -s --format='%B' "$commit_hash")"
+    commit_command="$(expand_command_line_placeholders \
+      "$(recorded_field_value "$commit_body" "Command-Line")" "$commit_body")"
+    commit_tables="$(render_affected_tables "$commit_hash")"
+    printf -v commit_entry '<details>\n<summary>%s.%s. commit: %s</summary>\n\n' \
+      "$parent_action_number" "$nested_number" "$commit_date"
+    printf -v line '**Commit:** `%s`  \n' "$commit_hash"
+    commit_entry+="$line"
+    printf -v line '**Command:** `%s`  \n' "$commit_command"
+    commit_entry+="$line"
+    printf -v line '**User:** %s  \n' \
+      "$(format_user_with_role "$commit_user" "$commit_user" "$commit_email")"
+    commit_entry+="$line"
+    commit_sanitized_body="$(sanitize_commit_body_for_report \
+      "$commit_body" "$commit_subject")"
+    while [[ "$commit_sanitized_body" == $'\n'* ]]; do
+      commit_sanitized_body="${commit_sanitized_body#$'\n'}"
+    done
+    commit_entry+="$commit_sanitized_body"
+    commit_entry+="$commit_tables"
+    commit_entry+=$'\n</details>\n'
+    printf '%s' "$commit_entry"
+    nested_number=$((nested_number + 1))
+  done < <(git rev-list --reverse "$previous_tip..$pushed_tip")
+}
+
 recorded_field_value() {
   local body="$1"
   local key="$2"
@@ -853,6 +902,24 @@ recorded_field_value() {
   done <<< "$body"
 
   printf '%s' "$value"
+}
+
+workflow_detail_value() {
+  local details="$1"
+  local key="$2"
+
+  printf '%s\n' "$details" | awk -F ';' -v key="$key" '
+    {
+      for (item = 1; item <= NF; item++) {
+        sub(/^[[:space:]]*Details:[[:space:]]*/, "", $item)
+        if ($item ~ "^[[:space:]]*" key ":") {
+          sub("^[[:space:]]*" key ":[[:space:]]*", "", $item)
+          print $item
+          exit
+        }
+      }
+    }
+  '
 }
 
 recorded_change_summary() {
@@ -1092,6 +1159,23 @@ fi
 
 entries=()
 action_number=0
+declare -A push_commit_hashes=()
+
+while IFS= read -r -d $'\x1e' row; do
+  [[ -n "$row" ]] || continue
+  full_hash="${row%%$'\x1f'*}"
+  note="$(git notes --ref="$WORKFLOW_NOTES_REF" show "$full_hash" 2>/dev/null || true)"
+  while IFS= read -r -d $'\x1e' note_record; do
+    [[ "$(recorded_field_value "$note_record" "Workflow-Type")" == "push" ]] || continue
+    note_detail_text="$(printf '%s\n' "$note_record" | workflow_event_details)"
+    previous_tip="$(workflow_detail_value "$note_detail_text" "Previous-Remote-Tip")"
+    pushed_tip="$(workflow_detail_value "$note_detail_text" "Pushed-Tip")"
+    [[ -n "$previous_tip" && -n "$pushed_tip" ]] || continue
+    while IFS= read -r push_commit_hash; do
+      [[ -n "$push_commit_hash" ]] && push_commit_hashes["$push_commit_hash"]=1
+    done < <(git rev-list "$previous_tip..$pushed_tip" 2>/dev/null || true)
+  done < <(printf '%s\n' "$note" | workflow_note_records)
+done < <(printf '%s' "$history")
 
 while IFS= read -r -d $'\x1e' row; do
   while [[ "$row" == $'\n'* ]]; do
@@ -1148,16 +1232,50 @@ while IFS= read -r -d $'\x1e' row; do
       entry+="$line"
       printf -v line '**User:** %s  \n' "$note_user_display"
       entry+="$line"
-      if [[ -n "$note_summary" ]]; then
+      if [[ -n "$note_summary" && "$note_type" != "push" ]]; then
         printf -v line '\n%s\n' "$note_summary"
         entry+="$line"
       fi
       if [[ -n "$note_details" ]]; then
-        entry+=$'\n'
-        entry+="$note_details"
-        entry+=$'\n'
+        if [[ "$note_type" != "push" ]]; then
+          entry+=$'\n'
+          entry+="$note_details"
+          entry+=$'\n'
+        fi
       fi
-      entry+="$affected_tables"
+      if [[ "$note_type" == "push" ]]; then
+        previous_tip="$(workflow_detail_value "$note_details" "Previous-Remote-Tip")"
+        pushed_tip="$(workflow_detail_value "$note_details" "Pushed-Tip")"
+        if [[ -n "$previous_tip" && -n "$pushed_tip" ]]; then
+          printf -v line '**Commits:** %s  \n' \
+            "$(git rev-list --count "$previous_tip..$pushed_tip")"
+          entry+="$line"
+          push_change_record=""
+          for push_field in Files-Modified Files-Deleted Files-Added \
+            Files-Renamed Files-Renamed-Modified Directories-Deleted \
+            Directories-Added Directories-Renamed; do
+            push_field_value="$(recorded_field_value "$note_record" "$push_field")"
+            [[ -n "$push_field_value" ]] || \
+              push_field_value="$(workflow_detail_value "$note_details" "$push_field")"
+            push_change_record+="$push_field: $push_field_value"$'\n'
+          done
+          push_changes="$(recorded_change_summary "$push_change_record")"
+          [[ -n "$push_changes" ]] || \
+            push_changes="$(workflow_detail_value "$note_details" "Files")"
+          printf -v line '**Changes:** %s.  \n' "$push_changes"
+          entry+="$line"
+          push_line_totals="$(git diff --numstat "$previous_tip" "$pushed_tip" | \
+            awk '{ added += $1; deleted += $2 } END { print added + 0, deleted + 0 }')"
+          read -r push_added push_deleted <<< "$push_line_totals"
+          printf -v line '**Lines:** %s added and %s deleted.  \n' \
+            "$push_added" "$push_deleted"
+          entry+="$line"
+          entry+="$(render_push_commits "$previous_tip" "$pushed_tip" \
+            "$action_number")"
+        fi
+      else
+        entry+="$affected_tables"
+      fi
       entries+=("$entry")
 
       if [[ "$LIMIT" -gt 0 && "${#entries[@]}" -ge "$LIMIT" ]]; then
@@ -1171,6 +1289,7 @@ while IFS= read -r -d $'\x1e' row; do
   fi
 
   command_line="$(recorded_field_value "$body" "Command-Line")"
+  [[ -n "${push_commit_hashes[$full_hash]+x}" ]] && continue
   command_line="$(expand_command_line_placeholders "$command_line" "$body")"
   change_summary="$(recorded_change_summary "$body")"
   entry_type="$(activity_type "$command_line")"

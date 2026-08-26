@@ -144,8 +144,7 @@ rc=$(run_capture "$TMPDIR/branch-r.out" bash -lc \
 branch_r_rel="$(report_path_from_output "$TMPDIR/branch-r.out")"
 [[ "$branch_r_rel" == reports/remote-*.md ]] || \
 	fail "branch -r should write a remote report"
-assert_contains "Pushed 1 commit(s) to origin/dev/report-tests-v1.0.0" \
-	"$WORK/$branch_r_rel"
+assert_contains '**Commits:** 1' "$WORK/$branch_r_rel"
 [[ "$(git -C "$WORK" symbolic-ref --short HEAD)" == "$branch_before" ]] || \
 	fail "branch -r should not change the checked-out branch"
 [[ "$(git -C "$WORK" rev-parse HEAD)" == "$head_before" ]] || \
@@ -191,13 +190,13 @@ remote_push_rel="$(report_path_from_output "$TMPDIR/remote-push.out")"
 	fail "only one remote report should remain"
 assert_contains '**Branch:** `dev/report-tests-v1.0.0`' "$WORK/$remote_push_rel"
 assert_contains '**Status:** [remote]' "$WORK/$remote_push_rel"
-assert_contains "Pushed 1 commit(s) to origin/dev/report-tests-v1.0.0" \
-	"$WORK/$remote_push_rel"
 assert_contains '**Command:** `push -t 5`' "$WORK/$remote_push_rel"
-assert_contains "Previous-Remote-Tip:" "$WORK/$remote_push_rel"
-assert_contains "Pushed-Tip:" "$WORK/$remote_push_rel"
-assert_contains "Commits: 1" "$WORK/$remote_push_rel"
-assert_contains "Files: 1 modified, 0 added, 0 deleted" "$WORK/$remote_push_rel"
+assert_contains '**Commits:** 1' "$WORK/$remote_push_rel"
+assert_contains '**Changes:** 1 modified, 0 added, 0 deleted' "$WORK/$remote_push_rel"
+assert_contains '**Lines:** 1 added and 0 deleted.' "$WORK/$remote_push_rel"
+assert_contains '<summary>1.1. commit:' "$WORK/$remote_push_rel"
+[[ "$(grep -c '^## ' "$WORK/$remote_push_rel")" -eq 1 ]] || \
+	fail "push commits should not be counted as top-level actions"
 pass "remote snapshot push report"
 
 # 10) -r from a remote snapshot should report the current remote, not the
