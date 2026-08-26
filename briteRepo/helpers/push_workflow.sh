@@ -243,7 +243,6 @@ bt_push_workflow() (
     cat > "$report_file" <<EOF
 # Error Push Report ${run_ts_display}
 
-**Push Tip:** \`To be determined\` at ${run_ts_display}.
 **Command:** \`${command_text}\`
 **Branch:** \`${current_branch}\`
 **Commits:** ${commits_ahead}
@@ -348,7 +347,6 @@ EOF
   bt_push_generate_report() {
     local command_text=""
     local report_heading=""
-    local push_tip_line=""
     local files_count=0
     local file=""
     local added=0
@@ -382,7 +380,6 @@ EOF
     report_user="$(bt_resolve_login_or_empty)"
     if [[ "$dry_run" == true ]]; then
       report_heading="# Dry-run Push Report"
-      push_tip_line="**Push Tip:** \`To be determined\` at ${run_ts_display}."
     else
       report_heading="# Push Report ${run_ts_display}"
     fi
@@ -445,8 +442,8 @@ EOF
 
 ## 1. push: ${run_ts_display}
 
-**Push Tip:** \`To be determined\`${markdown_break}
 **Command:** \`${command_text}\`${markdown_break}
+**Pushed-Tip:** \`To be determined\`${markdown_break}
 **User:** ${report_user}${markdown_break}
 **Commits:** ${commits_ahead}${markdown_break}
 **Changes:** ${pushed_change_summary}${markdown_break}

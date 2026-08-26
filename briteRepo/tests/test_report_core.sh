@@ -49,7 +49,9 @@ rc=$(run_capture "$TMPDIR/default.out" bash -lc "cd '$WORK' && bash ./briteRepo/
 [[ "$rc" -eq 0 ]] || fail "default report should exit 0 (got $rc)"
 default_rel="$(report_path_from_output "$TMPDIR/default.out")"
 [[ -n "$default_rel" && -f "$WORK/$default_rel" ]] || fail "default report file was not created"
-assert_contains '**Type:** `all`' "$WORK/$default_rel"
+if grep -Fq '**Type:**' "$WORK/$default_rel"; then
+  fail "report should not include redundant Type metadata"
+fi
 assert_contains '**Branch:** `dev/report-tests-v1.0.0`' "$WORK/$default_rel"
 assert_contains '**Status:** [local]' "$WORK/$default_rel"
 if grep -Fq '[current]' "$WORK/$default_rel"; then

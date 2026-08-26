@@ -133,7 +133,9 @@ assert_contains "See reports/push-e-" "$TMPDIR/skip-e.out"
 skip_report="$(latest_report "$WORK" 'push-e-*.md')"
 [[ -f "$skip_report" ]] || fail "expected push skip report"
 assert_contains "# Error Push Report" "$skip_report"
-assert_contains "**Push Tip:** \`To be determined\` at " "$skip_report"
+if grep -Fq "**Push Tip:**" "$skip_report"; then
+  fail "push error report should not include internal Push Tip metadata"
+fi
 assert_contains "**Error:** Push skipped due to -e option." "$skip_report"
 assert_contains "**Guidance:** Run without -e option." "$skip_report"
 assert_contains "## Files" "$skip_report"
@@ -254,11 +256,14 @@ dry_report="$(latest_report "$WORK" 'push-d-*.md')"
 [[ -f "$dry_report" ]] || fail "expected dry-run push report"
 [[ "$(basename "$dry_report")" == push-d-* ]] || fail "expected push-d report filename"
 assert_contains "# Dry-run Push Report" "$dry_report"
-assert_contains '**Push Tip:** `To be determined`' "$dry_report"
+if grep -Fq '**Push Tip:**' "$dry_report"; then
+  fail "push dry-run report should not include internal Push Tip metadata"
+fi
 assert_contains '**Branch:** `dev/push-tests-v1.0.0`' "$dry_report"
 assert_contains '**Status:** ' "$dry_report"
 assert_contains '## 1. push: ' "$dry_report"
 assert_contains '**User:** testuser' "$dry_report"
+assert_contains '**Pushed-Tip:** `To be determined`' "$dry_report"
 if grep -Fq "**Triggered By:**" "$dry_report"; then
   fail "dry-run push report should not include Triggered By"
 fi
@@ -635,7 +640,9 @@ assert_contains "rejected by test hook: README.md policy violation" "$TMPDIR/pus
 push_error_report="$(latest_report "$WORK" 'push-e-*.md')"
 [[ -f "$push_error_report" ]] || fail "expected failed push report"
 assert_contains "# Error Push Report" "$push_error_report"
-assert_contains "**Push Tip:** \`To be determined\` at " "$push_error_report"
+if grep -Fq "**Push Tip:**" "$push_error_report"; then
+  fail "push error report should not include internal Push Tip metadata"
+fi
 assert_contains "**Command:**" "$push_error_report"
 assert_contains "**Branch:** \`dev/push-tests-v1.0.0\`" "$push_error_report"
 assert_contains "**Commits:**" "$push_error_report"

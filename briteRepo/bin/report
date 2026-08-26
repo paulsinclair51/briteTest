@@ -102,7 +102,6 @@ Outputs:
   - Writes 'See <reportpath>' to stdout when a
     report is written.
 
-
 Exit codes:
   0    Success (report written, -h/--help).
   1    Argument or validation error.
@@ -1301,6 +1300,7 @@ while IFS= read -r -d $'\x1e' row; do
 
       action_number=$((action_number + 1))
       printf -v entry '## %d. %s: %s\n\n' "$action_number" "$note_type" "$note_date"
+      line=""
       previous_tip=""
       pushed_tip=""
       if [[ "$note_type" == "push" ]]; then
@@ -1310,11 +1310,14 @@ while IFS= read -r -d $'\x1e' row; do
           previous_tip="$(workflow_detail_value "$note_details" "Previous-Remote-Tip")"
         [[ -n "$pushed_tip" ]] || \
           pushed_tip="$(workflow_detail_value "$note_details" "Pushed-Tip")"
-        printf -v line '**Push Tip:** `%s`  \n' "$pushed_tip"
       else
         printf -v line '**Commit:** `%s`  \n' "$full_hash"
       fi
       entry+="$line"
+      if [[ "$note_type" == "push" ]]; then
+        printf -v line '**Pushed-Tip:** `%s`  \n' "$pushed_tip"
+        entry+="$line"
+      fi
       printf -v line '**Command:** `%s`  \n' "$note_command"
       entry+="$line"
       printf -v line '**User:** %s  \n' "$note_user_display"
@@ -1434,7 +1437,6 @@ if ! {
   printf '# Branch History Report\n\n'
   printf '**Branch:** `%s`  \n' "$TARGET_REF"
   printf '**Status:** %s  \n' "$BRANCH_STATUS_TAGS"
-  printf '**Type:** `%s`  \n' "$TYPE_FILTER"
   printf '**Generated:** %s  \n' "$RUN_TS_DISPLAY"
   printf '**Command:** `%s`  \n' "$REPORT_COMMAND_LINE"
   printf '**User:** %s\n\n' "$REPORT_USER"
