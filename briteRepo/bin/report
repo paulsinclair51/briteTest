@@ -889,6 +889,81 @@ render_push_commits() {
   done < <(git rev-list --reverse "$previous_tip..$pushed_tip")
 }
 
+render_push_summary_tables() {
+  local previous_tip="$1"
+  local pushed_tip="$2"
+  local commit_hash=""
+  local commit_date=""
+  local commit_comment=""
+  local file_path=""
+  local added=0
+  local deleted=0
+  local net=0
+  local total_lines=0
+  local total_added=0
+  local total_deleted=0
+  local total_net=0
+  local total_lines_sum=0
+  local -a directory_rows=()
+  local directory=""
+  local old_directory=""
+  local new_directory=""
+  local name_status=""
+
+  printf '<details>\n<summary><strong>Commits</strong></summary>\n\n'
+  printf '| Commit Hash | DateTime | Comment |\n| --- | --- | --- |\n'
+  while IFS= read -r commit_hash; do
+    [[ -n "$commit_hash" ]] || continue
+    commit_date="$(git show -s --format='%ci' "$commit_hash")"
+    commit_comment="$(git show -s --format='%s' "$commit_hash")"
+    printf '| `%s` | %s | %s |\n' "$commit_hash" "$commit_date" "$commit_comment"
+  done < <(git rev-list --reverse "$previous_tip..$pushed_tip" 2>/dev/null || true)
+  printf '</details>\n\n<details>\n<summary><strong>Files</strong></summary>\n\n'
+  printf '| File | Commit | Added | Deleted | Net | Lines |\n| --- | --- | ---: | ---: | ---: | ---: |\n'
+  while IFS= read -r file_path; do
+    [[ -n "$file_path" ]] || continue
+    added=0
+    deleted=0
+    while IFS=$'\t' read -r num_added num_deleted _; do
+      [[ "$num_added" =~ ^[0-9]+$ ]] && added=$((added + num_added))
+      [[ "$num_deleted" =~ ^[0-9]+$ ]] && deleted=$((deleted + num_deleted))
+    done < <(git diff --numstat --find-renames "$previous_tip..$pushed_tip" -- "$file_path")
+    net=$((added - deleted))
+    total_lines=0
+    if git cat-file -e "$pushed_tip:$file_path" 2>/dev/null; then
+      total_lines="$(git show "$pushed_tip:$file_path" | wc -l | tr -d ' ')"
+    fi
+    commit_hash="$(git log -1 --format='%h' "$previous_tip..$pushed_tip" -- "$file_path")"
+    printf '| `%s` | `%s` | %s | %s | %+d | %s |\n' \
+      "$file_path" "$commit_hash" "$added" "$deleted" "$net" "$total_lines"
+    total_added=$((total_added + added))
+    total_deleted=$((total_deleted + deleted))
+    total_net=$((total_net + net))
+    total_lines_sum=$((total_lines_sum + total_lines))
+  done < <(git diff --name-only --find-renames "$previous_tip..$pushed_tip")
+  printf '| **Total** |  | %s | %s | %+d | %s |\n</details>\n' \
+    "$total_added" "$total_deleted" "$total_net" "$total_lines_sum"
+
+  name_status="$(git diff --name-status --find-renames "$previous_tip..$pushed_tip")"
+  while IFS=$'\t' read -r status old_path new_path; do
+    [[ "$status" == R* ]] || continue
+    old_directory="${old_path%/*}"
+    new_directory="${new_path%/*}"
+    [[ "$old_directory" != "$old_path" && "$new_directory" != "$new_path" && \
+      "$old_directory" != "$new_directory" ]] || continue
+    directory_rows+=("$old_directory|Renamed to $new_directory")
+  done <<< "$name_status"
+  if [[ "${#directory_rows[@]}" -gt 0 ]]; then
+    printf '\n<details>\n<summary><strong>Directories</strong></summary>\n\n'
+    printf '| Directory | Action |\n| --- | --- |\n'
+    for directory_row in "${directory_rows[@]}"; do
+      directory="${directory_row%%|*}"
+      printf '| `%s` | %s |\n' "$directory" "${directory_row#*|}"
+    done
+    printf '</details>\n'
+  fi
+}
+
 recorded_field_value() {
   local body="$1"
   local key="$2"
@@ -1226,7 +1301,19 @@ while IFS= read -r -d $'\x1e' row; do
 
       action_number=$((action_number + 1))
       printf -v entry '## %d. %s: %s\n\n' "$action_number" "$note_type" "$note_date"
-      printf -v line '**Commit:** `%s`  \n' "$full_hash"
+      previous_tip=""
+      pushed_tip=""
+      if [[ "$note_type" == "push" ]]; then
+        previous_tip="$(recorded_field_value "$note_record" "Previous-Remote-Tip")"
+        pushed_tip="$(recorded_field_value "$note_record" "Pushed-Tip")"
+        [[ -n "$previous_tip" ]] || \
+          previous_tip="$(workflow_detail_value "$note_details" "Previous-Remote-Tip")"
+        [[ -n "$pushed_tip" ]] || \
+          pushed_tip="$(workflow_detail_value "$note_details" "Pushed-Tip")"
+        printf -v line '**Push Tip:** `%s`  \n' "$pushed_tip"
+      else
+        printf -v line '**Commit:** `%s`  \n' "$full_hash"
+      fi
       entry+="$line"
       printf -v line '**Command:** `%s`  \n' "$note_command"
       entry+="$line"
@@ -1244,8 +1331,6 @@ while IFS= read -r -d $'\x1e' row; do
         fi
       fi
       if [[ "$note_type" == "push" ]]; then
-        previous_tip="$(workflow_detail_value "$note_details" "Previous-Remote-Tip")"
-        pushed_tip="$(workflow_detail_value "$note_details" "Pushed-Tip")"
         if [[ -n "$previous_tip" && -n "$pushed_tip" ]]; then
           printf -v line '**Commits:** %s  \n' \
             "$(git rev-list --count "$previous_tip..$pushed_tip")"
@@ -1270,8 +1355,7 @@ while IFS= read -r -d $'\x1e' row; do
           printf -v line '**Lines:** %s added and %s deleted.  \n' \
             "$push_added" "$push_deleted"
           entry+="$line"
-          entry+="$(render_push_commits "$previous_tip" "$pushed_tip" \
-            "$action_number")"
+          entry+="$(render_push_summary_tables "$previous_tip" "$pushed_tip")"
         fi
       else
         entry+="$affected_tables"
