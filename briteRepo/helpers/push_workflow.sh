@@ -445,7 +445,7 @@ EOF
 
 ## 1. push: ${run_ts_display}
 
-**Push Tip:** \`To be determined\`
+**Push Tip:** \`To be determined\`${markdown_break}
 **Command:** \`${command_text}\`${markdown_break}
 **User:** ${report_user}${markdown_break}
 **Commits:** ${commits_ahead}${markdown_break}
