@@ -560,9 +560,25 @@ sanitize_commit_body_for_report() {
         next
       }
       started = 1
+      if ($0 ~ /^-[[:space:]]+Directories:/) {
+        sub(/^-+[[:space:]]+Directories:[[:space:]]*/, "")
+        if ($0 != "") {
+          if ($0 !~ /\.[[:space:]]*$/) $0 = $0 "."
+          print "**Directories:** " $0 "  "
+        }
+        next
+      }
+      if ($0 ~ /^-[[:space:]]+Files:/) {
+        sub(/^-+[[:space:]]+Files:[[:space:]]*/, "")
+        if ($0 != "") {
+          if ($0 !~ /\.[[:space:]]*$/) $0 = $0 "."
+          print "**Files:** " $0 "  "
+        }
+        next
+      }
       if ($0 ~ /^-[[:space:]]+Changes:/) {
         sub(/^-+[[:space:]]+Changes:[[:space:]]*/, "")
-        print "**Changes:** " $0 "  "
+        print "**Files:** " $0 "  "
         next
       }
       if ($0 ~ /^-[[:space:]]+Lines:/) {

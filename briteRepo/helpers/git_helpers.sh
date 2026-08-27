@@ -376,6 +376,7 @@ bt_format_change_summary() {
   printf '%s' "$output"
 }
 
+
 bt_copyfix_state_dir_for_branch() {
   local branch="$1"
   local common_dir=""

@@ -307,7 +307,6 @@ generate_error_report() {
   local guidance="${3:-Review the error and retry.}"
   local command_text
   local branch_display="unknown"
-  local summary_text
   local total_added=0
   local total_removed=0
   local total_net=0
@@ -324,12 +323,15 @@ generate_error_report() {
     branch_display="$CURRENT_BRANCH"
   fi
 
-  summary_text="${COMMIT_CHANGE_SUMMARY}; $(format_total_files_text)"
+  local files_summary directories_summary
+  files_summary="$(format_file_change_summary)"
+  directories_summary="$(format_directory_change_summary)"
   commit_only_rows_tmp="$(mktemp)"
 
   initialize_report_file "commit-e"
   write_commit_report_header "Error Commit Report" "$branch_display"
-  write_commit_report_entry "$command_text" "$summary_text"
+  write_commit_report_entry "$command_text" "$directories_summary" \
+    "$files_summary"
   cat >> "$REPORT_FILE" <<EOF
 **Error:** ${message}  
 **Guidance:** ${guidance}  
@@ -362,6 +364,8 @@ EOF
     committed_only="$COMMITTED_FILES"
   fi
 
+  append_commit_directories_section
+
   if [[ "$committed_only" -gt 0 ]]; then
     printf '\n<details>\n<summary>Files</summary>\n\n' \
       >> "$REPORT_FILE"
@@ -372,8 +376,6 @@ EOF
       >> "$REPORT_FILE"
     printf '</details>\n' >> "$REPORT_FILE"
   fi
-
-  append_commit_directories_section
 
   cleanup_old_transient_reports
   release_report_write_lock true
@@ -883,7 +885,23 @@ print_commit_file_details() {
 }
 
 format_command_line() {
-  bt_format_command_line "commit" "${ORIGINAL_ARGS[@]}"
+  local formatted="commit"
+  local arg quoted
+
+  for arg in "${ORIGINAL_ARGS[@]}"; do
+    if [[ "$arg" =~ ^[A-Za-z0-9_./:@%+=,-]+$ ]]; then
+      quoted="$arg"
+    else
+      quoted="${arg//\\/\\\\}"
+      quoted="${quoted//\"/\\\"}"
+      quoted="${quoted//\$/\\\$}"
+      quoted="${quoted//\`/\\\`}"
+      quoted="\"$quoted\""
+    fi
+    formatted+=" $quoted"
+  done
+
+  printf '%s' "$formatted"
 }
 
 get_stats_for_file() {
@@ -991,8 +1009,11 @@ build_redacted_command_line() {
 
 build_commit_body() {
   local quoted_comment=""
+  local files_summary directories_summary
 
   quoted_comment="$(quote_user_comment_markdown "$COMMIT_COMMENT_NORMALIZED")"
+  files_summary="$(format_file_change_summary)"
+  directories_summary="$(format_directory_change_summary)"
 
   cat <<EOF
 ## User Comment
@@ -1000,7 +1021,8 @@ build_commit_body() {
 ${quoted_comment}
 
 ## Summary
-- Changes: ${COMMIT_CHANGE_SUMMARY}.
+- Directories: ${directories_summary}
+- Files: ${files_summary}
 - Lines: ${COMMIT_LINES_ADDED} added and ${COMMIT_LINES_DELETED} deleted.
 
 ## Commit Metadata
@@ -1090,6 +1112,9 @@ EOF
 # One numbered activity entry, in the style of the report script.
 write_commit_report_entry() {
   local user_display
+  local command_text="$1"
+  local directories_summary="$2"
+  local files_summary="$3"
 
   user_display="$(bt_format_login_with_role "$(bt_resolve_login_or_empty)" \
     "$REPO_ROOT/config/contributors.md" 2>/dev/null || true)"
@@ -1099,11 +1124,19 @@ write_commit_report_entry() {
 ## 1. commit: ${RUN_TS_DISPLAY}
 
 **Commit:** \`To be determined\`  
-**Command:** \`${1}\`  
+**Command:** \`${command_text}\`  
 **User:** ${user_display}  
-**Changes:** ${2}  
-**Lines:** ${COMMIT_LINES_ADDED} added and ${COMMIT_LINES_DELETED} deleted.  
 EOF
+  if [[ -n "$directories_summary" ]]; then
+    printf '**Directories:** %s  \n' "$directories_summary" >> "$REPORT_FILE"
+  fi
+  if [[ -n "$files_summary" ]]; then
+    printf '**Files:** %s.  \n' "$files_summary" >> "$REPORT_FILE"
+  fi
+  if [[ "$COMMIT_LINES_ADDED" -gt 0 || "$COMMIT_LINES_DELETED" -gt 0 ]]; then
+    printf '**Lines:** %s added and %s deleted.  \n' \
+      "$COMMIT_LINES_ADDED" "$COMMIT_LINES_DELETED" >> "$REPORT_FILE"
+  fi
 }
 
 # Directories added, deleted, or renamed by the pending commit.
@@ -1130,6 +1163,84 @@ build_commit_note() {
   action="$(awk -F '\t' -v f="$file_path" '$1 == f { print $2; exit }' \
     "$COMMIT_ACTIONS_FILE" 2>/dev/null || true)"
   printf '%s\n' "${action:-Modified}"
+}
+
+format_file_change_summary() {
+  local -a parts=()
+  local type_count=0
+
+  if [[ "$COMMIT_MODIFIED_FILES" -gt 0 ]]; then
+    append_change_count parts "$COMMIT_MODIFIED_FILES" "modified" "modified"
+    type_count=$((type_count + 1))
+  fi
+  if [[ "$COMMIT_DELETED_FILES" -gt 0 ]]; then
+    append_change_count parts "$COMMIT_DELETED_FILES" "deleted" "deleted"
+    type_count=$((type_count + 1))
+  fi
+  if [[ "$COMMIT_ADDED_FILES" -gt 0 ]]; then
+    append_change_count parts "$COMMIT_ADDED_FILES" "added" "added"
+    type_count=$((type_count + 1))
+  fi
+  if [[ "$COMMIT_RENAMED_FILES" -gt 0 ]]; then
+    append_change_count parts "$COMMIT_RENAMED_FILES" "renamed" "renamed"
+    type_count=$((type_count + 1))
+  fi
+  if [[ "$COMMIT_RENAMED_MODIFIED_FILES" -gt 0 ]]; then
+    append_change_count parts "$COMMIT_RENAMED_MODIFIED_FILES" \
+      "renamed/modified" "renamed/modified"
+    type_count=$((type_count + 1))
+  fi
+
+  join_summary_parts "${parts[@]}"
+  if [[ "$type_count" -gt 1 ]]; then
+    printf '; %s total' "$COMMITTED_FILES"
+  fi
+}
+
+format_directory_change_summary() {
+  local -a parts=()
+
+  append_change_count parts "$COMMIT_DELETED_DIRECTORIES" \
+    "deleted" "deleted"
+  append_change_count parts "$COMMIT_ADDED_DIRECTORIES" \
+    "added" "added"
+  append_change_count parts "$COMMIT_RENAMED_DIRECTORIES" \
+    "renamed" "renamed"
+
+  join_summary_parts "${parts[@]}"
+}
+
+append_change_count() {
+  local array_name="$1"
+  local count="$2"
+  local singular="$3"
+  local plural="$4"
+  local -n values_ref="$array_name"
+
+  [[ "$count" -gt 0 ]] || return 0
+  if [[ "$count" -eq 1 ]]; then
+    values_ref+=("$count $singular")
+  else
+    values_ref+=("$count $plural")
+  fi
+}
+
+join_summary_parts() {
+  local count="$#"
+  local index=0
+  local part
+
+  for part in "$@"; do
+    index=$((index + 1))
+    if [[ "$index" -gt 1 ]]; then
+      if [[ "$index" -eq "$count" ]]; then
+        printf ' and '
+      else
+        printf ', '
+      fi
+    fi
+    printf '%s' "$part"
+  done
 }
 
 record_commit_action() {
@@ -1174,7 +1285,6 @@ rename_action_text() {
 
 generate_commit_report() {
   local command_text
-  local summary_text
   local total_rows
   local total_added=0
   local total_removed=0
@@ -1199,10 +1309,13 @@ generate_commit_report() {
     chmod u+w "$REPORT_FILE" 2>/dev/null || true
   fi
 
-  summary_text="${COMMIT_CHANGE_SUMMARY}; $(format_total_files_text)"
+  local files_summary directories_summary
+  files_summary="$(format_file_change_summary)"
+  directories_summary="$(format_directory_change_summary)"
 
   write_commit_report_header "Dry-Run Commit Report" "$CURRENT_BRANCH"
-  write_commit_report_entry "$command_text" "$summary_text"
+  write_commit_report_entry "$command_text" "$directories_summary" \
+    "$files_summary"
 
   local commit_only_rows_tmp
   commit_only_rows_tmp="$(mktemp)"
@@ -1236,6 +1349,8 @@ generate_commit_report() {
     committed_only="$COMMITTED_FILES"
   fi
 
+  append_commit_directories_section
+
   if [[ "$committed_only" -gt 0 ]]; then
     printf '\n<details>\n<summary>Files</summary>\n\n' \
       >> "$REPORT_FILE"
@@ -1246,8 +1361,6 @@ generate_commit_report() {
       >> "$REPORT_FILE"
     printf '</details>\n' >> "$REPORT_FILE"
   fi
-
-  append_commit_directories_section
 
   cleanup_transient_reports_locked
 

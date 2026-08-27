@@ -53,6 +53,16 @@ grep -Fq "| **Directory** | **Action** |" "$dir_report" || \
   fail "expected Directories table in the dry-run report"
 grep -Fq "| \`examples/demo\` | Added |" "$dir_report" || \
   fail "expected the added directory row in the dry-run report"
+grep -Fq "**Directories:** 2 added" "$dir_report" || \
+  fail "expected the Directories summary line"
+grep -Fq "**Files:** 1 modified and 1 added; 2 total." "$dir_report" || \
+  fail "expected the Files summary line"
+directories_line="$(grep -n '<summary>Directories</summary>' "$dir_report" |
+  head -n 1 | cut -d: -f1)"
+files_section_line="$(grep -n '<summary>Files</summary>' "$dir_report" |
+  head -n 1 | cut -d: -f1)"
+[[ "$directories_line" -lt "$files_section_line" ]] || \
+  fail "expected Directories before Files"
 grep -Fq "| **Lines** | **Action** |" "$dir_report" || \
   fail "expected the Lines and Action columns in the Files table"
 pass "directories section and Lines column"
