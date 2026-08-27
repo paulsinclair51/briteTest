@@ -137,6 +137,46 @@ bt_is_current_internal_remote_copy() {
   [[ "$branch" == r-* ]] && bt_is_internal_remote_copy "$branch"
 }
 
+bt_role_name_from_code() {
+  case "$1" in
+    A) printf 'approver' ;;
+    R) printf 'reviewer' ;;
+    C|*) printf 'contributor' ;;
+  esac
+}
+
+# Role name for a login, defaulting to contributor when it is not listed.
+bt_role_name_for_login() {
+  local login="$1"
+  local contributors_file="$2"
+  local role_code=""
+
+  login="$(bt_normalize_login "$login")"
+  [[ -n "$login" ]] || {
+    printf 'contributor'
+    return 0
+  }
+
+  role_code="$(bt_contributors_get_role_or_empty "$login" \
+    "$contributors_file")"
+  if [[ -z "$role_code" ]] && bt_is_repository_owner_login "$login"; then
+    role_code="A"
+  fi
+
+  bt_role_name_from_code "$role_code"
+}
+
+# "<login> (<role>)" for report user lines.
+bt_format_login_with_role() {
+  local login="$1"
+  local contributors_file="$2"
+
+  login="$(bt_normalize_login "$login")"
+  [[ -n "$login" ]] || login="unknown"
+  printf '%s (%s)' "$login" \
+    "$(bt_role_name_for_login "$login" "$contributors_file")"
+}
+
 bt_normalize_login() {
   local login="$1"
 

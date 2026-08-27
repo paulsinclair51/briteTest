@@ -238,6 +238,13 @@ restore the protection immediately.
   the normal workflow.
 - Do not treat direct GitHub.com edits or direct git commands as the normal
   contributor path. They are exceptional admin-only operations.
+- `mkrepo` pushes directly to the default branch and is a repository setup
+  operation, not a contributor workflow path. It requires that the default
+  branch is unprotected and that no local clone of the target is in use, and
+  it never deletes existing content outside the `briteRepo/` script
+  directories and `.github/workflows/`, which it replaces with a fresh copy.
+  Server-side enforcement is only complete once those workflows are present
+  and `setup_rulesets` has been run for the repository.
 
 This document records the explicit limitations of the owner override and the
 server-side administrative authority required for protected remote repair.

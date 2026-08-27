@@ -50,8 +50,8 @@ fi
 if [[ "$(grep -Fc 'committed by contributor testuser' "$WORK/$text_rel")" -gt 1 ]]; then
 	fail "branch report should not duplicate the commit summary sentence"
 fi
-assert_contains "<summary>Files Affected</summary>" "$WORK/$text_rel"
-if grep -Fq "### Directories Affected" "$WORK/$text_rel"; then
+assert_contains "<summary>Files</summary>" "$WORK/$text_rel"
+if grep -Fq "### Directories" "$WORK/$text_rel"; then
 	fail "directory action section should be omitted when no directory add/delete/rename occurred"
 fi
 pass "summary and detail filtering"
@@ -75,9 +75,9 @@ rc=$(run_capture "$TMPDIR/directory-actions.out" bash -lc \
 	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'directory action fixture' -l 1")
 [[ "$rc" -eq 0 ]] || fail "directory action report should exit 0 (got $rc)"
 directory_rel="$(report_path_from_output "$TMPDIR/directory-actions.out")"
-assert_contains "<summary>Directories Affected</summary>" "$WORK/$directory_rel"
-assert_contains "| Directory | Action |" "$WORK/$directory_rel"
-assert_contains '| `dir-rename` | Renamed to dir-renamed |' "$WORK/$directory_rel"
+assert_contains "<summary>Directories</summary>" "$WORK/$directory_rel"
+assert_contains "| **Directory** | **Action** |" "$WORK/$directory_rel"
+assert_contains '| `dir-renamed` | Renamed (was dir-rename) |' "$WORK/$directory_rel"
 assert_contains '| `dir-added` | Added |' "$WORK/$directory_rel"
 assert_contains '| `dir-delete` | Deleted |' "$WORK/$directory_rel"
 pass "directory action rendering"
@@ -199,10 +199,10 @@ fi
 assert_contains '**Commits:** 1' "$WORK/$remote_push_rel"
 assert_contains '**Changes:** 1 modified, 0 added, 0 deleted' "$WORK/$remote_push_rel"
 assert_contains '**Lines:** 1 added and 0 deleted.' "$WORK/$remote_push_rel"
-assert_contains '<summary><strong>Commits</strong></summary>' "$WORK/$remote_push_rel"
-assert_contains '| Commit Hash | DateTime | Comment |' "$WORK/$remote_push_rel"
-assert_contains '<summary><strong>Files</strong></summary>' "$WORK/$remote_push_rel"
-assert_contains '| File | Commit | Added | Deleted | Net | Lines |' "$WORK/$remote_push_rel"
+assert_contains '<summary>Commits</summary>' "$WORK/$remote_push_rel"
+assert_contains '| **Commit Hash** | **DateTime** | **Comment** |' "$WORK/$remote_push_rel"
+assert_contains '<summary>Files</summary>' "$WORK/$remote_push_rel"
+assert_contains '| **File** | **Commit** | **Added** | **Deleted** | **Net** | **Lines** | **Action** |' "$WORK/$remote_push_rel"
 [[ "$(grep -c '^## ' "$WORK/$remote_push_rel")" -eq 1 ]] || \
 	fail "push commits should not be counted as top-level actions"
 pass "remote snapshot push report"

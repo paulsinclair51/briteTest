@@ -42,4 +42,19 @@ pass "report retention policy"
 [[ -w "$new_report" ]] || fail "report should remain writable"
 pass "report writable permissions"
 
+# 3) A new directory should appear in the Directories section.
+mkdir -p "$WORK/examples/demo"
+printf 'demo\n' > "$WORK/examples/demo/demo.txt"
+rc=$(run_capture "$TMPDIR/directories.out" env GITHUB_ACTOR=testuser bash -lc \
+  "cd '$WORK' && bash ./briteRepo/bin/commit -d -c 'directory section test'")
+[[ "$rc" -eq 0 ]] || fail "commit -d directory scenario should exit 0 (got $rc)"
+dir_report="$(latest_report "$WORK")"
+grep -Fq "| **Directory** | **Action** |" "$dir_report" || \
+  fail "expected Directories table in the dry-run report"
+grep -Fq "| \`examples/demo\` | Added |" "$dir_report" || \
+  fail "expected the added directory row in the dry-run report"
+grep -Fq "| **Lines** | **Action** |" "$dir_report" || \
+  fail "expected the Lines and Action columns in the Files table"
+pass "directories section and Lines column"
+
 echo "All commit report smoke tests passed."

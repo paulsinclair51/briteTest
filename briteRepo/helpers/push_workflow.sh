@@ -253,9 +253,13 @@ bt_push_workflow() (
 
 EOF
     {
-      echo "| File | Commit | Added | Deleted | Net | Total |"
-      echo "| --- | --- | ---: | ---: | ---: | ---: |"
+      printf '| **File** | **Commit** | **Added** | **Deleted** | %s\n' \
+        '**Net** | **Lines** | **Action** |'
+      echo "| --- | --- | ---: | ---: | ---: | ---: | --- |"
     } >> "$report_file"
+
+    bt_git_collect_file_actions < <(git diff --name-status --find-renames \
+      "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)
 
     while IFS= read -r file; do
       [[ -n "$file" ]] || continue
@@ -270,15 +274,16 @@ EOF
       if git cat-file -e "${push_content_ref}:$file" 2>/dev/null; then
         total_lines="$(git show "${push_content_ref}:$file" 2>/dev/null | wc -l | tr -d ' ')"
       fi
-      printf '| `%s` |  | %s | %s | %s | %s |\n' \
-        "$file" "$added" "$deleted" "$net" "$total_lines" >> "$report_file"
+      printf '| `%s` |  | %s | %s | %s | %s | %s |\n' \
+        "$file" "$added" "$deleted" "$net" "$total_lines" \
+        "$(bt_git_file_action "$file")" >> "$report_file"
       total_added=$((total_added + added))
       total_deleted=$((total_deleted + deleted))
       total_net=$((total_net + net))
       total_lines_sum=$((total_lines_sum + total_lines))
     done < <(git diff --name-only --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)
 
-    printf '| **Total** |  | %s | %s | %+d | %s |\n' \
+    printf '| **Total** |  | %s | %s | %+d | %s |  |\n' \
       "$total_added" "$total_deleted" "$total_net" "$total_lines_sum" \
       >> "$report_file"
 
@@ -429,7 +434,7 @@ EOF
       [[ "$old_directory" != "$old_path" && \
         "$new_directory" != "$new_path" && \
         "$old_directory" != "$new_directory" ]] || continue
-      directory_rows+=("$old_directory|Renamed to $new_directory")
+      directory_rows+=("$new_directory|Renamed (was $old_directory)")
     done <<< "$name_status"
     directory_count="${#directory_rows[@]}"
 
@@ -450,9 +455,9 @@ EOF
 **Lines:** ${push_lines_added} added and ${push_lines_deleted} deleted.
 
 <details>
-<summary><strong>Commits</strong></summary>
+<summary>Commits</summary>
 
-| Commit Hash | DateTime | Comment |
+| **Commit Hash** | **DateTime** | **Comment** |
 | --- | --- | --- |
 EOF
 
@@ -467,11 +472,15 @@ EOF
         echo "</details>"
         echo
         echo "<details>"
-        echo "<summary><strong>Files</strong></summary>"
+        echo "<summary>Files</summary>"
         echo
-        echo "| File | Commit | Added | Deleted | Net | Lines |"
-        echo "| --- | --- | ---: | ---: | ---: | ---: |"
+        printf '| **File** | **Commit** | **Added** | **Deleted** | %s\n' \
+        '**Net** | **Lines** | **Action** |'
+        echo "| --- | --- | ---: | ---: | ---: | ---: | --- |"
       } >> "$report_file"
+
+      bt_git_collect_file_actions < <(git diff --name-status --find-renames \
+        "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)
 
       while IFS= read -r file; do
         [[ -n "$file" ]] || continue
@@ -487,15 +496,16 @@ EOF
           total_lines="$(git show "${push_content_ref}:$file" 2>/dev/null | wc -l | tr -d ' ')"
         fi
         commit_hash="$(git log -1 --format='%h' "${remote_branch_tip}..${push_content_ref}" -- "$file" 2>/dev/null || true)"
-        printf '| `%s` | `%s` | %s | %s | %s | %s |\n' \
-          "$file" "$commit_hash" "$added" "$deleted" "$net" "$total_lines" >> "$report_file"
+        printf '| `%s` | `%s` | %s | %s | %s | %s | %s |\n' \
+          "$file" "$commit_hash" "$added" "$deleted" "$net" "$total_lines" \
+          "$(bt_git_file_action "$file")" >> "$report_file"
         total_added=$((total_added + added))
         total_deleted=$((total_deleted + deleted))
         total_net=$((total_net + net))
         total_lines_sum=$((total_lines_sum + total_lines))
       done < <(git diff --name-only --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)
 
-      printf '| **Total** |  | %s | %s | %+d | %s |\n' \
+      printf '| **Total** |  | %s | %s | %+d | %s |  |\n' \
         "$total_added" "$total_deleted" "$total_net" "$total_lines_sum" \
         >> "$report_file"
 
@@ -507,9 +517,9 @@ EOF
         {
           echo
           echo '<details>'
-          echo '<summary><strong>Directories</strong></summary>'
+          echo '<summary>Directories</summary>'
           echo
-          echo '| Directory | Action |'
+          echo '| **Directory** | **Action** |'
           echo '| --- | --- |'
           for directory_row in "${directory_rows[@]}"; do
             directory="${directory_row%%|*}"
@@ -534,9 +544,13 @@ EOF
       {
         echo "## Files"
         echo
-        echo "| File | Commit | Added | Deleted | Net | Total |"
-        echo "| --- | --- | ---: | ---: | ---: | ---: |"
+        printf '| **File** | **Commit** | **Added** | **Deleted** | %s\n' \
+        '**Net** | **Lines** | **Action** |'
+        echo "| --- | --- | ---: | ---: | ---: | ---: | --- |"
       } >> "$report_file"
+
+      bt_git_collect_file_actions < <(git diff --name-status --find-renames \
+        "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)
 
       while IFS= read -r file; do
         [[ -n "$file" ]] || continue
@@ -552,15 +566,16 @@ EOF
           total_lines="$(git show "${push_content_ref}:$file" 2>/dev/null | wc -l | tr -d ' ')"
         fi
         commit_hash="$(git log -1 --format='%h' "${remote_branch_tip}..${push_content_ref}" -- "$file" 2>/dev/null || true)"
-        printf '| `%s` | `%s` | %s | %s | %s | %s |\n' \
-          "$file" "$commit_hash" "$added" "$deleted" "$net" "$total_lines" >> "$report_file"
+        printf '| `%s` | `%s` | %s | %s | %s | %s | %s |\n' \
+          "$file" "$commit_hash" "$added" "$deleted" "$net" "$total_lines" \
+          "$(bt_git_file_action "$file")" >> "$report_file"
         total_added=$((total_added + added))
         total_deleted=$((total_deleted + deleted))
         total_net=$((total_net + net))
         total_lines_sum=$((total_lines_sum + total_lines))
       done < <(git diff --name-only --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)
 
-      printf '| **Total** |  | %s | %s | %+d | %s |\n' \
+      printf '| **Total** |  | %s | %s | %+d | %s |  |\n' \
         "$total_added" "$total_deleted" "$total_net" "$total_lines_sum" \
         >> "$report_file"
     fi

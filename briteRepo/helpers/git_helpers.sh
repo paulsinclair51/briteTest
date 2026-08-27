@@ -148,6 +148,8 @@ bt_git_reset_change_summary() {
   BT_CHANGE_DELETED_DIRECTORIES=0
   BT_CHANGE_ADDED_DIRECTORIES=0
   BT_CHANGE_RENAMED_DIRECTORIES=0
+  # Rows are "<directory>|<action>" for report Directories tables.
+  BT_CHANGE_DIRECTORY_ROWS=()
 }
 
 bt_git_list_parent_directories() {
@@ -242,13 +244,19 @@ bt_git_collect_change_summary_from_files() {
     grep -Fxq -- "$directory" "$new_directories" && continue
     grep -Fxq -- "$directory" "$renamed_old_directories" && continue
     ((++BT_CHANGE_DELETED_DIRECTORIES))
+    BT_CHANGE_DIRECTORY_ROWS+=("$directory|Deleted")
   done < "$old_directories"
   while IFS= read -r directory; do
     [[ -n "$directory" ]] || continue
     grep -Fxq -- "$directory" "$old_directories" && continue
     grep -Fxq -- "$directory" "$renamed_new_directories" && continue
     ((++BT_CHANGE_ADDED_DIRECTORIES))
+    BT_CHANGE_DIRECTORY_ROWS+=("$directory|Added")
   done < "$new_directories"
+  while IFS=$'\t' read -r old_directory new_directory; do
+    [[ -n "$old_directory" && -n "$new_directory" ]] || continue
+    BT_CHANGE_DIRECTORY_ROWS+=("$new_directory|Renamed (was $old_directory)")
+  done < "$renamed_directory_pairs"
 
   rm -f "$old_directories" "$new_directories" \
     "$renamed_directory_pairs" "$renamed_old_directories" \
@@ -479,6 +487,118 @@ bt_git_fetch_prune_origin_with_retry() {
 # The || true prevents set -euo pipefail from aborting on a non-zero git exit.
 bt_is_worktree_dirty() {
   [[ -n "$(git --no-optional-locks status --porcelain 2>/dev/null || true)" ]]
+}
+
+# Rename action text for report tables. The source keeps only its base name.
+# Rename action text for report tables. The source is shown as a bare file
+# name when the directory is unchanged, and as a full path when the file
+# moved between directories.
+bt_git_rename_action_text() {
+  local old_path="$1"
+  local new_path="$2"
+  local modified="${3:-false}"
+  local old_dir="${old_path%/*}"
+  local new_dir="${new_path%/*}"
+  local source_text="${old_path##*/}"
+
+  [[ "$old_dir" == "$old_path" ]] && old_dir=""
+  [[ "$new_dir" == "$new_path" ]] && new_dir=""
+  [[ "$old_dir" == "$new_dir" ]] || source_text="$old_path"
+
+  if [[ "$modified" == true ]]; then
+    printf 'Modified/Renamed (was %s)' "$source_text"
+  else
+    printf 'Renamed (was %s)' "$source_text"
+  fi
+}
+
+# Action text for a `git diff --name-status` letter, for example A, D, M,
+# R100, or R087. OLD_PATH is required for rename and copy entries.
+bt_git_action_from_diff_status() {
+  local status="$1"
+  local old_path="${2:-}"
+  local new_path="${3:-}"
+
+  case "$status" in
+    A*) printf 'Added' ;;
+    D*) printf 'Deleted' ;;
+    C*) printf 'Added' ;;
+    R100) bt_git_rename_action_text "$old_path" "$new_path" false ;;
+    R*) bt_git_rename_action_text "$old_path" "$new_path" true ;;
+    *) printf 'Modified' ;;
+  esac
+}
+
+# Map paths to report actions from `git diff --name-status` lines on stdin.
+# Rename and copy entries are keyed by their destination path.
+bt_git_collect_file_actions() {
+  local status="" old_path="" new_path=""
+
+  declare -gA BT_FILE_ACTIONS=()
+  while IFS=$'\t' read -r status old_path new_path; do
+    [[ -n "$status" && -n "$old_path" ]] || continue
+    if [[ "$status" == R* || "$status" == C* ]]; then
+      [[ -n "$new_path" ]] || continue
+      BT_FILE_ACTIONS["$new_path"]="$(bt_git_action_from_diff_status \
+        "$status" "$old_path" "$new_path")"
+    else
+      BT_FILE_ACTIONS["$old_path"]="$(bt_git_action_from_diff_status "$status")"
+    fi
+  done
+}
+
+bt_git_file_action() {
+  local file_path="$1"
+
+  printf '%s' "${BT_FILE_ACTIONS[$file_path]:-Modified}"
+}
+
+# Branch status tags used in report headers, for example:
+# [uncommitted] [local] [parent: v1.0.0] [ahead of parent by 49]
+bt_git_branch_status_tags() {
+  local branch="$1"
+  local mode="$2"
+  local local_ref="$branch"
+  local remote_ref="origin/$branch"
+  local branch_tag=""
+  local relation_tag=""
+  local parent_tags=""
+  local has_local=false
+  local has_remote=false
+  local has_uncommitted=false
+
+  git show-ref --verify --quiet "refs/heads/$branch" && has_local=true
+  git show-ref --verify --quiet "refs/remotes/origin/$branch" && has_remote=true
+  if [[ "$mode" == "local" ]] && bt_is_worktree_dirty; then
+    has_uncommitted=true
+  fi
+
+  if [[ "$mode" == "remote" ]]; then
+    if [[ "$has_local" == true ]]; then
+      branch_tag="[remote]"
+    else
+      branch_tag="[remote only]"
+    fi
+    parent_tags="$(bt_git_parent_relation_tags \
+      "remote" "$branch" "$remote_ref")"
+  elif [[ "$has_remote" == true ]]; then
+    branch_tag="[local]"
+    relation_tag="$(bt_git_tracking_relation_tag \
+      "local" "$local_ref" "$remote_ref" false)"
+    parent_tags="$(bt_git_parent_relation_tags \
+      "local" "$branch" "$local_ref")"
+  else
+    branch_tag="[local only]"
+    parent_tags="$(bt_git_parent_relation_tags \
+      "local" "$branch" "$local_ref")"
+  fi
+
+  if [[ "$has_uncommitted" == true ]]; then
+    printf '[uncommitted] '
+  fi
+  printf '%s' "$branch_tag"
+  [[ -z "$relation_tag" ]] || printf ' %s' "$relation_tag"
+  [[ -z "$parent_tags" ]] || printf ' %s' "$parent_tags"
 }
 
 bt_is_version_branch() {

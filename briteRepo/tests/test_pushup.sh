@@ -268,7 +268,8 @@ status="$(run_capture "$TMPDIR/partial.out" bash -c \
 [[ -f "$WORK/.git/briteRepo/pushup.state" ]] || fail "partial run should retain state"
 [[ "$(git config --file "$WORK/.git/briteRepo/pushup.state" --get pushup.phase)" == \
   source-sync-failed ]] || fail "partial run should record failed synchronization"
-report="$(find "$WORK/reports" -name 'pushup-e-*.md' | head -n 1)"
+# Earlier scenarios leave their own error reports, so take the newest one.
+report="$(ls -t "$WORK/reports"/pushup-e-*.md 2>/dev/null | head -n 1)"
 [[ -n "$report" ]] || fail "partial run should write a pushup error report"
 assert_contains '| Publish parent | Completed |' "$report"
 assert_contains '| Synchronize source from parent | Pending |' "$report"

@@ -46,6 +46,21 @@ current working copy.
 **mkfork**: Create a fork of the repository and optionally configure it with
 upstream remote and user as approver.
 
+**mkrepo**: Create a GitHub repository, or update an existing GitHub
+repository, so it has the canonical directory layout used by these scripts.
+The argument is a repository name of the authenticated user, not a directory.
+New repositories are private unless `--public` is given. The `bin/` and
+`helpers/` script directories and `.github/workflows/` are replaced with a
+fresh copy; use `--tests` to also refresh `tests/`, and `--rulesets` to run
+`setup_rulesets` after the push. It also adds `docs/md/Guide.md` with
+`README.md` linked to it, the Contributor documents, and default branding.
+Other existing files are kept, and a canonical file whose content differs is
+added as `<name>-canonical<ext>` (for example, `README-canonical.md`). Each
+run writes a report listing the results and the remaining follow-up items;
+failures write an error report with guidance, and `-e` forces that path.
+Updating an existing repository requires that no local clone or checkout of
+it is in use.
+
 **rmclone**: Safely remove a local clone with validation checks and optional
 override.
 
@@ -126,6 +141,7 @@ To make all scripts executable and add them to your PATH, run:
    ```
 
 This script will:
+
 - Make all scripts executable (chmod +x)
 - Add `<repo>/briteRepo/bin/` to PATH in ~/.bashrc
 - Update the shell configuration for current and future sessions

@@ -136,6 +136,14 @@ The ruleset model is intentionally conservative:
 
 This means that a contributor or owner cannot rely on local config to bypass
 repository protection. Only an actual GitHub-side admin authority can do that.
+
+`briteRepo/bin/mkrepo` commits and pushes the canonical layout directly to the
+default branch, so it applies only to a repository whose default branch is not
+yet protected, such as one it has just created. It also installs the
+`.github/workflows/` validation workflows, which are repository content rather
+than clone configuration. Run `setup_rulesets` after the layout is in place,
+either separately or with `mkrepo --rulesets`; once the rulesets are active,
+further layout changes follow the normal branch and pull request workflow.
 </details>
 
 <details>

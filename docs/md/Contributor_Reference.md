@@ -66,7 +66,8 @@ see [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) and
 **Find by task**
 
 - **Set up:** [`mkclone`](#124-mkclone), [`setupclone`](#123-setupclone),
-  [`mkfork`](#125-mkfork), [`setup_rulesets`](#129-setup_rulesets)
+  [`mkfork`](#125-mkfork), [`mkrepo`](#1210-mkrepo),
+  [`setup_rulesets`](#129-setup_rulesets)
 - **Work on a change:** [`chbranch`](#111-chbranch),
   [`mkbranch`](#117-mkbranch), [`commit`](#112-commit),
   [`push`](#1116-push), [`pull`](#118-pull),
@@ -87,21 +88,21 @@ see [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) and
 
 | Command | Reference | Command | Reference |
 |---------|-----------|---------|-----------|
-| `chbranch` | [1.1.1](#111-chbranch) | `mkfork` | [1.2.5](#125-mkfork) |
-| `commit` | [1.1.2](#112-commit) | `override` | [1.2.8](#128-override) |
-| `copyfix` | [1.1.3](#113-copyfix) | `pull` | [1.1.8](#118-pull) |
-| `feedback` | [1.1.4](#114-feedback) | `pulldown` | [1.1.9](#119-pulldown) |
-| `fixlocal` | [1.2.1](#121-fixlocal) | `push` | [1.1.16](#1116-push) |
-| `fixremote` | [1.2.2](#122-fixremote) | `pushup` | [1.1.10](#1110-pushup) |
-| `fixrepo` | [1.2.7](#127-fixrepo) | `rebrand` | [1.3.4](#134-rebrand) |
-| `gendocs` | [1.3.2](#132-gendocs) | `release` | [1.1.11](#1111-release) |
-| `genpngs` | [1.3.3](#133-genpngs) | `replacetext` | [1.3.5](#135-replacetext) |
-| `lsbranch` | [1.1.5](#115-lsbranch) | `report` | [1.1.6](#116-report) |
-| `mkbranch` | [1.1.7](#117-mkbranch) | `retarget` | [1.1.12](#1112-retarget) |
-| `mkclone` | [1.2.4](#124-mkclone) | `review` | [1.1.13](#1113-review) |
-| `rmbranch` | [1.1.14](#1114-rmbranch) | `setup_rulesets` | [1.2.9](#129-setup_rulesets) |
-| `rmclone` | [1.2.6](#126-rmclone) | `setupclone` | [1.2.3](#123-setupclone) |
-| `undo` | [1.1.15](#1115-undo) | | |
+| `chbranch` | [1.1.1](#111-chbranch) | `pull` | [1.1.8](#118-pull) |
+| `commit` | [1.1.2](#112-commit) | `pulldown` | [1.1.9](#119-pulldown) |
+| `copyfix` | [1.1.3](#113-copyfix) | `push` | [1.1.16](#1116-push) |
+| `feedback` | [1.1.4](#114-feedback) | `pushup` | [1.1.10](#1110-pushup) |
+| `fixlocal` | [1.2.1](#121-fixlocal) | `rebrand` | [1.3.4](#134-rebrand) |
+| `fixremote` | [1.2.2](#122-fixremote) | `release` | [1.1.11](#1111-release) |
+| `fixrepo` | [1.2.7](#127-fixrepo) | `replacetext` | [1.3.5](#135-replacetext) |
+| `gendocs` | [1.3.2](#132-gendocs) | `report` | [1.1.6](#116-report) |
+| `genpngs` | [1.3.3](#133-genpngs) | `retarget` | [1.1.12](#1112-retarget) |
+| `lsbranch` | [1.1.5](#115-lsbranch) | `review` | [1.1.13](#1113-review) |
+| `mkbranch` | [1.1.7](#117-mkbranch) | `rmbranch` | [1.1.14](#1114-rmbranch) |
+| `mkclone` | [1.2.4](#124-mkclone) | `rmclone` | [1.2.6](#126-rmclone) |
+| `mkfork` | [1.2.5](#125-mkfork) | `setup_rulesets` | [1.2.9](#129-setup_rulesets) |
+| `mkrepo` | [1.2.10](#1210-mkrepo) | `setupclone` | [1.2.3](#123-setupclone) |
+| `override` | [1.2.8](#128-override) | `undo` | [1.1.15](#1115-undo) |
 
 1. [Command Reference (`briteRepo/bin/`)](#1-command-reference-scriptsbin)<br>
    1.1. [Workflow Management](#11-workflow-management)<br>
@@ -734,6 +735,74 @@ setup_rulesets [--check] [OWNER/REPOSITORY]
 **Key Option:** `--check` verifies the live rulesets without changing them.
 
 The authenticated GitHub user must have repository administration permission.
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.10. mkrepo</summary>
+
+#### 1.2.10. mkrepo
+
+**Purpose:** Create a GitHub repository, or update an existing one, so it has
+the canonical directory layout used by the `briteRepo/bin/` commands.
+
+**Usage:**
+
+```bash
+mkrepo [OPTIONS] <repository>
+```
+
+`<repository>` is a repository name owned by the authenticated GitHub user,
+not a directory. The repository is cloned to a temporary working directory,
+updated, committed, and pushed to its default branch; use `mkclone` for a
+working clone.
+
+**Key Options:**
+
+- `-d` - Report the planned changes; create, commit, and push nothing.
+- `-e` - Force the error path after the layout is prepared, to verify error
+  reporting. Nothing is committed or pushed.
+- `-t SEC` - Set the remote timeout.
+- `-v` - Report items that are already canonical.
+- `--public` - Create a public repository; the default is private.
+- `--rulesets` - Run `setup_rulesets` for the repository after the push.
+  Repository administration permission and `jq` are required.
+- `--tests` - Also refresh the `briteRepo/tests/` scripts.
+
+**Behavior:** `briteRepo/bin/`, `briteRepo/helpers/`, and
+`.github/workflows/` are replaced with a fresh copy. The command also adds
+`docs/md/Guide.md` as the repository introduction with `README.md` linked to
+it, copies the Contributor documents from `docs/md/`, and creates default
+branding in `docs/branding/` using a black square monogram, the repository
+name as the brand name, and a placeholder tagline. Other existing files are
+never modified or deleted; when an existing file has a canonical name but
+non-canonical content, the canonical content is added alongside it as
+`<name>-canonical<ext>`, for example `README-canonical.md`.
+
+**Report:** each run writes `reports/mkrepo-<datetime>.md` in the clone that
+ran the command, listing the canonical items, the refreshed directories, the
+files with non-canonical content, and the follow-up items still needed. With
+`-d` the same report is written as `reports/mkrepo-d-<datetime>.md`; it is
+identical except for its heading and its commit value, which is
+`To be determined`. A failure after the working clone is prepared writes
+`reports/mkrepo-e-<datetime>.md`, which is the same report with the exit
+code, the error message, the last remote command output, and guidance for
+the failure appended.
+
+**Hardening:** the command checks the tools, the source scripts, the commit
+identity, and the GitHub authentication before the repository is touched;
+retries a remote operation once; and verifies that the default branch holds
+the pushed commit before reporting success.
+
+**After the push:** work through the follow-up items in the report. They
+include adding contributor logins and roles to `config/contributors.md`,
+setting `config/version_status.md`, replacing the placeholder text in
+`docs/md/Guide.md`, replacing the default branding with `rebrand` and
+`genpngs`, running `setup_rulesets` unless `--rulesets` was used, and
+preparing a working clone with `mkclone` and `setupclone`.
+
+**Prerequisite:** No local clone or checkout of the target repository may be
+in use, because `mkrepo` pushes directly to the default branch. `mkrepo`
+refuses to run from inside a clone of the target.
 </details>
 </details>
 

@@ -324,19 +324,15 @@ generate_error_report() {
     branch_display="$CURRENT_BRANCH"
   fi
 
-  summary_text="${COMMIT_CHANGE_SUMMARY}; ${COMMITTED_FILES} total files."
+  summary_text="${COMMIT_CHANGE_SUMMARY}; $(format_total_files_text)"
   commit_only_rows_tmp="$(mktemp)"
 
   initialize_report_file "commit-e"
-  cat > "$REPORT_FILE" <<EOF
-# Error Commit Report
-
-**Commit:** \`To be determined\` at ${RUN_TS_DISPLAY}.  
-**Command:** \`${command_text}\`  
-**Branch:** \`${branch_display}\` (local)  
-**Files:** ${summary_text}  
+  write_commit_report_header "Error Commit Report" "$branch_display"
+  write_commit_report_entry "$command_text" "$summary_text"
+  cat >> "$REPORT_FILE" <<EOF
 **Error:** ${message}  
-**Guidance:** ${guidance}
+**Guidance:** ${guidance}  
 EOF
 
   if [[ "$NEEDS_COMMIT" == true ]]; then
@@ -353,7 +349,7 @@ EOF
       [[ "$removed" =~ ^[0-9]+$ ]] || removed=0
       [[ "$total_lines" =~ ^[0-9]+$ ]] || total_lines=0
       local commit_notes
-      commit_notes="$(build_commit_note "$file_path" "$added" "$removed")"
+      commit_notes="$(build_commit_note "$file_path")"
       write_commit_report_row \
         "$file_path" "$added" "$removed" \
         "$total_lines" "$commit_notes" "$commit_only_rows_tmp"
@@ -367,14 +363,17 @@ EOF
   fi
 
   if [[ "$committed_only" -gt 0 ]]; then
-    printf '\n<details>\n<summary><strong>Files</strong></summary>\n\n## Files\n\n' >> "$REPORT_FILE"
+    printf '\n<details>\n<summary>Files</summary>\n\n' \
+      >> "$REPORT_FILE"
     append_commit_table_header
     cat "$commit_only_rows_tmp" >> "$REPORT_FILE"
     printf '| **Total** | %s | %s | %+d | %s |  |\n' \
       "$total_added" "$total_removed" "$total_net" "$total_lines_sum" \
       >> "$REPORT_FILE"
-    printf '\n</details>\n' >> "$REPORT_FILE"
+    printf '</details>\n' >> "$REPORT_FILE"
   fi
+
+  append_commit_directories_section
 
   cleanup_old_transient_reports
   release_report_write_lock true
@@ -411,6 +410,7 @@ COMMITTED_FILES=0
 NEEDS_COMMIT=false
 COMMIT_FILE_LIST=""
 COMMIT_STATS_FILE="$(mktemp)"
+COMMIT_ACTIONS_FILE="$(mktemp)"
 COMMIT_MODIFIED_FILES=0
 COMMIT_ADDED_FILES=0
 COMMIT_DELETED_FILES=0
@@ -419,6 +419,7 @@ COMMIT_RENAMED_MODIFIED_FILES=0
 COMMIT_DELETED_DIRECTORIES=0
 COMMIT_ADDED_DIRECTORIES=0
 COMMIT_RENAMED_DIRECTORIES=0
+COMMIT_DIRECTORY_ROWS=()
 COMMIT_LINES_ADDED=0
 COMMIT_LINES_DELETED=0
 COMMIT_PR_NUMBER=""
@@ -438,7 +439,7 @@ cleanup_runtime_files() {
   if [[ "$COMMIT_WORK_LOCK_HELD" == true ]]; then
     release_commit_work_lock || true
   fi
-  rm -f "$COMMIT_STATS_FILE"
+  rm -f "$COMMIT_STATS_FILE" "$COMMIT_ACTIONS_FILE"
 }
 
 trap cleanup_runtime_files EXIT
@@ -828,16 +829,19 @@ collect_commit_candidate_files() {
     path="${record:3}"
 
     # For porcelain -z rename/copy entries, the next NUL field is the source
-    # path.
+    # path. Only the destination is reported; its action names the source.
     if [[ "${status:0:1}" == "R" || "${status:1:1}" == "R" ]]; then
       IFS= read -r -d '' old_path <&3 || old_path=""
-      [[ -n "$old_path" ]] && candidates+=("$old_path")
       [[ -n "$path" ]] && candidates+=("$path")
+      record_commit_action "$path" \
+        "$(rename_action_text "$status" "$old_path" "$path")"
     elif [[ "${status:0:1}" == "C" || "${status:1:1}" == "C" ]]; then
       IFS= read -r -d '' old_path <&3 || true
       [[ -n "$path" ]] && candidates+=("$path")
+      record_commit_action "$path" "Added"
     else
       [[ -n "$path" ]] && candidates+=("$path")
+      record_commit_action "$path" "$(status_action_text "$status")"
     fi
   done
   exec 3<&-
@@ -861,6 +865,7 @@ collect_commit_change_summary() {
   COMMIT_DELETED_DIRECTORIES="$BT_CHANGE_DELETED_DIRECTORIES"
   COMMIT_ADDED_DIRECTORIES="$BT_CHANGE_ADDED_DIRECTORIES"
   COMMIT_RENAMED_DIRECTORIES="$BT_CHANGE_RENAMED_DIRECTORIES"
+  COMMIT_DIRECTORY_ROWS=("${BT_CHANGE_DIRECTORY_ROWS[@]}")
   COMMIT_CHANGE_SUMMARY="$(bt_format_change_summary)"
 }
 
@@ -1039,16 +1044,73 @@ write_commit_report_row() {
   notes_cell="${notes_cell//|/\\|}"
 
   net=$((added - removed))
-  printf '| %s | %s | %s | %+d | %s | %s |\n' \
+  printf '| `%s` | %s | %s | %+d | %s | %s |\n' \
     "$file_cell" "$added" "$removed" \
     "$net" "$total_lines" "$notes_cell" >> "$out_file"
 }
 
+# "1 total file." or "N total files."
+format_total_files_text() {
+  if [[ "$COMMITTED_FILES" -eq 1 ]]; then
+    printf '1 total file.'
+  else
+    printf '%s total files.' "$COMMITTED_FILES"
+  fi
+}
+
 append_commit_table_header() {
   cat >> "$REPORT_FILE" <<'EOF'
-| **File** | **Added** | **Deleted** | **Net** | **Total** | **Notes** |
-| --- | --- | --- | --- | --- | --- |
+| **File** | **Added** | **Deleted** | **Net** | **Lines** | **Action** |
+| --- | ---: | ---: | ---: | ---: | --- |
 EOF
+}
+
+# Report header shared by the dry-run and error reports: title, branch, and
+# branch status tags, matching the layout the report script produces.
+write_commit_report_header() {
+  local title="$1"
+  local branch_display="$2"
+  local status_tags=""
+
+  if [[ -n "$CURRENT_BRANCH" ]]; then
+    status_tags="$(bt_git_branch_status_tags "$CURRENT_BRANCH" "local" \
+      2>/dev/null || true)"
+  fi
+  [[ -n "$status_tags" ]] || status_tags="[uncommitted] [local]"
+
+  cat > "$REPORT_FILE" <<EOF
+# ${title}
+
+**Branch:** \`${branch_display}\`  
+**Status:** ${status_tags}  
+
+EOF
+}
+
+# One numbered activity entry, in the style of the report script.
+write_commit_report_entry() {
+  local user_display
+
+  user_display="$(bt_format_login_with_role "$(bt_resolve_login_or_empty)" \
+    "$REPO_ROOT/config/contributors.md" 2>/dev/null || true)"
+  [[ -n "$user_display" ]] || user_display="unknown (contributor)"
+
+  cat >> "$REPORT_FILE" <<EOF
+## 1. commit: ${RUN_TS_DISPLAY}
+
+**Commit:** \`To be determined\`  
+**Command:** \`${1}\`  
+**User:** ${user_display}  
+**Changes:** ${2}  
+**Lines:** ${COMMIT_LINES_ADDED} added and ${COMMIT_LINES_DELETED} deleted.  
+EOF
+}
+
+# Directories added, deleted, or renamed by the pending commit.
+append_commit_directories_section() {
+  [[ "${#COMMIT_DIRECTORY_ROWS[@]}" -gt 0 ]] || return 0
+  bt_report_append_directories_section "$REPORT_FILE" \
+    "${COMMIT_DIRECTORY_ROWS[@]}"
 }
 
 get_total_lines_for_file() {
@@ -1063,35 +1125,50 @@ get_total_lines_for_file() {
 
 build_commit_note() {
   local file_path="$1"
-  local added="$2"
-  local removed="$3"
-  local change_text
-  local scope_text
+  local action
 
-  if [[ "$added" -gt 0 && "$removed" -eq 0 ]]; then
-    change_text="Added new content"
-  elif [[ "$added" -eq 0 && "$removed" -gt 0 ]]; then
-    change_text="Removed existing content"
-  else
-    change_text="Updated existing content"
+  action="$(awk -F '\t' -v f="$file_path" '$1 == f { print $2; exit }' \
+    "$COMMIT_ACTIONS_FILE" 2>/dev/null || true)"
+  printf '%s\n' "${action:-Modified}"
+}
+
+record_commit_action() {
+  local file_path="$1"
+  local action="$2"
+
+  [[ -n "$file_path" ]] || return 0
+  printf '%s\t%s\n' "$file_path" "$action" >> "$COMMIT_ACTIONS_FILE"
+}
+
+# Working-tree status letters mapped to the report action.
+status_action_text() {
+  local status="$1"
+
+  case "$status" in
+    "??" | A? | ?A) printf 'Added' ;;
+    D? | ?D) printf 'Deleted' ;;
+    *) printf 'Modified' ;;
+  esac
+}
+
+# A rename keeps the source file name so the move is traceable. Content is
+# compared against the source blob because a staged rename with edits is
+# still reported as a plain rename by git status.
+rename_action_text() {
+  local status="$1"
+  local old_path="$2"
+  local new_path="$3"
+  local modified=false
+
+  if [[ "${status:1:1}" == "M" ]]; then
+    modified=true
+  elif [[ -f "$new_path" ]] && git cat-file -e "HEAD:$old_path" 2>/dev/null && \
+    ! git cat-file blob "HEAD:$old_path" 2>/dev/null | \
+      cmp -s - "$new_path"; then
+    modified=true
   fi
 
-  case "$file_path" in
-    *.md)
-      scope_text="documentation"
-      ;;
-    briteRepo/bin/* | briteRepo/helpers/* | *.sh)
-      scope_text="script logic"
-      ;;
-    src/*.[ch] | include/*.[ch])
-      scope_text="C source implementation"
-      ;;
-    *)
-      scope_text="file content"
-      ;;
-  esac
-
-  printf '%s in %s\n' "$change_text" "$scope_text"
+  bt_git_rename_action_text "$old_path" "$new_path" "$modified"
 }
 
 
@@ -1122,16 +1199,10 @@ generate_commit_report() {
     chmod u+w "$REPORT_FILE" 2>/dev/null || true
   fi
 
-  summary_text="${COMMIT_CHANGE_SUMMARY}; ${COMMITTED_FILES} total files."
+  summary_text="${COMMIT_CHANGE_SUMMARY}; $(format_total_files_text)"
 
-  cat > "$REPORT_FILE" <<EOF
-# Dry-Run Commit Report
-
-**Commit:** \`To be determined\` at ${RUN_TS_DISPLAY}.  
-**Command:** \`${command_text}\`  
-**Branch:** \`${CURRENT_BRANCH}\` (local)  
-**Files:** ${summary_text}
-EOF
+  write_commit_report_header "Dry-Run Commit Report" "$CURRENT_BRANCH"
+  write_commit_report_entry "$command_text" "$summary_text"
 
   local commit_only_rows_tmp
   commit_only_rows_tmp="$(mktemp)"
@@ -1151,7 +1222,7 @@ EOF
       [[ "$removed" =~ ^[0-9]+$ ]] || removed=0
       [[ "$total_lines" =~ ^[0-9]+$ ]] || total_lines=0
       local commit_notes
-      commit_notes="$(build_commit_note "$file_path" "$added" "$removed")"
+      commit_notes="$(build_commit_note "$file_path")"
       commit_notes="${commit_notes//|/\\|}"
       write_commit_report_row \
         "$file_path" "$added" "$removed" \
@@ -1166,14 +1237,17 @@ EOF
   fi
 
   if [[ "$committed_only" -gt 0 ]]; then
-    printf '\n<details>\n<summary><strong>Files</strong></summary>\n\n## Files\n\n' >> "$REPORT_FILE"
+    printf '\n<details>\n<summary>Files</summary>\n\n' \
+      >> "$REPORT_FILE"
     append_commit_table_header
     cat "$commit_only_rows_tmp" >> "$REPORT_FILE"
     printf '| **Total** | %s | %s | %+d | %s |  |\n' \
       "$total_added" "$total_removed" "$total_net" "$total_lines_sum" \
       >> "$REPORT_FILE"
-    printf '\n</details>\n' >> "$REPORT_FILE"
+    printf '</details>\n' >> "$REPORT_FILE"
   fi
+
+  append_commit_directories_section
 
   cleanup_transient_reports_locked
 

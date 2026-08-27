@@ -126,7 +126,8 @@ Run any command with `-h` for current usage, prerequisites, and exit statuses.
 
 ### 2.1. Set Up Your Clone
 
-1. Create the clone with `mkclone`. It configures the commands and local safeguards required by the workflow.
+1. Create the clone with `mkclone`. It configures the commands and local
+   safeguards required by the workflow.
 2. Enter the new repository directory.
 3. Authenticate the GitHub CLI with `gh auth login`.
 4. Confirm that your GitHub login appears in `config/contributors.md`.
@@ -134,6 +135,9 @@ Run any command with `-h` for current usage, prerequisites, and exit statuses.
    [Signing Commits](#7-signing-commits).
 
 If you already have a clone, run `setupclone` to configure it.
+
+To create a repository that uses these commands, or to add the canonical
+layout to a repository you already own, run `mkrepo <repository>`.
 </details>
 
 <details>

@@ -1,0 +1,1422 @@
+#!/usr/bin/env bash
+
+# mkrepo - Create a GitHub repository, or update an existing one, so it has
+# the canonical briteRepo directory layout.
+#
+# See usage below for details, or run: mkrepo -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  mkrepo [OPTIONS] <repository>
+  mkrepo {-h | --help}
+
+Create a GitHub remote (origin) repository, or update an existing GitHub
+repository, so it has the canonical directory layout and files required
+by the briteRepo scripts.
+
+Arguments:
+  <repository>       Repository name for the authenticated GitHub user.
+
+This script:
+  - Creates the repository on GitHub when it does not already exist for the
+    authenticated user (private by default; use --public for public).
+  - Clones the repository into a temporary working directory that is removed
+    when the script finishes. Use mkclone to make a working clone.
+  - Creates the canonical directories (briteRepo/, build/, config/, docs/,
+    examples/, include/, logs/, obsolete/, reports/, src/, tests/ and
+    their canonical subdirectories) if they don't already exist.
+  - Creates a directory guide README.md in every canonical directory if
+    they don't already exist.
+  - Creates canonical top-level files (CHANGELOG.md, CONTRIBUTING.md,
+    CODE_OF_CONDUCT.md, MAINTAINERS.md, SECURITY.md, .gitignore, LICENSE)
+    and config/ files if they don't already exist.
+  - Creates docs/md/Guide.md, the repository introduction, and links
+    README.md to it. Copies the Contributor documents from docs/md/ of the
+    clone containing this script.
+  - Creates default branding in docs/branding/: a black square monogram,
+    the repository name as the brand name, and a placeholder tagline.
+  - Replaces briteRepo/bin/, briteRepo/helpers/, and .github/workflows/ with
+    a fresh copy from the clone containing this script. Use --tests to also
+    refresh briteRepo/tests/.
+  - Commits and pushes the additions to the repository default branch, then
+    verifies that the remote branch has the pushed commit.
+  - With --rulesets, runs setup_rulesets for the repository after the push.
+  - Writes a report of the results and the remaining follow-up items.
+
+Existing files are never modified and never deleted, except for the
+briteRepo/ script directories and .github/workflows/, which are always
+replaced with a fresh copy. When an existing file has a canonical name but
+non-canonical content, the canonical content is added alongside it as
+<name>-canonical<ext>, for example README-canonical.md.
+
+Prerequisite for an existing repository:
+  No local clone or checkout of the repository should be in use while
+  mkrepo runs. mkrepo commits and pushes directly to the default branch,
+  so any other clone must be refreshed afterwards. mkrepo refuses to run
+  from inside a clone of the target repository.
+
+Options:
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
+  -d          Dry-run mode: report the planned changes; Nothing is committed
+              or pushed.
+  -e          Force the error path after the layout is prepared, to verify
+              error reporting. Nothing is committed or pushed.
+  -t SEC      Remote operation timeout in seconds (default: 10).
+              SEC must be an integer greater than 0.
+  -v          Report every item that already exists, not only changes.
+  --public    Create a public repository (default: private).
+  --rulesets  Run setup_rulesets for the repository after a successful push.
+              Repository administration permission and jq are required.
+  --tests     Also refresh the briteRepo/tests/ scripts.
+
+Examples:
+  # Create a new private repository with the canonical layout
+  mkrepo my-new-repo
+
+  # Add the canonical layout to an existing repository
+  mkrepo briteRepo
+
+  # Preview the changes for an existing repository
+  mkrepo -d briteRepo
+
+  # Verify the error report path
+  mkrepo -e my-new-repo
+
+  # Create a public repository and include the script tests
+  mkrepo --public --tests shared-tools
+
+  # Create a repository and protect main and version branches
+  mkrepo --rulesets my-new-repo
+
+Outputs:
+  - Writes help text, status messages, and a summary to stdout.
+  - Writes errors and diagnostics to stderr.
+  - Creates or updates the repository on GitHub.
+  - Writes reports/mkrepo-<datetime>.md in the clone mkrepo is run from.
+    The report lists the canonical items, the refreshed directories, every
+    existing file that has a canonical name but non-canonical content, and
+    the follow-up items needed to finish preparing the repository.
+  - With -d, writes the same report as reports/mkrepo-d-<datetime>.md. The
+    dry-run report is identical except for its heading and its commit
+    value, which is "To be determined".
+  - On failure after the working clone is prepared, writes
+    reports/mkrepo-e-<datetime>.md. The error report is the same report
+    with the exit code, the error message, the last remote command output,
+    and guidance for the failure appended. Use -e to force this path.
+
+Exit codes:
+  0   Success
+  1   Invalid option or argument
+  2   Local clone or checkout of the repository detected
+  3   Required source assets not found
+  4   Failed to create, update, or push the repository layout
+  5   Missing required tools (git, gh)
+  6   GitHub authentication or API error
+EOF
+}
+
+# High-Level Flow:
+# - Parse options and validate the repository name (main).
+# - Preflight the environment: required tools, source assets, commit
+#   identity, GitHub authentication, and the authenticated login.
+# - Resolve the target repository and refuse to run when a local clone or
+#   checkout of it is in use.
+# - Create the repository when it does not exist, then clone it into a
+#   temporary working directory that is removed on exit.
+# - Build the canonical layout in the working clone: directories and their
+#   guides, documentation, branding, top-level files, and config files.
+#   Existing files are kept; canonical content that differs is written to a
+#   <name>-canonical<ext> companion file.
+# - Replace the script and workflow directories with a fresh copy.
+# - Commit, push, and verify the pushed commit, then optionally apply the
+#   repository rulesets.
+# - Write one report for every outcome (success, dry run, or error). The
+#   three reports share one body; the error report appends the failure
+#   details and guidance.
+
+# shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
+
+for arg in "$@"; do
+  if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+done
+
+# -E propagates the ERR trap into functions and command substitutions.
+set -Eeuo pipefail
+
+# ---------------------------------------------------------------------------
+# Constants and shared helpers
+# ---------------------------------------------------------------------------
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
+SOURCE_BRITEREPO="$SOURCE_REPO_ROOT/briteRepo"
+
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_LOCAL_CLONE_PRESENT=2
+readonly EXIT_MISSING_SOURCE=3
+readonly EXIT_OPERATION_FAILED=4
+readonly EXIT_MISSING_TOOLS=5
+readonly EXIT_GITHUB_ERROR=6
+
+readonly COMMIT_MESSAGE="Apply canonical briteRepo layout"
+readonly CANONICAL_SUFFIX="-canonical"
+readonly BRAND_TAGLINE="The best is yet to come."
+readonly REPO_DESCRIPTION="Repository using the canonical briteRepo layout"
+readonly REMOTE_ATTEMPTS=2
+
+COPYRIGHT_YEAR="$(date '+%Y')"
+
+if [[ -f "$SOURCE_BRITEREPO/helpers/common.sh" ]]; then
+  # shellcheck source=helpers/common.sh
+  source "$SOURCE_BRITEREPO/helpers/common.sh"
+else
+  bt_emit_error() {
+    printf 'Error: %s\n' "$1" >&2
+  }
+  bt_info() {
+    printf '[INFO] %s\n' "$1"
+  }
+  bt_success() {
+    printf '[SUCCESS] %s\n' "$1"
+  }
+fi
+
+if [[ -f "$SOURCE_BRITEREPO/helpers/git_helpers.sh" ]]; then
+  # shellcheck source=helpers/git_helpers.sh
+  source "$SOURCE_BRITEREPO/helpers/git_helpers.sh"
+fi
+
+# ---------------------------------------------------------------------------
+# Run state
+# ---------------------------------------------------------------------------
+
+DRY_RUN=false
+FORCE_ERROR=false
+COPY_TESTS=false
+APPLY_RULESETS=false
+VERBOSE=false
+VISIBILITY="private"
+REMOTE_TIMEOUT_SECONDS=10
+
+REPO_NAME=""
+BRAND_NAME=""
+AUTH_LOGIN=""
+TARGET_SLUG=""
+TARGET_ROOT=""
+WORK_PARENT=""
+RUN_LOG=""
+REPO_EXISTS=false
+REPO_CREATED=false
+REPO_DEFAULT_BRANCH="main"
+LAST_COMMIT="None"
+
+CREATED_COUNT=0
+UNCHANGED_COUNT=0
+DIVERGENT_COUNT=0
+CREATED_PATHS=()
+DIVERGENT_PATHS=()
+REFRESHED_DIRS=()
+README_SYMLINK_PENDING=false
+
+# An error report needs the target and layout state, so it starts unavailable.
+REPORT_READY=false
+ERROR_CODE=0
+ERROR_MESSAGE=""
+
+# ---------------------------------------------------------------------------
+# Failure handling
+# ---------------------------------------------------------------------------
+
+usage_error() {
+  usage
+  echo >&2
+  bt_emit_error "$1. See usage above for details."
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
+# Report the failure, write an error report when there is state to report,
+# and exit with the classified code.
+error_exit() {
+  local code="$1"
+  local message="$2"
+
+  bt_emit_error "$message"
+  if [[ "$REPORT_READY" == true ]]; then
+    ERROR_CODE="$code"
+    ERROR_MESSAGE="$message"
+    write_report "error" "$LAST_COMMIT"
+  fi
+  exit "$code"
+}
+
+# Any command that fails outside a conditional lands here.
+on_unexpected_error() {
+  local code=$?
+  local line="$1"
+
+  trap - ERR
+  error_exit "$EXIT_OPERATION_FAILED" \
+    "Unexpected failure at line $line (exit $code)"
+}
+
+cleanup() {
+  [[ -n "$WORK_PARENT" ]] && rm -rf "$WORK_PARENT"
+  [[ -n "$RUN_LOG" ]] && rm -f "$RUN_LOG"
+  return 0
+}
+
+trap 'on_unexpected_error $LINENO' ERR
+trap cleanup EXIT
+
+# ---------------------------------------------------------------------------
+# Command execution
+# ---------------------------------------------------------------------------
+
+# Run a command under the configured remote timeout.
+run_remote() {
+  if declare -F bt_run_remote_command >/dev/null 2>&1; then
+    bt_run_remote_command "$@"
+    return $?
+  fi
+  "$@"
+}
+
+# Run a remote command, capturing its output for diagnostics, and retry once
+# so a single transient network failure does not end the run.
+run_remote_logged() {
+  local attempt
+
+  for ((attempt = 1; attempt <= REMOTE_ATTEMPTS; attempt++)); do
+    : > "$RUN_LOG"
+    if run_remote "$@" >>"$RUN_LOG" 2>&1; then
+      return 0
+    fi
+    if [[ "$attempt" -lt "$REMOTE_ATTEMPTS" ]]; then
+      bt_info "Retrying: $1 $2"
+    fi
+  done
+  return 1
+}
+
+# Last lines of the most recent captured command output.
+last_run_output() {
+  [[ -s "$RUN_LOG" ]] || return 1
+  tail -n 5 "$RUN_LOG"
+}
+
+# ---------------------------------------------------------------------------
+# Progress accounting
+# ---------------------------------------------------------------------------
+
+increment_counter() {
+  local name="$1"
+  local value="${!name}"
+  printf -v "$name" '%s' "$((value + 1))"
+}
+
+report_created() {
+  increment_counter CREATED_COUNT
+  CREATED_PATHS+=("$1")
+  echo "  + $1"
+}
+
+report_divergent() {
+  increment_counter DIVERGENT_COUNT
+  DIVERGENT_PATHS+=("$1")
+  echo "  ! $1 (non-canonical content; canonical copy:" \
+    "$(canonical_variant "$1"))"
+}
+
+report_unchanged() {
+  increment_counter UNCHANGED_COUNT
+  if [[ "$VERBOSE" == true ]]; then
+    echo "  = $1 (canonical)"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Canonical layout data
+# ---------------------------------------------------------------------------
+
+# Canonical directories in creation order, with their guide descriptions.
+CANONICAL_DIRS=(
+  "briteRepo|Directory containing script assets."
+  "briteRepo/bin|Directory containing contributor scripts."
+  "briteRepo/helpers|Directory containing shared shell helper modules."
+  "briteRepo/tests|Directory containing script tests."
+  "build|Directory containing build artifacts (mainly \`.o\` files)."
+  "config|Directory containing repository configuration files."
+  "docs|Directory containing user and contributor documentation assets."
+  "docs/branding|Directory containing branding \`.svg\` and \`.png\` files."
+  "docs/docx|Directory containing generated Microsoft Word \`.docx\` files."
+  "docs/md|Directory containing Markdown (\`.md\`) documentation."
+  "docs/pdf|Directory containing generated PDF (\`.pdf\`) files."
+  "examples|Directory containing usage examples."
+  "include|Directory containing public headers and API declarations."
+  "logs|Directory containing local and remote logs."
+  "obsolete|Directory containing obsolete files retained for reference."
+  "reports|Directory containing script-generated report files."
+  "src|Directory containing \`.c\` files and internal \`.h\` headers."
+  "tests|Directory containing test assets."
+  "tests/golden|Directory containing baseline files for output comparisons."
+  "tests/include|Directory containing test headers (\`.h\`)."
+  "tests/input|Directory containing input files for tests."
+  "tests/output|Directory containing retained generated test outputs."
+  "tests/src|Directory containing test source files (\`.c\`)."
+  "tests/tmp|Directory containing temporary test outputs."
+)
+
+# Contributor documents copied from the clone that runs mkrepo.
+CONTRIBUTOR_DOCS=(
+  "Contributor_Guide"
+  "Contributor_Reference"
+  "Contributor_Internal_Guide"
+  "Contributor_Internal_Reference"
+)
+
+# Directories replaced wholesale from the clone that runs mkrepo. --tests
+# appends briteRepo/tests during option parsing.
+REFRESH_PATHS=(briteRepo/bin briteRepo/helpers .github/workflows)
+
+dir_description() {
+  local wanted="$1"
+  local entry
+
+  for entry in "${CANONICAL_DIRS[@]}"; do
+    if [[ "${entry%%|*}" == "$wanted" ]]; then
+      printf '%s' "${entry#*|}"
+      return 0
+    fi
+  done
+  printf 'Directory containing repository assets.'
+}
+
+is_refreshed_dir() {
+  local candidate="$1"
+  local path
+
+  for path in "${REFRESH_PATHS[@]}"; do
+    [[ "$candidate" == "$path" ]] && return 0
+  done
+  return 1
+}
+
+# ---------------------------------------------------------------------------
+# File operations on the working clone
+# ---------------------------------------------------------------------------
+
+# Canonical companion name: <base>-canonical<ext> (dotfiles keep their name).
+canonical_variant() {
+  local rel_path="$1"
+  local dir="" base name ext=""
+
+  base="${rel_path##*/}"
+  [[ "$rel_path" == */* ]] && dir="${rel_path%/*}/"
+
+  name="$base"
+  if [[ "${base:1}" == *.* ]]; then
+    ext=".${base##*.}"
+    name="${base%.*}"
+  fi
+
+  printf '%s%s%s%s' "$dir" "$name" "$CANONICAL_SUFFIX" "$ext"
+}
+
+# Write canonical content read from stdin. An existing file is never
+# changed; differing canonical content goes to its -canonical companion.
+write_file() {
+  local rel_path="$1"
+  local abs_path="$TARGET_ROOT/$rel_path"
+  local content variant_path
+
+  content="$(cat)"
+
+  if [[ -e "$abs_path" ]]; then
+    if [[ "$(cat "$abs_path")" == "$content" ]]; then
+      report_unchanged "$rel_path"
+      return 0
+    fi
+    if [[ "$DRY_RUN" != true ]]; then
+      variant_path="$TARGET_ROOT/$(canonical_variant "$rel_path")"
+      printf '%s\n' "$content" > "$variant_path" || \
+        error_exit "$EXIT_OPERATION_FAILED" "Failed to write $variant_path"
+    fi
+    report_divergent "$rel_path"
+    return 0
+  fi
+
+  if [[ "$DRY_RUN" != true ]]; then
+    printf '%s\n' "$content" > "$abs_path" || \
+      error_exit "$EXIT_OPERATION_FAILED" "Failed to write $abs_path"
+  fi
+  report_created "$rel_path"
+}
+
+make_dir() {
+  local rel_path="$1"
+  local abs_path="$TARGET_ROOT/$rel_path"
+
+  if [[ -d "$abs_path" ]]; then
+    report_unchanged "$rel_path/"
+    return 0
+  fi
+  if [[ "$DRY_RUN" != true ]]; then
+    mkdir -p "$abs_path" || \
+      error_exit "$EXIT_OPERATION_FAILED" "Failed to create $abs_path"
+  fi
+  report_created "$rel_path/"
+}
+
+# Link a canonical path to its target, keeping any existing regular file.
+write_symlink() {
+  local rel_path="$1"
+  local target="$2"
+  local abs_path="$TARGET_ROOT/$rel_path"
+
+  if [[ -L "$abs_path" ]]; then
+    if [[ "$(readlink "$abs_path")" == "$target" ]]; then
+      report_unchanged "$rel_path"
+      return 0
+    fi
+  elif [[ -e "$abs_path" ]]; then
+    README_SYMLINK_PENDING=true
+    increment_counter DIVERGENT_COUNT
+    echo "  ! $rel_path (not a symbolic link to $target; kept as is)"
+    return 0
+  fi
+
+  if [[ "$DRY_RUN" != true ]]; then
+    ln -sfn "$target" "$abs_path" || \
+      error_exit "$EXIT_OPERATION_FAILED" "Failed to link $abs_path"
+  fi
+  report_created "$rel_path -> $target"
+}
+
+# Use a file from the source clone as the canonical content.
+copy_source_file() {
+  local source_path="$1"
+  local rel_path="$2"
+
+  [[ -f "$source_path" ]] || return 1
+  write_file "$rel_path" < "$source_path"
+}
+
+# ---------------------------------------------------------------------------
+# Report generation
+# ---------------------------------------------------------------------------
+
+# Items a contributor must still handle before the repository is ready.
+emit_followup_items() {
+  printf -- '- Add contributor logins and roles to `config/contributors.md`.\n'
+  printf -- '  Role checks in the scripts reject every user until this table\n'
+  printf -- '  lists at least one approver.\n'
+  printf -- '- Set the accepted versions in `config/version_status.md`.\n'
+  printf -- '- Replace the placeholder text in `docs/md/Guide.md`, which is\n'
+  printf -- '  the repository introduction that `README.md` links to.\n'
+  printf -- '- Replace the default branding in `docs/branding/`. The monogram\n'
+  printf -- '  is a plain black square and the tagline is a placeholder.\n'
+  printf -- '  Use `rebrand` to change the brand name and tagline, then\n'
+  printf -- '  `genpngs` to regenerate the PNG files.\n'
+  printf -- '- Generate the PDF and DOCX documents with `gendocs`.\n'
+
+  if [[ "$README_SYMLINK_PENDING" == true ]]; then
+    printf -- '- Replace `README.md` with a symbolic link to\n'
+    printf -- '  `docs/md/Guide.md`: `git rm --cached README.md &&\n'
+    printf -- '  ln -sf docs/md/Guide.md README.md`. The existing file was\n'
+    printf -- '  kept because it is not a symbolic link.\n'
+  fi
+
+  if [[ "$DIVERGENT_COUNT" -gt 0 ]]; then
+    printf -- '- Review each `%s` file listed above, merge what applies\n' \
+      "$CANONICAL_SUFFIX"
+    printf -- '  into the original file, and delete the copy.\n'
+  fi
+
+  if [[ "$APPLY_RULESETS" != true ]]; then
+    printf -- '- Protect `main` and the version branches with\n'
+    printf -- '  `setup_rulesets %s`. Run it after this layout is in\n' \
+      "$TARGET_SLUG"
+    printf -- '  place, because the rulesets block direct pushes.\n'
+  fi
+
+  printf -- '- Clone the repository with `mkclone` and run `setupclone` in\n'
+  printf -- '  every clone to install the commands and the Git hooks.\n'
+  printf -- '- Configure commit signing for each contributor; the workflows\n'
+  printf -- '  in `.github/workflows/` validate signatures on push.\n'
+  printf -- '- Add the repository content: sources in `src/`, headers in\n'
+  printf -- '  `include/`, tests in `tests/`, and examples in `examples/`.\n'
+}
+
+# Body shared by the success, dry-run, and error reports.
+emit_report_body() {
+  local commit="$1"
+  local path
+
+  printf 'Generated: %s\n\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+  printf 'Repository: %s\n\n' "$TARGET_SLUG"
+  if [[ "$REPO_EXISTS" == true ]]; then
+    printf 'Repository state: existing\n\n'
+  else
+    printf 'Repository state: new (%s)\n\n' "$VISIBILITY"
+  fi
+  printf 'Default branch: %s\n\n' "$REPO_DEFAULT_BRANCH"
+  printf 'Commit: %s\n\n' "$commit"
+
+  printf '## Summary\n\n'
+  printf -- '- Canonical items: %s\n' "$CREATED_COUNT"
+  printf -- '- Canonical names with non-canonical content: %s\n' \
+    "$DIVERGENT_COUNT"
+  printf -- '- Items already canonical: %s\n\n' "$UNCHANGED_COUNT"
+
+  printf '## Canonical Items\n\n'
+  if [[ "${#CREATED_PATHS[@]}" -eq 0 ]]; then
+    printf 'None.\n\n'
+  else
+    for path in "${CREATED_PATHS[@]}"; do
+      printf -- '- %s\n' "$path"
+    done
+    printf '\n'
+  fi
+
+  printf '## Canonical Names With Non-Canonical Content\n\n'
+  printf 'The original file is kept and the canonical content is placed in\n'
+  printf 'a `<name>%s<ext>` copy. Refreshed directories are excluded.\n\n' \
+    "$CANONICAL_SUFFIX"
+  if [[ "${#DIVERGENT_PATHS[@]}" -eq 0 ]]; then
+    printf 'None.\n\n'
+  else
+    for path in "${DIVERGENT_PATHS[@]}"; do
+      printf -- '- %s (canonical copy: %s)\n' "$path" \
+        "$(canonical_variant "$path")"
+    done
+    printf '\n'
+  fi
+
+  printf '## Refreshed Directories\n\n'
+  printf 'These directories are replaced with a fresh copy of the scripts\n'
+  printf 'and workflows from the clone that ran mkrepo.\n\n'
+  if [[ "${#REFRESHED_DIRS[@]}" -eq 0 ]]; then
+    printf 'None.\n\n'
+  else
+    for path in "${REFRESHED_DIRS[@]}"; do
+      printf -- '- %s\n' "$path"
+    done
+    printf '\n'
+  fi
+
+  printf '## Follow-Up Items\n\n'
+  emit_followup_items
+}
+
+# Guidance for the exit code that ended the run.
+emit_error_guidance() {
+  case "$ERROR_CODE" in
+    "$EXIT_LOCAL_CLONE_PRESENT")
+      printf -- '- Move or remove the local clone of `%s`, then rerun\n' \
+        "$TARGET_SLUG"
+      printf -- '  mkrepo from a directory that is not inside that clone.\n'
+      ;;
+    "$EXIT_MISSING_SOURCE")
+      printf -- '- Run mkrepo from a clone that has `briteRepo/bin/` and\n'
+      printf -- '  `briteRepo/helpers/`; the source scripts were not found.\n'
+      ;;
+    "$EXIT_OPERATION_FAILED")
+      printf -- '- If the push failed, the default branch is probably\n'
+      printf -- '  protected. Remove the ruleset for the first push, or\n'
+      printf -- '  apply the layout on a branch and open a pull request.\n'
+      printf -- '- If the commit failed, set `user.name` and `user.email`\n'
+      printf -- '  in your Git configuration.\n'
+      printf -- '- If a file operation failed, check free space and the\n'
+      printf -- '  permissions of the temporary directory.\n'
+      ;;
+    "$EXIT_MISSING_TOOLS")
+      printf -- '- Install the missing tool, then rerun mkrepo.\n'
+      ;;
+    "$EXIT_GITHUB_ERROR")
+      printf -- '- Confirm the GitHub CLI is authenticated with\n'
+      printf -- '  `gh auth status`, and that the account may create\n'
+      printf -- '  repositories and administer `%s`.\n' "$TARGET_SLUG"
+      printf -- '- If `setup_rulesets` failed, the layout was pushed. Rerun\n'
+      printf -- '  `setup_rulesets %s` once the permission is in place.\n' \
+        "$TARGET_SLUG"
+      ;;
+    *)
+      printf -- '- Rerun with `-d` to review the planned changes without\n'
+      printf -- '  changing the repository.\n'
+      ;;
+  esac
+
+  if [[ "$REPO_CREATED" == true && "$LAST_COMMIT" == "None" ]]; then
+    printf -- '- mkrepo created `%s` during this run and it is still\n' \
+      "$TARGET_SLUG"
+    printf -- '  empty. Delete it with `gh repo delete %s` before\n' \
+      "$TARGET_SLUG"
+    printf -- '  retrying, or rerun mkrepo to populate it.\n'
+  fi
+
+  printf -- '- The repository was left as reported above; mkrepo never\n'
+  printf -- '  deletes content outside the refreshed directories.\n'
+}
+
+# Write one report. mode is "final", "dry", or "error"; the three share the
+# same body so the reports can be compared directly.
+write_report() {
+  local mode="$1"
+  local commit="$2"
+  local reports_dir="$SOURCE_REPO_ROOT/reports"
+  local report heading output
+
+  mkdir -p "$reports_dir" 2>/dev/null || {
+    bt_emit_error "Failed to create $reports_dir; report not written"
+    return 0
+  }
+
+  case "$mode" in
+    dry)
+      rm -f "$reports_dir"/mkrepo-d-*.md 2>/dev/null || true
+      report="$reports_dir/mkrepo-d-$(date '+%Y%m%d-%H%M%S').md"
+      heading="# mkrepo Dry-Run Report"
+      ;;
+    error)
+      rm -f "$reports_dir"/mkrepo-e-*.md 2>/dev/null || true
+      report="$reports_dir/mkrepo-e-$(date '+%Y%m%d-%H%M%S').md"
+      heading="# mkrepo Error Report"
+      ;;
+    *)
+      rm -f "$reports_dir"/mkrepo-[0-9]*.md 2>/dev/null || true
+      report="$reports_dir/mkrepo-$(date '+%Y%m%d-%H%M%S').md"
+      heading="# mkrepo Report"
+      ;;
+  esac
+
+  {
+    printf '%s\n\n' "$heading"
+    emit_report_body "$commit"
+    if [[ "$mode" == "error" ]]; then
+      printf '\n## Error\n\n'
+      printf -- '- Exit code: %s\n' "$ERROR_CODE"
+      printf -- '- Message: %s\n\n' "$ERROR_MESSAGE"
+      if output="$(last_run_output)"; then
+        printf '## Last Command Output\n\n'
+        printf '```text\n%s\n```\n\n' "$output"
+      fi
+      printf '## Error Guidance\n\n'
+      emit_error_guidance
+    fi
+  } > "$report" 2>/dev/null || {
+    bt_emit_error "Failed to write report $report"
+    return 0
+  }
+
+  echo "Report: $report"
+}
+
+# ---------------------------------------------------------------------------
+# Option parsing and preflight checks
+# ---------------------------------------------------------------------------
+
+parse_options() {
+  local positional=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -d) DRY_RUN=true; shift ;;
+      -e) FORCE_ERROR=true; shift ;;
+      -v) VERBOSE=true; shift ;;
+      --public) VISIBILITY="public"; shift ;;
+      --rulesets) APPLY_RULESETS=true; shift ;;
+      --tests) COPY_TESTS=true; shift ;;
+      -t)
+        [[ $# -ge 2 && "$2" =~ ^[1-9][0-9]*$ ]] || \
+          usage_error "Option -t requires an integer greater than 0"
+        REMOTE_TIMEOUT_SECONDS="$2"
+        shift 2
+        ;;
+      -*) usage_error "Unknown option: $1" ;;
+      *) positional+=("$1"); shift ;;
+    esac
+  done
+
+  export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
+
+  if [[ "${#positional[@]}" -lt 1 ]]; then
+    usage_error "Expected 1 argument (repository), got 0"
+  fi
+  if [[ "${#positional[@]}" -gt 1 ]]; then
+    usage_error "Expected 1 argument (repository), got ${#positional[@]}"
+  fi
+
+  REPO_NAME="${positional[0]}"
+  if [[ "$REPO_NAME" == */* ]]; then
+    local name_error="Repository must be a name; mkrepo works on "
+    name_error+="repositories owned by the authenticated user"
+    usage_error "$name_error"
+  fi
+  if [[ ! "$REPO_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+    usage_error "Invalid repository name: $REPO_NAME"
+  fi
+
+  BRAND_NAME="$REPO_NAME"
+  if [[ "$COPY_TESTS" == true ]]; then
+    REFRESH_PATHS+=(briteRepo/tests)
+  fi
+}
+
+# Everything that can be checked before the repository is touched, so a
+# failure never leaves a half-prepared repository behind.
+preflight() {
+  local tool
+
+  for tool in git gh; do
+    command -v "$tool" >/dev/null 2>&1 || \
+      error_exit "$EXIT_MISSING_TOOLS" "Missing required tool: $tool"
+  done
+
+  if [[ ! -d "$SOURCE_BRITEREPO/bin" ]] || \
+    [[ ! -d "$SOURCE_BRITEREPO/helpers" ]]; then
+    error_exit "$EXIT_MISSING_SOURCE" \
+      "Source toolkit not found under $SOURCE_BRITEREPO"
+  fi
+
+  RUN_LOG="$(mktemp)" || \
+    error_exit "$EXIT_OPERATION_FAILED" "Failed to create a temporary file"
+
+  # The commit identity is checked here because a missing identity would
+  # otherwise fail after the repository has already been created.
+  if [[ "$DRY_RUN" != true ]] && ! git var GIT_COMMITTER_IDENT >/dev/null 2>&1
+  then
+    error_exit "$EXIT_OPERATION_FAILED" \
+      "Git commit identity is not configured. Set user.name and user.email"
+  fi
+
+  if ! run_remote gh auth status >/dev/null 2>&1; then
+    error_exit "$EXIT_GITHUB_ERROR" \
+      "GitHub CLI is not authenticated. Run 'gh auth login' first"
+  fi
+
+  AUTH_LOGIN="$(run_remote gh api user -q .login 2>/dev/null || true)"
+  if [[ -z "$AUTH_LOGIN" ]]; then
+    error_exit "$EXIT_GITHUB_ERROR" \
+      "Could not determine the authenticated GitHub user"
+  fi
+
+  TARGET_SLUG="$AUTH_LOGIN/$REPO_NAME"
+}
+
+# Reduce a remote URL to its OWNER/NAME form, or emit nothing.
+remote_slug() {
+  local url="$1"
+
+  url="${url%.git}"
+  url="${url#git@github.com:}"
+  url="${url#ssh://git@github.com/}"
+  url="${url#https://github.com/}"
+  url="${url#http://github.com/}"
+  [[ "$url" == */* && "$url" != *://* ]] || return 0
+  printf '%s' "$url"
+}
+
+# mkrepo pushes to the default branch, so any clone in use would end up
+# behind. Refuse the obvious cases: the current clone and ./<repository>.
+guard_local_clones() {
+  local current_origin sibling_origin
+
+  current_origin="$(git remote get-url origin 2>/dev/null || true)"
+  if [[ -n "$current_origin" ]] && \
+    [[ "$(remote_slug "$current_origin")" == "$TARGET_SLUG" ]]; then
+    error_exit "$EXIT_LOCAL_CLONE_PRESENT" \
+      "Current directory is a clone of $TARGET_SLUG; run mkrepo from outside it"
+  fi
+
+  if [[ -d "$REPO_NAME/.git" ]]; then
+    sibling_origin="$(git -C "$REPO_NAME" remote get-url origin 2>/dev/null \
+      || true)"
+    if [[ "$(remote_slug "$sibling_origin")" == "$TARGET_SLUG" ]]; then
+      error_exit "$EXIT_LOCAL_CLONE_PRESENT" \
+        "Local clone of $TARGET_SLUG found at ./$REPO_NAME; remove or move it"
+    fi
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Repository and working clone
+# ---------------------------------------------------------------------------
+
+detect_repository() {
+  if REPO_DEFAULT_BRANCH="$(run_remote gh repo view "$TARGET_SLUG" \
+    --json defaultBranchRef -q '.defaultBranchRef.name // ""' 2>/dev/null)"
+  then
+    REPO_EXISTS=true
+  else
+    REPO_DEFAULT_BRANCH=""
+  fi
+  [[ -n "$REPO_DEFAULT_BRANCH" ]] || REPO_DEFAULT_BRANCH="main"
+
+  # Best effort: rulesets on an existing repository usually block the push.
+  if [[ "$REPO_EXISTS" == true ]]; then
+    local rulesets
+    rulesets="$(run_remote gh api "repos/$TARGET_SLUG/rulesets" -q 'length' \
+      2>/dev/null || true)"
+    if [[ "$rulesets" =~ ^[1-9][0-9]*$ ]]; then
+      bt_info "$TARGET_SLUG has $rulesets ruleset(s); a direct push to" \
+        "$REPO_DEFAULT_BRANCH may be rejected"
+    fi
+  fi
+}
+
+create_repository() {
+  if [[ "$REPO_EXISTS" == true ]]; then
+    echo "Repository $TARGET_SLUG exists; updating it to the canonical layout."
+    return 0
+  fi
+
+  echo "Repository $TARGET_SLUG does not exist; it will be created" \
+    "($VISIBILITY)."
+  [[ "$DRY_RUN" != true ]] || return 0
+
+  if ! run_remote_logged gh repo create "$TARGET_SLUG" "--$VISIBILITY" \
+    --description "$REPO_DESCRIPTION"; then
+    error_exit "$EXIT_GITHUB_ERROR" "Failed to create repository $TARGET_SLUG"
+  fi
+  REPO_CREATED=true
+}
+
+create_working_clone() {
+  WORK_PARENT="$(mktemp -d)" || \
+    error_exit "$EXIT_OPERATION_FAILED" "Failed to create a temporary directory"
+  TARGET_ROOT="$WORK_PARENT/$REPO_NAME"
+
+  if [[ "$REPO_EXISTS" != true && "$REPO_CREATED" != true ]]; then
+    # Dry run for a repository that does not exist yet.
+    mkdir -p "$TARGET_ROOT"
+    REPO_DEFAULT_BRANCH="main"
+    return 0
+  fi
+
+  if ! run_remote_logged gh repo clone "$TARGET_SLUG" "$TARGET_ROOT" \
+    -- --quiet; then
+    error_exit "$EXIT_OPERATION_FAILED" "Failed to clone $TARGET_SLUG"
+  fi
+
+  if ! git -C "$TARGET_ROOT" rev-parse --verify HEAD >/dev/null 2>&1; then
+    # Empty repository: name the first branch 'main'.
+    git -C "$TARGET_ROOT" symbolic-ref HEAD refs/heads/main
+  fi
+  # symbolic-ref works for an unborn branch; rev-parse does not.
+  REPO_DEFAULT_BRANCH="$(git -C "$TARGET_ROOT" symbolic-ref --short HEAD)"
+}
+
+# ---------------------------------------------------------------------------
+# Canonical layout builders
+# ---------------------------------------------------------------------------
+
+# Extra "## Files" entries for directories that own canonical files.
+dir_files_section() {
+  case "$1" in
+    config)
+      cat <<'EOF'
+**contributors.md**: Specifies the current contributors and whether they
+are also a reviewer or approver. See the file for details.
+
+**markdownlint.json**: Markdown lint configuration for this repository.
+
+**version_status.md**: Specifies the status of versions for accepting changes.
+
+EOF
+      ;;
+    logs)
+      cat <<'EOF'
+**\<branch\>_history.md**: Workflow history log for a branch.
+
+EOF
+      ;;
+    reports)
+      cat <<'EOF'
+**\<workflow\>-\<datetime\>.md**: Untracked report written by a script in
+`<repo>/briteRepo/bin/`.
+
+EOF
+      ;;
+    build)
+      cat <<'EOF'
+***.o files**: Object files.
+
+EOF
+      ;;
+    obsolete)
+      cat <<'EOF'
+**\<obsolete\>**: Obsolete files.
+
+EOF
+      ;;
+    *) : ;;
+  esac
+}
+
+# Emit a canonical directory guide README.md for a canonical directory.
+render_dir_readme() {
+  local dir="$1"
+  local child rel has_child=false
+
+  printf '# `<repo>/%s/`\n\n' "$dir"
+  printf '%s\n\n' "$(dir_description "$dir")"
+  printf 'Copyright (c) %s Paul Sinclair  \n' "$COPYRIGHT_YEAR"
+  printf 'SPDX-License-Identifier: MIT  \n'
+  printf 'For license details, see `<repo>/LICENSE`.\n\n'
+  printf 'See `<repo>/README.md` for an introduction to the repository.\n\n'
+  printf '## Files\n\n'
+  dir_files_section "$dir"
+  printf '**README.md**: This directory guide.\n\n'
+  printf '## Subdirectories\n\n'
+
+  for child in "${CANONICAL_DIRS[@]}"; do
+    child="${child%%|*}"
+    [[ "$child" == "$dir"/* ]] || continue
+    rel="${child#"$dir"/}"
+    [[ "$rel" == */* ]] && continue
+    printf '**%s/**: %s\n\n' "$rel" "$(dir_description "$child")"
+    has_child=true
+  done
+
+  if [[ "$has_child" == false ]]; then
+    printf 'None.\n'
+  fi
+}
+
+build_directories() {
+  local entry dir
+
+  for entry in "${CANONICAL_DIRS[@]}"; do
+    dir="${entry%%|*}"
+    make_dir "$dir"
+    # Guides for refreshed directories come from the source clone.
+    is_refreshed_dir "$dir" && continue
+    write_file "$dir/README.md" < <(render_dir_readme "$dir")
+  done
+}
+
+build_documentation() {
+  local doc
+
+  write_file "docs/md/Guide.md" <<EOF
+![$REPO_NAME](docs/branding/Logo_with_Tagline.svg)
+
+# $REPO_NAME
+
+Copyright (c) $COPYRIGHT_YEAR  
+SPDX-License-Identifier: MIT  
+For license details, see \`<repo>/LICENSE\`.
+
+$BRAND_TAGLINE
+
+Describe the purpose of this repository here.
+
+## Repository Layout
+
+**briteRepo/**: Contributor scripts, shared helpers, and script tests.
+
+**build/**: Build artifacts.
+
+**config/**: Repository configuration files.
+
+**docs/**: User and contributor documentation assets.
+
+**examples/**: Usage examples.
+
+**include/**: Public header files.
+
+**logs/**: Local and remote logs.
+
+**obsolete/**: Obsolete files retained for historical reference.
+
+**reports/**: Script-generated report files.
+
+**src/**: Source files and internal headers.
+
+**tests/**: Test assets.
+
+## Getting Started
+
+Clone the repository and install the contributor scripts and Git hooks:
+
+\`\`\`sh
+bash ./briteRepo/bin/setupclone
+\`\`\`
+
+See \`<repo>/docs/md/Contributor_Guide.md\` for the contributor workflow.
+EOF
+
+  write_symlink "README.md" "docs/md/Guide.md"
+
+  for doc in "${CONTRIBUTOR_DOCS[@]}"; do
+    copy_source_file "$SOURCE_REPO_ROOT/docs/md/$doc.md" "docs/md/$doc.md" \
+      || true
+  done
+}
+
+# Placeholder branding: a black square monogram with the repository name.
+build_branding() {
+  write_file "docs/branding/Monogram.svg" <<EOF
+<svg xmlns="http://www.w3.org/2000/svg" width="190" height="190"
+  viewBox="0 0 190 190" role="img" aria-labelledby="title desc">
+  <title id="title">Monogram</title>
+  <desc id="desc">Default monogram: a black square.</desc>
+  <rect width="190" height="190" fill="#FCFCFD" />
+  <rect x="10" y="10" width="170" height="170" fill="#000000" />
+</svg>
+EOF
+
+  write_file "docs/branding/Logo_with_BrandName.svg" <<EOF
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="190"
+  viewBox="0 0 900 190" role="img" aria-labelledby="title desc">
+  <title id="title">Logo with Brand Name</title>
+  <desc id="desc">Default monogram with the brand name.</desc>
+  <rect width="900" height="190" fill="#FCFCFD" />
+  <rect x="10" y="10" width="170" height="170" fill="#000000" />
+  <text x="210" y="118" font-family="Verdana, Geneva, sans-serif"
+    font-size="84" font-weight="700" fill="#000000">$BRAND_NAME</text>
+</svg>
+EOF
+
+  write_file "docs/branding/Logo_with_Tagline.svg" <<EOF
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="190"
+  viewBox="0 0 900 190" role="img" aria-labelledby="title desc">
+  <title id="title">Logo with Tagline</title>
+  <desc id="desc">Default monogram with the brand name and tagline.</desc>
+  <rect width="900" height="190" fill="#FCFCFD" />
+  <rect x="10" y="10" width="170" height="170" fill="#000000" />
+  <text x="210" y="104" font-family="Verdana, Geneva, sans-serif"
+    font-size="84" font-weight="700" fill="#000000">$BRAND_NAME</text>
+  <text x="214" y="146" font-family="Verdana, Geneva, sans-serif"
+    font-size="26" fill="#000000">$BRAND_TAGLINE</text>
+</svg>
+EOF
+}
+
+build_top_level_files() {
+  write_file "CHANGELOG.md" <<EOF
+# Changelog
+
+Copyright (c) $COPYRIGHT_YEAR  
+SPDX-License-Identifier: MIT  
+For license details, see \`<repo>/LICENSE\`.
+
+## Unreleased
+
+- Initial canonical repository layout.
+EOF
+
+  write_file "CONTRIBUTING.md" <<EOF
+# Contributing
+
+Copyright (c) $COPYRIGHT_YEAR  
+SPDX-License-Identifier: MIT  
+For license details, see \`<repo>/LICENSE\`.
+
+Contributors are listed in \`<repo>/config/contributors.md\`.
+
+Use the scripts in \`<repo>/briteRepo/bin/\` for branch, commit, review, and
+release workflows.
+EOF
+
+  write_file "CODE_OF_CONDUCT.md" <<EOF
+# Code of Conduct
+
+Copyright (c) $COPYRIGHT_YEAR  
+SPDX-License-Identifier: MIT  
+For license details, see \`<repo>/LICENSE\`.
+
+Describe the expected behavior for participants in this repository and how to
+report unacceptable behavior.
+EOF
+
+  write_file "MAINTAINERS.md" <<EOF
+# Maintainers
+
+Copyright (c) $COPYRIGHT_YEAR  
+SPDX-License-Identifier: MIT  
+For license details, see \`<repo>/LICENSE\`.
+
+List the maintainers of this repository here. Roles are defined in
+\`<repo>/config/contributors.md\`.
+EOF
+
+  write_file "SECURITY.md" <<EOF
+# Security Policy
+
+Copyright (c) $COPYRIGHT_YEAR  
+SPDX-License-Identifier: MIT  
+For license details, see \`<repo>/LICENSE\`.
+
+Describe the supported versions and how to report a vulnerability privately.
+EOF
+
+  # The source clone is the preferred origin for these files; the inline
+  # templates are the fallback when it does not carry them.
+  if ! copy_source_file "$SOURCE_REPO_ROOT/LICENSE" "LICENSE"; then
+    write_file "LICENSE" <<EOF
+MIT License
+
+Copyright (c) $COPYRIGHT_YEAR
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+EOF
+  fi
+
+  if ! copy_source_file "$SOURCE_REPO_ROOT/.gitignore" ".gitignore"; then
+    write_file ".gitignore" <<'EOF'
+# Object files
+*.o
+*.obj
+
+# Executables
+*.exe
+*.out
+
+# Temporary test outputs
+tests/tmp/*
+!tests/tmp/README.md
+
+# Generated reports
+reports/*
+!reports/README.md
+EOF
+  fi
+}
+
+build_config_files() {
+  if ! copy_source_file "$SOURCE_REPO_ROOT/config/markdownlint.json" \
+    "config/markdownlint.json"; then
+    write_file "config/markdownlint.json" <<'EOF'
+{
+  "MD001": false,
+  "MD013": { "line_length": 120, "code_blocks": false, "tables": false },
+  "MD029": false,
+  "MD033": false,
+  "MD041": false
+}
+EOF
+  fi
+
+  write_file "config/contributors.md" <<EOF
+# Contributors
+
+Copyright (c) $COPYRIGHT_YEAR  
+SPDX-License-Identifier: MIT  
+For license details, see \`<repo>/LICENSE\`.
+
+| Login | Role |
+| ----- | ---- |
+EOF
+
+  write_file "config/version_status.md" <<EOF
+# Version Status
+
+Copyright (c) $COPYRIGHT_YEAR  
+SPDX-License-Identifier: MIT  
+For license details, see \`<repo>/LICENSE\`.
+
+| Version | Status |
+| ------- | ------ |
+| v1.0.0  | open   |
+EOF
+
+  make_dir ".github"
+  copy_source_file "$SOURCE_REPO_ROOT/.github/CODEOWNERS" \
+    ".github/CODEOWNERS" || true
+}
+
+# Scripts and workflows are versioned as a set, so the whole directory is
+# replaced; a stale script left behind would enforce the wrong policy.
+refresh_directories() {
+  local path src dest
+
+  echo "Refreshing scripts and workflows..."
+  for path in "${REFRESH_PATHS[@]}"; do
+    src="$SOURCE_REPO_ROOT/$path"
+    dest="$TARGET_ROOT/$path"
+    [[ -d "$src" ]] || continue
+
+    if [[ "$DRY_RUN" != true ]]; then
+      rm -rf "$dest"
+      mkdir -p "$dest"
+      cp -R "$src/." "$dest/" || \
+        error_exit "$EXIT_OPERATION_FAILED" "Failed to copy $src"
+      chmod -R u+x "$TARGET_ROOT/briteRepo/bin" 2>/dev/null || true
+    fi
+
+    REFRESHED_DIRS+=("$path/")
+    echo "  * $path/ (fresh copy)"
+  done
+}
+
+build_layout() {
+  echo "Applying canonical layout to $TARGET_SLUG ($REPO_DEFAULT_BRANCH)..."
+  if [[ "$DRY_RUN" == true ]]; then
+    bt_info "Dry-run mode: nothing is written, committed, or pushed"
+  fi
+
+  build_directories
+  build_documentation
+  build_branding
+  build_top_level_files
+  build_config_files
+  refresh_directories
+
+  echo ""
+  echo "  Created:       $CREATED_COUNT"
+  echo "  Non-canonical: $DIVERGENT_COUNT"
+  echo "  Unchanged:     $UNCHANGED_COUNT"
+  echo ""
+}
+
+# ---------------------------------------------------------------------------
+# Publishing
+# ---------------------------------------------------------------------------
+
+# Stage, commit, push, and confirm the remote received the commit.
+# Returns 1 when there was nothing to publish.
+publish_changes() {
+  git -C "$TARGET_ROOT" add -A || \
+    error_exit "$EXIT_OPERATION_FAILED" "Failed to stage changes"
+
+  if git -C "$TARGET_ROOT" diff --cached --quiet; then
+    LAST_COMMIT="$(git -C "$TARGET_ROOT" rev-parse HEAD 2>/dev/null \
+      || echo "None")"
+    return 1
+  fi
+
+  if ! git -C "$TARGET_ROOT" commit -q -m "$COMMIT_MESSAGE"; then
+    error_exit "$EXIT_OPERATION_FAILED" \
+      "Failed to commit. Check that user.name and user.email are configured"
+  fi
+  LAST_COMMIT="$(git -C "$TARGET_ROOT" rev-parse HEAD)"
+
+  if ! run_remote_logged git -C "$TARGET_ROOT" push -q -u origin \
+    "HEAD:$REPO_DEFAULT_BRANCH"; then
+    local push_error="Failed to push to $TARGET_SLUG "
+    push_error+="($REPO_DEFAULT_BRANCH). The branch may be protected; push "
+    push_error+="from a branch and open a pull request instead"
+    error_exit "$EXIT_OPERATION_FAILED" "$push_error"
+  fi
+
+  verify_push
+}
+
+# A push can report success and still leave the branch behind, for example
+# when a server-side hook rewrites or rejects the update.
+verify_push() {
+  local remote_commit
+
+  remote_commit="$(run_remote git -C "$TARGET_ROOT" ls-remote origin \
+    "refs/heads/$REPO_DEFAULT_BRANCH" 2>/dev/null | cut -f1 || true)"
+
+  if [[ -z "$remote_commit" ]]; then
+    bt_info "Could not read the remote branch to verify the push"
+    return 0
+  fi
+  if [[ "$remote_commit" != "$LAST_COMMIT" ]]; then
+    error_exit "$EXIT_OPERATION_FAILED" \
+      "Push reported success but $REPO_DEFAULT_BRANCH is at $remote_commit"
+  fi
+}
+
+apply_rulesets() {
+  local rulesets_script="$TARGET_ROOT/briteRepo/bin/setup_rulesets"
+
+  [[ "$APPLY_RULESETS" == true ]] || return 0
+
+  echo ""
+  echo "Applying repository rulesets..."
+  if [[ ! -f "$rulesets_script" ]]; then
+    error_exit "$EXIT_GITHUB_ERROR" \
+      "setup_rulesets not found in the working clone"
+  fi
+  if ! run_remote bash "$rulesets_script" "$TARGET_SLUG"; then
+    local ruleset_error="Canonical layout was pushed, but setup_rulesets "
+    ruleset_error+="failed for $TARGET_SLUG. Rerun: setup_rulesets "
+    ruleset_error+="$TARGET_SLUG"
+    error_exit "$EXIT_GITHUB_ERROR" "$ruleset_error"
+  fi
+  bt_success "Rulesets applied to $TARGET_SLUG"
+}
+
+print_next_steps() {
+  echo ""
+  echo "Next steps:"
+  echo "  gh repo clone $TARGET_SLUG"
+  echo "  cd $REPO_NAME"
+  echo "  bash briteRepo/bin/setupclone"
+  echo "  Add contributor logins and roles to config/contributors.md"
+  if [[ "$APPLY_RULESETS" != true ]]; then
+    echo "  setup_rulesets $TARGET_SLUG   # protect main and version branches"
+  fi
+  echo "  See the report above for the full follow-up list"
+}
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+main() {
+  parse_options "$@"
+  preflight
+  guard_local_clones
+  detect_repository
+  create_repository
+  create_working_clone
+
+  # From here on there is enough state to describe the run in a report.
+  REPORT_READY=true
+
+  build_layout
+
+  if [[ "$FORCE_ERROR" == true ]]; then
+    error_exit "$EXIT_OPERATION_FAILED" \
+      "Forced error requested with -e; nothing was committed or pushed"
+  fi
+
+  if [[ "$DRY_RUN" == true ]]; then
+    write_report "dry" "To be determined"
+    bt_success "Dry run complete for $TARGET_SLUG"
+    return 0
+  fi
+
+  if ! publish_changes; then
+    write_report "final" "$LAST_COMMIT"
+    bt_success "$TARGET_SLUG already has the canonical layout; nothing to push"
+    return 0
+  fi
+
+  bt_success "Canonical layout pushed to $TARGET_SLUG ($REPO_DEFAULT_BRANCH)"
+  apply_rulesets
+  write_report "final" "$LAST_COMMIT"
+  print_next_steps
+}
+
+main "$@"

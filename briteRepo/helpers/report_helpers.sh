@@ -342,6 +342,28 @@ bt_report_write_header() {
 EOF
 }
 
+# Append the shared "Directories" section. Rows are "<directory>|<action>"
+# as produced by bt_git_collect_worktree_change_summary.
+bt_report_append_directories_section() {
+  local report_path="$1"
+  shift
+  local row directory action
+
+  [[ $# -gt 0 ]] || return 0
+
+  {
+    printf '\n<details>\n'
+    printf '<summary>Directories</summary>\n\n'
+    printf '| **Directory** | **Action** |\n| --- | --- |\n'
+    for row in "$@"; do
+      directory="${row%%|*}"
+      action="${row#*|}"
+      printf '| `%s` | %s |\n' "$directory" "$action"
+    done
+    printf '</details>\n'
+  } >> "$report_path"
+}
+
 bt_report_acquire_lock() {
   local repo_root="$1"
   local namespace="$2"

@@ -417,32 +417,11 @@ workflow_event_details() {
 }
 
 role_name_from_code() {
-  local role_code="$1"
-
-  case "$role_code" in
-    A) printf 'approver' ;;
-    R) printf 'reviewer' ;;
-    C|*) printf 'contributor' ;;
-  esac
+  bt_role_name_from_code "$1"
 }
 
 role_name_for_login() {
-  local login="$1"
-  local role_code=""
-
-  login="$(bt_normalize_login "$login")"
-  [[ -n "$login" ]] || {
-    printf 'contributor'
-    return 0
-  }
-
-  role_code="$(bt_contributors_get_role_or_empty \
-    "$login" "$REPO_ROOT/config/contributors.md")"
-  if [[ -z "$role_code" ]] && bt_is_repository_owner_login "$login"; then
-    role_code="A"
-  fi
-
-  role_name_from_code "$role_code"
+  bt_role_name_for_login "$1" "$REPO_ROOT/config/contributors.md"
 }
 
 is_redundant_commit_summary() {
@@ -452,49 +431,7 @@ is_redundant_commit_summary() {
 }
 
 branch_status_tags() {
-  local branch="$1"
-  local mode="$2"
-  local local_ref="$branch"
-  local remote_ref="origin/$branch"
-  local branch_tag=""
-  local relation_tag=""
-  local parent_tags=""
-  local has_local=false
-  local has_remote=false
-  local has_uncommitted=false
-
-  git show-ref --verify --quiet "refs/heads/$branch" && has_local=true
-  git show-ref --verify --quiet "refs/remotes/origin/$branch" && has_remote=true
-  if [[ "$mode" == "local" ]] && bt_is_worktree_dirty; then
-    has_uncommitted=true
-  fi
-
-  if [[ "$mode" == "remote" ]]; then
-    if [[ "$has_local" == true ]]; then
-      branch_tag="[remote]"
-    else
-      branch_tag="[remote only]"
-    fi
-    parent_tags="$(bt_git_parent_relation_tags \
-      "remote" "$branch" "$remote_ref")"
-  elif [[ "$has_remote" == true ]]; then
-    branch_tag="[local]"
-    relation_tag="$(bt_git_tracking_relation_tag \
-      "local" "$local_ref" "$remote_ref" false)"
-    parent_tags="$(bt_git_parent_relation_tags \
-      "local" "$branch" "$local_ref")"
-  else
-    branch_tag="[local only]"
-    parent_tags="$(bt_git_parent_relation_tags \
-      "local" "$branch" "$local_ref")"
-  fi
-
-  if [[ "$has_uncommitted" == true ]]; then
-    printf '[uncommitted] '
-  fi
-  printf '%s' "$branch_tag"
-  [[ -z "$relation_tag" ]] || printf ' %s' "$relation_tag"
-  [[ -z "$parent_tags" ]] || printf ' %s' "$parent_tags"
+  bt_git_branch_status_tags "$1" "$2"
 }
 
 extract_email_from_identity() {
@@ -757,6 +694,8 @@ render_affected_tables() {
     fi
   done <<< "$name_status"
 
+  bt_git_collect_file_actions <<< "$name_status"
+
   while IFS=$'\t' read -r added deleted file_path; do
     [[ -n "$file_path" ]] || continue
     [[ "$added" =~ ^[0-9]+$ ]] || added=0
@@ -779,22 +718,24 @@ render_affected_tables() {
     file_count=$((file_count + 1))
   done <<< "$numstat"
 
-  rendered+=$'\n<details>\n<summary>Files Affected</summary>\n\n'
+  rendered+=$'\n<details>\n<summary>Files</summary>\n\n'
   if [[ "$file_count" -eq 0 ]]; then
     rendered+="None."$'\n'
   else
-    rendered+="| File | Added | Deleted | Net | Total |"$'\n'
-    rendered+="| --- | ---: | ---: | ---: | ---: |"$'\n'
+    rendered+="| **File** | **Added** | **Deleted** | **Net** | **Lines** |"
+    rendered+=" **Action** |"$'\n'
+    rendered+="| --- | ---: | ---: | ---: | ---: | --- |"$'\n'
     for key in "${files_order[@]}"; do
       added="${file_added[$key]}"
       deleted="${file_deleted[$key]}"
       net=$((added - deleted))
       file_lines_value="${file_lines[$key]}"
-      printf -v line '| `%s` | %s | %s | %+d | %s |\n' \
-        "$key" "$added" "$deleted" "$net" "$file_lines_value"
+      printf -v line '| `%s` | %s | %s | %+d | %s | %s |\n' \
+        "$key" "$added" "$deleted" "$net" "$file_lines_value" \
+        "$(bt_git_file_action "$key")"
       rendered+="$line"
     done
-    printf -v line '| **Total** | %s | %s | %+d | %s |\n' \
+    printf -v line '| **Total** | %s | %s | %+d | %s |  |\n' \
       "$total_added" "$total_deleted" "$total_net" "$total_lines"
     rendered+="$line"
   fi
@@ -814,13 +755,14 @@ render_affected_tables() {
   done
 
   if [[ "$directories_row_count" -gt 0 ]]; then
-    rendered+=$'\n<details>\n<summary>Directories Affected</summary>\n\n'
-    rendered+="| Directory | Action |"$'\n'
+    rendered+=$'\n<details>\n<summary>Directories</summary>\n\n'
+    rendered+="| **Directory** | **Action** |"$'\n'
     rendered+="| --- | --- |"$'\n'
     for key in "${directories_renamed_order[@]}"; do
       [[ -n "${directories_renamed_to[$key]+x}" ]] || continue
-      action_text="Renamed to ${directories_renamed_to[$key]}"
-      printf -v line '| `%s` | %s |\n' "$key" "$action_text"
+      action_text="Renamed (was ${key})"
+      printf -v line '| `%s` | %s |\n' "${directories_renamed_to[$key]}" \
+        "$action_text"
       rendered+="$line"
     done
     for key in "${directories_added_order[@]}"; do
@@ -909,16 +851,19 @@ render_push_summary_tables() {
   local new_directory=""
   local name_status=""
 
-  printf '\n<details>\n<summary><strong>Commits</strong></summary>\n\n'
-  printf '| Commit Hash | DateTime | Comment |\n| --- | --- | --- |\n'
+  printf '\n<details>\n<summary>Commits</summary>\n\n'
+  printf '| **Commit Hash** | **DateTime** | **Comment** |\n| --- | --- | --- |\n'
   while IFS= read -r commit_hash; do
     [[ -n "$commit_hash" ]] || continue
     commit_date="$(git show -s --format='%ci' "$commit_hash")"
     commit_comment="$(git show -s --format='%s' "$commit_hash")"
     printf '| `%s` | %s | %s |\n' "$commit_hash" "$commit_date" "$commit_comment"
   done < <(git rev-list --reverse "$previous_tip..$pushed_tip" 2>/dev/null || true)
-  printf '</details>\n\n<details>\n<summary><strong>Files</strong></summary>\n\n'
-  printf '| File | Commit | Added | Deleted | Net | Lines |\n| --- | --- | ---: | ---: | ---: | ---: |\n'
+  printf '</details>\n\n<details>\n<summary>Files</summary>\n\n'
+  name_status="$(git diff --name-status --find-renames "$previous_tip..$pushed_tip")"
+  bt_git_collect_file_actions <<< "$name_status"
+  printf '| **File** | **Commit** | **Added** | **Deleted** | **Net** | **Lines** | **Action** |\n'
+  printf '| --- | --- | ---: | ---: | ---: | ---: | --- |\n'
   while IFS= read -r file_path; do
     [[ -n "$file_path" ]] || continue
     added=0
@@ -933,28 +878,28 @@ render_push_summary_tables() {
       total_lines="$(git show "$pushed_tip:$file_path" | wc -l | tr -d ' ')"
     fi
     commit_hash="$(git log -1 --format='%h' "$previous_tip..$pushed_tip" -- "$file_path")"
-    printf '| `%s` | `%s` | %s | %s | %+d | %s |\n' \
-      "$file_path" "$commit_hash" "$added" "$deleted" "$net" "$total_lines"
+    printf '| `%s` | `%s` | %s | %s | %+d | %s | %s |\n' \
+      "$file_path" "$commit_hash" "$added" "$deleted" "$net" "$total_lines" \
+      "$(bt_git_file_action "$file_path")"
     total_added=$((total_added + added))
     total_deleted=$((total_deleted + deleted))
     total_net=$((total_net + net))
     total_lines_sum=$((total_lines_sum + total_lines))
   done < <(git diff --name-only --find-renames "$previous_tip..$pushed_tip")
-  printf '| **Total** |  | %s | %s | %+d | %s |\n</details>\n' \
+  printf '| **Total** |  | %s | %s | %+d | %s |  |\n</details>\n' \
     "$total_added" "$total_deleted" "$total_net" "$total_lines_sum"
 
-  name_status="$(git diff --name-status --find-renames "$previous_tip..$pushed_tip")"
   while IFS=$'\t' read -r status old_path new_path; do
     [[ "$status" == R* ]] || continue
     old_directory="${old_path%/*}"
     new_directory="${new_path%/*}"
     [[ "$old_directory" != "$old_path" && "$new_directory" != "$new_path" && \
       "$old_directory" != "$new_directory" ]] || continue
-    directory_rows+=("$old_directory|Renamed to $new_directory")
+    directory_rows+=("$new_directory|Renamed (was $old_directory)")
   done <<< "$name_status"
   if [[ "${#directory_rows[@]}" -gt 0 ]]; then
-    printf '\n<details>\n<summary><strong>Directories</strong></summary>\n\n'
-    printf '| Directory | Action |\n| --- | --- |\n'
+    printf '\n<details>\n<summary>Directories</summary>\n\n'
+    printf '| **Directory** | **Action** |\n| --- | --- |\n'
     for directory_row in "${directory_rows[@]}"; do
       directory="${directory_row%%|*}"
       printf '| `%s` | %s |\n' "$directory" "${directory_row#*|}"

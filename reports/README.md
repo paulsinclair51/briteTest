@@ -19,6 +19,15 @@ See `<repo>/README.md` for an introduction to the repository.
 **local-<datetime>.md**: Latest untracked activity report for a local branch from
 `<repo>/briteRepo/bin/report`.
 
+**mkrepo-<datetime>.md**: Latest untracked report from
+`<repo>/briteRepo/bin/mkrepo`, including remaining follow-up items.
+
+**mkrepo-d-<datetime>.md**: Latest untracked dry-run report from
+`<repo>/briteRepo/bin/mkrepo`.
+
+**mkrepo-e-<datetime>.md**: Latest untracked error report from
+`<repo>/briteRepo/bin/mkrepo`.
+
 **rebrand-<datetime>-<id>.md**: Latest untracked brand update report.
 
 **recovery-<datetime>-<id>.md**: Latest untracked remote recovery report.
