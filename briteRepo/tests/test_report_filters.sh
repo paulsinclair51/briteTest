@@ -197,7 +197,11 @@ if ! grep -Eq '^\*\*Pushed-Tip:\*\* `[0-9a-f]{40}`' \
 	fail "remote push Pushed-Tip should be a full commit hash"
 fi
 assert_contains '**Commits:** 1' "$WORK/$remote_push_rel"
-assert_contains '**Changes:** 1 modified, 0 added, 0 deleted' "$WORK/$remote_push_rel"
+assert_contains '**Directories:** ' "$WORK/$remote_push_rel"
+assert_contains '**Files:** 1 modified.' "$WORK/$remote_push_rel"
+if grep -Fq '**Changes:**' "$WORK/$remote_push_rel"; then
+	fail "remote push report should not include the legacy combined Changes line"
+fi
 assert_contains '**Lines:** 1 added and 0 deleted.' "$WORK/$remote_push_rel"
 assert_contains '<summary>Commits</summary>' "$WORK/$remote_push_rel"
 assert_contains '| **Commit Hash** | **DateTime** | **Comment** |' "$WORK/$remote_push_rel"

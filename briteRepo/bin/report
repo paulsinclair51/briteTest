@@ -1306,6 +1306,14 @@ while IFS= read -r -d $'\x1e' row; do
             "$(git rev-list --count "$previous_tip..$pushed_tip")"
           entry+="$line"
           push_change_record=""
+          push_modified_files=0
+          push_deleted_files=0
+          push_added_files=0
+          push_renamed_files=0
+          push_renamed_modified_files=0
+          push_deleted_directories=0
+          push_added_directories=0
+          push_renamed_directories=0
           for push_field in Files-Modified Files-Deleted Files-Added \
             Files-Renamed Files-Renamed-Modified Directories-Deleted \
             Directories-Added Directories-Renamed; do
@@ -1313,12 +1321,30 @@ while IFS= read -r -d $'\x1e' row; do
             [[ -n "$push_field_value" ]] || \
               push_field_value="$(workflow_detail_value "$note_details" "$push_field")"
             push_change_record+="$push_field: $push_field_value"$'\n'
+            case "$push_field" in
+              Files-Modified) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_modified_files="$push_field_value" ;;
+              Files-Deleted) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_deleted_files="$push_field_value" ;;
+              Files-Added) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_added_files="$push_field_value" ;;
+              Files-Renamed) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_renamed_files="$push_field_value" ;;
+              Files-Renamed-Modified) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_renamed_modified_files="$push_field_value" ;;
+              Directories-Deleted) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_deleted_directories="$push_field_value" ;;
+              Directories-Added) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_added_directories="$push_field_value" ;;
+              Directories-Renamed) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_renamed_directories="$push_field_value" ;;
+            esac
           done
           push_changes="$(recorded_change_summary "$push_change_record")"
           [[ -n "$push_changes" ]] || \
             push_changes="$(workflow_detail_value "$note_details" "Files")"
-          printf -v line '**Changes:** %s.  \n' "$push_changes"
-          entry+="$line"
+          push_directories_summary="$(push_directory_summary "$push_deleted_directories" "$push_added_directories" "$push_renamed_directories")"
+          push_files_summary="$(push_file_summary "$push_modified_files" "$push_deleted_files" "$push_added_files" "$push_renamed_files" "$push_renamed_modified_files")"
+          if [[ -n "$push_directories_summary" ]]; then
+            printf -v line '**Directories:** %s  \n' "$push_directories_summary"
+            entry+="$line"
+          fi
+          if [[ -n "$push_files_summary" ]]; then
+            printf -v line '**Files:** %s.  \n' "$push_files_summary"
+            entry+="$line"
+          fi
           push_line_totals="$(git diff --numstat "$previous_tip" "$pushed_tip" | \
             awk '{ added += $1; deleted += $2 } END { print added + 0, deleted + 0 }')"
           read -r push_added push_deleted <<< "$push_line_totals"

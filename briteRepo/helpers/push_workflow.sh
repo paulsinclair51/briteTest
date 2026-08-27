@@ -251,6 +251,8 @@ bt_push_workflow() (
     user_display="$(bt_format_login_with_role "$(bt_resolve_login_or_empty)" \
       "$repo_root/config/contributors.md" 2>/dev/null || true)"
     [[ -n "$user_display" ]] || user_display="unknown (contributor)"
+    local directories_summary="$(bt_push_format_directory_summary)"
+    local files_summary="$(bt_push_format_file_summary)"
 
     cat > "$report_file" <<EOF
 # Error Push Report ${run_ts_display}
@@ -264,16 +266,15 @@ bt_push_workflow() (
 **Command:** \`${command_text}\`  
 **User:** ${user_display}  
 **Commits:** ${commits_ahead}  
-**Changes:** ${pushed_change_summary:-no changes}.  
-**Lines:** ${push_lines_added} added and ${push_lines_deleted} deleted.  
-
-**Error:** ${message}  
-**Guidance:** ${guidance}  
-
-<details>
-<summary>Files</summary>
-
 EOF
+    if [[ -n "$directories_summary" ]]; then
+      printf '**Directories:** %s  \n' "$directories_summary" >> "$report_file"
+    fi
+    if [[ -n "$files_summary" ]]; then
+      printf '**Files:** %s.  \n' "$files_summary" >> "$report_file"
+    fi
+    printf '**Lines:** %s added and %s deleted.  \n\n**Error:** %s  \n**Guidance:** %s  \n\n<details>\n<summary>Files</summary>\n\n' \
+      "$push_lines_added" "$push_lines_deleted" "$message" "$guidance" >> "$report_file"
     {
       printf '| **File** | **Commit** | **Added** | **Deleted** | **Net** | **Lines** | **Action** |\n'
       printf '| --- | --- | ---: | ---: | ---: | ---: | --- |\n'
@@ -462,6 +463,9 @@ EOF
     directory_count="${#directory_rows[@]}"
 
     if [[ "$dry_run" == true ]]; then
+      local directories_summary="$(bt_push_format_directory_summary)"
+      local files_summary="$(bt_push_format_file_summary)"
+
       cat > "$report_file" <<EOF
 # Dry-run Push Report
 
@@ -474,17 +478,19 @@ EOF
 **Command:** \`${command_text}\`${markdown_break}
 **User:** ${report_user}${markdown_break}
 **Commits:** ${commits_ahead}${markdown_break}
-**Changes:** ${pushed_change_summary}${markdown_break}
-**Lines:** ${push_lines_added} added and ${push_lines_deleted} deleted.
-
-<details>
-<summary>Commits</summary>
-
-| **Commit Hash** | **DateTime** | **Comment** |
-| --- | --- | --- |
 EOF
+      if [[ -n "$directories_summary" ]]; then
+        printf '**Directories:** %s%s\n' "$directories_summary" "$markdown_break" >> "$report_file"
+      fi
+      if [[ -n "$files_summary" ]]; then
+        printf '**Files:** %s.%s\n' "$files_summary" "$markdown_break" >> "$report_file"
+      fi
+      printf '**Lines:** %s added and %s deleted.\n\n<details>\n<summary>Commits</summary>\n\n' \
+        "$push_lines_added" "$push_lines_deleted" >> "$report_file"
 
       {
+        printf '| **Commit Hash** | **DateTime** | **Comment** |\n'
+        printf '| --- | --- | --- |\n'
         while IFS= read -r commit_hash; do
           [[ -n "$commit_hash" ]] || continue
           commit_date="$(git log -1 --format='%ci' "$commit_hash" 2>/dev/null || true)"
@@ -498,7 +504,7 @@ EOF
         echo "<summary>Files</summary>"
         echo
         printf '| **File** | **Commit** | **Added** | **Deleted** | %s\n' \
-        '**Net** | **Lines** | **Action** |'
+          '**Net** | **Lines** | **Action** |'
         echo "| --- | --- | ---: | ---: | ---: | ---: | --- |"
       } >> "$report_file"
 
@@ -615,6 +621,90 @@ EOF
     fi
     bt_push_cleanup_old_reports
     bt_push_release_report_lock
+  }
+
+  bt_push_format_file_summary() {
+    local -a parts=()
+    local type_count=0
+    local total_files=0
+    local output=""
+    local index=0
+    local part=""
+
+    total_files=$((pushed_modified_files + pushed_deleted_files + pushed_added_files + pushed_renamed_files + pushed_renamed_modified_files))
+    if [[ "$pushed_modified_files" -gt 0 ]]; then
+      parts+=("$pushed_modified_files modified")
+      type_count=$((type_count + 1))
+    fi
+    if [[ "$pushed_deleted_files" -gt 0 ]]; then
+      parts+=("$pushed_deleted_files deleted")
+      type_count=$((type_count + 1))
+    fi
+    if [[ "$pushed_added_files" -gt 0 ]]; then
+      parts+=("$pushed_added_files added")
+      type_count=$((type_count + 1))
+    fi
+    if [[ "$pushed_renamed_files" -gt 0 ]]; then
+      parts+=("$pushed_renamed_files renamed")
+      type_count=$((type_count + 1))
+    fi
+    if [[ "$pushed_renamed_modified_files" -gt 0 ]]; then
+      parts+=("$pushed_renamed_modified_files renamed/modified")
+      type_count=$((type_count + 1))
+    fi
+    if [[ "${#parts[@]}" -eq 0 ]]; then
+      printf ''
+      return 0
+    fi
+    for index in "${!parts[@]}"; do
+      part="${parts[$index]}"
+      if [[ "$index" -gt 0 ]]; then
+        if [[ "$index" -eq $((${#parts[@]} - 1)) ]]; then
+          output+=" and "
+        else
+          output+=", "
+        fi
+      fi
+      output+="$part"
+    done
+    if [[ "$type_count" -gt 1 ]]; then
+      printf '%s; %s total' "$output" "$total_files"
+    else
+      printf '%s' "$output"
+    fi
+  }
+
+  bt_push_format_directory_summary() {
+    local -a parts=()
+    local output=""
+    local index=0
+    local part=""
+
+    if [[ "$pushed_deleted_directories" -gt 0 ]]; then
+      parts+=("$pushed_deleted_directories deleted")
+    fi
+    if [[ "$pushed_added_directories" -gt 0 ]]; then
+      parts+=("$pushed_added_directories added")
+    fi
+    if [[ "$pushed_renamed_directories" -gt 0 ]]; then
+      parts+=("$pushed_renamed_directories renamed")
+    fi
+    if [[ "${#parts[@]}" -eq 0 ]]; then
+      printf ''
+      return 0
+    fi
+    for index in "${!parts[@]}"; do
+      part="${parts[$index]}"
+      if [[ "$index" -gt 0 ]]; then
+        if [[ "$index" -eq $((${#parts[@]} - 1)) ]]; then
+          output+=" and "
+        else
+          output+=", "
+        fi
+      fi
+      output+="$part"
+    done
+    printf '%s' "$output"
   }
 
   bt_push_collect_stdout_summary_counts() {

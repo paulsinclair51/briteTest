@@ -271,7 +271,11 @@ push_command_line="$(grep -n '\*\*Command:\*\*' "$dry_report" | head -n 1 | cut 
 if grep -Fq "**Triggered By:**" "$dry_report"; then
   fail "dry-run push report should not include Triggered By"
 fi
-assert_contains "**Changes:** 1 modified file" "$dry_report"
+assert_contains "**Directories:** " "$dry_report"
+assert_contains "**Files:** 1 modified." "$dry_report"
+if grep -Fq "**Changes:**" "$dry_report"; then
+  fail "dry-run push report should not include the legacy combined Changes line"
+fi
 assert_contains "**Lines:** " "$dry_report"
 assert_contains "<details>" "$dry_report"
 assert_contains "<summary>Commits</summary>" "$dry_report"
