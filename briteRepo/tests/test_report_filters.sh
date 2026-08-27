@@ -204,7 +204,7 @@ if grep -Fq '**Changes:**' "$WORK/$remote_push_rel"; then
 fi
 assert_contains '**Lines:** 1 added and 0 deleted.' "$WORK/$remote_push_rel"
 assert_contains '<summary>Commits</summary>' "$WORK/$remote_push_rel"
-assert_contains '| **Commit Hash** | **DateTime** | **Comment** |' "$WORK/$remote_push_rel"
+assert_contains '| **Commit** | **DateTime** | **Comment** |' "$WORK/$remote_push_rel"
 assert_contains '<summary>Files</summary>' "$WORK/$remote_push_rel"
 assert_contains '| **File** | **Commit** | **Added** | **Deleted** | **Net** | **Lines** | **Action** |' "$WORK/$remote_push_rel"
 [[ "$(grep -c '^## ' "$WORK/$remote_push_rel")" -eq 1 ]] || \

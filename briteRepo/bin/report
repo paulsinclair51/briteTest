@@ -868,7 +868,7 @@ render_push_summary_tables() {
   local name_status=""
 
   printf '\n<details>\n<summary>Commits</summary>\n\n'
-  printf '| **Commit Hash** | **DateTime** | **Comment** |\n| --- | --- | --- |\n'
+  printf '| **Commit** | **DateTime** | **Comment** |\n| --- | --- | --- |\n'
   while IFS= read -r commit_hash; do
     [[ -n "$commit_hash" ]] || continue
     commit_date="$(git show -s --format='%ci' "$commit_hash")"

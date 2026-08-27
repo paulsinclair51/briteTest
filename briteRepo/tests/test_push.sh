@@ -279,7 +279,7 @@ fi
 assert_contains "**Lines:** " "$dry_report"
 assert_contains "<details>" "$dry_report"
 assert_contains "<summary>Commits</summary>" "$dry_report"
-assert_contains "| **Commit Hash** | **DateTime** | **Comment** |" "$dry_report"
+assert_contains "| **Commit** | **DateTime** | **Comment** |" "$dry_report"
 assert_contains "push test change" "$dry_report"
 assert_contains "<summary>Files</summary>" "$dry_report"
 assert_contains "| **File** | **Commit** | **Added** | **Deleted** | **Net** | **Lines** | **Action** |" "$dry_report"

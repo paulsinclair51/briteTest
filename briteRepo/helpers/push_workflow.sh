@@ -489,7 +489,7 @@ EOF
         "$push_lines_added" "$push_lines_deleted" >> "$report_file"
 
       {
-        printf '| **Commit Hash** | **DateTime** | **Comment** |\n'
+        printf '| **Commit** | **DateTime** | **Comment** |\n'
         printf '| --- | --- | --- |\n'
         while IFS= read -r commit_hash; do
           [[ -n "$commit_hash" ]] || continue
