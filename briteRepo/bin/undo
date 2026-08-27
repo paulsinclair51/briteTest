@@ -199,7 +199,7 @@ log_undo_to_history() {
   local history_file
   history_file="$REPO_ROOT/$(bt_branch_to_history_file "$current_branch")"
   local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  timestamp="$(bt_datetime_display_now)"
 
   # Create history file if it doesn't exist
   if [[ ! -f "$history_file" ]]; then

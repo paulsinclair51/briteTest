@@ -61,6 +61,15 @@ bt_format_command_line() {
   printf '%s\n' "$formatted"
 }
 
+bt_datetime_display_now() {
+  date '+%Y-%m-%d %H:%M:%S%z' | \
+    sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/'
+}
+
+bt_datetime_filename_now() {
+  date '+%Y%m%d-%H%M%S%z'
+}
+
 bt_trim_whitespace() {
   local value="$1"
   value="${value#"${value%%[![:space:]]*}"}"

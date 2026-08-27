@@ -469,26 +469,26 @@ pass "-o rejected for non-owner"
   "$REAL_GIT" commit --allow-empty -m "no-op source branch" >/dev/null 2>&1
   "$REAL_GIT" push -u origin dev/noop-v1.0.0 >/dev/null 2>&1
 )
-cat > "$WORK/reports/pushup-d-20000101-000000.md" <<'EOF'
+cat > "$WORK/reports/pushup-d-20000101-000000+0000.md" <<'EOF'
 # Stale Merge-Up Report
 
 **Source Branch:** dev/noop-v1.0.0
 EOF
-cat > "$WORK/reports/pushup-e-20000101-000001.md" <<'EOF'
+cat > "$WORK/reports/pushup-e-20000101-000001+0000.md" <<'EOF'
 # Stale Merge-Up Error Report
 
 **Source Branch:** dev/noop-v1.0.0
 EOF
-chmod a-w "$WORK/reports/pushup-d-20000101-000000.md" \
-  "$WORK/reports/pushup-e-20000101-000001.md"
+chmod a-w "$WORK/reports/pushup-d-20000101-000000+0000.md" \
+  "$WORK/reports/pushup-e-20000101-000001+0000.md"
 rc=$(run_pushup "$TMPDIR/noop.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
   "FAKE_GH_PR_NUMBER=" -- -o -d)
 [[ "$rc" -eq 37 ]] || fail "no-work pushup should exit 37 (got $rc)"
 assert_contains "no changes to merge" "$TMPDIR/noop.out"
-[[ -e "$WORK/reports/pushup-d-20000101-000000.md" ]] || \
+[[ -e "$WORK/reports/pushup-d-20000101-000000+0000.md" ]] || \
   fail "pushup prerequisite failure should preserve stale dry-run report"
-[[ -e "$WORK/reports/pushup-e-20000101-000001.md" ]] || \
+[[ -e "$WORK/reports/pushup-e-20000101-000001+0000.md" ]] || \
   fail "pushup prerequisite failure should preserve stale error report"
 (
   cd "$WORK"
@@ -1016,7 +1016,7 @@ success_reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
 assert_contains "Failed to create commit" "$TMPDIR/commit-fail-report.out"
 remaining_dirty="$(
   (cd "$WORK" || exit 1; git status --porcelain --untracked-files=all) | \
-    grep -Ev '^\?\? reports/(pushup|push)(-d|-e)?-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md$' || true
+    grep -Ev '^\?\? reports/(pushup|push)(-d|-e)?-[0-9]{8}-[0-9]{6}[+-][0-9]{4}(-[0-9]+)?\.md$' || true
 )"
 [[ -z "$remaining_dirty" ]] || fail "commit failure should restore a clean worktree"
 pass "commit failure does not create a success report"

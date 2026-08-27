@@ -318,7 +318,7 @@ bt_report_transient_path() {
   local report_path=""
 
   while true; do
-    timestamp="$(date '+%Y%m%d-%H%M%S')"
+    timestamp="$(date '+%Y%m%d-%H%M%S%z')"
     report_path="${report_dir%/}/${prefix}-${timestamp}.md"
     if [[ "$timestamp" != "$run_timestamp" && ! -e "$report_path" ]]; then
       printf '%s\n' "$report_path"

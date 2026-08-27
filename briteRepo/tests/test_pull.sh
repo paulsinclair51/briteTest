@@ -119,7 +119,7 @@ assert_contains "has an unfinished copyfix operation" \
 rm -rf "$copyfix_state_root"
 pass "unfinished copyfix blocks pull"
 
-cat > "$WORK/reports/pull-e-20000101-000000.md" <<'EOF'
+cat > "$WORK/reports/pull-e-20000101-000000+0000.md" <<'EOF'
 # Stale Pull Error Report
 
 **Branch:** `dev/current-v1.0.0`
@@ -142,7 +142,7 @@ assert_contains '**Branch:** `dev/current-v1.0.0`' "$skip_report"
 assert_contains "**Error:** Pull skipped due to -e option." "$skip_report"
 assert_contains "## Guidance" "$skip_report"
 assert_contains "- Run without -e option." "$skip_report"
-[[ ! -e "$WORK/reports/pull-e-20000101-000000.md" ]] || \
+[[ ! -e "$WORK/reports/pull-e-20000101-000000+0000.md" ]] || \
   fail "pull -e should delete the older error report for the current branch"
 pass "skip mode"
 
@@ -156,7 +156,7 @@ pass "skip mode"
   cd "$WORK"
   git checkout main >/dev/null 2>&1
 )
-cat > "$WORK/reports/pull-e-20000101-000001.md" <<'EOF'
+cat > "$WORK/reports/pull-e-20000101-000001+0000.md" <<'EOF'
 # Stale Pull Error Report
 
 **Branch:** `main`
@@ -166,12 +166,12 @@ rc=$(run_capture "$TMPDIR/skip-e-policy.out" \
 [[ "$rc" -eq 4 ]] || fail "pull -e on main should exit 4 (got $rc)"
 assert_contains "Current branch 'main' must be a targeted or contributor branch" \
   "$TMPDIR/skip-e-policy.out"
-[[ -e "$WORK/reports/pull-e-20000101-000001.md" ]] || \
+[[ -e "$WORK/reports/pull-e-20000101-000001+0000.md" ]] || \
   fail "pull -e prerequisite failure should not delete reports"
 [[ "$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pull-e-*.md' | wc -l)" -eq 2 ]] || \
   fail "pull -e prerequisite failure should not generate a report"
-rm -f "$WORK/reports/pull-e-20000101-000001.md"
+rm -f "$WORK/reports/pull-e-20000101-000001+0000.md"
 (
   cd "$WORK"
   git checkout dev/current-v1.0.0 >/dev/null 2>&1
@@ -242,18 +242,18 @@ pass "owner override accepts version branch"
   git checkout dev/current-v1.0.0 >/dev/null 2>&1
 )
 
-cat > "$WORK/reports/pull-d-20000101-000000.md" <<'EOF'
+cat > "$WORK/reports/pull-d-20000101-000000+0000.md" <<'EOF'
 # Stale Pull Report
 
 **Branch:** `dev/current-v1.0.0`
 EOF
-cat > "$WORK/reports/pull-e-20000101-000001.md" <<'EOF'
+cat > "$WORK/reports/pull-e-20000101-000001+0000.md" <<'EOF'
 # Stale Pull Error Report
 
 **Branch:** `dev/current-v1.0.0`
 EOF
-chmod a-w "$WORK/reports/pull-d-20000101-000000.md" \
-  "$WORK/reports/pull-e-20000101-000001.md"
+chmod a-w "$WORK/reports/pull-d-20000101-000000+0000.md" \
+  "$WORK/reports/pull-e-20000101-000001+0000.md"
 rc=$(run_capture "$TMPDIR/noop.out" \
   bash -lc "cd '$WORK' && bash ./briteRepo/bin/pull")
 [[ "$rc" -eq 13 ]] || fail "no-work pull should exit 13 (got $rc)"
@@ -263,9 +263,9 @@ assert_contains "Guidance: rerun pull after remote changes are available." \
 if grep -Fq "See reports/pull-" "$TMPDIR/noop.out"; then
   fail "pull prerequisite failure should not output a report path"
 fi
-[[ -f "$WORK/reports/pull-d-20000101-000000.md" ]] || \
+[[ -f "$WORK/reports/pull-d-20000101-000000+0000.md" ]] || \
   fail "pull prerequisite failure should preserve stale dry-run reports"
-[[ -f "$WORK/reports/pull-e-20000101-000001.md" ]] || \
+[[ -f "$WORK/reports/pull-e-20000101-000001+0000.md" ]] || \
   fail "pull prerequisite failure should preserve stale error reports"
 pass "no-work pull prerequisite"
 

@@ -184,7 +184,7 @@ get_github_username() {
 log_fork_creation_to_repository_history() {
   local fork_user="$1"
   local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  timestamp="$(bt_datetime_display_now)"
   
   # Check if we're in a clone (repository_history.md exists)
   local repo_root

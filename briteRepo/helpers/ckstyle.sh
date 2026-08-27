@@ -330,8 +330,8 @@ if [[ -f "$HISTORY_HELPER" ]]; then
   fi
 fi
 
-RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
-RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S%z')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
 STYLE_REPORTS_DIR="$repo_root/reports"
 REPORT_FILE="$STYLE_REPORTS_DIR/style-${RUN_TS_FILE}.md"
 

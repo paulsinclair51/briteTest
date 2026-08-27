@@ -17,8 +17,8 @@ fixlocal_test_init
 # 1) Dry-run must delete older dry-run reports but keep non-dry reports
 RETENTION_DRY_REPO="$(make_fixture_repo retentiondry plain)"
 attach_reachable_origin "$RETENTION_DRY_REPO" retentiondry
-old_dry_report="$RETENTION_DRY_REPO/reports/repository-d-20000101-000000-111.md"
-old_non_dry_report="$RETENTION_DRY_REPO/reports/repository-20000101-000000-222.md"
+old_dry_report="$RETENTION_DRY_REPO/reports/repository-d-20000101-000000+0000-111.md"
+old_non_dry_report="$RETENTION_DRY_REPO/reports/repository-20000101-000000+0000-222.md"
 echo "old dry" > "$old_dry_report"
 echo "old non-dry" > "$old_non_dry_report"
 touch -d '40 days ago' "$old_dry_report" "$old_non_dry_report"
@@ -32,9 +32,9 @@ pass "dry-run retention policy"
 # 2) Non-dry run must delete older dry-run and old non-dry reports, keep recent non-dry
 RETENTION_NON_DRY_REPO="$(make_fixture_repo retentionnondry plain)"
 attach_reachable_origin "$RETENTION_NON_DRY_REPO" retentionnondry
-old_dry_report_nd="$RETENTION_NON_DRY_REPO/reports/repository-d-20000101-000000-311.md"
-old_non_dry_report_nd="$RETENTION_NON_DRY_REPO/reports/repository-20000101-000000-322.md"
-recent_non_dry_report_nd="$RETENTION_NON_DRY_REPO/reports/repository-20990101-000000-333.md"
+old_dry_report_nd="$RETENTION_NON_DRY_REPO/reports/repository-d-20000101-000000+0000-311.md"
+old_non_dry_report_nd="$RETENTION_NON_DRY_REPO/reports/repository-20000101-000000+0000-322.md"
+recent_non_dry_report_nd="$RETENTION_NON_DRY_REPO/reports/repository-20990101-000000+0000-333.md"
 echo "old dry" > "$old_dry_report_nd"
 echo "old non-dry" > "$old_non_dry_report_nd"
 echo "recent non-dry" > "$recent_non_dry_report_nd"

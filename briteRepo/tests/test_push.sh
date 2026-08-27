@@ -152,25 +152,25 @@ assert_contains "Push is atomic for this branch update." "$skip_report"
 pass "skip mode"
 
 # Nothing to push should not create a report.
-cat > "$WORK/reports/push-d-20000101-000000.md" <<'EOF'
+cat > "$WORK/reports/push-d-20000101-000000+0000.md" <<'EOF'
 # Stale Push Report
 
 **Branch:** `dev/push-tests-v1.0.0`
 EOF
-cat > "$WORK/reports/push-e-20000101-000001.md" <<'EOF'
+cat > "$WORK/reports/push-e-20000101-000001+0000.md" <<'EOF'
 # Stale Push Error Report
 
 **Branch:** `dev/push-tests-v1.0.0`
 EOF
-chmod a-w "$WORK/reports/push-d-20000101-000000.md" \
-  "$WORK/reports/push-e-20000101-000001.md"
+chmod a-w "$WORK/reports/push-d-20000101-000000+0000.md" \
+  "$WORK/reports/push-e-20000101-000001+0000.md"
 rc=$(run_capture "$TMPDIR/noop.out" env GITHUB_ACTOR=testuser \
   bash -lc "cd '$WORK' && bash ./briteRepo/bin/push -t 5")
 [[ "$rc" -eq 10 ]] || fail "no-work push should exit 10 (got $rc)"
 assert_contains "no changes to push" "$TMPDIR/noop.out"
-[[ -f "$WORK/reports/push-d-20000101-000000.md" ]] || \
+[[ -f "$WORK/reports/push-d-20000101-000000+0000.md" ]] || \
   fail "push prerequisite failure should preserve stale dry-run reports"
-[[ -f "$WORK/reports/push-e-20000101-000001.md" ]] || \
+[[ -f "$WORK/reports/push-e-20000101-000001+0000.md" ]] || \
   fail "push prerequisite failure should preserve stale error reports"
 pass "no-work push prerequisite"
 
@@ -262,6 +262,7 @@ fi
 assert_contains '**Branch:** `dev/push-tests-v1.0.0`' "$dry_report"
 assert_contains '**Status:** ' "$dry_report"
 assert_contains '## 1. push: ' "$dry_report"
+assert_matches '^## 1\. push: [0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$' "$dry_report"
 assert_contains '**User:** testuser' "$dry_report"
 assert_contains '**Pushed-Tip:** `To be determined`' "$dry_report"
 push_tip_line="$(grep -n '\*\*Pushed-Tip:\*\*' "$dry_report" | head -n 1 | cut -d: -f1)"
@@ -279,7 +280,8 @@ fi
 assert_contains "**Lines:** " "$dry_report"
 assert_contains "<details>" "$dry_report"
 assert_contains "<summary>Commits</summary>" "$dry_report"
-assert_contains "| **Commit** | **DateTime** | **Comment** |" "$dry_report"
+assert_contains "| **Commit** | **Date Time** | **Comment** |" "$dry_report"
+assert_matches "| \`.*\` \| [0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2} \|" "$dry_report"
 assert_contains "push test change" "$dry_report"
 assert_contains "<summary>Files</summary>" "$dry_report"
 assert_contains "| **File** | **Commit** | **Added** | **Deleted** | **Net** | **Lines** | **Action** |" "$dry_report"
@@ -341,7 +343,7 @@ race_report="$(latest_report "$WORK" 'push-d-*.md')"
 [[ -f "$race_report" ]] || fail "expected concurrent dry-run report"
 race_report_count="$(find "$WORK/reports" -maxdepth 1 -type f -name 'push-d-*.md' | wc -l | tr -d ' ')"
 [[ "$race_report_count" -eq 1 ]] || fail "expected one serialized same-second dry-run report (got $race_report_count)"
-[[ "$(basename "$race_report")" =~ ^push-d-[0-9]{8}-[0-9]{6}\.md$ ]] || \
+[[ "$(basename "$race_report")" =~ ^push-d-[0-9]{8}-[0-9]{6}[+-][0-9]{4}\.md$ ]] || \
   fail "expected PID-free dry-run filename"
 
 pass "concurrent dry-run report serialization"

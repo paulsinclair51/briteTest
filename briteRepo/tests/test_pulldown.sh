@@ -53,7 +53,7 @@ report_path_from_output() {
   local out_file="$1"
   local rel
 
-  rel="$(grep -Eo 'reports/pulldown-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md' "$out_file" | tail -n 1 || true)"
+  rel="$(grep -Eo 'reports/pulldown-[0-9]{8}-[0-9]{6}[+-][0-9]{4}(-[0-9]+)?\.md' "$out_file" | tail -n 1 || true)"
   [[ -n "$rel" ]] || return 1
   printf '%s\n' "$rel"
 }
@@ -171,25 +171,25 @@ assert_contains "Unknown argument: unexpected" "$TMPDIR/arg-reject.out"
 pass "positional argument rejected"
 
 # Nothing to merge down should not create a report.
-cat > "$WORK/reports/pulldown-d-20000101-000000.md" <<'EOF'
+cat > "$WORK/reports/pulldown-d-20000101-000000+0000.md" <<'EOF'
 # Stale Merge-Down Report
 
 **Branch:** `dev/current-v1.0.0`
 EOF
-cat > "$WORK/reports/pulldown-e-20000101-000001.md" <<'EOF'
+cat > "$WORK/reports/pulldown-e-20000101-000001+0000.md" <<'EOF'
 # Stale Merge-Down Error Report
 
 **Branch:** `dev/current-v1.0.0`
 EOF
-chmod a-w "$WORK/reports/pulldown-d-20000101-000000.md" \
-  "$WORK/reports/pulldown-e-20000101-000001.md"
+chmod a-w "$WORK/reports/pulldown-d-20000101-000000+0000.md" \
+  "$WORK/reports/pulldown-e-20000101-000001+0000.md"
 rc=$(run_capture "$TMPDIR/noop.out" \
   bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -f")
 [[ "$rc" -eq 5 ]] || fail "no-work pulldown should exit 5 (got $rc)"
 assert_contains "no changes to merge" "$TMPDIR/noop.out"
-[[ -f "$WORK/reports/pulldown-d-20000101-000000.md" ]] || \
+[[ -f "$WORK/reports/pulldown-d-20000101-000000+0000.md" ]] || \
   fail "pulldown prerequisite failure should preserve stale dry-run report"
-[[ -f "$WORK/reports/pulldown-e-20000101-000001.md" ]] || \
+[[ -f "$WORK/reports/pulldown-e-20000101-000001+0000.md" ]] || \
   fail "pulldown prerequisite failure should preserve stale error report"
 pass "no-work pulldown prerequisite"
 

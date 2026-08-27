@@ -128,8 +128,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 REPORTS_DIR="$REPO_ROOT/reports"
-RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
-RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S%z')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
 
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/../helpers/common.sh"
@@ -432,6 +432,102 @@ is_redundant_commit_summary() {
 
 branch_status_tags() {
   bt_git_branch_status_tags "$1" "$2"
+}
+
+push_directory_summary() {
+  local deleted="${1:-0}"
+  local added="${2:-0}"
+  local renamed="${3:-0}"
+  local -a parts=()
+  local output=""
+  local index=0
+  local part=""
+
+  if (( deleted > 0 )); then
+    parts+=("$deleted deleted")
+  fi
+  if (( added > 0 )); then
+    parts+=("$added added")
+  fi
+  if (( renamed > 0 )); then
+    parts+=("$renamed renamed")
+  fi
+  if (( ${#parts[@]} == 0 )); then
+    printf ''
+    return 0
+  fi
+
+  for index in "${!parts[@]}"; do
+    part="${parts[$index]}"
+    if (( index > 0 )); then
+      if (( index == ${#parts[@]} - 1 )); then
+        output+=" and "
+      else
+        output+=", "
+      fi
+    fi
+    output+="$part"
+  done
+
+  printf '%s' "$output"
+}
+
+push_file_summary() {
+  local modified="${1:-0}"
+  local deleted="${2:-0}"
+  local added="${3:-0}"
+  local renamed="${4:-0}"
+  local renamed_modified="${5:-0}"
+  local -a parts=()
+  local total_files=0
+  local output=""
+  local index=0
+  local part=""
+  local type_count=0
+
+  total_files=$((modified + deleted + added + renamed + renamed_modified))
+  if (( modified > 0 )); then
+    parts+=("$modified modified")
+    type_count=$((type_count + 1))
+  fi
+  if (( deleted > 0 )); then
+    parts+=("$deleted deleted")
+    type_count=$((type_count + 1))
+  fi
+  if (( added > 0 )); then
+    parts+=("$added added")
+    type_count=$((type_count + 1))
+  fi
+  if (( renamed > 0 )); then
+    parts+=("$renamed renamed")
+    type_count=$((type_count + 1))
+  fi
+  if (( renamed_modified > 0 )); then
+    parts+=("$renamed_modified renamed/modified")
+    type_count=$((type_count + 1))
+  fi
+  if (( ${#parts[@]} == 0 )); then
+    printf ''
+    return 0
+  fi
+
+  for index in "${!parts[@]}"; do
+    part="${parts[$index]}"
+    if (( index > 0 )); then
+      if (( index == ${#parts[@]} - 1 )); then
+        output+=" and "
+      else
+        output+=", "
+      fi
+    fi
+    output+="$part"
+  done
+
+  if (( type_count > 1 )); then
+    printf '%s; %s total' "$output" "$total_files"
+  else
+    printf '%s' "$output"
+  fi
 }
 
 extract_email_from_identity() {
@@ -868,11 +964,16 @@ render_push_summary_tables() {
   local name_status=""
 
   printf '\n<details>\n<summary>Commits</summary>\n\n'
-  printf '| **Commit** | **DateTime** | **Comment** |\n| --- | --- | --- |\n'
+  printf '| **Commit** | **Date Time** | **Comment** |\n| --- | --- | --- |\n'
   while IFS= read -r commit_hash; do
     [[ -n "$commit_hash" ]] || continue
-    commit_date="$(git show -s --format='%ci' "$commit_hash")"
-    commit_comment="$(git show -s --format='%s' "$commit_hash")"
+    commit_date="$(normalize_report_datetime "$(git show -s --format='%cI' "$commit_hash")")"
+    commit_body="$(git show -s --format='%B' "$commit_hash")"
+    commit_comment="$(extract_user_comment_from_body "$commit_body")"
+    if [[ -z "$commit_comment" ]]; then
+      commit_comment="${commit_body//$'\r'/}"
+      commit_comment="${commit_comment%%$'\n'*}"
+    fi
     printf '| `%s` | %s | %s |\n' "$commit_hash" "$commit_date" "$commit_comment"
   done < <(git rev-list --reverse "$previous_tip..$pushed_tip" 2>/dev/null || true)
   printf '</details>\n\n<details>\n<summary>Files</summary>\n\n'
@@ -938,6 +1039,36 @@ recorded_field_value() {
       value="${BASH_REMATCH[1]}"
     fi
   done <<< "$body"
+
+  printf '%s' "$value"
+}
+
+normalize_report_datetime() {
+  local value="${1:-}"
+
+  value="${value//$'\r'/}"
+  if [[ -z "$value" ]]; then
+    printf '%s' ""
+    return 0
+  fi
+
+  value="${value//Z/+00:00}"
+  if [[ "$value" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})T([0-9]{2}:[0-9]{2}:[0-9]{2})([+-][0-9]{2}:[0-9]{2})$ ]]; then
+    printf '%s %s%s' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+    return 0
+  fi
+  if [[ "$value" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})[[:space:]]+([0-9]{2}:[0-9]{2}:[0-9]{2})([+-][0-9]{2}:[0-9]{2})$ ]]; then
+    printf '%s %s%s' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+    return 0
+  fi
+  if [[ "$value" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})[[:space:]]+([0-9]{2}:[0-9]{2}:[0-9]{2})([+-][0-9]{2})([0-9]{2})$ ]]; then
+    printf '%s %s%s:%s' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}" "${BASH_REMATCH[4]}"
+    return 0
+  fi
+  if [[ "$value" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})[[:space:]]+([0-9]{2}:[0-9]{2}:[0-9]{2})$ ]]; then
+    printf '%s %s+00:00' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+    return 0
+  fi
 
   printf '%s' "$value"
 }
@@ -1225,7 +1356,7 @@ while IFS= read -r -d $'\x1e' row; do
   row="${row#*"$sep"}"
   short_hash="${row%%"$sep"*}"
   row="${row#*"$sep"}"
-  date_text="${row%%"$sep"*}"
+  date_text="$(normalize_report_datetime "${row%%"$sep"*}")"
   row="${row#*"$sep"}"
   author_name="${row%%"$sep"*}"
   row="${row#*"$sep"}"
@@ -1245,7 +1376,7 @@ while IFS= read -r -d $'\x1e' row; do
         continue
       fi
       note_type="$(recorded_field_value "$note_record" "Workflow-Type")"
-      note_date="$(recorded_field_value "$note_record" "Workflow-Time")"
+      note_date="$(normalize_report_datetime "$(recorded_field_value "$note_record" "Workflow-Time")")"
       note_branch="$(recorded_field_value "$note_record" "Workflow-Branch")"
       note_user="$(recorded_field_value "$note_record" "Workflow-User")"
       note_command="$(recorded_field_value "$note_record" "Command-Line")"
@@ -1314,28 +1445,51 @@ while IFS= read -r -d $'\x1e' row; do
           push_deleted_directories=0
           push_added_directories=0
           push_renamed_directories=0
+          bt_git_reset_change_summary
+          bt_git_collect_ref_change_summary "$previous_tip" "$pushed_tip" >/dev/null 2>&1 || true
+          push_modified_files="$BT_CHANGE_MODIFIED_FILES"
+          push_deleted_files="$BT_CHANGE_DELETED_FILES"
+          push_added_files="$BT_CHANGE_ADDED_FILES"
+          push_renamed_files="$BT_CHANGE_RENAMED_FILES"
+          push_renamed_modified_files="$BT_CHANGE_RENAMED_MODIFIED_FILES"
+          push_deleted_directories="$BT_CHANGE_DELETED_DIRECTORIES"
+          push_added_directories="$BT_CHANGE_ADDED_DIRECTORIES"
+          push_renamed_directories="$BT_CHANGE_RENAMED_DIRECTORIES"
+
           for push_field in Files-Modified Files-Deleted Files-Added \
             Files-Renamed Files-Renamed-Modified Directories-Deleted \
             Directories-Added Directories-Renamed; do
             push_field_value="$(recorded_field_value "$note_record" "$push_field")"
             [[ -n "$push_field_value" ]] || \
               push_field_value="$(workflow_detail_value "$note_details" "$push_field")"
+            if [[ -n "$push_field_value" ]] && [[ "$push_field_value" =~ ^[0-9]+$ ]]; then
+              if [[ "$push_field" == "Files-Modified" && "$push_modified_files" -eq 0 ]]; then
+                push_modified_files="$push_field_value"
+              elif [[ "$push_field" == "Files-Deleted" && "$push_deleted_files" -eq 0 ]]; then
+                push_deleted_files="$push_field_value"
+              elif [[ "$push_field" == "Files-Added" && "$push_added_files" -eq 0 ]]; then
+                push_added_files="$push_field_value"
+              elif [[ "$push_field" == "Files-Renamed" && "$push_renamed_files" -eq 0 ]]; then
+                push_renamed_files="$push_field_value"
+              elif [[ "$push_field" == "Files-Renamed-Modified" && "$push_renamed_modified_files" -eq 0 ]]; then
+                push_renamed_modified_files="$push_field_value"
+              elif [[ "$push_field" == "Directories-Deleted" && "$push_deleted_directories" -eq 0 ]]; then
+                push_deleted_directories="$push_field_value"
+              elif [[ "$push_field" == "Directories-Added" && "$push_added_directories" -eq 0 ]]; then
+                push_added_directories="$push_field_value"
+              elif [[ "$push_field" == "Directories-Renamed" && "$push_renamed_directories" -eq 0 ]]; then
+                push_renamed_directories="$push_field_value"
+              fi
+            fi
             push_change_record+="$push_field: $push_field_value"$'\n'
-            case "$push_field" in
-              Files-Modified) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_modified_files="$push_field_value" ;;
-              Files-Deleted) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_deleted_files="$push_field_value" ;;
-              Files-Added) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_added_files="$push_field_value" ;;
-              Files-Renamed) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_renamed_files="$push_field_value" ;;
-              Files-Renamed-Modified) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_renamed_modified_files="$push_field_value" ;;
-              Directories-Deleted) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_deleted_directories="$push_field_value" ;;
-              Directories-Added) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_added_directories="$push_field_value" ;;
-              Directories-Renamed) [[ "$push_field_value" =~ ^[0-9]+$ ]] || push_field_value=0; push_renamed_directories="$push_field_value" ;;
-            esac
           done
           push_changes="$(recorded_change_summary "$push_change_record")"
           [[ -n "$push_changes" ]] || \
             push_changes="$(workflow_detail_value "$note_details" "Files")"
           push_directories_summary="$(push_directory_summary "$push_deleted_directories" "$push_added_directories" "$push_renamed_directories")"
+          if [[ -z "$push_directories_summary" ]]; then
+            push_directories_summary="none"
+          fi
           push_files_summary="$(push_file_summary "$push_modified_files" "$push_deleted_files" "$push_added_files" "$push_renamed_files" "$push_renamed_modified_files")"
           if [[ -n "$push_directories_summary" ]]; then
             printf -v line '**Directories:** %s  \n' "$push_directories_summary"

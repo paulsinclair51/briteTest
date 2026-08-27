@@ -561,7 +561,7 @@ emit_report_body() {
   local commit="$1"
   local path
 
-  printf 'Generated: %s\n\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+  printf 'Generated: %s\n\n' "$(bt_datetime_display_now)"
   printf 'Repository: %s\n\n' "$TARGET_SLUG"
   if [[ "$REPO_EXISTS" == true ]]; then
     printf 'Repository state: existing\n\n'
@@ -683,17 +683,17 @@ write_report() {
   case "$mode" in
     dry)
       rm -f "$reports_dir"/mkrepo-d-*.md 2>/dev/null || true
-      report="$reports_dir/mkrepo-d-$(date '+%Y%m%d-%H%M%S').md"
+      report="$reports_dir/mkrepo-d-$(bt_datetime_filename_now).md"
       heading="# mkrepo Dry-Run Report"
       ;;
     error)
       rm -f "$reports_dir"/mkrepo-e-*.md 2>/dev/null || true
-      report="$reports_dir/mkrepo-e-$(date '+%Y%m%d-%H%M%S').md"
+      report="$reports_dir/mkrepo-e-$(bt_datetime_filename_now).md"
       heading="# mkrepo Error Report"
       ;;
     *)
       rm -f "$reports_dir"/mkrepo-[0-9]*.md 2>/dev/null || true
-      report="$reports_dir/mkrepo-$(date '+%Y%m%d-%H%M%S').md"
+      report="$reports_dir/mkrepo-$(bt_datetime_filename_now).md"
       heading="# mkrepo Report"
       ;;
   esac

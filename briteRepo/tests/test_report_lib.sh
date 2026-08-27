@@ -41,10 +41,16 @@ assert_contains() {
   grep -Fq -- "$text" "$file" || fail "expected '$text' in $file"
 }
 
+assert_matches() {
+  local regex="$1"
+  local file="$2"
+  grep -Eq -- "$regex" "$file" || fail "expected pattern '$regex' in $file"
+}
+
 report_path_from_output() {
   local output_file="$1"
 
-  sed -n "s/^See '\(reports\/\(local\|remote\)-[0-9]\{8\}-[0-9]\{6\}\.md\)'\.$/\1/p" \
+  sed -n "s/^See '\(reports\/\(local\|remote\)-[0-9]\{8\}-[0-9]\{6\}[+-][0-9]\{4\}\.md\)'\.$/\1/p" \
     "$output_file" | tail -n 1
 }
 

@@ -108,7 +108,7 @@ add_issue() {
 log_removal_to_repository_history() {
   local target_path="$1"
   local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  timestamp="$(bt_datetime_display_now)"
   
   # Only attempt if repository_history.md exists in current clone
   if [[ ! -f "$REPO_ROOT/logs/repository_history.md" ]]; then

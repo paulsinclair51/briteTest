@@ -147,6 +147,32 @@ bt_push_workflow() (
     bt_report_dir_enable_writes "$reports_dir" "$exit_report_failed"
   }
 
+  bt_push_format_commit_timestamp() {
+    local value="${1:-}"
+
+    value="${value//$'\r'/}"
+    if [[ -z "$value" ]]; then
+      printf '%s' ""
+      return 0
+    fi
+
+    value="${value//Z/+00:00}"
+    if [[ "$value" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})T([0-9]{2}:[0-9]{2}:[0-9]{2})([+-][0-9]{2}:[0-9]{2})$ ]]; then
+      printf '%s %s%s' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+      return 0
+    fi
+    if [[ "$value" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})[[:space:]]+([0-9]{2}:[0-9]{2}:[0-9]{2})([+-][0-9]{2})([0-9]{2})$ ]]; then
+      printf '%s %s%s:%s' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}" "${BASH_REMATCH[4]}"
+      return 0
+    fi
+    if [[ "$value" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})[[:space:]]+([0-9]{2}:[0-9]{2}:[0-9]{2})$ ]]; then
+      printf '%s %s+00:00' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+      return 0
+    fi
+
+    printf '%s' "$value"
+  }
+
   bt_push_extract_commit_comment() {
     local commit_body="$1"
     local line=""
@@ -253,6 +279,8 @@ bt_push_workflow() (
     [[ -n "$user_display" ]] || user_display="unknown (contributor)"
     local directories_summary="$(bt_push_format_directory_summary)"
     local files_summary="$(bt_push_format_file_summary)"
+    [[ -n "$directories_summary" ]] || directories_summary="none"
+    [[ -n "$files_summary" ]] || files_summary="none"
 
     cat > "$report_file" <<EOF
 # Error Push Report ${run_ts_display}
@@ -479,21 +507,19 @@ EOF
 **User:** ${report_user}${markdown_break}
 **Commits:** ${commits_ahead}${markdown_break}
 EOF
-      if [[ -n "$directories_summary" ]]; then
-        printf '**Directories:** %s%s\n' "$directories_summary" "$markdown_break" >> "$report_file"
-      fi
-      if [[ -n "$files_summary" ]]; then
-        printf '**Files:** %s.%s\n' "$files_summary" "$markdown_break" >> "$report_file"
-      fi
+      [[ -n "$directories_summary" ]] || directories_summary="none"
+      [[ -n "$files_summary" ]] || files_summary="none"
+      printf '**Directories:** %s%s\n' "$directories_summary" "$markdown_break" >> "$report_file"
+      printf '**Files:** %s.%s\n' "$files_summary" "$markdown_break" >> "$report_file"
       printf '**Lines:** %s added and %s deleted.\n\n<details>\n<summary>Commits</summary>\n\n' \
         "$push_lines_added" "$push_lines_deleted" >> "$report_file"
 
       {
-        printf '| **Commit** | **DateTime** | **Comment** |\n'
+        printf '| **Commit** | **Date Time** | **Comment** |\n'
         printf '| --- | --- | --- |\n'
         while IFS= read -r commit_hash; do
           [[ -n "$commit_hash" ]] || continue
-          commit_date="$(git log -1 --format='%ci' "$commit_hash" 2>/dev/null || true)"
+          commit_date="$(bt_push_format_commit_timestamp "$(git log -1 --format='%cI' "$commit_hash" 2>/dev/null || true)")"
           commit_body="$(git log -1 --format=%B "$commit_hash" 2>/dev/null || true)"
           commit_comment="$(bt_push_extract_commit_comment "$commit_body")"
           printf '| `%s` | %s | %s |\n' "$commit_hash" "$commit_date" "$commit_comment"
@@ -775,8 +801,8 @@ EOF
   repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
   [[ -n "$repo_root" ]] || bt_push_error_exit "$exit_invalid_argument" "Unable to resolve repository root"
   reports_dir="$repo_root/reports"
-  run_ts_file="$(date '+%Y%m%d-%H%M%S')"
-  run_ts_display="$(date '+%Y-%m-%d %H:%M:%S')"
+  run_ts_file="$(date '+%Y%m%d-%H%M%S%z')"
+  run_ts_display="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
 
   current_branch="$(bt_get_current_branch || true)"
 

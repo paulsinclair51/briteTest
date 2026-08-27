@@ -137,8 +137,8 @@ source "$SCRIPT_DIR/../helpers/report_helpers.sh"
 
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 REPORTS_DIR="$REPO_ROOT/reports"
-RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
-RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S%z')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
 ORIGINAL_ARGS=("$@")
 
 readonly EXIT_INVALID_ARGUMENT=1

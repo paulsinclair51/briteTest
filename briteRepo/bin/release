@@ -145,13 +145,13 @@ generate_release_report() {
   fi
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_FAILED"
   REPORT_FILE="$(bt_report_transient_path \
-    "$REPORTS_DIR" "$prefix" "$(date '+%Y%m%d-%H%M%S')")"
+    "$REPORTS_DIR" "$prefix" "$(bt_datetime_filename_now)")"
   bt_report_cleanup_transient_reports \
     "$REPORTS_DIR" "${CURRENT_BRANCH:-unknown}" "$REPORT_FILE" \
     "release-d-*.md" "release-e-*.md"
   command_text="$(bt_format_command_line "release" "${ORIGINAL_ARGS[@]}")"
   bt_report_write_header "$REPORT_FILE" "$title" \
-    "$(date '+%Y-%m-%d %H:%M:%S')" "$command_text"
+    "$(bt_datetime_display_now)" "$command_text"
   cat >> "$REPORT_FILE" <<EOF
 **Branch:** \`${CURRENT_BRANCH:-unknown}\`
 
@@ -334,7 +334,7 @@ log_release_to_history() {
   local history_file
   history_file="$(bt_branch_to_history_file "$branch")"
   local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  timestamp="$(bt_datetime_display_now)"
 
   mkdir -p "$(dirname "$history_file")"
   
@@ -370,7 +370,7 @@ log_release_to_repository_history() {
   
   local repo_history="logs/repository_history.md"
   local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  timestamp="$(bt_datetime_display_now)"
   
   # Only attempt to update if we're on a tracked branch (not in new clone)
   if [[ ! -f "$repo_history" ]]; then

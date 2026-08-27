@@ -57,7 +57,7 @@ None.
 
 ## Notes
 
-`<datetime>` has the form `YYYYMMDD-HHMMSS`.
+`<datetime>` has the form `YYYYMMDD-HHMMSS+HHMM` or `YYYYMMDD-HHMMSS-HHMM`.
 
 Scripts delete pertinent older reports when a newer report is written
 or the older report is obsolete.

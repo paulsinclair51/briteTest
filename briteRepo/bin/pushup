@@ -384,13 +384,13 @@ write_partial_report() {
   source_branch="$(state_get source)"
   parent_branch="$(state_get parent)"
   phase="$(state_get phase)"
-  timestamp="$(date '+%Y%m%d-%H%M%S')"
+  timestamp="$(bt_datetime_filename_now)"
   report_file="$(bt_report_retained_path "$REPORTS_DIR" "pushup-e" \
     "$timestamp" "$BASHPID")"
 
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_INTERNAL"
   cat > "$report_file" <<EOF
-# Pushup Error Report $(date '+%Y-%m-%d %H:%M:%S')
+# Pushup Error Report $(bt_datetime_display_now)
 
 **Source branch:** \`$source_branch\`  
 **Parent branch:** \`$parent_branch\`  

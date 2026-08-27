@@ -154,13 +154,13 @@ generate_error_report() {
   fi
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_FAILED"
   REPORT_FILE="$(bt_report_transient_path \
-    "$REPORTS_DIR" "retarget-e" "$(date '+%Y%m%d-%H%M%S')")"
+    "$REPORTS_DIR" "retarget-e" "$(bt_datetime_filename_now)")"
   bt_report_cleanup_transient_reports \
     "$REPORTS_DIR" "${TARGET_BRANCH:-unknown}" "$REPORT_FILE" \
     "retarget-e-*.md"
   command_text="$(bt_format_command_line "retarget" "${ORIGINAL_ARGS[@]}")"
   bt_report_write_header "$REPORT_FILE" "Retarget Error Report" \
-    "$(date '+%Y-%m-%d %H:%M:%S')" "$command_text"
+    "$(bt_datetime_display_now)" "$command_text"
   cat >> "$REPORT_FILE" <<EOF
 **Branch:** \`${TARGET_BRANCH:-unknown}\`
 

@@ -32,18 +32,18 @@ assert_contains "has an unfinished copyfix operation" \
 rm -rf "$copyfix_state_root"
 pass "unfinished copyfix blocks commit"
 
-echo "stale dry-run" > "$WORK/reports/commit-d-20000101-000000.md"
-echo "stale error" > "$WORK/reports/commit-e-20000101-000001.md"
-chmod a-w "$WORK/reports/commit-d-20000101-000000.md" \
-  "$WORK/reports/commit-e-20000101-000001.md"
+echo "stale dry-run" > "$WORK/reports/commit-d-20000101-000000+0000.md"
+echo "stale error" > "$WORK/reports/commit-e-20000101-000001+0000.md"
+chmod a-w "$WORK/reports/commit-d-20000101-000000+0000.md" \
+  "$WORK/reports/commit-e-20000101-000001+0000.md"
 rc=$(run_capture "$TMPDIR/noop.out" env GITHUB_ACTOR=testuser \
   bash -lc "cd '$WORK' && bash ./briteRepo/bin/commit")
 [[ "$rc" -eq 7 ]] || fail "no-work commit should exit 7 (got $rc)"
 assert_contains "no changes to commit" "$TMPDIR/noop.out"
 assert_contains "Guidance: make changes before rerunning commit." "$TMPDIR/noop.out"
-[[ -f "$WORK/reports/commit-d-20000101-000000.md" ]] || \
+[[ -f "$WORK/reports/commit-d-20000101-000000+0000.md" ]] || \
   fail "commit prerequisite failure should preserve stale dry-run reports"
-[[ -f "$WORK/reports/commit-e-20000101-000001.md" ]] || \
+[[ -f "$WORK/reports/commit-e-20000101-000001+0000.md" ]] || \
   fail "commit prerequisite failure should preserve stale error reports"
 pass "no-work commit prerequisite"
 

@@ -52,7 +52,7 @@ bt_append_history_log() {
 
   bt_init_history_log "$log_file"
 
-  timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+  timestamp="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
 
   if [[ -n "$comment" ]]; then
     cat >> "$log_file" <<EOF
@@ -87,7 +87,7 @@ bt_record_workflow_event_to_ref() {
   shift 6
   (( $# % 2 == 0 )) || return 2
 
-  timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+  timestamp="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
   user_name="$(git config user.name 2>/dev/null || true)"
   user_email="$(git config user.email 2>/dev/null || true)"
   record="--- briteRepo workflow ---

@@ -73,14 +73,14 @@ echo "PASS: help documents source and target operation scope"
   git checkout dev/target-v1.0.0 >/dev/null 2>&1
 )
 
-cat > "$WORK/reports/copyfix-d-20000101-000000.md" <<'EOF'
+cat > "$WORK/reports/copyfix-d-20000101-000000+0000.md" <<'EOF'
 **Branch:** `dev/target-v1.0.0`
 EOF
-cat > "$WORK/reports/copyfix-e-20000101-000001.md" <<'EOF'
+cat > "$WORK/reports/copyfix-e-20000101-000001+0000.md" <<'EOF'
 **Branch:** `dev/target-v1.0.0`
 EOF
-chmod a-w "$WORK/reports/copyfix-d-20000101-000000.md" \
-  "$WORK/reports/copyfix-e-20000101-000001.md"
+chmod a-w "$WORK/reports/copyfix-d-20000101-000000+0000.md" \
+  "$WORK/reports/copyfix-e-20000101-000001+0000.md"
 
 set +e
 (
@@ -95,9 +95,9 @@ grep -Fq "has no new commits to copy" "$TMPDIR/noop.out" || \
   fail "expected no-work copyfix prerequisite"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/target-v1.0.0" ]] || \
   fail "no-op copyfix should remain on the target branch"
-[[ -f "$WORK/reports/copyfix-d-20000101-000000.md" ]] || \
+[[ -f "$WORK/reports/copyfix-d-20000101-000000+0000.md" ]] || \
   fail "copyfix prerequisite failure should preserve stale dry-run report"
-[[ -f "$WORK/reports/copyfix-e-20000101-000001.md" ]] || \
+[[ -f "$WORK/reports/copyfix-e-20000101-000001+0000.md" ]] || \
   fail "copyfix prerequisite failure should preserve stale error report"
 
 echo "PASS: no-work copyfix prerequisite"

@@ -259,7 +259,7 @@ request_approver_override() {
   log_detail "Audit: $username approved execution of $script at $(date)"
 
   # Log to audit trail
-  echo "[AUDIT] $(date '+%Y-%m-%d %H:%M:%S') Approver $username approved: "\
+  echo "[AUDIT] $(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/') Approver $username approved: "\
 "$script ($operation)" >> logs/approver-audit.log 2>/dev/null || true
 }
 

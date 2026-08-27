@@ -129,9 +129,12 @@ bt_report_cleanup_transient_reports \
 [[ -f "$cleanup_repo/reports/source-remove.md" ]] && fail "expected source-branch-matching report to be removed"
 
 # 4) Shared report names include process identity, and locks serialize writers.
-unique_path="$(bt_report_retained_path "/tmp/reports" "push-d" "20260802-120000" "12345")"
-[[ "$unique_path" == "/tmp/reports/push-d-20260802-120000-12345.md" ]] || \
+unique_path="$(bt_report_retained_path "/tmp/reports" "push-d" "20260802-120000+0000" "12345")"
+[[ "$unique_path" == "/tmp/reports/push-d-20260802-120000+0000-12345.md" ]] || \
   fail "unexpected unique report path: $unique_path"
+transient_path="$(bt_report_transient_path "$DELETE_REPO/reports" "local" "20000101-000000")"
+[[ "$(basename "$transient_path")" =~ ^local-[0-9]{8}-[0-9]{6}[+-][0-9]{4}\.md$ ]] || \
+  fail "unexpected transient report path: $transient_path"
 
 lock_fd=""
 bt_report_acquire_lock "$DELETE_REPO" "test" 2 lock_fd || \

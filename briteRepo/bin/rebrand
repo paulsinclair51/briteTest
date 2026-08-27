@@ -114,9 +114,9 @@ REPORTS_DIR="${REPO_ROOT}/reports"
 DRY_RUN=0
 REMOTE_TIMEOUT_SECONDS=10
 
-RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S%z')"
 RUN_PID="${BASHPID:-$$}"
-RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
 RUN_OUTPUT_FILE="$(mktemp)"
 RUN_LOG_FILE=""
 # shellcheck disable=SC2034  # Consumed indirectly by shared report helper.
@@ -800,7 +800,7 @@ else
 fi
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
-    timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+    timestamp="$(bt_datetime_display_now)"
     update_completion_timestamp "$pending_line" "$timestamp"
     cleanup_dry_run_reports
 

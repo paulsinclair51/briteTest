@@ -321,11 +321,11 @@ CUSTOM_MESSAGE=""
 VERBOSE=false
 DRY_RUN=false
 ERROR_RUN=false
-RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S%z')"
 OWNER_OVERRIDE=false
 OWNER_OVERRIDE_ACTIVE=false
 MESSAGE_SOURCE=""
-RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
 CURRENT_SOURCE_REF=""
 CURRENT_SOURCE_TIP=""
 REMOTE_TIMEOUT_SECONDS=10
@@ -796,8 +796,8 @@ verify_ref_at_commit() {
 bt_is_worktree_dirty_except_merge_report() {
   local status_line
   local report_rel=""
-  local pushup_report_re='^\?\? reports/pushup(-d|-e)?-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md$'
-  local push_report_re='^\?\? reports/push(-d|-e)?-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md$'
+  local pushup_report_re='^\?\? reports/pushup(-d|-e)?-[0-9]{8}-[0-9]{6}([+-][0-9]{4})(-[0-9]+)?\.md$'
+  local push_report_re='^\?\? reports/push(-d|-e)?-[0-9]{8}-[0-9]{6}([+-][0-9]{4})(-[0-9]+)?\.md$'
   local dirty_found=false
 
   report_rel="${REPORT_FILE#"${REPO_ROOT}"/}"
@@ -1599,7 +1599,7 @@ ensure_clean_worktree() {
   fi
 
   remaining="$(printf '%s\n' "$status_lines" | \
-    grep -Ev '^(\\?\\?|[ MARCUD?!][ MARCUD?!]) reports/(pushup|push)(-d|-e)?-[0-9]{8}-[0-9]{6}(-[0-9]+)?\.md$' || true)"
+    grep -Ev '^(\\?\\?|[ MARCUD?!][ MARCUD?!]) reports/(pushup|push)(-d|-e)?-[0-9]{8}-[0-9]{6}([+-][0-9]{4})(-[0-9]+)?\.md$' || true)"
 
   if [[ -n "$remaining" ]]; then
     bt_emit_prerequisite_failure "$EXIT_CURRENT_UNCOMMITTED" \
@@ -1674,7 +1674,7 @@ while [[ $# -gt 0 ]]; do
       CUSTOM_MESSAGE="$2"
       MESSAGE_SOURCE="option"
       shift 2
-      RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S')"
+      RUN_TS_FILE="$(bt_datetime_filename_now)"
       ;;
     -d)
       if [[ "$ERROR_RUN" == true ]]; then

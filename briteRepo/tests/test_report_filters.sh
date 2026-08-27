@@ -171,7 +171,7 @@ pass "missing direct remote branch"
 local_report="$(find "$WORK/reports" -maxdepth 1 -type f \
 	-name 'local-*.md' -print -quit)"
 [[ -n "$local_report" ]] || fail "expected local report before remote snapshot"
-printf 'stale remote report\n' > "$WORK/reports/remote-20000101-000000.md"
+printf 'stale remote report\n' > "$WORK/reports/remote-20000101-000000+0000.md"
 (
 	cd "$WORK"
 	git update-ref refs/remotes/origin/alias-report-tests \
@@ -184,13 +184,14 @@ remote_push_rel="$(report_path_from_output "$TMPDIR/remote-push.out")"
 [[ "$remote_push_rel" == reports/remote-*.md ]] || \
 	fail "remote snapshot should write a remote report"
 [[ -f "$local_report" ]] || fail "remote report should preserve the local report"
-[[ ! -e "$WORK/reports/remote-20000101-000000.md" ]] || \
+[[ ! -e "$WORK/reports/remote-20000101-000000+0000.md" ]] || \
 	fail "remote report should replace the prior remote report"
 [[ "$(find "$WORK/reports" -maxdepth 1 -type f -name 'remote-*.md' | wc -l | tr -d ' ')" -eq 1 ]] || \
 	fail "only one remote report should remain"
 assert_contains '**Branch:** `dev/report-tests-v1.0.0`' "$WORK/$remote_push_rel"
 assert_contains '**Status:** [remote]' "$WORK/$remote_push_rel"
 assert_contains '**Command:** `push -t 5`' "$WORK/$remote_push_rel"
+assert_contains '## 1. push: 2026-08-16 11:59:59+00:00' "$WORK/$remote_push_rel"
 assert_contains '**Pushed-Tip:** `' "$WORK/$remote_push_rel"
 if ! grep -Eq '^\*\*Pushed-Tip:\*\* `[0-9a-f]{40}`' \
 	"$WORK/$remote_push_rel"; then
@@ -204,7 +205,8 @@ if grep -Fq '**Changes:**' "$WORK/$remote_push_rel"; then
 fi
 assert_contains '**Lines:** 1 added and 0 deleted.' "$WORK/$remote_push_rel"
 assert_contains '<summary>Commits</summary>' "$WORK/$remote_push_rel"
-assert_contains '| **Commit** | **DateTime** | **Comment** |' "$WORK/$remote_push_rel"
+assert_contains '| **Commit** | **Date Time** | **Comment** |' "$WORK/$remote_push_rel"
+assert_matches "| \`[0-9a-f]{40}\` \| [0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2} \|" "$WORK/$remote_push_rel"
 assert_contains '<summary>Files</summary>' "$WORK/$remote_push_rel"
 assert_contains '| **File** | **Commit** | **Added** | **Deleted** | **Net** | **Lines** | **Action** |' "$WORK/$remote_push_rel"
 [[ "$(grep -c '^## ' "$WORK/$remote_push_rel")" -eq 1 ]] || \
@@ -241,7 +243,7 @@ pass "current remote report from snapshot"
 
 # 11) A new local report should replace only the previous local report
 remote_report="$WORK/$snapshot_remote_rel"
-printf 'stale local report\n' > "$WORK/reports/local-20000101-000000.md"
+printf 'stale local report\n' > "$WORK/reports/local-20000101-000000+0000.md"
 rc=$(run_capture "$TMPDIR/local-again.out" bash -lc \
 	"cd '$WORK' && git switch dev/report-tests-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/report branch -q 'retarget activity'")
 [[ "$rc" -eq 0 ]] || fail "replacement local report should exit 0 (got $rc)"
@@ -249,16 +251,16 @@ local_again_rel="$(report_path_from_output "$TMPDIR/local-again.out")"
 [[ "$local_again_rel" == reports/local-*.md ]] || \
 	fail "local branch should write a local report"
 [[ -f "$remote_report" ]] || fail "local report should preserve the remote report"
-[[ ! -e "$WORK/reports/local-20000101-000000.md" ]] || \
+[[ ! -e "$WORK/reports/local-20000101-000000+0000.md" ]] || \
 	fail "local report should replace the prior local report"
 [[ "$(find "$WORK/reports" -maxdepth 1 -type f -name 'local-*.md' | wc -l | tr -d ' ')" -eq 1 ]] || \
 	fail "only one local report should remain"
 pass "independent local report retention"
 
 # 12) Cleanup should preserve tracked reports when invoked from a subdirectory.
-tracked_report="$WORK/reports/local-20000101-000002.md"
+tracked_report="$WORK/reports/local-20000101-000002+0000.md"
 printf 'tracked local report\n' > "$tracked_report"
-git -C "$WORK" add reports/local-20000101-000002.md
+git -C "$WORK" add reports/local-20000101-000002+0000.md
 git -C "$WORK" commit -m "track report fixture" >/dev/null 2>&1
 mkdir -p "$WORK/nested/report-test"
 rc=$(run_capture "$TMPDIR/subdirectory.out" bash -lc \
@@ -283,12 +285,12 @@ set -e
 [[ "$report_rc_1" -eq 0 && "$report_rc_2" -eq 0 ]] || \
 	fail "concurrent branch reports should both succeed"
 concurrent_report_count="$(find "$WORK/reports" -maxdepth 1 -type f \
-	-name 'local-*.md' ! -name 'local-20000101-000002.md' | \
+	-name 'local-*.md' ! -name 'local-20000101-000002+0000.md' | \
 	wc -l | tr -d ' ')"
 [[ "$concurrent_report_count" -eq 1 ]] || \
 	fail "concurrent branch reports should leave one local report"
 concurrent_report="$(find "$WORK/reports" -maxdepth 1 -type f \
-	-name 'local-*.md' ! -name 'local-20000101-000002.md' -print -quit)"
+	-name 'local-*.md' ! -name 'local-20000101-000002+0000.md' -print -quit)"
 assert_contains "# Branch History Report" "$concurrent_report"
 [[ "$(grep -c '^## ' "$concurrent_report")" -eq 2 ]] || \
 	fail "concurrent branch report should contain two complete entries"
