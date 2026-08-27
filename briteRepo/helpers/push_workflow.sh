@@ -240,22 +240,43 @@ bt_push_workflow() (
     bt_push_enable_report_writes
     report_file="$(bt_report_transient_path "$reports_dir" "push-e" "$run_ts_file")"
 
+    read -r push_lines_added push_lines_deleted < <(
+      git diff --numstat --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null |
+        awk '{ added += $1; deleted += $2 } END { print added + 0, deleted + 0 }'
+    )
+    local branch_status
+    branch_status="$(bt_git_branch_status_tags "$current_branch" "remote" 2>/dev/null || true)"
+    [[ -n "$branch_status" ]] || branch_status="[remote]"
+    local user_display
+    user_display="$(bt_format_login_with_role "$(bt_resolve_login_or_empty)" \
+      "$repo_root/config/contributors.md" 2>/dev/null || true)"
+    [[ -n "$user_display" ]] || user_display="unknown (contributor)"
+
     cat > "$report_file" <<EOF
 # Error Push Report ${run_ts_display}
 
-**Command:** \`${command_text}\`
-**Branch:** \`${current_branch}\`
-**Commits:** ${commits_ahead}
-**Error:** ${message}
-**Guidance:** ${guidance}
+**Branch:** \`${current_branch}\`  
+**Status:** ${branch_status}  
 
-## Files
+## 1. push: ${run_ts_display}
+
+**Pushed-Tip:** \`To be determined\`  
+**Command:** \`${command_text}\`  
+**User:** ${user_display}  
+**Commits:** ${commits_ahead}  
+**Changes:** ${pushed_change_summary:-no changes}.  
+**Lines:** ${push_lines_added} added and ${push_lines_deleted} deleted.  
+
+**Error:** ${message}  
+**Guidance:** ${guidance}  
+
+<details>
+<summary>Files</summary>
 
 EOF
     {
-      printf '| **File** | **Commit** | **Added** | **Deleted** | %s\n' \
-        '**Net** | **Lines** | **Action** |'
-      echo "| --- | --- | ---: | ---: | ---: | ---: | --- |"
+      printf '| **File** | **Commit** | **Added** | **Deleted** | **Net** | **Lines** | **Action** |\n'
+      printf '| --- | --- | ---: | ---: | ---: | ---: | --- |\n'
     } >> "$report_file"
 
     bt_git_collect_file_actions < <(git diff --name-status --find-renames \
@@ -274,8 +295,9 @@ EOF
       if git cat-file -e "${push_content_ref}:$file" 2>/dev/null; then
         total_lines="$(git show "${push_content_ref}:$file" 2>/dev/null | wc -l | tr -d ' ')"
       fi
-      printf '| `%s` |  | %s | %s | %s | %s | %s |\n' \
-        "$file" "$added" "$deleted" "$net" "$total_lines" \
+      commit_hash="$(git log -1 --format='%h' "${remote_branch_tip}..${push_content_ref}" -- "$file" 2>/dev/null || true)"
+      printf '| `%s` | `%s` | %s | %s | %+d | %s | %s |\n' \
+        "$file" "$commit_hash" "$added" "$deleted" "$net" "$total_lines" \
         "$(bt_git_file_action "$file")" >> "$report_file"
       total_added=$((total_added + added))
       total_deleted=$((total_deleted + deleted))
@@ -286,6 +308,7 @@ EOF
     printf '| **Total** |  | %s | %s | %+d | %s |  |\n' \
       "$total_added" "$total_deleted" "$total_net" "$total_lines_sum" \
       >> "$report_file"
+    printf '</details>\n' >> "$report_file"
 
     if [[ "$mode_label" == "push skipped" && -z "$push_output" ]]; then
       {
@@ -419,11 +442,11 @@ EOF
     done < <(git ls-tree -r --name-only "$push_content_ref" 2>/dev/null || true)
     for directory in "${!before_directories[@]}"; do
       [[ -n "${after_directories[$directory]+x}" ]] || \
-        directory_rows+=("$directory|Deleted")
+        directory_rows+=("$directory|$(git log -1 --format='%h' "${remote_branch_tip}..${push_content_ref}" -- "$directory" 2>/dev/null || true)|Deleted")
     done
     for directory in "${!after_directories[@]}"; do
       [[ -n "${before_directories[$directory]+x}" ]] || \
-        directory_rows+=("$directory|Added")
+        directory_rows+=("$directory|$(git log -1 --format='%h' "${remote_branch_tip}..${push_content_ref}" -- "$directory" 2>/dev/null || true)|Added")
     done
     name_status="$(git diff --name-status --find-renames \
       "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)"
@@ -434,7 +457,7 @@ EOF
       [[ "$old_directory" != "$old_path" && \
         "$new_directory" != "$new_path" && \
         "$old_directory" != "$new_directory" ]] || continue
-      directory_rows+=("$new_directory|Renamed (was $old_directory)")
+      directory_rows+=("$new_directory|$(git log -1 --format='%h' "${remote_branch_tip}..${push_content_ref}" -- "$new_directory" 2>/dev/null || true)|Renamed (was $old_directory)")
     done <<< "$name_status"
     directory_count="${#directory_rows[@]}"
 
@@ -519,12 +542,14 @@ EOF
           echo '<details>'
           echo '<summary>Directories</summary>'
           echo
-          echo '| **Directory** | **Action** |'
-          echo '| --- | --- |'
+          echo '| **Directory** | **Commit** | **Action** |'
+          echo '| --- | --- | --- |'
           for directory_row in "${directory_rows[@]}"; do
             directory="${directory_row%%|*}"
-            directory_action="${directory_row#*|}"
-            printf '| `%s` | %s |\n' "$directory" "$directory_action"
+            directory_commit="${directory_row#*|}"
+            directory_commit="${directory_commit%%|*}"
+            directory_action="${directory_row#*|*|}"
+            printf '| `%s` | `%s` | %s |\n' "$directory" "$directory_commit" "$directory_action"
           done
           echo '</details>'
         } >> "$report_file"

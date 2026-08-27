@@ -911,14 +911,17 @@ render_push_summary_tables() {
     new_directory="${new_path%/*}"
     [[ "$old_directory" != "$old_path" && "$new_directory" != "$new_path" && \
       "$old_directory" != "$new_directory" ]] || continue
-    directory_rows+=("$new_directory|Renamed (was $old_directory)")
+    directory_rows+=("$new_directory|$(git log -1 --format='%h' "$previous_tip..$pushed_tip" -- "$new_directory" 2>/dev/null || true)|Renamed (was $old_directory)")
   done <<< "$name_status"
   if [[ "${#directory_rows[@]}" -gt 0 ]]; then
     printf '\n<details>\n<summary>Directories</summary>\n\n'
-    printf '| **Directory** | **Action** |\n| --- | --- |\n'
+    printf '| **Directory** | **Commit** | **Action** |\n| --- | --- | --- |\n'
     for directory_row in "${directory_rows[@]}"; do
       directory="${directory_row%%|*}"
-      printf '| `%s` | %s |\n' "$directory" "${directory_row#*|}"
+      directory_commit="${directory_row#*|}"
+      directory_commit="${directory_commit%%|*}"
+      directory_action="${directory_row#*|*|}"
+      printf '| `%s` | `%s` | %s |\n' "$directory" "$directory_commit" "$directory_action"
     done
     printf '</details>\n'
   fi
