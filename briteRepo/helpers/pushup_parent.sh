@@ -303,7 +303,11 @@ readonly EXIT_GIT_OPERATION_FAILED=202
 readonly EXIT_LOCAL_REPORT_FAILED=203
 readonly EXIT_PR_CLOSE_FAILED=205
 
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+[[ -n "$REPO_ROOT" ]] || {
+  echo "Error: pushup must run in a Git repository." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
 REPORTS_DIR="$REPO_ROOT/reports"
 REPORT_FILE=""
 REPORT_LOCK_FD=""
