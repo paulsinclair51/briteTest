@@ -275,7 +275,9 @@ push_command_line="$(grep -n '\*\*Command:\*\*' "$dry_report" | head -n 1 | cut 
 if grep -Fq "**Triggered By:**" "$dry_report"; then
   fail "dry-run push report should not include Triggered By"
 fi
-assert_contains "**Directories:** " "$dry_report"
+if grep -Fq "**Directories:**" "$dry_report"; then
+  fail "dry-run push report should omit Directories when no directories changed"
+fi
 assert_contains "**Files:** 1 modified." "$dry_report"
 if grep -Fq "**Changes:**" "$dry_report"; then
   fail "dry-run push report should not include the legacy combined Changes line"
@@ -743,6 +745,27 @@ if find "$WORK/reports" -maxdepth 1 -type f -name 'push-*.md' -print -quit | gre
   fail "successful non-dry push should not create a push report"
 fi
 pass "push success remains independent of remote report directory"
+
+# 13b) Empty commits should not emit file or line summary fields.
+(
+  cd "$WORK"
+  git commit --allow-empty -m "empty push metadata only" >/dev/null 2>&1
+)
+rc=$(run_capture "$TMPDIR/empty-dry.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/push -d -t 5")
+[[ "$rc" -eq 0 ]] || fail "empty commit dry-run should exit 0 (got $rc)"
+empty_report="$(latest_report "$WORK" 'push-d-*.md')"
+[[ -f "$empty_report" ]] || fail "expected empty commit dry-run report"
+assert_contains "empty push metadata only" "$empty_report"
+if grep -Fq "**Directories:**" "$empty_report"; then
+  fail "empty commit push report should omit Directories"
+fi
+if grep -Fq "**Files:**" "$empty_report"; then
+  fail "empty commit push report should omit Files"
+fi
+if grep -Fq "**Lines:**" "$empty_report"; then
+  fail "empty commit push report should omit Lines"
+fi
+pass "empty commit dry-run summary omission"
 
 # 14) Dry-run report should handle unusual file deltas (rename/delete/binary)
 # in file summary output.

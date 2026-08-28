@@ -152,6 +152,23 @@ Details: Previous-Remote-Tip: $remote_push_previous; Pushed-Tip: $remote_push_ti
       refs/notes/briteRepo-remote-workflow:refs/notes/briteRepo-remote-workflow \
       >/dev/null 2>&1
 
+    git commit --allow-empty -m "empty push metadata only" >/dev/null 2>&1
+    git push origin dev/report-tests-v1.0.0 >/dev/null 2>&1
+    empty_push_tip="$(git rev-parse origin/dev/report-tests-v1.0.0)"
+    git notes --ref=briteRepo-remote-workflow append -m \
+      "--- briteRepo workflow ---
+Workflow-Type: push
+Workflow-Time: 2026-08-16 12:00:00
+Workflow-Branch: dev/report-tests-v1.0.0
+Workflow-User: testuser <test@example.com>
+Command-Line: push -t 5
+Summary: Pushed 1 empty commit(s) to origin/dev/report-tests-v1.0.0
+Details: Previous-Remote-Tip: $remote_push_tip; Pushed-Tip: $empty_push_tip; Commits: 1; Files: 0 modified, 0 added, 0 deleted" \
+      "$empty_push_tip" >/dev/null 2>&1
+    git push origin \
+      refs/notes/briteRepo-remote-workflow:refs/notes/briteRepo-remote-workflow \
+      >/dev/null 2>&1
+
     git commit --allow-empty \
       -m "pushup activity" \
       >/dev/null 2>&1

@@ -82,6 +82,29 @@ assert_contains '| `dir-added` | Added |' "$WORK/$directory_rel"
 assert_contains '| `dir-delete` | Deleted |' "$WORK/$directory_rel"
 pass "directory action rendering"
 
+# 3c) Empty file summaries should not render Files/Lines summary fields.
+(
+	cd "$WORK"
+	git commit --allow-empty \
+		-m "empty summary fixture" \
+		-m $'## Summary\n- Directories: none\n- Files: none\n- Lines: 0 added and 0 deleted.\n\n## Commit Metadata\n\nCommand-Line: commit -c empty summary fixture' \
+		>/dev/null 2>&1
+)
+rc=$(run_capture "$TMPDIR/empty-summary.out" bash -lc \
+	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'empty summary fixture' -l 1")
+[[ "$rc" -eq 0 ]] || fail "empty summary report should exit 0 (got $rc)"
+empty_summary_rel="$(report_path_from_output "$TMPDIR/empty-summary.out")"
+if grep -Fq '**Directories:**' "$WORK/$empty_summary_rel"; then
+	fail "empty summary report should omit Directories"
+fi
+if grep -Fq '**Files:**' "$WORK/$empty_summary_rel"; then
+	fail "empty summary report should omit Files"
+fi
+if grep -Fq '**Lines:**' "$WORK/$empty_summary_rel"; then
+	fail "empty summary report should omit Lines"
+fi
+pass "empty summary omission"
+
 # 4) Multiple appended records should render independently, and delimiter-like
 # text inside a detail value must not split a record.
 rc=$(run_capture "$TMPDIR/multiple-records.out" bash -lc \
@@ -126,7 +149,7 @@ assert_contains "retarget activity" "$WORK/$malformed_rel"
 pass "malformed workflow record handling"
 
 # 6) Branch reports should always list the newest selected activity first
-rc=$(run_capture "$TMPDIR/newest-first.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -l 2")
+rc=$(run_capture "$TMPDIR/newest-first.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'directory action' -l 2")
 [[ "$rc" -eq 0 ]] || fail "newest-first report should exit 0 (got $rc)"
 newest_first_rel="$(report_path_from_output "$TMPDIR/newest-first.out")"
 newer_line="$(grep -n 'directory action fixture' "$WORK/$newest_first_rel" | head -n 1 | cut -d: -f1 || true)"
@@ -198,7 +221,9 @@ if ! grep -Eq '^\*\*Pushed-Tip:\*\* `[0-9a-f]{40}`' \
 	fail "remote push Pushed-Tip should be a full commit hash"
 fi
 assert_contains '**Commits:** 1' "$WORK/$remote_push_rel"
-assert_contains '**Directories:** ' "$WORK/$remote_push_rel"
+if grep -Fq '**Directories:**' "$WORK/$remote_push_rel"; then
+	fail "remote push report should omit Directories when no directories changed"
+fi
 assert_contains '**Files:** 1 modified.' "$WORK/$remote_push_rel"
 if grep -Fq '**Changes:**' "$WORK/$remote_push_rel"; then
 	fail "remote push report should not include the legacy combined Changes line"
@@ -212,6 +237,22 @@ assert_contains '| **File** | **Commit** | **Added** | **Deleted** | **Net** | *
 [[ "$(grep -c '^## ' "$WORK/$remote_push_rel")" -eq 1 ]] || \
 	fail "push commits should not be counted as top-level actions"
 pass "remote snapshot push report"
+
+rc=$(run_capture "$TMPDIR/remote-empty-push.out" bash -lc \
+	"cd '$WORK' && git switch --detach origin/dev/report-tests-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/report branch -q 'Pushed 1 empty commit'")
+[[ "$rc" -eq 0 ]] || fail "remote empty push report should exit 0 (got $rc)"
+remote_empty_rel="$(report_path_from_output "$TMPDIR/remote-empty-push.out")"
+assert_contains 'empty push metadata only' "$WORK/$remote_empty_rel"
+if grep -Fq '**Directories:**' "$WORK/$remote_empty_rel"; then
+	fail "remote empty push report should omit Directories"
+fi
+if grep -Fq '**Files:**' "$WORK/$remote_empty_rel"; then
+	fail "remote empty push report should omit Files"
+fi
+if grep -Fq '**Lines:**' "$WORK/$remote_empty_rel"; then
+	fail "remote empty push report should omit Lines"
+fi
+pass "remote empty push summary omission"
 
 # 10) -r from a remote snapshot should report the current remote, not the
 # commit at which HEAD remains detached.

@@ -658,7 +658,7 @@ sanitize_commit_body_for_report() {
       started = 1
       if ($0 ~ /^-[[:space:]]+Directories:/) {
         sub(/^-+[[:space:]]+Directories:[[:space:]]*/, "")
-        if ($0 != "") {
+        if ($0 != "" && $0 !~ /^none\.?[[:space:]]*$/) {
           if ($0 !~ /\.[[:space:]]*$/) $0 = $0 "."
           print "**Directories:** " $0 "  "
         }
@@ -666,7 +666,7 @@ sanitize_commit_body_for_report() {
       }
       if ($0 ~ /^-[[:space:]]+Files:/) {
         sub(/^-+[[:space:]]+Files:[[:space:]]*/, "")
-        if ($0 != "") {
+        if ($0 != "" && $0 !~ /^none\.?[[:space:]]*$/) {
           if ($0 !~ /\.[[:space:]]*$/) $0 = $0 "."
           print "**Files:** " $0 "  "
         }
@@ -674,12 +674,16 @@ sanitize_commit_body_for_report() {
       }
       if ($0 ~ /^-[[:space:]]+Changes:/) {
         sub(/^-+[[:space:]]+Changes:[[:space:]]*/, "")
-        print "**Files:** " $0 "  "
+        if ($0 != "" && $0 !~ /^none\.?[[:space:]]*$/) {
+          print "**Files:** " $0 "  "
+        }
         next
       }
       if ($0 ~ /^-[[:space:]]+Lines:/) {
         sub(/^-+[[:space:]]+Lines:[[:space:]]*/, "")
-        print "**Lines:** " $0 "  "
+        if ($0 !~ /^0 added and 0 deleted\.?[[:space:]]*$/) {
+          print "**Lines:** " $0 "  "
+        }
         next
       }
       if (skipped_first == 0 && $0 ~ /[^[:space:]]/) {
@@ -1485,9 +1489,6 @@ while IFS= read -r -d $'\x1e' row; do
           [[ -n "$push_changes" ]] || \
             push_changes="$(workflow_detail_value "$note_details" "Files")"
           push_directories_summary="$(push_directory_summary "$push_deleted_directories" "$push_added_directories" "$push_renamed_directories")"
-          if [[ -z "$push_directories_summary" ]]; then
-            push_directories_summary="none"
-          fi
           push_files_summary="$(push_file_summary "$push_modified_files" "$push_deleted_files" "$push_added_files" "$push_renamed_files" "$push_renamed_modified_files")"
           if [[ -n "$push_directories_summary" ]]; then
             printf -v line '**Directories:** %s  \n' "$push_directories_summary"
@@ -1496,13 +1497,13 @@ while IFS= read -r -d $'\x1e' row; do
           if [[ -n "$push_files_summary" ]]; then
             printf -v line '**Files:** %s.  \n' "$push_files_summary"
             entry+="$line"
+            push_line_totals="$(git diff --numstat "$previous_tip" "$pushed_tip" | \
+              awk '{ added += $1; deleted += $2 } END { print added + 0, deleted + 0 }')"
+            read -r push_added push_deleted <<< "$push_line_totals"
+            printf -v line '**Lines:** %s added and %s deleted.  \n' \
+              "$push_added" "$push_deleted"
+            entry+="$line"
           fi
-          push_line_totals="$(git diff --numstat "$previous_tip" "$pushed_tip" | \
-            awk '{ added += $1; deleted += $2 } END { print added + 0, deleted + 0 }')"
-          read -r push_added push_deleted <<< "$push_line_totals"
-          printf -v line '**Lines:** %s added and %s deleted.  \n' \
-            "$push_added" "$push_deleted"
-          entry+="$line"
           entry+="$(render_push_summary_tables "$previous_tip" "$pushed_tip")"
         fi
       else

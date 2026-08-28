@@ -279,9 +279,6 @@ bt_push_workflow() (
     [[ -n "$user_display" ]] || user_display="unknown (contributor)"
     local directories_summary="$(bt_push_format_directory_summary)"
     local files_summary="$(bt_push_format_file_summary)"
-    [[ -n "$directories_summary" ]] || directories_summary="none"
-    [[ -n "$files_summary" ]] || files_summary="none"
-
     cat > "$report_file" <<EOF
 # Error Push Report ${run_ts_display}
 
@@ -300,9 +297,11 @@ EOF
     fi
     if [[ -n "$files_summary" ]]; then
       printf '**Files:** %s.  \n' "$files_summary" >> "$report_file"
+      printf '**Lines:** %s added and %s deleted.  \n' \
+        "$push_lines_added" "$push_lines_deleted" >> "$report_file"
     fi
-    printf '**Lines:** %s added and %s deleted.  \n\n**Error:** %s  \n**Guidance:** %s  \n\n<details>\n<summary>Files</summary>\n\n' \
-      "$push_lines_added" "$push_lines_deleted" "$message" "$guidance" >> "$report_file"
+    printf '\n**Error:** %s  \n**Guidance:** %s  \n\n<details>\n<summary>Files</summary>\n\n' \
+      "$message" "$guidance" >> "$report_file"
     {
       printf '| **File** | **Commit** | **Added** | **Deleted** | **Net** | **Lines** | **Action** |\n'
       printf '| --- | --- | ---: | ---: | ---: | ---: | --- |\n'
@@ -507,12 +506,15 @@ EOF
 **User:** ${report_user}${markdown_break}
 **Commits:** ${commits_ahead}${markdown_break}
 EOF
-      [[ -n "$directories_summary" ]] || directories_summary="none"
-      [[ -n "$files_summary" ]] || files_summary="none"
-      printf '**Directories:** %s%s\n' "$directories_summary" "$markdown_break" >> "$report_file"
-      printf '**Files:** %s.%s\n' "$files_summary" "$markdown_break" >> "$report_file"
-      printf '**Lines:** %s added and %s deleted.\n\n<details>\n<summary>Commits</summary>\n\n' \
-        "$push_lines_added" "$push_lines_deleted" >> "$report_file"
+      if [[ -n "$directories_summary" ]]; then
+        printf '**Directories:** %s%s\n' "$directories_summary" "$markdown_break" >> "$report_file"
+      fi
+      if [[ -n "$files_summary" ]]; then
+        printf '**Files:** %s.%s\n' "$files_summary" "$markdown_break" >> "$report_file"
+        printf '**Lines:** %s added and %s deleted.\n' \
+          "$push_lines_added" "$push_lines_deleted" >> "$report_file"
+      fi
+      printf '\n<details>\n<summary>Commits</summary>\n\n' >> "$report_file"
 
       {
         printf '| **Commit** | **Date Time** | **Comment** |\n'
