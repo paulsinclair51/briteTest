@@ -523,7 +523,7 @@ EOF
           commit_body="$(git log -1 --format=%B "$commit_hash" 2>/dev/null || true)"
           commit_comment="$(bt_push_extract_commit_comment "$commit_body")"
           printf '| `%s` | %s | %s |\n' "$commit_hash" "$commit_date" "$commit_comment"
-        done < <(git rev-list --reverse "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)
+        done < <(git rev-list "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)
         echo "</details>"
         echo
         echo "<details>"

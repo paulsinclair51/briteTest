@@ -247,6 +247,9 @@ pass "internal helper option rejected by direct push"
   echo "push change" >> README.md
   git add README.md
   git commit -m "push test change" >/dev/null 2>&1
+  echo "newer push change" >> README.md
+  git add README.md
+  git commit -m "push newest change" >/dev/null 2>&1
 )
 rc=$(run_capture "$TMPDIR/dry.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/push -d -t 5")
 [[ "$rc" -eq 0 ]] || fail "dry-run push should exit 0 (got $rc)"
@@ -283,6 +286,12 @@ assert_contains "<summary>Commits</summary>" "$dry_report"
 assert_contains "| **Commit** | **Date Time** | **Comment** |" "$dry_report"
 assert_matches "| \`.*\` \| [0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2} \|" "$dry_report"
 assert_contains "push test change" "$dry_report"
+assert_contains "push newest change" "$dry_report"
+newest_commit_line="$(grep -n 'push newest change' "$dry_report" | head -n 1 | cut -d: -f1)"
+older_commit_line="$(grep -n 'push test change' "$dry_report" | head -n 1 | cut -d: -f1)"
+[[ -n "$newest_commit_line" && -n "$older_commit_line" && \
+  "$newest_commit_line" -lt "$older_commit_line" ]] || \
+  fail "push commit table should list newest commits first"
 assert_contains "<summary>Files</summary>" "$dry_report"
 assert_contains "| **File** | **Commit** | **Added** | **Deleted** | **Net** | **Lines** | **Action** |" "$dry_report"
 assert_contains "| \`README.md\` |" "$dry_report"
@@ -364,7 +373,7 @@ push_note="$(git -C "$WORK" notes --ref=briteRepo-remote-workflow show HEAD)"
   fail "successful push should record its previous remote tip"
 [[ "$push_note" == *"Pushed-Tip: "* ]] || \
   fail "successful push should record its pushed tip"
-[[ "$push_note" == *"Commits: 1"* ]] || \
+[[ "$push_note" == *"Commits: 2"* ]] || \
   fail "successful push should record its commit count"
 [[ "$push_note" == *"Files-Modified: 1"* && \
   "$push_note" == *"Files-Renamed: 0"* && \

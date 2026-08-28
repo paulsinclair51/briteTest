@@ -194,8 +194,7 @@ push_worktree_has_blocking_changes() {
     --untracked-files=all 2>/dev/null || true)"
   [[ -n "$status_lines" ]] || return 1
   remaining="$(printf '%s\n' "$status_lines" | \
-    grep -Ev '^\?\? reports/push(-d|-e)?-[0-9]{8}-[0-9]{6}'\
-  '([+-][0-9]{4})(-[0-9]+)?\.md$' \
+    grep -Ev '^\?\? reports/push(-d|-e)?-[0-9]{8}-[0-9]{6}[+-][0-9]{4}(-[0-9]+)?\.md$' \
       || true)"
   [[ -n "$remaining" ]]
 }

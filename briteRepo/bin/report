@@ -911,8 +911,7 @@ render_push_commits() {
 
   while IFS= read -r commit_hash; do
     [[ -n "$commit_hash" ]] || continue
-    commit_date="$(git show -s --date=format:'%Y-%m-%d %H:%M:%S' \
-      --format='%ad' "$commit_hash")"
+    commit_date="$(normalize_report_datetime "$(git show -s --format='%cI' "$commit_hash")")"
     commit_subject="$(git show -s --format='%s' "$commit_hash")"
     commit_user="$(git show -s --format='%an' "$commit_hash")"
     commit_email="$(git show -s --format='%ae' "$commit_hash")"
@@ -939,7 +938,7 @@ render_push_commits() {
     commit_entry+=$'\n</details>\n'
     printf '%s' "$commit_entry"
     nested_number=$((nested_number + 1))
-  done < <(git rev-list --reverse "$previous_tip..$pushed_tip")
+  done < <(git rev-list "$previous_tip..$pushed_tip")
 }
 
 render_push_summary_tables() {
@@ -975,7 +974,7 @@ render_push_summary_tables() {
       commit_comment="${commit_comment%%$'\n'*}"
     fi
     printf '| `%s` | %s | %s |\n' "$commit_hash" "$commit_date" "$commit_comment"
-  done < <(git rev-list --reverse "$previous_tip..$pushed_tip" 2>/dev/null || true)
+  done < <(git rev-list "$previous_tip..$pushed_tip" 2>/dev/null || true)
   printf '</details>\n\n<details>\n<summary>Files</summary>\n\n'
   name_status="$(git diff --name-status --find-renames "$previous_tip..$pushed_tip")"
   bt_git_collect_file_actions <<< "$name_status"
@@ -1315,10 +1314,9 @@ if ! git rev-parse --verify "$HISTORY_REF" >/dev/null 2>&1; then
 fi
 BRANCH_STATUS_TAGS="$(branch_status_tags "$TARGET_REF" "$BRANCH_SCOPE_LABEL")"
 
-log_format='%H%x1f%h%x1f%ad%x1f%an%x1f%ae%x1f%s%x1f%B%x1e'
+log_format='%H%x1f%h%x1f%cI%x1f%an%x1f%ae%x1f%s%x1f%B%x1e'
 git_log_args=(
   "$HISTORY_REF"
-  --date=format:'%Y-%m-%d %H:%M:%S'
   --pretty=format:"$log_format"
 )
 if ! history="$(git log "${git_log_args[@]}" 2>/dev/null)"; then
