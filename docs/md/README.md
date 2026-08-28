@@ -9,13 +9,11 @@ For license details, see `<repo>/LICENSE`.
 These are the base/master documents. Generated PDF and DOCX documents are in
  `<repo>/docs/pdf` and `<repo>/docs/docx/`, respectively.
 
-See `<repo>/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to the repository.
 
 ## Files
 
 **Contributor_Guide.md**: Public contributor process and standards.
-
-**Contributor_Reference.md**: Public contributor reference to scripts and concepts.
 
 **Contributor_Internal_Guide.md**: Internal repository protection, override, and
 repair policy.
@@ -23,11 +21,13 @@ repair policy.
 **Contributor_Internal_Reference.md**: Internal script and workflow reference for
 repair and admin operations.
 
+**Contributor_Reference.md**: Public contributor reference to scripts and concepts.
+
 **Documentation_Guide.md**: Index of documents and the repository layout.
 
 **Glossary_Reference.md**: Glossary of project terms and testing terms.
 
-**Guide.md**: briteTest introductory guide and quick start example.
+**Guide.md**: Introductory guide and quick start example.
 `<repo>/README.md` is a link to this file.
 
 **Release_\<version\>.md**: Release documents for release versions.

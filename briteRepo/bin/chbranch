@@ -1,0 +1,830 @@
+#!/usr/bin/env bash
+
+# chbranch - Change to the specified branch.
+#
+# See usage below for details, or run: chbranch -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  chbranch [-l | -r] [-t SEC] [-v] [BRANCH]
+  chbranch {-h | --help}
+
+Change current branch to BRANCH.
+
+Prerequisites:
+  - The current branch must not have any uncommitted changes except when
+    selecting the current local non-protected branch. Use commit or undo
+    first.
+  - If changing to a remote snapshot branch, the remote must be reachable
+    and the branch must exist on the remote.
+  - If changing to a local branch, it must exist locally.
+
+Arguments:
+  BRANCH      Name of the branch to change to. If BRANCH is omitted,
+              uses the current branch name if it can be determined; otherwise,
+              uses the most recently selected branch name.
+
+Options:
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
+  -l          Change to local BRANCH.
+  -r          Change to a fresh snapshot of remote BRANCH. The remote must be
+              reachable. This option is mutually exclusive with -l.
+  -t SEC      Timeout in seconds for accessing remote branch (default
+              10 seconds). SEC must be an integer greater than 0.
+  -v          Output verbose progress and diagnostics to stdout.
+
+If neither -l nor -r is specified, changes to local BRANCH when it exists;
+otherwise, changes to a snapshot of the remote branch if it exists and is
+connected and reachable within the specified or default timeout.
+
+Notes:
+  - The local branch is preferred by default, including for protected branches
+    main and v<M>.<m>.0.
+  - A remote snapshot is refreshed each time it is selected.
+  - For a remote snapshot, the terminal prompt shows r-<branch>.
+  - A local protected branch is refreshed each time it is selected when
+    it can be safely updated to match its remote. If it is ahead of or has
+    diverged from its remote, the remote is missing or unreachable, the remote
+    request times out, or the update fails, it is left unchanged and a warning
+    explaining why is output to stdout.
+  - Protected branches, remote snapshots, and branches with invalid names are
+    effectively read-only. chbranch prints a warning when one is selected.
+  - Undo accidental changes to a read-only branch before changing to another
+    branch.
+  - To make changes, switch to a local contributor or targeted branch
+    (create one first using mkbranch if it doesn't exist).
+
+Examples:
+  chbranch dev/my-feature-v1.0.0
+  chbranch -r dev/my-feature-v1.0.0
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout. The
+    "Changed to ..." result includes status tags defined below.
+  - Writes errors and guidance to stderr.
+
+Status tags:
+  [local]                       Selected the local branch; a remote also exists
+                                or current remote status is unavailable.
+  [local only]                  Selected a local branch with no remote branch.
+  [remote snapshot]             Selected the remote snapshot; a local also exists.
+  [current]                     This is the currently selected branch.
+  [uncommitted]                 There are changes that have not been committed.
+  [read-only]                   The selected branch must not be modified.
+  [invalid name]                Branch name violates repository naming rules.
+  [offline]                     Remote status could not be retrieved.
+  [ahead of remote by N]        Local has N commits not on the remote.
+  [behind remote by N]          Remote has N commits not on the local branch.
+  [ahead of local by N]         Remote has N commits not on the local branch.
+  [behind local by N]           Local has N commits not on the remote.
+  [diverged from remote: N/M]   Local and remote have diverged; N local-only
+                                and M remote-only commits.
+  [diverged from local: N/M]    Remote and local have diverged; N remote-only
+                                and M local-only commits.
+  [parent: NAME]                NAME is the selected branch's parent.
+  [parent unavailable: NAME]    NAME is the selected branch's parent, but that
+                                branch is not available locally or among
+                                downloaded remote branches. It may not have
+                                been fetched, or it may have been deleted.
+  [ahead of parent by N]        Selected branch has N commits not on its parent.
+  [behind parent by N]          Parent has N commits not on the selected branch.
+  [diverged from parent: N/M]   Selected branch and parent have diverged; N
+                                selected-only and M parent-only commits.
+
+Exit codes:
+  0    Success (changed to or refreshed the specified branch, reselected the
+       current writable local branch, or -h/--help specified).
+  1    Invalid option or argument.
+  2    Current branch has uncommitted changes; commit/undo and then rerun.
+  3    Branch not found (when neither -l nor -r specified).
+  4    Local branch not found when -l specified.
+  5    Remote branch not found when -r specified.
+  6    Remote is not connected/reachable.
+  7    Timeout waiting for remote to be reachable.
+  8    Running outside a Git repository.
+  9    Required command is not available (git or timeout).
+  200  Git failed to change branches.
+EOF
+}
+
+# High-Level Flow:
+# 1. Honor help before validating the environment.
+# 2. Verify required commands and Git repository context.
+# 3. Parse options and resolve BRANCH.
+#    - If BRANCH is omitted, resolve the current local branch or remote
+#      snapshot; if state is ambiguous, use the last successfully
+#      selected branch name.
+# 4. Validate branch name and policy constraints.
+# 5. Determine desired checkout mode.
+#    - Default: local when BRANCH exists locally; otherwise remote.
+#    - Explicit: -l forces local mode, -r forces remote mode.
+# 6. Apply branch policy.
+#    - Protected local branches remain attached but effectively read-only.
+#    - Remote and policy-invalid local selections are detached/read-only.
+# 7. Require a clean tree unless reselecting the current writable local branch.
+# 8. Select the requested target.
+#    - Local mode: select the local ref, then refresh remote status.
+#    - Protected local mode: safely fast-forward when possible.
+#    - Remote mode: require and refresh origin/BRANCH, then select its snapshot.
+# 9. Persist the branch name only after a successful selection.
+# 10. Output the selected branch with current worktree, policy, connectivity,
+#     local/remote history, and parent history status tags.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck disable=SC1091
+# shellcheck source=../helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
+
+readonly EXIT_ARG_ERROR=1
+readonly EXIT_DIRTY_WORKTREE=2
+readonly EXIT_BRANCH_NOT_FOUND=3
+readonly EXIT_LOCAL_NOT_FOUND=4
+readonly EXIT_REMOTE_NOT_FOUND=5
+readonly EXIT_REMOTE_UNREACHABLE=6
+readonly EXIT_REMOTE_TIMEOUT=7
+readonly EXIT_NOT_GIT_REPO=8
+readonly EXIT_REQUIRED_COMMAND_MISSING=9
+readonly EXIT_CHANGE_FAILED=200
+readonly REMOTE_REF_AVAILABLE=0
+readonly REMOTE_REF_MISSING=1
+readonly REMOTE_REF_OFFLINE=2
+readonly REMOTE_REF_TIMEOUT=3
+
+VERBOSE=false
+REMOTE_TIMEOUT_SECONDS=10
+REMOTE_SOURCE_BRANCH=""
+# Result of the latest remote query for the branch being selected. Status-only
+# local queries remain non-fatal and map network, authentication, and timeout
+# failures to "offline".
+SELECTED_REMOTE_STATE="unknown"
+readonly LAST_BRANCH_KEY="chbranch.lastBranch"
+
+arg_error() {
+  local message="$1"
+  usage
+  echo "$message" >&2
+  exit "$EXIT_ARG_ERROR"
+}
+
+verbose_info() {
+  local message="$1"
+  if [[ "$VERBOSE" == true ]]; then
+    bt_info "$message"
+  fi
+}
+
+show_help_if_requested() {
+  local arg
+
+  for arg in "$@"; do
+    if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+      usage
+      exit 0
+    fi
+  done
+}
+
+ensure_required_commands() {
+  local command_name
+
+  for command_name in git timeout; do
+    if ! command -v "$command_name" >/dev/null 2>&1; then
+      bt_error_exit "$EXIT_REQUIRED_COMMAND_MISSING" \
+        "Required command '$command_name' is not available"
+    fi
+  done
+}
+
+emit_success_changed() {
+  local mode="$1"
+  local branch="$2"
+  local refreshed="${3:-false}"
+  local status_output=""
+  local has_uncommitted=false
+  local local_ref="refs/heads/$branch"
+  local tracking_local_ref="$local_ref"
+  local remote_ref="refs/remotes/origin/$branch"
+  local comparison_branch="$branch"
+  local display_branch="$branch"
+  local selected_ref="$local_ref"
+  local relation_tag=""
+  local parent_tag=""
+  local mode_tag="$mode"
+  local -a tags=()
+
+  if [[ "$mode" == "remote" ]]; then
+    mode_tag="remote snapshot"
+    comparison_branch="${REMOTE_SOURCE_BRANCH:-$branch}"
+    display_branch="$comparison_branch"
+    remote_ref="refs/remotes/origin/$comparison_branch"
+    tracking_local_ref="refs/heads/$comparison_branch"
+  elif [[ "$SELECTED_REMOTE_STATE" == "missing" ]]; then
+    mode_tag="local only"
+  fi
+  tags+=("[current]" "[$mode_tag]")
+  [[ "$refreshed" == true ]] && tags+=("[refreshed]")
+
+  if [[ "$mode" == "local" ]]; then
+    status_output="$(git status --porcelain 2>/dev/null || true)"
+    if [[ -n "$status_output" ]]; then
+      has_uncommitted=true
+      tags+=("[uncommitted]")
+    fi
+  fi
+  if [[ "$mode" == "remote" ]] || bt_is_read_only_branch "$branch"; then
+    tags+=("[read-only]")
+  fi
+  if ! bt_is_valid_branch_name "$comparison_branch"; then
+    tags+=("[invalid name]")
+  fi
+
+  if [[ "$SELECTED_REMOTE_STATE" == "offline" ]]; then
+    tags+=("[offline]")
+  elif git rev-parse --verify "$tracking_local_ref" >/dev/null 2>&1 && \
+    git rev-parse --verify "$remote_ref" >/dev/null 2>&1; then
+    relation_tag="$(bt_git_tracking_relation_tag \
+      "$mode" "$tracking_local_ref" "$remote_ref" "$has_uncommitted")"
+    [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
+  fi
+
+  [[ "$mode" == "remote" ]] && selected_ref="$remote_ref"
+  parent_tag="$(bt_git_parent_relation_tags \
+    "$mode" "$comparison_branch" "$selected_ref")"
+  [[ -z "$parent_tag" ]] || tags+=("$parent_tag")
+  echo "$display_branch ${tags[*]}"
+
+  if [[ "$mode" == "remote" ]] || bt_is_read_only_branch "$branch"; then
+    echo "Warning: do not modify, rename, or delete files in this branch."
+    echo "If you do, undo the changes before switching."
+  fi
+}
+
+ensure_git_repository() {
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_NOT_GIT_REPO" \
+      "This command must be run from inside a git repository"
+  fi
+}
+
+branch_exists_local() {
+  local branch="$1"
+  git show-ref --verify --quiet "refs/heads/$branch"
+}
+
+is_remote_copy_branch() {
+  local branch="$1"
+
+  [[ "$branch" == r-* ]] || return 1
+  git show-ref --verify --quiet "refs/remotes/origin/${branch#r-}"
+}
+
+current_local_branch() {
+  git symbolic-ref -q --short HEAD 2>/dev/null || true
+}
+
+remember_last_branch() {
+  local branch="$1"
+
+  [[ -n "$branch" ]] || return 0
+  git config --local "$LAST_BRANCH_KEY" "$branch" >/dev/null 2>&1 || true
+}
+
+last_branch_or_empty() {
+  local branch=""
+
+  branch="$(git config --local --get "$LAST_BRANCH_KEY" 2>/dev/null || true)"
+  if [[ -n "$branch" ]] && \
+    git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+    echo "$branch"
+    return 0
+  fi
+
+  echo ""
+}
+
+current_branch_name_or_empty() {
+  local local_branch
+  local remote_branches
+  local first_remote
+  local remote_count
+  local remembered_branch
+
+  local_branch="$(current_local_branch)"
+  if [[ -n "$local_branch" ]]; then
+    if is_remote_copy_branch "$local_branch"; then
+      echo "${local_branch#r-}"
+      return 0
+    fi
+    echo "$local_branch"
+    return 0
+  fi
+
+  remote_branches="$(git for-each-ref --format='%(refname:short)' \
+    --points-at HEAD refs/remotes/origin 2>/dev/null | \
+    grep -v '^origin/HEAD$' || true)"
+  remote_count="$(printf '%s\n' "$remote_branches" | sed '/^$/d' | \
+    wc -l | tr -d ' ')"
+  remembered_branch="$(last_branch_or_empty)"
+
+  if [[ "$remote_count" == "1" ]]; then
+    first_remote="$(printf '%s\n' "$remote_branches" | sed '/^$/d' | head -n 1)"
+    first_remote="${first_remote#origin/}"
+    echo "$first_remote"
+    return 0
+  fi
+
+  # If HEAD points at multiple remote branches, prefer the remembered branch
+  # when it is still one of the candidates.
+  if [[ "$remote_count" -gt 1 && -n "$remembered_branch" ]] &&
+    printf '%s\n' "$remote_branches" | \
+    grep -Fxq "origin/$remembered_branch"; then
+    echo "$remembered_branch"
+    return 0
+  fi
+
+  # If HEAD no longer maps to a unique remote ref, fall back to the remembered
+  # branch name from the last successful switch.
+  if [[ -n "$remembered_branch" ]]; then
+    echo "$remembered_branch"
+    return 0
+  fi
+
+  echo ""
+}
+
+# fetch_remote_branch_ref
+# Return codes:
+#   0 = remote branch exists and local remote-tracking ref is available
+#   1 = remote branch not found
+#   2 = remote unreachable or remote query/fetch failed
+#   3 = timeout while waiting for remote response
+fetch_remote_branch_ref() {
+  local branch="$1"
+  local ls_output=""
+  local rc=0
+
+  if ls_output="$(bt_run_remote_command git ls-remote --heads origin \
+    "$branch" 2>/dev/null)"; then
+    rc=0
+  else
+    rc=$?
+  fi
+
+  if [[ "$rc" -eq 124 ]]; then
+    return "$REMOTE_REF_TIMEOUT"
+  fi
+
+  if [[ "$rc" -ne 0 ]]; then
+    return "$REMOTE_REF_OFFLINE"
+  fi
+
+  if [[ -z "$ls_output" ]]; then
+    return "$REMOTE_REF_MISSING"
+  fi
+
+  verbose_info "Found origin/$branch. Fetching branch metadata..."
+  if bt_run_remote_command git fetch origin \
+    "+refs/heads/$branch:refs/remotes/origin/$branch" >/dev/null 2>&1; then
+    rc=0
+  else
+    rc=$?
+  fi
+
+  if [[ "$rc" -eq 124 ]]; then
+    return "$REMOTE_REF_TIMEOUT"
+  fi
+
+  if [[ "$rc" -ne 0 ]]; then
+    return "$REMOTE_REF_OFFLINE"
+  fi
+
+  return 0
+}
+
+refresh_remote_branch_ref() {
+  local branch="$1"
+  local history_rc=0
+
+  fetch_remote_branch_ref "$branch" || return $?
+
+  # Remote workflow history is independent of local workflow history. A
+  # missing notes ref is valid when no remote-modifying command has run yet.
+  bt_run_remote_command git fetch origin \
+    "+refs/notes/briteRepo-remote-workflow:refs/notes/briteRepo-remote-workflow" \
+    >/dev/null 2>&1 || true
+
+  if bt_propagate_repository_history; then
+    history_rc=0
+  else
+    history_rc=$?
+  fi
+  case "$history_rc" in
+    0) ;;
+    1) verbose_info "Updated repository history from remote" ;;
+    *) ;;
+  esac
+
+  return 0
+}
+
+refresh_remote_status_ref() {
+  local branch="$1"
+  local rc=0
+
+  if fetch_remote_branch_ref "$branch"; then
+    rc=0
+  else
+    rc=$?
+  fi
+  case "$rc" in
+    "$REMOTE_REF_AVAILABLE") SELECTED_REMOTE_STATE="reachable" ;;
+    "$REMOTE_REF_MISSING") SELECTED_REMOTE_STATE="missing" ;;
+    *) SELECTED_REMOTE_STATE="offline" ;;
+  esac
+}
+
+ensure_remote_ref_available() {
+  local branch="$1"
+  local msg=""
+  local rc=0
+
+  if refresh_remote_branch_ref "$branch"; then
+    rc=0
+  else
+    rc=$?
+  fi
+  case "$rc" in
+    "$REMOTE_REF_AVAILABLE")
+      SELECTED_REMOTE_STATE="reachable"
+      return 0
+      ;;
+    "$REMOTE_REF_MISSING")
+      SELECTED_REMOTE_STATE="missing"
+      return 1
+      ;;
+    "$REMOTE_REF_TIMEOUT")
+      SELECTED_REMOTE_STATE="offline"
+      bt_error_exit "$EXIT_REMOTE_TIMEOUT" \
+        "Timeout waiting for remote branch '$branch' to be reachable"
+      ;;
+    "$REMOTE_REF_OFFLINE")
+      SELECTED_REMOTE_STATE="offline"
+      msg="Remote branch is not connected/reachable while checking '$branch' "
+      msg+="(offline or auth issue)."
+      bt_error_exit "$EXIT_REMOTE_UNREACHABLE" \
+        "$msg"
+      ;;
+  esac
+}
+
+is_current_remote_branch() {
+  local branch="$1"
+  local local_branch
+  local head_sha
+  local remote_sha
+
+  local_branch="$(current_local_branch)"
+  if [[ -n "$local_branch" ]]; then
+    return 1
+  fi
+
+  head_sha="$(git rev-parse --verify HEAD 2>/dev/null || true)"
+  remote_sha="$(git rev-parse --verify "refs/remotes/origin/$branch" \
+    2>/dev/null || true)"
+
+  [[ -n "$head_sha" && -n "$remote_sha" && "$head_sha" == "$remote_sha" ]]
+}
+
+switch_local() {
+  local branch="$1"
+
+  verbose_info "Switching to local branch '$branch'"
+  if ! git switch "$branch" >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_CHANGE_FAILED" \
+      "Failed to switch to local branch '$branch'"
+  fi
+  remember_last_branch "$branch"
+}
+
+switch_remote_copy() {
+  local branch="$1"
+  local local_branch="r-$branch"
+
+  REMOTE_SOURCE_BRANCH="$branch"
+
+  verbose_info "Switching to local remote copy '$local_branch'"
+  if branch_exists_local "$local_branch"; then
+    if ! git switch -C "$local_branch" "origin/$branch" >/dev/null 2>&1; then
+      bt_error_exit "$EXIT_CHANGE_FAILED" \
+        "Failed to refresh local remote copy '$local_branch'"
+    fi
+  elif ! git switch -c "$local_branch" "origin/$branch" >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_CHANGE_FAILED" \
+      "Failed to create local remote copy '$local_branch'"
+  fi
+  remember_last_branch "$branch"
+}
+
+switch_local_snapshot() {
+  local branch="$1"
+
+  verbose_info "Switching to read-only local branch '$branch'"
+  if ! git switch --detach "$branch" >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_CHANGE_FAILED" \
+      "Failed to switch to read-only local branch '$branch'"
+  fi
+  remember_last_branch "$branch"
+}
+
+remove_previous_remote_copy() {
+  local previous_branch="$1"
+  local selected_branch="$2"
+
+  [[ "$previous_branch" == r-* ]] || return 0
+  [[ "$previous_branch" != "$selected_branch" ]] || return 0
+  git branch -D "$previous_branch" >/dev/null 2>&1 || true
+}
+
+refresh_selected_local_protected_branch() {
+  local branch="$1"
+  local local_tip=""
+  local remote_tip=""
+  local refresh_rc=0
+  local warning_prefix="Local protected branch '$branch' was not refreshed because "
+
+  if refresh_remote_branch_ref "$branch"; then
+    refresh_rc=0
+  else
+    refresh_rc=$?
+  fi
+  case "$refresh_rc" in
+    "$REMOTE_REF_AVAILABLE") SELECTED_REMOTE_STATE="reachable" ;;
+    "$REMOTE_REF_MISSING")
+      SELECTED_REMOTE_STATE="missing"
+      bt_warn "${warning_prefix}origin/$branch does not exist."
+      return 0
+      ;;
+    "$REMOTE_REF_TIMEOUT")
+      SELECTED_REMOTE_STATE="offline"
+      bt_warn "${warning_prefix}the remote request timed out."
+      return 0
+      ;;
+    *)
+      SELECTED_REMOTE_STATE="offline"
+      bt_warn "${warning_prefix}the remote is not reachable."
+      return 0
+      ;;
+  esac
+
+  local_tip="$(git rev-parse --verify "refs/heads/$branch" 2>/dev/null || true)"
+  remote_tip="$(git rev-parse --verify \
+    "refs/remotes/origin/$branch" 2>/dev/null || true)"
+  if [[ -z "$local_tip" || -z "$remote_tip" ]]; then
+    bt_warn "${warning_prefix}its local or remote tip could not be resolved."
+    return 0
+  fi
+  if [[ "$local_tip" == "$remote_tip" ]]; then
+    verbose_info "Local protected branch '$branch' already matches origin/$branch."
+    return 0
+  fi
+  if git merge-base --is-ancestor "$local_tip" "$remote_tip" \
+    >/dev/null 2>&1; then
+    if git merge --ff-only --no-edit "origin/$branch" >/dev/null 2>&1; then
+      verbose_info "Refreshed local protected branch '$branch' to match origin/$branch."
+    else
+      bt_warn "${warning_prefix}the fast-forward update failed."
+    fi
+    return 0
+  fi
+  if git merge-base --is-ancestor "$remote_tip" "$local_tip" \
+    >/dev/null 2>&1; then
+    bt_warn "${warning_prefix}it is ahead of origin/$branch."
+    return 0
+  fi
+
+  bt_warn "${warning_prefix}it has diverged from origin/$branch."
+}
+
+finish_local_selection() {
+  local branch="$1"
+  local protected_branch="$2"
+
+  # Protected local branches may move only by safe fast-forward. Other local
+  # selections refresh the tracking ref solely to report current status.
+  if [[ "$protected_branch" == true ]]; then
+    refresh_selected_local_protected_branch "$branch"
+  else
+    refresh_remote_status_ref "$branch"
+  fi
+  emit_success_changed "local" "$branch"
+}
+
+parse_args() {
+  FORCE_REMOTE=false
+  FORCE_LOCAL=false
+  BRANCH_ARG=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -l)
+        FORCE_LOCAL=true
+        ;;
+      -r)
+        FORCE_REMOTE=true
+        ;;
+      -t)
+        shift
+        if [[ -z "${1:-}" ]]; then
+          arg_error "Option -t requires SEC"
+        fi
+        if [[ ! "$1" =~ ^[1-9][0-9]*$ ]]; then
+          arg_error "SEC for -t must be an integer greater than 0"
+        fi
+        REMOTE_TIMEOUT_SECONDS="$1"
+        ;;
+      -v)
+        VERBOSE=true
+        ;;
+      --*)
+        arg_error "Unknown option: $1"
+        ;;
+      -*)
+        arg_error "Unknown option: $1"
+        ;;
+      *)
+        if [[ -n "$BRANCH_ARG" ]]; then
+          arg_error "Exactly one branch name is required"
+        fi
+        BRANCH_ARG="$1"
+        ;;
+    esac
+    shift
+  done
+
+  if [[ "$FORCE_LOCAL" == true && "$FORCE_REMOTE" == true ]]; then
+    arg_error "Options -l and -r are mutually exclusive"
+  fi
+
+}
+
+resolve_branch_argument() {
+  if [[ -n "$BRANCH_ARG" ]]; then
+    return 0
+  fi
+
+  BRANCH_ARG="$(current_branch_name_or_empty)"
+  if [[ -z "$BRANCH_ARG" ]]; then
+    arg_error "BRANCH is required when current branch name cannot be resolved"
+  fi
+}
+
+validate_git_branch_name() {
+  local branch="$1"
+
+  if ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+    arg_error "Invalid branch name: '$branch'"
+  fi
+}
+
+ensure_no_uncommitted_changes() {
+  local curr_branch="$1"
+  local msg=""
+
+  if ! bt_is_worktree_dirty; then
+    return 0
+  fi
+
+  if [[ -n "$curr_branch" ]]; then
+    msg="Current branch '$curr_branch' has uncommitted changes. Commit or "
+    msg+="undo changes first before switching."
+    bt_error_exit "$EXIT_DIRTY_WORKTREE" \
+      "$msg"
+  fi
+
+  msg="There are changes that have not been committed. Commit or undo them "
+  msg+="before switching."
+  bt_error_exit "$EXIT_DIRTY_WORKTREE" \
+    "$msg"
+}
+
+main() {
+  local has_local=false
+  local protected_branch=false
+  local detach_local=false
+  local desired_mode="local"
+  local curr_branch
+  local previous_remote_copy=""
+  local refreshing_remote_copy=false
+  local msg=""
+
+  show_help_if_requested "$@"
+  ensure_required_commands
+  parse_args "$@"
+  ensure_git_repository
+  resolve_branch_argument
+  export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
+
+  TARGET_BRANCH="$BRANCH_ARG"
+  validate_git_branch_name "$TARGET_BRANCH"
+
+  if bt_is_read_only_branch "$TARGET_BRANCH" && \
+    ! is_remote_copy_branch "$TARGET_BRANCH"; then
+    detach_local=true
+  fi
+
+  if bt_is_protected_branch "$TARGET_BRANCH"; then
+    protected_branch=true
+  fi
+
+  if branch_exists_local "$TARGET_BRANCH"; then
+    has_local=true
+  fi
+
+  if [[ "$FORCE_LOCAL" == true ]]; then
+    desired_mode="local"
+  elif [[ "$FORCE_REMOTE" == true || "$has_local" == false ]]; then
+    desired_mode="remote"
+  fi
+
+  # Protected branches are read-only only in remote mode; local mode should
+  # attach to the local branch so downstream scripts treat it as checked out.
+  if [[ "$protected_branch" == true && "$desired_mode" == "local" ]]; then
+    detach_local=false
+  fi
+  if [[ "$FORCE_LOCAL" == true && "$has_local" == false ]]; then
+    bt_error_exit "$EXIT_LOCAL_NOT_FOUND" \
+      "Local branch '$TARGET_BRANCH' does not exist"
+  fi
+
+  curr_branch="$(current_local_branch)"
+  if is_remote_copy_branch "$curr_branch"; then
+    previous_remote_copy="$curr_branch"
+    if [[ "$FORCE_REMOTE" == true && \
+      "$TARGET_BRANCH" == "${curr_branch#r-}" ]]; then
+      refreshing_remote_copy=true
+    fi
+  fi
+  if [[ "$desired_mode" == "local" && "$detach_local" == false && \
+    "$curr_branch" == "$TARGET_BRANCH" ]]; then
+    if [[ "$protected_branch" == true ]] || \
+      is_remote_copy_branch "$TARGET_BRANCH"; then
+      ensure_no_uncommitted_changes "$curr_branch"
+    fi
+    remember_last_branch "$TARGET_BRANCH"
+    finish_local_selection "$TARGET_BRANCH" "$protected_branch"
+    exit 0
+  fi
+
+  # Remote selections always refresh their snapshot, so only selecting the
+  # current writable local branch can bypass the clean-worktree prerequisite.
+  ensure_no_uncommitted_changes "$curr_branch"
+
+  if [[ "$desired_mode" == "remote" ]]; then
+    if ! ensure_remote_ref_available "$TARGET_BRANCH"; then
+      if [[ "$FORCE_REMOTE" == true ]]; then
+        bt_error_exit "$EXIT_REMOTE_NOT_FOUND" \
+          "Remote branch 'origin/$TARGET_BRANCH' does not exist"
+      fi
+      msg="Local branch '$TARGET_BRANCH' does not exist and was not found on "
+      msg+="origin"
+      bt_error_exit "$EXIT_BRANCH_NOT_FOUND" \
+        "$msg"
+    fi
+  fi
+
+  # Remote mode selects a named local copy. Local mode detaches only
+  # for names outside repository branch policy; protected locals stay attached
+  # so downstream commands can identify the checked-out branch.
+  if [[ "$desired_mode" == "remote" ]]; then
+    switch_remote_copy "$TARGET_BRANCH"
+    emit_success_changed "remote" "r-$TARGET_BRANCH" \
+      "$refreshing_remote_copy"
+  elif [[ "$detach_local" == true ]]; then
+    switch_local_snapshot "$TARGET_BRANCH"
+    finish_local_selection "$TARGET_BRANCH" false
+  else
+    switch_local "$TARGET_BRANCH"
+    finish_local_selection "$TARGET_BRANCH" "$protected_branch"
+  fi
+
+  remove_previous_remote_copy "$previous_remote_copy" \
+    "$(current_local_branch)"
+}
+
+main "$@"

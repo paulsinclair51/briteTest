@@ -2,10 +2,9 @@
 
 #### Version: v1.0.0
 
-This document covers the internal contributor workflow, repository protection model,
-role enforcement, repair policy, and operational details that are not intended for
-routine contributor use. It complements the public Contributor Guide and the public
-Contributor Reference.
+This document explains protected repository policy, repair decisions, and
+exceptional administrative procedures for maintainers, approvers, and repository
+owners. It is not part of the routine contributor workflow.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -40,9 +39,8 @@ SOFTWARE.
 
 ## Preface
 
-This document is intended for contributors, reviewers, approvers, and repository
-owners who need the policy details for internal enforcement, repair workflows,
-and GitHub-side protection model.
+This document is intended for maintainers, approvers, and repository owners who
+manage policy enforcement, repair workflows, or GitHub-side protections.
 
 For the public contribution workflow, see the [Contributor_Guide.md](./Contributor_Guide.md).
 For script-level details, see the [Contributor_Reference.md](./Contributor_Reference.md).
@@ -70,6 +68,7 @@ For the internal implementation reference, see the [Contributor_Internal_Referen
 4. [Remote Repair Procedure](#4-remote-repair-procedure)<br>
 5. [Override Semantics](#5-override-semantics)<br>
 6. [Internal Operational Notes](#6-internal-operational-notes)<br>
+7. [GitHub Validation Architecture](#7-github-validation-architecture)<br>
 </details>
 
 <details>
@@ -92,6 +91,7 @@ level of the model; this document captures the internal enforcement model.
 
 These rules are intended to preserve auditability and to keep repository mutations
 bound to known project workflows rather than direct branch editing.
+</details>
 
 <details>
 <summary><strong>2. Repair Decision Tree</strong></summary>
@@ -114,13 +114,14 @@ known:
 
 This order keeps the repair scope narrow first and only expands to broader or
 remote recovery steps when the local repository is clean and the issue remains.
+</details>
 
 <details>
 <summary><strong>3. Protected Branch and Ruleset Model</strong></summary>
 
 ## 3. Protected Branch and Ruleset Model
 
-The GitHub ruleset configuration is managed by `scripts/bin/setup_rulesets`.
+The GitHub ruleset configuration is managed by `briteRepo/bin/setup_rulesets`.
 Protected branches are enforced at the server level for:
 
 - `main`
@@ -135,6 +136,15 @@ The ruleset model is intentionally conservative:
 
 This means that a contributor or owner cannot rely on local config to bypass
 repository protection. Only an actual GitHub-side admin authority can do that.
+
+`briteRepo/bin/mkrepo` commits and pushes the canonical layout directly to the
+default branch, so it applies only to a repository whose default branch is not
+yet protected, such as one it has just created. It also installs the
+`.github/workflows/` validation workflows, which are repository content rather
+than clone configuration. Run `setup_rulesets` after the layout is in place,
+either separately or with `mkrepo --rulesets`; once the rulesets are active,
+further layout changes follow the normal branch and pull request workflow.
+</details>
 
 <details>
 <summary><strong>4. Remote Repair Procedure</strong></summary>
@@ -160,6 +170,7 @@ override.
 This process must be explicit, logged, and temporary. Routine direct edits to
 protected or script-managed branches remain blocked unless there is an explicit
 server-side exception approved by repository administrators.
+</details>
 
 <details>
 <summary><strong>5. Override Semantics</strong></summary>
@@ -170,11 +181,15 @@ The `override` script is intentionally narrow in scope:
 
 - `override` without `-r` is local clone-only recovery for exceptional local
   work in the current checkout.
-- `override -r` is a remote repair authorization marker for an owner-admin remote
-  repair workflow.
+- `override -r` records a clone-local authorization marker for an owner-admin
+  remote repair workflow; it does not create server-side state.
 - `override` does not bypass GitHub rulesets, server-side branch protection, or
   the repository scripts themselves.
 - The override must be turned off after the repair window ends.
+
+Local unrestricted mode and remote repair authorization are independent Git
+configuration values in the clone. `override -r on` does not enable local
+unrestricted mode. `override off` clears both values.
 
 Prerequisites for `override`:
 
@@ -185,6 +200,7 @@ Prerequisites for `override`:
 - The remote must be reachable within the configured timeout for remote repair.
 - For remote repair mode, the caller must also have GitHub repository admin or
   organization admin authority.
+</details>
 
 <details>
 <summary><strong>6. Internal Operational Notes</strong></summary>
@@ -203,4 +219,30 @@ Prerequisites for `override`:
 Keep this document aligned with the repository policy whenever workflows, rulesets,
 or protected branch policy change.
 </details>
+
+<details>
+<summary><strong>7. GitHub Validation Architecture</strong></summary>
+
+## 7. GitHub Validation Architecture
+
+GitHub validation has two operational layers:
+
+1. Pull-request workflows reject invalid content, commit metadata, signatures,
+  protected-file changes, and other policy violations before publication.
+2. Protected-branch workflows verify and record pushes, tags, and other protected
+  repository events after publication.
+
+When changing validation behavior:
+
+1. Put reusable checks in the appropriate helper rather than duplicating shell
+  logic across workflow files.
+2. Add or update the workflow under `.github/workflows/`.
+3. Test the workflow on a contributor or targeted branch.
+4. Update required checks and rulesets when the workflow name or protection role
+  changes.
+5. Update the Internal Reference when helper contracts, environment variables, or
+  hook behavior change.
+
+For implementation names and contracts, see
+[Internal Helpers and Hooks](./Contributor_Internal_Reference.md#5-internal-helpers-and-hooks).
 </details>

@@ -1,6 +1,6 @@
 {
   "markdownlint.configFile": "config/markdownlint.json",
   "files.associations": {
-    "scripts/bin/rebrand": "shellscript"
+    "briteRepo/bin/rebrand": "shellscript"
   }
 }

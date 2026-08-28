@@ -25,4 +25,4 @@ jobs:
       - name: Compare live rulesets with policy
         shell: bash
         run: |
-          bash scripts/bin/setup_rulesets --check "${GITHUB_REPOSITORY}"
+          bash briteRepo/bin/setup_rulesets --check "${GITHUB_REPOSITORY}"

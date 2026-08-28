@@ -1,7 +1,7 @@
 # brand_history.md
 
 This file defines the current or a change to brand name, brand
-initials, and tagline for use by scripts/bin/updatebrand and
+initials, and tagline for use by briteRepo/bin/updatebrand and
 provides a history of changes.
  
 Copyright (c) 2026 Paul Sinclair  
@@ -23,7 +23,7 @@ brand name, brand initials, and tagline.
 
 To change the brand name or tagline,
 - Add a new entry with no `Completed` date.
-- Run `<repo>/scripts/bin/updatebrand`
+- Run `<repo>/briteRepo/bin/updatebrand`
 
 updatebrand does the following if the first entry does not have `Completed`
 date:

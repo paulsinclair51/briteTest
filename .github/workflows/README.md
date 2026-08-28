@@ -6,7 +6,7 @@ Copyright (c) 2026 Paul Sinclair
 SPDX-License-Identifier: MIT  
 For license details, see `<repo>/LICENSE`.
 
-See `<repo>/README.md` for an introduction to briteTest.
+See `<repo>/README.md` for an introduction to the repository.
 
 ## Files
 
@@ -21,3 +21,7 @@ See `<repo>/README.md` for an introduction to briteTest.
 ## Subdirectories
 
 None.
+
+lsbranch dirty smoke test
+
+lsbranch dirty smoke test

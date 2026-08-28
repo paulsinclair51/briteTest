@@ -9,7 +9,7 @@ name: ShellCheck
 on:
   pull_request:
     paths:
-      - 'scripts/**'
+      - 'briteRepo/**'
       - '.github/workflows/validate-shellcheck.yml'
   push:
     branches:
@@ -17,7 +17,7 @@ on:
       - dev/**
       - fix/**
     paths:
-      - 'scripts/**'
+      - 'briteRepo/**'
       - '.github/workflows/validate-shellcheck.yml'
   workflow_dispatch:
 
@@ -44,14 +44,14 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t files < <(
-            git ls-files 'scripts/**' | while IFS= read -r f; do
+            git ls-files 'briteRepo/**' | while IFS= read -r f; do
               [[ -f "$f" ]] || continue
               head -n1 "$f" | grep -Eq '^#!.*(ba)?sh' && echo "$f"
             done
           )
 
           if [[ ${#files[@]} -eq 0 ]]; then
-            echo "No shell scripts found under scripts/."
+            echo "No shell scripts found under briteRepo/."
             exit 0
           fi
 
@@ -63,11 +63,11 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t files < shellcheck-files.txt
-          shellcheck -x -P scripts --severity=error "${files[@]}"
+          shellcheck -x -P briteRepo --severity=error "${files[@]}"
 
       - name: Run ShellCheck (warning report)
         shell: bash
         run: |
           set -euo pipefail
           mapfile -t files < shellcheck-files.txt
-          shellcheck -x -P scripts --severity=warning "${files[@]}" || true
+          shellcheck -x -P briteRepo --severity=warning "${files[@]}" || true

@@ -27,7 +27,7 @@ Historical consolidation tracking has been removed from this plan.
 ## Required Next Actions
 
 1. Complete documentation/style remediation from latest validation output.
-   - Latest run: `scripts/bin/ckstyle`
+   - Latest run: `briteRepo/bin/ckstyle`
    - Latest report: `reports/guidelines/ckstyle-20260724-030122.md`
 
 2. Re-run style validation until clean.
@@ -88,7 +88,7 @@ preserving current behavior and exit-code semantics.
 
 - Role checks are enforced in active scripts (for example via `ckrole.sh`
   and script-local checks).
-- Shared helper framework exists in `scripts/helpers/rbac.sh` but is not
+- Shared helper framework exists in `briteRepo/helpers/rbac.sh` but is not
   consistently used as the single enforcement path.
 
 ### Migration Principles

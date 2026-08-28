@@ -1,0 +1,480 @@
+#!/usr/bin/env bash
+
+# release - Create and publish a release.
+#
+# See usage below for details, or run: release -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  release [OPTIONS] VERSION
+  release -e
+  release {-h | --help}
+
+Create and publish a release with annotated git tag and GitHub release.
+
+Before releasing:
+  - Verifies current branch is protected (base is remote-only main)
+  - Checks working directory is clean
+  - Verifies all status checks and CI/CD pass
+  - Creates annotated git tag
+  - Pushes tag to remote
+  - Creates GitHub release
+  - Records release workflow metadata for branch reports
+
+Features:
+  - Semantic versioning support (v1.2.3)
+  - Annotated git tags
+  - GitHub release creation
+  - Release workflow metadata for branch reports
+  - Pre-release validation
+
+Arguments:
+  VERSION       The version for the release (e.g., v1.2.3).
+                Options may precede or follow the VERSION argument.
+Options:
+  -d            Dry-run. Validate the release without creating a release.
+  -e            Generate an error report without creating a release.
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
+  -t SEC        Remote operation timeout in seconds (default: 10).
+                SEC must be an integer greater than 0.
+  -v            Output progress and diagnostics to stdout.
+
+Examples:
+  # Create release v1.0.0
+  release v1.0.0
+
+  # Create release v2.1.3 with verbose output
+  release v2.1.3 -v
+
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - No report is written when the requested release tag already exists.
+  - Dry-run and error-run reports are written to
+    <repo>/reports/release-d-<datetime>.md and release-e-<datetime>.md.
+  - Successful releases do not write an immediate report.
+
+Exit codes:
+  0   Success
+  1   Argument or validation error
+  2   Git operation failed
+  3   Working directory not clean
+  4   Not on protected branch
+  5   Status checks not passing
+  6   GitHub API error
+  7   Tag already exists
+  8   Release skipped because -e was specified
+  201 Report creation or locking failed
+EOF
+}
+
+# High-Level Flow:
+# - Orchestrates release workflow steps including version/tag validation and
+#   publication actions.
+# - Creates release commit/tag artifacts according to repository conventions.
+# - Reports release state and failures for corrective action.
+
+# shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/github_helpers.sh
+source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
+# shellcheck source=helpers/report_helpers.sh
+source "$SCRIPT_DIR/../helpers/report_helpers.sh"
+
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_FOUND=2
+readonly EXIT_OPERATION_FAILED=3
+readonly EXIT_CONFIG_ERROR=4
+readonly EXIT_INTERNAL_ERROR=100
+readonly EXIT_WORKFLOW_SKIPPED=8
+readonly EXIT_REPORT_FAILED=201
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "$message. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
+# Default options
+VERBOSE=false
+DRY_RUN=false
+ERROR_RUN=false
+VERSION=""
+REMOTE_TIMEOUT_SECONDS=10
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPORTS_DIR="$REPO_ROOT/reports"
+REPORT_FILE=""
+REPORT_LOCK_FD=""
+ORIGINAL_ARGS=("$@")
+
+generate_release_report() {
+  local mode="$1"
+  local status="$2"
+  local prefix="release-d"
+  local title="Release Dry-Run Report"
+  local command_text=""
+
+  if [[ "$mode" == "error" ]]; then
+    prefix="release-e"
+    title="Release Error Report"
+  fi
+  if ! bt_report_acquire_lock "$REPO_ROOT" "release" 10 REPORT_LOCK_FD; then
+    bt_error_exit "$EXIT_REPORT_FAILED" \
+      "Timed out waiting for the release report lock"
+  fi
+  bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_FAILED"
+  REPORT_FILE="$(bt_report_transient_path \
+    "$REPORTS_DIR" "$prefix" "$(bt_datetime_filename_now)")"
+  bt_report_cleanup_transient_reports \
+    "$REPORTS_DIR" "${CURRENT_BRANCH:-unknown}" "$REPORT_FILE" \
+    "release-d-*.md" "release-e-*.md"
+  command_text="$(bt_format_command_line "release" "${ORIGINAL_ARGS[@]}")"
+  bt_report_write_header "$REPORT_FILE" "$title" \
+    "$(bt_datetime_display_now)" "$command_text"
+  cat >> "$REPORT_FILE" <<EOF
+**Branch:** \`${CURRENT_BRANCH:-unknown}\`
+
+**Version:** \`${VERSION:-unknown}\`
+
+**Mode:** ${mode}
+
+**Status:** ${status}
+
+EOF
+  bt_report_release_lock "$REPORT_LOCK_FD"
+  REPORT_LOCK_FD=""
+}
+
+
+get_current_user() {
+  git config user.name 2>/dev/null || \
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current user"
+}
+
+check_working_directory_clean() {
+  if ! git diff-index --quiet HEAD --; then
+    bt_error_exit "$EXIT_OPERATION_FAILED" \
+      "Working directory has uncommitted changes." \
+      "Commit or stash them first."
+  fi
+}
+
+is_main_branch() {
+  local branch="$1"
+  [[ "$branch" == "main" ]]
+}
+
+get_base_branch() {
+  local branch="$1"
+
+  # Determine whether this branch ultimately forks from origin/main.
+  local merge_base
+  merge_base=$(git merge-base --fork-point origin/main "$branch" \
+    2>/dev/null || true)
+
+  if [[ -z "$merge_base" ]]; then
+    return 1
+  fi
+
+  if git merge-base --is-ancestor "$merge_base" origin/main 2>/dev/null; then
+    echo "main"
+    return 0
+  fi
+
+  return 1
+}
+
+is_protected_branch() {
+  local branch="$1"
+
+  # Main is protected
+  if is_main_branch "$branch"; then
+    return 0
+  fi
+
+  # Check if base branch is main
+  local base_branch
+  base_branch=$(get_base_branch "$branch" || true)
+  if [[ "$base_branch" == "main" ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
+check_status_checks() {
+  local branch="$1"
+
+  bt_info "Checking status checks and CI/CD..."
+
+  # Get the PR for this branch (if any)
+  local pr_number
+  pr_number=$(bt_gh_find_pr_number_for_branch "$branch" "open")
+
+  if [[ -z "$pr_number" ]]; then
+    bt_info "No open PR found, skipping status check"
+    return 0
+  fi
+
+  # Get the status check state
+  local status_state
+  status_state=$(bt_run_remote_command gh pr view "$pr_number" \
+    --json statusCheckRollup --jq '.statusCheckRollup[].state' \
+    2>/dev/null | sort | uniq | head -1)
+  
+  if [[ -z "$status_state" ]]; then
+    bt_info "No status checks found"
+    return 0
+  fi
+  
+  case "$status_state" in
+    SUCCESS)
+      bt_success "All status checks passed"
+      return 0
+      ;;
+    PENDING)
+      bt_error_exit "$EXIT_INTERNAL_ERROR" "Status checks still pending"
+      ;;
+    FAILURE)
+      bt_error_exit "$EXIT_INTERNAL_ERROR" "Status checks failed"
+      ;;
+    *)
+      bt_error_exit "$EXIT_INTERNAL_ERROR" \
+        "Unknown status check state: $status_state"
+      ;;
+  esac
+}
+
+validate_version() {
+  local version="$1"
+  
+  # Check version format (v1.2.3 or 1.2.3)
+  if ! [[ "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    usage_error "Invalid version format: $version" \
+      "(expected: v1.2.3 or 1.2.3)"
+  fi
+}
+
+tag_exists() {
+  local tag="$1"
+  git show-ref --verify --quiet "refs/tags/$tag" 2>/dev/null || return 1
+}
+
+create_annotated_tag() {
+  local tag="$1"
+  local user="$2"
+  
+  bt_info "Creating annotated tag: $tag"
+  
+  # Check tag doesn't already exist
+  if tag_exists "$tag"; then
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "Tag already exists: $tag"
+  fi
+  
+  # Create annotated tag
+  if ! git tag -a "$tag" -m "Release $tag by $user" 2>&1; then
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to create tag"
+  fi
+  
+  bt_success "Tag created: $tag"
+}
+
+push_tag() {
+  local tag="$1"
+  
+  bt_info "Pushing tag to remote..."
+  
+  if ! bt_run_remote_command env GIT_BYPASS_HOOKS=true \
+    git push origin "$tag" 2>&1; then
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to push tag"
+  fi
+  
+  bt_success "Tag pushed: $tag"
+}
+
+create_github_release() {
+  local tag="$1"
+  
+  bt_info "Creating GitHub release: $tag"
+  
+  if ! bt_run_remote_command gh release create "$tag" --title "$tag" \
+    --notes "" 2>&1; then
+    bt_error_exit "$EXIT_INTERNAL_ERROR" "Failed to create GitHub release"
+  fi
+  
+  bt_success "GitHub release created: $tag"
+}
+
+record_release_workflow_event() {
+  local version="$1"
+  local user="$2"
+  local branch="$3"
+
+  if ! bt_record_workflow_event "release" "$branch" \
+      "$(bt_format_command_line "release" "${ORIGINAL_ARGS[@]}")" \
+      "Released $version" HEAD \
+      "Version" "$version" \
+      "Released-By" "$user" \
+      "Status" "Released"; then
+    bt_warn "Release completed, but its workflow metadata could not be recorded"
+  fi
+}
+
+# Parse options and arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -d)
+      [[ "$ERROR_RUN" == false ]] || \
+        usage_error "Options -d and -e are mutually exclusive"
+      DRY_RUN=true
+      shift
+      ;;
+    -e)
+      [[ "$DRY_RUN" == false ]] || \
+        usage_error "Options -d and -e are mutually exclusive"
+      ERROR_RUN=true
+      shift
+      ;;
+    -v | --verbose)
+      VERBOSE=true
+      shift
+      ;;
+    -t)
+      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC"
+      bt_is_valid_remote_timeout "$2" || \
+        usage_error "SEC for -t must be an integer greater than 0"
+      REMOTE_TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
+    -*)
+      usage_error "Unknown option: $1"
+      ;;
+    *)
+      if [[ -z "$VERSION" ]]; then
+        VERSION="$1"
+        shift
+      else
+        usage_error "Unexpected argument: $1"
+      fi
+      ;;
+  esac
+done
+
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
+
+if [[ "$ERROR_RUN" == true ]]; then
+  CURRENT_BRANCH="$(bt_get_current_branch_or_empty)"
+  [[ -n "$CURRENT_BRANCH" ]] || CURRENT_BRANCH="unknown"
+  generate_release_report "error" "Release skipped due to -e option."
+  bt_emit_error "Release skipped due to -e option."
+  bt_emit_guidance "Run without -e option."
+  bt_success "See ${REPORT_FILE#"${REPO_ROOT}"/} for details."
+  exit "$EXIT_WORKFLOW_SKIPPED"
+fi
+
+# Validate version provided
+if [[ -z "$VERSION" ]]; then
+  usage_error "VERSION argument required"
+fi
+
+# Validate version format
+validate_version "$VERSION"
+
+# Ensure version has v prefix
+if [[ ! "$VERSION" =~ ^v ]]; then
+  VERSION="v$VERSION"
+fi
+
+bt_info "Release version: $VERSION"
+
+# Get current branch
+CURRENT_BRANCH=$(bt_get_current_branch || \
+  bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
+bt_info "Current branch: $CURRENT_BRANCH"
+
+# Get current user
+CURRENT_USER=$(get_current_user)
+bt_info "Current user: $CURRENT_USER"
+
+# Check if on a protected branch.
+if ! is_protected_branch "$CURRENT_BRANCH"; then
+  bt_error_exit "$EXIT_CONFIG_ERROR" \
+    "Can only release from a protected branch" \
+    "(base is remote-only main). Current branch: $CURRENT_BRANCH"
+fi
+bt_success "On valid release branch"
+
+# Check working directory is clean
+bt_info "Checking working directory..."
+check_working_directory_clean
+bt_success "Working directory is clean"
+
+# Fetch latest from remote
+bt_info "Fetching latest from remote..."
+bt_run_remote_command git fetch origin 2>/dev/null || \
+  bt_warn "Failed to fetch from origin"
+
+# Propagate repository history from remote if available
+history_status=0
+bt_propagate_repository_history || history_status=$?
+case "$history_status" in
+  0) bt_info "Repository history already up to date" ;;
+  1) bt_info "Updated repository history from remote" ;;
+  *) ;;  # offline or unavailable, continue silently
+esac
+check_status_checks "$CURRENT_BRANCH"
+
+if [[ "$DRY_RUN" == true ]]; then
+  generate_release_report "dry-run" \
+    "Validation passed; release would be created and published."
+  bt_success "Dry-run: release $VERSION validation passed"
+  bt_success "See ${REPORT_FILE#"${REPO_ROOT}"/} for details."
+  exit 0
+fi
+
+# Create annotated tag
+create_annotated_tag "$VERSION" "$CURRENT_USER"
+
+# Push tag to remote
+push_tag "$VERSION"
+
+# Create GitHub release
+create_github_release "$VERSION"
+
+record_release_workflow_event "$VERSION" "$CURRENT_USER" "$CURRENT_BRANCH"
+
+# Show verbose output if requested
+if [[ "$VERBOSE" == true ]]; then
+  bt_info "Release details:"
+  echo "  Version: $VERSION"
+  echo "  Branch: $CURRENT_BRANCH"
+  echo "  User: $CURRENT_USER"
+fi
+
+bt_success "Release $VERSION created and published"
+bt_success "Done"
+exit 0

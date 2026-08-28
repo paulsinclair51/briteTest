@@ -95,8 +95,7 @@ Document formats:
 - **.pdf**: Portable Document Format useful as a portable and printable
   form of a document. A .pdf file is generated from an .md file.
 
-- **.docx**: MS Word DOCX format. A briteTest .docx file is generated
-  from a .pdf file.
+- **.docx**: MS Word DOCX format. A .docx file is generated from a .pdf file.
 </details>
 
 <details>
@@ -176,10 +175,10 @@ include/                # Public API `.h` headers.
     runnerapi.h         # Declare Runner API
     testapi.h           # Declare Test API
 reports/                # Generated report files.
-scripts/                # Automation script assets.
+briteRepo/                # Automation script assets.
     bin/                # Scripts (e.g., gendocs, mkbranch).
-    helpers/            # Helper scripts for bin/scripts/`*.
-    tests/              # Test scripts for testing bin/scripts.
+    helpers/            # Helper scripts for bin/briteRepo/`*.
+    tests/              # Test scripts for testing bin/briteRepo.
 src/                    # API `.c` sources.
     runnerapi.c         # Definition of Runner API.
     testapi.c           # Definition of Test API.

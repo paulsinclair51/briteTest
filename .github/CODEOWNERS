@@ -4,7 +4,7 @@
 ## SPDX-License-Identifier: MIT  
 ### For license details, see `<repo>/LICENSE`.
 
-## See `<repo>/README.md` for an introduction to briteTest.
+## See `<repo>/README.md` for an introduction to the repository.
 
 ## See '\<repo\>/config/contributors.md for a list of contibutors and their roles (contributor-only), reviewer, or approver.
 
@@ -64,11 +64,15 @@
 #   1. '<repo>/.github/workflows/branch-name-validation.yml' for the GitHub
 #      branch name validation workflow.
 #   
-#   2. '<repo>/scripts/bin/setup_rulesets' for the script used to set up or
+#   2. '<repo>/briteRepo/bin/setup_rulesets' for the script used to set up or
 #      redefine the repository rulesets.
 #
 #   3. '<repo>/docs/md/Contributor_Guide.md' for more information about
 #      contributors, reviewers, approvers, and guidance of source control
 #      management (SCM) for the repository.
+
+lsbranch dirty smoke test
+
+lsbranch dirty smoke test
 
 lsbranch dirty smoke test

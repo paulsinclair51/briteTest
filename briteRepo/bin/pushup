@@ -1,0 +1,818 @@
+#!/usr/bin/env bash
+
+# pushup - Push the current branch up to its parent and resynchronize it.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  pushup [OPTIONS] [-- TOKEN...]
+  pushup --continue
+  pushup {-h | --help}
+
+Push the current local branch up to its parent, publish the parent, merge the
+published parent back into the source branch, and publish the source branch.
+
+Before the parent is published, a failure restores the original local branch
+and branch tips. After publication, progress is retained and an error report
+explains what completed, what remains, and how to continue.
+
+Parent preparation enforces PR policy: a PR may be required, optional but
+present, or optional and absent. When a PR exists, its state and approval are
+validated.
+
+Crash and interruption recovery:
+  - Rerun pushup after an interruption before parent publication. It verifies
+    the remote parent, restores the saved local refs, and restarts validation.
+  - Run pushup --continue when the parent may have been published. It compares
+    exact local and remote tips, resumes the first incomplete step, and safely
+    handles an operation that completed just before the process stopped.
+  - If remote state cannot be verified, pushup retains its state and does not
+    roll back local refs. Restore connectivity and rerun the indicated command.
+  - Do not edit branches or remove <git-dir>/briteRepo/pushup.state while a
+    push-up workflow is incomplete.
+  - After parent publication starts, later remote access uses three times the
+    configured timeout to allow additional time for recovery and verification.
+
+Options:
+  --continue    Continue a partially completed push-up workflow.
+  -c TOKEN      Commit comment for the parent push-up commit.
+  -- TOKEN...   Commit comment built from one or more tokens.
+  -d            Dry-run. Validate and preview the parent preparation without
+                creating commits, publishing branches, or saving pushup state.
+  -e            Emit an error report for the merge-up workflow. This option is
+                intended for testing and debugging purposes and is not typically
+                used in normal operation. Mutually exclusive with -d.
+  -h, --help    Output this help and exit.
+  -o            Repository-owner override for an eligible push-up workflow.
+  -t SEC        Remote timeout in seconds (default: 10).
+                SEC must be an integer greater than 0.
+  -v            Output progress from delegated workflow commands.
+
+Exit codes:
+  0    Push-up workflow completed.
+  1    Invalid option or argument.
+  2    Another pushup process is active, or --continue is required.
+  3    No partial push-up workflow is available to continue.
+  4    Push-up workflow failed before publication; local state was restored.
+  5    Push-up workflow partially completed; run pushup --continue after following
+       the guidance in the reported pushup error report.
+  36   Push-up skipped because -e was specified.
+  200  Internal state or recovery error.
+EOF
+}
+
+# shellcheck disable=SC2317  # Signal-trap handler is invoked indirectly.
+
+# High-Level Flow:
+# - Persist the source/parent refs and options before any branch mutation.
+# - On every invocation, reconcile saved state with local and remote refs so a
+#   crash between an operation and its phase update is safe to resume.
+# - Prepare the parent locally, then publish it. Before publication, failures
+#   may roll back to the saved refs; afterward, the workflow is resumable only.
+# - Return to the source, merge the published parent down, publish the source,
+#   and remove state only after both remote refs contain the expected commits.
+# - On interruption, retain state and direct the contributor to either rerun
+#   pushup (pre-publication) or use pushup --continue (after publication).
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091  # Helper paths are resolved from this script.
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck disable=SC1091  # Helper paths are resolved from this script.
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck disable=SC1091  # Helper paths are resolved from this script.
+source "$SCRIPT_DIR/../helpers/report_helpers.sh"
+# shellcheck disable=SC1091  # Helper paths are resolved from this script.
+source "$SCRIPT_DIR/../helpers/history_log.sh"
+
+readonly EXIT_USAGE=1
+readonly EXIT_ACTIVE=2
+readonly EXIT_NOTHING_TO_CONTINUE=3
+readonly EXIT_PREPUBLICATION_FAILED=4
+readonly EXIT_PARTIAL=5
+readonly EXIT_INTERNAL=200
+readonly STATE_VERSION=1
+readonly REMOTE_REACCESS_MULTIPLIER=3
+
+CONTINUE=false
+OWNER_OVERRIDE=false
+VERBOSE=false
+DRY_RUN=false
+ERROR_RUN=false
+TIMEOUT_SECONDS=10
+COMMENT_MODE=""
+COMMENT=""
+STATE_FILE=""
+LOCK_FILE=""
+LOCK_FD=""
+REPO_ROOT=""
+REPORTS_DIR=""
+
+state_get() {
+  git config --file "$STATE_FILE" --get "pushup.$1" 2>/dev/null || true
+}
+
+state_set() {
+  git config --file "$STATE_FILE" "pushup.$1" "$2"
+}
+
+set_phase() {
+  state_set phase "$1"
+}
+
+remote_tip_checked() {
+  local branch="$1"
+  local timeout_seconds="$2"
+  local output=""
+
+  if ! output="$(BT_REMOTE_TIMEOUT_SECONDS="$timeout_seconds" \
+    bt_run_remote_command git ls-remote --exit-code origin \
+    "refs/heads/$branch" 2>/dev/null)"; then
+    return 1
+  fi
+  awk 'NR == 1 { print $1 }' <<< "$output"
+}
+
+extended_remote_timeout() {
+  printf '%s\n' "$(( $(state_get timeout) * REMOTE_REACCESS_MULTIPLIER ))"
+}
+
+local_tip() {
+  git rev-parse --verify "refs/heads/$1" 2>/dev/null || true
+}
+
+state_is_complete() {
+  local key phase source_branch parent_branch source_tip parent_tip
+  local prepared_tip notes_tip timeout verbose owner_override comment_mode
+
+  [[ "$(state_get version)" == "$STATE_VERSION" ]] || return 1
+  for key in phase source parent source-tip parent-tip timeout verbose \
+    owner-override comment-mode; do
+    [[ -n "$(state_get "$key")" ]] || return 1
+  done
+  phase="$(state_get phase)"
+  case "$phase" in
+    initialized|parent-prepared|parent-publishing|publication-uncertain|\
+    parent-published|parent-finalization-failed|source-selected|\
+    source-sync-failed|source-conflicted|source-synchronized|\
+    source-publishing|source-publish-failed|source-published) ;;
+    *) return 1 ;;
+  esac
+  source_branch="$(state_get source)"
+  parent_branch="$(state_get parent)"
+  [[ "$source_branch" != "$parent_branch" ]] || return 1
+  git check-ref-format --branch "$source_branch" >/dev/null 2>&1 || return 1
+  git check-ref-format --branch "$parent_branch" >/dev/null 2>&1 || return 1
+  source_tip="$(state_get source-tip)"
+  parent_tip="$(state_get parent-tip)"
+  git cat-file -e "${source_tip}^{commit}" 2>/dev/null || return 1
+  git cat-file -e "${parent_tip}^{commit}" 2>/dev/null || return 1
+  prepared_tip="$(state_get prepared-parent-tip)"
+  [[ -z "$prepared_tip" ]] || \
+    git cat-file -e "${prepared_tip}^{commit}" 2>/dev/null || return 1
+  notes_tip="$(state_get notes-tip)"
+  [[ -z "$notes_tip" ]] || \
+    git cat-file -e "${notes_tip}^{commit}" 2>/dev/null || return 1
+  timeout="$(state_get timeout)"
+  [[ "$timeout" =~ ^[0-9]+$ && "$timeout" -gt 0 ]] || return 1
+  verbose="$(state_get verbose)"
+  owner_override="$(state_get owner-override)"
+  [[ "$verbose" == true || "$verbose" == false ]] || return 1
+  [[ "$owner_override" == true || "$owner_override" == false ]] || return 1
+  comment_mode="$(state_get comment-mode)"
+  [[ "$comment_mode" == none || "$comment_mode" == option || \
+    "$comment_mode" == tokens ]] || return 1
+  [[ "$comment_mode" == none || -n "$(state_get comment)" ]] || return 1
+}
+
+initialize_state() {
+  local source_branch="$1"
+  local parent_branch="$2"
+  local state_tmp="${STATE_FILE}.new.$$"
+
+  rm -f "$state_tmp"
+  git config --file "$state_tmp" pushup.version "$STATE_VERSION"
+  git config --file "$state_tmp" pushup.source "$source_branch"
+  git config --file "$state_tmp" pushup.parent "$parent_branch"
+  git config --file "$state_tmp" pushup.source-tip "$(local_tip "$source_branch")"
+  git config --file "$state_tmp" pushup.parent-tip "$(local_tip "$parent_branch")"
+  git config --file "$state_tmp" pushup.notes-tip \
+    "$(git rev-parse -q --verify refs/notes/briteRepo-workflow 2>/dev/null || true)"
+  git config --file "$state_tmp" pushup.timeout "$TIMEOUT_SECONDS"
+  git config --file "$state_tmp" pushup.verbose "$VERBOSE"
+  git config --file "$state_tmp" pushup.owner-override "$OWNER_OVERRIDE"
+  git config --file "$state_tmp" pushup.comment-mode "${COMMENT_MODE:-none}"
+  [[ -z "$COMMENT_MODE" ]] || \
+    git config --file "$state_tmp" pushup.comment "$COMMENT"
+  git config --file "$state_tmp" pushup.phase initialized
+  mv "$state_tmp" "$STATE_FILE"
+}
+
+is_prepublication_phase() {
+  case "$1" in
+    initialized|parent-prepared|parent-publishing|publication-uncertain)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+prepared_parent_tip() {
+  local parent_branch note workflow_type source_branch source_tip target_branch
+  parent_branch="$(state_get parent)"
+  note="$(git notes --ref=briteRepo-workflow show "refs/heads/$parent_branch" \
+    2>/dev/null || true)"
+  [[ -n "$note" ]] || return 1
+  workflow_type="$(bt_workflow_note_field "$note" "Workflow-Type")"
+  source_branch="$(bt_workflow_note_field "$note" "Source-Branch")"
+  source_tip="$(bt_workflow_note_field "$note" "Source-Tip")"
+  target_branch="$(bt_workflow_note_field "$note" "Target-Branch")"
+  [[ "$workflow_type" == pushup && \
+    "$source_branch" == "$(state_get source)" && \
+    "$source_tip" == "$(state_get source-tip)" && \
+    "$target_branch" == "$parent_branch" ]] || return 1
+  local_tip "$parent_branch"
+}
+
+remote_branch_contains() {
+  local branch="$1"
+  local commit="$2"
+  local timeout_seconds="$3"
+
+  [[ -n "$commit" ]] || return 1
+  BT_REMOTE_TIMEOUT_SECONDS="$timeout_seconds" bt_run_remote_command \
+    git fetch --quiet --no-tags origin \
+    "refs/heads/$branch:refs/remotes/origin/$branch" 2>/dev/null || return 2
+  git merge-base --is-ancestor "$commit" "refs/remotes/origin/$branch" \
+    >/dev/null 2>&1
+}
+
+fast_forward_local_parent() {
+  local branch="$1"
+  local local_ref="refs/heads/$branch"
+  local remote_ref="refs/remotes/origin/$branch"
+  local current_branch
+
+  git merge-base --is-ancestor "$local_ref" "$remote_ref" >/dev/null 2>&1 || \
+    return 1
+  [[ "$(git rev-parse "$local_ref")" != "$(git rev-parse "$remote_ref")" ]] || \
+    return 0
+  current_branch="$(git branch --show-current)"
+  if [[ "$current_branch" == "$branch" ]]; then
+    git merge --quiet --ff-only "$remote_ref" >/dev/null 2>&1
+  else
+    git branch --force "$branch" "$remote_ref" >/dev/null 2>&1
+  fi
+}
+
+reconcile_state() {
+  local phase source_branch parent_branch parent_remote
+  local prepared_tip source_local source_remote timeout_seconds
+  phase="$(state_get phase)"
+  source_branch="$(state_get source)"
+  parent_branch="$(state_get parent)"
+  prepared_tip="$(state_get prepared-parent-tip)"
+
+  # The helper may have committed and recorded its note before the coordinator
+  # could save parent-prepared. Recover that exact commit from its note.
+  if [[ "$phase" == initialized ]]; then
+    prepared_tip="$(prepared_parent_tip || true)"
+    if [[ -n "$prepared_tip" ]]; then
+      state_set prepared-parent-tip "$prepared_tip"
+      set_phase parent-prepared
+      phase=parent-prepared
+    fi
+  fi
+
+  if [[ "$phase" == parent-publishing || \
+    "$phase" == publication-uncertain || "$phase" == parent-prepared ]]; then
+    timeout_seconds="$(state_get timeout)"
+    [[ "$phase" == parent-prepared ]] || \
+      timeout_seconds="$(extended_remote_timeout)"
+    if ! parent_remote="$(remote_tip_checked "$parent_branch" \
+      "$timeout_seconds")"; then
+      set_phase publication-uncertain
+      write_partial_report \
+        "The parent publication state cannot be verified while origin is unavailable." \
+        "Restore remote access; no local refs will be rolled back until publication is known."
+      exit "$EXIT_PARTIAL"
+    fi
+    if [[ -n "$prepared_tip" && "$parent_remote" == "$prepared_tip" ]]; then
+      set_phase parent-published
+      phase=parent-published
+    elif [[ -n "$prepared_tip" ]]; then
+      local contains_status=0
+      remote_branch_contains "$parent_branch" "$prepared_tip" \
+        "$timeout_seconds" || \
+        contains_status=$?
+      if [[ "$contains_status" -eq 0 ]]; then
+        if ! fast_forward_local_parent "$parent_branch"; then
+          set_phase publication-uncertain
+          write_partial_report \
+            "The remote parent contains the prepared commit, but the local parent could not be fast-forwarded to it." \
+            "Restore a clean worktree and ensure the parent is not checked out in another worktree, then run pushup --continue."
+          exit "$EXIT_PARTIAL"
+        fi
+        set_phase parent-published
+        phase=parent-published
+      elif [[ "$contains_status" -eq 2 ]]; then
+        set_phase publication-uncertain
+        write_partial_report \
+          "The remote parent tip was read, but its history could not be fetched for recovery verification." \
+          "Restore remote access; pushup will not roll back until commit ancestry is known."
+        exit "$EXIT_PARTIAL"
+      elif [[ "$phase" == parent-publishing || \
+        "$phase" == publication-uncertain ]]; then
+        fail_before_publication \
+          "the prepared parent commit was not published"
+      fi
+    elif [[ "$phase" == parent-publishing || \
+      "$phase" == publication-uncertain ]]; then
+      # The attempted update did not publish our exact commit. A normal push
+      # cannot overwrite a competing remote tip, so local rollback is safe.
+      fail_before_publication \
+        "the prepared parent commit was not published"
+    fi
+  fi
+
+  # pulldown may have committed immediately before a crash. The source is
+  # synchronized when it contains the exact published parent tip.
+  phase="$(state_get phase)"
+  if [[ "$phase" == source-selected || "$phase" == source-sync-failed ]]; then
+    source_local="$(local_tip "$source_branch")"
+    if ! parent_remote="$(remote_tip_checked "$parent_branch" \
+      "$(extended_remote_timeout)")"; then
+      write_partial_report \
+        "The published parent cannot be read while origin is unavailable." \
+        "Restore remote access before continuing source synchronization."
+      exit "$EXIT_PARTIAL"
+    fi
+    if [[ -n "$source_local" ]] && \
+      git merge-base --is-ancestor "$parent_remote" "$source_local" \
+        >/dev/null 2>&1; then
+      set_phase source-synchronized
+    fi
+  fi
+
+  # Either push may have succeeded just before the process stopped. Exact-tip
+  # comparison makes completion idempotent without assuming command status.
+  phase="$(state_get phase)"
+  if [[ "$phase" == source-publishing || \
+    "$phase" == source-publish-failed || "$phase" == source-synchronized ]]; then
+    source_local="$(local_tip "$source_branch")"
+    if source_remote="$(remote_tip_checked "$source_branch" \
+      "$(extended_remote_timeout)")" && \
+      [[ -n "$source_local" && "$source_remote" == "$source_local" ]]; then
+      set_phase source-published
+    elif [[ "$phase" == source-publishing ]]; then
+      set_phase source-publish-failed
+    fi
+  fi
+}
+
+on_interrupt() {
+  local signal_name="$1"
+  local phase=""
+
+  trap - HUP INT TERM
+  phase="$(state_get phase)"
+  printf '\nPush-up workflow interrupted by %s.\n' "$signal_name" >&2
+  if is_prepublication_phase "$phase"; then
+    printf 'Rerun pushup to recover local state and restart safely.\n' >&2
+  else
+    printf 'Run pushup --continue to inspect remote state and resume safely.\n' >&2
+  fi
+  exit "$EXIT_PARTIAL"
+}
+
+write_partial_report() {
+  local reason="$1"
+  local action="$2"
+  local source_branch parent_branch phase report_file timestamp
+  source_branch="$(state_get source)"
+  parent_branch="$(state_get parent)"
+  phase="$(state_get phase)"
+  timestamp="$(bt_datetime_filename_now)"
+  report_file="$(bt_report_retained_path "$REPORTS_DIR" "pushup-e" \
+    "$timestamp" "$BASHPID")"
+
+  bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_INTERNAL"
+  cat > "$report_file" <<EOF
+# Pushup Error Report $(bt_datetime_display_now)
+
+**Source branch:** \`$source_branch\`  
+**Parent branch:** \`$parent_branch\`  
+**Saved phase:** \`$phase\`
+
+## Progress
+
+| Step | Status |
+|---|---|
+| Prepare parent locally | $(phase_status parent-prepared) |
+| Publish parent | $(phase_status parent-published) |
+| Select source | $(phase_status source-selected) |
+| Synchronize source from parent | $(phase_status source-synchronized) |
+| Publish source | $(phase_status source-published) |
+
+## Failure
+
+$reason
+
+## Required Action
+
+$action
+
+After completing that action, run \`pushup --continue\`.
+EOF
+  chmod a-w "$report_file" 2>/dev/null || true
+  printf '%s\n' "Push-up workflow partially completed: $reason" >&2
+  printf '%s\n' "See ${report_file#"$REPO_ROOT"/} for completed and remaining steps." >&2
+  printf '%s\n' "$action" >&2
+  printf '%s\n' "Then run: pushup --continue" >&2
+}
+
+phase_rank() {
+  case "$1" in
+    initialized|parent-prepared|parent-publishing|publication-uncertain) echo 1 ;;
+    parent-published|parent-finalization-failed) echo 2 ;;
+    source-selected|source-sync-failed|source-conflicted) echo 3 ;;
+    source-synchronized|source-publishing|source-publish-failed) echo 4 ;;
+    source-published) echo 5 ;;
+    *) echo 0 ;;
+  esac
+}
+
+phase_status() {
+  local required="$1"
+  if [[ "$(phase_rank "$(state_get phase)")" -ge "$(phase_rank "$required")" ]]; then
+    printf 'Completed'
+  else
+    printf 'Pending'
+  fi
+}
+
+rollback_local_prepublication() {
+  local source_branch parent_branch source_tip parent_tip notes_tip current_branch
+  source_branch="$(state_get source)"
+  parent_branch="$(state_get parent)"
+  source_tip="$(state_get source-tip)"
+  parent_tip="$(state_get parent-tip)"
+  notes_tip="$(state_get notes-tip)"
+
+  git merge --abort >/dev/null 2>&1 || true
+  current_branch="$(bt_get_current_branch || true)"
+  if [[ "$current_branch" == "$parent_branch" ]]; then
+    # Reaching the parent means the preparation helper passed its clean-tree
+    # preflight. Any tracked changes here belong to the interrupted workflow.
+    GIT_BYPASS_HOOKS=true git reset --hard "$parent_tip" >/dev/null 2>&1 || \
+      return 1
+  fi
+  GIT_BYPASS_HOOKS=true git checkout "$source_branch" >/dev/null 2>&1 || \
+    return 1
+  git update-ref "refs/heads/$source_branch" "$source_tip" >/dev/null 2>&1 || return 1
+  git update-ref "refs/heads/$parent_branch" "$parent_tip" >/dev/null 2>&1 || return 1
+  if [[ -n "$notes_tip" ]]; then
+    git update-ref refs/notes/briteRepo-workflow "$notes_tip" >/dev/null 2>&1 || return 1
+  else
+    git update-ref -d refs/notes/briteRepo-workflow >/dev/null 2>&1 || true
+  fi
+  rm -f "$STATE_FILE"
+}
+
+fail_before_publication() {
+  local reason="$1"
+  if rollback_local_prepublication; then
+    printf '%s\n' "Push-up workflow not started: $reason" >&2
+    printf '%s\n' "No local push-up changes were retained." >&2
+    exit "$EXIT_PREPUBLICATION_FAILED"
+  fi
+  write_partial_report \
+    "Local restoration could not be completed after: $reason" \
+    "Run fixlocal, restore the recorded branch tips, and rerun pushup --continue."
+  exit "$EXIT_PARTIAL"
+}
+
+prepare_parent() {
+  local -a args=(-t "$(state_get timeout)")
+  [[ "$(state_get verbose)" == true ]] && args+=(-v)
+  [[ "$(state_get owner-override)" == true ]] && args+=(-o)
+  case "$(state_get comment-mode)" in
+    option) args+=(-c "$(state_get comment)") ;;
+    tokens) args+=(-- "$(state_get comment)") ;;
+  esac
+  bash "$SCRIPT_DIR/../helpers/pushup_parent.sh" "${args[@]}"
+}
+
+dry_run_parent() {
+  local -a args=(-d -t "$TIMEOUT_SECONDS")
+  [[ "$VERBOSE" == true ]] && args+=(-v)
+  [[ "$OWNER_OVERRIDE" == true ]] && args+=(-o)
+  case "$COMMENT_MODE" in
+    option) args+=(-c "$COMMENT") ;;
+    tokens) args+=(-- "$COMMENT") ;;
+  esac
+  bash "$SCRIPT_DIR/../helpers/pushup_parent.sh" "${args[@]}"
+}
+
+error_run_parent() {
+  local -a args=(-e -t "$TIMEOUT_SECONDS")
+  [[ "$VERBOSE" == true ]] && args+=(-v)
+  [[ "$OWNER_OVERRIDE" == true ]] && args+=(-o)
+  case "$COMMENT_MODE" in
+    option) args+=(-c "$COMMENT") ;;
+    tokens) args+=(-- "$COMMENT") ;;
+  esac
+  bash "$SCRIPT_DIR/../helpers/pushup_parent.sh" "${args[@]}"
+}
+
+run_push() {
+  local timeout_seconds="$1"
+  local -a args=(-t "$timeout_seconds")
+  [[ "$(state_get verbose)" == true ]] && args+=(-v)
+  "$SCRIPT_DIR/push" "${args[@]}"
+}
+
+run_push_finalization_retry() {
+  local -a args=(-t "$(extended_remote_timeout)")
+  [[ "$(state_get verbose)" == true ]] && args+=(-v)
+  BT_PUSHUP_FINALIZATION_RETRY=true "$SCRIPT_DIR/push" "${args[@]}"
+}
+
+publish_parent() {
+  local parent_branch local_tip published_tip push_status=0
+  parent_branch="$(state_get parent)"
+  local_tip="$(git rev-parse "refs/heads/$parent_branch" 2>/dev/null || true)"
+  state_set prepared-parent-tip "$local_tip"
+  set_phase parent-publishing
+  if run_push "$(state_get timeout)"; then
+    set_phase parent-published
+    return 0
+  else
+    push_status=$?
+  fi
+
+  published_tip="$(remote_tip_checked "$parent_branch" \
+    "$(extended_remote_timeout)" || true)"
+  if [[ -n "$published_tip" && "$published_tip" == "$local_tip" ]]; then
+    if [[ "$push_status" -eq 202 ]]; then
+      set_phase parent-finalization-failed
+      write_partial_report \
+        "The parent was published, but its pull request was not finalized." \
+        "Restore GitHub access or PR permissions; continuation will retry finalization."
+      exit "$EXIT_PARTIAL"
+    fi
+    set_phase parent-published
+    return 0
+  fi
+  if [[ -n "$published_tip" ]]; then
+    fail_before_publication "the parent changed before it could be published"
+  fi
+
+  set_phase publication-uncertain
+  write_partial_report \
+    "The parent push result could not be verified because the remote is unavailable." \
+    "Restore remote access; pushup will verify whether the parent was published."
+  exit "$EXIT_PARTIAL"
+}
+
+retry_parent_finalization() {
+  local parent_branch
+  parent_branch="$(state_get parent)"
+  if [[ "$(bt_get_current_branch || true)" != "$parent_branch" ]] && \
+    ! "$SCRIPT_DIR/chbranch" -l "$parent_branch"; then
+    write_partial_report \
+      "The published parent could not be selected to retry PR finalization." \
+      "Resolve the local checkout problem without changing branch history."
+    exit "$EXIT_PARTIAL"
+  fi
+  if run_push_finalization_retry; then
+    set_phase parent-published
+    return 0
+  fi
+  write_partial_report \
+    "The parent is published, but its pull request still could not be finalized." \
+    "Restore GitHub access or PR permissions, then retry continuation."
+  exit "$EXIT_PARTIAL"
+}
+
+select_source() {
+  local source_branch
+  source_branch="$(state_get source)"
+  if ! "$SCRIPT_DIR/chbranch" -l "$source_branch"; then
+    write_partial_report "The published parent could not be followed by selecting the source branch." \
+      "Resolve the local checkout problem without changing branch history."
+    exit "$EXIT_PARTIAL"
+  fi
+  set_phase source-selected
+}
+
+synchronize_source() {
+  local -a args=(-f -t "$(extended_remote_timeout)")
+  [[ "$(state_get verbose)" == true ]] && args+=(-v)
+  if "$SCRIPT_DIR/pulldown" "${args[@]}"; then
+    set_phase source-synchronized
+    return 0
+  fi
+  if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+    set_phase source-conflicted
+    write_partial_report "The parent was published, but source synchronization has unresolved conflicts." \
+      "Resolve the listed conflicts and stage every resolved file."
+  else
+    set_phase source-sync-failed
+    write_partial_report "The parent was published, but the source could not be synchronized." \
+      "Address the pulldown prerequisite or remote error shown above."
+  fi
+  exit "$EXIT_PARTIAL"
+}
+
+finish_resolved_merge() {
+  local unresolved
+  unresolved="$(git diff --name-only --diff-filter=U 2>/dev/null || true)"
+  if [[ -n "$unresolved" ]]; then
+    write_partial_report "Source synchronization still has unresolved conflicts." \
+      "Resolve and stage these files: $(tr '\n' ' ' <<< "$unresolved")"
+    exit "$EXIT_PARTIAL"
+  fi
+  if ! git diff --quiet; then
+    write_partial_report "Resolved source files have unstaged changes." \
+      "Stage every resolved file with git add."
+    exit "$EXIT_PARTIAL"
+  fi
+  if ! GIT_BYPASS_HOOKS=true git commit --no-edit; then
+    write_partial_report "The resolved source merge could not be committed." \
+      "Correct the commit error while preserving the merge in progress."
+    exit "$EXIT_PARTIAL"
+  fi
+  set_phase source-synchronized
+}
+
+publish_source() {
+  local source_branch local_tip published_tip
+  source_branch="$(state_get source)"
+  local_tip="$(git rev-parse HEAD 2>/dev/null || true)"
+  set_phase source-publishing
+  if run_push "$(extended_remote_timeout)"; then
+    set_phase source-published
+    return 0
+  fi
+
+  published_tip="$(remote_tip_checked "$source_branch" \
+    "$(extended_remote_timeout)" || true)"
+  if [[ -n "$published_tip" && "$published_tip" == "$local_tip" ]]; then
+    set_phase source-published
+    return 0
+  fi
+
+  if [[ -n "$published_tip" ]] && \
+    ! git merge-base --is-ancestor "$published_tip" HEAD >/dev/null 2>&1; then
+    local -a pull_args=(-t "$(extended_remote_timeout)")
+    [[ "$(state_get verbose)" == true ]] && pull_args+=(-v)
+    if "$SCRIPT_DIR/pull" "${pull_args[@]}" && \
+      run_push "$(extended_remote_timeout)"; then
+      set_phase source-published
+      return 0
+    fi
+  fi
+
+  set_phase source-publish-failed
+  write_partial_report "The parent and local source were updated, but the source was not published." \
+    "Resolve the pull/push error shown above; safe remote divergence is reconciled automatically on continue."
+  exit "$EXIT_PARTIAL"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    --continue) CONTINUE=true; shift ;;
+    -d) DRY_RUN=true; shift ;;
+    -e) ERROR_RUN=true; shift ;;
+    -o) OWNER_OVERRIDE=true; shift ;;
+    -v) VERBOSE=true; shift ;;
+    -t)
+      [[ $# -ge 2 && "$2" =~ ^[0-9]+$ && "$2" -gt 0 ]] || { usage >&2; exit "$EXIT_USAGE"; }
+      TIMEOUT_SECONDS="$2"; shift 2 ;;
+    -c)
+      [[ $# -ge 2 && -z "$COMMENT_MODE" ]] || { usage >&2; exit "$EXIT_USAGE"; }
+      COMMENT_MODE=option; COMMENT="$2"; shift 2 ;;
+    --)
+      shift
+      [[ $# -gt 0 && -z "$COMMENT_MODE" ]] || { usage >&2; exit "$EXIT_USAGE"; }
+      COMMENT_MODE=tokens; COMMENT="$*"; break ;;
+    *) usage >&2; exit "$EXIT_USAGE" ;;
+  esac
+done
+
+if [[ "$DRY_RUN" == true && "$ERROR_RUN" == true ]]; then
+  usage >&2
+  exit "$EXIT_USAGE"
+fi
+
+if [[ "$CONTINUE" == true && ( "$OWNER_OVERRIDE" == true || "$VERBOSE" == true || \
+  "$DRY_RUN" == true || "$ERROR_RUN" == true || "$TIMEOUT_SECONDS" != 10 || \
+  -n "$COMMENT_MODE" ) ]]; then
+  usage >&2
+  exit "$EXIT_USAGE"
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+[[ -n "$REPO_ROOT" ]] || { echo "Error: pushup must run in a Git repository." >&2; exit "$EXIT_USAGE"; }
+REPORTS_DIR="$REPO_ROOT/reports"
+STATE_FILE="$(git rev-parse --git-path briteRepo/pushup.state)"
+LOCK_FILE="$(git rev-parse --git-path briteRepo/pushup.lock)"
+mkdir -p "$(dirname "$STATE_FILE")"
+exec {LOCK_FD}>"$LOCK_FILE"
+flock -n "$LOCK_FD" || { echo "Error: another pushup process is active." >&2; exit "$EXIT_ACTIVE"; }
+trap 'on_interrupt HUP' HUP
+trap 'on_interrupt INT' INT
+trap 'on_interrupt TERM' TERM
+
+if [[ "$DRY_RUN" == true || "$ERROR_RUN" == true ]]; then
+  if [[ -f "$STATE_FILE" ]]; then
+    echo "Error: pushup state already exists; run pushup --continue or fixlocal before dry-run/error-run." >&2
+    exit "$EXIT_ACTIVE"
+  fi
+  if [[ "$DRY_RUN" == true ]]; then
+    dry_run_parent
+  else
+    error_run_parent
+  fi
+  exit $?
+fi
+
+if [[ -f "$STATE_FILE" ]]; then
+  if ! state_is_complete; then
+    echo "Error: pushup state is incomplete or from an unsupported version: $STATE_FILE" >&2
+    echo "Run fixlocal and inspect the state file before removing it." >&2
+    exit "$EXIT_INTERNAL"
+  fi
+  reconcile_state
+  phase="$(state_get phase)"
+  if is_prepublication_phase "$phase"; then
+    # No exact prepared parent commit is present remotely. Restore the saved
+    # local refs and restart, regardless of whether the user chose --continue.
+    rollback_local_prepublication || {
+      write_partial_report \
+        "Prepublication state was found, but local rollback failed." \
+        "Run fixlocal and restore the source and parent refs recorded in the state file."
+      exit "$EXIT_PARTIAL"
+    }
+    CONTINUE=false
+    echo "Recovered an interrupted prepublication push-up; restarting validation."
+  elif [[ "$CONTINUE" == false ]]; then
+    echo "Error: the parent may already be published; run pushup --continue." >&2
+    exit "$EXIT_ACTIVE"
+  fi
+elif [[ "$CONTINUE" == true ]]; then
+  echo "Error: no partial push-up workflow is available to continue." >&2
+  exit "$EXIT_NOTHING_TO_CONTINUE"
+fi
+
+if [[ ! -f "$STATE_FILE" ]]; then
+  source_branch="$(bt_get_current_branch || true)"
+  [[ -n "$source_branch" && "$source_branch" != HEAD ]] || exit "$EXIT_USAGE"
+  parent_branch="$(bt_resolve_parent_branch "$source_branch" main)"
+  [[ -n "$parent_branch" ]] || exit "$EXIT_USAGE"
+  initialize_state "$source_branch" "$parent_branch"
+fi
+
+phase="$(state_get phase)"
+if [[ "$phase" == initialized ]]; then
+  if ! prepare_parent; then
+    fail_before_publication "merge-up prerequisites failed or local preparation did not complete"
+  fi
+  set_phase parent-prepared
+fi
+
+[[ "$(state_get phase)" != parent-prepared ]] || publish_parent
+[[ "$(state_get phase)" != parent-finalization-failed ]] || \
+  retry_parent_finalization
+[[ "$(state_get phase)" != parent-published ]] || select_source
+
+phase="$(state_get phase)"
+if [[ "$phase" == source-selected || "$phase" == source-sync-failed ]]; then
+  synchronize_source
+elif [[ "$phase" == source-conflicted ]]; then
+  finish_resolved_merge
+fi
+
+phase="$(state_get phase)"
+if [[ "$phase" == source-synchronized || "$phase" == source-publish-failed ]]; then
+  publish_source
+fi
+
+if [[ "$(state_get phase)" == source-published ]]; then
+  source_branch="$(state_get source)"
+  parent_branch="$(state_get parent)"
+  rm -f "$STATE_FILE"
+  echo "Push-up complete: $source_branch pushed up to $parent_branch and resynchronized."
+  exit 0
+fi
+
+write_partial_report "Pushup stopped in an unrecognized saved phase: $(state_get phase)." \
+  "Inspect the saved state at $STATE_FILE before retrying."
+exit "$EXIT_INTERNAL"

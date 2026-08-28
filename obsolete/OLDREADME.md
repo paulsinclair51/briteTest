@@ -893,7 +893,7 @@ briteTest/
 |- reports/
 |  |- britetest_test_report-i.txt
 |  \- test_report.txt
-|- scripts/
+|- briteRepo/
 |- src/
 |  \- runnerapi.c
 |- tests/
