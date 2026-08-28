@@ -112,6 +112,7 @@ LOCK_FILE=""
 LOCK_FD=""
 REPO_ROOT=""
 REPORTS_DIR=""
+TOOL_DIR=""
 
 state_get() {
   git config --file "$STATE_FILE" --get "pushup.$1" 2>/dev/null || true
@@ -211,6 +212,30 @@ initialize_state() {
     git config --file "$state_tmp" pushup.comment "$COMMENT"
   git config --file "$state_tmp" pushup.phase initialized
   mv "$state_tmp" "$STATE_FILE"
+}
+
+ensure_tool_snapshot() {
+  local saved_tool_dir=""
+
+  saved_tool_dir="$(state_get tool-dir)"
+  if [[ -n "$saved_tool_dir" && -x "$saved_tool_dir/bin/push" && \
+    -x "$saved_tool_dir/bin/pulldown" && \
+    -f "$saved_tool_dir/helpers/pushup_parent.sh" ]]; then
+    TOOL_DIR="$saved_tool_dir"
+    return 0
+  fi
+
+  TOOL_DIR="$(git rev-parse --git-path briteRepo/pushup-tools)"
+  rm -rf "$TOOL_DIR"
+  mkdir -p "$TOOL_DIR"
+  cp -a "$SCRIPT_DIR/." "$TOOL_DIR/bin"
+  cp -a "$SCRIPT_DIR/../helpers/." "$TOOL_DIR/helpers"
+  state_set tool-dir "$TOOL_DIR"
+}
+
+remove_tool_snapshot() {
+  [[ -n "$TOOL_DIR" ]] || TOOL_DIR="$(state_get tool-dir)"
+  [[ -z "$TOOL_DIR" ]] || rm -rf "$TOOL_DIR"
 }
 
 is_prepublication_phase() {
@@ -482,6 +507,7 @@ rollback_local_prepublication() {
     git update-ref -d refs/notes/briteRepo-workflow >/dev/null 2>&1 || true
   fi
   rm -f "$STATE_FILE"
+  remove_tool_snapshot
 }
 
 fail_before_publication() {
@@ -505,7 +531,7 @@ prepare_parent() {
     option) args+=(-c "$(state_get comment)") ;;
     tokens) args+=(-- "$(state_get comment)") ;;
   esac
-  bash "$SCRIPT_DIR/../helpers/pushup_parent.sh" "${args[@]}"
+  bash "$TOOL_DIR/helpers/pushup_parent.sh" "${args[@]}"
 }
 
 dry_run_parent() {
@@ -534,13 +560,13 @@ run_push() {
   local timeout_seconds="$1"
   local -a args=(-t "$timeout_seconds")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  "$SCRIPT_DIR/push" "${args[@]}"
+  "$TOOL_DIR/bin/push" "${args[@]}"
 }
 
 run_push_finalization_retry() {
   local -a args=(-t "$(extended_remote_timeout)")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  BT_PUSHUP_FINALIZATION_RETRY=true "$SCRIPT_DIR/push" "${args[@]}"
+  BT_PUSHUP_FINALIZATION_RETRY=true "$TOOL_DIR/bin/push" "${args[@]}"
 }
 
 publish_parent() {
@@ -584,7 +610,7 @@ retry_parent_finalization() {
   local parent_branch
   parent_branch="$(state_get parent)"
   if [[ "$(bt_get_current_branch || true)" != "$parent_branch" ]] && \
-    ! "$SCRIPT_DIR/chbranch" -l "$parent_branch"; then
+    ! "$TOOL_DIR/bin/chbranch" -l "$parent_branch"; then
     write_partial_report \
       "The published parent could not be selected to retry PR finalization." \
       "Resolve the local checkout problem without changing branch history."
@@ -603,7 +629,7 @@ retry_parent_finalization() {
 select_source() {
   local source_branch
   source_branch="$(state_get source)"
-  if ! "$SCRIPT_DIR/chbranch" -l "$source_branch"; then
+  if ! "$TOOL_DIR/bin/chbranch" -l "$source_branch"; then
     write_partial_report "The published parent could not be followed by selecting the source branch." \
       "Resolve the local checkout problem without changing branch history."
     exit "$EXIT_PARTIAL"
@@ -612,9 +638,19 @@ select_source() {
 }
 
 synchronize_source() {
+  local source_branch
   local -a args=(--pushup -f -t "$(extended_remote_timeout)")
+
+  source_branch="$(state_get source)"
+  if [[ "$(bt_get_current_branch || true)" != "$source_branch" ]] && \
+    ! "$TOOL_DIR/bin/chbranch" -l "$source_branch"; then
+    write_partial_report "The source branch could not be selected for synchronization." \
+      "Resolve the local checkout problem without changing branch history."
+    exit "$EXIT_PARTIAL"
+  fi
+
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  if "$SCRIPT_DIR/pulldown" "${args[@]}"; then
+  if "$TOOL_DIR/bin/pulldown" "${args[@]}"; then
     set_phase source-synchronized
     return 0
   fi
@@ -672,7 +708,7 @@ publish_source() {
     ! git merge-base --is-ancestor "$published_tip" HEAD >/dev/null 2>&1; then
     local -a pull_args=(-t "$(extended_remote_timeout)")
     [[ "$(state_get verbose)" == true ]] && pull_args+=(-v)
-    if "$SCRIPT_DIR/pull" "${pull_args[@]}" && \
+    if "$TOOL_DIR/bin/pull" "${pull_args[@]}" && \
       run_push "$(extended_remote_timeout)"; then
       set_phase source-published
       return 0
@@ -780,6 +816,8 @@ if [[ ! -f "$STATE_FILE" ]]; then
   initialize_state "$source_branch" "$parent_branch"
 fi
 
+ensure_tool_snapshot
+
 phase="$(state_get phase)"
 if [[ "$phase" == initialized ]]; then
   if ! prepare_parent; then
@@ -809,6 +847,7 @@ if [[ "$(state_get phase)" == source-published ]]; then
   source_branch="$(state_get source)"
   parent_branch="$(state_get parent)"
   rm -f "$STATE_FILE"
+  remove_tool_snapshot
   echo "Push-up complete: $source_branch pushed up to $parent_branch and resynchronized."
   exit 0
 fi
