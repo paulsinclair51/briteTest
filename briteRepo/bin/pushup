@@ -220,7 +220,8 @@ ensure_tool_snapshot() {
   saved_tool_dir="$(state_get tool-dir)"
   if [[ -n "$saved_tool_dir" && -x "$saved_tool_dir/bin/push" && \
     -x "$saved_tool_dir/bin/pulldown" && \
-    -f "$saved_tool_dir/helpers/pushup_parent.sh" ]]; then
+    -f "$saved_tool_dir/helpers/pushup_parent.sh" && \
+    $(grep -F -c -- '--pushup-source' "$saved_tool_dir/bin/push" 2>/dev/null) -gt 0 ]]; then
     TOOL_DIR="$saved_tool_dir"
     return 0
   fi
@@ -710,6 +711,12 @@ finish_resolved_merge() {
 publish_source() {
   local source_branch local_tip published_tip
   source_branch="$(state_get source)"
+  if [[ "$(bt_get_current_branch || true)" != "$source_branch" ]] && \
+    ! "$TOOL_DIR/bin/chbranch" -l "$source_branch"; then
+    write_partial_report "The source branch could not be selected for publication." \
+      "Resolve the local checkout problem without changing branch history."
+    exit "$EXIT_PARTIAL"
+  fi
   local_tip="$(git rev-parse HEAD 2>/dev/null || true)"
   set_phase source-publishing
   if run_push_source "$(extended_remote_timeout)"; then
