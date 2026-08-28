@@ -125,6 +125,11 @@ Status tags:
   [behind parent by N]          Parent has N commits not on the branch.
   [diverged from parent: N/M]   Branch and parent have diverged; N branch-only
                                 and M parent-only commits.
+  [copyfix in progress]         Resume with copyfix --continue.
+  [pushup in progress]          Resume with pushup --continue.
+  [pull in progress]            Resolve conflicts, then rerun pull.
+  [retarget in progress]        Resolve conflicts, then rerun retarget -r.
+  [pulldown in progress]        Resolve conflicts, then rerun pulldown.
   [auto-stash: N]               N saved automatic stashes exist for the branch.
   [PRs: N]                      N open pull requests exist for the branch.
 
@@ -993,6 +998,7 @@ build_compact_status_tags() {
   local mode_tag="$mode"
   local relation_tag=""
   local parent_tags=""
+  local workflow_tags=""
   local selected_ref="$branch"
   local -a tags=()
 
@@ -1032,6 +1038,10 @@ build_compact_status_tags() {
   fi
 
   [[ "$mode" == "remote" ]] && selected_ref="origin/$branch"
+  if [[ "$mode" == "local" ]]; then
+    workflow_tags="$(bt_git_workflow_in_progress_tags "$branch")"
+    [[ -z "$workflow_tags" ]] || tags+=("$workflow_tags")
+  fi
   parent_tags=$(bt_git_parent_relation_tags \
     "$mode" "$branch" "$selected_ref")
   [[ -z "$parent_tags" ]] || tags+=("$parent_tags")

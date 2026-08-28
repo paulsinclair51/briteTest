@@ -96,6 +96,11 @@ Status tags:
   [behind parent by N]          Parent has N commits not on the selected branch.
   [diverged from parent: N/M]   Selected branch and parent have diverged; N
                                 selected-only and M parent-only commits.
+  [copyfix in progress]        Resume with copyfix --continue.
+  [pushup in progress]         Resume with pushup --continue.
+  [pull in progress]            Resolve conflicts, then rerun pull.
+  [retarget in progress]        Resolve conflicts, then rerun retarget -r.
+  [pulldown in progress]        Resolve conflicts, then rerun pulldown.
 
 Exit codes:
   0    Success (changed to or refreshed the specified branch, reselected the
@@ -225,6 +230,7 @@ emit_success_changed() {
   local selected_ref="$local_ref"
   local relation_tag=""
   local parent_tag=""
+  local workflow_tags=""
   local mode_tag="$mode"
   local -a tags=()
 
@@ -267,6 +273,10 @@ emit_success_changed() {
   parent_tag="$(bt_git_parent_relation_tags \
     "$mode" "$comparison_branch" "$selected_ref")"
   [[ -z "$parent_tag" ]] || tags+=("$parent_tag")
+  if [[ "$mode" == "local" ]]; then
+    workflow_tags="$(bt_git_workflow_in_progress_tags "$comparison_branch")"
+    [[ -z "$workflow_tags" ]] || tags+=("$workflow_tags")
+  fi
   echo "$display_branch ${tags[*]}"
 
   if [[ "$mode" == "remote" ]] || bt_is_read_only_branch "$branch"; then

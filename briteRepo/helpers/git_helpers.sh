@@ -473,6 +473,188 @@ bt_git_fetch_prune_origin_with_retry() {
     git -C "$repo_path" fetch --prune origin
 }
 
+bt_git_is_rebase_in_progress() {
+  local rebase_dir=""
+
+  for rebase_dir in \
+    "$(git rev-parse --git-path rebase-merge 2>/dev/null || true)" \
+    "$(git rev-parse --git-path rebase-apply 2>/dev/null || true)"; do
+    [[ -d "$rebase_dir" ]] || continue
+    [[ -n "$(find "$rebase_dir" -mindepth 1 -print -quit 2>/dev/null)" ]] && \
+      return 0
+  done
+  return 1
+}
+
+bt_git_rebase_head_branch() {
+  local head_name=""
+  local path=""
+
+  for path in \
+    "$(git rev-parse --git-path rebase-merge/head-name 2>/dev/null || true)" \
+    "$(git rev-parse --git-path rebase-apply/head-name 2>/dev/null || true)"; do
+    [[ -f "$path" ]] || continue
+    head_name="$(tr -d '\n' < "$path")"
+    break
+  done
+
+  [[ -n "$head_name" ]] || return 1
+  head_name="${head_name#refs/heads/}"
+  [[ -n "$head_name" ]] || return 1
+  printf '%s\n' "$head_name"
+}
+
+bt_git_conflict_files() {
+  local conflict_files=""
+
+  conflict_files="$(git diff --name-only --diff-filter=U 2>/dev/null || true)"
+  if [[ -z "$conflict_files" ]]; then
+    conflict_files="$(git --no-optional-locks status --porcelain \
+      2>/dev/null | awk '/^UU / {print $2}')"
+  fi
+  [[ -n "$conflict_files" ]] || \
+    conflict_files="(unable to determine conflicting files)"
+  printf '%s\n' "$conflict_files"
+}
+
+bt_git_stage_resolved_rebase_files() {
+  local conflict_path=""
+  local unresolved=false
+
+  while IFS= read -r -d '' conflict_path; do
+    [[ -f "$conflict_path" ]] || {
+      git add -A -- "$conflict_path" >/dev/null 2>&1 || return 1
+      continue
+    }
+    if grep -Eq '^(<<<<<<<|=======|>>>>>>>)' -- "$conflict_path"; then
+      unresolved=true
+      continue
+    fi
+    git add -A -- "$conflict_path" >/dev/null 2>&1 || return 1
+  done < <(git diff --name-only --diff-filter=U -z 2>/dev/null || true)
+
+  [[ "$unresolved" == false ]]
+}
+
+bt_git_workflow_marker_path() {
+  local action="$1"
+  git rev-parse --git-path "briteRepo/${action}.in-progress" 2>/dev/null || true
+}
+
+bt_git_mark_workflow_in_progress() {
+  local action="$1"
+  local branch="$2"
+  local marker=""
+
+  marker="$(bt_git_workflow_marker_path "$action")"
+  [[ -n "$marker" ]] || return 1
+  mkdir -p "$(dirname "$marker")" || return 1
+  printf '%s\n' "$branch" > "$marker"
+}
+
+bt_git_clear_workflow_in_progress() {
+  local action="$1"
+  local marker=""
+
+  marker="$(bt_git_workflow_marker_path "$action")"
+  [[ -z "$marker" ]] || rm -f "$marker"
+}
+
+bt_git_workflow_marker_matches() {
+  local action="$1"
+  local branch="$2"
+  local marker=""
+  local marker_branch=""
+
+  marker="$(bt_git_workflow_marker_path "$action")"
+  [[ -f "$marker" ]] || return 1
+  marker_branch="$(tr -d '\n' < "$marker" 2>/dev/null || true)"
+  [[ "$marker_branch" == "$branch" ]]
+}
+
+bt_git_workflow_in_progress_tags() {
+  local branch="$1"
+  local pushup_state=""
+  local pushup_source=""
+  local pushup_parent=""
+  local pushup_phase=""
+  local current_branch=""
+  local tags=()
+
+  if bt_is_copyfix_in_progress "$branch"; then
+    tags+=('[copyfix in progress]')
+  fi
+
+  pushup_state="$(git rev-parse --git-path briteRepo/pushup.state \
+    2>/dev/null || true)"
+  if [[ -f "$pushup_state" ]]; then
+    pushup_source="$(git config --file "$pushup_state" \
+      --get pushup.source 2>/dev/null || true)"
+    pushup_parent="$(git config --file "$pushup_state" \
+      --get pushup.parent 2>/dev/null || true)"
+    pushup_phase="$(git config --file "$pushup_state" \
+      --get pushup.phase 2>/dev/null || true)"
+    if [[ "$branch" == "$pushup_source" || "$branch" == "$pushup_parent" ]] && \
+      [[ "$pushup_phase" != source-published ]]; then
+      tags+=('[pushup in progress]')
+    fi
+  fi
+
+  current_branch="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
+  if [[ "$branch" == "$current_branch" ]]; then
+    if bt_git_workflow_marker_matches pull "$branch" && \
+      bt_git_is_rebase_in_progress; then
+      tags+=('[pull in progress]')
+    elif bt_git_workflow_marker_matches retarget "$branch" && \
+      bt_git_is_rebase_in_progress; then
+      tags+=('[retarget in progress]')
+    elif bt_git_workflow_marker_matches pulldown "$branch" && \
+      git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+      tags+=('[pulldown in progress]')
+    fi
+  fi
+
+  [[ ${#tags[@]} -eq 0 ]] || printf '%s ' "${tags[*]}"
+}
+
+bt_git_workflow_in_progress_action() {
+  local branch="$1"
+  local pushup_state=""
+  local pushup_source=""
+  local pushup_parent=""
+  local pushup_phase=""
+
+  if bt_is_copyfix_in_progress "$branch"; then
+    printf 'copyfix\n'
+    return 0
+  fi
+  pushup_state="$(git rev-parse --git-path briteRepo/pushup.state \
+    2>/dev/null || true)"
+  if [[ -f "$pushup_state" ]]; then
+    pushup_source="$(git config --file "$pushup_state" \
+      --get pushup.source 2>/dev/null || true)"
+    pushup_parent="$(git config --file "$pushup_state" \
+      --get pushup.parent 2>/dev/null || true)"
+    pushup_phase="$(git config --file "$pushup_state" \
+      --get pushup.phase 2>/dev/null || true)"
+    if [[ "$branch" == "$pushup_source" || "$branch" == "$pushup_parent" ]] && \
+      [[ "$pushup_phase" != source-published ]]; then
+      printf 'pushup\n'
+      return 0
+    fi
+  fi
+  if bt_git_workflow_marker_matches pull "$branch" && \
+    bt_git_is_rebase_in_progress; then
+    printf 'pull\n'
+  elif bt_git_workflow_marker_matches retarget "$branch" && \
+    bt_git_is_rebase_in_progress; then
+    printf 'retarget\n'
+  elif bt_git_workflow_marker_matches pulldown "$branch" && \
+    git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+    printf 'pulldown\n'
+  fi
+}
+
 # bt_is_worktree_dirty
 #
 # Returns 0 (true) if the working tree has any uncommitted changes:
