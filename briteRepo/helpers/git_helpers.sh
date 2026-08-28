@@ -131,6 +131,10 @@ bt_git_parent_relation_tags() {
 
   if [[ -n "$parent_ref" ]]; then
     available=true
+    if git diff --quiet "$selected_ref" "$parent_ref" 2>/dev/null; then
+      printf '[parent: %s]' "$parent"
+      return 0
+    fi
     counts=$(git rev-list --left-right --count \
       "$selected_ref...$parent_ref" 2>/dev/null || true)
     read -r ahead behind <<< "$counts"

@@ -315,9 +315,15 @@ chmod +x "$STATUS_BIN/git" "$STATUS_BIN/gh"
 status_parent="v1.0.0"
 status_parent_tip=$(git rev-parse "$status_parent")
 status_tree=$(git rev-parse "$status_parent_tip^{tree}")
+status_index="$TMPDIR/status.index"
+status_blob=$(printf 'lsbranch local status fixture\n' | git hash-object -w --stdin)
+GIT_INDEX_FILE="$status_index" git read-tree "$status_tree"
+GIT_INDEX_FILE="$status_index" git update-index --add \
+  --cacheinfo "100644,$status_blob,.lsbranch-status"
+status_changed_tree=$(GIT_INDEX_FILE="$status_index" git write-tree)
 status_local_tip=$(printf 'lsbranch local status fixture\n' | \
   git -c user.name=lsbranch-test -c user.email=lsbranch@example.com \
-    commit-tree "$status_tree" -p "$status_parent_tip")
+    commit-tree "$status_changed_tree" -p "$status_parent_tip")
 status_remote_tip=$(printf 'lsbranch remote status fixture\n' | \
   git -c user.name=lsbranch-test -c user.email=lsbranch@example.com \
     commit-tree "$status_tree" -p "$status_parent_tip")
@@ -337,6 +343,22 @@ grep -Fq "[behind local by 1]" "$TMPDIR/status-ahead.out" || \
   fail "remote row should report behind local"
 grep -Fq "[parent: v1.0.0] [ahead of parent by 1]" \
   "$TMPDIR/status-ahead.out" || fail "row should report parent identity"
+
+status_content_match_tip=$(printf 'lsbranch matching-content fixture\n' | \
+  git -c user.name=lsbranch-test -c user.email=lsbranch@example.com \
+    commit-tree "$status_tree" -p "$status_parent_tip")
+git update-ref "$status_local_ref" "$status_content_match_tip"
+git update-ref "$status_remote_ref" "$status_content_match_tip"
+rc=$(run_capture "$TMPDIR/status-content-match.out" env PATH="$STATUS_BIN:$PATH" \
+  "$LSBRANCH" "$status_branch")
+[[ "$rc" -eq 0 ]] || fail "matching-content fixture should exit 0"
+grep -Fq "[parent: v1.0.0]" \
+  "$TMPDIR/status-content-match.out" || \
+  fail "matching-content row should identify its parent"
+if grep -E "^${status_branch} \[local\].*\[ahead of parent" \
+  "$TMPDIR/status-content-match.out" >/dev/null; then
+  fail "matching-content row should not imply another pushup is needed"
+fi
 
 git update-ref "$status_local_ref" "$status_parent_tip"
 git update-ref "$status_remote_ref" "$status_remote_tip"

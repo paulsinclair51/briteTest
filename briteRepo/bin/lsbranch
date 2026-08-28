@@ -1397,6 +1397,10 @@ check_branch_status() {
       if [[ "$parent_divergence_counts" =~ $parent_divergence_re ]]; then
         parent_ahead_count="${BASH_REMATCH[1]}"
         parent_behind_count="${BASH_REMATCH[2]}"
+        if git diff --quiet "$branch" "$base_reference" 2>/dev/null; then
+          parent_ahead_count="content-match"
+          parent_behind_count=""
+        fi
       fi
     fi
 
