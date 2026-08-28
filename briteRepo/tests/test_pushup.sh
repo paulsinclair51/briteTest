@@ -233,6 +233,8 @@ status="$(run_capture "$TMPDIR/finalize-fail.out" bash -c \
 [[ "$status" -eq 5 ]] || fail "PR finalization failure should exit 5, got $status"
 [[ "$(git config --file "$WORK/.git/briteRepo/pushup.state" --get pushup.phase)" == \
   parent-finalization-failed ]] || fail "finalization failure phase should be retained"
+[[ "$(git -C "$WORK" branch --show-current)" == feature ]] || \
+  fail "partial pushup should return to the saved source branch"
 assert_contains "parent was published" "$TMPDIR/finalize-fail.out"
 status="$(run_capture "$TMPDIR/finalize-continue.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
@@ -331,9 +333,12 @@ assert_contains '| Synchronize source from parent | Pending |' "$report"
 assert_contains 'pushup --continue' "$report"
 echo "PASS: partial report identifies completed and pending work"
 
+git -C "$WORK" checkout main >/dev/null
 status="$(run_capture "$TMPDIR/continue.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
 [[ "$status" -eq 0 ]] || fail "continue should complete pushup, got $status"
+[[ "$(git -C "$WORK" branch --show-current)" == feature ]] || \
+  fail "continue should reselect the saved source branch"
 [[ ! -f "$WORK/.git/briteRepo/pushup.state" ]] || \
   fail "completed pushup should remove state"
 [[ "$(git --git-dir="$ORIGIN" rev-parse main)" == "$(git -C "$WORK" rev-parse main)" ]] || \
@@ -448,6 +453,7 @@ git fetch origin main >/dev/null
 git merge --no-edit origin/main >/dev/null
 EOF
 chmod +x "$WORK/briteRepo/bin/chbranch" "$WORK/briteRepo/bin/pulldown"
+rm -rf "$WORK/.git/briteRepo/pushup-tools"
 status="$(run_capture "$TMPDIR/signal-continue.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
 [[ "$status" -eq 0 ]] || fail "continuation after signal should complete, got $status"

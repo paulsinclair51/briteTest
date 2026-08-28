@@ -216,6 +216,31 @@ assert_contains "Error: Cannot sync up on protected branch 'main'" "$TMPDIR/prot
 assert_contains "Guidance: use pushup to merge changes to this branch." "$TMPDIR/protected.out"
 pass "protected branch gate"
 
+# pushup alone may merge a published parent into its protected source branch.
+rc=$(run_capture "$TMPDIR/protected-pushup.out" bash -lc "cd '$WORK' && git checkout v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown --pushup -f")
+[[ "$rc" -eq 4 ]] || fail "unvalidated pushup mode should remain blocked (got $rc)"
+(
+  cd "$PEER"
+  git checkout main >/dev/null 2>&1
+  echo "parent change for protected source" > parent-protected-source.txt
+  git add parent-protected-source.txt
+  git commit -m "parent change for protected source" >/dev/null 2>&1
+  git push origin main >/dev/null 2>&1
+)
+(
+  cd "$WORK"
+  git checkout v1.0.0 >/dev/null 2>&1
+  mkdir -p .git/briteRepo
+  git config --file .git/briteRepo/pushup.state pushup.version 1
+  git config --file .git/briteRepo/pushup.state pushup.source v1.0.0
+  git config --file .git/briteRepo/pushup.state pushup.parent main
+  git config --file .git/briteRepo/pushup.state pushup.phase source-selected
+)
+rc=$(run_capture "$TMPDIR/protected-pushup-sync.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/pulldown --pushup -f")
+[[ "$rc" -eq 0 ]] || fail "validated pushup source sync should succeed (got $rc)"
+rm -f "$WORK/.git/briteRepo/pushup.state"
+pass "pushup can synchronize protected source branch"
+
 # 5) Force merge records report history without creating an immediate report
 remote_report_count_before="$(find "$ORIGIN/reports" -maxdepth 1 -type f -name 'commit-*.md' | wc -l | tr -d ' ')"
 (

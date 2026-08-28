@@ -138,6 +138,7 @@ MERGE_RENAMED_DIRECTORIES=0
 MERGE_FILE_SUMMARY_TEXT=""
 OPERATION_STARTED=false
 ERROR_REPORT_WRITTEN=false
+PUSHUP_SYNC=false
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
@@ -417,6 +418,26 @@ is_repository_owner() {
   bt_is_repository_owner_login "$user_name"
 }
 
+is_pushup_source_sync() {
+  local state_file=""
+  local state_version=""
+  local state_source=""
+  local state_parent=""
+  local state_phase=""
+
+  [[ "$PUSHUP_SYNC" == true ]] || return 1
+  state_file="$(git rev-parse --git-path briteRepo/pushup.state 2>/dev/null || true)"
+  [[ -f "$state_file" ]] || return 1
+  state_version="$(git config --file "$state_file" --get pushup.version 2>/dev/null || true)"
+  state_source="$(git config --file "$state_file" --get pushup.source 2>/dev/null || true)"
+  state_parent="$(git config --file "$state_file" --get pushup.parent 2>/dev/null || true)"
+  state_phase="$(git config --file "$state_file" --get pushup.phase 2>/dev/null || true)"
+
+  [[ "$state_version" == 1 && "$state_source" == "$CURRENT_BRANCH" && \
+    "$state_parent" == "$PARENT_BRANCH" ]] || return 1
+  [[ "$state_phase" == source-selected || "$state_phase" == source-sync-failed ]]
+}
+
 # Parse options and arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -444,6 +465,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -o)
       OWNER_OVERRIDE=true
+      shift
+      ;;
+    --pushup)
+      PUSHUP_SYNC=true
       shift
       ;;
     -t)
@@ -534,25 +559,34 @@ if [[ "$OWNER_OVERRIDE" == true ]]; then
   fi
 fi
 
-# Check if branch is protected
-if bt_is_protected_branch "$CURRENT_BRANCH"; then
-  if [[ "$OWNER_OVERRIDE_ACTIVE" == true ]]; then
-    bt_warn "Owner override enabled: allowing sync on protected branch "\
-"'$CURRENT_BRANCH'"
-  else
-    bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
-      "Cannot sync up on protected branch '$CURRENT_BRANCH'." \
-      "use pushup to merge changes to this branch."
-  fi
+if bt_is_protected_branch "$CURRENT_BRANCH" && \
+  [[ "$OWNER_OVERRIDE_ACTIVE" != true && "$PUSHUP_SYNC" != true ]]; then
+  bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
+    "Cannot sync up on protected branch '$CURRENT_BRANCH'." \
+    "use pushup to merge changes to this branch."
 fi
 
-# Determine parent branch
+# Determine parent branch before validating an internal pushup continuation.
 bt_info "Determining parent branch..."
 PARENT_BRANCH=$(bt_resolve_parent_branch "$CURRENT_BRANCH" "main")
 if [[ -z "$PARENT_BRANCH" ]]; then
   bt_error_exit "$EXIT_INTERNAL_ERROR" "Failed to determine parent branch"
 fi
 bt_info "Parent branch: $PARENT_BRANCH"
+
+# Check if branch is protected
+if bt_is_protected_branch "$CURRENT_BRANCH"; then
+  if [[ "$OWNER_OVERRIDE_ACTIVE" == true ]]; then
+    bt_warn "Owner override enabled: allowing sync on protected branch "\
+"'$CURRENT_BRANCH'"
+  elif is_pushup_source_sync; then
+    bt_info "Allowing protected source synchronization for active pushup"
+  else
+    bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
+      "Cannot sync up on protected branch '$CURRENT_BRANCH'." \
+      "use pushup to merge changes to this branch."
+  fi
+fi
 
 ensure_clean_worktree
 

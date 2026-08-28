@@ -505,6 +505,26 @@ assert_contains "pr close 42" "$FAKE_GH_LOG"
   fail "push should publish the local pushup parent tip"
 pass "approved contributor pushup publication and PR finalization"
 
+# A pushup continuation may publish its protected source only while its saved
+# transaction identifies that source as synchronized and ready to publish.
+(
+  cd "$PUSHUP_WORK"
+  git notes --ref=briteRepo-workflow remove HEAD >/dev/null 2>&1 || true
+  echo "synchronized source" >> merged.txt
+  git add merged.txt
+  git commit -m "synchronized protected source" >/dev/null 2>&1
+  mkdir -p .git/briteRepo
+  git config --file .git/briteRepo/pushup.state pushup.version 1
+  git config --file .git/briteRepo/pushup.state pushup.source v1.0.0
+  git config --file .git/briteRepo/pushup.state pushup.phase source-synchronized
+)
+rc=$(run_capture "$TMPDIR/pushup-source-push.out" env GITHUB_ACTOR=testapprover \
+  PATH="$PUSHUP_BIN:$PATH" \
+  bash -c "cd '$PUSHUP_WORK' && bash ./briteRepo/bin/push --pushup-source -t 5")
+[[ "$rc" -eq 0 ]] || fail "pushup should publish synchronized protected source (got $rc)"
+rm -f "$PUSHUP_WORK/.git/briteRepo/pushup.state"
+pass "pushup source publication"
+
 # A failed close occurs after the atomic branch/history publication. A rerun
 # with no commits retries only PR finalization and does not duplicate comments.
 (

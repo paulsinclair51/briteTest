@@ -161,6 +161,7 @@ PENDING_PUSHUP_SOURCE=""
 PENDING_PUSHUP_SOURCE_TIP=""
 PENDING_PUSHUP_TARGET=""
 PENDING_PUSHUP_PR=""
+PUSHUP_SOURCE_SYNC=false
 
 push_error_exit() {
   local code="$1"
@@ -248,6 +249,24 @@ push_load_pending_pushup() {
   PENDING_PUSHUP_SOURCE_TIP="$(bt_workflow_note_field "$note" "Source-Tip")"
   PENDING_PUSHUP_PR="$(bt_workflow_note_field "$note" "PR")"
   PENDING_PUSHUP=true
+}
+
+push_is_pushup_source_sync() {
+  local state_file=""
+  local state_version=""
+  local state_source=""
+  local state_phase=""
+
+  [[ "$PUSHUP_SOURCE_SYNC" == true ]] || return 1
+  state_file="$(git rev-parse --git-path briteRepo/pushup.state 2>/dev/null || true)"
+  [[ -f "$state_file" ]] || return 1
+  state_version="$(git config --file "$state_file" --get pushup.version 2>/dev/null || true)"
+  state_source="$(git config --file "$state_file" --get pushup.source 2>/dev/null || true)"
+  state_phase="$(git config --file "$state_file" --get pushup.phase 2>/dev/null || true)"
+
+  [[ "$state_version" == 1 && "$state_source" == "$1" ]] || return 1
+  [[ "$state_phase" == source-synchronized || \
+    "$state_phase" == source-publishing || "$state_phase" == source-publish-failed ]]
 }
 
 bt_push_has_pending_pushup_pr() {
@@ -351,6 +370,10 @@ push_validate_prerequisites() {
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      --pushup-source)
+        PUSHUP_SOURCE_SYNC=true
+        shift
+        ;;
       -d)
         PUSH_WORKFLOW_ARGS+=(-d)
         shift
@@ -421,7 +444,8 @@ push_validate_prerequisites() {
       "use an account and merge path authorized by repository policy, then rerun push."
   fi
   if bt_is_protected_branch "$current_branch" && \
-    [[ "$PENDING_PUSHUP" != true ]]; then
+    [[ "$PENDING_PUSHUP" != true ]] && \
+    ! push_is_pushup_source_sync "$current_branch"; then
     bt_emit_prerequisite_failure 3 \
       "Cannot push protected branch '$current_branch' via push. Use the standard release workflow" \
       "for protected branches."
@@ -440,12 +464,14 @@ push_validate_prerequisites() {
       "restore current PR approval or use an approver account, then rerun push."
   fi
   if bt_is_read_only_branch "$current_branch" && \
-    [[ "$PENDING_PUSHUP" != true ]]; then
+    [[ "$PENDING_PUSHUP" != true ]] && \
+    ! push_is_pushup_source_sync "$current_branch"; then
     bt_emit_prerequisite_failure 3 \
       "Cannot push policy-invalid read-only branch '$current_branch'." \
       "switch to a valid targeted or contributor branch and rerun push."
   fi
   if [[ "$PENDING_PUSHUP" != true ]] && \
+    ! push_is_pushup_source_sync "$current_branch" && \
     ! push_is_targeted_branch "$current_branch" && \
     ! push_is_contributor_branch "$current_branch"; then
     bt_emit_prerequisite_failure 1 \
