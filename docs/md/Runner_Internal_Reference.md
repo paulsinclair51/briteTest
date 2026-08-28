@@ -2,7 +2,7 @@
 
 #### Version: v1.0.0
 
-This document provides a reference to the briteTestRunner API internals.
+This document provides a reference to the Runner API internals.
 It includes types, structs, unions, enums, macros, and functions.
 
 #### Copyright (c) 2026 Paul Sinclair
@@ -67,7 +67,7 @@ A printer-friendly PDF file for this document is available.
 1. [**Introduction**](#1-introduction)  
    1.1. [Public and Internal Name Conventions](#public-and-internal-name-conventions)  
 
-2. [**Symbols Defined in `runnerapi.h`**](#2-symbols-defined-in-britetesth)  
+2. [**Symbols Defined in `runnerapi.h`**](#2-symbols-defined-in-runnerapih)  
    2.1. [Types](#21-types)  
    2.2. [Structs](#22-structs)  
    2.3. [Enums and Enum Values](#23-enums-and-enum-values)  
@@ -75,14 +75,14 @@ A printer-friendly PDF file for this document is available.
    2.5. [Macros](#25-macros)  
    2.6. [Functions](#26-functions)
 
-3. [**Symbols Defined in `runnerapi.c`**](#3-symbols-defined-in-britetestc)  
+3. [**Symbols Defined in `runnerapi.c`**](#3-symbols-defined-in-runnerapic)  
    3.1. [Types](#31-types)  
    3.2. [Structs](#32-structs)  
    3.3. [Enums and Enum Values](#33-enums-and-enum-values)  
    3.4. [Global Variables](#34-global-variables)  
    3.5. [Macros](#35-macros)  
-   3.6. [Functions (declared as a forward reference) in `runnerapi.h`](#36-functions-declared-as-a-forward-reference-in-britetesth)  
-   3.7. [Functions (not declared in `runnerapi.h`)](#37-functions-not-declared-in-britetesth)
+   3.6. [Functions (declared as a forward reference) in `runnerapi.h`](#36-functions-declared-as-a-forward-reference-in-ruunerapih)  
+   3.7. [Functions (not declared in `runnerapi.h`)](#37-functions-not-declared-in-runnerapih)
 
 4. [**Execution Engine**](#4-execution-engine)
 
@@ -106,7 +106,7 @@ A printer-friendly PDF file for this document is available.
 
 ## 1. Introduction
 
-briteTest's internal architecture consists of several cooperating subsystems,
+The Runner Framework and API internal architecture consists of several cooperating subsystems,
 including the implementation of API macros and functions, the execution engine,
 guard/fault handling, isolation support, file/path utilities, matching/comparison
 helpers, and environment support. These components work together to run test
@@ -116,7 +116,7 @@ faults and producing structured reports.
 The remainder of this document describes each internal symbol used to implement
 these subsystems, organized from high-level behavior down to low-level details.
 
-In this document, a *symbol* refers to any named entity in the briteTest framework, including:
+In this document, a *symbol* refers to any named entity in the Runner API, including:
 
 - typedefs
 - structs
@@ -125,11 +125,10 @@ In this document, a *symbol* refers to any named entity in the briteTest framewo
 - variables
 - functions
 
-This document is organized by the named entities in the briteTest Runner
-implementation. Each symbol (type, macro, function, etc.) is described individually, including its purpose, behavior, and usage. It serves as
-the reference companion to the briteTest Framework Guide, defining the
-framework's components precisely while the Guide explains their design
-and interaction.
+This document is organized by the named entities in the Runner API implementation. Each symbol
+(type, macro, function, etc.) is described individually, including its purpose, behavior, and
+usage. It serves as the reference companion to the Runner Guide, defining the framework's
+components precisely while the Runner Guide explains their design and interaction.
 </details>
 
 <details>
@@ -137,15 +136,15 @@ and interaction.
 
 ###1.2. Public and Internal Naming Conventions
 
-Any framework names that are public and visible to briteTest API users are prefixed
-with `ra_...` (typically lowercase) or `RA_...` (typically uppercase).
+Any Runner API names that are public and visible to users are prefixed with
+`ra_` (typically lowercase) or `RA_` (typically uppercase).
 
-Any framework names that are internal (but technically visible to briteTest API users)
-follow the pattern `britetest_..._internal_t`, `britetest_..._internal`, or `BRITETEST_..._INTERNAL`.
-These names should not be referenced by API users.
+Any Runner API names that are internal (but technically visible to users) are
+prefixed with `rainternal_` (typically the name is lowercase) or `RAINTERNAL_`
+(typically the name is uppercase). These names should not be referenced by API users.
 
-In general, users of the API should not define names prefixed with `ra_`, `BT`, `britetest_`,
-or `BRITETEST`, or reference names prefixed with `britetest_` or `BRITETEST_`.
+In general, users of the Runner API should not define names prefixed with `ra_`,
+`RA_`, `rainternal_`, or `RAINTERNAL`.
 </details>
 
 <details>
@@ -161,7 +160,7 @@ based on their name per the naming conventions.
 
 ### 2.1. Types
 
-These typedefs declare fundamental internal types used throughout the briteTest framework.
+These typedefs declare fundamental internal types used throughout the Runner API.
 
 <details>
 <summary>ra_resubt_t</summary>
@@ -215,7 +214,8 @@ typedef struct <StructName> {
 ```
 
 **Description**  
-Explain the purpose of this struct, what data it aggregates, and how it participates in the briteTest execution model.
+Explain the purpose of this struct, what data it aggregates, and how it participates in the
+Runner Framework execution model.
 
 **Fields**
 - `<field-name>` -- description  
@@ -285,7 +285,8 @@ extern <type> <VariableName>;
 ```
 
 **Description**  
-Explain the purpose of this global variable, what state it represents, and how it is used by the briteTest framework.
+Explain the purpose of this global variable, what state it represents, and how it is used by
+the Runner API.
 
 **Usage Notes**  
 - Whether the variable is read-only or writable  
@@ -318,7 +319,8 @@ if (<VariableName> == ...) {
 ```
 
 **Description**  
-Describe the purpose of this macro, what it expands to conceptually, and how it fits into the briteTest orchestration or test definition model.
+Describe the purpose of this macro, what it expands to conceptually, and how it fits into
+the Runner Framwork/API orchestration or test definition model.
 
 **Parameters**
 - `<param>` -- meaning and constraints  
@@ -355,7 +357,8 @@ depending on how they are used within the framework.
 ```
 
 **Description**  
-Explain what this function does, when it is called, and how it interacts with the briteTest runtime.
+Explain what this function does, when it is called, and how it interacts with the
+Runner Framework/API.
 
 **Parameters**
 - `<param-name>` -- meaning, constraints, ownership  
@@ -371,7 +374,7 @@ Describe what is returned and under what conditions.
 **Usage Notes**  
 - Thread safety  
 - Lifetime rules  
-- Interaction with other briteTest components
+- Interaction with other Runner Framework/API components
 
 **Example**
 ```c
@@ -511,50 +514,6 @@ internal name conventions and more natural names may be used.
 </details>
 
 <details>
-<summary><strong>Repository Layout</strong></summary>
-
-## Repository Layout
-  
-GitHub repository: `paulsinclair51/briteTest`
-
-Repository layout (listing core files):
-
-```text
-briteTest/
-|- .github/
-|  \- workflows/
-|     \- ci.yml
-|- README.md
-|- LICENSE
-|- Makefile
-|- build_test_britetest.ps1
-|- build/
-|- docs/
-|  \- briteTest_API_User_Guide.md
-|  \- briteTest_API_Reference.md
-|  \- Contributor_Guide.md
-|  \- briteTest_Framework_Guide.md
-|  \- briteTest_Framework_Reference.md
-|- examples/
-|- include/
-|  \- runnerapi.h
-|- reports/
-|  |- test_report-I.txt
-|  \- test_report.txt
-|- scripts/
-|- src/
-|  \- runnerapi.c
-|- tests/
-|  |- test_runner.c
-|  |- orchestrator_tests.c
-|  |- guard1_tests.c
-|  \- guard2_tests.c
-```
-
-Use this as a reference when adapting briteTest into your own project structure.
-</details>
-
-<details>
 <summary><strong>Glossary</strong></summary>
 
 ## Glossary
@@ -566,12 +525,12 @@ Use this as a reference when adapting briteTest into your own project structure.
 ### Framework-Specific Terms
 
 - **Orchestrator Lifecycle**: The sequence of initialization, group execution,
-  test execution, and report finalization performed by the briteTest framework.
-- **Guard Behavior**: The mechanism briteTest uses to catch runtime faults
+  test execution, and report finalization performed by the Ruuner Framework/API.
+- **Guard Behavior**: The mechanism Runner API uses to catch runtime faults
   (e.g., segmentation faults) and continue executing remaining tests.
 - **Isolation Semantics**: The rules governing how tests and groups run in
   threads or processes to prevent interference and ensure fault containment.
-- **Concurrency Model**: The framework's rules for running tests concurrently
+- **Concurrency Model**: The Runner Framework rules for running tests concurrently
   within `RA_BEGIN_CONCURRENT` / `RA_END_CONCURRENT` blocks.
 - **Execution Phases**: The internal stages of orchestrator operation, including
   initialization, argument parsing, group dispatch, test dispatch, and report

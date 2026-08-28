@@ -37,7 +37,7 @@ jobs:
         run: |
           echo "=== SHELL SCRIPT LINTING ==="
           failed=0
-          for script in scripts/bin/* scripts/helpers/* 2>/dev/null; do
+          for script in briteRepo/bin/* briteRepo/helpers/* 2>/dev/null; do
             [[ ! -f "$script" ]] && continue
             if file "$script" | grep -q "shell script"; then
               echo "Checking: $(basename $script)"

@@ -2,10 +2,8 @@
 
 #### Version: v1.0.0
 
-This reference contains internal operational details for the briteTest contributor
-workflow, repository protection, repair scripts, and GitHub-side enforcement
-controls. It complements the public Contributor Reference and the public
-Contributor Guide.
+This reference records implementation contracts for repository repair, helper
+modules, Git hooks, environment variables, and GitHub-side enforcement.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -40,9 +38,8 @@ SOFTWARE.
 
 ## Preface
 
-This document is intended for repository maintainers, approvers, and contributors
-working directly with repository validation, repair paths, and GitHub-side
-protection controls.
+This document is intended for maintainers, approvers, and repository owners who
+maintain validation, repair, hooks, or GitHub-side protection controls.
 
 For routine workflow usage, see the [Contributor_Guide.md](./Contributor_Guide.md).
 For public script usage, see the [Contributor_Reference.md](./Contributor_Reference.md).
@@ -71,6 +68,10 @@ For public script usage, see the [Contributor_Reference.md](./Contributor_Refere
 2. [Role and Access Assumptions](#2-role-and-access-assumptions)<br>
 3. [GitHub Server-Side Controls](#3-github-server-side-controls)<br>
 4. [Operational Notes and Security Boundaries](#4-operational-notes-and-security-boundaries)<br>
+5. [Internal Helpers and Hooks](#5-internal-helpers-and-hooks)<br>
+  5.1. [Helper Modules](#51-helper-modules)<br>
+  5.2. [Git Hooks](#52-git-hooks)<br>
+6. [Internal Environment and Workflow Context](#6-internal-environment-and-workflow-context)<br>
 </details>
 
 <details>
@@ -78,9 +79,9 @@ For public script usage, see the [Contributor_Reference.md](./Contributor_Refere
 
 ## 1. Repository Repair Scripts
 
-These scripts form the internal repair sequence used when the repository state is
-not healthy or when a remote-authored issue must be diagnosed from a clean local
-state.
+These entries define the repair command interfaces. For command selection and
+procedures, see the
+[Repair Decision Tree](./Contributor_Internal_Guide.md#2-repair-decision-tree).
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;1.1. fixlocal</summary>
@@ -90,19 +91,21 @@ state.
 **Purpose:** Repair the current local clone, worktree state, tracking, or local
 repository integrity issues.
 
-**Typical use:**
+**Usage:**
 
 ```bash
-fixlocal
+fixlocal [-d] [-f] [-t SEC] [-v]
 ```
 
-**Prerequisites:**
+**Key Options:**
 
-- Must run inside a valid repository clone.
-- Current branch should be a local branch rather than a remote snapshot.
-- Local repository metadata must be consistent enough to make repairs.
+- `-d` reports issues without repairs.
+- `-f` permits guarded local stabilization after creating a backup ref.
+- `-t SEC` sets the remote timeout.
+- `-v` prints detailed progress.
 
-This is the default first repair action when the current repo is the issue.
+Reports are written under `reports/`. Run `fixlocal -h` for the complete exit
+status contract.
 </details>
 
 <details>
@@ -113,20 +116,20 @@ This is the default first repair action when the current repo is the issue.
 **Purpose:** Validate repository state beyond the current local checkout and
 optionally inspect a second clone or broader workspace state.
 
-**Typical use:**
+**Usage:**
 
 ```bash
-fixrepo
-fixrepo -x <clean-clone-path>
+fixrepo [-d] [-q] [-t SEC] [-v] [<clone-path>]
 ```
 
-**Prerequisites:**
+**Key Options:**
 
-- Local repo should already be repaired to the extent possible.
-- Additional clone path may be needed for broader diagnosis.
+- `-d` reports issues without repairs.
+- `-q` uses reduced-cost diagnostics.
+- `-t SEC` sets the remote timeout; `0` skips remote checks.
+- `-v` prints the generated report.
 
-This is the broader follow-up when local repair was insufficient or when a second
-clone must be included in the validation.
+The optional clone path is positional; `fixrepo` does not have an `-x` option.
 </details>
 
 <details>
@@ -137,22 +140,21 @@ clone must be included in the validation.
 **Purpose:** Recover a damaged remote repository state from a clean local clone,
 including remote refs or object issues that cannot be resolved in-place.
 
-**Typical use:**
+**Usage:**
 
 ```bash
-fixremote
-fixremote -x <clean-clone-path>
+fixremote [-d] [-t SEC] [-v] <clean-clone-path>
+fixremote -x [-t SEC] [-v] <clean-clone-path>
 ```
 
-**Prerequisites:**
+**Key Options:**
 
-- Must be run from a clean local clone or from a valid recovery path.
-- Remote reachability must succeed within the configured timeout.
-- The operation is reserved for remote repo recovery and is not the first repair
-  path for normal local issues.
+- Without `-x`, the command performs preflight checks and writes a report only.
+- `-x` executes guarded recovery from the required clean clone path.
+- `-t SEC` sets the remote timeout; `0` skips reachability checks.
+- `-v` adds per-step detail and prints the report.
 
-This script is not a general-purpose branch editor; it is specifically for remote
-repository repair preparation and recovery flow.
+Recovery reports are written under `reports/`.
 </details>
 
 <details>
@@ -163,22 +165,27 @@ repository repair preparation and recovery flow.
 **Purpose:** Toggle explicit owner override semantics for local or remote repair
 windows.
 
-**Typical use:**
+**Usage:**
 
 ```bash
-override on
+override [-t SEC] on
+override [-t SEC] -r on
 override off
-override -r on
 ```
 
 **Behavior:**
 
-- Local override mode affects local enforcement that is tied to the current clone.
-- Remote repair mode records a temporary server-side repair authorization window.
+- Local override mode sets `brite.ownerOverride` in the clone and permits the
+  repository owner through local hook enforcement.
+- Remote repair mode sets `brite.remoteRepairOverride` in the clone after
+  verifying remote reachability; it does not create server-side state.
+- `override -r on` does not enable local unrestricted mode. `override off`
+  disables both clone-local values.
 - The script does not bypass GitHub rulesets or branch protection.
 
 **Important:** the actual remote repair still requires GitHub admin authority and
 must be performed by the appropriate server-side admin workflow.
+</details>
 </details>
 
 <details>
@@ -197,6 +204,7 @@ must be performed by the appropriate server-side admin workflow.
   remote override state.
 - Actual remote-side repair still requires repository admin or organization admin
   permissions in GitHub.
+</details>
 
 <details>
 <summary><strong>3. GitHub Server-Side Controls</strong></summary>
@@ -214,6 +222,7 @@ policies, not by local scripts alone:
 In practical terms, the repository owner may need to make a protected branch
 temporarily editable through GitHub admin controls, complete the repair, then
 restore the protection immediately.
+</details>
 
 <details>
 <summary><strong>4. Operational Notes and Security Boundaries</strong></summary>
@@ -229,8 +238,88 @@ restore the protection immediately.
   the normal workflow.
 - Do not treat direct GitHub.com edits or direct git commands as the normal
   contributor path. They are exceptional admin-only operations.
+- `mkrepo` pushes directly to the default branch and is a repository setup
+  operation, not a contributor workflow path. It requires that the default
+  branch is unprotected and that no local clone of the target is in use, and
+  it never deletes existing content outside the `briteRepo/` script
+  directories and `.github/workflows/`, which it replaces with a fresh copy.
+  Server-side enforcement is only complete once those workflows are present
+  and `setup_rulesets` has been run for the repository.
 
 This document records the explicit limitations of the owner override and the
 server-side administrative authority required for protected remote repair.
 </details>
+
+<details>
+<summary><strong>5. Internal Helpers and Hooks</strong></summary>
+
+## 5. Internal Helpers and Hooks
+
+These files are implementation modules, not contributor commands. Public
+workflows must invoke the corresponding command in `briteRepo/bin/`.
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.1. Helper Modules</summary>
+
+### 5.1. Helper Modules
+
+| Module | Responsibility |
+|--------|----------------|
+| `ckbranchname.sh` | Branch-name classification and validation |
+| `ckrole.sh`, `rbac.sh` | Identity, role, and permission checks |
+| `ckstyle.sh`, `validation_helpers.sh` | Style and reusable validation checks |
+| `common.sh`, `common_utils.sh` | Shared paths, output, identity, and utility functions |
+| `git_helpers.sh`, `github_helpers.sh` | Git and GitHub API operations |
+| `history_log.sh`, `report_helpers.sh`, `report_sync.sh` | History and report generation or synchronization |
+| `health_report.sh` | Repository health report support |
+| `push_workflow.sh`, `pushup_parent.sh` | Shared push and push-up state transitions |
+| `gendocx.sh`, `genpdf.sh` | Document conversion backends |
+| `install_git_hooks.sh` | Configure the versioned hooks directory |
+
+Source a module only from a repository command, test, or another helper that
+honors its return-status contract. The helper source remains authoritative for
+individual function signatures.
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;5.2. Git Hooks</summary>
+
+### 5.2. Git Hooks
+
+Hooks are stored in `briteRepo/helpers/.githooks/` and selected through
+`core.hooksPath`.
+
+| Hook | Contract |
+|------|----------|
+| `post-checkout` | Restore local identity and hook configuration after checkout |
+| `pre-commit` | Reject direct commit operations outside project commands |
+| `pre-push` | Reject direct pushes outside project commands |
+| `pre-merge-commit` | Reject direct merge commits outside project commands |
+| `githook_helper.sh` | Shared operation detection and bypass handling |
+
+Repository commands set `GIT_BYPASS_HOOKS=true` only around authorized internal
+Git operations. It is an implementation signal, not a supported user override.
+`override on` is the supported exceptional local recovery control.
+</details>
+</details>
+
+<details>
+<summary><strong>6. Internal Environment and Workflow Context</strong></summary>
+
+## 6. Internal Environment and Workflow Context
+
+| Variable | Internal Use |
+|----------|--------------|
+| `GIT_BYPASS_HOOKS` | Marks an authorized Git operation performed by a project command |
+| `CKROLE_TRUSTED_ACTORS` | Lists explicitly trusted automation identities |
+| `GITHUB_ACTOR` | Identifies the user or automation actor |
+| `GITHUB_EVENT_NAME` | Identifies the triggering GitHub event |
+| `GITHUB_REF_NAME` | Identifies the current branch or tag |
+| `GITHUB_BASE_REF`, `GITHUB_HEAD_REF` | Identify pull-request target and source branches |
+
+Pull-request workflows perform preventive validation. Protected-branch workflows
+verify and record repository events. Their definitions under `.github/workflows/`
+and the helper source are authoritative for event filters and input contracts.
+For the procedure to change validation, see
+[GitHub Validation Architecture](./Contributor_Internal_Guide.md#7-github-validation-architecture).
 </details>

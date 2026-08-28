@@ -44,7 +44,7 @@ name: Validate Branch Names on Push
 #     'dev', 'fix', or 'mywork') and <description> is as defined above.
 #
 # This workflow mirrors the branch-naming policy used by
-# <repo>/scripts/bin/mkbranch.
+# <repo>/briteRepo/bin/mkbranch.
 # 
 # For more information, see '<repo>/docs/md/Contributor_Guide.md'.
 #
@@ -80,7 +80,7 @@ jobs:
 
           # Get branch type using ckbranchname.sh helper
           # Exit codes: 1=main, 2=version, 3=targeted, 4=contributor, 5=invalid
-          branch_result=$(bash scripts/helpers/ckbranchname.sh "$REF_NAME" 2>/dev/null; echo $?)
+          branch_result=$(bash briteRepo/helpers/ckbranchname.sh "$REF_NAME" 2>/dev/null; echo $?)
 
           # Helper function to get branch type name
           get_type_name() {

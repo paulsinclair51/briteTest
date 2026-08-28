@@ -1,0 +1,1606 @@
+#!/usr/bin/env bash
+
+# commit - Commit all changes to the current branch if safeguards
+#          are met.
+#
+# See usage below for details, or run: commit -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  commit [OPTIONS] [-- TOKEN...]
+  commit {-h | --help}
+
+Commit changes to the current branch (local, non-protected) with an
+auto-generated subject line and body (body includes the user comment
+and other relevant details) for tracking changes.
+
+Prerequisites:
+  - The user must be a contributor, reviewer, or approver (listed in
+    '<repo>/config/contributors.md').
+  - The current branch must be a targeted (dev/<desc>-<version> or
+    fix/<desc>-<version>) or contributor ([<type>/]<description>)
+    branch.
+  - The current branch must be a local branch.
+  - The current branch must not have an unfinished copyfix operation.
+
+Note: To make changes to main, a version branch (v<M>.<m>.0), or a
+remote snapshot, first make the changes in a local targeted or contributor branch, run
+commit, and then run push. Run review on a targeted branch to start a pull
+request. An approver can then use pushup to apply changes to its parent branch.
+
+Arguments:
+  None.
+
+Options:
+  -c TOKEN      User comment from TOKEN.
+  -- TOKEN...   User comment from one or more tokens.
+  -d            Generate a dry-run report for the commit workflow without
+                running the commit workflow.
+  -e            Generate an error report for the commit workflow without
+                running the commit workflow. This option is intended for
+                testing and debugging the error report and is not typically
+                used in normal operation. This option is mutually exclusive
+                with the -d option.
+  -h, --help    Output this help to stdout and exit (other options and
+                arguments are ignored).
+  -v            Output progress and diagnostics to stdout.
+
+  For user comment options '-c TOKEN' and '-- TOKEN...':
+    - These options are mutually exclusive.
+    - When changes are available to commit, one of these options is required.
+    - For '-- TOKEN...', '--' must be a separate token, followed by at least
+      one or more tokens. Leading/trailing whitespace is not preserved
+      and whitespace between tokens is reduced to a single space.
+    - For a quoted token, whitespace is preserved and the quotes are
+      removed.
+    - The user comment is quoted in the commit body to avoid ambiguity
+      with metadata trailer lines.
+    - '\\n' in the user comment is interpreted as a newline in the
+      commit body.
+    - For example, the following both have the same user comment:
+        commit -- do "  keep   this spacing  " for user comment.
+        commit -c "do   keep   this spacing   for user comment."
+    - The resulting user comment from TOKEN or TOKEN... must include
+      at least one non-whitespace character.
+    - Always ensure that the user comment accurately reflects the
+      changes being committed.
+
+Examples:
+  # Commit all changes using -c for a user comment.
+  commit -c "Fix authentication bug in login module."
+
+  # Commit all changes using '--' for a user comment.
+  commit -- Add new feature.
+
+Outputs:
+  - Writes errors and diagnostics to stderr.
+  - Writes verbose (-v) progress and diagnostics to stdout.
+  - If prerequisites are met, output to stdout is:
+    - Current local branch.
+    - Final status summary line for run outcome (success, dry-run, or
+      error-run report).
+    - If report is written, the line "See <report> for details."
+      is output.
+  - If a non-dry-run operation fails after commit work starts or -e is
+    specified, an untracked error report in the current branch is written to:
+      - <repo>/reports/commit-e-<datetime>.md
+  - For a dry-run (-d) when there are changes to commit, an untracked report in
+    the current branch is written to:
+      - <repo>/reports/commit-d-<datetime>.md
+  - Older dry-run and error reports are removed when a new report is written
+    or a commit succeeds.
+  - Commit reports can be generated using the 'report' command.
+  - After a successful non-dry-run commit, writes
+    'Run report for details.' to stdout.
+
+Exit codes:
+  0   Success.
+  1   Invalid option or argument. See the error line after usage output for
+      details.
+  2   User comment is missing/empty.
+  3   Contributor authorization failed (not a contributor, missing
+      contributor configuration, or identity could not be verified).
+  4   Commit must be for a targeted or contributor branch. It
+      is not allowed for a protected (main or version) branch.
+      Make changes, run 'commit', and then run 'push' on a targeted or
+      contributor branch. Run 'review' in targeted branch to start a review
+      (pull request) and 'pushup' workflow to apply changes to the corresponding
+      version branch.
+  5   Commit must run on a local branch. If current state is remote-only,
+      create/switch to a local branch first (for example, via chbranch).
+  6   Commit skipped due to -e option.
+  7   No changes are available to commit.
+  8   The current branch has an unfinished copyfix operation.
+  200 Failed to inspect, stage, or commit changes. Run `fixrepo` and retry.
+      If the issue persists, create a new clone with `mkclone`, apply the
+      changes, and retry.
+  201 Failed to write report. Check permissions and disk space, then retry.
+EOF
+}
+
+# High-Level Flow:
+# - Parse mode/comment options and validate actor, local branch, and policy.
+# - Serialize work per branch and reject runs with no commit candidates.
+# - Collect file/line metadata, create the standardized commit body, and commit.
+# - Write local reports only for dry-run/error paths; clean stale transient
+#   reports after successful work.
+# - Direct successful runs to report, which reads the durable commit metadata.
+
+# shellcheck disable=SC1091,SC2317  # Helper source paths and trap-managed lock
+# cleanup paths.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPORTS_DIR="$REPO_ROOT/reports"
+CONTRIBUTORS_FILE="$REPO_ROOT/config/contributors.md"
+RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S%z')"
+RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
+REPORT_FILE=""
+REPORT_NAME_LOCKED=false
+ORIGINAL_ARGS=("$@")
+TRANSIENT_REPORT_DELETIONS=()
+REPORT_WRITE_LOCK_DIR="/tmp/briteRepo-commit-report-write.lock"
+REPORT_WRITE_LOCK_METADATA_FILE="$REPORT_WRITE_LOCK_DIR/owner.meta"
+REPORT_WRITE_LOCK_TIMEOUT_SECONDS=30
+COMMIT_WORK_LOCK_ROOT=""
+COMMIT_WORK_LOCK_DIR=""
+COMMIT_WORK_LOCK_METADATA_FILE=""
+COMMIT_WORK_LOCK_TIMEOUT_SECONDS=60
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/report_helpers.sh
+source "$SCRIPT_DIR/../helpers/report_helpers.sh"
+# shellcheck source=helpers/github_helpers.sh
+source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_COMMENT_REQUIRED=2
+readonly EXIT_COMMENT_EMPTY=2
+readonly EXIT_NOT_AUTHORIZED=3
+readonly EXIT_BRANCH_POLICY=4
+readonly EXIT_REMOTE_LOCAL_CONFLICT=5
+readonly EXIT_WORKFLOW_SKIPPED=6
+readonly EXIT_NOTHING_TO_COMMIT=7
+readonly EXIT_COPYFIX_IN_PROGRESS=8
+readonly EXIT_WORKTREE_INSPECTION_FAILED=200
+readonly EXIT_STAGE_COMMIT_FAILED=200
+readonly EXIT_REPORT_WRITE_FAILED=201
+
+ERROR_REPORT_IN_PROGRESS=false
+OPERATION_STARTED=false
+CURRENT_BRANCH=""
+CURRENT_BRANCH_MODE="local"
+REPORT_WRITE_LOCK_HELD=false
+REPORT_WRITE_LOCK_DEPTH=0
+COMMIT_WORK_LOCK_HELD=false
+COMMIT_WORK_LOCK_DEPTH=0
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "$message. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
+bt_info() {
+  printf '%s\n' "$(bt_ensure_trailing_period "$1")"
+}
+
+bt_success() {
+  printf '%s\n' "$(bt_ensure_trailing_period "$1")"
+}
+
+bt_warn() {
+  printf '%s\n' "$(bt_ensure_trailing_period "$1")"
+}
+
+bt_error_exit() {
+  local code="$1"
+  local message="$2"
+  local guidance="${3:-Review the error and retry.}"
+
+  if [[ "$DRY_RUN" == false && "$OPERATION_STARTED" == true && \
+    "$ERROR_REPORT_IN_PROGRESS" != true ]]; then
+    generate_error_report "$message" "$code" "$guidance" || true
+  fi
+
+  bt_emit_error "$message"
+  exit "$code"
+}
+
+skip_commit_and_exit() {
+  local message="Commit skipped due to -e option."
+  local guidance="Run without -e option."
+
+  generate_error_report "$message" "$EXIT_WORKFLOW_SKIPPED" "$guidance" || true
+  bt_emit_error "$message"
+  bt_emit_guidance "$guidance"
+  return 0
+}
+
+fail_commit_and_exit() {
+  if [[ "${COMMITTED_FILES:-0}" -gt 0 ]]; then
+    bt_warn "${COMMITTED_FILES} failed to commit"
+  fi
+  bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" "Failed to commit." \
+    "Run 'fixrepo'; if the issue persists, contact an approver to help resolve file/state issues, then retry."
+}
+
+run_git_command() {
+  if [[ "$VERBOSE" == true ]]; then
+    "$@"
+  else
+    "$@" >/dev/null 2>&1
+  fi
+}
+
+cleanup_old_transient_reports() {
+  local old_report
+  local report_rel
+  local pattern
+  local branch_context=""
+
+  TRANSIENT_REPORT_DELETIONS=()
+
+  for pattern in commit-d-*.md commit-e-*.md; do
+    # Intentionally leave pattern unquoted so the glob expands to matching
+    # files.
+    for old_report in "$REPORTS_DIR"/$pattern; do
+      [[ -e "$old_report" ]] || continue
+      [[ -n "$REPORT_FILE" && "$old_report" == "$REPORT_FILE" ]] && continue
+
+      # Keep tracked report artifacts untouched to avoid unrelated deletions.
+      if git ls-files --error-unmatch "$old_report" >/dev/null 2>&1; then
+        continue
+      fi
+
+      report_rel="${old_report#"${REPO_ROOT}"/}"
+      if rm -f "$old_report" 2>/dev/null; then
+        TRANSIENT_REPORT_DELETIONS+=("$report_rel")
+      else
+        bt_warn "Could not remove stale report: $report_rel"
+      fi
+    done
+  done
+
+  branch_context="${CURRENT_BRANCH:-}"
+  if [[ -n "$branch_context" ]]; then
+    bt_report_cleanup_transient_reports \
+      "$REPORTS_DIR" \
+      "$branch_context" \
+      "$REPORT_FILE" \
+      "commit-d-*.md" \
+      "commit-e-*.md"
+  fi
+}
+
+cleanup_transient_reports_locked() {
+  local lock_acquired=false
+
+  if [[ "$REPORT_WRITE_LOCK_HELD" != true ]]; then
+    acquire_report_write_lock
+    lock_acquired=true
+  fi
+
+  cleanup_old_transient_reports
+
+  if [[ "$lock_acquired" == true ]]; then
+    release_report_write_lock true
+  fi
+}
+
+generate_error_report() {
+  local message="$1"
+  local code="$2"
+  local guidance="${3:-Review the error and retry.}"
+  local command_text
+  local branch_display="unknown"
+  local total_added=0
+  local total_removed=0
+  local total_net=0
+  local total_lines_sum=0
+  local committed_only=0
+  local commit_only_rows_tmp
+
+  ERROR_REPORT_IN_PROGRESS=true
+  enable_branch_reports_write_access
+  acquire_report_write_lock
+
+  command_text="$(format_command_line)"
+  if [[ -n "$CURRENT_BRANCH" ]]; then
+    branch_display="$CURRENT_BRANCH"
+  fi
+
+  local files_summary directories_summary
+  files_summary="$(format_file_change_summary)"
+  directories_summary="$(format_directory_change_summary)"
+  commit_only_rows_tmp="$(mktemp)"
+
+  initialize_report_file "commit-e"
+  write_commit_report_header "Error Commit Report" "$branch_display"
+  write_commit_report_entry "$command_text" "$directories_summary" \
+    "$files_summary"
+  cat >> "$REPORT_FILE" <<EOF
+**Error:** ${message}  
+**Guidance:** ${guidance}  
+EOF
+
+  if [[ "$NEEDS_COMMIT" == true ]]; then
+    while IFS= read -r file_path; do
+      [[ -n "$file_path" ]] || continue
+      local stats
+      stats="$(get_stats_for_file "$file_path" "$COMMIT_STATS_FILE")"
+      local added removed
+      added="${stats%%$'\t'*}"
+      removed="${stats#*$'\t'}"
+      local total_lines
+      total_lines="$(get_total_lines_for_file "$file_path")"
+      [[ "$added" =~ ^[0-9]+$ ]] || added=0
+      [[ "$removed" =~ ^[0-9]+$ ]] || removed=0
+      [[ "$total_lines" =~ ^[0-9]+$ ]] || total_lines=0
+      local commit_notes
+      commit_notes="$(build_commit_note "$file_path")"
+      write_commit_report_row \
+        "$file_path" "$added" "$removed" \
+        "$total_lines" "$commit_notes" "$commit_only_rows_tmp"
+      total_added=$((total_added + added))
+      total_removed=$((total_removed + removed))
+      total_net=$((total_net + added - removed))
+      total_lines_sum=$((total_lines_sum + total_lines))
+    done < <(printf '%s\n' "$COMMIT_FILE_LIST")
+
+    committed_only="$COMMITTED_FILES"
+  fi
+
+  append_commit_directories_section
+
+  if [[ "$committed_only" -gt 0 ]]; then
+    printf '\n<details>\n<summary>Files</summary>\n\n' \
+      >> "$REPORT_FILE"
+    append_commit_table_header
+    cat "$commit_only_rows_tmp" >> "$REPORT_FILE"
+    printf '| **Total** | %s | %s | %+d | %s |  |\n' \
+      "$total_added" "$total_removed" "$total_net" "$total_lines_sum" \
+      >> "$REPORT_FILE"
+    printf '</details>\n' >> "$REPORT_FILE"
+  fi
+
+  cleanup_old_transient_reports
+  release_report_write_lock true
+
+  rm -f "$commit_only_rows_tmp"
+
+  ERROR_REPORT_IN_PROGRESS=false
+  return 0
+}
+
+initialize_report_file() {
+  local report_prefix="$1"
+
+  if [[ "$DRY_RUN" == true ]]; then
+    report_prefix="commit-d"
+  fi
+
+  if [[ "$REPORT_NAME_LOCKED" != true ]]; then
+    acquire_report_write_lock
+    REPORT_NAME_LOCKED=true
+  fi
+
+  REPORT_FILE="$(bt_report_transient_path \
+    "$REPORTS_DIR" "$report_prefix" "$RUN_TS_FILE")"
+  RUN_TS_DISPLAY="$(bt_datetime_display_now)"
+}
+
+# Default options
+COMMIT_COMMENT=""
+DRY_RUN=false
+ERROR_RUN=false
+VERBOSE=false
+COMMITTED_FILES=0
+NEEDS_COMMIT=false
+COMMIT_FILE_LIST=""
+COMMIT_STATS_FILE="$(mktemp)"
+COMMIT_ACTIONS_FILE="$(mktemp)"
+COMMIT_MODIFIED_FILES=0
+COMMIT_ADDED_FILES=0
+COMMIT_DELETED_FILES=0
+COMMIT_RENAMED_FILES=0
+COMMIT_RENAMED_MODIFIED_FILES=0
+COMMIT_DELETED_DIRECTORIES=0
+COMMIT_ADDED_DIRECTORIES=0
+COMMIT_RENAMED_DIRECTORIES=0
+COMMIT_DIRECTORY_ROWS=()
+COMMIT_LINES_ADDED=0
+COMMIT_LINES_DELETED=0
+COMMIT_PR_NUMBER=""
+COMMIT_SHORT_HASH=""
+COMMIT_SUBJECT=""
+COMMIT_ACTOR_ROLE="contributor"
+COMMIT_COMMENT_NORMALIZED=""
+COMMIT_COMMAND_LINE_TEMPLATE=""
+COMMENT_OPTION_MODE=""
+COMMIT_SUMMARY_TEXT=""
+COMMIT_CHANGE_SUMMARY=""
+
+cleanup_runtime_files() {
+  if [[ "$REPORT_WRITE_LOCK_HELD" == true ]]; then
+    release_report_write_lock || true
+  fi
+  if [[ "$COMMIT_WORK_LOCK_HELD" == true ]]; then
+    release_commit_work_lock || true
+  fi
+  rm -f "$COMMIT_STATS_FILE" "$COMMIT_ACTIONS_FILE"
+}
+
+trap cleanup_runtime_files EXIT
+
+enable_branch_reports_write_access() {
+  bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_WRITE_FAILED"
+}
+
+initialize_commit_work_lock_paths() {
+  local branch="$1"
+  local git_dir
+  local branch_key
+
+  git_dir="$(git rev-parse --git-dir 2>/dev/null || true)"
+  if [[ -z "$git_dir" ]]; then
+    bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" \
+      "Unable to resolve .git directory for commit lock"
+  fi
+
+  branch_key="$(printf '%s' "$branch" | git hash-object --stdin)"
+  COMMIT_WORK_LOCK_ROOT="$git_dir/.commit-work-locks"
+  COMMIT_WORK_LOCK_DIR="$COMMIT_WORK_LOCK_ROOT/$branch_key"
+  COMMIT_WORK_LOCK_METADATA_FILE="$COMMIT_WORK_LOCK_DIR/owner.meta"
+
+  mkdir -p "$COMMIT_WORK_LOCK_ROOT"
+}
+
+write_commit_work_lock_metadata() {
+  cat > "$COMMIT_WORK_LOCK_METADATA_FILE" <<EOF
+pid=$$
+started_at=$(date +%s)
+branch=$CURRENT_BRANCH
+EOF
+}
+
+commit_work_lock_is_stale() {
+  local owner_pid=""
+  local started_at=""
+  local now_ts
+
+  if [[ ! -d "$COMMIT_WORK_LOCK_DIR" ]]; then
+    return 1
+  fi
+
+  if [[ -f "$COMMIT_WORK_LOCK_METADATA_FILE" ]]; then
+    owner_pid="$(awk -F= '$1 == "pid" { print $2; exit }' \
+      "$COMMIT_WORK_LOCK_METADATA_FILE" 2>/dev/null || true)"
+    started_at="$(awk -F= '$1 == "started_at" { print $2; exit }' \
+      "$COMMIT_WORK_LOCK_METADATA_FILE" 2>/dev/null || true)"
+  fi
+
+  now_ts="$(date +%s)"
+
+  if [[ -n "$owner_pid" ]] && ! kill -0 "$owner_pid" 2>/dev/null; then
+    return 0
+  fi
+
+  if [[ -n "$started_at" ]] && [[ "$started_at" =~ ^[0-9]+$ ]]; then
+    if (( now_ts - started_at >= COMMIT_WORK_LOCK_TIMEOUT_SECONDS )); then
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+reap_stale_commit_work_lock() {
+  if ! commit_work_lock_is_stale; then
+    return 1
+  fi
+
+  rm -rf -- "$COMMIT_WORK_LOCK_DIR"
+}
+
+acquire_commit_work_lock() {
+  local start_ts
+  local now_ts
+  local wait_logged=false
+
+  if [[ "$COMMIT_WORK_LOCK_HELD" == true ]]; then
+    COMMIT_WORK_LOCK_DEPTH=$((COMMIT_WORK_LOCK_DEPTH + 1))
+    return 0
+  fi
+
+  start_ts="$(date +%s)"
+  while ! mkdir "$COMMIT_WORK_LOCK_DIR" 2>/dev/null; do
+    if reap_stale_commit_work_lock; then
+      continue
+    fi
+
+    if [[ "$wait_logged" == false && "$VERBOSE" == true ]]; then
+      bt_info "Waiting for commit lock on local branch '$CURRENT_BRANCH'"
+      wait_logged=true
+    fi
+
+    now_ts="$(date +%s)"
+    if (( now_ts - start_ts >= COMMIT_WORK_LOCK_TIMEOUT_SECONDS )); then
+      bt_error_exit "$EXIT_STAGE_COMMIT_FAILED" \
+        "Timed out waiting for commit lock on local branch '$CURRENT_BRANCH'"
+    fi
+
+    sleep 0.1
+  done
+
+  write_commit_work_lock_metadata
+  COMMIT_WORK_LOCK_HELD=true
+  COMMIT_WORK_LOCK_DEPTH=1
+}
+
+release_commit_work_lock() {
+  if [[ "$COMMIT_WORK_LOCK_HELD" != true ]]; then
+    return 0
+  fi
+
+  COMMIT_WORK_LOCK_DEPTH=$((COMMIT_WORK_LOCK_DEPTH - 1))
+  if (( COMMIT_WORK_LOCK_DEPTH > 0 )); then
+    return 0
+  fi
+
+  rm -f "$COMMIT_WORK_LOCK_METADATA_FILE" 2>/dev/null || true
+  if ! rmdir "$COMMIT_WORK_LOCK_DIR" 2>/dev/null; then
+    bt_warn "Could not release commit lock: $COMMIT_WORK_LOCK_DIR"
+    return 1
+  fi
+
+  COMMIT_WORK_LOCK_HELD=false
+  COMMIT_WORK_LOCK_DEPTH=0
+}
+
+write_report_lock_metadata() {
+  cat > "$REPORT_WRITE_LOCK_METADATA_FILE" <<EOF
+pid=$$
+started_at=$(date +%s)
+script=$SCRIPT_DIR
+EOF
+}
+
+report_write_lock_is_stale() {
+  local owner_pid=""
+  local started_at=""
+  local now_ts
+
+  if [[ ! -d "$REPORT_WRITE_LOCK_DIR" ]]; then
+    return 1
+  fi
+
+  if [[ -f "$REPORT_WRITE_LOCK_METADATA_FILE" ]]; then
+    owner_pid="$(awk -F= '$1 == "pid" { print $2; exit }' \
+      "$REPORT_WRITE_LOCK_METADATA_FILE" 2>/dev/null || true)"
+    started_at="$(awk -F= '$1 == "started_at" { print $2; exit }' \
+      "$REPORT_WRITE_LOCK_METADATA_FILE" 2>/dev/null || true)"
+  fi
+
+  now_ts="$(date +%s)"
+
+  if [[ -n "$owner_pid" ]] && ! kill -0 "$owner_pid" 2>/dev/null; then
+    return 0
+  fi
+
+  if [[ -n "$started_at" ]] && [[ "$started_at" =~ ^[0-9]+$ ]]; then
+    if (( now_ts - started_at >= REPORT_WRITE_LOCK_TIMEOUT_SECONDS )); then
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+reap_stale_report_write_lock() {
+  if ! report_write_lock_is_stale; then
+    return 1
+  fi
+
+  rm -rf -- "$REPORT_WRITE_LOCK_DIR"
+}
+
+acquire_report_write_lock() {
+  local start_ts
+  local now_ts
+  local wait_logged=false
+
+  if [[ "$REPORT_WRITE_LOCK_HELD" == true ]]; then
+    REPORT_WRITE_LOCK_DEPTH=$((REPORT_WRITE_LOCK_DEPTH + 1))
+    return 0
+  fi
+
+  mkdir -p "$REPORTS_DIR"
+
+  start_ts="$(date +%s)"
+  while ! mkdir "$REPORT_WRITE_LOCK_DIR" 2>/dev/null; do
+    if reap_stale_report_write_lock; then
+      continue
+    fi
+
+    if [[ "$wait_logged" == false && "$VERBOSE" == true ]]; then
+      bt_info "Waiting for report write lock"
+      wait_logged=true
+    fi
+
+    now_ts="$(date +%s)"
+    if (( now_ts - start_ts >= REPORT_WRITE_LOCK_TIMEOUT_SECONDS )); then
+      bt_error_exit "$EXIT_REPORT_WRITE_FAILED" \
+        "Timed out waiting for report write lock"
+    fi
+
+    sleep 0.1
+  done
+
+  write_report_lock_metadata
+  REPORT_WRITE_LOCK_HELD=true
+  REPORT_WRITE_LOCK_DEPTH=1
+}
+
+release_report_write_lock() {
+  local strict="${1:-false}"
+
+  if [[ "$REPORT_WRITE_LOCK_HELD" != true ]]; then
+    return 0
+  fi
+
+  REPORT_WRITE_LOCK_DEPTH=$((REPORT_WRITE_LOCK_DEPTH - 1))
+  if (( REPORT_WRITE_LOCK_DEPTH > 0 )); then
+    return 0
+  fi
+
+  rm -f "$REPORT_WRITE_LOCK_METADATA_FILE" 2>/dev/null || true
+  if ! rmdir "$REPORT_WRITE_LOCK_DIR" 2>/dev/null; then
+    if [[ "$strict" == true ]]; then
+      bt_error_exit "$EXIT_REPORT_WRITE_FAILED" \
+        "Failed to release report write lock"
+    fi
+    bt_warn "Could not release report write lock: $REPORT_WRITE_LOCK_DIR"
+    return 1
+  fi
+
+  REPORT_WRITE_LOCK_HELD=false
+  REPORT_WRITE_LOCK_DEPTH=0
+}
+
+is_contributor_or_higher() {
+  local login="$1"
+  local user_email
+
+  user_email="$(git config user.email 2>/dev/null || true)"
+
+  bt_contributors_has_min_role_by_login_or_email \
+    "$login" "$user_email" "contributor" "$CONTRIBUTORS_FILE"
+}
+
+resolve_current_branch_context() {
+  local local_branch
+  local remote_branches
+  local remote_count
+  local remote_name
+  local raw_local_branch
+
+  raw_local_branch="$(git symbolic-ref -q --short HEAD 2>/dev/null || true)"
+  local_branch="$(bt_get_current_branch)"
+  if [[ -n "$local_branch" ]]; then
+    CURRENT_BRANCH="$local_branch"
+    if bt_is_internal_remote_copy "$raw_local_branch"; then
+      CURRENT_BRANCH_MODE="remote snapshot"
+    else
+      CURRENT_BRANCH_MODE="local"
+    fi
+    return 0
+  fi
+
+  remote_branches="$(git for-each-ref --format='%(refname:short)' \
+                  --points-at HEAD refs/remotes/origin 2>/dev/null | grep \
+                  -v '^origin/HEAD$' || true)"
+  remote_count="$(printf '%s\n' "$remote_branches" | sed '/^$/d' | wc -l | \
+    tr -d ' ')"
+
+  if [[ "$remote_count" != "1" ]]; then
+    bt_error_exit "$EXIT_BRANCH_POLICY" "$(printf '%s%s' \
+      "Not on a resolvable branch. Use 'chbranch' to switch to a " \
+      "targeted or contributor branch, then retry.")"
+  fi
+
+  remote_name="$(printf '%s\n' "$remote_branches" | sed '/^$/d' | head -n 1)"
+  CURRENT_BRANCH="${remote_name#origin/}"
+  CURRENT_BRANCH_MODE="remote"
+}
+
+is_targeted_branch() {
+  local branch="$1"
+
+  [[ "$branch" =~ ^(dev|fix)/.+-v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0$ ]]
+}
+
+is_contributor_branch() {
+  local branch="$1"
+
+  [[ "$branch" =~ ^([A-Za-z0-9._-]+/)?[A-Za-z0-9._-]+$ ]]
+}
+
+validate_allowed_branch_name() {
+  local branch="$1"
+
+  if bt_is_read_only_branch "$branch"; then
+    bt_error_exit "$EXIT_BRANCH_POLICY" "$(printf '%s%s' \
+      "Current branch '$branch' is read-only. Use a valid targeted or " \
+      "contributor branch")"
+  fi
+
+  if is_targeted_branch "$branch" || is_contributor_branch "$branch"; then
+    return 0
+  fi
+
+  bt_error_exit "$EXIT_BRANCH_POLICY" \
+    "Current branch '$branch' must be a targeted or contributor branch"
+}
+
+print_summary() {
+  bt_info "$COMMIT_SUMMARY_TEXT"
+}
+
+emit_final_status() {
+  local completion_text="$1"
+  local report_generated="$2"
+  local report_rel=""
+
+  if [[ "$report_generated" == true ]]; then
+    report_rel="${REPORT_FILE#"${REPO_ROOT}"/}"
+  fi
+
+  bt_success "$completion_text"
+
+  if [[ "$report_generated" == true ]]; then
+    bt_success "See ${report_rel} for details."
+  elif [[ "$VERBOSE" == true ]]; then
+    bt_success "Report not generated."
+  fi
+}
+
+collect_commit_file_stats() {
+  : > "$COMMIT_STATS_FILE"
+
+  [[ -n "$COMMIT_FILE_LIST" ]] || return 0
+
+  printf '%s\n' "$COMMIT_FILE_LIST" | while IFS= read -r file_path; do
+    [[ -n "$file_path" ]] || continue
+
+    local added="0"
+    local removed="0"
+    local stats_line=""
+
+    stats_line="$(git diff --numstat HEAD -- "$file_path" 2>/dev/null || true)"
+    if [[ -n "$stats_line" ]]; then
+      added="$(printf '%s\n' "$stats_line" | \
+        awk '{ if ($1 ~ /^[0-9]+$/) s+=$1 } END { print s+0 }')"
+      removed="$(printf '%s\n' "$stats_line" | \
+        awk '{ if ($2 ~ /^[0-9]+$/) s+=$2 } END { print s+0 }')"
+    elif [[ -f "$file_path" ]] && \
+      ! git cat-file -e "HEAD:$file_path" >/dev/null 2>&1; then
+      added="$(wc -l < "$file_path" | tr -d ' ')"
+      removed="0"
+    fi
+
+    printf '%s\t%s\t%s\n' "$file_path" "$added" "$removed" \
+      >> "$COMMIT_STATS_FILE"
+  done
+}
+
+collect_commit_candidate_files() {
+  local status_tmp
+  local record=""
+  local status=""
+  local path=""
+  local old_path=""
+  local -a candidates=()
+
+  status_tmp="$(mktemp)"
+
+  if ! git status --porcelain -z >"$status_tmp" 2>/dev/null; then
+    rm -f "$status_tmp"
+    bt_error_exit "$EXIT_WORKTREE_INSPECTION_FAILED" \
+      "Failed to inspect working tree status."
+  fi
+
+  exec 3<"$status_tmp"
+
+  while IFS= read -r -d '' record <&3; do
+    [[ ${#record} -ge 3 ]] || continue
+    status="${record:0:2}"
+    path="${record:3}"
+
+    # For porcelain -z rename/copy entries, the next NUL field is the source
+    # path. Only the destination is reported; its action names the source.
+    if [[ "${status:0:1}" == "R" || "${status:1:1}" == "R" ]]; then
+      IFS= read -r -d '' old_path <&3 || old_path=""
+      [[ -n "$path" ]] && candidates+=("$path")
+      record_commit_action "$path" \
+        "$(rename_action_text "$status" "$old_path" "$path")"
+    elif [[ "${status:0:1}" == "C" || "${status:1:1}" == "C" ]]; then
+      IFS= read -r -d '' old_path <&3 || true
+      [[ -n "$path" ]] && candidates+=("$path")
+      record_commit_action "$path" "Added"
+    else
+      [[ -n "$path" ]] && candidates+=("$path")
+      record_commit_action "$path" "$(status_action_text "$status")"
+    fi
+  done
+  exec 3<&-
+  rm -f "$status_tmp"
+
+  if [[ ${#candidates[@]} -eq 0 ]]; then
+    COMMIT_FILE_LIST=""
+  else
+    COMMIT_FILE_LIST="$(printf '%s\n' "${candidates[@]}" | sed '/^$/d' | \
+      sort -u)"
+  fi
+}
+
+collect_commit_change_summary() {
+  bt_git_collect_worktree_change_summary
+  COMMIT_MODIFIED_FILES="$BT_CHANGE_MODIFIED_FILES"
+  COMMIT_DELETED_FILES="$BT_CHANGE_DELETED_FILES"
+  COMMIT_ADDED_FILES="$BT_CHANGE_ADDED_FILES"
+  COMMIT_RENAMED_FILES="$BT_CHANGE_RENAMED_FILES"
+  COMMIT_RENAMED_MODIFIED_FILES="$BT_CHANGE_RENAMED_MODIFIED_FILES"
+  COMMIT_DELETED_DIRECTORIES="$BT_CHANGE_DELETED_DIRECTORIES"
+  COMMIT_ADDED_DIRECTORIES="$BT_CHANGE_ADDED_DIRECTORIES"
+  COMMIT_RENAMED_DIRECTORIES="$BT_CHANGE_RENAMED_DIRECTORIES"
+  COMMIT_DIRECTORY_ROWS=("${BT_CHANGE_DIRECTORY_ROWS[@]}")
+  COMMIT_CHANGE_SUMMARY="$(bt_format_change_summary)"
+}
+
+print_commit_file_details() {
+  local heading="$1"
+  local status_label="${2:-commit}"
+
+  [[ -n "$COMMIT_FILE_LIST" ]] || return 0
+
+  bt_info "$heading"
+  printf '%s\n' "$COMMIT_FILE_LIST" | while IFS= read -r file_path; do
+    [[ -n "$file_path" ]] || continue
+    bt_info "  - $file_path [$status_label]"
+  done
+}
+
+format_command_line() {
+  local formatted="commit"
+  local arg quoted
+
+  for arg in "${ORIGINAL_ARGS[@]}"; do
+    if [[ "$arg" =~ ^[A-Za-z0-9_./:@%+=,-]+$ ]]; then
+      quoted="$arg"
+    else
+      quoted="${arg//\\/\\\\}"
+      quoted="${quoted//\"/\\\"}"
+      quoted="${quoted//\$/\\\$}"
+      quoted="${quoted//\`/\\\`}"
+      quoted="\"$quoted\""
+    fi
+    formatted+=" $quoted"
+  done
+
+  printf '%s' "$formatted"
+}
+
+get_stats_for_file() {
+  local file_path="$1"
+  local stats_file="$2"
+
+  local stats_line
+  stats_line="$(awk -F '\t' -v f="$file_path" '$1 == f { print $0; exit }' \
+    "$stats_file" 2>/dev/null || true)"
+  if [[ -z "$stats_line" ]]; then
+    printf '0\t0\n'
+    return 0
+  fi
+
+  printf '%s\n' "$stats_line" | awk -F '\t' '{ printf "%s\t%s\n", $2, $3 }'
+}
+
+collect_commit_line_totals() {
+  if [[ ! -s "$COMMIT_STATS_FILE" ]]; then
+    COMMIT_LINES_ADDED=0
+    COMMIT_LINES_DELETED=0
+    return 0
+  fi
+
+  COMMIT_LINES_ADDED="$(awk -F '\t' '{ if ($2 ~ /^[0-9]+$/) s+=$2 } END { print s+0 }' "$COMMIT_STATS_FILE")"
+  COMMIT_LINES_DELETED="$(awk -F '\t' '{ if ($3 ~ /^[0-9]+$/) s+=$3 } END { print s+0 }' "$COMMIT_STATS_FILE")"
+}
+
+resolve_associated_pr_number() {
+  local pr_candidate=""
+
+  COMMIT_PR_NUMBER=""
+  command -v gh >/dev/null 2>&1 || return 0
+
+  pr_candidate="$(bt_gh_find_pr_number_for_branch "$CURRENT_BRANCH" "open" 2>/dev/null || true)"
+  if [[ "$pr_candidate" =~ ^[0-9]+$ ]]; then
+    COMMIT_PR_NUMBER="$pr_candidate"
+  fi
+}
+
+resolve_actor_role_label() {
+  local actor_email=""
+  local role_code=""
+
+  actor_email="$(git config user.email 2>/dev/null || true)"
+  role_code="$(bt_contributors_get_role_or_empty "$ACTOR_LOGIN" "$CONTRIBUTORS_FILE")"
+  if [[ -z "$role_code" ]]; then
+    role_code="$(bt_contributors_get_role_for_email_or_empty "$actor_email" "$CONTRIBUTORS_FILE")"
+  fi
+
+  case "$role_code" in
+    A)
+      COMMIT_ACTOR_ROLE="approver"
+      ;;
+    R)
+      COMMIT_ACTOR_ROLE="reviewer"
+      ;;
+    C)
+      COMMIT_ACTOR_ROLE="contributor"
+      ;;
+    *)
+      COMMIT_ACTOR_ROLE="contributor"
+      ;;
+  esac
+}
+
+normalize_user_comment() {
+  local raw_comment="$1"
+
+  raw_comment="${raw_comment//\\n/$'\n'}"
+  printf '%s' "$raw_comment"
+}
+
+quote_user_comment_markdown() {
+  local comment_text="$1"
+  local line=""
+
+  while IFS= read -r line; do
+    printf '> %s\n' "$line"
+  done <<< "$comment_text"
+}
+
+build_commit_subject() {
+  printf '%s committed by %s %s' "$CURRENT_BRANCH" "$COMMIT_ACTOR_ROLE" "$ACTOR_LOGIN"
+}
+
+build_redacted_command_line() {
+  local cmd="commit"
+
+  if [[ "$DRY_RUN" == true ]]; then
+    cmd+=" -d"
+  fi
+  if [[ "$ERROR_RUN" == true ]]; then
+    cmd+=" -e"
+  fi
+  if [[ "$VERBOSE" == true ]]; then
+    cmd+=" -v"
+  fi
+  if [[ -n "$COMMENT_OPTION_MODE" ]]; then
+    cmd+=" $COMMENT_OPTION_MODE <user-comment>"
+  fi
+
+  printf '%s' "$cmd"
+}
+
+build_commit_body() {
+  local quoted_comment=""
+  local files_summary directories_summary
+
+  quoted_comment="$(quote_user_comment_markdown "$COMMIT_COMMENT_NORMALIZED")"
+  files_summary="$(format_file_change_summary)"
+  directories_summary="$(format_directory_change_summary)"
+
+  cat <<EOF
+## User Comment
+
+${quoted_comment}
+
+## Summary
+- Directories: ${directories_summary}
+- Files: ${files_summary}
+- Lines: ${COMMIT_LINES_ADDED} added and ${COMMIT_LINES_DELETED} deleted.
+
+## Commit Metadata
+
+Files-Modified: ${COMMIT_MODIFIED_FILES}
+Files-Added: ${COMMIT_ADDED_FILES}
+Files-Deleted: ${COMMIT_DELETED_FILES}
+Files-Renamed: ${COMMIT_RENAMED_FILES}
+Files-Renamed-Modified: ${COMMIT_RENAMED_MODIFIED_FILES}
+Directories-Deleted: ${COMMIT_DELETED_DIRECTORIES}
+Directories-Added: ${COMMIT_ADDED_DIRECTORIES}
+Directories-Renamed: ${COMMIT_RENAMED_DIRECTORIES}
+Lines-Added: ${COMMIT_LINES_ADDED}
+Lines-Deleted: ${COMMIT_LINES_DELETED}
+Command-Line: ${COMMIT_COMMAND_LINE_TEMPLATE}
+EOF
+
+  if [[ -n "$COMMIT_PR_NUMBER" ]]; then
+    printf 'PR: %s\n' "$COMMIT_PR_NUMBER"
+  fi
+}
+
+write_commit_report_row() {
+  local file_path="$1"
+  local added="$2"
+  local removed="$3"
+  local total_lines="$4"
+  local notes="$5"
+  local out_file="${6:-$REPORT_FILE}"
+  local file_cell=""
+  local notes_cell=""
+  local net
+
+  # Keep markdown rows single-line to avoid breaking table rendering.
+  file_cell="${file_path//$'\r'/ }"
+  file_cell="${file_cell//$'\n'/ }"
+  file_cell="${file_cell//|/\\|}"
+
+  notes_cell="${notes//$'\r'/ }"
+  notes_cell="${notes_cell//$'\n'/ }"
+  notes_cell="${notes_cell//|/\\|}"
+
+  net=$((added - removed))
+  printf '| `%s` | %s | %s | %+d | %s | %s |\n' \
+    "$file_cell" "$added" "$removed" \
+    "$net" "$total_lines" "$notes_cell" >> "$out_file"
+}
+
+# "1 total file." or "N total files."
+format_total_files_text() {
+  if [[ "$COMMITTED_FILES" -eq 1 ]]; then
+    printf '1 total file.'
+  else
+    printf '%s total files.' "$COMMITTED_FILES"
+  fi
+}
+
+append_commit_table_header() {
+  cat >> "$REPORT_FILE" <<'EOF'
+| **File** | **Added** | **Deleted** | **Net** | **Lines** | **Action** |
+| --- | ---: | ---: | ---: | ---: | --- |
+EOF
+}
+
+# Report header shared by the dry-run and error reports: title, branch, and
+# branch status tags, matching the layout the report script produces.
+write_commit_report_header() {
+  local title="$1"
+  local branch_display="$2"
+  local status_tags=""
+
+  if [[ -n "$CURRENT_BRANCH" ]]; then
+    status_tags="$(bt_git_branch_status_tags "$CURRENT_BRANCH" "local" \
+      2>/dev/null || true)"
+  fi
+  [[ -n "$status_tags" ]] || status_tags="[uncommitted] [local]"
+
+  cat > "$REPORT_FILE" <<EOF
+# ${title}
+
+**Branch:** \`${branch_display}\`  
+**Status:** ${status_tags}  
+
+EOF
+}
+
+# One numbered activity entry, in the style of the report script.
+write_commit_report_entry() {
+  local user_display
+  local command_text="$1"
+  local directories_summary="$2"
+  local files_summary="$3"
+
+  user_display="$(bt_format_login_with_role "$(bt_resolve_login_or_empty)" \
+    "$REPO_ROOT/config/contributors.md" 2>/dev/null || true)"
+  [[ -n "$user_display" ]] || user_display="unknown (contributor)"
+
+  cat >> "$REPORT_FILE" <<EOF
+## 1. commit: ${RUN_TS_DISPLAY}
+
+**Commit:** \`To be determined\`  
+**Command:** \`${command_text}\`  
+**User:** ${user_display}  
+EOF
+  if [[ -n "$directories_summary" ]]; then
+    printf '**Directories:** %s  \n' "$directories_summary" >> "$REPORT_FILE"
+  fi
+  if [[ -n "$files_summary" ]]; then
+    printf '**Files:** %s.  \n' "$files_summary" >> "$REPORT_FILE"
+  fi
+  if [[ "$COMMIT_LINES_ADDED" -gt 0 || "$COMMIT_LINES_DELETED" -gt 0 ]]; then
+    printf '**Lines:** %s added and %s deleted.  \n' \
+      "$COMMIT_LINES_ADDED" "$COMMIT_LINES_DELETED" >> "$REPORT_FILE"
+  fi
+}
+
+# Directories added, deleted, or renamed by the pending commit.
+append_commit_directories_section() {
+  [[ "${#COMMIT_DIRECTORY_ROWS[@]}" -gt 0 ]] || return 0
+  bt_report_append_directories_section "$REPORT_FILE" \
+    "${COMMIT_DIRECTORY_ROWS[@]}"
+}
+
+get_total_lines_for_file() {
+  local file_path="$1"
+
+  if [[ -f "$file_path" ]]; then
+    wc -l < "$file_path" | tr -d ' '
+  else
+    printf ''
+  fi
+}
+
+build_commit_note() {
+  local file_path="$1"
+  local action
+
+  action="$(awk -F '\t' -v f="$file_path" '$1 == f { print $2; exit }' \
+    "$COMMIT_ACTIONS_FILE" 2>/dev/null || true)"
+  printf '%s\n' "${action:-Modified}"
+}
+
+format_file_change_summary() {
+  local -a parts=()
+  local type_count=0
+
+  if [[ "$COMMIT_MODIFIED_FILES" -gt 0 ]]; then
+    append_change_count parts "$COMMIT_MODIFIED_FILES" "modified" "modified"
+    type_count=$((type_count + 1))
+  fi
+  if [[ "$COMMIT_DELETED_FILES" -gt 0 ]]; then
+    append_change_count parts "$COMMIT_DELETED_FILES" "deleted" "deleted"
+    type_count=$((type_count + 1))
+  fi
+  if [[ "$COMMIT_ADDED_FILES" -gt 0 ]]; then
+    append_change_count parts "$COMMIT_ADDED_FILES" "added" "added"
+    type_count=$((type_count + 1))
+  fi
+  if [[ "$COMMIT_RENAMED_FILES" -gt 0 ]]; then
+    append_change_count parts "$COMMIT_RENAMED_FILES" "renamed" "renamed"
+    type_count=$((type_count + 1))
+  fi
+  if [[ "$COMMIT_RENAMED_MODIFIED_FILES" -gt 0 ]]; then
+    append_change_count parts "$COMMIT_RENAMED_MODIFIED_FILES" \
+      "renamed/modified" "renamed/modified"
+    type_count=$((type_count + 1))
+  fi
+
+  join_summary_parts "${parts[@]}"
+  if [[ "$type_count" -gt 1 ]]; then
+    printf '; %s total' "$COMMITTED_FILES"
+  fi
+}
+
+format_directory_change_summary() {
+  local -a parts=()
+
+  append_change_count parts "$COMMIT_DELETED_DIRECTORIES" \
+    "deleted" "deleted"
+  append_change_count parts "$COMMIT_ADDED_DIRECTORIES" \
+    "added" "added"
+  append_change_count parts "$COMMIT_RENAMED_DIRECTORIES" \
+    "renamed" "renamed"
+
+  join_summary_parts "${parts[@]}"
+}
+
+append_change_count() {
+  local array_name="$1"
+  local count="$2"
+  local singular="$3"
+  local plural="$4"
+  local -n values_ref="$array_name"
+
+  [[ "$count" -gt 0 ]] || return 0
+  if [[ "$count" -eq 1 ]]; then
+    values_ref+=("$count $singular")
+  else
+    values_ref+=("$count $plural")
+  fi
+}
+
+join_summary_parts() {
+  local count="$#"
+  local index=0
+  local part
+
+  for part in "$@"; do
+    index=$((index + 1))
+    if [[ "$index" -gt 1 ]]; then
+      if [[ "$index" -eq "$count" ]]; then
+        printf ' and '
+      else
+        printf ', '
+      fi
+    fi
+    printf '%s' "$part"
+  done
+}
+
+record_commit_action() {
+  local file_path="$1"
+  local action="$2"
+
+  [[ -n "$file_path" ]] || return 0
+  printf '%s\t%s\n' "$file_path" "$action" >> "$COMMIT_ACTIONS_FILE"
+}
+
+# Working-tree status letters mapped to the report action.
+status_action_text() {
+  local status="$1"
+
+  case "$status" in
+    "??" | A? | ?A) printf 'Added' ;;
+    D? | ?D) printf 'Deleted' ;;
+    *) printf 'Modified' ;;
+  esac
+}
+
+# A rename keeps the source file name so the move is traceable. Content is
+# compared against the source blob because a staged rename with edits is
+# still reported as a plain rename by git status.
+rename_action_text() {
+  local status="$1"
+  local old_path="$2"
+  local new_path="$3"
+  local modified=false
+
+  if [[ "${status:1:1}" == "M" ]]; then
+    modified=true
+  elif [[ -f "$new_path" ]] && git cat-file -e "HEAD:$old_path" 2>/dev/null && \
+    ! git cat-file blob "HEAD:$old_path" 2>/dev/null | \
+      cmp -s - "$new_path"; then
+    modified=true
+  fi
+
+  bt_git_rename_action_text "$old_path" "$new_path" "$modified"
+}
+
+
+generate_commit_report() {
+  local command_text
+  local total_rows
+  local total_added=0
+  local total_removed=0
+  local total_net=0
+  local total_lines_sum=0
+  command_text="$(format_command_line)"
+
+  local committed_only=0
+  total_rows=0
+
+  enable_branch_reports_write_access
+
+  if [[ "$DRY_RUN" == true ]]; then
+    acquire_report_write_lock
+    # Re-resolve dry-run report filename while holding the lock.
+    initialize_report_file "commit-d"
+  fi
+
+  if [[ -f "$REPORT_FILE" ]]; then
+    # Dry-run reports reuse second-resolution names; allow overwrite within
+    # the same second.
+    chmod u+w "$REPORT_FILE" 2>/dev/null || true
+  fi
+
+  local files_summary directories_summary
+  files_summary="$(format_file_change_summary)"
+  directories_summary="$(format_directory_change_summary)"
+
+  write_commit_report_header "Dry-Run Commit Report" "$CURRENT_BRANCH"
+  write_commit_report_entry "$command_text" "$directories_summary" \
+    "$files_summary"
+
+  local commit_only_rows_tmp
+  commit_only_rows_tmp="$(mktemp)"
+
+  if [[ "$NEEDS_COMMIT" == true ]]; then
+
+    while IFS= read -r file_path; do
+      [[ -n "$file_path" ]] || continue
+      local stats
+      stats="$(get_stats_for_file "$file_path" "$COMMIT_STATS_FILE")"
+      local added removed
+      added="${stats%%$'\t'*}"
+      removed="${stats#*$'\t'}"
+      local total_lines
+      total_lines="$(get_total_lines_for_file "$file_path")"
+      [[ "$added" =~ ^[0-9]+$ ]] || added=0
+      [[ "$removed" =~ ^[0-9]+$ ]] || removed=0
+      [[ "$total_lines" =~ ^[0-9]+$ ]] || total_lines=0
+      local commit_notes
+      commit_notes="$(build_commit_note "$file_path")"
+      commit_notes="${commit_notes//|/\\|}"
+      write_commit_report_row \
+        "$file_path" "$added" "$removed" \
+        "$total_lines" "$commit_notes" "$commit_only_rows_tmp"
+      total_added=$((total_added + added))
+      total_removed=$((total_removed + removed))
+      total_net=$((total_net + added - removed))
+      total_lines_sum=$((total_lines_sum + total_lines))
+    done < <(printf '%s\n' "$COMMIT_FILE_LIST")
+
+    committed_only="$COMMITTED_FILES"
+  fi
+
+  append_commit_directories_section
+
+  if [[ "$committed_only" -gt 0 ]]; then
+    printf '\n<details>\n<summary>Files</summary>\n\n' \
+      >> "$REPORT_FILE"
+    append_commit_table_header
+    cat "$commit_only_rows_tmp" >> "$REPORT_FILE"
+    printf '| **Total** | %s | %s | %+d | %s |  |\n' \
+      "$total_added" "$total_removed" "$total_net" "$total_lines_sum" \
+      >> "$REPORT_FILE"
+    printf '</details>\n' >> "$REPORT_FILE"
+  fi
+
+  cleanup_transient_reports_locked
+
+  if [[ "$DRY_RUN" == true ]]; then
+    release_report_write_lock true
+  fi
+
+  rm -f "$commit_only_rows_tmp"
+}
+
+# Parse options and arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -c)
+      if [[ $# -lt 2 ]]; then
+        usage_error "Option -c requires a comment token"
+      fi
+      if [[ -n "$COMMENT_OPTION_MODE" ]]; then
+        usage_error "Cannot use both -c and -- for user comment"
+      fi
+      COMMENT_OPTION_MODE="-c"
+      COMMIT_COMMENT="$2"
+      shift 2
+      ;;
+    -d)
+      [[ "$ERROR_RUN" == false ]] || usage_error "Cannot use both -d and -e"
+      DRY_RUN=true
+      shift
+      ;;
+    -e)
+      [[ "$DRY_RUN" == false ]] || usage_error "Cannot use both -d and -e"
+      ERROR_RUN=true
+      shift
+      ;;
+    -v)
+      VERBOSE=true
+      shift
+      ;;
+    --)
+      # '-- TOKEN...': the tokens after '--' are the comment
+      shift
+      if [[ -n "$COMMENT_OPTION_MODE" ]]; then
+        usage_error "Cannot use both -c and -- for the user comment"
+      fi
+      if [[ $# -eq 0 ]]; then
+        usage_error "Option -- requires one or more tokens for the user comment"
+      fi
+      COMMENT_OPTION_MODE="--"
+      COMMIT_COMMENT="$*"
+      break
+      ;;
+    -*)
+      usage_error "Unknown option: $1"
+      ;;
+    *)
+      usage_error "Unexpected argument: $1"
+      ;;
+  esac
+done
+
+# Resolve current branch context (local checked-out branch or unique remote
+# ref when detached) and validate allowed branch name.
+resolve_current_branch_context
+if [[ "$VERBOSE" == true ]]; then
+  bt_info "Current ${CURRENT_BRANCH_MODE} branch ${CURRENT_BRANCH}."
+fi
+initialize_report_file "commit"
+
+if [[ ! -f "$CONTRIBUTORS_FILE" ]]; then
+  bt_error_exit "$EXIT_NOT_AUTHORIZED" \
+    "Configuration file not found: $CONTRIBUTORS_FILE"
+fi
+
+ACTOR_LOGIN="$(bt_require_login || true)"
+if [[ -z "$ACTOR_LOGIN" ]]; then
+  bt_emit_prerequisite_failure "$EXIT_NOT_AUTHORIZED" \
+    "Unable to determine GitHub login identity for permission check." \
+    "verify GitHub CLI authentication and access, then rerun commit."
+fi
+
+if ! is_contributor_or_higher "$ACTOR_LOGIN"; then
+  bt_emit_prerequisite_failure "$EXIT_NOT_AUTHORIZED" \
+    "$(printf '%s%s' \
+      "User '$ACTOR_LOGIN' is not authorized to run commit (requires " \
+      "contributor role or higher)")" \
+    "$(printf '%s%s' \
+      "use an account and merge path authorized by repository policy, then " \
+      "rerun commit")"
+fi
+
+resolve_actor_role_label
+
+validate_allowed_branch_name "$CURRENT_BRANCH"
+
+if [[ "$CURRENT_BRANCH_MODE" != "local" ]]; then
+  bt_error_exit "$EXIT_REMOTE_LOCAL_CONFLICT" "$(printf '%s%s' \
+    "Commit must run on a local branch. Switch to local '$CURRENT_BRANCH' " \
+    "and retry")"
+fi
+
+if bt_is_copyfix_in_progress "$CURRENT_BRANCH"; then
+  bt_emit_prerequisite_failure "$EXIT_COPYFIX_IN_PROGRESS" \
+    "Current branch '$CURRENT_BRANCH' has an unfinished copyfix operation." \
+    "complete it with 'copyfix --continue' before rerunning commit."
+fi
+
+initialize_commit_work_lock_paths "$CURRENT_BRANCH"
+acquire_commit_work_lock
+
+# Determine commit candidates before validating comment.
+collect_commit_candidate_files
+if [[ -n "$COMMIT_FILE_LIST" ]]; then
+  NEEDS_COMMIT=true
+  collect_commit_change_summary
+  COMMITTED_FILES="$(printf '%s\n' "$COMMIT_FILE_LIST" | wc -l | tr -d ' ')"
+  collect_commit_file_stats
+  collect_commit_line_totals
+  resolve_associated_pr_number
+  COMMIT_SUMMARY_TEXT="$(printf '%s%s%s' \
+    "Committed to local ${CURRENT_BRANCH}: " \
+    "$COMMIT_CHANGE_SUMMARY" \
+    ".")"
+else
+  NEEDS_COMMIT=false
+  COMMITTED_FILES=0
+  COMMIT_SUMMARY_TEXT="No changes to commit"
+fi
+
+if [[ "$NEEDS_COMMIT" == false ]]; then
+  bt_emit_prerequisite_failure "$EXIT_NOTHING_TO_COMMIT" \
+    "Current branch '$CURRENT_BRANCH' has no changes to commit." \
+    "make changes before rerunning commit."
+fi
+
+# Validate user comment only when a commit is actually needed.
+if [[ "$NEEDS_COMMIT" == true ]]; then
+  if [[ -z "$COMMIT_COMMENT" ]]; then
+    bt_error_exit "$EXIT_COMMENT_REQUIRED" "$(printf '%s%s' \
+      "User comment is required (-c TOKEN or -- TOKENS) when there " \
+      "are changes to commit.")"
+  fi
+
+  COMMIT_COMMENT_TRIMMED="$(bt_trim_whitespace "$COMMIT_COMMENT")"
+  if [[ -z "$COMMIT_COMMENT_TRIMMED" ]]; then
+    bt_error_exit "$EXIT_COMMENT_EMPTY" "$(printf '%s%s' \
+      "User comment must include at least one non-whitespace " \
+      "character when there are changes to commit.")"
+  fi
+
+  COMMIT_COMMENT_NORMALIZED="$(normalize_user_comment "$COMMIT_COMMENT")"
+  COMMIT_COMMENT_NORMALIZED_TRIMMED="$(bt_trim_whitespace "$COMMIT_COMMENT_NORMALIZED")"
+  if [[ -z "$COMMIT_COMMENT_NORMALIZED_TRIMMED" ]]; then
+    bt_error_exit "$EXIT_COMMENT_EMPTY" "$(printf '%s%s' \
+      "User comment must include at least one non-whitespace " \
+      "character when there are changes to commit.")"
+  fi
+
+  COMMIT_COMMAND_LINE_TEMPLATE="$(build_redacted_command_line)"
+  COMMIT_SUBJECT="$(build_commit_subject)"
+fi
+
+# Commit flow
+if [[ "$NEEDS_COMMIT" == true ]]; then
+  if [[ "$ERROR_RUN" == true ]]; then
+    skip_commit_and_exit
+    emit_final_status "$(printf '%s%s%s' \
+      "Error-run: commit to ${CURRENT_BRANCH}: " \
+      "$COMMIT_CHANGE_SUMMARY" \
+      ".")" true
+    exit "$EXIT_WORKFLOW_SKIPPED"
+  fi
+
+  if [[ "$DRY_RUN" == true ]]; then
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Dry run: would create commit with $COMMITTED_FILES file(s)"
+      print_commit_file_details "Files that would be committed:" "commit"
+    fi
+  else
+    OPERATION_STARTED=true
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Preparing for commit..."
+    fi
+    if ! run_git_command env GIT_BYPASS_HOOKS=true git add --all; then
+      fail_commit_and_exit
+    fi
+
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "Creating commit..."
+    fi
+    COMMIT_BODY="$(build_commit_body)"
+    if ! run_git_command env GIT_BYPASS_HOOKS=true \
+      git commit -m "$COMMIT_SUBJECT" -m "$COMMIT_BODY"; then
+      fail_commit_and_exit
+    fi
+
+    COMMIT_SHORT_HASH="$(git rev-parse --short=7 HEAD 2>/dev/null || true)"
+    if [[ "$COMMIT_SHORT_HASH" =~ ^[0-9a-f]{7}$ ]]; then
+      COMMIT_SUMMARY_TEXT="${COMMIT_SUMMARY_TEXT/Committed/Committed (${COMMIT_SHORT_HASH})}"
+    fi
+
+    if [[ "$VERBOSE" == true ]]; then
+      bt_success "Commit created: $COMMIT_SUBJECT"
+      print_commit_file_details "Committed files:" "commit"
+    fi
+  fi
+else
+  if [[ "$VERBOSE" == true ]]; then
+    bt_info "No changes to commit"
+  fi
+fi
+
+if [[ "$VERBOSE" == true && "$COMMITTED_FILES" -gt 0 ]]; then
+  print_summary
+fi
+
+if [[ "$COMMITTED_FILES" -gt 0 ]]; then
+  if [[ "$ERROR_RUN" == true ]]; then
+    emit_final_status "$(printf '%s%s%s' \
+      "Error-run: commit to ${CURRENT_BRANCH}: " \
+      "$COMMIT_CHANGE_SUMMARY" \
+      ".")" true
+    exit "$EXIT_WORKFLOW_SKIPPED"
+  elif [[ "$DRY_RUN" == true ]]; then
+    generate_commit_report
+    emit_final_status "$(printf '%s%s%s' \
+      "Dry-run: commit to ${CURRENT_BRANCH}: " \
+      "$COMMIT_CHANGE_SUMMARY" \
+      ".")" true
+  else
+    cleanup_transient_reports_locked
+    emit_final_status "$COMMIT_SUMMARY_TEXT" false
+    bt_success "Run report for details."
+  fi
+else
+  cleanup_transient_reports_locked
+  emit_final_status "Local ${CURRENT_BRANCH} branch: no changes to commit." \
+    false
+fi
+exit 0

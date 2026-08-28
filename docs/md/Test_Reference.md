@@ -94,7 +94,7 @@ A printer-friendly PDF file for this document is available.
 
 ### 1.1. Return Styles
 
-briteTest test helpers use three return styles:
+Test API helpers use three return styles:
 
 - Structured helpers return `RA_OK`, `RA_MISMATCH`, `RA_TIMEOUT`, or an `RA_E*` error code.
 - Predicate helpers return `1` for true or match, `0` for false or no match, and `-1` on invalid input or runtime error.

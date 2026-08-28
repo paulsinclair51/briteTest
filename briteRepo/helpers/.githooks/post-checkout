@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+# post-checkout hook - Auto-install hooks if missing and verify installation.
+#
+# This hook is called by Git after every checkout operation (including clone).
+# It checks if other hooks are installed and installs them if needed.
+#
+# This provides a safety net for the auto-installation process initiated by
+# mkclone → setupclone → install_git_hooks.sh
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+HOOKS_PATH="$(git config --get core.hooksPath 2>/dev/null || true)"
+if [[ -z "$HOOKS_PATH" ]]; then
+  GIT_HOOKS_DIR="$REPO_ROOT/.git/hooks"
+elif [[ "$HOOKS_PATH" = /* ]]; then
+  GIT_HOOKS_DIR="$HOOKS_PATH"
+else
+  GIT_HOOKS_DIR="$REPO_ROOT/$HOOKS_PATH"
+fi
+
+# Check if all required hooks are installed
+REQUIRED_HOOKS=("pre-commit" "pre-push" "pre-merge-commit" "githook_helper.sh")
+ALL_INSTALLED=true
+
+for hook in "${REQUIRED_HOOKS[@]}"; do
+  if [[ ! -f "$GIT_HOOKS_DIR/$hook" ]]; then
+    ALL_INSTALLED=false
+    break
+  fi
+done
+
+# If any hooks are missing, attempt to reinstall them
+if [[ "$ALL_INSTALLED" != true ]]; then
+  INSTALL_SCRIPT="$REPO_ROOT/briteRepo/helpers/install_git_hooks.sh"
+  if [[ -f "$INSTALL_SCRIPT" ]]; then
+    bash "$INSTALL_SCRIPT" --silent 2>/dev/null || true
+  fi
+fi
+
+exit 0

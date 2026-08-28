@@ -1,8 +1,8 @@
 #-----------------------------------------------------------------
 # Makefile for test_britetest (Linux/macOS)
 #
-# test_liteteest is an executable that uses the BriteTest
-# framework and APIs to test itself.
+# test_britetest is an executable that uses the briteTest
+# Runner Framework/API to test itself.
 #
 #-----------------------------------------------------------------
 # Copyright (c) 2026 Paul Sinclair
@@ -20,8 +20,7 @@
 #
 #   [<directory_path>/]test_britetest --help
 #
-# For an introduction to BriteTest, see README.md in ghe root
-# directory.
+# For an introduction to briteTest, see README.md in the root directory.
 #-----------------------------------------------------------------
 
 CC ?= clang
@@ -75,45 +74,51 @@ lint-md:
 		xargs -0 npx -y markdownlint-cli --config config/markdownlint.json
 
 check-doc:
-	bash ./scripts/bin/ckdocs
+	bash ./briteRepo/bin/report style -m -r
 
 test-gendocs:
-	bash ./scripts/tests/test_gendocs.sh
+	bash ./briteRepo/tests/test_gendocs.sh
 
 test-fixlocal:
-	bash ./scripts/tests/test_fixlocal.sh
+	bash ./briteRepo/tests/test_fixlocal.sh
 
 test-fixremote:
-	bash ./scripts/tests/test_fixremote.sh
+	bash ./briteRepo/tests/test_fixremote.sh
 
 test-lsbranch:
-	bash ./scripts/tests/test_lsbranch.sh
+	bash ./briteRepo/tests/test_lsbranch.sh
 
 test-mkbranch:
-	bash ./scripts/tests/test_mkbranch.sh
+	bash ./briteRepo/tests/test_mkbranch.sh
 
-test-mrgdown:
-	bash ./scripts/tests/test_mrgdown.sh
+test-pulldown:
+	bash ./briteRepo/tests/test_pulldown.sh
+
+test-pushup:
+	bash ./briteRepo/tests/test_pushup.sh
+
+test-pushup-parent:
+	bash ./briteRepo/tests/test_pushup_parent.sh
 
 test-report-helpers:
-	bash ./scripts/tests/test_report_helpers.sh
+	bash ./briteRepo/tests/test_report_helpers.sh
 
 test-report-style:
-	bash ./scripts/tests/test_report_style.sh
+	bash ./briteRepo/tests/test_report_style.sh
 
 test-genpngs:
-	bash ./scripts/tests/test_genpngs.sh
+	bash ./briteRepo/tests/test_genpngs.sh
 
 test-all-scripts:
-	bash ./scripts/tests/test_scripts.sh
+	bash ./briteRepo/tests/test_scripts.sh
 
 gendocs:
-	bash ./scripts/bin/gendocs
+	bash ./briteRepo/bin/gendocs
 
 genpngs:
-	bash ./scripts/bin/genpngs
+	bash ./briteRepo/bin/genpngs
 
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all run lint-md check-doc test-gendocs test-fixlocal test-fixremote test-lsbranch test-mkbranch test-mrgdown test-report-helpers test-report-style test-genpngs test-all-scripts gendocs genpngs clean
+.PHONY: all run lint-md check-doc test-gendocs test-fixlocal test-fixremote test-lsbranch test-mkbranch test-pulldown test-pushup test-pushup-parent test-report-helpers test-report-style test-genpngs test-all-scripts gendocs genpngs clean

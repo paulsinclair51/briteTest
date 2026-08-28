@@ -1,0 +1,853 @@
+#!/usr/bin/env bash
+
+# feedback - Handle and respond to pull request (PR) review feedback.
+#
+# See usage below for details, or run: feedback -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  feedback [ACTION] [OPTIONS] [-- TOKEN...]
+  feedback {-h | --help}
+
+Handle and respond to pull request (PR) review feedback.
+
+This script guides you through addressing reviewer comments and maintaining
+communication during the PR review cycle. It helps coordinate feedback/responses,
+track review feedback/response conversations, resolution, and approval/disapproval.
+
+Prerequisites:
+  - The user must be a contributor, reviewer, or approver (listed in
+    <repo>/config/contributors.md).
+  - The current branch must be a local branch.
+  - The current branch must be a targeted or contributor branch (not
+    main or version branch).
+  - The current branch must be associated with an open PR.
+
+Actions:
+  view        Show all feedback/comments on current PR, including review
+              comment IDs used by respond/resolve.
+  respond     Add a new PR comment, or reply to a specific review comment
+              when -i ID is provided. Alternatively, use the PR UI (-b
+              option) to respond.
+  resolve     Mark a specific review thread (identified by -i ID) as
+              resolved. The root comment author or an approver may resolve it.
+              Alternatively, use the PR UI (-b option) to resolve.
+  approve     Approve the current branch PR. Approver role required.
+              Refuses approval while another open approved PR targets the
+              same parent branch, or when that state cannot be verified.
+              Do not use PR UI (-b option) to approve.
+  disapprove  Disapprove the current branch PR. Approver role required.
+              Do not use PR UI (-b option) to disapprove.
+
+  For review action bodies with 'approve' or 'disapprove':
+    - Use '-- TOKEN...' to provide the approval or disapproval body.
+    - If omitted, a default approval or disapproval body is used.
+
+Features:
+  - For view action, fetch and display PR review comments with their IDs.
+  - Track feedback from reviewers.
+  - Coordinate with multiple reviewers.
+
+Options:
+  -b                   Open the PR for the current branch in the PR UI.
+                       Use this for a PR UI review workflow.
+                       If no open PR exists, the most recently
+                       closed PR for the current branch is opened.
+  -c TOKEN             Feedback/respond/resolve/approve/disapprove comment
+                       from TOKEN.
+  -- TOKEN...          Feedback/response/resolve/approve/disapprove comment
+                       from one or more tokens.
+  -i ID                Review comment ID to target for respond/resolve.
+  -h, --help  Output this help to stdout and exit (other options and
+              arguments are ignored).
+  -t SEC               Remote operation timeout in seconds (default: 10).
+                       SEC must be an integer greater than 0.
+  -v                   Output progress and diagnostics to stdout.
+
+  For comment options '-c TOKEN' and '-- TOKEN...':
+    - These options are mutually exclusive.
+    - Required for 'respond' actions.
+    - Ignored for 'view' action.
+    - For '-- TOKEN...', '--' must be a separate token.
+    - Comment text is built by joining tokens with a single space.
+    - For a quoted token, whitespace in the token is preserved and the
+      quotes are removed.
+    - The resulting comment from TOKEN or TOKEN... must include at
+      least one non-whitespace character.
+
+  For ID option '-i ID':
+    - ID must reference a review comment shown by 'feedback view'.
+    - ID identifies a comment; feedback maps it to the associated
+      review thread.
+    - Optional for 'respond':
+        - with -i ID: reply in that comment's review thread.
+        - without -i: add a new top-level PR comment.
+    - Required for 'resolve': resolves the review thread containing
+      that comment.
+    - Ignored for 'view', 'approve', and 'disapprove'.
+
+Workflow:
+
+  1. View feedback:
+         feedback view
+
+  2. Open the PR in the PR UI for comment/response/resolve:
+         feedback -b
+
+  3. If needed, make changes locally to address feedback:
+         # Edit files, then use commit to create the follow-up commit:
+         commit -c "Address reviewer feedback on auth logic."
+
+  4. Publish the branch updates to remote:
+         push
+
+  5. If the branch needs to be brought up to date with parent changes:
+         pulldown
+
+  6. Alternatively to using the PR UI, respond to a specific review comment:
+         feedback view
+         feedback respond -i 123456 -c "Fixed as requested, auth now validates."
+
+  7. Alternatively to using the PR UI, resolve the review thread after the
+     response is accepted or fix is in:
+         feedback resolve -i 123456
+
+Examples:
+
+  # Contributor or Reviewer: Show all comments on the current PR:
+  feedback view
+
+  # Contributor or Reviewer: Show all comments with verbose detail:
+  feedback view -v
+
+  # Contributor or Reviewer: Open the PR in the browser for
+  # comment/respond/resolve work:
+  feedback -b
+
+  # Reviewer: Add comment to PR:
+  feedback respond -c "Fix error handling."
+  
+  # Contributor: Commit fixes for feedback:
+  commit -c "Add fix for error handling."
+
+  # Contributor: Publish fixes to remote:
+  push
+
+  # Contributor or Reviewer: view comments with IDs:
+  feedback view
+
+  # Contributor: Reply to a specific review comment:
+  feedback respond -i 123456 -c "Updated error handling as requested."
+
+  # Reviewer: Mark feedback resolved:
+  feedback resolve -i 123456
+
+Workflow Scenarios:
+
+  Scenario 1: Small changes requested
+  ---------------------------------
+  feedback view              # See what's requested
+  # Edit files...
+  commit -c "Fix parameter validation."
+  push
+
+  Scenario 2: Multiple reviewers with different feedback
+  -------------------------------------------------------
+  feedback view
+  # Address feedback from reviewer 1
+  commit -c "Fix race condition in worker thread."
+  # Address feedback from reviewer 2
+  commit -c "Add error handling for edge case."
+  push
+
+  Scenario 3: Request clarification
+  ----------------------------------
+  feedback view              # See feedback
+  feedback respond -i 123456 -c "Question: Should this handle null input?"
+  # Wait for clarification
+  feedback view              # Check for response
+  # Make changes based on clarification
+  commit -c "Clarify null input handling."
+  push
+  # If the branch needs to be merged with parent changes:
+  pulldown
+
+  Scenario 4: Disagreement with feedback
+  ----------------------------------------
+  feedback view              # See feedback
+  feedback respond -i 123456 -c "This approach is intentional because X."
+  # If reviewer agrees, continue
+  # If reviewer insists, make the change
+  commit -c "Changed approach per reviewer request."
+  push
+
+Remote Workflow (Codespaces, SSH, etc.):
+
+  When working in Codespaces or remote environments:
+  - Use `feedback view` to see feedback with ids in stdout.
+  - Use `feedback respond` to communicate feedback without using PR UI.
+  - Use `commit` to create your follow-up commits.
+  - Use `push` to publish changes to remote.
+  - Use `pulldown` to sync with parent branch changes when needed.
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+
+Exit codes:
+  0    Success.
+  1    Invalid option or argument.
+  2    Failed to fetch PR feedback.
+  3    No PR associated with current branch.
+  200  GitHub API error.
+EOF
+}
+
+# High-Level Flow:
+# - Supports PR feedback actions: view, respond, resolve, approve, and disapprove.
+# - Fetches PR/review context with gh and executes feedback/review actions.
+# - Validates branch/PR/message prerequisites and returns action-specific
+#   failure codes.
+
+# shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Shared helpers
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck source=helpers/github_helpers.sh
+source "$SCRIPT_DIR/../helpers/github_helpers.sh"
+# shellcheck source=helpers/history_log.sh
+source "$SCRIPT_DIR/../helpers/history_log.sh"
+
+readonly EXIT_INVALID_ARGUMENT=1
+readonly EXIT_NOT_FOUND=2
+readonly EXIT_OPERATION_FAILED=3
+readonly EXIT_CONFIG_ERROR=4
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "$message. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
+# Default options
+VERBOSE=false
+ACTION=""
+COMMENT=""
+COMMENT_ID=""
+OPEN_BROWSER=false
+REMOTE_TIMEOUT_SECONDS=10
+
+
+get_pr_number() {
+  local branch="$1"
+  
+  # Try to find PR for this branch
+  # In real implementation, would use GitHub API or gh cli
+  if command -v gh &> /dev/null; then
+    bt_gh_find_pr_number_for_branch "$branch" "open"
+  else
+    echo ""
+  fi
+}
+
+get_closed_pr_number() {
+  local branch="$1"
+  local pr_number=""
+
+  bt_gh_capture_or_exit pr_number \
+    "$EXIT_CONFIG_ERROR" "$EXIT_CONFIG_ERROR" \
+    "Failed to query closed PRs for branch '$branch'" \
+    gh pr list --head "$branch" --state closed --json number,closedAt \
+    --jq 'sort_by(.closedAt) | reverse | .[0].number'
+
+  [[ "$pr_number" == "null" ]] && pr_number=""
+  printf '%s' "$pr_number"
+}
+
+get_repo_full_name() {
+  local origin_url
+  local repo_path
+
+  origin_url=$(git remote get-url origin 2>/dev/null || true)
+  if [[ -z "$origin_url" ]]; then
+    echo ""
+    return 0
+  fi
+
+  case "$origin_url" in
+    git@github.com:*)
+      repo_path="${origin_url#git@github.com:}"
+      ;;
+    https://github.com/*)
+      repo_path="${origin_url#https://github.com/}"
+      ;;
+    http://github.com/*)
+      repo_path="${origin_url#http://github.com/}"
+      ;;
+    ssh://git@github.com/*)
+      repo_path="${origin_url#ssh://git@github.com/}"
+      ;;
+    *)
+      echo ""
+      return 0
+      ;;
+  esac
+
+  repo_path="${repo_path%.git}"
+  repo_path="${repo_path%/}"
+  printf '%s' "$repo_path"
+}
+
+list_review_comments() {
+  local repo_full_name="$1"
+  local pr_number="$2"
+  local comments_jq
+
+  comments_jq='\
+.[] | [\
+  .id,\
+  (.pull_request_review_id // 0),\
+  (.in_reply_to_id // 0),\
+  (.user.login // ""),\
+  (.path // ""),\
+  ((.line // .original_line // 0) | tostring),\
+  (.body // "" | gsub("[\\r\\n\\t]"; " "))\
+] | @tsv'
+
+  bt_run_remote_command gh api --paginate \
+    "repos/$repo_full_name/pulls/$pr_number/comments" \
+    --jq "$comments_jq" \
+    2>/dev/null
+}
+
+find_review_thread_context() {
+  local repo_full_name="$1"
+  local pr_number="$2"
+  local comment_id="$3"
+  local owner
+  local repo
+  local thread_lines
+  local thread_id
+  local root_comment_id
+  local thread_comment_ids
+  local line
+  local found=false
+  local graphql_query
+  local threads_jq
+
+  owner="${repo_full_name%%/*}"
+  repo="${repo_full_name#*/}"
+
+  graphql_query='query($owner:String!, $repo:String!, $number:Int!){\
+repository(owner:$owner,name:$repo){\
+pullRequest(number:$number){\
+reviewThreads(first:100){nodes{id comments(first:100){nodes{databaseId}}}}}}}'
+  threads_jq='\
+.data.repository.pullRequest.reviewThreads.nodes[]\
+| select(.comments.nodes | length > 0)\
+| [\
+    .id,\
+    (.comments.nodes[0].databaseId // 0),\
+    (.comments.nodes | map(.databaseId | tostring) | join(","))\
+  ]\
+| @tsv'
+
+  thread_lines=$(bt_run_remote_command gh api graphql \
+    -F owner="$owner" \
+    -F repo="$repo" \
+    -F number="$pr_number" \
+    -f query="$graphql_query" \
+    --jq "$threads_jq" \
+    2>/dev/null || true)
+
+  while IFS=$'\t' read -r thread_id root_comment_id thread_comment_ids; do
+    [[ -n "$thread_id" ]] || continue
+    IFS=',' read -r -a comment_ids <<< "$thread_comment_ids"
+    for line in "${comment_ids[@]}"; do
+      if [[ "$line" == "$comment_id" ]]; then
+        found=true
+        printf '%s\t%s\t%s\n' \
+          "$thread_id" "$root_comment_id" "$thread_comment_ids"
+        return 0
+      fi
+    done
+  done <<< "$thread_lines"
+
+  [[ "$found" == true ]]
+}
+
+get_review_comment_author() {
+  local repo_full_name="$1"
+  local comment_id="$2"
+
+  bt_run_remote_command gh api \
+    "repos/$repo_full_name/pulls/comments/$comment_id" \
+    --jq '.user.login // ""' 2>/dev/null || echo ""
+}
+
+print_review_comments() {
+  local repo_full_name="$1"
+  local pr_number="$2"
+  local review_lines
+  local comment_id
+  local review_id
+  local reply_to_id
+  local author
+  local path
+  local line_number
+  local body
+
+  review_lines=$(list_review_comments "$repo_full_name" "$pr_number" || true)
+
+  if [[ -z "$review_lines" ]]; then
+    bt_info "No review comments found on this PR."
+    return 0
+  fi
+
+  bt_info "Review comments:"
+  while IFS=$'\t' read -r \
+    comment_id review_id reply_to_id author path line_number body; do
+    [[ -n "$comment_id" ]] || continue
+    bt_info "$(printf '%s %s %s' \
+      "  [$comment_id]" \
+      "${author:-unknown}" \
+      "${path:-<unknown>}:${line_number:-0}")"
+    if [[ "$reply_to_id" != "0" && -n "$reply_to_id" ]]; then
+      bt_info "    reply-to: $reply_to_id"
+    fi
+    bt_info "    body: $body"
+    if [[ "$VERBOSE" == true ]]; then
+      bt_info "    review-id: ${review_id:-0}"
+    fi
+  done <<< "$review_lines"
+}
+
+view_feedback() {
+  local branch
+  local pr_number
+  local closed_pr_number
+  local repo_full_name
+  
+  branch=$(bt_get_current_branch || \
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
+  bt_info "Current branch: $branch"
+  repo_full_name=$(get_repo_full_name)
+  if [[ -z "$repo_full_name" ]]; then
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "Unable to determine repository owner/name from origin"
+  fi
+  
+  if command -v gh &> /dev/null; then
+    pr_number=$(get_pr_number "$branch")
+    
+    if [[ -z "$pr_number" ]]; then
+      if [[ "$OPEN_BROWSER" == true ]]; then
+        closed_pr_number="$(get_closed_pr_number "$branch")"
+        if [[ -n "$closed_pr_number" ]]; then
+          bt_info "No open PR found for branch '$branch'; opening latest" \
+                  "closed PR #$closed_pr_number in browser..."
+          bt_run_remote_command gh pr view "$closed_pr_number" --web \
+            >/dev/null 2>&1 || true
+          bt_success "Opened latest closed PR #$closed_pr_number"
+          return 0
+        fi
+      fi
+
+      bt_error_exit "$EXIT_OPERATION_FAILED" \
+        "No PR found for branch '$branch'. Create a PR first using review."
+    fi
+    
+    bt_info "Fetching review comments for PR #$pr_number..."
+    print_review_comments "$repo_full_name" "$pr_number"
+
+    if [[ "$OPEN_BROWSER" == true ]]; then
+      bt_info "Opening PR #$pr_number in browser..."
+      bt_run_remote_command gh pr view "$pr_number" --web \
+        >/dev/null 2>&1 || true
+    fi
+    
+    bt_success "Done"
+  else
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "GitHub CLI (gh) not installed. Install gh to use feedback."
+  fi
+}
+
+is_approver_login() {
+  local login="$1"
+  bt_contributors_has_min_role "$login" "approver" "config/contributors.md"
+}
+
+require_approver_login() {
+  local login
+
+  login=$(bt_require_login) || {
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "Unable to determine GitHub login identity"
+  }
+
+  if ! is_approver_login "$login"; then
+    bt_error_exit "$EXIT_CONFIG_ERROR" "User '$login' is not an approver"
+  fi
+
+  echo "$login"
+}
+
+validate_feedback_prerequisites() {
+  local branch login
+
+  [[ -f config/contributors.md ]] || \
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "Configuration file not found: config/contributors.md"
+
+  login=$(bt_require_login) || \
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "Unable to determine GitHub login identity"
+  bt_require_min_role_or_exit "$login" "contributor" \
+    "config/contributors.md" "$EXIT_CONFIG_ERROR" \
+    "User '$login' is not listed as contributor, reviewer, or approver"
+
+  branch=$(bt_get_current_branch || true)
+  [[ -n "$branch" && "$branch" != HEAD ]] || \
+    bt_error_exit "$EXIT_NOT_FOUND" \
+      "Current checkout is detached; switch to a local contributor or targeted branch"
+  git show-ref --verify --quiet "refs/heads/$branch" || \
+    bt_error_exit "$EXIT_NOT_FOUND" "Current branch '$branch' is not local"
+  if ! bt_is_contributor_branch "$branch" && \
+    ! bt_is_targeted_branch "$branch"; then
+    bt_error_exit "$EXIT_NOT_FOUND" \
+      "Current branch '$branch' is not a contributor or targeted branch"
+  fi
+}
+
+ensure_parent_has_no_pending_approval() {
+  local pr_number="$1"
+  local parent_branch=""
+  local pending_approval=""
+
+  bt_gh_capture_or_exit parent_branch \
+    "$EXIT_CONFIG_ERROR" "$EXIT_CONFIG_ERROR" \
+    "Failed to determine the parent branch for PR #$pr_number" \
+    gh pr view "$pr_number" --json baseRefName --jq '.baseRefName'
+  [[ -n "$parent_branch" && "$parent_branch" != null ]] || \
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "PR #$pr_number does not identify a parent branch"
+
+  bt_gh_capture_or_exit pending_approval \
+    "$EXIT_CONFIG_ERROR" "$EXIT_CONFIG_ERROR" \
+    "Failed to check approved PRs targeting '$parent_branch'" \
+    gh pr list --state open --base "$parent_branch" --limit 1000 \
+    --json number,headRefName,reviewDecision \
+    --jq ".[] | select(.number != $pr_number and .reviewDecision == \"APPROVED\") | [.number, .headRefName] | @tsv"
+
+  if [[ -n "$pending_approval" ]]; then
+    local pending_number pending_branch
+    IFS=$'\t' read -r pending_number pending_branch <<< "$pending_approval"
+    bt_error_exit "$EXIT_OPERATION_FAILED" \
+      "Delay approval: PR #$pending_number ('$pending_branch') is already approved and has not completed pushup to '$parent_branch'"
+  fi
+}
+
+review_current_pr() {
+  local action="$1"
+  local branch
+  local pr_number
+  local review_body="$COMMENT"
+  local login
+  local -a review_args
+
+  branch=$(bt_get_current_branch || \
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch.")
+  bt_info "Current branch: $branch"
+
+  login=$(require_approver_login)
+  pr_number=$(get_pr_number "$branch")
+
+  if [[ -z "$pr_number" ]]; then
+    bt_error_exit "$EXIT_OPERATION_FAILED" "No PR found for branch '$branch'."
+  fi
+
+  if [[ "$action" == "approve" ]]; then
+    ensure_parent_has_no_pending_approval "$pr_number"
+  fi
+
+  if [[ -z "$review_body" ]]; then
+    if [[ "$action" == "approve" ]]; then
+      review_body="Approved by approver $login."
+    else
+      review_body="Changes requested by approver $login."
+    fi
+  fi
+
+  case "$action" in
+    approve)
+      review_args=(--approve --body "$review_body")
+      ;;
+    disapprove)
+      review_args=(--request-changes --body "$review_body")
+      ;;
+    *)
+      bt_error_exit "$EXIT_INVALID_ARGUMENT" "Unknown review action: $action"
+      ;;
+  esac
+
+  bt_info "Submitting '$action' review for PR #$pr_number..."
+  bt_gh_run_or_exit "$EXIT_CONFIG_ERROR" "$EXIT_CONFIG_ERROR" \
+    "Failed to submit PR review" \
+    gh pr review "$pr_number" "${review_args[@]}"
+
+  if [[ "$action" == "approve" ]]; then
+    bt_success "PR #$pr_number approved"
+  else
+    bt_success "Changes requested on PR #$pr_number"
+  fi
+}
+
+respond_to_feedback() {
+  local branch
+  local pr_number
+  local repo_full_name
+  local thread_context
+  local thread_id
+  local root_comment_id
+  
+  branch=$(bt_get_current_branch || \
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch.")
+  repo_full_name=$(get_repo_full_name)
+  if [[ -z "$repo_full_name" ]]; then
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "Unable to determine repository owner/name from origin"
+  fi
+  
+  if command -v gh &> /dev/null; then
+    pr_number=$(get_pr_number "$branch")
+    
+    if [[ -z "$pr_number" ]]; then
+      bt_error_exit "$EXIT_OPERATION_FAILED" "No PR found for branch '$branch'."
+    fi
+    
+    if [[ -z "$COMMENT" ]]; then
+      usage_error "Comment required. Use -c or -- to provide comment."
+    fi
+    
+    if [[ -n "$COMMENT_ID" ]]; then
+      thread_context="$(find_review_thread_context \
+        "$repo_full_name" "$pr_number" "$COMMENT_ID" || true)"
+      if [[ -z "$thread_context" ]]; then
+        bt_error_exit "$EXIT_OPERATION_FAILED" \
+          "Review comment '$COMMENT_ID' not found on PR #$pr_number"
+      fi
+
+      IFS=$'\t' read -r thread_id root_comment_id _ <<< "$thread_context"
+      bt_info "Adding reply to review comment $root_comment_id on PR" \
+              "#$pr_number..."
+      bt_gh_run_or_exit "$EXIT_CONFIG_ERROR" "$EXIT_CONFIG_ERROR" \
+        "Failed to add reply to review comment." \
+        gh api --method POST \
+        "repos/$repo_full_name/pulls/comments/$root_comment_id/replies" \
+        -f body="$COMMENT"
+    else
+      bt_info "Adding comment to PR #$pr_number..."
+      bt_gh_run_or_exit "$EXIT_CONFIG_ERROR" "$EXIT_CONFIG_ERROR" \
+        "Failed to add comment to PR." \
+        gh pr comment "$pr_number" -b "$COMMENT"
+      bt_success "Comment added to PR"
+      return 0
+    fi
+    
+    bt_success "Reply added to review comment $COMMENT_ID"
+  else
+    bt_error_exit "$EXIT_CONFIG_ERROR" "GitHub CLI (gh) not installed."
+  fi
+}
+
+resolve_feedback() {
+  local branch
+  local pr_number
+  local repo_full_name
+  local thread_context
+  local thread_id
+  local root_comment_id
+  local current_login
+  local root_author
+  local resolve_thread_query
+  
+  branch=$(bt_get_current_branch || \
+    bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch.")
+  repo_full_name=$(get_repo_full_name)
+  if [[ -z "$repo_full_name" ]]; then
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "Unable to determine repository owner/name from origin"
+  fi
+
+  if [[ -z "$COMMENT_ID" ]]; then
+    usage_error "Option -i is required to resolve a review thread"
+  fi
+
+  resolve_thread_query='mutation($threadId:ID!){\
+resolveReviewThread(input:{threadId:$threadId}){thread{id isResolved}}}'
+
+  if command -v gh &> /dev/null; then
+    current_login=$(bt_require_login || true)
+    pr_number=$(get_pr_number "$branch")
+
+    if [[ -z "$pr_number" ]]; then
+      bt_error_exit "$EXIT_OPERATION_FAILED" "No PR found for branch '$branch'."
+    fi
+
+    thread_context="$(find_review_thread_context \
+      "$repo_full_name" "$pr_number" "$COMMENT_ID" || true)"
+    if [[ -z "$thread_context" ]]; then
+      bt_error_exit "$EXIT_OPERATION_FAILED" \
+        "Review comment '$COMMENT_ID' not found on PR #$pr_number"
+    fi
+
+    IFS=$'\t' read -r thread_id root_comment_id _ <<< "$thread_context"
+    root_author="$(get_review_comment_author \
+      "$repo_full_name" "$root_comment_id")"
+    if [[ -z "$current_login" ]]; then
+      bt_error_exit "$EXIT_CONFIG_ERROR" \
+        "Unable to determine GitHub login identity"
+    fi
+    if [[ "$current_login" != "$root_author" ]]; then
+      if ! bt_contributors_has_min_role \
+        "$current_login" "approver" "config/contributors.md"; then
+        bt_error_exit "$EXIT_CONFIG_ERROR" "$(printf '%s%s' \
+          "User '$current_login' is not allowed to resolve review comment " \
+          "'$COMMENT_ID'")"
+      fi
+    fi
+
+    bt_info "Resolving review thread for comment $root_comment_id on PR" \
+            "#$pr_number..."
+    bt_gh_run_or_exit "$EXIT_CONFIG_ERROR" "$EXIT_CONFIG_ERROR" \
+      "Failed to resolve review thread." \
+      gh api graphql -f threadId="$thread_id" \
+      -f query="$resolve_thread_query"
+
+    bt_success "Review thread resolved for comment $COMMENT_ID"
+  else
+    bt_error_exit "$EXIT_CONFIG_ERROR" "GitHub CLI (gh) not installed."
+  fi
+}
+
+# Parse options and arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=true
+      shift
+      ;;
+    -b | --browser)
+      OPEN_BROWSER=true
+      shift
+      ;;
+    -t)
+      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC."
+      bt_is_valid_remote_timeout "$2" || \
+        usage_error "SEC for -t must be an integer greater than 0."
+      REMOTE_TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
+    approve|disapprove)
+      if [[ -n "$ACTION" ]]; then
+        usage_error "Unexpected argument: $1"
+      fi
+      ACTION="$1"
+      shift
+      ;;
+    -c)
+      if [[ $# -lt 2 ]]; then
+        usage_error "Option -c requires a comment argument."
+      fi
+      if [[ -n "$COMMENT" ]]; then
+        usage_error "Cannot use both -c and -- for comment."
+      fi
+      COMMENT="$2"
+      shift 2
+      ;;
+    -i)
+      if [[ $# -lt 2 ]]; then
+        usage_error "Option -i requires a review comment ID."
+      fi
+      if [[ ! "$2" =~ ^[0-9]+$ ]]; then
+        usage_error "Option -i requires a numeric review comment ID."
+      fi
+      COMMENT_ID="$2"
+      shift 2
+      ;;
+    --)
+      # Unix-style comment: everything after -- is the comment
+      shift
+      if [[ -n "$COMMENT" ]]; then
+        usage_error "Cannot use both -c and -- for comment."
+      fi
+      COMMENT="$*"
+      break
+      ;;
+    -*)
+      usage_error "Unknown option: $1"
+      ;;
+    *)
+      if [[ -z "$ACTION" ]]; then
+        ACTION="$1"
+        shift
+      else
+        usage_error "Unexpected argument: $1"
+      fi
+      ;;
+  esac
+done
+
+export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
+
+# Validate action
+if [[ -z "$ACTION" ]] && [[ "$OPEN_BROWSER" == true ]]; then
+  ACTION="view"
+fi
+
+if [[ -z "$ACTION" ]]; then
+  usage_error "ACTION required (view, respond, resolve, approve, or disapprove), unless using -b alone."
+fi
+
+validate_feedback_prerequisites
+
+# Dispatch to appropriate function
+case "$ACTION" in
+  view)
+    view_feedback
+    ;;
+  approve|disapprove)
+    review_current_pr "$ACTION"
+    ;;
+  respond)
+    respond_to_feedback
+    ;;
+  resolve)
+    resolve_feedback
+    ;;
+  *)
+    usage_error "Unknown action: $ACTION" \
+      "(valid: view, respond, resolve, approve, disapprove)"
+    ;;
+esac
+
+exit 0
