@@ -1,40 +1,10 @@
 #!/usr/bin/env bash
 
 # pushup - Push the current branch up to its parent and resynchronize it.
-
-# shellcheck disable=SC2317  # Signal-trap handler is invoked indirectly.
-
-# High-Level Flow:
-# - Persist the source/parent refs and options before any branch mutation.
-# - On every invocation, reconcile saved state with local and remote refs so a
-#   crash between an operation and its phase update is safe to resume.
-# - Prepare the parent locally, then publish it. Before publication, failures
-#   may roll back to the saved refs; afterward, the workflow is resumable only.
-# - Return to the source, merge the published parent down, publish the source,
-#   and remove state only after both remote refs contain the expected commits.
-# - On interruption, retain state and direct the contributor to either rerun
-#   pushup (pre-publication) or use pushup --continue (after publication).
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck disable=SC1091  # Helper paths are resolved from this script.
-source "$SCRIPT_DIR/../helpers/common.sh"
-# shellcheck disable=SC1091  # Helper paths are resolved from this script.
-source "$SCRIPT_DIR/../helpers/git_helpers.sh"
-# shellcheck disable=SC1091  # Helper paths are resolved from this script.
-source "$SCRIPT_DIR/../helpers/report_helpers.sh"
-# shellcheck disable=SC1091  # Helper paths are resolved from this script.
-source "$SCRIPT_DIR/../helpers/history_log.sh"
-
-readonly EXIT_USAGE=1
-readonly EXIT_ACTIVE=2
-readonly EXIT_NOTHING_TO_CONTINUE=3
-readonly EXIT_PREPUBLICATION_FAILED=4
-readonly EXIT_PARTIAL=5
-readonly EXIT_INTERNAL=200
-readonly STATE_VERSION=1
-readonly REMOTE_REACCESS_MULTIPLIER=3
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
 
 usage() {
   cat <<'EOF'
@@ -70,11 +40,17 @@ Crash and interruption recovery:
 Options:
   --continue    Continue a partially completed push-up workflow.
   -c TOKEN      Commit comment for the parent push-up commit.
+  -- TOKEN...   Commit comment built from one or more tokens.
+  -d            Dry-run. Validate and preview the parent preparation without
+                creating commits, publishing branches, or saving pushup state.
+  -e            Emit an error report for the merge-up workflow. This option is
+                intended for testing and debugging purposes and is not typically
+                used in normal operation. Mutually exclusive with -d.
+  -h, --help    Output this help and exit.
   -o            Repository-owner override for an eligible push-up workflow.
   -t SEC        Remote timeout in seconds (default: 10).
+                SEC must be an integer greater than 0.
   -v            Output progress from delegated workflow commands.
-  -- TOKEN...   Commit comment built from one or more tokens.
-  -h, --help    Output this help and exit.
 
 Exit codes:
   0    Push-up workflow completed.
@@ -84,13 +60,50 @@ Exit codes:
   4    Push-up workflow failed before publication; local state was restored.
   5    Push-up workflow partially completed; run pushup --continue after following
        the guidance in the reported pushup error report.
+  36   Push-up skipped because -e was specified.
   200  Internal state or recovery error.
 EOF
 }
 
+# shellcheck disable=SC2317  # Signal-trap handler is invoked indirectly.
+
+# High-Level Flow:
+# - Persist the source/parent refs and options before any branch mutation.
+# - On every invocation, reconcile saved state with local and remote refs so a
+#   crash between an operation and its phase update is safe to resume.
+# - Prepare the parent locally, then publish it. Before publication, failures
+#   may roll back to the saved refs; afterward, the workflow is resumable only.
+# - Return to the source, merge the published parent down, publish the source,
+#   and remove state only after both remote refs contain the expected commits.
+# - On interruption, retain state and direct the contributor to either rerun
+#   pushup (pre-publication) or use pushup --continue (after publication).
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091  # Helper paths are resolved from this script.
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck disable=SC1091  # Helper paths are resolved from this script.
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+# shellcheck disable=SC1091  # Helper paths are resolved from this script.
+source "$SCRIPT_DIR/../helpers/report_helpers.sh"
+# shellcheck disable=SC1091  # Helper paths are resolved from this script.
+source "$SCRIPT_DIR/../helpers/history_log.sh"
+
+readonly EXIT_USAGE=1
+readonly EXIT_ACTIVE=2
+readonly EXIT_NOTHING_TO_CONTINUE=3
+readonly EXIT_PREPUBLICATION_FAILED=4
+readonly EXIT_PARTIAL=5
+readonly EXIT_INTERNAL=200
+readonly STATE_VERSION=1
+readonly REMOTE_REACCESS_MULTIPLIER=3
+
 CONTINUE=false
 OWNER_OVERRIDE=false
 VERBOSE=false
+DRY_RUN=false
+ERROR_RUN=false
 TIMEOUT_SECONDS=10
 COMMENT_MODE=""
 COMMENT=""
@@ -495,6 +508,28 @@ prepare_parent() {
   bash "$SCRIPT_DIR/../helpers/pushup_parent.sh" "${args[@]}"
 }
 
+dry_run_parent() {
+  local -a args=(-d -t "$TIMEOUT_SECONDS")
+  [[ "$VERBOSE" == true ]] && args+=(-v)
+  [[ "$OWNER_OVERRIDE" == true ]] && args+=(-o)
+  case "$COMMENT_MODE" in
+    option) args+=(-c "$COMMENT") ;;
+    tokens) args+=(-- "$COMMENT") ;;
+  esac
+  bash "$SCRIPT_DIR/../helpers/pushup_parent.sh" "${args[@]}"
+}
+
+error_run_parent() {
+  local -a args=(-e -t "$TIMEOUT_SECONDS")
+  [[ "$VERBOSE" == true ]] && args+=(-v)
+  [[ "$OWNER_OVERRIDE" == true ]] && args+=(-o)
+  case "$COMMENT_MODE" in
+    option) args+=(-c "$COMMENT") ;;
+    tokens) args+=(-- "$COMMENT") ;;
+  esac
+  bash "$SCRIPT_DIR/../helpers/pushup_parent.sh" "${args[@]}"
+}
+
 run_push() {
   local timeout_seconds="$1"
   local -a args=(-t "$timeout_seconds")
@@ -654,6 +689,8 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
     --continue) CONTINUE=true; shift ;;
+    -d) DRY_RUN=true; shift ;;
+    -e) ERROR_RUN=true; shift ;;
     -o) OWNER_OVERRIDE=true; shift ;;
     -v) VERBOSE=true; shift ;;
     -t)
@@ -670,8 +707,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ "$DRY_RUN" == true && "$ERROR_RUN" == true ]]; then
+  usage >&2
+  exit "$EXIT_USAGE"
+fi
+
 if [[ "$CONTINUE" == true && ( "$OWNER_OVERRIDE" == true || "$VERBOSE" == true || \
-  "$TIMEOUT_SECONDS" != 10 || -n "$COMMENT_MODE" ) ]]; then
+  "$DRY_RUN" == true || "$ERROR_RUN" == true || "$TIMEOUT_SECONDS" != 10 || \
+  -n "$COMMENT_MODE" ) ]]; then
   usage >&2
   exit "$EXIT_USAGE"
 fi
@@ -687,6 +730,19 @@ flock -n "$LOCK_FD" || { echo "Error: another pushup process is active." >&2; ex
 trap 'on_interrupt HUP' HUP
 trap 'on_interrupt INT' INT
 trap 'on_interrupt TERM' TERM
+
+if [[ "$DRY_RUN" == true || "$ERROR_RUN" == true ]]; then
+  if [[ -f "$STATE_FILE" ]]; then
+    echo "Error: pushup state already exists; run pushup --continue or fixlocal before dry-run/error-run." >&2
+    exit "$EXIT_ACTIVE"
+  fi
+  if [[ "$DRY_RUN" == true ]]; then
+    dry_run_parent
+  else
+    error_run_parent
+  fi
+  exit $?
+fi
 
 if [[ -f "$STATE_FILE" ]]; then
   if ! state_is_complete; then

@@ -121,13 +121,37 @@ rc=$(run_capture "$TMPDIR/pushup.out" bash -lc "cd '$WORK' && bash ./briteRepo/b
 pushup_rel="$(report_path_from_output "$TMPDIR/pushup.out")"
 assert_contains "pushup activity" "$WORK/$pushup_rel"
 assert_contains '**Command:** `pushup -o`' "$WORK/$pushup_rel"
-assert_contains "Source-Branch: dev/source-v1.0.0" "$WORK/$pushup_rel"
+assert_contains "Source-Branch: dev/report-tests-v1.0.0" "$WORK/$pushup_rel"
 assert_contains "Target-Branch: v1.0.0" "$WORK/$pushup_rel"
 assert_contains "PR: 42" "$WORK/$pushup_rel"
 assert_contains "Status: Current branch merged into parent branch" "$WORK/$pushup_rel"
 assert_contains "Method: Squash merge created by pushup" "$WORK/$pushup_rel"
 assert_contains "CI-CD: ci build SUCCESS" "$WORK/$pushup_rel"
 pass "pushup report details"
+
+# 8b) Other metadata-only workflow actions should render durable details.
+rc=$(run_capture "$TMPDIR/mkbranch.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'mkbranch activity'")
+[[ "$rc" -eq 0 ]] || fail "mkbranch report should exit 0 (got $rc)"
+mkbranch_rel="$(report_path_from_output "$TMPDIR/mkbranch.out")"
+assert_contains "mkbranch activity" "$WORK/$mkbranch_rel"
+assert_contains '**Command:** `mkbranch dev/report-tests-v1.0.0 v1.0.0`' "$WORK/$mkbranch_rel"
+assert_contains "New-Branch: dev/report-tests-v1.0.0" "$WORK/$mkbranch_rel"
+assert_contains "Parent-Branch: v1.0.0" "$WORK/$mkbranch_rel"
+
+rc=$(run_capture "$TMPDIR/release.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'release activity'")
+[[ "$rc" -eq 0 ]] || fail "release report should exit 0 (got $rc)"
+release_rel="$(report_path_from_output "$TMPDIR/release.out")"
+assert_contains "release activity" "$WORK/$release_rel"
+assert_contains '**Command:** `release v1.2.0`' "$WORK/$release_rel"
+assert_contains "Version: v1.2.0" "$WORK/$release_rel"
+
+rc=$(run_capture "$TMPDIR/undo.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'undo activity'")
+[[ "$rc" -eq 0 ]] || fail "undo report should exit 0 (got $rc)"
+undo_rel="$(report_path_from_output "$TMPDIR/undo.out")"
+assert_contains "undo activity" "$WORK/$undo_rel"
+assert_contains '**Command:** `undo commit`' "$WORK/$undo_rel"
+assert_contains "Undo-Type: commit" "$WORK/$undo_rel"
+pass "metadata action report details"
 
 # 9) Copyfix reports should render durable workflow details
 rc=$(run_capture "$TMPDIR/copyfix.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'copyfix activity'")
@@ -190,6 +214,17 @@ repo_rel="$(sed -n "s/^See '\(reports\/repo-[^ ]*\.md\)'\.$/\1/p" \
 assert_contains "## Health" "$WORK/$repo_rel"
 assert_contains "## Branch Status" "$WORK/$repo_rel"
 pass "repository report dispatch"
+
+# 13b) Repo reports accept filtered activity and render a repo activity section
+rc=$(run_capture "$TMPDIR/repo-activity.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report repo -q 'pull activity' -u testuser -l 1 -t 2")
+[[ "$rc" -eq 0 ]] || fail "filtered repo report should exit 0 (got $rc)"
+repo_activity_rel="$(sed -n "s/^See '\(reports\/repo-[^ ]*\.md\)'\.$/\1/p" \
+  "$TMPDIR/repo-activity.out" | tail -n 1)"
+[[ -n "$repo_activity_rel" && -f "$WORK/$repo_activity_rel" ]] || fail "filtered repo report file was not created"
+assert_contains "## Repository Activity" "$WORK/$repo_activity_rel"
+assert_contains "pull activity" "$WORK/$repo_activity_rel"
+assert_contains "**User:** testuser" "$WORK/$repo_activity_rel"
+pass "repository report activity filtering"
 
 # 14) Style options and files are forwarded to ckstyle
 rc=$(run_capture "$TMPDIR/style.out" bash -lc \

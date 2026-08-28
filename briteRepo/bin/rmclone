@@ -105,28 +105,41 @@ add_issue() {
   ISSUES+=("$1")
 }
 
-log_removal_to_repository_history() {
+record_removal_note_on_remote_main() {
   local target_path="$1"
-  local timestamp
-  timestamp="$(bt_datetime_display_now)"
-  
-  # Only attempt if repository_history.md exists in current clone
-  if [[ ! -f "$REPO_ROOT/logs/repository_history.md" ]]; then
+  local target_ref=""
+  local notes_ref="refs/notes/briteRepo-workflow"
+  local record=""
+  local timestamp=""
+  local user_name=""
+  local user_email=""
+
+  if git rev-parse --verify refs/remotes/origin/main >/dev/null 2>&1; then
+    target_ref="refs/remotes/origin/main"
+  elif git rev-parse --verify refs/heads/main >/dev/null 2>&1; then
+    target_ref="refs/heads/main"
+  else
     return 0
   fi
-  
-  # Get current user
-  local user
-  user=$(git config user.name 2>/dev/null || echo "unknown")
-  
-  # Append to repository history (Clone and Fork Operations section)
-  # Format: Date Time | Operation | Repository | Actor | Details
-  local entry
-  entry="| $timestamp | rmclone | ${target_path##*/} | $user | Removed |"
-  
-  printf '%s\n' "$entry" >> "$REPO_ROOT/logs/repository_history.md"
-  
-  bt_info "Logged removal to repository history"
+
+  timestamp="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
+  user_name="$(git config user.name 2>/dev/null || echo unknown)"
+  user_email="$(git config user.email 2>/dev/null || echo unknown@local)"
+  record=$(cat <<EOF
+--- briteRepo workflow ---
+Workflow-Type: rmclone
+Workflow-Time: ${timestamp}
+Workflow-Branch: main
+Workflow-User: ${user_name} <${user_email}>
+Command-Line: rmclone ${target_path##*/}
+Summary: Removed clone target ${target_path##*/}
+Target-Path: ${target_path}
+EOF
+)
+
+  git notes --ref="$notes_ref" append -m "$record" "$target_ref" >/dev/null 2>&1 || true
+  git push origin refs/notes/briteRepo-workflow:refs/notes/briteRepo-workflow >/dev/null 2>&1 || true
+  bt_info "Logged removal to remote main workflow note"
 }
 
 resolve_abs_dir() {
@@ -329,7 +342,7 @@ fi
 bt_success "Clone removed successfully: $TARGET_ABS"
 
 # Log removal to repository history and push to origin/main
-log_removal_to_repository_history "$TARGET_ABS"
+record_removal_note_on_remote_main "$TARGET_ABS"
 bt_commit_and_push_repository_history "rmclone: Removed local clone"
 
 exit 0

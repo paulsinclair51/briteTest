@@ -125,4 +125,29 @@ grep -Fq "Tag already exists: v1.0.0" "$TMPDIR/noop.out" || \
   fail "existing release should not create a report"
 
 echo "PASS: existing release creates no report"
+
+set +e
+(
+  cd "$WORK"
+  PATH="$FAKEBIN:$PATH" bash ./briteRepo/bin/release v1.1.0
+) >"$TMPDIR/release.out" 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 0 ]] || fail "release should exit 0 (got $rc)"
+note="$(git -C "$WORK" notes --ref=briteRepo-workflow show HEAD 2>/dev/null || true)"
+[[ "$note" == *"Workflow-Type: release"* ]] || \
+  fail "release should record workflow metadata"
+[[ "$note" == *"Version: v1.1.0"* ]] || \
+  fail "release metadata should record the version"
+if [[ -d "$WORK/logs" ]] && \
+  find "$WORK/logs" -maxdepth 1 -type f -name '*_history.md' -print -quit | grep -q .; then
+  fail "release should not create branch history log files"
+fi
+if [[ ! -e "$WORK/logs/repository_history.md" ]] || \
+  git -C "$WORK" diff --quiet -- logs/repository_history.md; then
+  :
+else
+  fail "release should not modify repository history logs"
+fi
+echo "PASS: release workflow metadata"
 echo "All release smoke tests passed."

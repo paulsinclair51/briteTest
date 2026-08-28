@@ -152,12 +152,6 @@ if [[ "\${FAKE_GIT_FAIL_COMMIT:-0}" == "1" && "\$1" == "commit" ]]; then
   exit 1
 fi
 
-if [[ "\${FAKE_GIT_FAIL_HISTORY_ADD:-0}" == "1" && "\$1" == "add" && \
-      "\${2:-}" == logs/*_history.md ]]; then
-  echo "simulated history staging failure" >&2
-  exit 1
-fi
-
 exec "$REAL_GIT" "\$@"
 GITEOF
 chmod +x "$FAKEBIN/git"
@@ -935,6 +929,11 @@ if find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pushup-[0-9]*.md' -print -quit | grep -q .; then
   fail "successful merge-up should not create an immediate local report"
 fi
+if find "$WORK/logs" -maxdepth 1 -type f \
+  -name '*_history.md' ! -name 'repository_history.md' \
+  -print -quit | grep -q .; then
+  fail "successful merge-up should not create branch history log files"
+fi
 merge_body="$(git -C "$WORK" log -1 --format=%B v1.0.0)"
 if grep -Fq "Command-Line: pushup" <<< "$merge_body"; then
   fail "merge-up commit should not claim workflow success before finalization"
@@ -1020,23 +1019,6 @@ remaining_dirty="$(
 )"
 [[ -z "$remaining_dirty" ]] || fail "commit failure should restore a clean worktree"
 pass "commit failure does not create a success report"
-
-# ---------------------------------------------------------------------------
-# History staging failure is fatal and must not produce a success report
-# ---------------------------------------------------------------------------
-success_reports_before="$(find "$WORK/reports" -maxdepth 1 -type f \
-  -name 'pushup-[0-9]*.md' | wc -l | tr -d ' ')"
-rc=$(run_pushup "$TMPDIR/history-add-fail.out" \
-  "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
-  "FAKE_GH_PR_NUMBER=" "FAKE_GIT_FAIL_HISTORY_ADD=1" -- \
-  -o -c "history staging failure")
-success_reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
-  -name 'pushup-[0-9]*.md' | wc -l | tr -d ' ')"
-[[ "$rc" -eq 202 ]] || fail "history staging failure should exit 202 (got $rc)"
-[[ "$success_reports_after" -eq "$success_reports_before" ]] || \
-  fail "history staging failure must not create a success report"
-assert_contains "Failed to stage parent history file" "$TMPDIR/history-add-fail.out"
-pass "history staging failure is reported and creates no success report"
 
 # ---------------------------------------------------------------------------
 # Version-to-main merges use the documented approver default comment

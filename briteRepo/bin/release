@@ -24,21 +24,20 @@ Before releasing:
   - Creates annotated git tag
   - Pushes tag to remote
   - Creates GitHub release
-  - Logs release to logs/remote_branch_history.md
+  - Records release workflow metadata for branch reports
 
 Features:
   - Semantic versioning support (v1.2.3)
   - Annotated git tags
   - GitHub release creation
-  - Release logging to logs/remote_branch_history.md
+  - Release workflow metadata for branch reports
   - Pre-release validation
 
 Arguments:
   VERSION       The version for the release (e.g., v1.2.3).
                 Options may precede or follow the VERSION argument.
 Options:
-  -d            Dry-run. Validate the release without creating or publishing
-                a tag, GitHub release, or history entry.
+  -d            Dry-run. Validate the release without creating a release.
   -e            Generate an error report without creating a release.
   -h, --help  Output this help to stdout and exit (other options and
               arguments are ignored).
@@ -326,66 +325,19 @@ create_github_release() {
   bt_success "GitHub release created: $tag"
 }
 
-log_release_to_history() {
+record_release_workflow_event() {
   local version="$1"
   local user="$2"
   local branch="$3"
 
-  local history_file
-  history_file="$(bt_branch_to_history_file "$branch")"
-  local timestamp
-  timestamp="$(bt_datetime_display_now)"
-
-  mkdir -p "$(dirname "$history_file")"
-  
-  # Create history file if it doesn't exist
-  if [[ ! -f "$history_file" ]]; then
-    cat > "$history_file" << 'EOF'
-# Branch History
-
-Copyright (c) 2026 Paul Sinclair  
-SPDX-License-Identifier: MIT  
-For license details, see `LICENSE` in the repository root.
-
-See `README.md` in the root directory for an introduction to the project.
-
-## Merge Log
-
-EOF
+  if ! bt_record_workflow_event "release" "$branch" \
+      "$(bt_format_command_line "release" "${ORIGINAL_ARGS[@]}")" \
+      "Released $version" HEAD \
+      "Version" "$version" \
+      "Released-By" "$user" \
+      "Status" "Released"; then
+    bt_warn "Release completed, but its workflow metadata could not be recorded"
   fi
-  
-  # Append release entry
-  cat >> "$history_file" << EOF
-- [$timestamp] [$user] Released $version
-EOF
-
-  bt_info "Logged release to $history_file"
-}
-
-# Log release to repository-level history (for cross-clone visibility).
-log_release_to_repository_history() {
-  local version="$1"
-  local user="$2"
-  local branch="$3"
-  
-  local repo_history="logs/repository_history.md"
-  local timestamp
-  timestamp="$(bt_datetime_display_now)"
-  
-  # Only attempt to update if we're on a tracked branch (not in new clone)
-  if [[ ! -f "$repo_history" ]]; then
-    return 0
-  fi
-  
-  # Find the Release Operations section and append entry
-  # Format: Date Time | Version | Branch | Actor | Status
-  local entry
-  entry="| $timestamp | $version | $branch | $user | Released |"
-  
-  # Append to repository history
-  printf '%s\n' "$entry" >> "$repo_history"
-  
-  bt_info "Logged release to $repo_history"
 }
 
 # Parse options and arguments
@@ -513,10 +465,7 @@ push_tag "$VERSION"
 # Create GitHub release
 create_github_release "$VERSION"
 
-# Log release to history (both branch-specific and repository-level)
-log_release_to_history "$VERSION" "$CURRENT_USER" "$CURRENT_BRANCH"
-log_release_to_repository_history "$VERSION" "$CURRENT_USER" "$CURRENT_BRANCH"
-bt_commit_and_push_repository_history "release: Released $VERSION"
+record_release_workflow_event "$VERSION" "$CURRENT_USER" "$CURRENT_BRANCH"
 
 # Show verbose output if requested
 if [[ "$VERBOSE" == true ]]; then

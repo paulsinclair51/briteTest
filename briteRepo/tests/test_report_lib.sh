@@ -176,11 +176,11 @@ Details: Previous-Remote-Tip: $remote_push_tip; Pushed-Tip: $empty_push_tip; Com
       "--- briteRepo workflow ---
 Workflow-Type: pushup
 Workflow-Time: 2026-08-16 12:00:01
-Workflow-Branch: dev/report-tests-v1.0.0
+Workflow-Branch: v1.0.0
 Workflow-User: testuser <test@example.com>
 Command-Line: pushup -o
 Summary: pushup activity
-Source-Branch: dev/source-v1.0.0
+Source-Branch: dev/report-tests-v1.0.0
 Target-Branch: v1.0.0
 PR: 42
 Status: Current branch merged into parent branch
@@ -224,6 +224,43 @@ Command-Line: pull -v
 Summary: pull activity
 Record-Group: appended pair
   Status: recorded pull details with --- briteRepo workflow --- marker" \
+  HEAD >/dev/null 2>&1
+
+    git notes --ref=briteRepo-workflow append -m \
+      "--- briteRepo workflow ---
+Workflow-Type: mkbranch
+Workflow-Time: 2026-08-16 12:00:05
+Workflow-Branch: dev/report-tests-v1.0.0
+Workflow-User: testuser <test@example.com>
+Command-Line: mkbranch dev/report-tests-v1.0.0 v1.0.0
+Summary: mkbranch activity
+New-Branch: dev/report-tests-v1.0.0
+Parent-Branch: v1.0.0
+Status: SUCCESS" \
+  HEAD >/dev/null 2>&1
+
+    git notes --ref=briteRepo-workflow append -m \
+      "--- briteRepo workflow ---
+Workflow-Type: release
+Workflow-Time: 2026-08-16 12:00:06
+Workflow-Branch: dev/report-tests-v1.0.0
+Workflow-User: testuser <test@example.com>
+Command-Line: release v1.2.0
+Summary: release activity
+Version: v1.2.0
+Status: Released" \
+  HEAD >/dev/null 2>&1
+
+    git notes --ref=briteRepo-workflow append -m \
+      "--- briteRepo workflow ---
+Workflow-Type: undo
+Workflow-Time: 2026-08-16 12:00:07
+Workflow-Branch: dev/report-tests-v1.0.0
+Workflow-User: testuser <test@example.com>
+Command-Line: undo commit
+Summary: undo activity
+Undo-Type: commit
+Details: Soft reset from abc123" \
   HEAD >/dev/null 2>&1
 
     retarget_tip="$(git rev-parse HEAD)"

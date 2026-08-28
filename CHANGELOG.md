@@ -1,10 +1,12 @@
-![Changlog](/docs/branding/Logo_with_BrandName.png)
+![Changelog](/docs/branding/Logo_with_BrandName.png)
 
 # Changelog
 
-All notable changes to briteTest are documented here.
-
-The project follows the release notes maintained in `docs/md/`.
+For repository and branch history, generate a report by running
+`<repo>/briteRepo/bin/report` or simply `report` (if path is setup)
+using the `repo` or `branch` argument. Reports are written to the
+`<repo>/reports/` directory. `report` using the `style` argument
+generates a report of style violations for the current branch.
 
 #### Copyright (c) 2026 Paul Sinclair
 
@@ -34,8 +36,49 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 </details>
 
-## V1.0.0 - 2026-07-09
+## Help
 
-The first stable release of briteTest, including the core testing framework, documentation infrastructure, and CI/CD setup.
+To view help and usage (in stdout) for the `report` script, run:
 
-See the complete release notes in [docs/md/Release_v1.0.0.md](docs/md/Release_v1.0.0.md).
+```bash
+report -h
+```
+
+## Examples of Generating Repository Reports
+
+To generate a report of the local repository history for the most
+recent 20 activities, run:
+
+```bash
+report repo -l 20
+```
+
+To filter the local repository report by text, user (named user-approver),
+run:
+
+```bash
+report repo -q "release" -u user-approver -l 100
+```
+
+To generate a report of remote repository history limited to the most
+recent 30 activities, run:
+
+```bash
+report repo -r -t 20 -l 30
+```
+
+## Examples of Generating Branch History Reports
+
+To generate a report of the local current branch history limited to the most
+recent 20 activities, run:
+
+```bash
+report branch -l 20
+```
+
+To generate a report of remote branch history for the current branch limited
+to the most recent 30 activities, run:
+
+```bash
+report branch -r -t 20 -l 30
+```

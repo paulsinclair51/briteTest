@@ -150,9 +150,10 @@ Outputs:
   - No reports are written when there are usage or prerequisite failures.
     Older dry-run and error reports for the current branch are not deleted.
   - No-work prerequisite failures do not generate or delete reports.
-  - After a successful non-dry-run pushup, records history for the report
-    command, leaves the parent checked out, and tells the user to run report
-    locally or push when ready. It does not write an immediate merge report.
+  - After a successful non-dry-run pushup, records workflow metadata for the
+    report command, leaves the parent checked out, and tells the user to run
+    report locally or push when ready. It does not write an immediate merge
+    report.
   - If a non-dry-run operation fails after merge work starts, an
     untracked error report is written locally at:
       <repo>/reports/pushup-e-<datetime>.md
@@ -452,8 +453,7 @@ print_merge_change_summary() {
   local commit_sha="$1"
   local change_summary=""
 
-  bt_git_collect_ref_change_summary "${commit_sha}^1" "$commit_sha" \
-    "$HISTORY_FILE" "$CURRENT_HISTORY_FILE"
+  bt_git_collect_ref_change_summary "${commit_sha}^1" "$commit_sha"
   change_summary="$(bt_format_change_summary)"
   if [[ "$change_summary" == "no changes" ]]; then
     bt_success "Local ${CURRENT_BRANCH} branch: no changes to merge."
@@ -466,8 +466,7 @@ print_merge_change_summary() {
 format_merge_preview_change_summary_from_commit() {
   local commit_sha="$1"
 
-  bt_git_collect_ref_change_summary "${commit_sha}^1" "$commit_sha" \
-    "$HISTORY_FILE" "$CURRENT_HISTORY_FILE"
+  bt_git_collect_ref_change_summary "${commit_sha}^1" "$commit_sha"
   bt_format_change_summary
 }
 
@@ -490,8 +489,6 @@ build_dry_run_push_preview_ref() {
       "Dry run failed to prepare squash preview for '$current_branch' to" \
       "'$parent_branch'"
   fi
-
-  cleanup_merged_branch_files "$current_branch" "$parent_branch"
 
   preview_tree="$(git write-tree 2>/dev/null || true)"
   if [[ -z "$preview_tree" ]]; then
@@ -649,7 +646,6 @@ restore_current_branch_on_failure() {
 
   if [[ "$restored" == true ]]; then
     cleanup_tracked_changes_after_failure
-    cleanup_untracked_history_after_failure
     bt_warn "pushup failed; restored working branch to '$CURRENT_BRANCH'"
   else
     bt_warn "pushup failed and could not restore branch '$CURRENT_BRANCH'" \
@@ -664,20 +660,6 @@ cleanup_tracked_changes_after_failure() {
     bt_warn "Could not fully restore tracked files after the failed pushup" \
             "operation"
   fi
-}
-
-cleanup_untracked_history_after_failure() {
-  local history_file=""
-
-  # The preflight requires a clean worktree, so an untracked history file at
-  # this point was created by this failed operation and is safe to remove.
-  for history_file in "${HISTORY_FILE:-}" "${CURRENT_HISTORY_FILE:-}"; do
-    [[ -n "$history_file" && -e "$history_file" ]] || continue
-    if ! git ls-files --error-unmatch -- "$history_file" >/dev/null 2>&1; then
-      rm -f -- "$history_file" >/dev/null 2>&1 || \
-        bt_warn "Could not remove incomplete history file '$history_file'"
-    fi
-  done
 }
 
 on_exit_restore_branch_if_needed() {
@@ -1224,40 +1206,6 @@ build_default_commit_message() {
     "to '$parent_branch'"
 }
 
-branch_to_history_file() {
-  local branch="$1"
-  local slug="${branch//\//.}"
-  echo "logs/${slug}_history.md"
-}
-
-# Remove history log files that should not carry over to the parent branch
-# after a squash merge.
-cleanup_merged_branch_files() {
-  local current_branch="$1"
-  local parent_branch="$2"
-  local parent_slug="${parent_branch//\//.}"
-  local current_slug="${current_branch//\//.}"
-
-  local history_files
-  mapfile -t history_files < <(
-    git ls-files -- 'logs/' \
-      | grep '_history\.md$' \
-      | grep -Fv "logs/${parent_slug}_history.md" \
-      | grep -Fv "logs/${current_slug}_history.md"
-  )
-  if [[ ${#history_files[@]} -gt 0 ]]; then
-    if ! git rm -f --ignore-unmatch -- "${history_files[@]}" \
-      >/dev/null 2>&1; then
-      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
-        "Failed to remove unrelated history files from the squash merge"
-    fi
-  fi
-
-  if [[ "$VERBOSE" == true && "$DRY_RUN" != true ]]; then
-    bt_info "Cleaned up branch-specific files from merge"
-  fi
-}
-
 write_merge_success_content() {
   local output_file="$1"
   local current_branch="$2"
@@ -1608,55 +1556,6 @@ ensure_clean_worktree() {
   fi
 }
 
-log_merge_to_history() {
-  local history_file="$1"
-  local history_entry="$2"
-
-  if ! mkdir -p "$(dirname "$history_file")"; then
-    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
-      "Failed to create history directory for '$history_file'"
-  fi
-  
-  # Create history file if it doesn't exist
-  if [[ ! -f "$history_file" ]]; then
-    if ! cat > "$history_file" << 'EOF'
-# Branch History
-
-Copyright (c) 2026 Paul Sinclair  
-SPDX-License-Identifier: MIT  
-For license details, see `LICENSE` in the repository root.
-
-See `README.md` in the root directory for an introduction to the project.
-
-## Merge Log
-
-EOF
-    then
-      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
-        "Failed to create history file '$history_file'"
-    fi
-  fi
-  
-  # Append merge entry
-  if ! printf '%s\n' "$history_entry" >> "$history_file"; then
-    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
-      "Failed to append merge entry to '$history_file'"
-  fi
-  
-
-  bt_info "Logged merge to $history_file"
-}
-
-build_history_entry() {
-  local branch="$1"
-  local target_branch="$2"
-  local approver="$3"
-  local message="$4"
-
-  printf '%s' "- [$RUN_TS_DISPLAY] [$approver] Merged [$branch] to" \
-              "[$target_branch]: $message"
-}
-
 # Parse options and arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -1845,13 +1744,6 @@ if [[ "$CURRENT_HAS_REMOTE" == true || "$PARENT_HAS_REMOTE" == true ]]; then
   bt_run_remote_command git fetch origin >/dev/null 2>&1 || \
     bt_error_exit "$EXIT_REMOTE_UNREACHABLE" "Failed to fetch from remote 'origin'"
 
-  history_sync_rc=0
-  bt_propagate_repository_history || history_sync_rc=$?
-  case "$history_sync_rc" in
-    0) ;;
-    1) bt_info "Updated repository history from remote" ;;
-    *) ;;
-  esac
 fi
 
 ensure_clean_worktree
@@ -1934,11 +1826,6 @@ else
   fi
 fi
 
-HISTORY_FILE=$(branch_to_history_file "$PARENT_BRANCH")
-HISTORY_ENTRY=$(build_history_entry \
-  "$CURRENT_BRANCH" "$PARENT_BRANCH" "$CURRENT_USER" "$COMMIT_MESSAGE")
-CURRENT_HISTORY_FILE=$(branch_to_history_file "$CURRENT_BRANCH")
-
 if [[ "$DRY_RUN" == true ]]; then
   dry_run_push_preview_ref=""
 
@@ -1980,24 +1867,6 @@ fi
 
 if ! bt_run_cmd git merge --squash --no-commit "$CURRENT_SOURCE_REF"; then
   bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to squash merge '$CURRENT_BRANCH' into '$PARENT_BRANCH'"
-fi
-
-# Remove branch-specific files that should not carry over to the parent branch.
-cleanup_merged_branch_files "$CURRENT_BRANCH" "$PARENT_BRANCH"
-
-# Log merge to history before committing so the audit record is preserved.
-log_merge_to_history "$HISTORY_FILE" "$HISTORY_ENTRY"
-if ! GIT_BYPASS_HOOKS=true git add "$HISTORY_FILE" 2>/dev/null; then
-  bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
-    "Failed to stage parent history file '$HISTORY_FILE'"
-fi
-
-if [[ "$CURRENT_HISTORY_FILE" != "$HISTORY_FILE" ]]; then
-  log_merge_to_history "$CURRENT_HISTORY_FILE" "$HISTORY_ENTRY"
-  if ! GIT_BYPASS_HOOKS=true git add "$CURRENT_HISTORY_FILE" 2>/dev/null; then
-    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
-      "Failed to stage source history file '$CURRENT_HISTORY_FILE'"
-  fi
 fi
 
 # Create the local squash commit. Publication and PR finalization are handled

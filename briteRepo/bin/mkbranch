@@ -207,14 +207,14 @@ Local branch:
     error that local branch already exists.
   - If new branch does not exist locally,
     - Create the new branch from the parent branch.
-    - Log the operation to 'logs/remote_branch_history.md'.
+    - Record workflow metadata for branch reports.
 
 Remote branch (-r or if the new branch is a 'version' branch):
   - If the parent branch doesn't exist remotely, fail with error
     that remote parent branch doesn't exist.
   - If the new branch doesn't exist remotely:
     - Push the new or existing local branch to the remote repository.
-    - Log the operation to 'logs/remote_branch_history.md'.
+    - Record workflow metadata for branch reports.
 
 Validate (-d):
   - Verify the parent branch exists.
@@ -330,6 +330,7 @@ fi
 MODE="local"  # local, remote, or validate
 VERBOSE=0
 COMMENT=""
+ORIGINAL_ARGS=("$@")
 EXPLICIT_LOCAL_MODE=0
 REMOTE_TIMEOUT_SECONDS=10
 
@@ -364,15 +365,27 @@ log_operation() {
   local parentbranchname="$3"
   local message="$4"
   local comment="${5:-}"
-  local log_branch="${parentbranchname#origin/}"
-  local log_file
-  log_file="$REPO_ROOT/$(bt_branch_to_history_file "$log_branch")"
+  local command_line=""
+  local commit_ref="HEAD"
+  local summary=""
+
+  command_line="$(bt_format_command_line "mkbranch" "${ORIGINAL_ARGS[@]}")"
+  summary="$(printf '%s%s' "$message" "$comment" | tr '\r\n' '  ')"
+  if [[ -n "$branchname" ]] && \
+    git show-ref --verify --quiet "refs/heads/$branchname"; then
+    commit_ref="$branchname"
+  fi
 
   # status/branchname are retained for compatibility with existing callers.
-  : "$status" "$branchname"
-  if ! bt_append_history_log "$log_file" "$message" "$comment"; then
+  : "$branchname"
+  if ! bt_record_workflow_event "mkbranch" "${branchname:-$parentbranchname}" \
+      "$command_line" "$summary" "$commit_ref" \
+      "New-Branch" "$branchname" \
+      "Parent-Branch" "${parentbranchname#origin/}" \
+      "Status" "$status" \
+      "Comment" "$comment"; then
     # Logging failures should not hide the primary command result.
-    echo "Warning: Failed to append history log: $log_file" >&2
+    echo "Warning: Failed to record workflow metadata for mkbranch" >&2
   fi
 }
 

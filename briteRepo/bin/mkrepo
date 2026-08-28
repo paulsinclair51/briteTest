@@ -28,8 +28,8 @@ This script:
   - Clones the repository into a temporary working directory that is removed
     when the script finishes. Use mkclone to make a working clone.
   - Creates the canonical directories (briteRepo/, build/, config/, docs/,
-    examples/, include/, logs/, obsolete/, reports/, src/, tests/ and
-    their canonical subdirectories) if they don't already exist.
+    examples/, include/, obsolete/, reports/, src/, tests/ and their
+    canonical subdirectories) if they don't already exist.
   - Creates a directory guide README.md in every canonical directory if
     they don't already exist.
   - Creates canonical top-level files (CHANGELOG.md, CONTRIBUTING.md,
@@ -362,7 +362,6 @@ CANONICAL_DIRS=(
   "docs/pdf|Directory containing generated PDF (\`.pdf\`) files."
   "examples|Directory containing usage examples."
   "include|Directory containing public headers and API declarations."
-  "logs|Directory containing local and remote logs."
   "obsolete|Directory containing obsolete files retained for reference."
   "reports|Directory containing script-generated report files."
   "src|Directory containing \`.c\` files and internal \`.h\` headers."
@@ -1110,9 +1109,11 @@ Copyright (c) $COPYRIGHT_YEAR
 SPDX-License-Identifier: MIT  
 For license details, see \`<repo>/LICENSE\`.
 
-## Unreleased
-
-- Initial canonical repository layout.
+For repository and branch history, generate a report by running
+\`<repo>/briteRepo/bin/report\` or simply \`report\` (if path is setup)
+using the \`repo\` or \`branch\` argument. Reports are written to the
+\`<repo>/reports/\` directory. \`report\` using the \`style\` argument
+generates a report of style violations for the current branch.
 EOF
 
   write_file "CONTRIBUTING.md" <<EOF

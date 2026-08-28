@@ -159,8 +159,8 @@ for item in \
   "config/version_status.md" "briteRepo/bin/mkrepo" \
   "briteRepo/helpers/common.sh" ".github/workflows/validate-push.yml" \
   "docs/md/Guide.md" "docs/branding/Monogram.svg" "build/README.md" \
-  "examples/README.md" "include/README.md" "logs/README.md" \
-  "obsolete/README.md" "reports/README.md" "src/README.md" \
+  "examples/README.md" "include/README.md" "obsolete/README.md" \
+  "reports/README.md" "src/README.md" \
   "tests/golden/README.md" "tests/tmp/README.md"; do
   [[ -e "$WORK_DIR/verify-new/$item" ]] || \
     fail "missing $item in created repository"

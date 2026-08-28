@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
 # Focused pushup transaction and resume tests.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
 
 set -euo pipefail
 export LC_ALL=C
@@ -99,6 +103,27 @@ git -C "$WORK" push -u origin feature >/dev/null
 cat > "$WORK/briteRepo/helpers/pushup_parent.sh" <<'EOF'
 #!/usr/bin/env bash
 set -e
+dry_run=false
+error_run=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -d) dry_run=true; shift ;;
+    -e) error_run=true; shift ;;
+    -t|-c) shift 2 ;;
+    -o|-v) shift ;;
+    --) shift; break ;;
+    *) shift ;;
+  esac
+done
+if [[ "$dry_run" == true ]]; then
+  echo "Dry-run: merge to local main: 1 modified file."
+  exit 0
+fi
+if [[ "$error_run" == true ]]; then
+  echo "Error: Merge-up skipped due to -e option." >&2
+  echo "Guidance: Run without -e option." >&2
+  exit 36
+fi
 git checkout main >/dev/null
 git merge --squash feature >/dev/null
 git commit -m "pushed up" >/dev/null
@@ -151,6 +176,36 @@ cat > "$WORK/briteRepo/bin/pull" <<'EOF'
 git pull --rebase origin "$(git branch --show-current)" >/dev/null
 EOF
 chmod +x "$WORK/briteRepo/bin/"{push,chbranch,pulldown,pull} "$WORK/briteRepo/helpers/pushup_parent.sh"
+
+source_tip="$(git -C "$WORK" rev-parse feature)"
+parent_tip="$(git -C "$WORK" rev-parse main)"
+status="$(run_capture "$TMPDIR/dry-run.out" bash -c \
+  "cd '$WORK' && ./briteRepo/bin/pushup -d -t 7")"
+[[ "$status" -eq 0 ]] || fail "top-level pushup -d should exit 0, got $status"
+assert_contains "Dry-run: merge to local main" "$TMPDIR/dry-run.out"
+[[ "$(git -C "$WORK" branch --show-current)" == feature ]] || \
+  fail "top-level pushup -d should leave source branch checked out"
+[[ "$(git -C "$WORK" rev-parse main)" == "$parent_tip" ]] || \
+  fail "top-level pushup -d should not change parent tip"
+[[ "$(git -C "$WORK" rev-parse feature)" == "$source_tip" ]] || \
+  fail "top-level pushup -d should not change source tip"
+[[ ! -f "$WORK/.git/briteRepo/pushup.state" ]] || \
+  fail "top-level pushup -d should not write pushup state"
+echo "PASS: top-level dry-run delegates without state"
+
+status="$(run_capture "$TMPDIR/error-run.out" bash -c \
+  "cd '$WORK' && ./briteRepo/bin/pushup -e -t 7")"
+[[ "$status" -eq 36 ]] || fail "top-level pushup -e should exit 36, got $status"
+assert_contains "Merge-up skipped due to -e option" "$TMPDIR/error-run.out"
+[[ "$(git -C "$WORK" branch --show-current)" == feature ]] || \
+  fail "top-level pushup -e should leave source branch checked out"
+[[ "$(git -C "$WORK" rev-parse main)" == "$parent_tip" ]] || \
+  fail "top-level pushup -e should not change parent tip"
+[[ "$(git -C "$WORK" rev-parse feature)" == "$source_tip" ]] || \
+  fail "top-level pushup -e should not change source tip"
+[[ ! -f "$WORK/.git/briteRepo/pushup.state" ]] || \
+  fail "top-level pushup -e should not write pushup state"
+echo "PASS: top-level error-run delegates without state"
 
 source_tip="$(git -C "$WORK" rev-parse feature)"
 parent_tip="$(git -C "$WORK" rev-parse main)"

@@ -159,6 +159,22 @@ rc=$(run_capture "$TMPDIR/contributor-prefixed.out" \
 assert_contains "can be created" "$TMPDIR/contributor-prefixed.out"
 pass "contributor optional prefix format"
 
+# 6c) Successful creation records workflow metadata instead of branch log files.
+rc=$(run_capture "$TMPDIR/workflow-note.out" \
+  bash "$WORK/briteRepo/bin/mkbranch" dev/workflow-note-v1.0.0 v1.0.0)
+[[ "$rc" -eq 0 ]] || fail "mkbranch success should exit 0 (got $rc)"
+note="$(git -C "$WORK" notes --ref=briteRepo-workflow show dev/workflow-note-v1.0.0 2>/dev/null || true)"
+[[ "$note" == *"Workflow-Type: mkbranch"* ]] || \
+  fail "mkbranch should record workflow metadata"
+[[ "$note" == *"Workflow-Branch: dev/workflow-note-v1.0.0"* ]] || \
+  fail "mkbranch metadata should name the new branch"
+[[ "$note" == *"Parent-Branch: v1.0.0"* ]] || \
+  fail "mkbranch metadata should record the parent branch"
+if find "$WORK/logs" -maxdepth 1 -type f -name '*_history.md' -print -quit | grep -q .; then
+  fail "mkbranch should not create branch history log files"
+fi
+pass "workflow metadata on branch creation"
+
 # 7) Missing helper fails gracefully with exit 5
 mv "$WORK/briteRepo/helpers/history_log.sh" \
   "$WORK/briteRepo/helpers/history_log.sh.bak"

@@ -44,6 +44,12 @@ assert_contains() {
   grep -Fq -- "$text" "$file" || fail "expected '$text' in $file"
 }
 
+assert_matches() {
+  local regex="$1"
+  local file="$2"
+  grep -Eq -- "$regex" "$file" || fail "expected pattern '$regex' in $file"
+}
+
 for dep in bash git grep mktemp; do
   command -v "$dep" >/dev/null 2>&1 || fail "missing required command: $dep"
 done
@@ -167,6 +173,25 @@ if (cd "$WORK" && git ls-remote --heads origin remote-only-delete | grep -q 'rem
   fail "remote-only-delete should be deleted from origin"
 fi
 pass "history propagation soft-fail"
+
+# 3b) Deletion logs should be recorded to main history regardless of current branch.
+(
+  cd "$WORK"
+  git checkout -b "log-target-check" >/dev/null 2>&1
+  git push -u origin "log-target-check" >/dev/null 2>&1
+)
+rc=$(run_capture "$TMPDIR/log-target.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && git checkout 'log-target-check' >/dev/null 2>&1 && bash ./briteRepo/bin/rmbranch -r 'log-target-check'")
+[[ "$rc" -eq 0 ]] || fail "rmbranch -r should delete a branch from a non-main working branch (got $rc)"
+if (cd "$WORK" && git ls-remote --heads origin log-target-check | grep -q 'log-target-check'); then
+  fail "log-target-check should be deleted from origin"
+fi
+main_note="$(cd "$WORK" && git notes --ref=briteRepo-workflow show refs/heads/main 2>/dev/null || true)"
+if [[ -z "$main_note" ]]; then
+  fail "rmbranch should record deletion history as a Git note on main"
+fi
+printf '%s\n' "$main_note" | grep -Fq "Workflow-Type: rmbranch" || fail "expected rmbranch workflow note on main"
+printf '%s\n' "$main_note" | grep -Fq "Workflow-Branch: log-target-check" || fail "expected deleted branch name in main workflow note"
+pass "main history log target"
 
 # 4) Unauthorized user should be blocked.
 rc=$(run_capture "$TMPDIR/unauthorized.out" env GITHUB_ACTOR=outsider bash -lc "cd '$WORK' && bash ./briteRepo/bin/rmbranch -r 'main'")

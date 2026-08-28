@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
-# Shared helpers for writing branch history markdown logs.
+# Shared helpers for recording workflow history in Git notes.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
 # High-Level Flow:
-# - Maintain tracked branch-history markdown used by merge/retarget workflows.
-# - Record completed workflow activity on the resulting commits.
+# - Record completed workflow activity as Git notes on the appropriate main ref.
 # - Keep note field validation and user/timestamp attribution consistent.
-# - Propagate repository-level history used by branch workflows.
+# - Avoid tracked repository log files so branch metadata is not stored in a file
+#   that can churn across merges and pull requests.
 
 bt_history_run_remote_command() {
   if declare -F bt_run_remote_command >/dev/null 2>&1; then
@@ -19,52 +19,6 @@ bt_history_run_remote_command() {
     timeout "${BT_REMOTE_TIMEOUT_SECONDS:-10}s" "$@"
   else
     "$@"
-  fi
-}
-
-bt_init_history_log() {
-  local log_file="$1"
-
-  mkdir -p "$(dirname "$log_file")"
-
-  if [[ ! -f "$log_file" ]]; then
-    cat > "$log_file" <<'HEADER'
-# Branch History Log
-
-HEADER
-  fi
-}
-
-# Convert a branch name to its history file path.
-# '/' in the branch name is replaced with '.' in the filename.
-# Example: dev/release-v1.0.0 -> logs/dev.release-v1.0.0_history.md
-bt_branch_to_history_file() {
-  local branch="$1"
-  local slug="${branch//\//.}"
-  echo "logs/${slug}_history.md"
-}
-
-bt_append_history_log() {
-  local log_file="$1"
-  local message="$2"
-  local comment="${3:-}"
-  local timestamp
-
-  bt_init_history_log "$log_file"
-
-  timestamp="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
-
-  if [[ -n "$comment" ]]; then
-    cat >> "$log_file" <<EOF
-
-**$timestamp**: $message
-  $comment
-EOF
-  else
-    cat >> "$log_file" <<EOF
-
-**$timestamp**: $message
-EOF
   fi
 }
 
@@ -149,90 +103,17 @@ bt_workflow_note_field() {
      END { print value }'
 }
 
-# Propagate repository_history.md from remote main to current branch if available.
-# Efficient: uses SHA comparison to skip fetch if already current.
-# Gracefully handles: offline mode, file not in repo, network errors.
-#
-# Strategy: Attempts to fetch repository_history.md from origin/main (the primary source)
-# to the current branch if the file exists on main and differs from local.
-#
-# Return codes:
-#   0 = Already up to date (local SHA matches remote main's SHA, no fetch needed)
-#   1 = Updated successfully (fetched newer version from origin/main)
-#   2 = Offline, file not in repo, or fetch failed (no output, silent fail)
-#
-# Usage:
-#   bt_propagate_repository_history
-#   case $? in
-#     0) echo "Repository history already up to date" ;;
-#     1) echo "Updated repository history from remote" ;;
-#     2) ;;  # offline or unavailable, script continues
-#   esac
+# Compatibility shim for older callers that still reference the legacy
+# repository_history.md propagation helper. The repository now records
+# workflow history in Git notes instead of tracked log files.
 bt_propagate_repository_history() {
-  local local_sha remote_sha current_branch
-  
-  # Determine current branch (used for descriptive output if needed)
-  current_branch=$(bt_get_current_branch_or_empty || echo "unknown")
-  
-  # Check 1: Can we reach remote?
-  if ! bt_history_run_remote_command git ls-remote origin >/dev/null 2>&1; then
-    return 2  # Offline or remote unreachable, silent fail
-  fi
-
-  # Check 2: Does file exist in current branch?
-  if ! local_sha=$(git rev-parse HEAD:logs/repository_history.md 2>/dev/null); then
-    return 2  # File not in repo yet, silent fail
-  fi
-
-  # Check 3: Does file exist in origin/main (the primary source)?
-  # Try origin/main first (where it's authoritative), fall back to origin/<current-branch>
-  if ! remote_sha=$(git rev-parse origin/main:logs/repository_history.md 2>/dev/null); then
-    # origin/main doesn't have it, try current branch on remote
-    if ! remote_sha=$(git rev-parse origin/"$current_branch":logs/repository_history.md 2>/dev/null); then
-      return 2  # File not in remote, silent fail
-    fi
-  fi
-
-  # Check 4: Efficient comparison - if SHAs match, skip fetch
-  if [[ "$local_sha" == "$remote_sha" ]]; then
-    return 0  # Already up to date, no fetch needed (fast path!)
-  fi
-
-  # SHAs differ, fetch from origin/main (preferred source) or current branch
-  if bt_history_run_remote_command git fetch origin main:logs/repository_history.md 2>/dev/null; then
-    return 1  # Successfully updated from origin/main
-  fi
-  
-  # origin/main fetch failed, try current branch on remote
-  if bt_history_run_remote_command git fetch origin "$current_branch":logs/repository_history.md 2>/dev/null; then
-    return 1  # Successfully updated from origin/<current-branch>
-  fi
-
-  return 2  # All fetch attempts failed, silent fail
-}
-
-# Commit and push repository_history.md changes to origin/main.
-# Silent success, returns 0 in all cases (continues even if push fails).
-# Assumes working tree has changes staged in logs/repository_history.md.
-#
-# Usage: bt_commit_and_push_repository_history "commit message"
-bt_commit_and_push_repository_history() {
-  local commit_msg="${1:-Update repository history}"
-  
-  # Only proceed if we're connected to remote
-  if ! bt_history_run_remote_command git ls-remote origin >/dev/null 2>&1; then
-    return 0  # No remote, skip silently
-  fi
-  
-  # Only proceed if file exists and has changes
-  if [[ ! -f "logs/repository_history.md" ]]; then
-    return 0  # File doesn't exist, skip silently
-  fi
-  
-  # Commit and push (silently fail if not on main or can't push)
-  git add "logs/repository_history.md" 2>/dev/null || return 0
-  git commit -m "$commit_msg" 2>/dev/null || return 0
-  bt_history_run_remote_command git push origin HEAD:main 2>/dev/null || return 0
-  
   return 0
 }
+
+bt_commit_and_push_repository_history() {
+  return 0
+}
+
+# The legacy tracked repository_history.md flow has been removed.
+# Workflow metadata is now recorded through Git notes attached to the
+# appropriate main branch ref rather than a file under logs/.

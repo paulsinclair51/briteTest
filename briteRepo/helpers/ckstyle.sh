@@ -320,16 +320,6 @@ count_eligible_selected_files() {
 
 ELIGIBLE_SELECTED_COUNT="$(count_eligible_selected_files)"
 
-# Propagate repository history from remote if available.
-HISTORY_HELPER="$CKSTYLE_HELPER_DIR/history_log.sh"
-if [[ -f "$HISTORY_HELPER" ]]; then
-    # shellcheck disable=SC1090,SC1091  # Sourced conditionally from repository
-    # helper path.
-  if source "$HISTORY_HELPER" 2>/dev/null; then
-    bt_propagate_repository_history >/dev/null 2>&1 || true
-  fi
-fi
-
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S%z')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
 STYLE_REPORTS_DIR="$repo_root/reports"

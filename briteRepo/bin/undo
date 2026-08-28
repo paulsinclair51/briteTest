@@ -183,46 +183,29 @@ VERBOSE=false
 COMMENT=""
 DRY_RUN=false
 REMOTE_TIMEOUT_SECONDS=10
+ORIGINAL_ARGS=("$@")
 
 get_current_user() {
   git config user.name 2>/dev/null || \
     bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to determine current user"
 }
 
-log_undo_to_history() {
+record_undo_workflow_event() {
   local operation="$1"
   local details="$2"
-
   local current_branch
+  local command_line=""
+
   current_branch=$(bt_get_current_branch_or_empty || echo "main")
   [[ "$current_branch" == "HEAD" ]] && current_branch="main"
-  local history_file
-  history_file="$REPO_ROOT/$(bt_branch_to_history_file "$current_branch")"
-  local timestamp
-  timestamp="$(bt_datetime_display_now)"
+  command_line="$(bt_format_command_line "undo" "${ORIGINAL_ARGS[@]}")"
 
-  # Create history file if it doesn't exist
-  if [[ ! -f "$history_file" ]]; then
-    cat > "$history_file" << 'EOF'
-# Branch History
-
-Copyright (c) 2026 Paul Sinclair  
-SPDX-License-Identifier: MIT  
-For license details, see `LICENSE` in the repository root.
-
-See `README.md` in the root directory for an introduction to the project.
-
-## Operation Log
-
-EOF
+  if ! bt_record_workflow_event "undo" "$current_branch" \
+      "$command_line" "Undo $operation: $details" HEAD \
+      "Undo-Type" "$operation" \
+      "Details" "$details"; then
+    bt_warn "Undo completed, but its workflow metadata could not be recorded"
   fi
-
-  # Append undo entry
-  cat >> "$history_file" << EOF
-- [$timestamp] [UNDO] $operation: $details
-EOF
-
-  bt_info "Logged undo to $history_file"
 }
 
 confirm_undo() {
@@ -285,10 +268,10 @@ undo_merge() {
 
   # Log undo
   if [[ -n "$COMMENT" ]]; then
-    log_undo_to_history "$op_type" \
+    record_undo_workflow_event "$op_type" \
       "Reverted $commit_hash ($commit_msg). $COMMENT"
   else
-    log_undo_to_history "$op_type" "Reverted $commit_hash ($commit_msg)"
+    record_undo_workflow_event "$op_type" "Reverted $commit_hash ($commit_msg)"
   fi
 
   if [[ "$VERBOSE" == true ]]; then
@@ -347,9 +330,9 @@ undo_release() {
 
   # Log undo
   if [[ -n "$COMMENT" ]]; then
-    log_undo_to_history "release" "Deleted release $last_tag. $COMMENT"
+    record_undo_workflow_event "release" "Deleted release $last_tag. $COMMENT"
   else
-    log_undo_to_history "release" "Deleted release $last_tag"
+    record_undo_workflow_event "release" "Deleted release $last_tag"
   fi
 
   bt_success "Release undo complete"
@@ -391,9 +374,9 @@ undo_commit() {
 
   # Log undo
   if [[ -n "$COMMENT" ]]; then
-    log_undo_to_history "commit" "Soft reset from $last_commit. $COMMENT"
+    record_undo_workflow_event "commit" "Soft reset from $last_commit. $COMMENT"
   else
-    log_undo_to_history "commit" "Soft reset from $last_commit"
+    record_undo_workflow_event "commit" "Soft reset from $last_commit"
   fi
 
   if [[ "$VERBOSE" == true ]]; then
@@ -458,9 +441,9 @@ undo_reset_hard_head() {
 
   bt_success "$op_type undone"
   if [[ -n "$COMMENT" ]]; then
-    log_undo_to_history "$op_type" "Hard reset from $last_commit. $COMMENT"
+    record_undo_workflow_event "$op_type" "Hard reset from $last_commit. $COMMENT"
   else
-    log_undo_to_history "$op_type" "Hard reset from $last_commit"
+    record_undo_workflow_event "$op_type" "Hard reset from $last_commit"
   fi
 }
 

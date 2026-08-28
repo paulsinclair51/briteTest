@@ -258,9 +258,36 @@ request_approver_override() {
   log_info "Override confirmed by approver"
   log_detail "Audit: $username approved execution of $script at $(date)"
 
-  # Log to audit trail
-  echo "[AUDIT] $(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/') Approver $username approved: "\
-"$script ($operation)" >> logs/approver-audit.log 2>/dev/null || true
+  # Record approval in Git notes on the main branch instead of a tracked log file.
+  local target_ref=""
+  local notes_ref="refs/notes/briteRepo-workflow"
+  local record=""
+  local timestamp
+
+  if git rev-parse --verify refs/remotes/origin/main >/dev/null 2>&1; then
+    target_ref="refs/remotes/origin/main"
+  elif git rev-parse --verify refs/heads/main >/dev/null 2>&1; then
+    target_ref="refs/heads/main"
+  else
+    return 0
+  fi
+
+  timestamp="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
+  record=$(cat <<EOF
+--- briteRepo workflow ---
+Workflow-Type: rbac-approval
+Workflow-Time: ${timestamp}
+Workflow-Branch: main
+Workflow-User: ${username}
+Command-Line: ${script}
+Summary: Approver ${username} approved ${script} (${operation})
+Script: ${script}
+Operation: ${operation}
+EOF
+)
+
+  git notes --ref="$notes_ref" append -m "$record" "$target_ref" >/dev/null 2>&1 || true
+  git push origin refs/notes/briteRepo-workflow:refs/notes/briteRepo-workflow >/dev/null 2>&1 || true
 }
 
 #####################################################################

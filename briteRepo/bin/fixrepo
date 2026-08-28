@@ -120,18 +120,11 @@ source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 source "$SCRIPT_DIR/../helpers/report_helpers.sh"
 
 # history_log.sh is optional in isolated test fixtures.
-# If unavailable, provide a no-op fallback used at startup.
-if [[ -f "$SCRIPT_DIR/../helpers/history_log.sh" ]]; then
-  # shellcheck source=helpers/history_log.sh
-  source "$SCRIPT_DIR/../helpers/history_log.sh"
-else
-  bt_propagate_repository_history() {
-    return 0
-  }
-fi
-
-# Propagate repository history from remote if available
-bt_propagate_repository_history >/dev/null 2>&1
+# The legacy tracked repository history flow has been removed.
+# Provide a no-op compatibility shim for older callers.
+bt_propagate_repository_history() {
+  return 0
+}
 
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NOT_FOUND=2

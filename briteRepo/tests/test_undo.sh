@@ -148,6 +148,19 @@ after_hash="$(cd "$WORK" && git rev-parse HEAD)"
 [[ "$before_hash" == "$after_hash" ]] || fail "dry-run should not change HEAD"
 pass "dry-run and -c option handling"
 
+# 5b) Non-dry commit undo records workflow metadata instead of branch log files.
+rc=$(run_capture "$TMPDIR/commit-undo.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'y\n' | bash ./briteRepo/bin/undo commit -c 'metadata check'")
+[[ "$rc" -eq 0 ]] || fail "undo commit should exit 0 (got $rc)"
+note="$(git -C "$WORK" notes --ref=briteRepo-workflow show HEAD 2>/dev/null || true)"
+[[ "$note" == *"Workflow-Type: undo"* ]] || \
+  fail "undo should record workflow metadata"
+[[ "$note" == *"Undo-Type: commit"* ]] || \
+  fail "undo metadata should record the undo type"
+if find "$WORK/logs" -maxdepth 1 -type f -name '*_history.md' ! -name 'repository_history.md' -print -quit | grep -q .; then
+  fail "undo should not create branch history log files"
+fi
+pass "undo workflow metadata"
+
 # 6) pulldown should be accepted as a valid type.
 (
   cd "$WORK"

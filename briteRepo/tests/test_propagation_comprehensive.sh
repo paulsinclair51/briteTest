@@ -2,6 +2,10 @@
 
 # Comprehensive test for bt_propagate_repository_history() helper
 # Tests return codes, efficiency, and propagation scenarios
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
 
 set -euo pipefail
 
