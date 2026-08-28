@@ -233,6 +233,8 @@ status="$(run_capture "$TMPDIR/finalize-fail.out" bash -c \
 [[ "$status" -eq 5 ]] || fail "PR finalization failure should exit 5, got $status"
 [[ "$(git config --file "$WORK/.git/briteRepo/pushup.state" --get pushup.phase)" == \
   parent-finalization-failed ]] || fail "finalization failure phase should be retained"
+[[ "$(git -C "$WORK" branch --show-current)" == feature ]] || \
+  fail "partial pushup should return to the saved source branch"
 assert_contains "parent was published" "$TMPDIR/finalize-fail.out"
 status="$(run_capture "$TMPDIR/finalize-continue.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup --continue")"

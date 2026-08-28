@@ -415,6 +415,18 @@ on_interrupt() {
   exit "$EXIT_PARTIAL"
 }
 
+return_to_source_if_safe() {
+  local source_branch=""
+  local current_branch=""
+
+  source_branch="$(state_get source)"
+  current_branch="$(bt_get_current_branch || true)"
+  [[ -n "$source_branch" && "$current_branch" != "$source_branch" ]] || return 0
+  git diff --quiet && git diff --cached --quiet || return 0
+  git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 && return 0
+  "$SCRIPT_DIR/chbranch" -l "$source_branch" >/dev/null 2>&1 || true
+}
+
 write_partial_report() {
   local reason="$1"
   local action="$2"
@@ -426,6 +438,7 @@ write_partial_report() {
   report_file="$(bt_report_retained_path "$REPORTS_DIR" "pushup-e" \
     "$timestamp" "$BASHPID")"
 
+  return_to_source_if_safe
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_INTERNAL"
   cat > "$report_file" <<EOF
 # Pushup Error Report $(bt_datetime_display_now)
@@ -563,6 +576,13 @@ run_push() {
   "$TOOL_DIR/bin/push" "${args[@]}"
 }
 
+run_push_source() {
+  local timeout_seconds="$1"
+  local -a args=(--pushup-source -t "$timeout_seconds")
+  [[ "$(state_get verbose)" == true ]] && args+=(-v)
+  "$TOOL_DIR/bin/push" "${args[@]}"
+}
+
 run_push_finalization_retry() {
   local -a args=(-t "$(extended_remote_timeout)")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
@@ -692,7 +712,7 @@ publish_source() {
   source_branch="$(state_get source)"
   local_tip="$(git rev-parse HEAD 2>/dev/null || true)"
   set_phase source-publishing
-  if run_push "$(extended_remote_timeout)"; then
+  if run_push_source "$(extended_remote_timeout)"; then
     set_phase source-published
     return 0
   fi
@@ -709,7 +729,7 @@ publish_source() {
     local -a pull_args=(-t "$(extended_remote_timeout)")
     [[ "$(state_get verbose)" == true ]] && pull_args+=(-v)
     if "$TOOL_DIR/bin/pull" "${pull_args[@]}" && \
-      run_push "$(extended_remote_timeout)"; then
+      run_push_source "$(extended_remote_timeout)"; then
       set_phase source-published
       return 0
     fi
