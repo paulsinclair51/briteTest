@@ -612,7 +612,7 @@ select_source() {
 }
 
 synchronize_source() {
-  local -a args=(-f -t "$(extended_remote_timeout)")
+  local -a args=(--pushup -f -t "$(extended_remote_timeout)")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
   if "$SCRIPT_DIR/pulldown" "${args[@]}"; then
     set_phase source-synchronized
