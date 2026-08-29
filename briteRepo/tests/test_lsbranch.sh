@@ -73,6 +73,9 @@ for status_tag in \
   "[offline]" "[diverged from remote: N/M]" \
   "[diverged from local: N/M]" "[parent: NAME]" \
   "[parent unavailable: NAME]" "[diverged from parent: N/M]" \
+  "[copyfix in progress]" "[pushup in progress]" \
+  "[pull in progress]" "[retarget in progress]" \
+  "[pulldown in progress]" \
   "[auto-stash: N]" "[PRs: N]"; do
   grep -Fq "$status_tag" "$TMPDIR/help.out" || \
     fail "lsbranch help should document $status_tag"

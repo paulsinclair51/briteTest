@@ -32,6 +32,19 @@ assert_contains "has an unfinished copyfix operation" \
 rm -rf "$copyfix_state_root"
 pass "unfinished copyfix blocks commit"
 
+rebase_dir="$(git -C "$WORK" rev-parse --path-format=absolute \
+  --git-path rebase-merge)"
+mkdir -p "$rebase_dir"
+touch "$rebase_dir/git-rebase-todo"
+rc=$(run_capture "$TMPDIR/rebase-active.out" env GITHUB_ACTOR=testuser \
+  bash -lc "cd '$WORK' && bash ./briteRepo/bin/commit")
+[[ "$rc" -eq 9 ]] || fail "active pull rebase should block commit (got $rc)"
+assert_contains "A pull operation is in progress" "$TMPDIR/rebase-active.out"
+assert_contains "Guidance: resolve conflicts and rerun pull." \
+  "$TMPDIR/rebase-active.out"
+rm -rf "$rebase_dir"
+pass "active pull rebase blocks commit"
+
 echo "stale dry-run" > "$WORK/reports/commit-d-20000101-000000+0000.md"
 echo "stale error" > "$WORK/reports/commit-e-20000101-000001+0000.md"
 chmod a-w "$WORK/reports/commit-d-20000101-000000+0000.md" \

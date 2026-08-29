@@ -650,6 +650,9 @@ fi
 # Perform merge without auto-commit so hooks cannot block the merge commit path.
 bt_info "Merging $PARENT_BRANCH into $CURRENT_BRANCH..."
 OPERATION_STARTED=true
+bt_git_mark_workflow_in_progress pulldown "$CURRENT_BRANCH" || \
+  bt_error_exit "$EXIT_OPERATION_FAILED" \
+    "Failed to record pulldown progress for '$CURRENT_BRANCH'"
 if ! git merge --no-commit --no-ff "origin/$PARENT_BRANCH" >/dev/null 2>&1; then
   # Check if merge failed due to conflicts
   conflicted_files=$(git diff --name-only --diff-filter=U)
@@ -665,8 +668,7 @@ if ! git merge --no-commit --no-ff "origin/$PARENT_BRANCH" >/dev/null 2>&1; then
     done <<< "$conflicted_files"
     bt_info "Steps to resolve:"
     echo "  1. Edit conflicted files to resolve conflicts"
-    echo "  2. Stage resolved files: git add <files>"
-    echo "  3. Complete merge: git commit"
+    echo "  2. Rerun pulldown to stage resolved files and complete the merge"
     bt_error_exit "$EXIT_OPERATION_FAILED" \
       "Merge stopped - manual conflict resolution needed"
     fi
@@ -700,6 +702,7 @@ Method: Merge commit (--no-ff) created by pulldown" >/dev/null 2>&1; then
 fi
 
 bt_success "Merge successful"
+bt_git_clear_workflow_in_progress pulldown
 
 # Show merge details if verbose
 if [[ "$VERBOSE" == true ]]; then
