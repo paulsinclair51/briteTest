@@ -38,8 +38,6 @@ Features:
   - Automatically determines parent branch
   - Merges parent branch into current branch
   - Shows instructions for complex conflicts
-  - Prompts for confirmation before merge
-  - Optional force mode to skip confirmations
 
 Options:
   -c TOKEN           Merge commit comment from TOKEN.
@@ -317,7 +315,9 @@ trim_whitespace() {
 }
 
 bt_info() {
-  printf '%s\n' "$(bt_ensure_trailing_period "$1")"
+  if [[ "$VERBOSE" == true ]]; then
+    printf '%s\n' "$(bt_ensure_trailing_period "$1")"
+  fi
 }
 
 bt_success() {
@@ -358,7 +358,6 @@ format_command_line() {
 }
 
 # Default options
-FORCE=false
 VERBOSE=false
 CUSTOM_MESSAGE=""
 OWNER_OVERRIDE=false
@@ -366,6 +365,7 @@ OWNER_OVERRIDE_ACTIVE=false
 DRY_RUN=false
 ERROR_RUN=false
 REMOTE_TIMEOUT_SECONDS=10
+CONTINUING_MERGE=false
 
 ensure_clean_worktree() {
   if bt_is_worktree_dirty; then
@@ -460,7 +460,6 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -f | --force)
-      FORCE=true
       shift
       ;;
     -o)
@@ -574,6 +573,17 @@ if [[ -z "$PARENT_BRANCH" ]]; then
 fi
 bt_info "Parent branch: $PARENT_BRANCH"
 
+if bt_git_workflow_marker_matches pulldown "$CURRENT_BRANCH" && \
+  git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+  CONTINUING_MERGE=true
+  if ! bt_git_stage_resolved_rebase_files || \
+    [[ -n "$(git diff --name-only --diff-filter=U 2>/dev/null || true)" ]]; then
+    bt_emit_prerequisite_failure "$EXIT_OPERATION_FAILED" \
+      "Pulldown still has unresolved conflicts on '$CURRENT_BRANCH'." \
+      "resolve the remaining conflicts and rerun pulldown."
+  fi
+fi
+
 # Check if branch is protected
 if bt_is_protected_branch "$CURRENT_BRANCH"; then
   if [[ "$OWNER_OVERRIDE_ACTIVE" == true ]]; then
@@ -588,7 +598,9 @@ if bt_is_protected_branch "$CURRENT_BRANCH"; then
   fi
 fi
 
-ensure_clean_worktree
+if [[ "$CONTINUING_MERGE" == false ]]; then
+  ensure_clean_worktree
+fi
 
 # Ensure parent branch exists and is up to date
 bt_info "Fetching latest from remote..."
@@ -637,23 +649,16 @@ if [[ "$DRY_RUN" == true ]]; then
   exit 0
 fi
 
-# Ask for confirmation before merge (unless force)
-if [[ "$FORCE" == false ]]; then
-  echo -n "Create merge commit? (y/n): "
-  read -r response
-  if [[ ! "$response" =~ ^[Yy]$ ]]; then
-    bt_warn "Merge cancelled"
-    exit 0
-  fi
-fi
-
 # Perform merge without auto-commit so hooks cannot block the merge commit path.
 bt_info "Merging $PARENT_BRANCH into $CURRENT_BRANCH..."
 OPERATION_STARTED=true
-bt_git_mark_workflow_in_progress pulldown "$CURRENT_BRANCH" || \
-  bt_error_exit "$EXIT_OPERATION_FAILED" \
-    "Failed to record pulldown progress for '$CURRENT_BRANCH'"
-if ! git merge --no-commit --no-ff "origin/$PARENT_BRANCH" >/dev/null 2>&1; then
+if [[ "$CONTINUING_MERGE" == false ]]; then
+  bt_git_mark_workflow_in_progress pulldown "$CURRENT_BRANCH" || \
+    bt_error_exit "$EXIT_OPERATION_FAILED" \
+      "Failed to record pulldown progress for '$CURRENT_BRANCH'"
+fi
+if [[ "$CONTINUING_MERGE" == false ]] && \
+  ! git merge --no-commit --no-ff "origin/$PARENT_BRANCH" >/dev/null 2>&1; then
   # Check if merge failed due to conflicts
   conflicted_files=$(git diff --name-only --diff-filter=U)
   if [[ -n "$conflicted_files" ]]; then
@@ -701,7 +706,6 @@ Method: Merge commit (--no-ff) created by pulldown" >/dev/null 2>&1; then
     "Merge applied, but failed to create merge commit"
 fi
 
-bt_success "Merge successful"
 bt_git_clear_workflow_in_progress pulldown
 
 # Show merge details if verbose
@@ -714,6 +718,5 @@ cleanup_success_transient_reports
 
 bt_success "Merged parent '$PARENT_BRANCH' into '$CURRENT_BRANCH': "\
 "${MERGE_FILE_SUMMARY_TEXT}."
-bt_success "Merge down complete"
 bt_success "Run report for details."
 exit 0

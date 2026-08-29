@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # undo - uncommitted changes, commit, push, copyfix, pull, pulldown,
-#        or release.
+#        retarget, or release.
 #
 # See usage below for details, or run: undo -h
 #
@@ -15,7 +15,9 @@ Usage:
   undo [OPTIONS] [TYPE]
   undo {-h | --help}
 
-Undo recent operations: uncommitted changes, commit, or pulldown.
+Undo supported recent operations or abort a supported operation in progress.
+Before changing the repository, undo describes the target and safety impact and
+requires typing `UNDO` exactly. Dry-run does not prompt.
 
 Prerequisites:
   - If the current branch is a targeted or contributor branch, the
@@ -56,7 +58,8 @@ Arguments:
                   copyfix      Undo last copyfix (revert working tree and reset
                   to
                                previous commit).
-                  pulldown      Undo last merge down.
+                  pulldown     Undo last merge down.
+                  retarget     Abort an in-progress retarget rebase.
                   release      Undo last release (delete local and remote tag,
                                and delete GitHub release if it exists).
 
@@ -96,9 +99,21 @@ Examples:
   # Undo merge down with verbose output.
   undo pulldown -v
 
+Limits:
+  - Completed pushup and retarget history rewrites cannot be undone safely
+    unless their exact pre-operation local and remote tips were retained.
+  - Deleted branches, repositories, clones, and GitHub administration changes
+    cannot be reconstructed unless an external backup or retained ref exists.
+  - File-generating commands can be undone as uncommitted changes, or through
+    undo commit after their changes are committed.
+  - Repair commands are not reversed automatically because doing so can restore
+    the repository damage they repaired.
+
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
+  - Before a non-dry-run undo, writes the operation, target, and safety impact,
+    then prompts for the exact confirmation text `UNDO`.
   - Writes an undo report if successful to:
       '<repo>/reports/undo-<TYPE>-YYYYMMDD-HHMMSS-<pid>.md'
     The report is written locally based on the TYPE being undone:
@@ -165,6 +180,7 @@ readonly EXIT_NO_PULL=5
 readonly EXIT_NO_PUSH=6
 readonly EXIT_NO_COPYFIX=7
 readonly EXIT_NO_PULLDOWN=8
+readonly EXIT_NO_RETARGET=9
 readonly EXIT_NO_RELEASE=10
 readonly EXIT_CONFIG_ERROR=11
 readonly EXIT_GIT_OPERATION_FAILED=200
@@ -211,14 +227,39 @@ record_undo_workflow_event() {
 confirm_undo() {
   local operation="$1"
   local details="$2"
+  local safety=""
 
-  echo "WARN: This will undo the following operation:"
-  echo "  Type: $operation"
-  echo "  Details: $details"
-  echo -n "Continue? (y/N): "
+  case "$operation" in
+    uncommitted)
+      safety="Tracked changes and untracked files will be permanently discarded."
+      ;;
+    commit)
+      safety="The commit will be removed; its changes will remain staged."
+      ;;
+    pull|push|copyfix)
+      safety="The branch will be reset and commits after the selected point may become unreachable."
+      ;;
+    pulldown)
+      safety="A new revert commit will reverse the selected merge commit."
+      ;;
+    retarget)
+      safety="The in-progress retarget rebase will be aborted and the previous branch state restored."
+      ;;
+    release)
+      safety="The local tag, remote tag, and GitHub release will be deleted."
+      ;;
+    *)
+      safety="Repository history or files will be changed."
+      ;;
+  esac
+
+  echo "Undo operation: $operation"
+  echo "Target: $details"
+  echo "Safety: $safety"
+  echo -n "Type UNDO to confirm: "
   read -r response
 
-  if [[ ! "$response" =~ ^[Yy]$ ]]; then
+  if [[ "$response" != "UNDO" ]]; then
     return 1
   fi
 
@@ -278,6 +319,72 @@ undo_merge() {
     bt_info "Revert details:"
     git log -1 --oneline | sed 's/^/  /'
   fi
+}
+
+undo_in_progress_git_operation() {
+  local operation="$1"
+  local current_branch=""
+
+  current_branch="$(bt_get_current_branch_or_empty)"
+  bt_git_workflow_marker_matches "$operation" "$current_branch" || return 1
+
+  case "$operation" in
+    pull|retarget)
+      bt_git_is_rebase_in_progress || return 1
+      if [[ "$DRY_RUN" == true ]]; then
+        bt_success "Dry-run: would abort in-progress $operation on $current_branch"
+        return 0
+      fi
+      confirm_undo "$operation" "In-progress rebase on $current_branch" || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
+      GIT_BYPASS_HOOKS=true git rebase --abort >/dev/null 2>&1 || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+          "Failed to abort in-progress $operation rebase"
+      ;;
+    pulldown)
+      git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 || return 1
+      if [[ "$DRY_RUN" == true ]]; then
+        bt_success "Dry-run: would abort in-progress pulldown on $current_branch"
+        return 0
+      fi
+      confirm_undo pulldown "In-progress merge on $current_branch" || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
+      GIT_BYPASS_HOOKS=true git merge --abort >/dev/null 2>&1 || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+          "Failed to abort in-progress pulldown merge"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  bt_git_clear_workflow_in_progress "$operation"
+  bt_success "In-progress $operation undone"
+}
+
+undo_copyfix() {
+  local current_branch=""
+  local state_dir=""
+
+  current_branch="$(bt_get_current_branch_or_empty)"
+  state_dir="$(bt_copyfix_state_dir_for_branch "$current_branch" || true)"
+  if [[ -n "$state_dir" && -d "$state_dir" ]] && \
+    git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null 2>&1; then
+    if [[ "$DRY_RUN" == true ]]; then
+      bt_success "Dry-run: would abort in-progress copyfix on $current_branch"
+      return 0
+    fi
+    confirm_undo copyfix "In-progress cherry-pick on $current_branch" || \
+      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
+    GIT_BYPASS_HOOKS=true git cherry-pick --abort >/dev/null 2>&1 || \
+      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+        "Failed to abort in-progress copyfix"
+    rm -rf "$state_dir" "${state_dir}.lock"
+    bt_success "In-progress copyfix undone"
+    return 0
+  fi
+
+  undo_reset_hard_head "copyfix" "$EXIT_NO_COPYFIX"
 }
 
 undo_release() {
@@ -537,19 +644,25 @@ case "$UNDO_TYPE" in
     undo_uncommitted
     ;;
   pulldown)
-    undo_merge "pulldown"
+    undo_in_progress_git_operation pulldown || undo_merge "pulldown"
     ;;
   pull)
-    undo_reset_hard_head "pull" "$EXIT_NO_PULL"
+    undo_in_progress_git_operation pull || \
+      undo_reset_hard_head "pull" "$EXIT_NO_PULL"
     ;;
   push)
     undo_reset_hard_head "push" "$EXIT_NO_PUSH"
     ;;
   copyfix)
-    undo_reset_hard_head "copyfix" "$EXIT_NO_COPYFIX"
+    undo_copyfix
     ;;
   release)
     undo_release
+    ;;
+  retarget)
+    undo_in_progress_git_operation retarget || \
+      bt_error_exit "$EXIT_NO_RETARGET" \
+        "No in-progress retarget operation found to undo"
     ;;
   commit)
     undo_commit
@@ -557,7 +670,7 @@ case "$UNDO_TYPE" in
   *)
     usage_error "Unknown undo type: $UNDO_TYPE" \
       "(valid: uncommitted, commit, pull, push, copyfix, pulldown," \
-      "release)"
+      "retarget, release)"
     ;;
 esac
 

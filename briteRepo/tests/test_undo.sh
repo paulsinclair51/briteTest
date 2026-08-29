@@ -105,8 +105,13 @@ pass "help output"
 # 2) Default type should be uncommitted and remove tracked/untracked changes.
 echo "dirty" >> "$WORK/README.md"
 echo "temp" > "$WORK/TEMP.txt"
-rc=$(run_capture "$TMPDIR/default-uncommitted.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'y\n' | bash ./briteRepo/bin/undo")
+rc=$(run_capture "$TMPDIR/default-uncommitted.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'UNDO\n' | bash ./briteRepo/bin/undo")
 [[ "$rc" -eq 0 ]] || fail "undo default uncommitted should exit 0 (got $rc)"
+assert_contains "Undo operation: uncommitted" \
+  "$TMPDIR/default-uncommitted.out"
+assert_contains "Safety: Tracked changes and untracked files will be permanently discarded." \
+  "$TMPDIR/default-uncommitted.out"
+assert_contains "Type UNDO to confirm:" "$TMPDIR/default-uncommitted.out"
 [[ ! -e "$WORK/TEMP.txt" ]] || fail "expected untracked TEMP.txt to be removed"
 if [[ -n "$(cd "$WORK" && git status --porcelain)" ]]; then
   fail "expected clean worktree after undo default uncommitted"
@@ -125,7 +130,7 @@ pass "no-uncommitted exit code"
   git checkout -b BadBranch >/dev/null 2>&1
 )
 echo "invalid branch dirty" >> "$WORK/README.md"
-rc=$(run_capture "$TMPDIR/invalid-branch-uncommitted.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'y\n' | bash ./briteRepo/bin/undo")
+rc=$(run_capture "$TMPDIR/invalid-branch-uncommitted.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'UNDO\n' | bash ./briteRepo/bin/undo")
 [[ "$rc" -eq 0 ]] || fail "undo uncommitted should work on invalid branch name (got $rc)"
 if [[ -n "$(cd "$WORK" && git status --porcelain)" ]]; then
   fail "expected clean worktree after invalid-branch uncommitted undo"
@@ -149,7 +154,7 @@ after_hash="$(cd "$WORK" && git rev-parse HEAD)"
 pass "dry-run and -c option handling"
 
 # 5b) Non-dry commit undo records workflow metadata instead of branch log files.
-rc=$(run_capture "$TMPDIR/commit-undo.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'y\n' | bash ./briteRepo/bin/undo commit -c 'metadata check'")
+rc=$(run_capture "$TMPDIR/commit-undo.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'UNDO\n' | bash ./briteRepo/bin/undo commit -c 'metadata check'")
 [[ "$rc" -eq 0 ]] || fail "undo commit should exit 0 (got $rc)"
 note="$(git -C "$WORK" notes --ref=briteRepo-workflow show HEAD 2>/dev/null || true)"
 [[ "$note" == *"Workflow-Type: undo"* ]] || \
@@ -160,6 +165,25 @@ if find "$WORK/logs" -maxdepth 1 -type f -name '*_history.md' ! -name 'repositor
   fail "undo should not create branch history log files"
 fi
 pass "undo workflow metadata"
+
+# In-progress pull state is detected by its workflow marker and native rebase
+# state; dry-run describes the exact abort without requiring confirmation.
+(
+  cd "$WORK"
+  branch="$(git branch --show-current)"
+  marker="$(git rev-parse --git-path briteRepo/pull.in-progress)"
+  rebase_dir="$(git rev-parse --git-path rebase-merge)"
+  mkdir -p "$(dirname "$marker")" "$rebase_dir"
+  printf '%s\n' "$branch" > "$marker"
+  touch "$rebase_dir/git-rebase-todo"
+)
+rc=$(run_capture "$TMPDIR/pull-progress-dry.out" env GITHUB_ACTOR=testuser \
+  bash -lc "cd '$WORK' && bash ./briteRepo/bin/undo -d pull")
+[[ "$rc" -eq 0 ]] || fail "in-progress pull dry-run should exit 0 (got $rc)"
+assert_contains "would abort in-progress pull" "$TMPDIR/pull-progress-dry.out"
+rm -f "$WORK/.git/briteRepo/pull.in-progress"
+rm -rf "$WORK/.git/rebase-merge"
+pass "in-progress pull undo detection"
 
 # 6) pulldown should be accepted as a valid type.
 (

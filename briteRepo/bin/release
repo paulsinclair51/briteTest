@@ -409,16 +409,16 @@ if [[ ! "$VERSION" =~ ^v ]]; then
   VERSION="v$VERSION"
 fi
 
-bt_info "Release version: $VERSION"
+[[ "$VERBOSE" == true ]] && bt_info "Release version: $VERSION"
 
 # Get current branch
 CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch")
-bt_info "Current branch: $CURRENT_BRANCH"
+[[ "$VERBOSE" == true ]] && bt_info "Current branch: $CURRENT_BRANCH"
 
 # Get current user
 CURRENT_USER=$(get_current_user)
-bt_info "Current user: $CURRENT_USER"
+[[ "$VERBOSE" == true ]] && bt_info "Current user: $CURRENT_USER"
 
 # Check if on a protected branch.
 if ! is_protected_branch "$CURRENT_BRANCH"; then
@@ -426,15 +426,15 @@ if ! is_protected_branch "$CURRENT_BRANCH"; then
     "Can only release from a protected branch" \
     "(base is remote-only main). Current branch: $CURRENT_BRANCH"
 fi
-bt_success "On valid release branch"
+[[ "$VERBOSE" == true ]] && bt_success "On valid release branch"
 
 # Check working directory is clean
-bt_info "Checking working directory..."
+[[ "$VERBOSE" == true ]] && bt_info "Checking working directory..."
 check_working_directory_clean
-bt_success "Working directory is clean"
+[[ "$VERBOSE" == true ]] && bt_success "Working directory is clean"
 
 # Fetch latest from remote
-bt_info "Fetching latest from remote..."
+[[ "$VERBOSE" == true ]] && bt_info "Fetching latest from remote..."
 bt_run_remote_command git fetch origin 2>/dev/null || \
   bt_warn "Failed to fetch from origin"
 
@@ -442,8 +442,8 @@ bt_run_remote_command git fetch origin 2>/dev/null || \
 history_status=0
 bt_propagate_repository_history || history_status=$?
 case "$history_status" in
-  0) bt_info "Repository history already up to date" ;;
-  1) bt_info "Updated repository history from remote" ;;
+  0) [[ "$VERBOSE" != true ]] || bt_info "Repository history already up to date" ;;
+  1) [[ "$VERBOSE" != true ]] || bt_info "Updated repository history from remote" ;;
   *) ;;  # offline or unavailable, continue silently
 esac
 check_status_checks "$CURRENT_BRANCH"
@@ -476,5 +476,4 @@ if [[ "$VERBOSE" == true ]]; then
 fi
 
 bt_success "Release $VERSION created and published"
-bt_success "Done"
 exit 0

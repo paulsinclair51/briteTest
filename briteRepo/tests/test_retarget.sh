@@ -187,8 +187,11 @@ EOF
 # 4) Authorized dry-run should succeed using login identity resolution.
 rc=$(run_capture "$TMPDIR/dry-run.out" env GITHUB_ACTOR=testapprover bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -d dev/parser-v1.0.0 v1.1.0")
 [[ "$rc" -eq 0 ]] || fail "authorized dry-run retarget should exit 0 (got $rc)"
-assert_contains "Dry-run passed" "$TMPDIR/dry-run.out"
-assert_contains "Rebase preview: git rebase origin/v1.1.0" "$TMPDIR/dry-run.out"
+assert_contains "Dry-run: retarget dev/parser-v1.0.0 -> v1.1.0" \
+  "$TMPDIR/dry-run.out"
+if grep -Fq "Rebase preview:" "$TMPDIR/dry-run.out"; then
+  fail "normal retarget dry-run should omit verbose rebase details"
+fi
 pass "dry-run success with login identity"
 
 # 5) Successful retarget should remain local and record details for report.
