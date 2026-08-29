@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 
 # restore - Select a committed version of a file for the current worktree.
+#
+# See usage below for details, or run: report -h
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
 
 usage() {
   cat <<'EOF'
@@ -20,10 +26,10 @@ Prerequisites:
 
 Options:
   -h, --help  Output this help and exit.
-  -n NUMBER   Select version NUMBER without prompting.
-  -v          Output the selected commit hash.
+  -l LIMIT    Number of versions to list (default: 20). LIMIT
+              must an integer greater than 1.
 
-The newest committed version is number 1. At most 20 versions are listed.
+The newest committed version is number 1.
 EOF
 }
 
