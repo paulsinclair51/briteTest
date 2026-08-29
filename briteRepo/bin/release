@@ -330,6 +330,11 @@ record_release_workflow_event() {
   local user="$2"
   local branch="$3"
 
+  bt_undo_record_operation release "$branch" "$(git rev-parse HEAD)" \
+    "$(git rev-parse HEAD)" delete-release "Released $version" "" "" \
+    "$version" >/dev/null || \
+    bt_warn "Release completed, but undo metadata could not be recorded"
+
   if ! bt_record_workflow_event "release" "$branch" \
       "$(bt_format_command_line "release" "${ORIGINAL_ARGS[@]}")" \
       "Released $version" HEAD \

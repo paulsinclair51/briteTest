@@ -652,6 +652,7 @@ fi
 # Perform merge without auto-commit so hooks cannot block the merge commit path.
 bt_info "Merging $PARENT_BRANCH into $CURRENT_BRANCH..."
 OPERATION_STARTED=true
+PULLDOWN_BEFORE_TIP="$(git rev-parse HEAD 2>/dev/null || true)"
 if [[ "$CONTINUING_MERGE" == false ]]; then
   bt_git_mark_workflow_in_progress pulldown "$CURRENT_BRANCH" || \
     bt_error_exit "$EXIT_OPERATION_FAILED" \
@@ -707,6 +708,10 @@ Method: Merge commit (--no-ff) created by pulldown" >/dev/null 2>&1; then
 fi
 
 bt_git_clear_workflow_in_progress pulldown
+bt_undo_record_operation pulldown "$CURRENT_BRANCH" "$PULLDOWN_BEFORE_TIP" \
+  "$(git rev-parse HEAD)" hard-reset \
+  "Merged $PARENT_BRANCH into $CURRENT_BRANCH" >/dev/null || \
+  bt_warn "Pulldown completed, but undo metadata could not be recorded"
 
 # Show merge details if verbose
 if [[ "$VERBOSE" == true ]]; then

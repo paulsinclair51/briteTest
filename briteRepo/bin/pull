@@ -213,6 +213,7 @@ ERROR_REPORT_WRITTEN=false
 
 CURRENT_BRANCH=""
 REBASE_IN_PROGRESS_AT_START=false
+PULL_BEFORE_TIP=""
 
 EVALUATED_COUNT=0
 SYNCED_COUNT=0
@@ -816,6 +817,11 @@ if [[ "$REBASE_IN_PROGRESS_AT_START" == false ]] && \
     "commit or undo changes, then rerun pull."
 fi
 
+PULL_BEFORE_TIP="$(git rev-parse "$CURRENT_BRANCH" 2>/dev/null || true)"
+if [[ "$REBASE_IN_PROGRESS_AT_START" == true ]]; then
+  PULL_BEFORE_TIP="$(git rev-parse ORIG_HEAD 2>/dev/null || true)"
+fi
+
 if ! pull_work_available "$CURRENT_BRANCH"; then
   bt_emit_prerequisite_failure "$EXIT_NOTHING_TO_PULL" \
     "Remote branch 'origin/$CURRENT_BRANCH' has no changes to pull." \
@@ -897,6 +903,10 @@ if [[ "$DRY_RUN" == true ]]; then
   bt_success "See ${REPORT_FILE#"${REPO_ROOT}"/} for details."
 else
   command_line="$(format_command_line)"
+  bt_undo_record_operation pull "$CURRENT_BRANCH" "$PULL_BEFORE_TIP" \
+    "$(git rev-parse HEAD)" hard-reset \
+    "Synchronized $CURRENT_BRANCH from origin" >/dev/null || \
+    bt_warn "Pull completed, but undo metadata could not be recorded"
   if ! bt_record_workflow_event "pull" "$CURRENT_BRANCH" "$command_line" \
     "Synchronized $SYNCED_COUNT branch(es) from origin" \
     "HEAD" \

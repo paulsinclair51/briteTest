@@ -70,6 +70,7 @@ bash ./briteRepo/tests/test_fixrepo.sh
 bash ./briteRepo/tests/test_mkbranch.sh
 bash ./briteRepo/tests/test_pulldown.sh
 bash ./briteRepo/tests/test_retarget.sh
+bash ./briteRepo/tests/test_restore.sh
 bash ./briteRepo/tests/test_undo.sh
 bash ./briteRepo/tests/test_commit.sh
 bash ./briteRepo/tests/test_report_helpers.sh

@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+
+# restore - Select a committed version of a file for the current worktree.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  restore [OPTIONS] FILE
+  restore {-h | --help}
+
+List committed versions of FILE from the current branch and place the selected
+version in the worktree. restore does not create a commit or rewrite history.
+Review the restored file, then use commit if the version should be retained.
+
+Prerequisites:
+  - The current checkout must be a local branch.
+  - FILE must be a tracked regular file in the current branch.
+  - FILE must not have staged or unstaged changes before restore runs.
+  - No repository workflow may be in progress on the current branch.
+
+Options:
+  -h, --help  Output this help and exit.
+  -n NUMBER   Select version NUMBER without prompting.
+  -v          Output the selected commit hash.
+
+The newest committed version is number 1. At most 20 versions are listed.
+EOF
+}
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
+# shellcheck source=helpers/git_helpers.sh
+source "$SCRIPT_DIR/../helpers/git_helpers.sh"
+
+SELECTION=""
+VERBOSE=false
+FILE_ARG=""
+
+usage_error() {
+  usage
+  echo >&2
+  bt_emit_error "$1. See usage above for details."
+  exit 1
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    -n)
+      [[ $# -ge 2 && "$2" =~ ^[1-9][0-9]*$ ]] || \
+        usage_error "Option -n requires a positive version number"
+      SELECTION="$2"
+      shift 2
+      ;;
+    -v)
+      VERBOSE=true
+      shift
+      ;;
+    -*)
+      usage_error "Unknown option: $1"
+      ;;
+    *)
+      [[ -z "$FILE_ARG" ]] || usage_error "Expected one FILE argument"
+      FILE_ARG="$1"
+      shift
+      ;;
+  esac
+done
+
+[[ -n "$FILE_ARG" ]] || usage_error "FILE argument is required"
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+[[ -n "$REPO_ROOT" ]] || usage_error "restore must run in a Git repository"
+CURRENT_BRANCH="$(bt_get_current_branch_or_empty)"
+[[ -n "$CURRENT_BRANCH" ]] || usage_error "restore requires a local branch"
+
+cd "$REPO_ROOT"
+FILE_PATH="${FILE_ARG#./}"
+git ls-files --error-unmatch -- "$FILE_PATH" >/dev/null 2>&1 || \
+  usage_error "FILE must be tracked in the current branch: $FILE_ARG"
+[[ -f "$FILE_PATH" && ! -L "$FILE_PATH" ]] || \
+  usage_error "FILE must be a regular file: $FILE_ARG"
+if ! git diff --quiet -- "$FILE_PATH" || \
+  ! git diff --cached --quiet -- "$FILE_PATH"; then
+  usage_error "FILE has uncommitted changes: $FILE_ARG"
+fi
+ACTIVE_WORKFLOW="$(bt_git_workflow_in_progress_action "$CURRENT_BRANCH")"
+[[ -z "$ACTIVE_WORKFLOW" ]] || \
+  usage_error "$ACTIVE_WORKFLOW is in progress on $CURRENT_BRANCH"
+
+mapfile -t VERSION_ROWS < <(git log -n 20 \
+  --format='%H%x1f%h%x1f%cI%x1f%s' -- "$FILE_PATH")
+[[ ${#VERSION_ROWS[@]} -gt 0 ]] || \
+  usage_error "No committed versions found for $FILE_ARG"
+
+echo "Committed versions of $FILE_PATH:"
+for index in "${!VERSION_ROWS[@]}"; do
+  IFS=$'\x1f' read -r _hash short_hash committed_at subject \
+    <<< "${VERSION_ROWS[$index]}"
+  printf '  %d. %s  %s  %s\n' \
+    "$((index + 1))" "$short_hash" "$committed_at" "$subject"
+done
+
+if [[ -z "$SELECTION" ]]; then
+  echo -n "Select version number (or 0 to cancel): "
+  read -r SELECTION
+  [[ "$SELECTION" != 0 ]] || {
+    echo "Restore cancelled."
+    exit 0
+  }
+fi
+[[ "$SELECTION" =~ ^[1-9][0-9]*$ && \
+  "$SELECTION" -le "${#VERSION_ROWS[@]}" ]] || \
+  usage_error "Version selection is out of range"
+
+SELECTED_ROW="${VERSION_ROWS[$((SELECTION - 1))]}"
+SELECTED_HASH="${SELECTED_ROW%%$'\x1f'*}"
+git cat-file -e "$SELECTED_HASH:$FILE_PATH" 2>/dev/null || \
+  usage_error "Selected commit does not contain $FILE_PATH"
+
+TEMP_FILE="$(mktemp)"
+trap 'rm -f "$TEMP_FILE"' EXIT
+git show "$SELECTED_HASH:$FILE_PATH" > "$TEMP_FILE"
+cat "$TEMP_FILE" > "$FILE_PATH"
+
+if [[ "$VERBOSE" == true ]]; then
+  echo "Selected commit: $SELECTED_HASH"
+fi
+echo "Restored $FILE_PATH from version $SELECTION."
+echo "Review the file, then run commit to retain this version."
