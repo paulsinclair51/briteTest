@@ -123,6 +123,7 @@ bt_git_parent_relation_tags() {
   local ahead=0
   local behind=0
   local counts=""
+  local merge_base=""
   local available=false
 
   parent=$(bt_resolve_parent_branch "$branch" "main" 2>/dev/null || true)
@@ -138,6 +139,14 @@ bt_git_parent_relation_tags() {
     counts=$(git rev-list --left-right --count \
       "$selected_ref...$parent_ref" 2>/dev/null || true)
     read -r ahead behind <<< "$counts"
+    if [[ "$behind" =~ ^[0-9]+$ && "$behind" -gt 0 ]]; then
+      merge_base="$(git merge-base "$selected_ref" "$parent_ref" \
+        2>/dev/null || true)"
+      if [[ -n "$merge_base" ]] && \
+        git diff --quiet "$merge_base" "$parent_ref" 2>/dev/null; then
+        behind=0
+      fi
+    fi
   fi
   bt_git_format_parent_relation_tags \
     "$parent" "$ahead" "$behind" "$available"

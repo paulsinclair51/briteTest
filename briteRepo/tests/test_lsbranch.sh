@@ -355,6 +355,26 @@ grep -Fq "[behind local by 1]" "$TMPDIR/status-ahead.out" || \
 grep -Fq "[parent: v1.0.0] [ahead of parent by 1]" \
   "$TMPDIR/status-ahead.out" || fail "row should report parent identity"
 
+status_parent_remote_tip=$(git rev-parse refs/remotes/origin/v1.0.0)
+status_neutral_parent_tip=$(printf 'content-neutral parent fixture\n' | \
+  git -c user.name=lsbranch-test -c user.email=lsbranch@example.com \
+    commit-tree "$status_tree" -p "$status_parent_tip")
+git update-ref refs/heads/v1.0.0 "$status_neutral_parent_tip"
+git update-ref refs/remotes/origin/v1.0.0 "$status_neutral_parent_tip"
+git update-ref "$status_local_ref" "$status_local_tip"
+git update-ref "$status_remote_ref" "$status_local_tip"
+rc=$(run_capture "$TMPDIR/status-neutral-parent.out" \
+  env PATH="$STATUS_BIN:$PATH" "$LSBRANCH" "$status_branch")
+[[ "$rc" -eq 0 ]] || fail "content-neutral parent fixture should exit 0"
+if grep -Fq "[diverged from parent" "$TMPDIR/status-neutral-parent.out"; then
+  fail "content-neutral parent-only commits should not report divergence"
+fi
+[[ "$(grep -Fc "[ahead of parent by 1]" \
+  "$TMPDIR/status-neutral-parent.out")" -eq 2 ]] || \
+  fail "local and remote rows should retain the child's actionable ahead count"
+git update-ref refs/heads/v1.0.0 "$status_parent_tip"
+git update-ref refs/remotes/origin/v1.0.0 "$status_parent_remote_tip"
+
 status_content_match_tip=$(printf 'lsbranch matching-content fixture\n' | \
   git -c user.name=lsbranch-test -c user.email=lsbranch@example.com \
     commit-tree "$status_tree" -p "$status_parent_tip")
