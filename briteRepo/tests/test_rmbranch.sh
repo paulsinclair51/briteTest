@@ -10,6 +10,8 @@ set -euo pipefail
 export LC_ALL=C
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common_test_helpers.sh
+source "$SCRIPT_DIR/common_test_helpers.sh"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 RMBRANCH_SRC="$REPO_ROOT/briteRepo/bin/rmbranch"
 COMMON_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/common.sh"
@@ -18,37 +20,6 @@ HISTORY_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/history_log.sh"
 CKROLE_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/ckrole.sh"
 VALIDATION_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/validation_helpers.sh"
 COMMON_UTILS_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/common_utils.sh"
-
-pass() {
-  echo "PASS: $1"
-}
-
-fail() {
-  echo "FAIL: $1" >&2
-  exit 1
-}
-
-run_capture() {
-  local outfile="$1"
-  shift
-  set +e
-  "$@" >"$outfile" 2>&1
-  local rc=$?
-  set -e
-  echo "$rc"
-}
-
-assert_contains() {
-  local text="$1"
-  local file="$2"
-  grep -Fq -- "$text" "$file" || fail "expected '$text' in $file"
-}
-
-assert_matches() {
-  local regex="$1"
-  local file="$2"
-  grep -Eq -- "$regex" "$file" || fail "expected pattern '$regex' in $file"
-}
 
 for dep in bash git grep mktemp; do
   command -v "$dep" >/dev/null 2>&1 || fail "missing required command: $dep"

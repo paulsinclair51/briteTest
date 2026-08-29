@@ -134,39 +134,14 @@ echo "PASS: error-run requires source branch"
 set +e
 (
   cd "$WORK"
-  bash ./briteRepo/bin/copyfix --continue -e
-) >"$TMPDIR/error-run-continue.out" 2>&1
+  bash ./briteRepo/bin/copyfix --bogus
+) >"$TMPDIR/unknown-option.out" 2>&1
 rc=$?
 set -e
-[[ "$rc" -eq 1 ]] || fail "copyfix --continue -e should exit 1"
-grep -Fq "Option -e cannot be used with --continue" \
-  "$TMPDIR/error-run-continue.out" || \
-  fail "expected copyfix continue/error mode rejection"
-echo "PASS: error-run excluded from continue mode"
-
-set +e
-(
-  cd "$WORK"
-  bash ./briteRepo/bin/copyfix -m "obsolete" fix/source-v1.0.0
-) >"$TMPDIR/obsolete-message.out" 2>&1
-rc=$?
-set -e
-[[ "$rc" -eq 1 ]] || fail "obsolete -m option should exit 1 (got $rc)"
-grep -Fq "Unknown option: -m" "$TMPDIR/obsolete-message.out" || \
-  fail "expected obsolete -m option rejection"
-echo "PASS: obsolete message option rejected"
-
-set +e
-(
-  cd "$WORK"
-  bash ./briteRepo/bin/copyfix -t 1 fix/source-v1.0.0
-) >"$TMPDIR/obsolete-timeout.out" 2>&1
-rc=$?
-set -e
-[[ "$rc" -eq 1 ]] || fail "obsolete -t option should exit 1 (got $rc)"
-grep -Fq "Unknown option: -t" "$TMPDIR/obsolete-timeout.out" || \
-  fail "expected obsolete -t option rejection"
-echo "PASS: obsolete timeout option rejected"
+[[ "$rc" -eq 1 ]] || fail "unknown option should exit 1 (got $rc)"
+grep -Fq "Unknown option: --bogus" "$TMPDIR/unknown-option.out" || \
+  fail "expected unknown-option rejection"
+echo "PASS: unknown option rejected"
 
 set +e
 (
@@ -485,12 +460,12 @@ grep -Fq '**Exit Code:** 5' "$error_report" || \
 set +e
 (
   cd "$WORK"
-  bash ./briteRepo/bin/copyfix --continue
+  bash ./briteRepo/bin/copyfix
 ) >"$TMPDIR/unresolved-continue.out" 2>&1
 rc=$?
 set -e
 [[ "$rc" -eq 5 ]] || \
-  fail "copyfix --continue with unresolved conflicts should exit 5 (got $rc)"
+  fail "copyfix rerun with unresolved conflicts should exit 5 (got $rc)"
 grep -Fq "Conflicts remain after continue" "$TMPDIR/unresolved-continue.out" || \
   fail "expected unresolved conflict guidance"
 [[ -d "$state_dir" ]] || fail "unresolved continue should preserve copyfix state"
@@ -499,13 +474,13 @@ git -C "$WORK" cherry-pick --abort >/dev/null 2>&1
 set +e
 (
   cd "$WORK"
-  bash ./briteRepo/bin/copyfix --continue
+  bash ./briteRepo/bin/copyfix
 ) >"$TMPDIR/continue-without-cherry-pick.out" 2>&1
 rc=$?
 set -e
 [[ "$rc" -eq 2 ]] || \
-  fail "copyfix --continue without cherry-pick state should exit 2 (got $rc)"
-grep -Fq "not in the copyfix continue state" \
+  fail "copyfix rerun without cherry-pick state should exit 2 (got $rc)"
+grep -Fq "copyfix state but no paused cherry-pick to resume" \
   "$TMPDIR/continue-without-cherry-pick.out" || \
   fail "expected copyfix continue-state validation"
 rm -rf "$state_dir" "$state_dir.lock"
@@ -524,33 +499,33 @@ printf 'resolved conflict\n' > "$WORK/README.md"
 set +e
 (
   cd "$WORK"
-  bash ./briteRepo/bin/copyfix --continue fix/conflict-v1.0.0
+  bash ./briteRepo/bin/copyfix fix/conflict-v1.0.0
 ) >"$TMPDIR/continue-with-arg.out" 2>&1
 rc=$?
 set -e
-[[ "$rc" -eq 1 ]] || fail "copyfix --continue with source arg should exit 1 (got $rc)"
-grep -Fq "Unexpected argument with --continue" "$TMPDIR/continue-with-arg.out" || \
+[[ "$rc" -eq 1 ]] || fail "copyfix resume with source arg should exit 1 (got $rc)"
+grep -Fq "A copyfix operation is in progress" "$TMPDIR/continue-with-arg.out" || \
   fail "continue mode should reject source argument"
 
 set +e
 (
   cd "$WORK"
-  bash ./briteRepo/bin/copyfix --continue -c retry
+  bash ./briteRepo/bin/copyfix -c retry
 ) >"$TMPDIR/continue-with-comment.out" 2>&1
 rc=$?
 set -e
-[[ "$rc" -eq 1 ]] || fail "copyfix --continue with comment should exit 1 (got $rc)"
-grep -Fq "Comment options are not allowed with --continue" "$TMPDIR/continue-with-comment.out" || \
+[[ "$rc" -eq 1 ]] || fail "copyfix resume with comment should exit 1 (got $rc)"
+grep -Fq "A copyfix operation is in progress" "$TMPDIR/continue-with-comment.out" || \
   fail "continue mode should reject comment options"
 
 set +e
 (
   cd "$WORK"
-  bash ./briteRepo/bin/copyfix --continue
+  bash ./briteRepo/bin/copyfix
 ) >"$TMPDIR/continue.out" 2>&1
 rc=$?
 set -e
-[[ "$rc" -eq 0 ]] || fail "copyfix --continue should exit 0 (got $rc)"
+[[ "$rc" -eq 0 ]] || fail "plain copyfix resume should exit 0 (got $rc)"
 [[ "$(git -C "$WORK" show dev/conflict-target-v1.0.0:README.md)" == \
   "resolved conflict" ]] || fail "continued copyfix should update the target branch"
 grep -Eq "files? copied\\." "$TMPDIR/continue.out" || \
@@ -571,7 +546,7 @@ continue_note="$(git -C "$WORK" notes --ref=briteRepo-workflow show \
   dev/conflict-target-v1.0.0)"
 [[ "$(grep -c '^--- briteRepo workflow ---$' <<< "$continue_note")" -eq 1 ]] || \
   fail "continued copyfix should record exactly one workflow event"
-[[ "$continue_note" == *"Command-Line: copyfix --continue"* ]] || \
+[[ "$continue_note" == *"Command-Line: copyfix"* ]] || \
   fail "continued copyfix event should record its command line"
 [[ "$continue_note" == *"Status: Fix commits copied to target branch"* ]] || \
   fail "continued copyfix event should record copy status"

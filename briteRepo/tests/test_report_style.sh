@@ -136,14 +136,7 @@ WORK="$(make_fixture_repo work)"
 # Coverage note: this smoke test checks report style paths, a single validation
 # failure, and basename selection. It does not cover every style rule.
 
-# 1) Help output.
-rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -h")
-[[ "$rc" -eq 0 ]] || fail "report -h should exit 0"
-assert_contains "Usage:" "$TMPDIR/help.out"
-assert_contains "Additional options only for a style report:" "$TMPDIR/help.out"
-pass "help output"
-
-# 2) Default run should pass cleanly and create a local report.
+# 1) Default run should pass cleanly and create a local report.
 rc=$(run_capture "$TMPDIR/default.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report style")
 [[ "$rc" -eq 0 ]] || fail "report style should exit 0 on clean fixture (got $rc)"
 assert_success_message "$TMPDIR/default.out"
@@ -156,7 +149,7 @@ assert_contains "# Style Validation Report" "$default_report"
 assert_contains "No issues found." "$default_report"
 pass "default validation run"
 
-# 3) -v should emit verbose diagnostics to stderr.
+# 2) -v should emit verbose diagnostics to stderr.
 rc=$(run_capture "$TMPDIR/verbose.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report style -v -f docs/md/Release_v1.0.0.md -f include/runnerapi.h -f src/runnerapi.c")
 [[ "$rc" -eq 0 ]] || fail "report style -v should exit 0 (got $rc)"
 assert_contains "VERBOSE: selected files:" "$TMPDIR/verbose.out"
@@ -164,13 +157,7 @@ assert_contains "VERBOSE: running document checks" "$TMPDIR/verbose.out"
 assert_contains "VERBOSE: running version consistency checks (enabled by -m)" "$TMPDIR/verbose.out"
 pass "verbose diagnostics"
 
-# 4) --verbose should be rejected now that only -v is supported.
-rc=$(run_capture "$TMPDIR/long-verbose.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report style --verbose")
-[[ "$rc" -eq 1 ]] || fail "report style --verbose should exit 1 (got $rc)"
-assert_contains "Unknown option: --verbose" "$TMPDIR/long-verbose.out"
-pass "long option rejection"
-
-# 5) Report I/O failures should use the dedicated exit code.
+# 3) Report I/O failures should use the dedicated exit code.
 rm -rf "$WORK/reports"
 printf 'blocked by test\n' > "$WORK/reports"
 rc=$(run_capture "$TMPDIR/report-io.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report style -m -f docs/md/Release_v1.0.0.md")

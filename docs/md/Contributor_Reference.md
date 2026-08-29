@@ -197,13 +197,13 @@ Run `push` separately to publish the commit.
 target branch.
 
 The command updates the current target branch directly. If conflicts occur,
-resolve the files and run `copyfix --continue` to continue the copy.
+resolve the files and rerun `copyfix` to continue the copy.
 
 **Usage:**
 
 ```bash
 copyfix [OPTIONS] SOURCE_BRANCH [-- TOKEN...]
-copyfix --continue [-v]
+copyfix [-v]
 ```
 
 Use `-c TOKEN` or `-- TOKEN...` to replace the comment on each copied fix
@@ -367,20 +367,17 @@ for the remote timeout.
 
 **Purpose:** Push the current branch up to its parent, publish both updated
 branches, and leave the resynchronized source branch selected. Interrupted
-prepublication work is recovered by rerunning `pushup`; work that may have
-published the parent is resumed with `pushup --continue`.
+work is recovered or resumed by rerunning `pushup`, which reconciles its saved
+phase with exact local and remote tips.
 
 **Usage:**
 
 ```bash
 pushup [OPTIONS] [-- TOKEN...]
-pushup --continue
 ```
 
 **Options:**
 
-- `--continue` - Reconcile saved local and remote tips and resume a push-up
-  workflow that may have published its parent.
 - `-c TOKEN` - Custom pushup commit comment.
 - `-o` - Repository-owner override for eligible targeted-to-version paths.
 - `-t SEC` - Remote timeout in seconds. After parent publication starts,

@@ -209,7 +209,7 @@ detect_active_undo_type() {
     pushup)
       bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
         "A pushup operation is in progress on '$branch'." \
-        "resume it with 'pushup --continue'; pushup cannot be safely undone after publication begins."
+        "rerun pushup to resume; pushup cannot be safely undone after publication begins."
       ;;
   esac
 }

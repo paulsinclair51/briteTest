@@ -1688,7 +1688,7 @@ fi
 if bt_is_copyfix_in_progress "$CURRENT_BRANCH"; then
   bt_emit_prerequisite_failure "$EXIT_COPYFIX_IN_PROGRESS" \
     "Current branch '$CURRENT_BRANCH' has an unfinished copyfix operation." \
-    "complete it with 'copyfix --continue' before rerunning pushup."
+    "rerun copyfix to complete it before rerunning pushup."
 fi
 
 bt_info "Current local branch $CURRENT_BRANCH"

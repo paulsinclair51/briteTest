@@ -381,13 +381,13 @@ if [[ -n "$ORIGINAL_BRANCH" ]] && \
   bt_is_copyfix_in_progress "$ORIGINAL_BRANCH"; then
   bt_emit_prerequisite_failure "$EXIT_OPERATION_FAILED" \
     "Current branch '$ORIGINAL_BRANCH' has an unfinished copyfix operation." \
-    "complete it with 'copyfix --continue' before rerunning retarget."
+    "rerun copyfix to complete it before rerunning retarget."
 fi
 if [[ "$TARGET_BRANCH" != "$ORIGINAL_BRANCH" ]] && \
   bt_is_copyfix_in_progress "$TARGET_BRANCH"; then
   bt_emit_prerequisite_failure "$EXIT_OPERATION_FAILED" \
     "Targeted branch '$TARGET_BRANCH' has an unfinished copyfix operation." \
-    "complete it in that branch with 'copyfix --continue' before rerunning" \
+    "rerun copyfix in that branch to complete it before rerunning" \
     "retarget."
 fi
 
