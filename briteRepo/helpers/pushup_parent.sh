@@ -38,9 +38,9 @@ Prerequisites:
       Use the commit or undo commands to commit or undo local changes before
       running pushup.
     - The current branch must not have an unfinished copyfix operation.
-    - The current branch must not be behind its parent branch. Use the
-      pulldown command to merge the parent branch into the current branch
-      before running pushup.
+    - The current branch must not be behind file changes on its parent branch.
+      Parent-only commits that leave the parent's file content unchanged are
+      accepted and incorporated by pushup. Otherwise, use pulldown first.
     - The parent branch for the current branch must exist locally and be
       available for checkout.
     - A protected branch (either the current branch or its parent branch) must
@@ -1032,15 +1032,26 @@ ensure_current_up_to_date_with_parent() {
   local parent_branch="$2"
   local parent_ref
   local current_ref="$current_branch"
+  local merge_base=""
 
   parent_ref=$(resolve_parent_reference "$parent_branch")
 
-  if ! git merge-base --is-ancestor "$parent_ref" "$current_ref" \
+  if git merge-base --is-ancestor "$parent_ref" "$current_ref" \
     >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_CURRENT_BEHIND_PARENT" \
-      "Current branch '$current_branch' is not up-to-date with parent " \
-      "'$parent_branch'"
+    return 0
   fi
+
+  merge_base="$(git merge-base "$parent_ref" "$current_ref" \
+    2>/dev/null || true)"
+  if [[ -n "$merge_base" ]] && \
+    git diff --quiet "$merge_base" "$parent_ref" 2>/dev/null; then
+    bt_info "Parent-only commits contain no file changes; pushup will incorporate them"
+    return 0
+  fi
+
+  bt_error_exit "$EXIT_CURRENT_BEHIND_PARENT" \
+    "Current branch '$current_branch' is not up-to-date with parent " \
+    "'$parent_branch'"
 }
 
 warn_downstream_targeted_branches_behind_version() {
