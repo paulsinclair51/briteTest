@@ -2,6 +2,10 @@
 
 # pre-push hook - Block direct git push operations
 #
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+#
 # This hook runs before 'git push' command.
 # It prevents developers from bypassing the script-based workflow.
 #
@@ -11,9 +15,6 @@
 #   git push origin branch           → Use: commit -m "msg" -p
 #   git push --force-with-lease     → Use: merge -f (for rebase)
 #   git push origin --delete branch → Use: rmbranch <branch> -r
-#
-# Copyright (c) 2026 Paul Sinclair
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

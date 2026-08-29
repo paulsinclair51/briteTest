@@ -2,6 +2,10 @@
 
 # pre-merge-commit hook - Block direct git merge operations
 #
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+#
 # This hook runs before 'git merge' command creates a merge commit.
 # It prevents developers from bypassing the script-based merge workflow.
 #
@@ -11,9 +15,6 @@
 #   git merge <branch>              → Use: pulldown (sync parent into current)
 #   git merge --squash              → Use: pulldown (if policy allows squash)
 #   git merge --no-ff               → Use: pulldown/pushup workflow scripts
-#
-# Copyright (c) 2026 Paul Sinclair
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

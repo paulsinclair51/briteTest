@@ -2,6 +2,10 @@
 
 # githook_helper.sh - Common hook enforcement logic
 #
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+#
 # This helper provides shared functionality for all Git hooks:
 # - Bypasses enforcement when GIT_BYPASS_HOOKS=true (set by scripts)
 # - Provides consistent error messages
@@ -10,9 +14,6 @@
 # Usage in hooks:
 #   source "$(git rev-parse --git-dir)/hooks/githook_helper.sh"
 #   check_bypass "git commit"
-#
-# Copyright (c) 2026 Paul Sinclair
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 
