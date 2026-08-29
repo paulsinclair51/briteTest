@@ -750,6 +750,14 @@ EOF
     pushed_added_directories="$BT_CHANGE_ADDED_DIRECTORIES"
     pushed_renamed_directories="$BT_CHANGE_RENAMED_DIRECTORIES"
     pushed_change_summary="$(bt_format_change_summary)"
+    # Merge-only pushes advance the branch without changing file content.
+    if [[ "$pushed_change_summary" == "no changes" ]]; then
+      if [[ "$commits_ahead" -eq 1 ]]; then
+        pushed_change_summary="1 commit with no file changes"
+      else
+        pushed_change_summary="${commits_ahead} commits with no file changes"
+      fi
+    fi
   }
 
   while [[ $# -gt 0 ]]; do
