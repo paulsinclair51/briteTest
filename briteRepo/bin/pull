@@ -20,15 +20,15 @@ do so, so that the local branch is synchronized with its remote branch.
 
 If local and remote branches have diverged, pull automatically resolves
 the divergence when it is safe to do so (local commits may be rewritten).
-If unresolved conflicts occur, manual resolution is required. After
-resolving conflicts, rerun pull.
+If unresolved conflicts occur, manual resolution is required. After resolving
+conflicts, rerun pull to continue the in-progress rebase.
 
 Prerequisites:
   - If the -o option is specified, the user must be the repository owner.
   - The current branch must be a local branch.
   - The current branch must be a targeted or contributor branch if the -o
     option is not specified.
-  - The current branch must be a version branch if the -o option is
+  - The current branch must be a version or main branch if the -o option is
     specified.
   - The current branch must not have uncommitted changes. Commit or
     undo them before running pull.
@@ -50,7 +50,7 @@ Options:
   -h, --help  Output this help to stdout and exit (other options and
               arguments are ignored).
   -o          Allow the repository owner to pull to the current local version
-              branch.
+              branch when the current branch is a version or main branch.
   -t SEC      Remote reachability timeout in seconds (default: 10).
               SEC must be an integer greater than 0.
   -v          Output progress and diagnostics to stdout.
@@ -89,7 +89,7 @@ Exit codes:
   3    Current branch must be a local branch.
   4    Current branch must be a targeted or contributor branch if the
        -o option is not specified.
-  5    Current branch must be a version branch if the -o option
+  5    Current branch must be a version or main branch if the -o option
        is specified.
   6    Uncommitted changes in current branch. Commit or undo changes.
   7    Remote branch does not exist.
@@ -108,8 +108,8 @@ EOF
 # High-Level Flow:
 # - Validate actor/branch/worktree policy and confirm live remote work exists.
 # - Preview without fetching for -d; otherwise fetch the current remote branch.
-# - Fast-forward, resume a rebase, or automatically rebase safe divergence;
-#   preserve conflicts for manual continuation when necessary.
+# - Fast-forward, continue an in-progress rebase, or automatically rebase safe
+#   divergence; preserve conflicts for manual resolution when necessary.
 # - Write local reports only for dry-run/error paths and record one successful
 #   pull event on the synchronized tip for report.
 
@@ -419,7 +419,7 @@ pull_work_available() {
   local branch="$1"
   local local_tip=""
 
-  is_rebase_in_progress && return 0
+  bt_git_is_rebase_in_progress && return 0
 
   local_tip="$(git rev-parse "$branch" 2>/dev/null || true)"
   [[ -n "$local_tip" && -n "$REMOTE_BRANCH_TIP" ]] || return 1
@@ -434,52 +434,23 @@ pull_work_available() {
   return 0
 }
 
-is_rebase_in_progress() {
-  [[ -d "$(git rev-parse --git-path rebase-merge 2>/dev/null || true)" || \
-    -d "$(git rev-parse --git-path rebase-apply 2>/dev/null || true)" ]]
-}
-
-get_rebase_head_branch() {
-  local head_name=""
-  local path
-
-  for path in \
-    "$(git rev-parse --git-path rebase-merge/head-name 2>/dev/null || true)" \
-    "$(git rev-parse --git-path rebase-apply/head-name 2>/dev/null || true)"; do
-    [[ -f "$path" ]] || continue
-    head_name="$(tr -d '\n' < "$path")"
-    break
-  done
-
-  [[ -n "$head_name" ]] || return 1
-  head_name="${head_name#refs/heads/}"
-  [[ -n "$head_name" ]] || return 1
-  printf '%s\n' "$head_name"
-}
-
-get_conflict_files() {
-  local conflict_files
-  conflict_files="$(git diff --name-only --diff-filter=U 2>/dev/null || true)"
-  if [[ -z "$conflict_files" ]]; then
-    conflict_files="$(git --no-optional-locks status --porcelain \
-      2>/dev/null | awk '/^UU / {print $2}')"
-  fi
-  [[ -n "$conflict_files" ]] || \
-    conflict_files="(unable to determine conflicting files)"
-  printf '%s\n' "$conflict_files"
-}
-
 continue_rebase_if_in_progress() {
   local branch="$1"
   local progressed=false
 
-  if ! is_rebase_in_progress; then
+  if ! bt_git_is_rebase_in_progress; then
     return 1
   fi
 
-  while is_rebase_in_progress; do
+  while bt_git_is_rebase_in_progress; do
     local conflict_files
-    conflict_files="$(get_conflict_files)"
+    if ! bt_git_stage_resolved_rebase_files; then
+      SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+      bt_warn "Skipped '$branch': rebase still has unresolved conflicts."
+      bt_error_exit "$EXIT_DIVERGENCE" \
+        "Branch '$branch' requires manual conflict resolution."
+    fi
+    conflict_files="$(bt_git_conflict_files)"
     if [[ "$conflict_files" != \
       "(unable to determine conflicting files)" ]]; then
       SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
@@ -494,7 +465,7 @@ continue_rebase_if_in_progress() {
     if ! GIT_BYPASS_HOOKS=true GIT_EDITOR=true \
       git rebase --continue >/dev/null 2>&1; then
       local continue_conflicts
-      continue_conflicts="$(get_conflict_files)"
+      continue_conflicts="$(bt_git_conflict_files)"
       if [[ "$continue_conflicts" != \
         "(unable to determine conflicting files)" ]]; then
         SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
@@ -509,6 +480,7 @@ continue_rebase_if_in_progress() {
   done
 
   if [[ "$progressed" == true ]]; then
+    bt_git_clear_workflow_in_progress pull
     bt_success "Completed in-progress rebase for '$branch'."
   fi
   return 1
@@ -588,7 +560,11 @@ attempt_auto_resolve_divergence() {
     "Branch '$branch' has diverged; attempting automatic rebase onto " \
     "remote $branch.")"
 
+  bt_git_mark_workflow_in_progress pull "$branch" || \
+    bt_error_exit "$EXIT_GIT_ERROR" \
+      "Failed to record pull progress for '$branch'."
   if GIT_BYPASS_HOOKS=true git rebase "origin/$branch" >/dev/null 2>&1; then
+    bt_git_clear_workflow_in_progress pull
     SYNCED_COUNT=$((SYNCED_COUNT + 1))
     bt_success "Synchronized '$branch' (auto-resolved divergence)."
     warn_branch_behind_parent "$branch"
@@ -633,10 +609,11 @@ validate_pull_branch_policy() {
   fi
 
   if [[ "$OWNER_OVERRIDE_ACTIVE" == true ]]; then
-    if ! bt_is_version_branch "$CURRENT_BRANCH"; then
+    if [[ "$CURRENT_BRANCH" != "main" ]] && \
+      ! bt_is_version_branch "$CURRENT_BRANCH"; then
       bt_emit_prerequisite_failure "$EXIT_OWNER_OVERRIDE_BRANCH" \
-        "Current branch '$CURRENT_BRANCH' must be a version branch if -o is specified." \
-        "switch to a version branch and rerun pull."
+        "Current branch '$CURRENT_BRANCH' must be main or a version branch if -o is specified." \
+        "switch to main or a version branch and rerun pull."
     fi
     return 0
   fi
@@ -775,9 +752,9 @@ if bt_is_current_internal_remote_copy; then
 fi
 
 if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
-  if is_rebase_in_progress; then
+  if bt_git_is_rebase_in_progress; then
     REBASE_IN_PROGRESS_AT_START=true
-    CURRENT_BRANCH="$(get_rebase_head_branch || true)"
+    CURRENT_BRANCH="$(bt_git_rebase_head_branch || true)"
     [[ -n "$CURRENT_BRANCH" ]] || \
       usage_error "Cannot sync from detached branch state."
     bt_info "Detected rebase in progress for branch: $CURRENT_BRANCH"
@@ -788,7 +765,7 @@ if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
   fi
 fi
 
-if is_rebase_in_progress; then
+if bt_git_is_rebase_in_progress; then
   REBASE_IN_PROGRESS_AT_START=true
   PULL_NEEDED=true
 fi
@@ -849,7 +826,7 @@ if [[ "$ERROR_RUN" == true ]]; then
   skip_pull_and_exit
 fi
 
-if is_rebase_in_progress; then
+if bt_git_is_rebase_in_progress; then
   OPERATION_STARTED=true
   bt_info "$(printf '%s%s' \
     "Rebase already in progress; skipping fetch and continuing rebase " \

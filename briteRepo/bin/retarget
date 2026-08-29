@@ -446,15 +446,18 @@ if git merge-base --is-ancestor "origin/$NEW_PARENT" HEAD; then
 fi
 
 if [[ "$ALREADY_RETARGETED" == false ]]; then
+  bt_git_mark_workflow_in_progress retarget "$TARGET_BRANCH" || \
+    bt_error_exit "$EXIT_GIT_FAILED" \
+      "Failed to record retarget progress for '$TARGET_BRANCH'"
   if ! git rebase "origin/$NEW_PARENT"; then
     bt_warn "Rebase conflicts detected while retargeting '$TARGET_BRANCH'"
     bt_info "Handoff required: branch owner resolves conflicts"
     echo "  1. Resolve conflicts in the current branch worktree"
-    echo "  2. Continue rebase: git rebase --continue"
-    echo "  3. Rerun retarget with -r after the local rebase is complete"
+    echo "  2. Rerun retarget with -r to continue and publish the rebase"
     bt_error_exit "$EXIT_REBASE_CONFLICT" \
       "Retarget paused for contributor conflict resolution"
   fi
+  bt_git_clear_workflow_in_progress retarget
 elif [[ "$REMOTE" == true ]]; then
   log_verbose "Local branch already contains new parent '$NEW_PARENT'; publishing existing retarget"
 else

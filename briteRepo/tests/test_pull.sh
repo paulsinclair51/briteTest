@@ -212,10 +212,9 @@ pass "main branch policy"
 rc=$(run_capture "$TMPDIR/main-owner-policy.out" env \
   GITHUB_ACTOR=testowner GITHUB_REPOSITORY=testowner/testrepo \
   bash -lc "cd '$WORK' && bash ./briteRepo/bin/pull -o")
-[[ "$rc" -eq 5 ]] || fail "pull -o on main should exit 5 (got $rc)"
-assert_contains "Current branch 'main' must be a version branch" \
-  "$TMPDIR/main-owner-policy.out"
-pass "owner override version branch policy"
+[[ "$rc" -eq 13 ]] || fail "pull -o on main should pass policy checks (got $rc)"
+assert_contains "no changes to pull" "$TMPDIR/main-owner-policy.out"
+pass "owner override main branch policy"
 
 (
   cd "$WORK"
@@ -385,7 +384,6 @@ pass "conflicting divergence pauses for manual resolution"
 (
   cd "$WORK"
   printf 'peer\nlocal\n' > conflict.txt
-  git add conflict.txt
 )
 reports_before="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pull-[0-9]*.md' -print | sort)"

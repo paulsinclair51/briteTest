@@ -27,6 +27,8 @@ Prerequisites:
     branch.
   - The current branch must be a local branch.
   - The current branch must not have an unfinished copyfix operation.
+  - The current branch must not have a pull rebase in progress. Resolve
+    conflicts and rerun pull to continue it.
 
 Note: To make changes to main, a version branch (v<M>.<m>.0), or a
 remote snapshot, first make the changes in a local targeted or contributor branch, run
@@ -116,6 +118,7 @@ Exit codes:
   6   Commit skipped due to -e option.
   7   No changes are available to commit.
   8   The current branch has an unfinished copyfix operation.
+  9   A pull rebase is in progress. Resolve conflicts and rerun pull.
   200 Failed to inspect, stage, or commit changes. Run `fixrepo` and retry.
       If the issue persists, create a new clone with `mkclone`, apply the
       changes, and retry.
@@ -173,6 +176,7 @@ readonly EXIT_REMOTE_LOCAL_CONFLICT=5
 readonly EXIT_WORKFLOW_SKIPPED=6
 readonly EXIT_NOTHING_TO_COMMIT=7
 readonly EXIT_COPYFIX_IN_PROGRESS=8
+readonly EXIT_REBASE_IN_PROGRESS=9
 readonly EXIT_WORKTREE_INSPECTION_FAILED=200
 readonly EXIT_STAGE_COMMIT_FAILED=200
 readonly EXIT_REPORT_WRITE_FAILED=201
@@ -1463,6 +1467,22 @@ if [[ "$CURRENT_BRANCH_MODE" != "local" ]]; then
   bt_error_exit "$EXIT_REMOTE_LOCAL_CONFLICT" "$(printf '%s%s' \
     "Commit must run on a local branch. Switch to local '$CURRENT_BRANCH' " \
     "and retry")"
+fi
+
+active_workflow="$(bt_git_workflow_in_progress_action "$CURRENT_BRANCH")"
+if [[ -n "$active_workflow" ]]; then
+  if [[ "$active_workflow" == copyfix ]]; then
+    bt_emit_prerequisite_failure "$EXIT_COPYFIX_IN_PROGRESS" \
+      "Current branch '$CURRENT_BRANCH' has an unfinished copyfix operation." \
+      "complete it with 'copyfix --continue' before rerunning commit."
+  fi
+  bt_emit_prerequisite_failure "$EXIT_REBASE_IN_PROGRESS" \
+    "A $active_workflow operation is in progress on '$CURRENT_BRANCH'." \
+    "resolve conflicts and rerun $active_workflow."
+elif bt_git_is_rebase_in_progress; then
+  bt_emit_prerequisite_failure "$EXIT_REBASE_IN_PROGRESS" \
+    "A pull operation is in progress on '$CURRENT_BRANCH'." \
+    "resolve conflicts and rerun pull."
 fi
 
 if bt_is_copyfix_in_progress "$CURRENT_BRANCH"; then
