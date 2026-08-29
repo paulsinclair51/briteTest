@@ -922,6 +922,12 @@ EOF
     bt_push_error_exit "$exit_push_failed" "Failed to push branch '$current_branch' to remote"
   fi
 
+  bt_undo_record_operation push "$current_branch" "$push_content_ref" \
+    "$push_content_ref" remote-reset \
+    "Pushed $commits_ahead commit(s) to origin/$current_branch" \
+    "$remote_branch_tip" "$push_content_ref" >/dev/null || \
+    bt_warn "Push completed, but undo metadata could not be recorded"
+
   bt_push_cleanup_success_transient_reports
 
   local pushed_tip_short=""

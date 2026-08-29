@@ -5,6 +5,10 @@
 # Sets core.hooksPath to point to the versioned hooks directory, allowing Git
 # to automatically find and execute hooks without copying them to .git/hooks/.
 #
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+#
 # Usage:
 #   bash <repo>/helpers/install_git_hooks.sh [--silent]
 #

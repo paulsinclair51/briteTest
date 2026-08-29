@@ -326,14 +326,18 @@ increment_counter() {
 report_created() {
   increment_counter CREATED_COUNT
   CREATED_PATHS+=("$1")
-  echo "  + $1"
+  if [[ "$VERBOSE" == true ]]; then
+    echo "  + $1"
+  fi
 }
 
 report_divergent() {
   increment_counter DIVERGENT_COUNT
   DIVERGENT_PATHS+=("$1")
-  echo "  ! $1 (non-canonical content; canonical copy:" \
-    "$(canonical_variant "$1"))"
+  if [[ "$VERBOSE" == true ]]; then
+    echo "  ! $1 (non-canonical content; canonical copy:" \
+      "$(canonical_variant "$1"))"
+  fi
 }
 
 report_unchanged() {

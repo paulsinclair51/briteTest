@@ -137,10 +137,33 @@ EOF
 rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/rmbranch -h")
 [[ "$rc" -eq 0 ]] || fail "rmbranch -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
+assert_contains "DELETE <branchname>" "$TMPDIR/help.out"
 pass "help output"
 
+# Risky deletion requires the exact branch-specific confirmation phrase.
+(
+  cd "$WORK"
+  git checkout -b "confirm-delete" main >/dev/null 2>&1
+  echo "confirm deletion" > confirm-delete.txt
+  git add confirm-delete.txt
+  git commit -m "confirm deletion" >/dev/null 2>&1
+  git push -u origin "confirm-delete" >/dev/null 2>&1
+  git checkout main >/dev/null 2>&1
+)
+rc=$(run_capture "$TMPDIR/confirm-cancel.out" env GITHUB_ACTOR=testuser \
+  bash -lc "cd '$WORK' && printf 'DELETE wrong-branch\n' | bash ./briteRepo/bin/rmbranch -a -f confirm-delete")
+[[ "$rc" -eq 2 ]] || fail "wrong deletion confirmation should cancel (got $rc)"
+assert_contains "Type DELETE confirm-delete to confirm:" \
+  "$TMPDIR/confirm-cancel.out"
+git -C "$WORK" show-ref --verify --quiet refs/heads/confirm-delete || \
+  fail "cancelled deletion should preserve local branch"
+rc=$(run_capture "$TMPDIR/confirm-delete.out" env GITHUB_ACTOR=testuser \
+  bash -lc "cd '$WORK' && printf 'DELETE confirm-delete\n' | bash ./briteRepo/bin/rmbranch -a -f confirm-delete")
+[[ "$rc" -eq 0 ]] || fail "exact deletion confirmation should succeed (got $rc)"
+pass "typed risky deletion confirmation"
+
 # 2) Non-conforming branch names should still be removable.
-rc=$(run_capture "$TMPDIR/nonconforming.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/rmbranch -a -f 'Bad.Branch_Name'")
+rc=$(run_capture "$TMPDIR/nonconforming.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'DELETE Bad.Branch_Name\n' | bash ./briteRepo/bin/rmbranch -a -f 'Bad.Branch_Name'")
 [[ "$rc" -eq 0 ]] || fail "rmbranch should delete non-conforming branch names (got $rc)"
 if (cd "$WORK" && git show-ref --verify --quiet refs/heads/Bad.Branch_Name); then
   fail "local Bad.Branch_Name should be deleted"
@@ -151,7 +174,7 @@ fi
 pass "non-conforming branch deletion"
 
 # A policy-invalid nonzero-patch branch is removable from remote.
-rc=$(run_capture "$TMPDIR/nonzero-patch.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/rmbranch -r 'v1.0.1'")
+rc=$(run_capture "$TMPDIR/nonzero-patch.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'DELETE v1.0.1\n' | bash ./briteRepo/bin/rmbranch -r 'v1.0.1'")
 [[ "$rc" -eq 0 ]] || fail "rmbranch should delete policy-invalid v1.0.1 (got $rc)"
 if (cd "$WORK" && git ls-remote --heads origin v1.0.1 | grep -q 'v1.0.1'); then
   fail "remote v1.0.1 should be deleted"
@@ -167,7 +190,7 @@ pass "version branch remote protection"
 
 # 3) History propagation soft-fail should not abort remote deletion.
 # logs/repository_history.md is intentionally absent in this fixture.
-rc=$(run_capture "$TMPDIR/history-soft-fail.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/rmbranch -r 'remote-only-delete'")
+rc=$(run_capture "$TMPDIR/history-soft-fail.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'DELETE remote-only-delete\n' | bash ./briteRepo/bin/rmbranch -r 'remote-only-delete'")
 [[ "$rc" -eq 0 ]] || fail "rmbranch -r should succeed when history propagation is unavailable (got $rc)"
 if (cd "$WORK" && git ls-remote --heads origin remote-only-delete | grep -q 'remote-only-delete'); then
   fail "remote-only-delete should be deleted from origin"
@@ -180,7 +203,7 @@ pass "history propagation soft-fail"
   git checkout -b "log-target-check" >/dev/null 2>&1
   git push -u origin "log-target-check" >/dev/null 2>&1
 )
-rc=$(run_capture "$TMPDIR/log-target.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && git checkout 'log-target-check' >/dev/null 2>&1 && bash ./briteRepo/bin/rmbranch -r 'log-target-check'")
+rc=$(run_capture "$TMPDIR/log-target.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && git checkout 'log-target-check' >/dev/null 2>&1 && printf 'DELETE log-target-check\n' | bash ./briteRepo/bin/rmbranch -r 'log-target-check'")
 [[ "$rc" -eq 0 ]] || fail "rmbranch -r should delete a branch from a non-main working branch (got $rc)"
 if (cd "$WORK" && git ls-remote --heads origin log-target-check | grep -q 'log-target-check'); then
   fail "log-target-check should be deleted from origin"
@@ -279,7 +302,7 @@ chmod +x "$FAKEBIN/git"
   git branch -D "push-fail-target" >/dev/null 2>&1
 )
 
-rc=$(run_capture "$TMPDIR/push-fail.out" env PATH="$FAKEBIN:$PATH" GITHUB_ACTOR=testuser bash -c "cd '$WORK' && bash ./briteRepo/bin/rmbranch -r 'push-fail-target'")
+rc=$(run_capture "$TMPDIR/push-fail.out" env PATH="$FAKEBIN:$PATH" GITHUB_ACTOR=testuser bash -c "cd '$WORK' && printf 'DELETE push-fail-target\n' | bash ./briteRepo/bin/rmbranch -r 'push-fail-target'")
 [[ "$rc" -eq 2 ]] || fail "rmbranch should exit 2 on remote delete failure (got $rc)"
 assert_contains "Failed to delete remote branch 'push-fail-target': simulated remote delete failure" "$TMPDIR/push-fail.out"
 pass "remote delete diagnostics"

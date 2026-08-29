@@ -2,6 +2,10 @@
 
 # ckbranchname.sh - Checks name to determine its branch type.
 #
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+#
 # Usage:
 #   ./briteRepo/helpers/ckbranchname.sh <name> [<type>]
 #

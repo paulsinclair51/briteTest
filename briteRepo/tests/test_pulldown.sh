@@ -257,9 +257,13 @@ reports_before="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pulldown-[0-9]*.md' -print | sort)"
 rc=$(run_capture "$TMPDIR/merge-push.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -f -c 'sync parent one'")
 [[ "$rc" -eq 0 ]] || fail "forced merge/push should exit 0 (got $rc)"
-assert_contains "Merge successful" "$TMPDIR/merge-push.out"
-assert_contains "Merge down complete" "$TMPDIR/merge-push.out"
+assert_contains "Merged parent 'v1.0.0' into 'dev/current-v1.0.0'" \
+  "$TMPDIR/merge-push.out"
 assert_contains "Run report for details." "$TMPDIR/merge-push.out"
+if grep -Eq 'Create merge commit|Merge successful|Merge down complete' \
+  "$TMPDIR/merge-push.out"; then
+  fail "normal pulldown output should be concise and non-interactive"
+fi
 reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pulldown-[0-9]*.md' -print | sort)"
 [[ "$reports_after" == "$reports_before" ]] || \
@@ -307,9 +311,10 @@ pass "force merge records report history"
 
 reports_before="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pulldown-[0-9]*.md' -print | sort)"
-rc=$(run_capture "$TMPDIR/merge-skip-push.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && printf 'y\nn\n' | bash ./briteRepo/bin/pulldown -c 'sync parent two'")
+rc=$(run_capture "$TMPDIR/merge-skip-push.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -c 'sync parent two'")
 [[ "$rc" -eq 0 ]] || fail "merge with push skipped should exit 0 (got $rc)"
-assert_contains "Merge successful" "$TMPDIR/merge-skip-push.out"
+assert_contains "Merged parent 'v1.0.0' into 'dev/current-v1.0.0'" \
+  "$TMPDIR/merge-skip-push.out"
 assert_contains "Run report for details." "$TMPDIR/merge-skip-push.out"
 reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pulldown-[0-9]*.md' -print | sort)"

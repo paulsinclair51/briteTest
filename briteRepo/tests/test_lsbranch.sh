@@ -156,6 +156,14 @@ current_branch="$(source "$SCRIPT_DIR/../helpers/common.sh"; \
 grep -Eq "^${current_branch} \\[current\\]" \
   "$TMPDIR/default.out" || \
   fail "current branch should be marked with [current] in stdout"
+default_branch_rows="$(grep -Ec "^${current_branch} \\[" \
+  "$TMPDIR/default.out")"
+[[ "$default_branch_rows" -eq 2 ]] || \
+  fail "default lsbranch should show current local and remote rows"
+if grep -Ev "^${current_branch} \\[|^Warning:" \
+  "$TMPDIR/default.out" | grep -q '[^[:space:]]'; then
+  fail "default lsbranch should not list the parent as a separate branch"
+fi
 if grep -q '^See .* for details\.$' "$TMPDIR/default.out"; then
   fail "lsbranch should not output a report path"
 fi

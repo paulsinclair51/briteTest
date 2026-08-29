@@ -100,6 +100,9 @@ test-pushup:
 test-pushup-parent:
 	bash ./briteRepo/tests/test_pushup_parent.sh
 
+test-restore:
+	bash ./briteRepo/tests/test_restore.sh
+
 test-report-helpers:
 	bash ./briteRepo/tests/test_report_helpers.sh
 

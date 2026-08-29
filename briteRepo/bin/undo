@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-# undo - uncommitted changes, commit, push, copyfix, pull, pulldown,
-#        or release.
+# undo - Undo the current branch's active or latest modifying operation.
 #
 # See usage below for details, or run: undo -h
 #
@@ -12,10 +11,14 @@
 usage() {
   cat <<'EOF'
 Usage:
-  undo [OPTIONS] [TYPE]
+  undo [OPTIONS]
   undo {-h | --help}
 
-Undo recent operations: uncommitted changes, commit, or pulldown.
+Undo the latest supported modifying operation on the current branch, or abort
+a supported operation in progress. Uncommitted changes are selected before
+completed operations. Earlier operations cannot be selected directly.
+Before changing the repository, undo describes the target and safety impact and
+requires typing `UNDO` exactly. Dry-run does not prompt.
 
 Prerequisites:
   - If the current branch is a targeted or contributor branch, the
@@ -24,49 +27,21 @@ Prerequisites:
   - If the current branch is main or a version branch, the user
     must be an approver (listed in <repo>/config/contributors.md
     with approver role) or the repository owner.
-  - If the current branch has an invalid name, TYPE must be uncommitted.
-    This allows undoing uncommitted changes on any branch, even if the
+  - If the current branch has an invalid name, only uncommitted changes can be
+    undone. This allows undoing accidental changes on any branch, even if the
     name is invalid, so that accidental uncommitted changes to a
     read-only branch can still be undone and the user can then change to
     another branch. Use rmbranch to delete invalid branches if needed.
-  - For undo uncommitted, the current branch may be local or remote.
-  - For undo commit, pull, or pulldown, the current branch must be local and
-    must have no uncommitted changes (undo uncommitted first and
-    rerun undo commit, pull, or pulldown).
-  - For undo push, the current branch must be the remote branch that was
-    the target of the push and must have no uncommitted changes
-    (undo uncommitted first and rerun undo push).
-  - For undo copyfix, the current branch must be local, must be the branch
-    to which the copyfix was the target and must have no uncommitted changes
-    (undo uncommitted first and rerun undo copyfix).
-  - For undo release, the current branch must be the branch
-    from which the release was made and must have no accidental uncommitted
-    changes (undo uncommitted first and rerun undo release).
-
-Arguments:
-  TYPE          The type of operation to undo:
-                  uncommitted  Undo uncommitted changes (revert working tree).
-                               This is the default if no TYPE is specified.
-                  commit       Soft reset to previous commit (staging area
-                  preserved).
-                  pull         Undo last pull (revert working tree and reset to
-                               previous commit).
-                  push         Undo last push (revert working tree and reset to
-                               previous commit).
-                  copyfix      Undo last copyfix (revert working tree and reset
-                  to
-                               previous commit).
-                  pulldown      Undo last merge down.
-                  release      Undo last release (delete local and remote tag,
-                               and delete GitHub release if it exists).
+  - The current branch must be local, except that accidental uncommitted
+    changes on a remote snapshot may be discarded.
 
 Options:
   -c TOKEN      undo comment from TOKEN.
   -- TOKEN...   undo comment from one or more tokens.
   -d            Dry-run. Validates preconditions and reports what
                 would be undone, but does not perform the undo.
-  -h, --help  Output this help to stdout and exit (other options and
-              arguments are ignored).
+  -h, --help    Output this help to stdout and exit (other options and
+                arguments are ignored).
   -t SEC        Remote operation timeout in seconds (default: 10)
                 for connecting to the remote if the current branch
                 is a remote branch. SEC must be an integer greater
@@ -84,24 +59,33 @@ Options:
       least one non-whitespace character.
 
 Examples:
-  # Undo uncommitted changes (revert working tree).
+  # Undo the current branch's active or latest modifying operation.
   undo
 
-  # Undo last merge down.
-  undo pulldown
+  # Undo the latest operation and record a comment.
+  undo -c "Undo incorrect change."
 
-   # Undo last commit with a comment.
-  undo commit -c "Undo incorrect change."
+  # Show additional diagnostics.
+  undo -v
 
-  # Undo merge down with verbose output.
-  undo pulldown -v
+Limits:
+  - Completed pushup and retarget history rewrites cannot be undone safely
+    unless their exact pre-operation local and remote tips were retained.
+  - Deleted branches, repositories, clones, and GitHub administration changes
+    cannot be reconstructed unless an external backup or retained ref exists.
+  - File-generating commands can be undone as uncommitted changes, or through
+    undo commit after their changes are committed.
+  - Repair commands are not reversed automatically because doing so can restore
+    the repository damage they repaired.
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
+  - Before a non-dry-run undo, writes the operation, target, and safety impact,
+    then prompts for the exact confirmation text `UNDO`.
   - Writes an undo report if successful to:
-      '<repo>/reports/undo-<TYPE>-YYYYMMDD-HHMMSS-<pid>.md'
-    The report is written locally based on the TYPE being undone:
+      '<repo>/reports/undo-<ACTION>-YYYYMMDD-HHMMSS-<pid>.md'
+    The report is written locally based on the action being undone:
       - For undo uncommitted, commit, pull, copyfix,and pulldown, the undo report
       is
         written to the current branch.
@@ -165,6 +149,7 @@ readonly EXIT_NO_PULL=5
 readonly EXIT_NO_PUSH=6
 readonly EXIT_NO_COPYFIX=7
 readonly EXIT_NO_PULLDOWN=8
+readonly EXIT_NO_RETARGET=9
 readonly EXIT_NO_RELEASE=10
 readonly EXIT_CONFIG_ERROR=11
 readonly EXIT_GIT_OPERATION_FAILED=200
@@ -179,6 +164,8 @@ usage_error() {
 
 # Default options
 UNDO_TYPE=""
+UNDO_STATE_FILE=""
+UNDO_OPERATION_ID=""
 VERBOSE=false
 COMMENT=""
 DRY_RUN=false
@@ -200,189 +187,261 @@ record_undo_workflow_event() {
   [[ "$current_branch" == "HEAD" ]] && current_branch="main"
   command_line="$(bt_format_command_line "undo" "${ORIGINAL_ARGS[@]}")"
 
-  if ! bt_record_workflow_event "undo" "$current_branch" \
+    if ! bt_record_workflow_event "undo" "$current_branch" \
       "$command_line" "Undo $operation: $details" HEAD \
       "Undo-Type" "$operation" \
+      "Undone-Operation-ID" "${UNDO_OPERATION_ID:-none}" \
+      "Comment" "${COMMENT:-none}" \
       "Details" "$details"; then
     bt_warn "Undo completed, but its workflow metadata could not be recorded"
   fi
 }
 
+detect_active_undo_type() {
+  local branch="$1"
+  local action=""
+
+  action="$(bt_git_workflow_in_progress_action "$branch")"
+  case "$action" in
+    pull|pulldown|retarget|copyfix)
+      printf '%s\n' "$action"
+      ;;
+    pushup)
+      bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
+        "A pushup operation is in progress on '$branch'." \
+        "resume it with 'pushup --continue'; pushup cannot be safely undone after publication begins."
+      ;;
+  esac
+}
+
+select_undo_candidate() {
+  local branch="$1"
+  local active_type=""
+
+  active_type="$(detect_active_undo_type "$branch")"
+  if [[ -n "$active_type" ]]; then
+    UNDO_TYPE="$active_type"
+    return 0
+  fi
+  if bt_is_worktree_dirty; then
+    UNDO_TYPE="uncommitted"
+    return 0
+  fi
+  UNDO_STATE_FILE="$(bt_undo_latest_operation "$branch" || true)"
+  [[ -n "$UNDO_STATE_FILE" ]] || \
+    bt_error_exit "$EXIT_NO_UNCOMMITTED" \
+      "No reversible modifying operation found for branch '$branch'"
+  UNDO_TYPE="$(git config --file "$UNDO_STATE_FILE" --get undo.operation)"
+  UNDO_OPERATION_ID="$(git config --file "$UNDO_STATE_FILE" --get undo.id)"
+}
+
+undo_recorded_operation() {
+  local state_file="$1"
+  local operation branch before_tip after_tip strategy summary current_tip undo_id
+  local remote_before remote_after remote_current target
+
+  operation="$(git config --file "$state_file" --get undo.operation)"
+  branch="$(git config --file "$state_file" --get undo.branch)"
+  before_tip="$(git config --file "$state_file" --get undo.before-tip)"
+  after_tip="$(git config --file "$state_file" --get undo.after-tip)"
+  strategy="$(git config --file "$state_file" --get undo.strategy)"
+  summary="$(git config --file "$state_file" --get undo.summary)"
+  remote_before="$(git config --file "$state_file" --get undo.remote-before-tip)"
+  remote_after="$(git config --file "$state_file" --get undo.remote-after-tip)"
+  target="$(git config --file "$state_file" --get undo.target 2>/dev/null || true)"
+  current_tip="$(git rev-parse HEAD 2>/dev/null || true)"
+  [[ "$current_tip" == "$after_tip" ]] || \
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+      "Cannot undo $operation: current branch tip no longer matches the recorded operation result"
+
+  if [[ "$DRY_RUN" == true ]]; then
+    bt_success "Dry-run: would undo $operation: $summary"
+    return 0
+  fi
+  confirm_undo "$operation" "$summary ($after_tip -> $before_tip)" || \
+    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
+  case "$strategy" in
+    soft-reset)
+      git reset --soft "$before_tip" >/dev/null 2>&1 || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to undo $operation"
+      ;;
+    hard-reset)
+      git reset --hard "$before_tip" >/dev/null 2>&1 || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to undo $operation"
+      ;;
+    revert-merge)
+      git revert -m 1 "$after_tip" --no-edit >/dev/null 2>&1 || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to undo $operation"
+      ;;
+    remote-reset)
+      remote_current="$(bt_run_remote_command git ls-remote origin \
+        "refs/heads/$branch" 2>/dev/null | awk 'NR == 1 { print $1 }')"
+      [[ "$remote_current" == "$remote_after" ]] || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+          "Cannot undo push: origin/$branch no longer matches the recorded pushed tip"
+      bt_run_remote_command env GIT_BYPASS_HOOKS=true git push \
+        --force-with-lease="refs/heads/$branch:$remote_after" origin \
+        "$remote_before:refs/heads/$branch" >/dev/null 2>&1 || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+          "Failed to restore origin/$branch to its previous tip"
+      ;;
+    local-remote-reset)
+      remote_current="$(bt_run_remote_command git ls-remote origin \
+        "refs/heads/$branch" 2>/dev/null | awk 'NR == 1 { print $1 }')"
+      [[ "$remote_current" == "$remote_after" ]] || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+          "Cannot undo $operation: origin/$branch no longer matches the recorded result"
+      bt_run_remote_command env GIT_BYPASS_HOOKS=true git push \
+        --force-with-lease="refs/heads/$branch:$remote_after" origin \
+        "$remote_before:refs/heads/$branch" >/dev/null 2>&1 || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+          "Failed to restore origin/$branch to its previous tip"
+      git reset --hard "$before_tip" >/dev/null 2>&1 || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+          "Remote was restored, but local $branch could not be reset"
+      ;;
+    delete-release)
+      [[ -n "$target" ]] || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+          "Recorded release does not identify its tag"
+      git rev-parse -q --verify "refs/tags/$target" >/dev/null 2>&1 || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+          "Release tag '$target' no longer exists locally"
+      bt_run_remote_command gh release delete "$target" --confirm \
+        >/dev/null 2>&1 || true
+      bt_run_remote_command env GIT_BYPASS_HOOKS=true git push origin \
+        --delete "$target" >/dev/null 2>&1 || true
+      git tag -d "$target" >/dev/null 2>&1 || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+          "Failed to delete local release tag '$target'"
+      ;;
+    *)
+      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+        "Undo strategy '$strategy' is not supported"
+      ;;
+  esac
+  undo_id="undo-$(date '+%s%N')-$$"
+  bt_undo_mark_operation_undone "$state_file" "$undo_id" || \
+    bt_warn "Operation was undone, but undo-stack metadata could not be updated"
+  record_undo_workflow_event "$operation" "$summary"
+  bt_success "$operation undone"
+}
+
 confirm_undo() {
   local operation="$1"
   local details="$2"
+  local safety=""
 
-  echo "WARN: This will undo the following operation:"
-  echo "  Type: $operation"
-  echo "  Details: $details"
-  echo -n "Continue? (y/N): "
+  case "$operation" in
+    uncommitted)
+      safety="Tracked changes and untracked files will be permanently discarded."
+      ;;
+    commit)
+      safety="The commit will be removed; its changes will remain staged."
+      ;;
+    pull|push|copyfix)
+      safety="The branch will be reset and commits after the selected point may become unreachable."
+      ;;
+    pulldown)
+      if [[ "$details" == In-progress* ]]; then
+        safety="The in-progress merge will be aborted and the previous branch state restored."
+      else
+        safety="The local branch will be reset to its exact state before the merge."
+      fi
+      ;;
+    retarget)
+      safety="The in-progress retarget rebase will be aborted and the previous branch state restored."
+      ;;
+    release)
+      safety="The local tag, remote tag, and GitHub release will be deleted."
+      ;;
+    *)
+      safety="Repository history or files will be changed."
+      ;;
+  esac
+
+  echo "Undo operation: $operation"
+  echo "Target: $details"
+  echo "Safety: $safety"
+  echo -n "Type UNDO to confirm: "
   read -r response
 
-  if [[ ! "$response" =~ ^[Yy]$ ]]; then
+  if [[ "$response" != "UNDO" ]]; then
     return 1
   fi
 
   return 0
 }
 
-undo_merge() {
-  local op_type="${1:-pulldown}"
-  local not_found_code="$EXIT_NO_PULLDOWN"
+undo_in_progress_git_operation() {
+  local operation="$1"
+  local current_branch=""
 
-  local current_branch
-  current_branch=$(bt_get_current_branch || \
-    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to determine current branch")
+  current_branch="$(bt_get_current_branch_or_empty)"
+  bt_git_workflow_marker_matches "$operation" "$current_branch" || return 1
 
-  bt_info "Checking for merge commits..."
+  case "$operation" in
+    pull|retarget)
+      bt_git_is_rebase_in_progress || return 1
+      if [[ "$DRY_RUN" == true ]]; then
+        bt_success "Dry-run: would abort in-progress $operation on $current_branch"
+        return 0
+      fi
+      confirm_undo "$operation" "In-progress rebase on $current_branch" || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
+      GIT_BYPASS_HOOKS=true git rebase --abort >/dev/null 2>&1 || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+          "Failed to abort in-progress $operation rebase"
+      ;;
+    pulldown)
+      git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 || return 1
+      if [[ "$DRY_RUN" == true ]]; then
+        bt_success "Dry-run: would abort in-progress pulldown on $current_branch"
+        return 0
+      fi
+      confirm_undo pulldown "In-progress merge on $current_branch" || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
+      GIT_BYPASS_HOOKS=true git merge --abort >/dev/null 2>&1 || \
+        bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+          "Failed to abort in-progress pulldown merge"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 
-  # Get last merge commit
-  local last_merge
-  last_merge=$(git log --oneline --grep="^Merge" -1 2>/dev/null | head -1)
-
-  if [[ -z "$last_merge" ]]; then
-    bt_error_exit "$not_found_code" "No ${op_type} operation found to undo"
-  fi
-
-  bt_info "Found merge commit: $last_merge"
-
-  # Extract commit hash and message
-  local commit_hash="${last_merge%% *}"
-  local commit_msg="${last_merge#* }"
-
-  if [[ "$DRY_RUN" == true ]]; then
-    bt_info "Dry-run: would revert merge commit $commit_hash"
-    return 0
-  fi
-
-  if ! confirm_undo "$op_type" "$commit_msg"; then
-    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
-  fi
-
-  # Revert the merge commit
-  bt_info "Reverting merge commit..."
-  if ! git revert -m 1 "$commit_hash" --no-edit 2>&1; then
-    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to revert merge commit"
-  fi
-
-  bt_success "Merge reverted"
-
-  # Log undo
-  if [[ -n "$COMMENT" ]]; then
-    record_undo_workflow_event "$op_type" \
-      "Reverted $commit_hash ($commit_msg). $COMMENT"
-  else
-    record_undo_workflow_event "$op_type" "Reverted $commit_hash ($commit_msg)"
-  fi
-
-  if [[ "$VERBOSE" == true ]]; then
-    bt_info "Revert details:"
-    git log -1 --oneline | sed 's/^/  /'
-  fi
+  bt_git_clear_workflow_in_progress "$operation"
+  record_undo_workflow_event "$operation" \
+    "Aborted in-progress $operation on $current_branch"
+  bt_success "In-progress $operation undone"
 }
 
-undo_release() {
-  get_current_user >/dev/null
+undo_copyfix() {
+  local current_branch=""
+  local state_dir=""
 
-  bt_info "Checking for recent release tags..."
-
-  # Get last annotated tag
-  local last_tag
-  last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-
-  if [[ -z "$last_tag" ]]; then
-    bt_error_exit "$EXIT_NO_RELEASE" "No release tag found to undo"
-  fi
-
-  bt_info "Found release tag: $last_tag"
-
-  if [[ "$DRY_RUN" == true ]]; then
-    bt_info "Dry-run: would delete release tag $last_tag locally/remotely" \
-            "and remove GitHub release"
+  current_branch="$(bt_get_current_branch_or_empty)"
+  state_dir="$(bt_copyfix_state_dir_for_branch "$current_branch" || true)"
+  if [[ -n "$state_dir" && -d "$state_dir" ]] && \
+    git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null 2>&1; then
+    if [[ "$DRY_RUN" == true ]]; then
+      bt_success "Dry-run: would abort in-progress copyfix on $current_branch"
+      return 0
+    fi
+    confirm_undo copyfix "In-progress cherry-pick on $current_branch" || \
+      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
+    GIT_BYPASS_HOOKS=true git cherry-pick --abort >/dev/null 2>&1 || \
+      bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
+        "Failed to abort in-progress copyfix"
+    rm -rf "$state_dir" "${state_dir}.lock"
+    record_undo_workflow_event copyfix \
+      "Aborted in-progress copyfix on $current_branch"
+    bt_success "In-progress copyfix undone"
     return 0
   fi
 
-  if ! confirm_undo "release" "Tag: $last_tag"; then
-    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
-  fi
-
-  # Delete local tag
-  bt_info "Deleting local tag..."
-  if ! git tag -d "$last_tag" 2>&1; then
-    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to delete local tag"
-  fi
-
-  # Delete remote tag
-  bt_info "Deleting remote tag..."
-  if ! bt_run_remote_command env GIT_BYPASS_HOOKS=true \
-    git push origin --delete "$last_tag" 2>&1; then
-    bt_warn "Failed to delete remote tag (may need manual cleanup)"
-  fi
-
-  bt_success "Tag deleted locally and remotely"
-
-  # Delete GitHub release if it exists
-  bt_info "Deleting GitHub release..."
-  if bt_run_remote_command gh release delete "$last_tag" --confirm 2>&1; then
-    bt_success "GitHub release deleted"
-  else
-    bt_warn "Failed to delete GitHub release (may need manual cleanup)"
-  fi
-
-  # Log undo
-  if [[ -n "$COMMENT" ]]; then
-    record_undo_workflow_event "release" "Deleted release $last_tag. $COMMENT"
-  else
-    record_undo_workflow_event "release" "Deleted release $last_tag"
-  fi
-
-  bt_success "Release undo complete"
-}
-
-undo_commit() {
-  local current_branch
-  current_branch=$(bt_get_current_branch || \
-    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to determine current branch")
-
-  bt_info "Checking for recent commits..."
-
-  # Get last commit
-  local last_commit
-  last_commit=$(git log --oneline -1 2>/dev/null | head -1)
-
-  if [[ -z "$last_commit" ]]; then
-    bt_error_exit "$EXIT_NO_COMMIT" "No commit to undo"
-  fi
-
-  bt_info "Found commit: $last_commit"
-
-  if [[ "$DRY_RUN" == true ]]; then
-    bt_info "Dry-run: would soft reset HEAD~1 from $last_commit"
-    return 0
-  fi
-
-  if ! confirm_undo "commit" "$last_commit"; then
-    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
-  fi
-
-  # Soft reset to previous commit (preserves changes in staging)
-  bt_info "Soft resetting to previous commit..."
-  if ! git reset --soft HEAD~1 2>&1; then
-    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to reset commit"
-  fi
-
-  bt_success "Commit undone (changes preserved in staging area)"
-
-  # Log undo
-  if [[ -n "$COMMENT" ]]; then
-    record_undo_workflow_event "commit" "Soft reset from $last_commit. $COMMENT"
-  else
-    record_undo_workflow_event "commit" "Soft reset from $last_commit"
-  fi
-
-  if [[ "$VERBOSE" == true ]]; then
-    bt_info "Status after undo:"
-    git status --short | sed 's/^/  /'
-  fi
+  bt_error_exit "$EXIT_NO_COPYFIX" \
+    "No in-progress copyfix operation found to undo"
 }
 
 undo_uncommitted() {
@@ -413,38 +472,9 @@ undo_uncommitted() {
       "Failed to remove untracked files"
   fi
 
+  record_undo_workflow_event uncommitted \
+    "Discarded tracked and untracked working tree changes"
   bt_success "Uncommitted changes undone"
-}
-
-undo_reset_hard_head() {
-  local op_type="$1"
-  local not_found_code="$2"
-
-  local last_commit
-  last_commit=$(git log --oneline -1 2>/dev/null | head -1)
-  if [[ -z "$last_commit" ]]; then
-    bt_error_exit "$not_found_code" "No ${op_type} operation found to undo"
-  fi
-
-  if [[ "$DRY_RUN" == true ]]; then
-    bt_info "Dry-run: would hard reset HEAD~1 to undo $op_type"
-    return 0
-  fi
-
-  if ! confirm_undo "$op_type" "$last_commit"; then
-    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
-  fi
-
-  if ! git reset --hard HEAD~1 >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to reset for $op_type"
-  fi
-
-  bt_success "$op_type undone"
-  if [[ -n "$COMMENT" ]]; then
-    record_undo_workflow_event "$op_type" "Hard reset from $last_commit. $COMMENT"
-  else
-    record_undo_workflow_event "$op_type" "Hard reset from $last_commit"
-  fi
 }
 
 # Parse options and arguments
@@ -492,26 +522,19 @@ while [[ $# -gt 0 ]]; do
       usage_error "Unknown option: $1"
       ;;
     *)
-      if [[ -z "$UNDO_TYPE" ]]; then
-        UNDO_TYPE="$1"
-        shift
-      else
-        usage_error "Unexpected argument: $1"
-      fi
+      usage_error "Unexpected argument: $1; undo automatically selects the latest operation"
       ;;
   esac
 done
 
 export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
 
-# Validate undo type provided
-if [[ -z "$UNDO_TYPE" ]]; then
-  UNDO_TYPE="uncommitted"
-fi
-
 # Validate current branch conforms to naming conventions
 current_branch=$(bt_get_current_branch || echo "main")
 [[ "$current_branch" == "HEAD" ]] && current_branch="main"
+if [[ -z "$UNDO_TYPE" ]]; then
+  select_undo_candidate "$current_branch"
+fi
 if bt_is_current_internal_remote_copy; then
   bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
     "Current branch '$current_branch' is a read-only remote snapshot." \
@@ -532,32 +555,36 @@ case "$history_status" in
 esac
 
 # Dispatch to appropriate undo function
+if [[ -n "$UNDO_STATE_FILE" ]]; then
+  undo_recorded_operation "$UNDO_STATE_FILE"
+  bt_success "Done"
+  exit 0
+fi
 case "$UNDO_TYPE" in
   uncommitted)
     undo_uncommitted
     ;;
   pulldown)
-    undo_merge "pulldown"
+    undo_in_progress_git_operation pulldown || \
+      bt_error_exit "$EXIT_NO_PULLDOWN" \
+        "No in-progress pulldown operation found to undo"
     ;;
   pull)
-    undo_reset_hard_head "pull" "$EXIT_NO_PULL"
-    ;;
-  push)
-    undo_reset_hard_head "push" "$EXIT_NO_PUSH"
+    undo_in_progress_git_operation pull || \
+      bt_error_exit "$EXIT_NO_PULL" \
+        "No in-progress pull operation found to undo"
     ;;
   copyfix)
-    undo_reset_hard_head "copyfix" "$EXIT_NO_COPYFIX"
+    undo_copyfix
     ;;
-  release)
-    undo_release
-    ;;
-  commit)
-    undo_commit
+  retarget)
+    undo_in_progress_git_operation retarget || \
+      bt_error_exit "$EXIT_NO_RETARGET" \
+        "No in-progress retarget operation found to undo"
     ;;
   *)
-    usage_error "Unknown undo type: $UNDO_TYPE" \
-      "(valid: uncommitted, commit, pull, push, copyfix, pulldown," \
-      "release)"
+    bt_error_exit "$EXIT_CONFIG_ERROR" \
+      "Undo selected unsupported active operation '$UNDO_TYPE'"
     ;;
 esac
 

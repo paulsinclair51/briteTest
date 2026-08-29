@@ -4,6 +4,7 @@
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
 #
 # Purpose: Define which scripts can be executed by each role.
 #          Roles are hierarchical: Approver > Reviewer > Contributor

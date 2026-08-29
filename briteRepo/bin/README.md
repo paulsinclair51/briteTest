@@ -107,11 +107,14 @@ are recorded and resumed with `pushup --continue`.
 **retarget**: Retarget a targeted branch locally; use `-r` to publish it.
 targeted branch is renamed to have its version as the specified version.
 
+**restore**: Select a committed version of one file and place it in the
+worktree for review and optional commit.
+
 **review**: Create or update a pull request.
 
 **rmbranch**: Remove local and/or remote branches.
 
-**undo**: Undo recent merge/release/commit operations.
+**undo**: Undo the current branch's active or latest reversible operation.
 
 ### README Directory Guide
 

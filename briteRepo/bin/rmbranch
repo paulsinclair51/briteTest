@@ -31,20 +31,19 @@ Permissions:
   - The current user must be a contributor, reviewer, or approver.
 
 Options:
-  -a                 Remove from both local and remote (alias for -l -r).
-  -c TOKEN           Branch-removal comment from TOKEN.
-                     Usage: rmbranch patch/old-fix -c
-                     "Reverted in favor of better approach.".
-  -- TOKEN...        Branch-removal comment from one or more tokens.
-                     Usage: rmbranch patch/old-fix -- 
-                     Reverted in favor of better approach.
-  -f                 Force removal when local branch has unmerged commits.
-  -h, --help  Output this help to stdout and exit (other options and
-              arguments are ignored).
-  -l                 Remove local branch.
-  -r                 Remove branch from remote.
-  -t SEC             Remote operation timeout in seconds (default: 10).
-                     SEC must be an integer greater than 0.
+  -a            Remove from both local and remote (alias for -l -r).
+  -c TOKEN      Branch-removal comment from TOKEN.
+                Usage: rmbranch patch/old-fix -c
+                "Reverted in favor of better approach.".
+  -- TOKEN...   Branch-removal comment from one or more tokens.
+                     Usage: rmbranch patch/old-fix --
+                Reverted in favor of better approach.
+  -h, --help    Output this help to stdout and exit (other options and
+                arguments are ignored).
+  -l            Remove local branch.
+  -r            Remove branch from remote.
+  -t SEC        Remote operation timeout in seconds (default: 10).
+                SEC must be an integer greater than 0.
 
   For branch-removal comment options '-c TOKEN' and '-- TOKEN...':
     - These options are mutually exclusive.
@@ -57,9 +56,10 @@ Options:
       include at least one non-whitespace character.
 
 Safety behavior:
-  - rmbranch does not prompt for confirmation.
-  - Without -f, local deletion uses safe mode and fails if unmerged
-    commits exist.
+  - rmbranch requires typing `DELETE <branchname>` when deletion may discard
+    unique commits or remove a parent branch used by another branch.
+  - rmbranch requires typing `DELETE <branchname>` when local deletion
+    is unable to use safe mode due to unpushed or unpushed-up changes.
   - Local-only deletion (-l) is blocked when the branch also exists on
     remote. Use -a (or -l -r) to remove both local and remote together.
   - When local deletion is requested (-l or default both), working tree must
@@ -320,6 +320,90 @@ find_branch_auto_stash_ref() {
     awk -F '\t' -v p="$prefix" 'index($2, p) { print $1; exit }'
 }
 
+branch_ahead_count() {
+  local base_ref="$1"
+  local branch_ref="$2"
+
+  git rev-list --count "$base_ref..$branch_ref" 2>/dev/null || echo 0
+}
+
+preferred_parent_ref() {
+  local branch="$1"
+  local parent=""
+
+  parent="$(bt_resolve_parent_branch "$branch" "" 2>/dev/null || true)"
+  [[ -n "$parent" ]] || return 1
+  if remote_branch_exists "$parent"; then
+    printf 'origin/%s\n' "$parent"
+  elif local_branch_exists "$parent"; then
+    printf '%s\n' "$parent"
+  fi
+}
+
+branch_children() {
+  local target="$1"
+  local candidate=""
+  local candidate_parent=""
+
+  git for-each-ref --format='%(refname:short)' refs/heads refs/remotes/origin \
+    2>/dev/null | sed 's#^origin/##' | grep -v '^HEAD$' | sort -u | \
+    while IFS= read -r candidate; do
+      [[ -n "$candidate" && "$candidate" != "$target" ]] || continue
+      candidate_parent="$(bt_resolve_parent_branch "$candidate" "" \
+        2>/dev/null || true)"
+      [[ "$candidate_parent" == "$target" ]] && printf '%s\n' "$candidate"
+    done || true
+}
+
+collect_deletion_risks() {
+  local parent_ref=""
+  local count=0
+  local children=""
+
+  DELETION_RISKS=()
+  if [[ "$LOCAL_EXISTS" == true && "$REMOTE_EXISTS" == true ]]; then
+    count="$(branch_ahead_count "origin/$BRANCHNAME" "$BRANCHNAME")"
+    if [[ "$count" -gt 0 ]]; then
+      DELETION_RISKS+=("local branch has $count commit(s) not on its remote")
+      DELETION_RISKS+=("remote branch is behind its local branch")
+    fi
+  fi
+  if [[ "$LOCAL_EXISTS" == true ]]; then
+    parent_ref="$(preferred_parent_ref "$BRANCHNAME" || true)"
+    if [[ -n "$parent_ref" ]]; then
+      count="$(branch_ahead_count "$parent_ref" "$BRANCHNAME")"
+      [[ "$count" -eq 0 ]] || \
+        DELETION_RISKS+=("local branch has $count commit(s) not on parent '$parent_ref'")
+    fi
+  fi
+  if [[ "$REMOTE_EXISTS" == true ]]; then
+    parent_ref="$(preferred_parent_ref "$BRANCHNAME" || true)"
+    if [[ -n "$parent_ref" ]]; then
+      count="$(branch_ahead_count "$parent_ref" "origin/$BRANCHNAME")"
+      [[ "$count" -eq 0 ]] || \
+        DELETION_RISKS+=("remote branch has $count commit(s) not on parent '$parent_ref'")
+    fi
+  fi
+  children="$(branch_children "$BRANCHNAME")"
+  if [[ -n "$children" ]]; then
+    DELETION_RISKS+=("branch is the parent of: $(tr '\n' ' ' <<< "$children" | sed 's/[[:space:]]*$//')")
+  fi
+}
+
+confirm_risky_deletion() {
+  local response=""
+  local reason=""
+
+  [[ ${#DELETION_RISKS[@]} -gt 0 ]] || return 0
+  echo "Branch deletion requires confirmation:"
+  for reason in "${DELETION_RISKS[@]}"; do
+    echo "  - $reason"
+  done
+  echo -n "Type DELETE $BRANCHNAME to confirm: "
+  read -r response
+  [[ "$response" == "DELETE $BRANCHNAME" ]]
+}
+
 # Parse options and arguments
 POSITIONAL_ARGS=()
 while [[ $# -gt 0 ]]; do
@@ -544,6 +628,11 @@ if [[ "$MODE" == "local" || "$MODE" == "both" ]]; then
       error_exit 8 "$_msg" "$BRANCHNAME" "$COMMENT"
     fi
   fi
+fi
+
+collect_deletion_risks
+if ! confirm_risky_deletion; then
+  error_exit 2 "Branch deletion cancelled" "$BRANCHNAME" "$COMMENT"
 fi
 
 # Delete local branch if needed

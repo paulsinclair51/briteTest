@@ -143,6 +143,8 @@ REMOTE_TIMEOUT_SECONDS=10
 REPORTS_DIR="$REPO_ROOT/reports"
 REPORT_FILE=""
 REPORT_LOCK_FD=""
+RETARGET_BEFORE_TIP=""
+RETARGET_REMOTE_BEFORE_TIP=""
 
 generate_error_report() {
   local message="$1"
@@ -391,6 +393,25 @@ fi
 
 cd "$REPO_ROOT"
 
+if bt_git_workflow_marker_matches retarget "$TARGET_BRANCH" && \
+  bt_git_is_rebase_in_progress; then
+  RETARGET_BEFORE_TIP="$(git rev-parse ORIG_HEAD 2>/dev/null || true)"
+  if ! bt_git_stage_resolved_rebase_files; then
+    bt_emit_prerequisite_failure "$EXIT_REBASE_CONFLICT" \
+      "Retarget still has unresolved conflicts on '$TARGET_BRANCH'." \
+      "resolve the remaining conflicts and rerun retarget -r."
+  fi
+  while bt_git_is_rebase_in_progress; do
+    if ! GIT_BYPASS_HOOKS=true GIT_EDITOR=true \
+      git rebase --continue >/dev/null 2>&1; then
+      bt_emit_prerequisite_failure "$EXIT_REBASE_CONFLICT" \
+        "Retarget rebase paused again on '$TARGET_BRANCH'." \
+        "resolve the remaining conflicts and rerun retarget -r."
+    fi
+  done
+  bt_git_clear_workflow_in_progress retarget
+fi
+
 if bt_is_worktree_dirty; then
   bt_error_exit "$EXIT_OPERATION_FAILED" \
     "Current branch has uncommitted changes. Commit first before running" \
@@ -430,10 +451,12 @@ else
     "Targeted branch '$TARGET_BRANCH' not found locally or on origin"
 fi
 
-bt_info "Retargeting '$TARGET_BRANCH' from '$OLD_PARENT' to '$NEW_PARENT'"
+log_verbose "Retargeting '$TARGET_BRANCH' from '$OLD_PARENT' to '$NEW_PARENT'"
+[[ -n "$RETARGET_BEFORE_TIP" ]] || \
+  RETARGET_BEFORE_TIP="$(git rev-parse HEAD 2>/dev/null || true)"
 if [[ "$DRY_RUN" == true ]]; then
-  bt_success "Dry-run passed"
-  bt_info "Rebase preview: git rebase origin/$NEW_PARENT"
+  bt_success "Dry-run: retarget $TARGET_BRANCH -> $NEW_PARENT"
+  log_verbose "Rebase preview: git rebase origin/$NEW_PARENT"
   if [[ -n "$ORIGINAL_BRANCH" && "$ORIGINAL_BRANCH" != "$TARGET_BRANCH" ]]; then
     git checkout "$ORIGINAL_BRANCH" >/dev/null 2>&1 || true
   fi
@@ -490,6 +513,8 @@ if [[ "$local_retarget_recorded" == false ]]; then
   fi
 fi
 if [[ "$REMOTE" == true ]]; then
+  RETARGET_REMOTE_BEFORE_TIP="$(git rev-parse \
+    "origin/$TARGET_BRANCH" 2>/dev/null || true)"
   if ! bt_refresh_remote_workflow_history; then
     bt_error_exit "$EXIT_OPERATION_FAILED" \
       "Failed to refresh remote report history before retarget publication"
@@ -510,6 +535,18 @@ if [[ "$REMOTE" == true ]]; then
     bt_error_exit "$EXIT_OPERATION_FAILED" \
       "Failed to publish retargeted branch and remote history atomically"
   fi
+fi
+
+if [[ "$REMOTE" == true ]]; then
+  bt_undo_record_operation retarget "$TARGET_BRANCH" \
+    "$RETARGET_BEFORE_TIP" "$retarget_tip" local-remote-reset \
+    "$MESSAGE" "$RETARGET_REMOTE_BEFORE_TIP" "$retarget_tip" >/dev/null || \
+    bt_warn "Retarget completed, but undo metadata could not be recorded"
+else
+  bt_undo_record_operation retarget "$TARGET_BRANCH" \
+    "$RETARGET_BEFORE_TIP" "$retarget_tip" hard-reset "$MESSAGE" \
+    >/dev/null || \
+    bt_warn "Retarget completed, but undo metadata could not be recorded"
 fi
 
 if [[ "$REMOTE" == true ]]; then

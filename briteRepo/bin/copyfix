@@ -177,6 +177,7 @@ ERROR_REPORT_IN_PROGRESS=false
 CLEANUP_DONE=false
 COPYFIX_STATE_LOCKED=false
 COPYFIX_STATE_OWNED=false
+COPYFIX_BEFORE_TIP=""
 COMMITS=""
 FILES_MODIFIED=0
 FILES_ADDED=0
@@ -442,6 +443,7 @@ save_copyfix_state() {
   printf '%s' "$COPY_COMMENT" > "$COPYFIX_STATE_DIR/comment"
   printf '%s\n' "$SOURCE_BRANCH" > "$COPYFIX_STATE_DIR/source"
   printf '%s\n' "$TARGET_BRANCH" > "$COPYFIX_STATE_DIR/target"
+  printf '%s\n' "$COPYFIX_BEFORE_TIP" > "$COPYFIX_STATE_DIR/before-tip"
   printf '%s\n' "$COMMITS" > "$COPYFIX_STATE_DIR/commits"
   printf '%s\n' "$FILES_MODIFIED" > "$COPYFIX_STATE_DIR/files-modified"
   printf '%s\n' "$FILES_ADDED" > "$COPYFIX_STATE_DIR/files-added"
@@ -479,6 +481,10 @@ record_copyfix_success() {
   [[ -z "$COMMITS" ]] || \
     commit_count="$(printf '%s\n' "$COMMITS" | sed '/^$/d' | wc -l | tr -d ' ')"
   command_line="$(format_command_line)"
+  bt_undo_record_operation copyfix "$TARGET_BRANCH" "$COPYFIX_BEFORE_TIP" \
+    "$(git rev-parse "$TARGET_BRANCH")" hard-reset \
+    "Copied ${commit_count} fix commit(s) from $SOURCE_BRANCH" >/dev/null || \
+    bt_warn "Copy completed, but undo metadata could not be recorded"
   if ! bt_record_workflow_event "copyfix" "$TARGET_BRANCH" "$command_line" \
     "Copied ${commit_count} fix commit(s) from $SOURCE_BRANCH to $TARGET_BRANCH" \
     "$TARGET_BRANCH" \
@@ -666,6 +672,8 @@ if [[ "$CONTINUE_MODE" == true ]]; then
   COPY_COMMENT="$(cat "$COPYFIX_STATE_DIR/comment" 2>/dev/null || true)"
   SOURCE_BRANCH="$(cat "$COPYFIX_STATE_DIR/source" 2>/dev/null || true)"
   TARGET_BRANCH="$(cat "$COPYFIX_STATE_DIR/target" 2>/dev/null || true)"
+  COPYFIX_BEFORE_TIP="$(cat "$COPYFIX_STATE_DIR/before-tip" \
+    2>/dev/null || git rev-parse ORIG_HEAD 2>/dev/null || true)"
   COMMITS="$(cat "$COPYFIX_STATE_DIR/commits" 2>/dev/null || true)"
   FILES_MODIFIED="$(cat "$COPYFIX_STATE_DIR/files-modified" 2>/dev/null || \
     echo 0)"
@@ -756,6 +764,7 @@ fi
 SOURCE_BRANCH="$SOURCE_BRANCH_ARG"
 TARGET_BRANCH=$(bt_get_current_branch || \
   bt_error_exit "$EXIT_GIT_FAILED" "Failed to determine current branch")
+COPYFIX_BEFORE_TIP="$(git rev-parse "$TARGET_BRANCH" 2>/dev/null || true)"
 if bt_is_current_internal_remote_copy; then
   bt_emit_prerequisite_failure "$EXIT_OPERATION_FAILED" \
     "Current branch '$TARGET_BRANCH' is a read-only remote snapshot." \
