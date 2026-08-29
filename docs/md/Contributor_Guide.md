@@ -446,8 +446,8 @@ If local safeguards are missing, run `setupclone` to restore them.
   then run `commit` and `push`.
 - **Reviewer requested changes:** use `feedback view`, make and test the
   changes, run `commit` and `push`, then respond and resolve addressed threads.
-- **Wrong files or commit:** run `undo -h` and use the matching mode. Do not
-  use direct reset commands.
+- **Wrong files or commit:** run `undo`; it selects the current branch's latest
+  reversible operation. Do not use direct reset commands.
 </details>
 
 <details>
@@ -456,12 +456,9 @@ If local safeguards are missing, run `setupclone` to restore them.
 ### 10.2. Interrupted Pushup
 
 - Restore the system or network connection.
-- If interruption occurred before parent publication, rerun `pushup`.
-- If parent publication started or may have succeeded, run
-  `pushup --continue`.
-- If continuation proves publication did not occur, it restores the saved
+- Rerun `pushup`; it inspects the saved phase and exact local and remote tips.
+- If recovery proves publication did not occur, it restores the saved
   local branch versions. Run `pushup` to begin again.
-- If unsure, rerun `pushup`. It recovers safely or instructs you to continue.
 - If the remote remains unavailable, restore connectivity and retry. The
   command retains saved recovery information rather than guessing.
 

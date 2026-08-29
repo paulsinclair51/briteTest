@@ -77,10 +77,11 @@ git -C "$WORK" switch dev/commit-tests-v1.0.0 >/dev/null 2>&1
 git -C "$WORK" branch -D r-dev/commit-tests-v1.0.0 >/dev/null 2>&1
 pass "remote snapshot branch name normalization"
 
-rc=$(run_capture "$TMPDIR/invalid-timeout.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/commit -t nope -d -c 'invalid timeout'")
-[[ "$rc" -eq 1 ]] || fail "unsupported -t should exit 1 (got $rc)"
-assert_contains "Unknown option: -t" "$TMPDIR/invalid-timeout.out"
-pass "unsupported -t rejection"
+rc=$(run_capture "$TMPDIR/unknown-option.out" bash -lc \
+  "cd '$WORK' && bash ./briteRepo/bin/commit --bogus")
+[[ "$rc" -eq 1 ]] || fail "unknown option should exit 1 (got $rc)"
+assert_contains "Unknown option: --bogus" "$TMPDIR/unknown-option.out"
+pass "unknown option rejection"
 
 before_commits="$(cd "$WORK" && git rev-list --count HEAD)"
 rc=$(run_capture "$TMPDIR/conflicting-modes.out" env GITHUB_ACTOR=testuser \
@@ -170,13 +171,7 @@ rc=$(run_capture "$TMPDIR/escaped-newline-message.out" env GITHUB_ACTOR=testuser
 assert_contains "User comment must include at least one non-whitespace character" "$TMPDIR/escaped-newline-message.out"
 pass "escaped newline-only message handling"
 
-# 6) -p should be rejected (auto-push is now implicit)
-rc=$(run_capture "$TMPDIR/p_option.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/commit -d -p -c 'invalid option test'")
-[[ "$rc" -eq 1 ]] || fail "commit -p should exit 1 (got $rc)"
-assert_contains "Unknown option: -p" "$TMPDIR/p_option.out"
-pass "-p option rejection"
-
-# 7) Positional file arguments should be rejected
+# 6) Positional file arguments should be rejected
 rc=$(run_capture "$TMPDIR/positional.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/commit README.md -c 'invalid positional arg test'")
 [[ "$rc" -eq 1 ]] || fail "commit with positional file argument should exit 1 (got $rc)"
 assert_contains "Unexpected argument: README.md" "$TMPDIR/positional.out"

@@ -96,8 +96,8 @@ Status tags:
   [behind parent by N]          Parent has N commits not on the selected branch.
   [diverged from parent: N/M]   Selected branch and parent have diverged; N
                                 selected-only and M parent-only commits.
-  [copyfix in progress]        Resume with copyfix --continue.
-  [pushup in progress]         Resume with pushup --continue.
+  [copyfix in progress]        Rerun copyfix to resume.
+  [pushup in progress]         Rerun pushup to resume.
   [pull in progress]            Resolve conflicts, then rerun pull.
   [retarget in progress]        Resolve conflicts, then rerun retarget -r.
   [pulldown in progress]        Resolve conflicts, then rerun pulldown.

@@ -237,7 +237,7 @@ status="$(run_capture "$TMPDIR/finalize-fail.out" bash -c \
   fail "partial pushup should return to the saved source branch"
 assert_contains "parent was published" "$TMPDIR/finalize-fail.out"
 status="$(run_capture "$TMPDIR/finalize-continue.out" bash -c \
-  "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
+  "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 0 ]] || fail "finalization continuation should complete, got $status"
 assert_contains "push-main 10" "$WORK/.remote-timeouts"
 assert_contains "push-main 30" "$WORK/.remote-timeouts"
@@ -251,7 +251,7 @@ echo "PASS: published parent with failed finalization resumes safely"
 mkdir -p "$WORK/.git/briteRepo"
 git config --file "$WORK/.git/briteRepo/pushup.state" pushup.version 1
 status="$(run_capture "$TMPDIR/incomplete-state.out" bash -c \
-  "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
+  "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 200 ]] || fail "incomplete state should exit 200, got $status"
 [[ -f "$WORK/.git/briteRepo/pushup.state" ]] || fail "incomplete state should be retained"
 assert_contains "state is incomplete" "$TMPDIR/incomplete-state.out"
@@ -270,7 +270,7 @@ prepared_tip="$(git -C "$WORK" rev-parse main)"
 write_state parent-publishing "$source_tip" "$parent_tip" "$prepared_tip"
 mv "$ORIGIN" "$ORIGIN.offline"
 status="$(run_capture "$TMPDIR/network-offline.out" bash -c \
-  "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
+  "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 5 ]] || fail "offline recovery should exit 5, got $status"
 [[ -f "$WORK/.git/briteRepo/pushup.state" ]] || \
   fail "offline recovery should retain state"
@@ -280,7 +280,7 @@ status="$(run_capture "$TMPDIR/network-offline.out" bash -c \
 assert_contains "origin is unavailable" "$TMPDIR/network-offline.out"
 mv "$ORIGIN.offline" "$ORIGIN"
 status="$(run_capture "$TMPDIR/network-reconnected.out" bash -c \
-  "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
+  "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 4 ]] || \
   fail "nonpublication after reconnect should roll back with exit 4, got $status"
 [[ ! -f "$WORK/.git/briteRepo/pushup.state" ]] || \
@@ -330,12 +330,12 @@ report="$(ls -t "$WORK/reports"/pushup-e-*.md 2>/dev/null | head -n 1)"
 [[ -n "$report" ]] || fail "partial run should write a pushup error report"
 assert_contains '| Publish parent | Completed |' "$report"
 assert_contains '| Synchronize source from parent | Pending |' "$report"
-assert_contains 'pushup --continue' "$report"
+assert_contains 'rerun `pushup`' "$report"
 echo "PASS: partial report identifies completed and pending work"
 
 git -C "$WORK" checkout main >/dev/null
 status="$(run_capture "$TMPDIR/continue.out" bash -c \
-  "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
+  "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 0 ]] || fail "continue should complete pushup, got $status"
 [[ "$(git -C "$WORK" branch --show-current)" == feature ]] || \
   fail "continue should reselect the saved source branch"
@@ -350,7 +350,7 @@ if grep -Eq 'Local merge complete|Run report|^Pushed \(' \
   "$TMPDIR/continue.out"; then
   fail "normal pushup output should suppress delegated command summaries"
 fi
-echo "PASS: pushup --continue completes retained work"
+echo "PASS: plain pushup completes retained work"
 
 # Crash after the atomic parent push but before parent-published was saved.
 add_feature_change "fourth feature"
@@ -361,12 +361,9 @@ prepared_tip="$(git -C "$WORK" rev-parse main)"
 write_state parent-publishing "$source_tip" "$parent_tip" "$prepared_tip"
 status="$(run_capture "$TMPDIR/published-needs-continue.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup")"
-[[ "$status" -eq 2 ]] || fail "plain pushup after parent publication should exit 2, got $status"
-assert_contains "run pushup --continue" "$TMPDIR/published-needs-continue.out"
-status="$(run_capture "$TMPDIR/published-continue.out" bash -c \
-  "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
-[[ "$status" -eq 0 ]] || fail "published-parent continuation should complete, got $status"
-echo "PASS: parent publication crash is inferred from the exact remote tip"
+[[ "$status" -eq 0 ]] || \
+  fail "plain pushup should resume published parent state, got $status"
+echo "PASS: parent publication crash is inferred and resumed automatically"
 
 # Another writer may fast-forward the remote after our parent push succeeds but
 # before recovery. The prepared commit's ancestry proves publication even when
@@ -387,7 +384,7 @@ git -C "$concurrent" commit -m "concurrent parent update" >/dev/null
 git -C "$concurrent" push origin main >/dev/null
 concurrent_tip="$(git --git-dir="$ORIGIN" rev-parse main)"
 status="$(run_capture "$TMPDIR/concurrent-parent-continue.out" bash -c \
-  "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
+  "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 0 ]] || fail "remote descendant should be accepted, got $status"
 git -C "$WORK" merge-base --is-ancestor "$concurrent_tip" feature || \
   fail "source should synchronize the newer remote parent tip"
@@ -409,7 +406,7 @@ exit 91
 EOF
 chmod +x "$WORK/briteRepo/bin/pulldown"
 status="$(run_capture "$TMPDIR/sync-commit-continue.out" bash -c \
-  "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
+  "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 0 ]] || fail "committed synchronization should be inferred, got $status"
 echo "PASS: source synchronization crash is inferred from ancestry"
 
@@ -424,7 +421,7 @@ git -C "$WORK" merge --no-edit main >/dev/null
 git -C "$WORK" push origin feature >/dev/null
 write_state source-publishing "$source_tip" "$parent_tip" "$prepared_tip"
 status="$(run_capture "$TMPDIR/source-push-continue.out" bash -c \
-  "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
+  "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 0 ]] || fail "published source should be inferred, got $status"
 [[ ! -f "$WORK/.git/briteRepo/pushup.state" ]] || \
   fail "inferred completion should remove state"
@@ -443,10 +440,10 @@ exit 143
 EOF
 chmod +x "$WORK/briteRepo/bin/chbranch"
 status="$(run_capture "$TMPDIR/signal.out" bash -c \
-  "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
+  "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 5 ]] || fail "signal interruption should exit 5, got $status"
 [[ -f "$WORK/.git/briteRepo/pushup.state" ]] || fail "signal should retain state"
-assert_contains "Run pushup --continue" "$TMPDIR/signal.out"
+assert_contains "Rerun pushup" "$TMPDIR/signal.out"
 cat > "$WORK/briteRepo/bin/chbranch" <<'EOF'
 #!/usr/bin/env bash
 git checkout "${@: -1}" >/dev/null
@@ -459,6 +456,6 @@ EOF
 chmod +x "$WORK/briteRepo/bin/chbranch" "$WORK/briteRepo/bin/pulldown"
 rm -rf "$WORK/.git/briteRepo/pushup-tools"
 status="$(run_capture "$TMPDIR/signal-continue.out" bash -c \
-  "cd '$WORK' && ./briteRepo/bin/pushup --continue")"
+  "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 0 ]] || fail "continuation after signal should complete, got $status"
 echo "PASS: signal interruption retains state and resumes"
