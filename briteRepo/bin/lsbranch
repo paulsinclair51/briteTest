@@ -16,8 +16,7 @@ Usage:
   lsbranch {-a | PATTERN} [-i] [-l] [-r] [-t SEC] [-v] [-x "PATTERN"]
   lsbranch {-h | --help}
 
-For first usage, list status of the current branch and its parent
-branch.
+For first usage, list the local and remote status of the current branch.
 
 Use BRANCH to list status of the branch with the name BRANCH and
 its parent branch.
@@ -1634,7 +1633,7 @@ else
   INCLUDE_REMOTE=$INCLUDE_REMOTE_FLAG
 fi
 
-# No-argument invocation should show the current branch and its parent branch.
+# No-argument invocation shows local and remote rows for the current branch.
 if [[ -z "$TARGET_BRANCH" && -z "$BRANCH_PATTERN" &&
     "$INCLUDE_LOCAL_FLAG" == false && "$INCLUDE_REMOTE_FLAG" == false ]]; then
   NO_ARG_MODE=true
@@ -1677,7 +1676,7 @@ if [[ -n "$TARGET_BRANCH" ]]; then
     "$ORIGINAL_BRANCH" "$BRANCH_PATTERN" "$EXCLUDE_PATTERN" \
     BRANCHES_TO_CHECK REMOTE_BRANCHES_TO_CHECK REMOTE_ONLY
 elif [[ -z "$BRANCH_PATTERN" ]]; then
-  # Default scope is current branch and its parent branch.
+  # Default scope is the current branch's local and remote refs.
   if ! has_local_branch "$ORIGINAL_BRANCH"; then
     bt_error_exit "$EXIT_NOT_FOUND" \
       "Current branch $ORIGINAL_BRANCH not found locally."
@@ -1728,7 +1727,7 @@ if [[ "$FETCH_FAILED" == true ]] &&
       "refs from your last successful remote update.")"
 fi
 
-# No-argument invocation shows rows for the current branch and its parent.
+# No-argument invocation shows local and remote rows for the current branch.
 if [[ "$NO_ARG_MODE" == true ]]; then
   if [[ -n "$BRANCHES_TO_CHECK" ]]; then
     while IFS= read -r branch; do

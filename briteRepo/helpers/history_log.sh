@@ -74,6 +74,72 @@ bt_record_remote_workflow_event() {
   bt_record_workflow_event_to_ref "briteRepo-remote-workflow" "$@"
 }
 
+bt_undo_record_operation() {
+  local operation="$1"
+  local branch="$2"
+  local before_tip="$3"
+  local after_tip="$4"
+  local strategy="$5"
+  local summary="$6"
+  local remote_before="${7:-}"
+  local remote_after="${8:-}"
+  local target="${9:-}"
+  local common_dir=""
+  local history_dir=""
+  local operation_id=""
+  local state_file=""
+
+  common_dir="$(git rev-parse --path-format=absolute --git-common-dir \
+    2>/dev/null)" || return 1
+  history_dir="$common_dir/briteRepo-undo-history"
+  mkdir -p "$history_dir" || return 1
+  operation_id="$(date '+%s%N')-$$-${RANDOM:-0}"
+  state_file="$history_dir/$operation_id.state"
+  git config --file "$state_file" undo.id "$operation_id"
+  git config --file "$state_file" undo.operation "$operation"
+  git config --file "$state_file" undo.branch "$branch"
+  git config --file "$state_file" undo.before-tip "$before_tip"
+  git config --file "$state_file" undo.after-tip "$after_tip"
+  git config --file "$state_file" undo.strategy "$strategy"
+  git config --file "$state_file" undo.summary "$summary"
+  git config --file "$state_file" undo.remote-before-tip "$remote_before"
+  git config --file "$state_file" undo.remote-after-tip "$remote_after"
+  git config --file "$state_file" undo.target "$target"
+  git config --file "$state_file" undo.undone false
+  printf '%s\n' "$state_file"
+}
+
+bt_undo_latest_operation() {
+  local branch="$1"
+  local common_dir=""
+  local history_dir=""
+  local state_file=""
+
+  common_dir="$(git rev-parse --path-format=absolute --git-common-dir \
+    2>/dev/null)" || return 1
+  history_dir="$common_dir/briteRepo-undo-history"
+  [[ -d "$history_dir" ]] || return 1
+  while IFS= read -r state_file; do
+    [[ "$(git config --file "$state_file" --get undo.branch \
+      2>/dev/null || true)" == "$branch" ]] || continue
+    [[ "$(git config --file "$state_file" --get undo.undone \
+      2>/dev/null || true)" != true ]] || continue
+    printf '%s\n' "$state_file"
+    return 0
+  done < <(find "$history_dir" -maxdepth 1 -type f -name '*.state' \
+    -printf '%f\n' | sort -r | sed "s#^#$history_dir/#")
+  return 1
+}
+
+bt_undo_mark_operation_undone() {
+  local state_file="$1"
+  local undo_id="$2"
+
+  [[ -f "$state_file" ]] || return 1
+  git config --file "$state_file" undo.undone true
+  git config --file "$state_file" undo.undo-id "$undo_id"
+}
+
 bt_refresh_remote_workflow_history() {
   local remote_ref="refs/notes/briteRepo-remote-workflow"
   local remote_tip=""

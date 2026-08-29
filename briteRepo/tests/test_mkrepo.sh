@@ -276,7 +276,7 @@ rc="$(run_capture "$WORK_DIR/legacy-dry.out" bash "$MKREPO" -d legacy-repo)"
 [[ "$rc" -eq 0 ]] || fail "mkrepo -d on an existing repository exit code $rc"
 LEGACY_DRY="$(sed -n 's/^Report: //p' "$WORK_DIR/legacy-dry.out")"
 
-rc="$(run_capture "$WORK_DIR/legacy.out" bash "$MKREPO" legacy-repo)"
+rc="$(run_capture "$WORK_DIR/legacy.out" bash "$MKREPO" -v legacy-repo)"
 [[ "$rc" -eq 0 ]] || fail "mkrepo on an existing repository exit code $rc"
 LEGACY_FINAL="$(sed -n 's/^Report: //p' "$WORK_DIR/legacy.out")"
 

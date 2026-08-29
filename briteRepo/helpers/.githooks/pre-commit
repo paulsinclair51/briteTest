@@ -2,6 +2,10 @@
 
 # pre-commit hook - Block direct git add and git commit operations
 #
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+#
 # This hook runs before 'git add' and 'git commit' commands.
 # It prevents developers from bypassing the script-based workflow.
 #
@@ -11,9 +15,6 @@
 #   git add <file>          → Use: commit -m "msg"
 #   git commit -m "msg"     → Use: commit -m "msg"
 #   git rm <file>           → Use: commit -m "msg"
-#
-# Copyright (c) 2026 Paul Sinclair
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

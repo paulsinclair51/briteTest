@@ -4,6 +4,7 @@
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
 #
 # Purpose: Standard validation functions used across GitHub Actions workflows.
 #          Centralizes validation logic to reduce duplication and improve

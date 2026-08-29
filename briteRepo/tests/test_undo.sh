@@ -105,18 +105,30 @@ pass "help output"
 # 2) Default type should be uncommitted and remove tracked/untracked changes.
 echo "dirty" >> "$WORK/README.md"
 echo "temp" > "$WORK/TEMP.txt"
-rc=$(run_capture "$TMPDIR/default-uncommitted.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'y\n' | bash ./briteRepo/bin/undo")
+rc=$(run_capture "$TMPDIR/default-uncommitted.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'UNDO\n' | bash ./briteRepo/bin/undo -c 'discard scratch files'")
 [[ "$rc" -eq 0 ]] || fail "undo default uncommitted should exit 0 (got $rc)"
+assert_contains "Undo operation: uncommitted" \
+  "$TMPDIR/default-uncommitted.out"
+assert_contains "Safety: Tracked changes and untracked files will be permanently discarded." \
+  "$TMPDIR/default-uncommitted.out"
+assert_contains "Type UNDO to confirm:" "$TMPDIR/default-uncommitted.out"
 [[ ! -e "$WORK/TEMP.txt" ]] || fail "expected untracked TEMP.txt to be removed"
 if [[ -n "$(cd "$WORK" && git status --porcelain)" ]]; then
   fail "expected clean worktree after undo default uncommitted"
 fi
+uncommitted_note="$(git -C "$WORK" notes --ref=briteRepo-workflow show HEAD \
+  2>/dev/null || true)"
+[[ "$uncommitted_note" == *"Workflow-Type: undo"* ]] || \
+  fail "uncommitted undo should record an undo event"
+[[ "$uncommitted_note" == *"Comment: discard scratch files"* ]] || \
+  fail "uncommitted undo should retain its comment"
 pass "default uncommitted behavior"
 
 # 3) No uncommitted changes should return documented code 3.
 rc=$(run_capture "$TMPDIR/no-uncommitted.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/undo")
 [[ "$rc" -eq 3 ]] || fail "undo with no changes should exit 3 (got $rc)"
-assert_contains "No uncommitted changes to undo" "$TMPDIR/no-uncommitted.out"
+assert_contains "No reversible modifying operation found" \
+  "$TMPDIR/no-uncommitted.out"
 pass "no-uncommitted exit code"
 
 # 4) Invalid branch names should still allow undo uncommitted.
@@ -125,7 +137,7 @@ pass "no-uncommitted exit code"
   git checkout -b BadBranch >/dev/null 2>&1
 )
 echo "invalid branch dirty" >> "$WORK/README.md"
-rc=$(run_capture "$TMPDIR/invalid-branch-uncommitted.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'y\n' | bash ./briteRepo/bin/undo")
+rc=$(run_capture "$TMPDIR/invalid-branch-uncommitted.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'UNDO\n' | bash ./briteRepo/bin/undo")
 [[ "$rc" -eq 0 ]] || fail "undo uncommitted should work on invalid branch name (got $rc)"
 if [[ -n "$(cd "$WORK" && git status --porcelain)" ]]; then
   fail "expected clean worktree after invalid-branch uncommitted undo"
@@ -141,15 +153,22 @@ pass "invalid branch allowed for uncommitted"
   git commit -m "change for commit dry run" >/dev/null 2>&1
 )
 before_hash="$(cd "$WORK" && git rev-parse HEAD)"
-rc=$(run_capture "$TMPDIR/commit-dry-run.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/undo -d commit -c 'test comment'")
-[[ "$rc" -eq 0 ]] || fail "undo -d commit -c should exit 0 (got $rc)"
-assert_contains "Dry-run: would soft reset HEAD~1" "$TMPDIR/commit-dry-run.out"
+before_commit="$(git -C "$WORK" rev-parse HEAD~1)"
+(
+  cd "$WORK"
+  source briteRepo/helpers/history_log.sh
+  bt_undo_record_operation commit main "$before_commit" "$before_hash" \
+    soft-reset "change for commit dry run" >/dev/null
+)
+rc=$(run_capture "$TMPDIR/commit-dry-run.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/undo -d -c 'test comment'")
+[[ "$rc" -eq 0 ]] || fail "undo -d -c should exit 0 (got $rc)"
+assert_contains "Dry-run: would undo commit" "$TMPDIR/commit-dry-run.out"
 after_hash="$(cd "$WORK" && git rev-parse HEAD)"
 [[ "$before_hash" == "$after_hash" ]] || fail "dry-run should not change HEAD"
 pass "dry-run and -c option handling"
 
 # 5b) Non-dry commit undo records workflow metadata instead of branch log files.
-rc=$(run_capture "$TMPDIR/commit-undo.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'y\n' | bash ./briteRepo/bin/undo commit -c 'metadata check'")
+rc=$(run_capture "$TMPDIR/commit-undo.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'UNDO\n' | bash ./briteRepo/bin/undo -c 'metadata check'")
 [[ "$rc" -eq 0 ]] || fail "undo commit should exit 0 (got $rc)"
 note="$(git -C "$WORK" notes --ref=briteRepo-workflow show HEAD 2>/dev/null || true)"
 [[ "$note" == *"Workflow-Type: undo"* ]] || \
@@ -161,6 +180,61 @@ if find "$WORK/logs" -maxdepth 1 -type f -name '*_history.md' ! -name 'repositor
 fi
 pass "undo workflow metadata"
 
+# Bare undo selects the latest recorded operation for the current branch.
+(
+  cd "$WORK"
+  source briteRepo/helpers/history_log.sh
+  before_tip="$(git rev-parse HEAD)"
+  echo "first ledger change" >> README.md
+  git add README.md
+  git commit -m "first ledger change" >/dev/null 2>&1
+  first_tip="$(git rev-parse HEAD)"
+  printf '%s\n' "$first_tip" > "$TMPDIR/first-ledger-tip"
+  bt_undo_record_operation commit main "$before_tip" "$first_tip" \
+    soft-reset "first ledger change" >/dev/null
+  echo "second ledger change" >> README.md
+  git add README.md
+  git commit -m "second ledger change" >/dev/null 2>&1
+  second_tip="$(git rev-parse HEAD)"
+  bt_undo_record_operation commit main "$first_tip" "$second_tip" \
+    soft-reset "second ledger change" >/dev/null
+)
+first_tip="$(cat "$TMPDIR/first-ledger-tip")"
+rc=$(run_capture "$TMPDIR/auto-latest.out" env GITHUB_ACTOR=testuser \
+  bash -lc "cd '$WORK' && printf 'UNDO\n' | bash ./briteRepo/bin/undo")
+[[ "$rc" -eq 0 ]] || fail "bare undo should select latest operation (got $rc)"
+assert_contains "Target: second ledger change" "$TMPDIR/auto-latest.out"
+[[ "$(git -C "$WORK" rev-parse HEAD)" == "$first_tip" ]] || \
+  fail "bare undo should reset to the latest operation's before tip"
+rc=$(run_capture "$TMPDIR/auto-uncommitted.out" env GITHUB_ACTOR=testuser \
+  bash -lc "cd '$WORK' && printf 'UNDO\n' | bash ./briteRepo/bin/undo")
+[[ "$rc" -eq 0 ]] || fail "second undo should discard staged changes (got $rc)"
+assert_contains "Undo operation: uncommitted" "$TMPDIR/auto-uncommitted.out"
+rc=$(run_capture "$TMPDIR/auto-previous.out" env GITHUB_ACTOR=testuser \
+  bash -lc "cd '$WORK' && printf 'UNDO\n' | bash ./briteRepo/bin/undo")
+[[ "$rc" -eq 0 ]] || fail "third undo should select preceding operation (got $rc)"
+assert_contains "Target: first ledger change" "$TMPDIR/auto-previous.out"
+pass "bare undo walks current-branch operation stack"
+
+# In-progress pull state is detected by its workflow marker and native rebase
+# state; dry-run describes the exact abort without requiring confirmation.
+(
+  cd "$WORK"
+  branch="$(git branch --show-current)"
+  marker="$(git rev-parse --git-path briteRepo/pull.in-progress)"
+  rebase_dir="$(git rev-parse --git-path rebase-merge)"
+  mkdir -p "$(dirname "$marker")" "$rebase_dir"
+  printf '%s\n' "$branch" > "$marker"
+  touch "$rebase_dir/git-rebase-todo"
+)
+rc=$(run_capture "$TMPDIR/pull-progress-dry.out" env GITHUB_ACTOR=testuser \
+  bash -lc "cd '$WORK' && bash ./briteRepo/bin/undo -d")
+[[ "$rc" -eq 0 ]] || fail "in-progress pull dry-run should exit 0 (got $rc)"
+assert_contains "would abort in-progress pull" "$TMPDIR/pull-progress-dry.out"
+rm -f "$WORK/.git/briteRepo/pull.in-progress"
+rm -rf "$WORK/.git/rebase-merge"
+pass "in-progress pull undo detection"
+
 # 6) pulldown should be accepted as a valid type.
 (
   cd "$WORK"
@@ -170,10 +244,21 @@ pass "undo workflow metadata"
   git commit -m "topic commit" >/dev/null 2>&1
   git checkout main >/dev/null 2>&1
   git merge --no-ff dev/topic-v1.0.0 -m "Merge branch 'dev/topic-v1.0.0'" >/dev/null 2>&1
+  source briteRepo/helpers/history_log.sh
+  bt_undo_record_operation pulldown main "$(git rev-parse HEAD~1)" \
+    "$(git rev-parse HEAD)" hard-reset \
+    "Merge branch dev/topic-v1.0.0" >/dev/null
 )
-rc=$(run_capture "$TMPDIR/pulldown-dry-run.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/undo -d pulldown")
-[[ "$rc" -eq 0 ]] || fail "undo -d pulldown should exit 0 (got $rc)"
-assert_contains "Dry-run: would revert merge commit" "$TMPDIR/pulldown-dry-run.out"
-pass "pulldown type support"
+rc=$(run_capture "$TMPDIR/pulldown-dry-run.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/undo -d")
+[[ "$rc" -eq 0 ]] || fail "automatic pulldown undo dry-run should exit 0 (got $rc)"
+assert_contains "Dry-run: would undo pulldown" "$TMPDIR/pulldown-dry-run.out"
+pass "pulldown automatic selection"
+
+rc=$(run_capture "$TMPDIR/type-rejected.out" bash -lc \
+  "cd '$WORK' && bash ./briteRepo/bin/undo commit")
+[[ "$rc" -eq 1 ]] || fail "positional undo type should be rejected (got $rc)"
+assert_contains "undo automatically selects the latest operation" \
+  "$TMPDIR/type-rejected.out"
+pass "positional undo type rejected"
 
 echo "All undo smoke tests passed."

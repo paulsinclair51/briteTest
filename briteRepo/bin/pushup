@@ -537,6 +537,14 @@ fail_before_publication() {
   exit "$EXIT_PARTIAL"
 }
 
+run_delegated() {
+  if [[ "$(state_get verbose)" == true ]]; then
+    "$@"
+  else
+    "$@" >/dev/null
+  fi
+}
+
 prepare_parent() {
   local -a args=(-t "$(state_get timeout)")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
@@ -545,7 +553,7 @@ prepare_parent() {
     option) args+=(-c "$(state_get comment)") ;;
     tokens) args+=(-- "$(state_get comment)") ;;
   esac
-  bash "$TOOL_DIR/helpers/pushup_parent.sh" "${args[@]}"
+  run_delegated bash "$TOOL_DIR/helpers/pushup_parent.sh" "${args[@]}"
 }
 
 dry_run_parent() {
@@ -574,20 +582,21 @@ run_push() {
   local timeout_seconds="$1"
   local -a args=(-t "$timeout_seconds")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  "$TOOL_DIR/bin/push" "${args[@]}"
+  run_delegated "$TOOL_DIR/bin/push" "${args[@]}"
 }
 
 run_push_source() {
   local timeout_seconds="$1"
   local -a args=(--pushup-source -t "$timeout_seconds")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  "$TOOL_DIR/bin/push" "${args[@]}"
+  run_delegated "$TOOL_DIR/bin/push" "${args[@]}"
 }
 
 run_push_finalization_retry() {
   local -a args=(-t "$(extended_remote_timeout)")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  BT_PUSHUP_FINALIZATION_RETRY=true "$TOOL_DIR/bin/push" "${args[@]}"
+  BT_PUSHUP_FINALIZATION_RETRY=true \
+    run_delegated "$TOOL_DIR/bin/push" "${args[@]}"
 }
 
 publish_parent() {
@@ -631,7 +640,7 @@ retry_parent_finalization() {
   local parent_branch
   parent_branch="$(state_get parent)"
   if [[ "$(bt_get_current_branch || true)" != "$parent_branch" ]] && \
-    ! "$TOOL_DIR/bin/chbranch" -l "$parent_branch"; then
+    ! run_delegated "$TOOL_DIR/bin/chbranch" -l "$parent_branch"; then
     write_partial_report \
       "The published parent could not be selected to retry PR finalization." \
       "Resolve the local checkout problem without changing branch history."
@@ -650,7 +659,7 @@ retry_parent_finalization() {
 select_source() {
   local source_branch
   source_branch="$(state_get source)"
-  if ! "$TOOL_DIR/bin/chbranch" -l "$source_branch"; then
+  if ! run_delegated "$TOOL_DIR/bin/chbranch" -l "$source_branch"; then
     write_partial_report "The published parent could not be followed by selecting the source branch." \
       "Resolve the local checkout problem without changing branch history."
     exit "$EXIT_PARTIAL"
@@ -664,14 +673,14 @@ synchronize_source() {
 
   source_branch="$(state_get source)"
   if [[ "$(bt_get_current_branch || true)" != "$source_branch" ]] && \
-    ! "$TOOL_DIR/bin/chbranch" -l "$source_branch"; then
+    ! run_delegated "$TOOL_DIR/bin/chbranch" -l "$source_branch"; then
     write_partial_report "The source branch could not be selected for synchronization." \
       "Resolve the local checkout problem without changing branch history."
     exit "$EXIT_PARTIAL"
   fi
 
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  if "$TOOL_DIR/bin/pulldown" "${args[@]}"; then
+  if run_delegated "$TOOL_DIR/bin/pulldown" "${args[@]}"; then
     set_phase source-synchronized
     return 0
   fi
@@ -712,7 +721,7 @@ publish_source() {
   local source_branch local_tip published_tip
   source_branch="$(state_get source)"
   if [[ "$(bt_get_current_branch || true)" != "$source_branch" ]] && \
-    ! "$TOOL_DIR/bin/chbranch" -l "$source_branch"; then
+    ! run_delegated "$TOOL_DIR/bin/chbranch" -l "$source_branch"; then
     write_partial_report "The source branch could not be selected for publication." \
       "Resolve the local checkout problem without changing branch history."
     exit "$EXIT_PARTIAL"
@@ -735,7 +744,7 @@ publish_source() {
     ! git merge-base --is-ancestor "$published_tip" HEAD >/dev/null 2>&1; then
     local -a pull_args=(-t "$(extended_remote_timeout)")
     [[ "$(state_get verbose)" == true ]] && pull_args+=(-v)
-    if "$TOOL_DIR/bin/pull" "${pull_args[@]}" && \
+    if run_delegated "$TOOL_DIR/bin/pull" "${pull_args[@]}" && \
       run_push_source "$(extended_remote_timeout)"; then
       set_phase source-published
       return 0

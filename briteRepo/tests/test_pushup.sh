@@ -346,6 +346,10 @@ status="$(run_capture "$TMPDIR/continue.out" bash -c \
 [[ "$(git --git-dir="$ORIGIN" rev-parse feature)" == \
   "$(git -C "$WORK" rev-parse feature)" ]] || fail "source should be published"
 assert_contains 'Push-up complete' "$TMPDIR/continue.out"
+if grep -Eq 'Local merge complete|Run report|^Pushed \(' \
+  "$TMPDIR/continue.out"; then
+  fail "normal pushup output should suppress delegated command summaries"
+fi
 echo "PASS: pushup --continue completes retained work"
 
 # Crash after the atomic parent push but before parent-published was saved.

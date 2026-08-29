@@ -2,6 +2,10 @@
 
 # ckrole.sh - Verify whether the current user has a requested contributor role.
 #
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see LICENSE in the repository root.
+#
 # Usage:
 #   ./briteRepo/helpers/ckrole.sh <ROLE>
 #
