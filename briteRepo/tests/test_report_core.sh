@@ -21,6 +21,8 @@ assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "-q TEXT" "$TMPDIR/help.out"
 assert_contains "If the current branch is a remote snapshot" "$TMPDIR/help.out"
 assert_contains "TYPE may appear before or after options" "$TMPDIR/help.out"
+assert_contains "Additional options only for a style report:" \
+  "$TMPDIR/help.out"
 if grep -Fq "Required history" "$TMPDIR/help.out"; then
   fail "help should not claim that missing history can be detected"
 fi

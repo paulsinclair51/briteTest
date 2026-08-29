@@ -1476,7 +1476,7 @@ if [[ -n "$active_workflow" ]]; then
   if [[ "$active_workflow" == copyfix ]]; then
     bt_emit_prerequisite_failure "$EXIT_COPYFIX_IN_PROGRESS" \
       "Current branch '$CURRENT_BRANCH' has an unfinished copyfix operation." \
-      "complete it with 'copyfix --continue' before rerunning commit."
+      "rerun copyfix to complete it before rerunning commit."
   fi
   bt_emit_prerequisite_failure "$EXIT_REBASE_IN_PROGRESS" \
     "A $active_workflow operation is in progress on '$CURRENT_BRANCH'." \
@@ -1490,7 +1490,7 @@ fi
 if bt_is_copyfix_in_progress "$CURRENT_BRANCH"; then
   bt_emit_prerequisite_failure "$EXIT_COPYFIX_IN_PROGRESS" \
     "Current branch '$CURRENT_BRANCH' has an unfinished copyfix operation." \
-    "complete it with 'copyfix --continue' before rerunning commit."
+    "rerun copyfix to complete it before rerunning commit."
 fi
 
 initialize_commit_work_lock_paths "$CURRENT_BRANCH"

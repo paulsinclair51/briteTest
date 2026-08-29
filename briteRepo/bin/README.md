@@ -98,7 +98,7 @@ corresponding remote branch.
 
 **pushup**: Push the current branch up to its parent, publish the parent,
 resynchronize the source branch, and publish the source. Partial push-up workflows
-are recorded and resumed with `pushup --continue`.
+are recorded and resumed by rerunning `pushup`.
 
 **release**: Create and publish releases.
 

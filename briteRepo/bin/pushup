@@ -10,7 +10,6 @@ usage() {
   cat <<'EOF'
 Usage:
   pushup [OPTIONS] [-- TOKEN...]
-  pushup --continue
   pushup {-h | --help}
 
 Push the current local branch up to its parent, publish the parent, merge the
@@ -27,9 +26,9 @@ validated.
 Crash and interruption recovery:
   - Rerun pushup after an interruption before parent publication. It verifies
     the remote parent, restores the saved local refs, and restarts validation.
-  - Run pushup --continue when the parent may have been published. It compares
-    exact local and remote tips, resumes the first incomplete step, and safely
-    handles an operation that completed just before the process stopped.
+  - Rerun pushup when the parent may have been published. It compares exact
+    local and remote tips, resumes the first incomplete step, and safely handles
+    an operation that completed just before the process stopped.
   - If remote state cannot be verified, pushup retains its state and does not
     roll back local refs. Restore connectivity and rerun the indicated command.
   - Do not edit branches or remove <git-dir>/briteRepo/pushup.state while a
@@ -38,7 +37,6 @@ Crash and interruption recovery:
     configured timeout to allow additional time for recovery and verification.
 
 Options:
-  --continue    Continue a partially completed push-up workflow.
   -c TOKEN      Commit comment for the parent push-up commit.
   -- TOKEN...   Commit comment built from one or more tokens.
   -d            Dry-run. Validate and preview the parent preparation without
@@ -55,10 +53,9 @@ Options:
 Exit codes:
   0    Push-up workflow completed.
   1    Invalid option or argument.
-  2    Another pushup process is active, or --continue is required.
-  3    No partial push-up workflow is available to continue.
+  2    Another pushup process is active.
   4    Push-up workflow failed before publication; local state was restored.
-  5    Push-up workflow partially completed; run pushup --continue after following
+  5    Push-up workflow partially completed; rerun pushup after following
        the guidance in the reported pushup error report.
   36   Push-up skipped because -e was specified.
   200  Internal state or recovery error.
@@ -75,8 +72,8 @@ EOF
 #   may roll back to the saved refs; afterward, the workflow is resumable only.
 # - Return to the source, merge the published parent down, publish the source,
 #   and remove state only after both remote refs contain the expected commits.
-# - On interruption, retain state and direct the contributor to either rerun
-#   pushup (pre-publication) or use pushup --continue (after publication).
+# - On interruption, retain state and direct the contributor to rerun pushup;
+#   saved phase and exact remote tips determine restart or continuation.
 
 set -euo pipefail
 
@@ -92,14 +89,12 @@ source "$SCRIPT_DIR/../helpers/history_log.sh"
 
 readonly EXIT_USAGE=1
 readonly EXIT_ACTIVE=2
-readonly EXIT_NOTHING_TO_CONTINUE=3
 readonly EXIT_PREPUBLICATION_FAILED=4
 readonly EXIT_PARTIAL=5
 readonly EXIT_INTERNAL=200
 readonly STATE_VERSION=1
 readonly REMOTE_REACCESS_MULTIPLIER=3
 
-CONTINUE=false
 OWNER_OVERRIDE=false
 VERBOSE=false
 DRY_RUN=false
@@ -341,7 +336,7 @@ reconcile_state() {
           set_phase publication-uncertain
           write_partial_report \
             "The remote parent contains the prepared commit, but the local parent could not be fast-forwarded to it." \
-            "Restore a clean worktree and ensure the parent is not checked out in another worktree, then run pushup --continue."
+            "Restore a clean worktree and ensure the parent is not checked out in another worktree, then rerun pushup."
           exit "$EXIT_PARTIAL"
         fi
         set_phase parent-published
@@ -411,7 +406,7 @@ on_interrupt() {
   if is_prepublication_phase "$phase"; then
     printf 'Rerun pushup to recover local state and restart safely.\n' >&2
   else
-    printf 'Run pushup --continue to inspect remote state and resume safely.\n' >&2
+    printf 'Rerun pushup to inspect remote state and resume safely.\n' >&2
   fi
   exit "$EXIT_PARTIAL"
 }
@@ -466,13 +461,13 @@ $reason
 
 $action
 
-After completing that action, run \`pushup --continue\`.
+After completing that action, rerun \`pushup\`.
 EOF
   chmod a-w "$report_file" 2>/dev/null || true
   printf '%s\n' "Push-up workflow partially completed: $reason" >&2
   printf '%s\n' "See ${report_file#"$REPO_ROOT"/} for completed and remaining steps." >&2
   printf '%s\n' "$action" >&2
-  printf '%s\n' "Then run: pushup --continue" >&2
+  printf '%s\n' "Then run: pushup" >&2
 }
 
 phase_rank() {
@@ -533,7 +528,7 @@ fail_before_publication() {
   fi
   write_partial_report \
     "Local restoration could not be completed after: $reason" \
-    "Run fixlocal, restore the recorded branch tips, and rerun pushup --continue."
+    "Run fixlocal, restore the recorded branch tips, and rerun pushup."
   exit "$EXIT_PARTIAL"
 }
 
@@ -753,14 +748,13 @@ publish_source() {
 
   set_phase source-publish-failed
   write_partial_report "The parent and local source were updated, but the source was not published." \
-    "Resolve the pull/push error shown above; safe remote divergence is reconciled automatically on continue."
+    "Resolve the pull/push error shown above; safe remote divergence is reconciled automatically when pushup is rerun."
   exit "$EXIT_PARTIAL"
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
-    --continue) CONTINUE=true; shift ;;
     -d) DRY_RUN=true; shift ;;
     -e) ERROR_RUN=true; shift ;;
     -o) OWNER_OVERRIDE=true; shift ;;
@@ -784,13 +778,6 @@ if [[ "$DRY_RUN" == true && "$ERROR_RUN" == true ]]; then
   exit "$EXIT_USAGE"
 fi
 
-if [[ "$CONTINUE" == true && ( "$OWNER_OVERRIDE" == true || "$VERBOSE" == true || \
-  "$DRY_RUN" == true || "$ERROR_RUN" == true || "$TIMEOUT_SECONDS" != 10 || \
-  -n "$COMMENT_MODE" ) ]]; then
-  usage >&2
-  exit "$EXIT_USAGE"
-fi
-
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [[ -n "$REPO_ROOT" ]] || { echo "Error: pushup must run in a Git repository." >&2; exit "$EXIT_USAGE"; }
 REPORTS_DIR="$REPO_ROOT/reports"
@@ -805,7 +792,7 @@ trap 'on_interrupt TERM' TERM
 
 if [[ "$DRY_RUN" == true || "$ERROR_RUN" == true ]]; then
   if [[ -f "$STATE_FILE" ]]; then
-    echo "Error: pushup state already exists; run pushup --continue or fixlocal before dry-run/error-run." >&2
+    echo "Error: pushup state already exists; rerun pushup without -d/-e or use fixlocal." >&2
     exit "$EXIT_ACTIVE"
   fi
   if [[ "$DRY_RUN" == true ]]; then
@@ -826,22 +813,15 @@ if [[ -f "$STATE_FILE" ]]; then
   phase="$(state_get phase)"
   if is_prepublication_phase "$phase"; then
     # No exact prepared parent commit is present remotely. Restore the saved
-    # local refs and restart, regardless of whether the user chose --continue.
+    # local refs and restart validation.
     rollback_local_prepublication || {
       write_partial_report \
         "Prepublication state was found, but local rollback failed." \
         "Run fixlocal and restore the source and parent refs recorded in the state file."
       exit "$EXIT_PARTIAL"
     }
-    CONTINUE=false
     echo "Recovered an interrupted prepublication push-up; restarting validation."
-  elif [[ "$CONTINUE" == false ]]; then
-    echo "Error: the parent may already be published; run pushup --continue." >&2
-    exit "$EXIT_ACTIVE"
   fi
-elif [[ "$CONTINUE" == true ]]; then
-  echo "Error: no partial push-up workflow is available to continue." >&2
-  exit "$EXIT_NOTHING_TO_CONTINUE"
 fi
 
 if [[ ! -f "$STATE_FILE" ]]; then

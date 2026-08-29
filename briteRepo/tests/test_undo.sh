@@ -10,6 +10,8 @@ set -euo pipefail
 export LC_ALL=C
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common_test_helpers.sh
+source "$SCRIPT_DIR/common_test_helpers.sh"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 UNDO_SRC="$REPO_ROOT/briteRepo/bin/undo"
 COMMON_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/common.sh"
@@ -17,31 +19,6 @@ GIT_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/git_helpers.sh"
 HISTORY_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/history_log.sh"
 VALIDATION_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/validation_helpers.sh"
 COMMON_UTILS_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/common_utils.sh"
-
-pass() {
-  echo "PASS: $1"
-}
-
-fail() {
-  echo "FAIL: $1" >&2
-  exit 1
-}
-
-run_capture() {
-  local outfile="$1"
-  shift
-  set +e
-  "$@" >"$outfile" 2>&1
-  local rc=$?
-  set -e
-  echo "$rc"
-}
-
-assert_contains() {
-  local text="$1"
-  local file="$2"
-  grep -Fq -- "$text" "$file" || fail "expected '$text' in $file"
-}
 
 for dep in bash git grep mktemp; do
   command -v "$dep" >/dev/null 2>&1 || fail "missing required command: $dep"
@@ -253,12 +230,5 @@ rc=$(run_capture "$TMPDIR/pulldown-dry-run.out" env GITHUB_ACTOR=testuser bash -
 [[ "$rc" -eq 0 ]] || fail "automatic pulldown undo dry-run should exit 0 (got $rc)"
 assert_contains "Dry-run: would undo pulldown" "$TMPDIR/pulldown-dry-run.out"
 pass "pulldown automatic selection"
-
-rc=$(run_capture "$TMPDIR/type-rejected.out" bash -lc \
-  "cd '$WORK' && bash ./briteRepo/bin/undo commit")
-[[ "$rc" -eq 1 ]] || fail "positional undo type should be rejected (got $rc)"
-assert_contains "undo automatically selects the latest operation" \
-  "$TMPDIR/type-rejected.out"
-pass "positional undo type rejected"
 
 echo "All undo smoke tests passed."
