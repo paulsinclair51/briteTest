@@ -2,7 +2,7 @@
 
 # restore - Select a committed version of a file for the current worktree.
 #
-# See usage below for details, or run: report -h
+# See usage below for details, or run: restore -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -14,24 +14,41 @@ Usage:
   restore [OPTIONS] FILE
   restore {-h | --help}
 
-List committed versions of FILE from the current branch and place the selected
-version in the worktree. restore does not create a commit or rewrite history.
-Review the restored file, then use commit if the version should be retained.
+List prior committed versions of FILE from the current branch and place the
+selected version in the worktree. If FILE is a base name, restore searches all
+tracked files and asks which path to use only when more than one matches.
+File history follows renames. restore does not create a commit or rewrite
+history. Review the restored file, then use commit if it should be retained.
+
+README.md is common throughout the repository, so it must be specified with an
+explicit path, such as docs/README.md or ./README.md. Files that are symbolic
+links (including the root README.md) to another file cannot be restored; specify
+the file (indicated by the error message) that the link points to instead.
 
 Prerequisites:
   - The current checkout must be a local branch.
-  - FILE must be a tracked regular file in the current branch.
+  - FILE must be a tracked regular file in the current branch, not a symbolic
+    link.
   - FILE must not have staged or unstaged changes before restore runs.
   - No repository workflow may be in progress on the current branch.
 
 Options:
   -h, --help  Output this help and exit.
   -l LIMIT    Number of versions to list (default: 20). LIMIT
-              must an integer greater than 1.
+              must be an integer greater than 1.
 
-The newest committed version is number 1.
+The current version is not listed; number 1 is the first previous version.
+At a selection prompt, enter a number or q, quit, or exit to cancel.
 EOF
 }
+
+# High-Level Flow:
+# - Require an explicit README.md path; otherwise resolve FILE as an exact
+#   repository path or a unique tracked, non-symlink base name.
+# - Follow file renames and list prior commits that changed the selected file.
+# - Reprompt until the user selects a listed version or cancels.
+# - Write the selected committed content to the worktree without staging or
+#   committing it; the normal commit or undo workflows handle the result.
 
 set -euo pipefail
 
@@ -41,8 +58,7 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 # shellcheck source=helpers/git_helpers.sh
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 
-SELECTION=""
-VERBOSE=false
+LIMIT=20
 FILE_ARG=""
 
 usage_error() {
@@ -58,15 +74,11 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    -n)
-      [[ $# -ge 2 && "$2" =~ ^[1-9][0-9]*$ ]] || \
-        usage_error "Option -n requires a positive version number"
-      SELECTION="$2"
+    -l)
+      [[ $# -ge 2 && "$2" =~ ^[0-9]+$ && "$2" -gt 1 ]] || \
+        usage_error "Option -l requires an integer greater than 1"
+      LIMIT="$2"
       shift 2
-      ;;
-    -v)
-      VERBOSE=true
-      shift
       ;;
     -*)
       usage_error "Unknown option: $1"
@@ -81,6 +93,82 @@ done
 
 [[ -n "$FILE_ARG" ]] || usage_error "FILE argument is required"
 
+select_number_or_cancel() {
+  local prompt="$1"
+  local maximum="$2"
+  local selection=""
+
+  SELECTED_NUMBER=""
+  while true; do
+    echo -n "$prompt"
+    if ! read -r selection; then
+      echo
+      echo "Restore cancelled: no selection received."
+      return 1
+    fi
+    case "${selection,,}" in
+      q|quit|exit)
+        echo "Restore cancelled."
+        return 1
+        ;;
+    esac
+    if [[ "$selection" =~ ^[1-9][0-9]*$ && "$selection" -le "$maximum" ]]; then
+      SELECTED_NUMBER="$selection"
+      return 0
+    fi
+    bt_emit_error "Select a number from 1 through $maximum, or q to cancel."
+  done
+}
+
+symlink_display_name() {
+  local link_path="$1"
+  local base_name="${link_path##*/}"
+  local match_count=0
+
+  match_count="$(git ls-files | awk -F/ -v name="$base_name" \
+    '$NF == name { count++ } END { print count + 0 }')"
+  if [[ "$match_count" -gt 1 ]]; then
+    if [[ "$link_path" == */* ]]; then
+      printf '%s\n' "$link_path"
+    else
+      printf './%s\n' "$link_path"
+    fi
+  else
+    printf '%s\n' "$base_name"
+  fi
+}
+
+symlink_error() {
+  local link_path="$1"
+  local link_name=""
+  local link_target=""
+  local resolved_target=""
+  local target_base=""
+  local target_count=0
+  local target_display=""
+
+  link_name="$(symlink_display_name "$link_path")"
+  link_target="$(readlink "$link_path" 2>/dev/null || true)"
+  if [[ -z "$link_target" ]]; then
+    echo "'$link_name' is a symbolic link. Restore the file it points to instead."
+    exit 0
+  fi
+  resolved_target="$(realpath -m "$(dirname "$link_path")/$link_target")"
+  resolved_target="${resolved_target#"$REPO_ROOT"/}"
+  target_base="${resolved_target##*/}"
+  target_count="$(git ls-files | awk -F/ -v name="$target_base" \
+    '$NF == name { count++ } END { print count + 0 }')"
+  if [[ "$target_count" -le 1 ]]; then
+    target_display="$target_base"
+  elif [[ "$resolved_target" == */* ]]; then
+    target_display="$resolved_target"
+  else
+    target_display="./$resolved_target"
+  fi
+  echo "'$link_name' is a symbolic link. Run 'restore $target_display' instead."
+  exit 0
+}
+
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [[ -n "$REPO_ROOT" ]] || usage_error "restore must run in a Git repository"
 CURRENT_BRANCH="$(bt_get_current_branch_or_empty)"
@@ -88,8 +176,46 @@ CURRENT_BRANCH="$(bt_get_current_branch_or_empty)"
 
 cd "$REPO_ROOT"
 FILE_PATH="${FILE_ARG#./}"
-git ls-files --error-unmatch -- "$FILE_PATH" >/dev/null 2>&1 || \
-  usage_error "FILE must be tracked in the current branch: $FILE_ARG"
+if [[ "$FILE_ARG" == "README.md" ]]; then
+  usage_error "README.md requires an explicit path, such as docs/README.md or ./README.md"
+fi
+if [[ "$FILE_ARG" != */* ]]; then
+  FILE_MATCHES=()
+  SYMLINK_MATCHES=()
+  while IFS= read -r matched_path; do
+    [[ -n "$matched_path" ]] || continue
+    if [[ -L "$matched_path" ]]; then
+      SYMLINK_MATCHES+=("$matched_path")
+      continue
+    fi
+    [[ -f "$matched_path" ]] && FILE_MATCHES+=("$matched_path")
+  done < <(git ls-files | awk -F/ -v name="$FILE_PATH" '$NF == name')
+  if [[ ${#FILE_MATCHES[@]} -eq 0 && ${#SYMLINK_MATCHES[@]} -eq 1 ]]; then
+    symlink_error "${SYMLINK_MATCHES[0]}"
+  fi
+  [[ ${#FILE_MATCHES[@]} -gt 0 ]] || \
+    usage_error "No tracked regular file named $FILE_ARG was found"
+  if [[ ${#FILE_MATCHES[@]} -eq 1 ]]; then
+    FILE_PATH="${FILE_MATCHES[0]}"
+  else
+    echo "Tracked files named $FILE_PATH:"
+    for index in "${!FILE_MATCHES[@]}"; do
+      printf '  %d. %s\n' "$((index + 1))" "${FILE_MATCHES[$index]}"
+    done
+    if ! select_number_or_cancel \
+      "Select file number (or q to cancel): " "${#FILE_MATCHES[@]}"; then
+      exit 0
+    fi
+    FILE_SELECTION="$SELECTED_NUMBER"
+    FILE_PATH="${FILE_MATCHES[$((FILE_SELECTION - 1))]}"
+  fi
+else
+  git ls-files --error-unmatch -- "$FILE_PATH" >/dev/null 2>&1 || \
+    usage_error "FILE must be tracked in the current branch: $FILE_ARG"
+fi
+if [[ -L "$FILE_PATH" ]]; then
+  symlink_error "$FILE_PATH"
+fi
 [[ -f "$FILE_PATH" && ! -L "$FILE_PATH" ]] || \
   usage_error "FILE must be a regular file: $FILE_ARG"
 if ! git diff --quiet -- "$FILE_PATH" || \
@@ -100,43 +226,47 @@ ACTIVE_WORKFLOW="$(bt_git_workflow_in_progress_action "$CURRENT_BRANCH")"
 [[ -z "$ACTIVE_WORKFLOW" ]] || \
   usage_error "$ACTIVE_WORKFLOW is in progress on $CURRENT_BRANCH"
 
-mapfile -t VERSION_ROWS < <(git log -n 20 \
-  --format='%H%x1f%h%x1f%cI%x1f%s' -- "$FILE_PATH")
+ALL_VERSION_ROWS=()
+while IFS= read -r -d $'\x1e' version_record || \
+  [[ -n "$version_record" ]]; do
+  version_record="${version_record#$'\n'}"
+  [[ -n "$version_record" ]] || continue
+  version_header="${version_record%%$'\n'*}"
+  version_paths="${version_record#*$'\n'}"
+  historical_path="$(printf '%s\n' "$version_paths" | \
+    sed '/^$/d' | tail -n 1)"
+  [[ -n "$historical_path" ]] || historical_path="$FILE_PATH"
+  ALL_VERSION_ROWS+=("$version_header"$'\x1f'"$historical_path")
+done < <(git log --follow -n "$((LIMIT + 1))" \
+  --format='%x1e%H%x1f%h%x1f%cI%x1f%s' --name-only -- "$FILE_PATH")
+VERSION_ROWS=("${ALL_VERSION_ROWS[@]:1:$LIMIT}")
 [[ ${#VERSION_ROWS[@]} -gt 0 ]] || \
-  usage_error "No committed versions found for $FILE_ARG"
+  usage_error "No previous committed versions found for $FILE_PATH"
 
 echo "Committed versions of $FILE_PATH:"
 for index in "${!VERSION_ROWS[@]}"; do
-  IFS=$'\x1f' read -r _hash short_hash committed_at subject \
+  IFS=$'\x1f' read -r _hash short_hash committed_at subject _historical_path \
     <<< "${VERSION_ROWS[$index]}"
   printf '  %d. %s  %s  %s\n' \
     "$((index + 1))" "$short_hash" "$committed_at" "$subject"
 done
 
-if [[ -z "$SELECTION" ]]; then
-  echo -n "Select version number (or 0 to cancel): "
-  read -r SELECTION
-  [[ "$SELECTION" != 0 ]] || {
-    echo "Restore cancelled."
-    exit 0
-  }
+if ! select_number_or_cancel \
+  "Select version number (or q to cancel): " "${#VERSION_ROWS[@]}"; then
+  exit 0
 fi
-[[ "$SELECTION" =~ ^[1-9][0-9]*$ && \
-  "$SELECTION" -le "${#VERSION_ROWS[@]}" ]] || \
-  usage_error "Version selection is out of range"
+SELECTION="$SELECTED_NUMBER"
 
 SELECTED_ROW="${VERSION_ROWS[$((SELECTION - 1))]}"
-SELECTED_HASH="${SELECTED_ROW%%$'\x1f'*}"
-git cat-file -e "$SELECTED_HASH:$FILE_PATH" 2>/dev/null || \
-  usage_error "Selected commit does not contain $FILE_PATH"
+IFS=$'\x1f' read -r SELECTED_HASH _short_hash _committed_at _subject \
+  SELECTED_HISTORICAL_PATH <<< "$SELECTED_ROW"
+git cat-file -e "$SELECTED_HASH:$SELECTED_HISTORICAL_PATH" 2>/dev/null || \
+  usage_error "Selected commit does not contain the historical file"
 
 TEMP_FILE="$(mktemp)"
 trap 'rm -f "$TEMP_FILE"' EXIT
-git show "$SELECTED_HASH:$FILE_PATH" > "$TEMP_FILE"
+git show "$SELECTED_HASH:$SELECTED_HISTORICAL_PATH" > "$TEMP_FILE"
 cat "$TEMP_FILE" > "$FILE_PATH"
 
-if [[ "$VERBOSE" == true ]]; then
-  echo "Selected commit: $SELECTED_HASH"
-fi
 echo "Restored $FILE_PATH from version $SELECTION."
 echo "Review the file, then run commit to retain this version."
