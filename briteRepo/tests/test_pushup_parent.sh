@@ -125,6 +125,11 @@ if [[ "\${FAKE_CURRENT_BEHIND_PARENT:-0}" == "1" && "\$1" == "merge-base" && \
   exit 1
 fi
 
+if [[ "\${FAKE_PARENT_CONTENT_CHANGED:-0}" == "1" && "\$1" == "diff" && \
+      "\${2:-}" == "--quiet" && "\${4:-}" == "v1.0.0" ]]; then
+  exit 1
+fi
+
 if [[ "\${FAKE_FAIL_PARENT_SWITCH:-0}" == "1" && "\$1" == "switch" && \
       "\${2:-}" == "v1.0.0" ]]; then
   exit 1
@@ -893,11 +898,20 @@ assert_contains "**Error:** Parent branch 'v1.0.0' cannot be checked out" \
 pass "parent checkout failure returns exit 15 with actionable report"
 
 # ---------------------------------------------------------------------------
-# Current branch behind parent returns exit 13
+# Content-neutral parent-only commits are accepted because the final merge-back
+# incorporates their history without requiring a separate pulldown.
+rc=$(run_pushup "$TMPDIR/current-behind-content-neutral-parent.out" \
+  "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
+  "FAKE_CURRENT_BEHIND_PARENT=1" -- -o -d)
+[[ "$rc" -eq 0 ]] || \
+  fail "content-neutral parent-only commits should be accepted (got $rc)"
+pass "content-neutral parent-only commits are accepted"
+
+# Current branch behind parent file changes returns exit 13
 # ---------------------------------------------------------------------------
 rc=$(run_pushup "$TMPDIR/current-behind-parent.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
-  "FAKE_CURRENT_BEHIND_PARENT=1" -- -o -d)
+  "FAKE_CURRENT_BEHIND_PARENT=1" "FAKE_PARENT_CONTENT_CHANGED=1" -- -o -d)
 [[ "$rc" -eq 13 ]] || fail "current behind parent should exit 13 (got $rc)"
 assert_contains "not up-to-date with parent" "$TMPDIR/current-behind-parent.out"
 pass "current branch behind parent returns exit 13"
