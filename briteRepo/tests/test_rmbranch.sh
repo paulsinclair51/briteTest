@@ -159,14 +159,13 @@ assert_contains "is protected and cannot be removed" \
   "$TMPDIR/version-protected.out"
 pass "version branch remote protection"
 
-# 3) History propagation soft-fail should not abort remote deletion.
-# logs/repository_history.md is intentionally absent in this fixture.
+# 3) A remote-only branch can be deleted.
 rc=$(run_capture "$TMPDIR/history-soft-fail.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && printf 'DELETE remote-only-delete\n' | bash ./briteRepo/bin/rmbranch -r 'remote-only-delete'")
-[[ "$rc" -eq 0 ]] || fail "rmbranch -r should succeed when history propagation is unavailable (got $rc)"
+[[ "$rc" -eq 0 ]] || fail "rmbranch -r should delete a remote-only branch (got $rc)"
 if (cd "$WORK" && git ls-remote --heads origin remote-only-delete | grep -q 'remote-only-delete'); then
   fail "remote-only-delete should be deleted from origin"
 fi
-pass "history propagation soft-fail"
+pass "remote-only branch deletion"
 
 # 3b) Deletion logs should be recorded to main history regardless of current branch.
 (

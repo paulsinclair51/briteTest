@@ -40,6 +40,10 @@ Options:
   -- TOKEN...   undo comment from one or more tokens.
   -d            Dry-run. Validates preconditions and reports what
                 would be undone, but does not perform the undo.
+  -e            Generates an error report but does not perform the undo.
+                Use this option to generate an error report without
+                actually performing the undo for diagnosing issues and
+                report formatting.
   -h, --help    Output this help to stdout and exit (other options and
                 arguments are ignored).
   -t SEC        Remote operation timeout in seconds (default: 10)
@@ -69,53 +73,54 @@ Examples:
   undo -v
 
 Limits:
-  - Completed pushup and retarget history rewrites cannot be undone safely
-    unless their exact pre-operation local and remote tips were retained.
-  - Deleted branches, repositories, clones, and GitHub administration changes
-    cannot be reconstructed unless an external backup or retained ref exists.
-  - File-generating commands can be undone as uncommitted changes, or through
-    undo commit after their changes are committed.
-  - Repair commands are not reversed automatically because doing so can restore
-    the repository damage they repaired.
+  - Completed pushup operations cannot be undone by undo.
+  - Manually performed operations or operations where metadata is removed
+    cannot be undone by undo. Except for uncommitted working tree changes,
+    undo can only undo supported operations performed by briteRepo scripts
+    while their undo records, workflow state, and referenced Git tips remain
+    available.
+  - undo does not restore deleted branches, repositories, clones, or GitHub
+    administration settings. The user must recover them manually from any
+    available backup or retained Git ref.
+  - Repair commands cannot be undone by undo since reversing a repair could
+    reintroduce the repository damage it corrected.
+
+Related recovery:
+  - Changes made by file-generating commands can be discarded as uncommitted
+    changes, or undone as part of their containing commit after they are
+    committed.
 
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
   - Before a non-dry-run undo, writes the operation, target, and safety impact,
     then prompts for the exact confirmation text `UNDO`.
-  - Writes an undo report if successful to:
-      '<repo>/reports/undo-<ACTION>-YYYYMMDD-HHMMSS-<pid>.md'
-    The report is written locally based on the action being undone:
-      - For undo uncommitted, commit, pull, copyfix,and pulldown, the undo report
-      is
-        written to the current branch.
-      - For undo push, the undo report is written to the remote branch for
-        the current branch.
-      - For undo release, the undo report is written to the remote branch
-        for the current branch.
-  - Writes an error report if unsuccessful (and -d not specified) to the
-    current branch locally to:
-      '<repo>/reports/undo-<TYPE>-e-YYYYMMDD-HHMMSS-<pid>.md'
-  - Writes a dry-run report if -d is specified locally to:
-      '<repo>/reports/undo-<TYPE>-d-YYYYMMDD-HHMMSS-<pid>.md'
-  - Deletes older dry-run (-d) and error reports for the current
-    branch if a new report is written or there is nothing to undo.
+  - Successful, dry-run, and explicit error-run reports are written locally as
+    untracked files in the current branch:
+      '<repo>/reports/undo-<TYPE>-<N>-<datetime>.md'
+      '<repo>/reports/undo-<TYPE>-d-<datetime>.md'
+      '<repo>/reports/undo-<TYPE>-e-<datetime>.md'
+    N starts at 1 and increments for consecutive successful undos.
+  - Dry-run and error reports replace older transient undo reports for the
+    current branch without changing the success sequence.
+  - A successful undo preserves success reports from its current consecutive
+    sequence. When the previous modifying operation was not undo, older success
+    reports for the branch are deleted and N restarts at 1.
+  - Records successful undo activity in Git notes for the report command.
 
 Exit codes:
-  0    Success ().
+  0    Success.
   1    Argument or validation error.
   2    User not authorized to perform undo operation.
-  3    No uncommitted changes to undo.
-  4    No commit to undo.
+  3    No reversible operation to undo.
   5    No pull to undo.
-  6    No push to undo.
   7    No copyfix to undo.
   8    No pulldown to undo.
-  10   No release to undo.
+  9    No retarget operation to undo.
+  10   Undo skipped because -e was specified.
   11   Configuration error.
-  200  Git operation failed (e.g., revert, reset, or push)
-  201  GitHub API error (release undo)
-  202  Unable to write undo report.
+  200  Git operation failed (e.g., revert, reset, or push).
+  201  Report creation or locking failed.
 EOF
 }
 
@@ -131,6 +136,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPORTS_DIR="$REPO_ROOT/reports"
 
 # Shared helpers
 # shellcheck source=helpers/common.sh
@@ -139,20 +145,24 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/history_log.sh
 source "$SCRIPT_DIR/../helpers/history_log.sh"
+# shellcheck source=helpers/report_helpers.sh
+source "$SCRIPT_DIR/../helpers/report_helpers.sh"
 # shellcheck source=helpers/validation_helpers.sh
 source "$SCRIPT_DIR/../helpers/validation_helpers.sh"
 
+RUN_TS_FILE="$(bt_datetime_filename_now)"
+RUN_TS_DISPLAY="$(bt_datetime_display_now)"
+
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NO_UNCOMMITTED=3
-readonly EXIT_NO_COMMIT=4
 readonly EXIT_NO_PULL=5
-readonly EXIT_NO_PUSH=6
 readonly EXIT_NO_COPYFIX=7
 readonly EXIT_NO_PULLDOWN=8
 readonly EXIT_NO_RETARGET=9
-readonly EXIT_NO_RELEASE=10
+readonly EXIT_WORKFLOW_SKIPPED=10
 readonly EXIT_CONFIG_ERROR=11
 readonly EXIT_GIT_OPERATION_FAILED=200
+readonly EXIT_REPORT_ERROR=201
 
 usage_error() {
   local message="$1"
@@ -166,11 +176,188 @@ usage_error() {
 UNDO_TYPE=""
 UNDO_STATE_FILE=""
 UNDO_OPERATION_ID=""
-VERBOSE=false
 COMMENT=""
 DRY_RUN=false
+ERROR_RUN=false
+VERBOSE=false
 REMOTE_TIMEOUT_SECONDS=10
 ORIGINAL_ARGS=("$@")
+REPORT_FILE=""
+REPORT_LOCK_FD=""
+CURRENT_BRANCH=""
+UNDO_SUMMARY=""
+UNDO_STRATEGY=""
+UNDO_BEFORE_TIP=""
+UNDO_AFTER_TIP=""
+UNDO_DETAILS=""
+UNDO_PRE_STATE_FINGERPRINT=""
+UNDO_SEQUENCE_NUMBER=0
+UNDO_SEQUENCE_RESTART=false
+
+cleanup_report_lock() {
+  if [[ -n "$REPORT_LOCK_FD" ]]; then
+    bt_report_release_lock "$REPORT_LOCK_FD"
+    REPORT_LOCK_FD=""
+  fi
+}
+
+trap cleanup_report_lock EXIT
+
+log_verbose() {
+  [[ "$VERBOSE" == true ]] || return 0
+  bt_info "$1"
+}
+
+undo_state_fingerprint() {
+  local head=""
+  local status=""
+
+  head="$(git rev-parse HEAD 2>/dev/null || true)"
+  status="$(git status --porcelain=v1 --untracked-files=all 2>/dev/null | \
+    grep -Ev '^\?\? reports/undo-[^/]+\.md$' || true)"
+  printf '%s\n%s\n' "$head" "$status" | git hash-object --stdin
+}
+
+prepare_success_sequence() {
+  local state_file=""
+  local previous_branch=""
+  local previous_count=""
+  local previous_fingerprint=""
+
+  state_file="$(bt_undo_sequence_state_file "$CURRENT_BRANCH")" || \
+    bt_error_exit "$EXIT_REPORT_ERROR" \
+      "Unable to resolve undo sequence state"
+  if [[ -f "$state_file" ]]; then
+    previous_branch="$(git config --file "$state_file" \
+      --get sequence.branch 2>/dev/null || true)"
+    previous_count="$(git config --file "$state_file" \
+      --get sequence.count 2>/dev/null || true)"
+    previous_fingerprint="$(git config --file "$state_file" \
+      --get sequence.fingerprint 2>/dev/null || true)"
+  fi
+
+  if [[ "$previous_branch" == "$CURRENT_BRANCH" && \
+    "$previous_count" =~ ^[0-9]+$ && "$previous_count" -gt 0 && \
+    -n "$UNDO_PRE_STATE_FINGERPRINT" && \
+    "$previous_fingerprint" == "$UNDO_PRE_STATE_FINGERPRINT" ]]; then
+    UNDO_SEQUENCE_NUMBER=$((previous_count + 1))
+    UNDO_SEQUENCE_RESTART=false
+  else
+    UNDO_SEQUENCE_NUMBER=1
+    UNDO_SEQUENCE_RESTART=true
+  fi
+  log_verbose "Using undo sequence number $UNDO_SEQUENCE_NUMBER"
+}
+
+record_success_sequence() {
+  local state_file=""
+  local state_dir=""
+  local temp_file=""
+  local fingerprint=""
+
+  state_file="$(bt_undo_sequence_state_file "$CURRENT_BRANCH")" || return 1
+  state_dir="${state_file%/*}"
+  mkdir -p "$state_dir" || return 1
+  temp_file="${state_file}.new.$$"
+  fingerprint="$(undo_state_fingerprint)" || return 1
+  git config --file "$temp_file" sequence.version 1
+  git config --file "$temp_file" sequence.branch "$CURRENT_BRANCH"
+  git config --file "$temp_file" sequence.count "$UNDO_SEQUENCE_NUMBER"
+  git config --file "$temp_file" sequence.fingerprint "$fingerprint"
+  mv "$temp_file" "$state_file"
+}
+
+cleanup_undo_reports() {
+  local mode="$1"
+  local report_path=""
+  local report_branch=""
+  local report_mode=""
+
+  for report_path in "$REPORTS_DIR"/undo-*.md; do
+    [[ -e "$report_path" && "$report_path" != "$REPORT_FILE" ]] || continue
+    report_branch="$(sed -nE \
+      's/^\*\*Branch:\*\* `([^`]+)`[[:space:]]*$/\1/p' \
+      "$report_path" 2>/dev/null | head -n 1)"
+    [[ "$report_branch" == "$CURRENT_BRANCH" ]] || continue
+    report_mode="$(sed -nE \
+      's/^\*\*Mode:\*\* (.+)[[:space:]]*$/\1/p' \
+      "$report_path" 2>/dev/null | head -n 1)"
+
+    if [[ "$report_mode" == "dry-run" || "$report_mode" == "error" || \
+      ( "$mode" == "success" && "$UNDO_SEQUENCE_RESTART" == true && \
+        "$report_mode" == "success" ) ]]; then
+      chmod u+w "$report_path" >/dev/null 2>&1 || true
+      rm -f "$report_path" >/dev/null 2>&1 || true
+    fi
+  done
+}
+
+write_undo_report() {
+  local mode="$1"
+  local status="$2"
+  local prefix="undo-${UNDO_TYPE}"
+  local title="Undo Report"
+
+  case "$mode" in
+    success)
+      prefix+="-${UNDO_SEQUENCE_NUMBER}"
+      ;;
+    dry-run)
+      prefix+="-d"
+      title="Undo Dry-Run Report"
+      ;;
+    error)
+      prefix+="-e"
+      title="Undo Error Report"
+      ;;
+  esac
+
+  if ! bt_report_acquire_lock "$REPO_ROOT" "undo" 10 REPORT_LOCK_FD; then
+    bt_error_exit "$EXIT_REPORT_ERROR" \
+      "Timed out waiting for the undo report lock"
+  fi
+  bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_ERROR"
+  REPORT_FILE="$(bt_report_transient_path \
+    "$REPORTS_DIR" "$prefix" "$RUN_TS_FILE")"
+  cleanup_undo_reports "$mode"
+  if ! bt_report_write_header "$REPORT_FILE" "$title" \
+    "$RUN_TS_DISPLAY" \
+    "$(bt_format_command_line "undo" "${ORIGINAL_ARGS[@]}")"; then
+    bt_error_exit "$EXIT_REPORT_ERROR" \
+      "Failed to write undo report: $REPORT_FILE"
+  fi
+  if ! cat >> "$REPORT_FILE" <<EOF
+**Branch:** \`${CURRENT_BRANCH}\`
+
+**Operation:** ${UNDO_TYPE}
+
+**Mode:** ${mode}
+
+**Status:** ${status}
+
+**Sequence:** ${UNDO_SEQUENCE_NUMBER:-0}
+
+**Summary:** ${UNDO_SUMMARY:-Not available}
+
+**Strategy:** ${UNDO_STRATEGY:-Not applicable}
+
+**Before Tip:** \`${UNDO_BEFORE_TIP:-Not applicable}\`
+
+**After Tip:** \`${UNDO_AFTER_TIP:-Not applicable}\`
+
+**Operation ID:** \`${UNDO_OPERATION_ID:-Not applicable}\`
+
+**Comment:** ${COMMENT:-None}
+
+**Details:** ${UNDO_DETAILS:-None}
+EOF
+  then
+    bt_error_exit "$EXIT_REPORT_ERROR" \
+      "Failed to write undo report: $REPORT_FILE"
+  fi
+  bt_report_release_lock "$REPORT_LOCK_FD"
+  REPORT_LOCK_FD=""
+}
 
 get_current_user() {
   git config user.name 2>/dev/null || \
@@ -221,10 +408,14 @@ select_undo_candidate() {
   active_type="$(detect_active_undo_type "$branch")"
   if [[ -n "$active_type" ]]; then
     UNDO_TYPE="$active_type"
+    UNDO_SUMMARY="Abort in-progress $active_type operation"
+    UNDO_STRATEGY="abort"
     return 0
   fi
   if bt_is_worktree_dirty; then
     UNDO_TYPE="uncommitted"
+    UNDO_SUMMARY="Discard tracked and untracked working tree changes"
+    UNDO_STRATEGY="hard-reset-and-clean"
     return 0
   fi
   UNDO_STATE_FILE="$(bt_undo_latest_operation "$branch" || true)"
@@ -233,6 +424,7 @@ select_undo_candidate() {
       "No reversible modifying operation found for branch '$branch'"
   UNDO_TYPE="$(git config --file "$UNDO_STATE_FILE" --get undo.operation)"
   UNDO_OPERATION_ID="$(git config --file "$UNDO_STATE_FILE" --get undo.id)"
+  log_verbose "Selected recorded $UNDO_TYPE operation $UNDO_OPERATION_ID"
 }
 
 undo_recorded_operation() {
@@ -250,30 +442,41 @@ undo_recorded_operation() {
   remote_after="$(git config --file "$state_file" --get undo.remote-after-tip)"
   target="$(git config --file "$state_file" --get undo.target 2>/dev/null || true)"
   current_tip="$(git rev-parse HEAD 2>/dev/null || true)"
+  UNDO_SUMMARY="$summary"
+  UNDO_STRATEGY="$strategy"
+  UNDO_BEFORE_TIP="$before_tip"
+  UNDO_AFTER_TIP="$after_tip"
+  UNDO_DETAILS="Recorded branch: $branch"
+  [[ -z "$target" ]] || UNDO_DETAILS+="; target: $target"
+  log_verbose "Validated current tip $current_tip against recorded result"
   [[ "$current_tip" == "$after_tip" ]] || \
     bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
       "Cannot undo $operation: current branch tip no longer matches the recorded operation result"
 
   if [[ "$DRY_RUN" == true ]]; then
-    bt_success "Dry-run: would undo $operation: $summary"
+    log_verbose "Dry-run leaves local and remote state unchanged"
     return 0
   fi
   confirm_undo "$operation" "$summary ($after_tip -> $before_tip)" || \
     bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Undo cancelled"
   case "$strategy" in
     soft-reset)
+      log_verbose "Resetting $branch to $before_tip with changes staged"
       git reset --soft "$before_tip" >/dev/null 2>&1 || \
         bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to undo $operation"
       ;;
     hard-reset)
+      log_verbose "Resetting $branch and its worktree to $before_tip"
       git reset --hard "$before_tip" >/dev/null 2>&1 || \
         bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to undo $operation"
       ;;
     revert-merge)
+      log_verbose "Reverting merge commit $after_tip"
       git revert -m 1 "$after_tip" --no-edit >/dev/null 2>&1 || \
         bt_error_exit "$EXIT_GIT_OPERATION_FAILED" "Failed to undo $operation"
       ;;
     remote-reset)
+      log_verbose "Verifying and restoring origin/$branch"
       remote_current="$(bt_run_remote_command git ls-remote origin \
         "refs/heads/$branch" 2>/dev/null | awk 'NR == 1 { print $1 }')"
       [[ "$remote_current" == "$remote_after" ]] || \
@@ -286,6 +489,7 @@ undo_recorded_operation() {
           "Failed to restore origin/$branch to its previous tip"
       ;;
     local-remote-reset)
+      log_verbose "Verifying and restoring local and remote $branch"
       remote_current="$(bt_run_remote_command git ls-remote origin \
         "refs/heads/$branch" 2>/dev/null | awk 'NR == 1 { print $1 }')"
       [[ "$remote_current" == "$remote_after" ]] || \
@@ -301,6 +505,7 @@ undo_recorded_operation() {
           "Remote was restored, but local $branch could not be reset"
       ;;
     delete-release)
+      log_verbose "Deleting release and tag $target"
       [[ -n "$target" ]] || \
         bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
           "Recorded release does not identify its tag"
@@ -324,7 +529,6 @@ undo_recorded_operation() {
   bt_undo_mark_operation_undone "$state_file" "$undo_id" || \
     bt_warn "Operation was undone, but undo-stack metadata could not be updated"
   record_undo_workflow_event "$operation" "$summary"
-  bt_success "$operation undone"
 }
 
 confirm_undo() {
@@ -378,6 +582,8 @@ undo_in_progress_git_operation() {
   local current_branch=""
 
   current_branch="$(bt_get_current_branch_or_empty)"
+  UNDO_DETAILS="In-progress $operation on $current_branch"
+  log_verbose "Checking native Git state for in-progress $operation"
   bt_git_workflow_marker_matches "$operation" "$current_branch" || return 1
 
   case "$operation" in
@@ -413,7 +619,6 @@ undo_in_progress_git_operation() {
   bt_git_clear_workflow_in_progress "$operation"
   record_undo_workflow_event "$operation" \
     "Aborted in-progress $operation on $current_branch"
-  bt_success "In-progress $operation undone"
 }
 
 undo_copyfix() {
@@ -436,7 +641,6 @@ undo_copyfix() {
     rm -rf "$state_dir" "${state_dir}.lock"
     record_undo_workflow_event copyfix \
       "Aborted in-progress copyfix on $current_branch"
-    bt_success "In-progress copyfix undone"
     return 0
   fi
 
@@ -448,14 +652,14 @@ undo_uncommitted() {
   local current_branch
   current_branch=$(bt_get_current_branch || \
     bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to determine current branch")
+  UNDO_DETAILS="Working tree on $current_branch"
 
   if ! bt_is_worktree_dirty; then
     bt_error_exit "$EXIT_NO_UNCOMMITTED" "No uncommitted changes to undo"
   fi
 
   if [[ "$DRY_RUN" == true ]]; then
-    bt_info "Dry-run: would discard uncommitted tracked changes and remove" \
-            "untracked files"
+    log_verbose "Dry-run leaves tracked and untracked files unchanged"
     return 0
   fi
 
@@ -474,7 +678,6 @@ undo_uncommitted() {
 
   record_undo_workflow_event uncommitted \
     "Discarded tracked and untracked working tree changes"
-  bt_success "Uncommitted changes undone"
 }
 
 # Parse options and arguments
@@ -488,6 +691,10 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
+    -e)
+      ERROR_RUN=true
+      shift
+      ;;
     -c)
       if [[ $# -lt 2 ]]; then
         usage_error "Option -c requires a comment argument"
@@ -498,16 +705,16 @@ while [[ $# -gt 0 ]]; do
       COMMENT="$2"
       shift 2
       ;;
-    -v)
-      VERBOSE=true
-      shift
-      ;;
     -t)
       [[ $# -ge 2 ]] || usage_error "Option -t requires SEC"
       bt_is_valid_remote_timeout "$2" || \
         usage_error "SEC for -t must be an integer greater than 0"
       REMOTE_TIMEOUT_SECONDS="$2"
       shift 2
+      ;;
+    -v)
+      VERBOSE=true
+      shift
       ;;
     --)
       # Unix-style message: everything after -- is the message
@@ -527,66 +734,83 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ "$DRY_RUN" == true && "$ERROR_RUN" == true ]]; then
+  usage_error "Options -d and -e are mutually exclusive"
+fi
+
 export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
 
 # Validate current branch conforms to naming conventions
-current_branch=$(bt_get_current_branch || echo "main")
-[[ "$current_branch" == "HEAD" ]] && current_branch="main"
+CURRENT_BRANCH=$(bt_get_current_branch || echo "main")
+[[ "$CURRENT_BRANCH" == "HEAD" ]] && CURRENT_BRANCH="main"
 if [[ -z "$UNDO_TYPE" ]]; then
-  select_undo_candidate "$current_branch"
+  select_undo_candidate "$CURRENT_BRANCH"
 fi
+log_verbose "Selected $UNDO_TYPE operation on $CURRENT_BRANCH"
 if bt_is_current_internal_remote_copy; then
   bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
-    "Current branch '$current_branch' is a read-only remote snapshot." \
+    "Current branch '$CURRENT_BRANCH' is a read-only remote snapshot." \
     "switch to a writable local branch before running undo."
 fi
 if [[ "$UNDO_TYPE" != "uncommitted" ]] && \
-  ! validate_branch_name "$current_branch" "current branch"; then
+  ! validate_branch_name "$CURRENT_BRANCH" "current branch"; then
   usage_error "Current branch does not conform to naming conventions"
 fi
 
-# Propagate repository history from remote if available
-history_status=0
-bt_propagate_repository_history || history_status=$?
-case "$history_status" in
-  0) ;;
-  1) bt_info "Updated repository history from remote" ;;
-  *) ;;
-esac
+if [[ "$ERROR_RUN" == true ]]; then
+  UNDO_DETAILS="Undo skipped due to -e option"
+  write_undo_report error "Skipped"
+  bt_emit_error "Undo skipped due to -e option."
+  bt_emit_guidance "Run without -e option."
+  bt_success "See ${REPORT_FILE#"${REPO_ROOT}"/} for details"
+  exit "$EXIT_WORKFLOW_SKIPPED"
+fi
+
+if [[ "$DRY_RUN" == false ]]; then
+  UNDO_PRE_STATE_FINGERPRINT="$(undo_state_fingerprint)"
+fi
 
 # Dispatch to appropriate undo function
 if [[ -n "$UNDO_STATE_FILE" ]]; then
   undo_recorded_operation "$UNDO_STATE_FILE"
-  bt_success "Done"
-  exit 0
+else
+  case "$UNDO_TYPE" in
+    uncommitted)
+      undo_uncommitted
+      ;;
+    pulldown)
+      undo_in_progress_git_operation pulldown || \
+        bt_error_exit "$EXIT_NO_PULLDOWN" \
+          "No in-progress pulldown operation found to undo"
+      ;;
+    pull)
+      undo_in_progress_git_operation pull || \
+        bt_error_exit "$EXIT_NO_PULL" \
+          "No in-progress pull operation found to undo"
+      ;;
+    copyfix)
+      undo_copyfix
+      ;;
+    retarget)
+      undo_in_progress_git_operation retarget || \
+        bt_error_exit "$EXIT_NO_RETARGET" \
+          "No in-progress retarget operation found to undo"
+      ;;
+    *)
+      bt_error_exit "$EXIT_CONFIG_ERROR" \
+        "Undo selected unsupported active operation '$UNDO_TYPE'"
+      ;;
+  esac
 fi
-case "$UNDO_TYPE" in
-  uncommitted)
-    undo_uncommitted
-    ;;
-  pulldown)
-    undo_in_progress_git_operation pulldown || \
-      bt_error_exit "$EXIT_NO_PULLDOWN" \
-        "No in-progress pulldown operation found to undo"
-    ;;
-  pull)
-    undo_in_progress_git_operation pull || \
-      bt_error_exit "$EXIT_NO_PULL" \
-        "No in-progress pull operation found to undo"
-    ;;
-  copyfix)
-    undo_copyfix
-    ;;
-  retarget)
-    undo_in_progress_git_operation retarget || \
-      bt_error_exit "$EXIT_NO_RETARGET" \
-        "No in-progress retarget operation found to undo"
-    ;;
-  *)
-    bt_error_exit "$EXIT_CONFIG_ERROR" \
-      "Undo selected unsupported active operation '$UNDO_TYPE'"
-    ;;
-esac
 
-bt_success "Done"
+if [[ "$DRY_RUN" == true ]]; then
+  write_undo_report dry-run "Would undo"
+  bt_success "Dry-run: would undo $UNDO_TYPE. See ${REPORT_FILE#"${REPO_ROOT}"/} for details"
+else
+  prepare_success_sequence
+  write_undo_report success "Completed"
+  record_success_sequence || \
+    bt_warn "Undo completed, but its report sequence state could not be recorded"
+  bt_success "Undid $UNDO_TYPE. See ${REPORT_FILE#"${REPO_ROOT}"/} for details"
+fi
 exit 0

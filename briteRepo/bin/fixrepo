@@ -107,8 +107,8 @@ if [[ ! -f "$SCRIPT_DIR/../helpers/common.sh" ]]; then
   exit "$EXIT_INVALID_ARGUMENT"
 fi
 if [[ ! -f "$SCRIPT_DIR/../helpers/git_helpers.sh" ]]; then
-  bt_emit_error "Required helper not found: "\
-"$SCRIPT_DIR/../helpers/git_helpers.sh"
+  bt_emit_error \
+    "Required helper not found: $SCRIPT_DIR/../helpers/git_helpers.sh"
   exit "$EXIT_INVALID_ARGUMENT"
 fi
 
@@ -118,13 +118,6 @@ source "$SCRIPT_DIR/../helpers/common.sh"
 source "$SCRIPT_DIR/../helpers/git_helpers.sh"
 # shellcheck source=helpers/report_helpers.sh
 source "$SCRIPT_DIR/../helpers/report_helpers.sh"
-
-# history_log.sh is optional in isolated test fixtures.
-# The legacy tracked repository history flow has been removed.
-# Provide a no-op compatibility shim for older callers.
-bt_propagate_repository_history() {
-  return 0
-}
 
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NOT_FOUND=2
@@ -140,7 +133,6 @@ usage_error() {
 }
 
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S%z')"
-RUN_PID="${BASHPID:-$$}"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
 
 OUTPUT_FILE=""
@@ -169,16 +161,6 @@ CURRENT_TARGET_NAME=""
 TARGET_NAMES=()
 TARGET_PATHS=()
 
-increment_counter() {
-  local var_name="$1"
-  printf -v "$var_name" '%d' "$(( ${!var_name} + 1 ))"
-}
-
-safe_trim_spaces() {
-  # Normalize mixed whitespace to single spaces for robust token parsing.
-  printf '%s' "$1" | tr '\t' ' ' | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//'
-}
-
 is_valid_timeout_seconds() {
   [[ "$1" =~ ^[0-9]+$ ]]
 }
@@ -206,19 +188,6 @@ resolve_dir_path() {
   (
     cd "$input_path" && pwd -P
   )
-}
-
-has_required_api_files() {
-  local repo_path="$1"
-
-  # Treat as valid repository when required API files exist.
-  if [[ -f "$repo_path/src/runnerapi.c" || -f "$repo_path/src/testapi.c" || \
-    -f "$repo_path/include/runnerapi.h" || \
-    -f "$repo_path/include/testapi.h" ]]; then
-    return 0
-  fi
-
-  return 1
 }
 
 add_target_repo() {
@@ -301,19 +270,19 @@ append_check() {
     echo "- [PASS] **$check_name**" >> "$OUTPUT_FILE"
   elif [[ "$status" == "ISSUE" ]]; then
     echo "- [ISSUE] **$check_name**" >> "$OUTPUT_FILE"
-    increment_counter ISSUES_FOUND
-    increment_counter TARGET_ISSUES_FOUND
+    bt_increment_counter ISSUES_FOUND
+    bt_increment_counter TARGET_ISSUES_FOUND
     if [[ "$fixable" == "true" ]]; then
-      increment_counter FIXABLE_ISSUES_FOUND
-      increment_counter TARGET_FIXABLE_ISSUES_FOUND
+      bt_increment_counter FIXABLE_ISSUES_FOUND
+      bt_increment_counter TARGET_FIXABLE_ISSUES_FOUND
     fi
   elif [[ "$status" == "FIXED" ]]; then
     echo "- [FIXED] **$check_name**" >> "$OUTPUT_FILE"
-    increment_counter ISSUES_FIXED
+    bt_increment_counter ISSUES_FIXED
   elif [[ "$status" == "ERROR" ]]; then
     echo "- [ERROR] **$check_name**" >> "$OUTPUT_FILE"
-    increment_counter ISSUES_FOUND
-    increment_counter TARGET_ISSUES_FOUND
+    bt_increment_counter ISSUES_FOUND
+    bt_increment_counter TARGET_ISSUES_FOUND
     CRITICAL_ERROR=true
   fi
 
@@ -426,7 +395,7 @@ check_remote_connectivity() {
   local counts
   counts="$(git -C "$CURRENT_REPO" rev-list --left-right --count \
     HEAD..."$upstream" 2>/dev/null || true)"
-  counts="$(safe_trim_spaces "$counts")"
+  counts="$(bt_normalize_whitespace "$counts")"
   local ahead=""
   local behind=""
   local extra=""
@@ -519,7 +488,7 @@ check_working_directory() {
     status_output="$(printf '%s\n' "$status_output" | awk '
       BEGIN {
         report_re = "^reports/repository-[0-9]{8}-[0-9]{6}"
-        report_re = report_re "[+-][0-9]{4}(-[0-9]+)?\\.md$"
+        report_re = report_re "[+-][0-9]{4}\\.md$"
       }
       {
         path = substr($0, 4)
@@ -588,7 +557,7 @@ check_repository_layout() {
     target_kind="clone"
   fi
 
-  if ! has_required_api_files "$CURRENT_REPO"; then
+  if ! bt_repo_has_required_api_files "$CURRENT_REPO"; then
     append_check "Repository Structure Checks" "PASS" \
       "Repository structure checks skipped for this $target_kind because it" \
       "does not appear to have required API files."
@@ -614,7 +583,7 @@ cleanup_repository() {
   append_section "Cleanup Operations"
   bt_info "Performing safe cleanup for $CURRENT_TARGET_NAME..."
 
-  increment_counter REMEDIATIONS_ATTEMPTED
+  bt_increment_counter REMEDIATIONS_ATTEMPTED
   if git -C "$CURRENT_REPO" gc --prune=now >/dev/null 2>&1; then
     append_check "Garbage Collection" "PASS" "Ran git gc --prune=now"
 
@@ -623,7 +592,7 @@ cleanup_repository() {
     append_check "Garbage Collection" "ISSUE" \
       "git gc failed during cleanup. Not auto-handled; suggested fix: Run" \
       "'git gc --prune=now' manually and inspect the failure output."
-    increment_counter REMEDIATIONS_FAILED
+    bt_increment_counter REMEDIATIONS_FAILED
   fi
 }
 
@@ -663,13 +632,13 @@ verify_cleanup_effects() {
   if [[ "$verification_failed" == false ]]; then
     append_check "Repository Cleanup" "FIXED" \
       "Safe cleanup completed and post-cleanup verification passed."
-    increment_counter REMEDIATIONS_VERIFIED
+    bt_increment_counter REMEDIATIONS_VERIFIED
   else
     append_check "Repository Cleanup" "ISSUE" \
       "Cleanup completed, but post-cleanup verification still found issues." \
       "Not auto-handled; suggested fix: Review the verification failures" \
       "above."
-    increment_counter REMEDIATIONS_UNVERIFIED
+    bt_increment_counter REMEDIATIONS_UNVERIFIED
   fi
 }
 
@@ -864,8 +833,8 @@ if [[ "${#POSITIONAL[@]}" -eq 1 ]]; then
 fi
 
 if ! is_valid_timeout_seconds "$REMOTE_TIMEOUT_SECONDS"; then
-  usage_error "Invalid -t value: $REMOTE_TIMEOUT_SECONDS "\
-"(expected integer >= 0)"
+  usage_error \
+    "Invalid -t value: $REMOTE_TIMEOUT_SECONDS (expected integer >= 0)"
 fi
 
 if [[ ! -d "$REPO_ROOT/reports" ]]; then
@@ -878,7 +847,8 @@ if ! mkdir -p "$REPOSITORY_REPORTS_DIR"; then
     "Unable to create reports directory: $REPOSITORY_REPORTS_DIR"
 fi
 
-OUTPUT_FILE="$REPOSITORY_REPORTS_DIR/repository-${RUN_TS_FILE}-${RUN_PID}.md"
+OUTPUT_FILE="$(bt_report_retained_path \
+  "$REPOSITORY_REPORTS_DIR" "repository" "$RUN_TS_FILE")"
 
 add_target_repo "Primary Repository" "$REPO_ROOT"
 

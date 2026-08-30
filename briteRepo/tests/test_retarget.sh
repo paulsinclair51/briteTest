@@ -78,7 +78,6 @@ EOF
   git config user.email "approver@example.com"
 
   echo "seed" > README.md
-  echo "# history" > logs/repository_history.md
   printf 'reports/*.md\n!reports/README.md\n' > .gitignore
   echo "# Reports" > reports/README.md
   git add README.md briteRepo config logs reports .gitignore

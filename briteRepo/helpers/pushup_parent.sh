@@ -968,13 +968,6 @@ ensure_post_merge_sync_or_repair() {
     "$VERIFY_LAST_ERROR"
 }
 
-trim_whitespace() {
-  local value="$1"
-  value="${value#"${value%%[![:space:]]*}"}"
-  value="${value%"${value##*[![:space:]]}"}"
-  printf '%s' "$value"
-}
-
 ensure_branch_synced_with_remote() {
   local branch="$1"
   local label="$2"
@@ -1650,7 +1643,7 @@ if [[ "$ERROR_RUN" == true ]]; then
 fi
 
 if [[ -n "$MESSAGE_SOURCE" ]]; then
-  CUSTOM_MESSAGE="$(trim_whitespace "$CUSTOM_MESSAGE")"
+  CUSTOM_MESSAGE="$(bt_trim_whitespace "$CUSTOM_MESSAGE")"
   if [[ -z "$CUSTOM_MESSAGE" ]]; then
     bt_error_exit "$EXIT_EMPTY_COMMIT_COMMENT" \
       "Commit comment is specified but it is empty after normalization"

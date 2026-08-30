@@ -408,7 +408,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 export BT_REMOTE_TIMEOUT_SECONDS="$remote_timeout_seconds"
-bt_propagate_repository_history >/dev/null 2>&1 || true
 
 if [[ "$show_help" -eq 1 && "$show_regex_guide" -eq 1 ]]; then
 	usage

@@ -45,7 +45,7 @@ None.
 ## Installation
 
 **install_git_hooks.sh**: Hook installer script.
-- Copies hooks from `.githooks/` to `.git/hooks/`.
+- Configures Git to use `.githooks/` through `core.hooksPath`.
 - Makes hooks executable.
 - Idempotent (safe to run multiple times).
 - Called automatically by `setupclone` and `mkclone`.
@@ -121,8 +121,8 @@ bash briteRepo/helpers/install_git_hooks.sh
 ### Verify Installation
 
 ```bash
-ls -la .git/hooks/
-# Should show: githook_helper.sh, pre-commit, pre-push, pre-merge-commit, post-checkout
+git config --get core.hooksPath
+# Should show: briteRepo/helpers/.githooks
 ```
 
 ## Using Helpers in Scripts

@@ -287,15 +287,6 @@ fi
 
 bt_info "Target clone path: $TARGET_ABS"
 
-# Propagate repository history from remote if available
-history_status=0
-bt_propagate_repository_history || history_status=$?
-case "$history_status" in
-  0) bt_info "Repository history already up to date" ;;
-  1) bt_info "Updated repository history from remote" ;;
-  *) ;;  # offline or unavailable, continue silently
-esac
-
 check_path_safety
 check_git_safety
 
@@ -341,8 +332,6 @@ fi
 
 bt_success "Clone removed successfully: $TARGET_ABS"
 
-# Log removal to repository history and push to origin/main
 record_removal_note_on_remote_main "$TARGET_ABS"
-bt_commit_and_push_repository_history "rmclone: Removed local clone"
 
 exit 0

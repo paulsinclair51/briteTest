@@ -129,7 +129,6 @@ Status tags:
   [pull in progress]            Resolve conflicts, then rerun pull.
   [retarget in progress]        Resolve conflicts, then rerun retarget -r.
   [pulldown in progress]        Resolve conflicts, then rerun pulldown.
-  [auto-stash: N]               N saved automatic stashes exist for the branch.
   [PRs: N]                      N open pull requests exist for the branch.
 
 Exit codes:
@@ -221,10 +220,8 @@ NO_ARG_MODE=false
 FETCH_ATTEMPTED=false
 FETCH_FAILED=false
 WARNINGS_FILE=""
-AUTO_STASH_INDEX_READY=false
 INITIAL_STATUS_PORCELAIN=""
 CURRENT_IS_REMOTE_SNAPSHOT=false
-declare -A AUTO_STASH_COUNTS=()
 
 # Validate temporary file creation for diagnostics
 if ! WARNINGS_FILE="$(mktemp)"; then
@@ -379,7 +376,9 @@ resolve_current_branch_name() {
 }
 
 is_current_remote_snapshot() {
-  local current_branch="$(bt_get_current_branch_raw 2>/dev/null || true)"
+  local current_branch=""
+
+  current_branch="$(bt_get_current_branch_raw 2>/dev/null || true)"
   if [[ "$current_branch" == r-* ]] && \
     has_remote_branch "${current_branch#r-}"; then
     return 0
@@ -478,45 +477,6 @@ persist_report_changes() {
 
   report_rel="${OUTPUT_FILE#"${repo_root}"/}"
   bt_success "See $report_rel for details."
-}
-
-build_auto_stash_index() {
-  local stash_output=""
-  local stash_error=""
-  local subject=""
-  local stash_branch=""
-
-  if [[ "$AUTO_STASH_INDEX_READY" == true ]]; then
-    return 0
-  fi
-
-  AUTO_STASH_INDEX_READY=true
-
-  if ! capture_command_output \
-    stash_output stash_error \
-    git stash list --format='%gs'; then
-    record_diagnostic \
-      "Failed to read stash list; auto-stash indicators unavailable." \
-      "$stash_error"
-    return 0
-  fi
-
-  while IFS= read -r subject; do
-    [[ -n "$subject" ]] || continue
-    if [[ "$subject" =~ chcurrent-auto:([^:]+): ]]; then
-      stash_branch="${BASH_REMATCH[1]}"
-      AUTO_STASH_COUNTS["$stash_branch"]=$((
-        ${AUTO_STASH_COUNTS["$stash_branch"]:-0} + 1
-      ))
-    fi
-  done <<< "$stash_output"
-}
-
-get_branch_auto_stash_count() {
-  local branch="$1"
-
-  build_auto_stash_index
-  echo "${AUTO_STASH_COUNTS["$branch"]:-0}"
 }
 
 get_unpushed_commits() {
@@ -631,15 +591,6 @@ ensure_remote_refs_fetched() {
         "$fetch_warning" "$fetch_error"
   fi
   
-  # Propagate repository history from remote if available
-  local history_rc=0
-  bt_propagate_repository_history || history_rc=$?
-  case "$history_rc" in
-    0) ;;
-    1) [[ "$VERBOSE" == true ]] &&
-      bt_info "Updated repository history from remote" ;;
-    *) ;;
-  esac
 }
 
 format_zero_as_blank() {
@@ -990,9 +941,8 @@ build_compact_status_tags() {
   local branch_type="$3"
   local is_current="$4"
   local repo_status="$5"
-  local auto_stash_count="$6"
-  local pr_count="$7"
-  local include_remote_rows="$8"
+  local pr_count="$6"
+  local include_remote_rows="$7"
   local has_uncommitted=false
   local mode_tag="$mode"
   local relation_tag=""
@@ -1045,10 +995,6 @@ build_compact_status_tags() {
     "$mode" "$branch" "$selected_ref")
   [[ -z "$parent_tags" ]] || tags+=("$parent_tags")
 
-  if [[ "$mode" == "local" && "$auto_stash_count" =~ ^[0-9]+$ && \
-    "$auto_stash_count" -gt 0 ]]; then
-    tags+=("[auto-stash: $auto_stash_count]")
-  fi
   if [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 && \
     ( "$mode" == "remote" || "$include_remote_rows" == false ) ]]; then
     tags+=("[PRs: $pr_count]")
@@ -1194,10 +1140,9 @@ emit_branch_status_lines() {
   local include_remote_rows="$4"
   local branch_type="$5"
   local repo_status="$6"
-  local auto_stash_count="$7"
-  local pr_count="$8"
-  local local_display="$9"
-  local remote_display="${10}"
+  local pr_count="$7"
+  local local_display="$8"
+  local remote_display="$9"
   local remote_is_current=false
 
   if [[ "$CURRENT_IS_REMOTE_SNAPSHOT" == true && \
@@ -1209,27 +1154,24 @@ emit_branch_status_lines() {
     "$include_local_rows" == true && "$include_remote_rows" == true ]]; then
     printf '%s %s\n' "$local_display" \
       "$(build_compact_status_tags local "$branch" "$branch_type" \
-        "$is_current" "$repo_status" "$auto_stash_count" "$pr_count" true)"
+        "$is_current" "$repo_status" "$pr_count" true)"
     printf '%s %s\n' "$remote_display" \
       "$(build_compact_status_tags remote "$branch" "$branch_type" \
-        "$remote_is_current" "$repo_status" "$auto_stash_count" \
-        "$pr_count" true)"
+        "$remote_is_current" "$repo_status" "$pr_count" true)"
   elif [[ "$branch_type" == "local (tracking origin)" &&
     "$include_remote_rows" == true ]]; then
     printf '%s %s\n' "$remote_display" \
       "$(build_compact_status_tags remote "$branch" "$branch_type" \
-        "$remote_is_current" "$repo_status" "$auto_stash_count" \
-        "$pr_count" true)"
+        "$remote_is_current" "$repo_status" "$pr_count" true)"
   elif [[ "$include_remote_rows" == true && \
     "$include_local_rows" == false ]]; then
     printf '%s %s\n' "$remote_display" \
       "$(build_compact_status_tags remote "$branch" "$branch_type" \
-        "$remote_is_current" "$repo_status" "$auto_stash_count" \
-        "$pr_count" true)"
+        "$remote_is_current" "$repo_status" "$pr_count" true)"
   else
     printf '%s %s\n' "$local_display" \
       "$(build_compact_status_tags local "$branch" "$branch_type" \
-        "$is_current" "$repo_status" "$auto_stash_count" "$pr_count" \
+        "$is_current" "$repo_status" "$pr_count" \
         "$include_remote_rows")"
   fi
 }
@@ -1244,25 +1186,20 @@ append_branch_status_report_rows() {
   local repo_status="$7"
   local staged_count="$8"
   local unstaged_count="$9"
-  local auto_stash_count="${10}"
-  local unpushed_count="${11}"
-  local behind_count="${12}"
-  local pr_count="${13}"
-  local parent_ahead_count="${14}"
-  local parent_behind_count="${15}"
-  local base_reference="${16}"
-  local created_date="${17}"
-  local last_commit_date="${18}"
+  local unpushed_count="${10}"
+  local behind_count="${11}"
+  local pr_count="${12}"
+  local parent_ahead_count="${13}"
+  local parent_behind_count="${14}"
+  local base_reference="${15}"
+  local created_date="${16}"
+  local last_commit_date="${17}"
   local local_status="$repo_status"
   local remote_display=""
   local pr_count_display=""
 
   remote_display=$(branch_name_status_display "$branch" "false")
   pr_count_display=$(format_zero_as_blank "$pr_count")
-
-  if [[ "$auto_stash_count" =~ ^[0-9]+$ && "$auto_stash_count" -gt 0 ]]; then
-    local_status+="; auto-stash:$auto_stash_count"
-  fi
 
   if [[ "$branch_type" == "local (tracking origin)" ]]; then
     local unpushed_display=""
@@ -1364,7 +1301,7 @@ check_branch_status() {
   ensure_remote_refs_fetched
 
   # Gather status information — use fallback values if any step fails
-  local repo_status staged_count unstaged_count auto_stash_count
+  local repo_status staged_count unstaged_count
   local unpushed_count pr_count branch_type
   if [[ "$is_current" == true ]]; then
     repo_status=$(check_repo_status) || repo_status="unknown"
@@ -1379,8 +1316,6 @@ check_branch_status() {
     staged_count=""
     unstaged_count=""
   fi
-  auto_stash_count=$(get_branch_auto_stash_count "$branch") || \
-    auto_stash_count="0"
   unpushed_count=$(get_unpushed_commits "$branch") || unpushed_count="N/A"
   pr_count=$(get_pending_pr_count    "$branch") || pr_count="N/A"
   branch_type=$(get_branch_type      "$branch") || branch_type="unknown"
@@ -1415,20 +1350,19 @@ check_branch_status() {
 
   emit_branch_status_lines \
     "$branch" "$is_current" "$include_local_rows" "$include_remote_rows" \
-    "$branch_type" "$repo_status" "$auto_stash_count" "$pr_count" \
+    "$branch_type" "$repo_status" "$pr_count" \
     "$branch_status_display_local" "$branch_status_display_remote"
 
   append_branch_status_report_rows \
     "$branch" "$include_local_rows" "$include_remote_rows" "$branch_type" \
     "$branch_report_display" "$branch_status_display" "$repo_status" \
-    "$staged_count" "$unstaged_count" "$auto_stash_count" \
-    "$unpushed_count" "$behind_count" "$pr_count" \
+    "$staged_count" "$unstaged_count" "$unpushed_count" "$behind_count" \
+    "$pr_count" \
     "$parent_ahead_count" "$parent_behind_count" "$base_reference" \
     "$created_date" "$last_commit_date"
 
   if [[ "$VERBOSE" == true ]]; then
     echo "  Status: $repo_status"
-    echo "  Auto-stash: $auto_stash_count"
     echo "  Staged: $staged_count"
     echo "  Unstaged: $unstaged_count"
     echo "  Unpushed: $unpushed_count"
@@ -1808,10 +1742,7 @@ $FOOTER_INVALID_LINE
 **Status**: \`clean\`, \`dirty\`, or \`not checked out\` for local branch
 state, \`synced\` or \`diverged\` for tracked-branch state, or \`unknown\`.
 For the current local branch, \`dirty\` means there are changes that have not
-been committed, including untracked files. Status includes
-\`; auto-stash:N\` when branch-matching
-legacy auto-stashes exist (label:
-\`chcurrent-auto:BRANCH:TIMESTAMP\`).
+been committed, including untracked files.
 
 **Staged/Unstaged**: Count of staged files and count of unstaged files.
 Unstaged includes tracked modifications and untracked files (anything

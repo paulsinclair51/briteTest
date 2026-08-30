@@ -187,8 +187,6 @@ if ! source "$GIT_HELPER"; then
   exit 2
 fi
 
-MAIN_HISTORY_REF="refs/heads/main"
-
 usage_error() {
   local message="$1"
   usage
@@ -551,14 +549,6 @@ if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
       "$BRANCHNAME" "$COMMENT"
   fi
   
-  # Propagate repository history from remote if available
-  history_status=0
-  bt_propagate_repository_history || history_status=$?
-  case "$history_status" in
-    0) ;;
-    1) info "Updated repository history from remote" ;;
-    *) ;;
-  esac
 fi
 
 # Check if branch exists (local or remote)

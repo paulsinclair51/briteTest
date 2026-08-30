@@ -307,13 +307,6 @@ usage_error() {
   exit "$EXIT_INVALID_ARGUMENT"
 }
 
-trim_whitespace() {
-  local value="$1"
-  value="${value#"${value%%[![:space:]]*}"}"
-  value="${value%"${value##*[![:space:]]}"}"
-  printf '%s' "$value"
-}
-
 bt_info() {
   if [[ "$VERBOSE" == true ]]; then
     printf '%s\n' "$(bt_ensure_trailing_period "$1")"
@@ -518,10 +511,9 @@ if [[ "$ERROR_RUN" == true ]]; then
 fi
 
 if [[ -n "$CUSTOM_MESSAGE" ]]; then
-  CUSTOM_MESSAGE="$(trim_whitespace "$CUSTOM_MESSAGE")"
+  CUSTOM_MESSAGE="$(bt_trim_whitespace "$CUSTOM_MESSAGE")"
   if [[ -z "$CUSTOM_MESSAGE" ]]; then
-    usage_error "Commit comment must include at least one non-whitespace "\
-"character"
+    usage_error "Commit comment must include at least one non-whitespace character"
   fi
 fi
 
@@ -587,8 +579,8 @@ fi
 # Check if branch is protected
 if bt_is_protected_branch "$CURRENT_BRANCH"; then
   if [[ "$OWNER_OVERRIDE_ACTIVE" == true ]]; then
-    bt_warn "Owner override enabled: allowing sync on protected branch "\
-"'$CURRENT_BRANCH'"
+    bt_warn \
+      "Owner override enabled: allowing sync on protected branch '$CURRENT_BRANCH'"
   elif is_pushup_source_sync; then
     bt_info "Allowing protected source synchronization for active pushup"
   else
@@ -609,15 +601,6 @@ if ! bt_run_remote_command git fetch origin "$PARENT_BRANCH" \
   bt_error_exit "$EXIT_NOT_FOUND" \
     "Failed to fetch parent branch '$PARENT_BRANCH' from remote"
 fi
-
-# Propagate repository history from remote if available
-history_sync_rc=0
-bt_propagate_repository_history || history_sync_rc=$?
-case "$history_sync_rc" in
-  0) ;;
-  1) bt_info "Updated repository history from remote" ;;
-  *) ;;
-esac
 
 # Count commits from parent branch to current branch
 commits_to_merge=""
@@ -721,7 +704,7 @@ fi
 
 cleanup_success_transient_reports
 
-bt_success "Merged parent '$PARENT_BRANCH' into '$CURRENT_BRANCH': "\
-"${MERGE_FILE_SUMMARY_TEXT}."
+bt_success \
+  "Merged parent '$PARENT_BRANCH' into '$CURRENT_BRANCH': ${MERGE_FILE_SUMMARY_TEXT}."
 bt_success "Run report for details."
 exit 0

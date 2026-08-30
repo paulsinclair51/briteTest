@@ -277,8 +277,11 @@ bt_push_workflow() (
     user_display="$(bt_format_login_with_role "$(bt_resolve_login_or_empty)" \
       "$repo_root/config/contributors.md" 2>/dev/null || true)"
     [[ -n "$user_display" ]] || user_display="unknown (contributor)"
-    local directories_summary="$(bt_push_format_directory_summary)"
-    local files_summary="$(bt_push_format_file_summary)"
+    local directories_summary=""
+    local files_summary=""
+
+    directories_summary="$(bt_push_format_directory_summary)"
+    files_summary="$(bt_push_format_file_summary)"
     cat > "$report_file" <<EOF
 # Error Push Report ${run_ts_display}
 
@@ -400,9 +403,8 @@ EOF
     bt_push_release_report_lock
   }
 
-  bt_push_generate_report() {
+  bt_push_generate_dry_run_report() {
     local command_text=""
-    local report_heading=""
     local files_count=0
     local file=""
     local added=0
@@ -434,18 +436,10 @@ EOF
 
     command_text="$(bt_push_format_command_line)"
     report_user="$(bt_resolve_login_or_empty)"
-    if [[ "$dry_run" == true ]]; then
-      report_heading="# Dry-run Push Report"
-    else
-      report_heading="# Push Report ${run_ts_display}"
-    fi
     bt_push_acquire_report_lock
     bt_push_enable_report_writes
-    if [[ "$dry_run" == true ]]; then
-      report_file="$(bt_report_transient_path "$reports_dir" "push-d" "$run_ts_file")"
-    else
-      report_file="$(bt_report_transient_path "$reports_dir" "push" "$run_ts_file")"
-    fi
+    report_file="$(bt_report_transient_path \
+      "$reports_dir" "push-d" "$run_ts_file")"
     [[ ! -f "$report_file" ]] || chmod u+w "$report_file" 2>/dev/null || true
 
     files_count="$(git diff --name-only --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null | sed '/^$/d' | wc -l | tr -d ' ')"
@@ -490,8 +484,11 @@ EOF
     directory_count="${#directory_rows[@]}"
 
     if [[ "$dry_run" == true ]]; then
-      local directories_summary="$(bt_push_format_directory_summary)"
-      local files_summary="$(bt_push_format_file_summary)"
+      local directories_summary=""
+      local files_summary=""
+
+      directories_summary="$(bt_push_format_directory_summary)"
+      files_summary="$(bt_push_format_file_summary)"
 
       cat > "$report_file" <<EOF
 # Dry-run Push Report
@@ -588,55 +585,6 @@ EOF
           echo '</details>'
         } >> "$report_file"
       fi
-    else
-      cat > "$report_file" <<EOF
-# ${report_heading#\# }
-
-${push_tip_line}
-
-**Command:** \`${command_text}\`
-**Branch:** \`${current_branch}\`
-**Commits:** ${commits_ahead}
-
-EOF
-
-      {
-        echo "## Files"
-        echo
-        printf '| **File** | **Commit** | **Added** | **Deleted** | %s\n' \
-        '**Net** | **Lines** | **Action** |'
-        echo "| --- | --- | ---: | ---: | ---: | ---: | --- |"
-      } >> "$report_file"
-
-      bt_git_collect_file_actions < <(git diff --name-status --find-renames \
-        "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)
-
-      while IFS= read -r file; do
-        [[ -n "$file" ]] || continue
-        added=0
-        deleted=0
-        while IFS=$'\t' read -r num_added num_deleted rest; do
-          [[ "$num_added" =~ ^[0-9]+$ ]] && added=$((added + num_added))
-          [[ "$num_deleted" =~ ^[0-9]+$ ]] && deleted=$((deleted + num_deleted))
-        done < <(git diff --numstat --find-renames "${remote_branch_tip}..${push_content_ref}" -- "$file" 2>/dev/null || true)
-        net=$((added - deleted))
-        total_lines=0
-        if git cat-file -e "${push_content_ref}:$file" 2>/dev/null; then
-          total_lines="$(git show "${push_content_ref}:$file" 2>/dev/null | wc -l | tr -d ' ')"
-        fi
-        commit_hash="$(git log -1 --format='%h' "${remote_branch_tip}..${push_content_ref}" -- "$file" 2>/dev/null || true)"
-        printf '| `%s` | `%s` | %s | %s | %s | %s | %s |\n' \
-          "$file" "$commit_hash" "$added" "$deleted" "$net" "$total_lines" \
-          "$(bt_git_file_action "$file")" >> "$report_file"
-        total_added=$((total_added + added))
-        total_deleted=$((total_deleted + deleted))
-        total_net=$((total_net + net))
-        total_lines_sum=$((total_lines_sum + total_lines))
-      done < <(git diff --name-only --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null || true)
-
-      printf '| **Total** |  | %s | %s | %+d | %s |  |\n' \
-        "$total_added" "$total_deleted" "$total_net" "$total_lines_sum" \
-        >> "$report_file"
     fi
 
     if [[ "$verbose" == true ]]; then
@@ -878,7 +826,7 @@ EOF
 
   if [[ "$dry_run" == true ]]; then
     bt_push_collect_stdout_summary_counts
-    bt_push_generate_report
+    bt_push_generate_dry_run_report
     echo "Dry-run: push to remote $current_branch: ${pushed_change_summary}."
     echo "See ${report_file#"${repo_root}"/} for details."
     exit 0

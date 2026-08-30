@@ -443,14 +443,6 @@ check_working_directory_clean
 bt_run_remote_command git fetch origin 2>/dev/null || \
   bt_warn "Failed to fetch from origin"
 
-# Propagate repository history from remote if available
-history_status=0
-bt_propagate_repository_history || history_status=$?
-case "$history_status" in
-  0) [[ "$VERBOSE" != true ]] || bt_info "Repository history already up to date" ;;
-  1) [[ "$VERBOSE" != true ]] || bt_info "Updated repository history from remote" ;;
-  *) ;;  # offline or unavailable, continue silently
-esac
 check_status_checks "$CURRENT_BRANCH"
 
 if [[ "$DRY_RUN" == true ]]; then

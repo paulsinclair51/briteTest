@@ -14,20 +14,20 @@ and high-signal output contracts for the scripts.
 
 ## Files
 
-**test_*.sh**: miscellaneous test helpers for policy, propagation, and
-fixlocal core/remote/retention.
+**test_*.sh**: Command and helper smoke-test suites.
 
 **test_\<bin_script\>.sh**: Smoke tests for a script in
 `<repo>/briteRepo/bin/` covering help output, verified cleanup,
 report summaries, and repository layout skip behavior.
 
-**test_commit_lib.sh**: Smoke tests for `<repo>/briteRepo/bin/fixrepo`
-covering help output, verified cleanup, report summaries, and script behavior
-layout skip behavior.
+**test_commit_lib.sh**: Shared fixture and assertion helpers for the split
+commit test suites.
 
-**test_fixlocal_lib.sh**: Smoke tests for `<repo>/briteRepo/bin/fixrepo`
-covering help output, verified cleanup, report summaries, and script behavior
-layout skip behavior.
+**test_fixlocal_lib.sh**: Shared fixture and assertion helpers for the split
+fixlocal test suites.
+
+**test_report_lib.sh**: Shared fixture and assertion helpers for the split
+report test suites.
 
 **test_report_helpers.sh**: Focused tests for
 `<repo>/briteRepo/helpers/report_helpers.sh` covering exact deleted-report

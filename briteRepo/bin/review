@@ -308,14 +308,6 @@ extract_reviewers_from_config() {
     tr '\n' ',' | sed 's/,$//')
 
   if [[ -z "$reviewers" ]]; then
-    # Backward compatibility: older format used "- A/login,..." or
-    # "- R/login,...".
-    reviewers=$(grep -E '^\s*-\s+[RA]/' "$config_file" | \
-      sed -E 's/^\s*-\s+[RA]\/([^,]+).*/\1/' | \
-      tr '\n' ',' | sed 's/,$//')
-  fi
-
-  if [[ -z "$reviewers" ]]; then
     bt_error_exit "$EXIT_GITHUB_API" \
       "No reviewers or approvers found in $config_file"
   fi
@@ -690,7 +682,6 @@ validate_options_cross_constraints
 validate_text_inputs
 
 export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
-bt_propagate_repository_history >/dev/null 2>&1 || true
 
 require_gh_cli
 require_contributors_config
