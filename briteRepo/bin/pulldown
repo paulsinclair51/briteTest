@@ -208,6 +208,9 @@ collect_staged_merge_file_summary() {
   MERGE_ADDED_DIRECTORIES="$BT_CHANGE_ADDED_DIRECTORIES"
   MERGE_RENAMED_DIRECTORIES="$BT_CHANGE_RENAMED_DIRECTORIES"
   MERGE_FILE_SUMMARY_TEXT="$(bt_format_change_summary)"
+  if [[ "$MERGE_FILE_SUMMARY_TEXT" == "no changes" ]]; then
+    MERGE_FILE_SUMMARY_TEXT="$((commits_to_merge + 1)) commits with no file or directory changes"
+  fi
 }
 
 cleanup_success_transient_reports() {

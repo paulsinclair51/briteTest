@@ -298,7 +298,23 @@ reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
   fail "second merge-down should not add an immediate report"
 pass "merge reporting is deferred"
 
-# 7) Whitespace-only comments should be rejected.
+# 7) A content-neutral merge reports parent commits plus its merge commit.
+(
+  cd "$PEER"
+  git checkout v1.0.0 >/dev/null 2>&1
+  git pull --ff-only origin v1.0.0 >/dev/null 2>&1
+  git commit --allow-empty -m "content-neutral parent commit" >/dev/null 2>&1
+  git push origin v1.0.0 >/dev/null 2>&1
+)
+rc=$(run_capture "$TMPDIR/content-neutral.out" bash -lc \
+  "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -c 'sync content-neutral parent'")
+[[ "$rc" -eq 0 ]] || fail "content-neutral pulldown should exit 0 (got $rc)"
+assert_contains \
+  "Merged parent 'v1.0.0' into 'dev/current-v1.0.0': 2 commits with no file or directory changes." \
+  "$TMPDIR/content-neutral.out"
+pass "content-neutral merge summary"
+
+# 8) Whitespace-only comments should be rejected.
 rc=$(run_capture "$TMPDIR/empty-comment.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -c '   '")
 [[ "$rc" -eq 1 ]] || fail "whitespace-only comment should exit 1 (got $rc)"
 assert_contains "Commit comment must include at least one non-whitespace character" "$TMPDIR/empty-comment.out"

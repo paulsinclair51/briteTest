@@ -701,9 +701,9 @@ EOF
     # Merge-only pushes advance the branch without changing file content.
     if [[ "$pushed_change_summary" == "no changes" ]]; then
       if [[ "$commits_ahead" -eq 1 ]]; then
-        pushed_change_summary="1 commit with no file changes"
+        pushed_change_summary="1 commit with no file or directory changes"
       else
-        pushed_change_summary="${commits_ahead} commits with no file changes"
+        pushed_change_summary="${commits_ahead} commits with no file or directory changes"
       fi
     fi
   }

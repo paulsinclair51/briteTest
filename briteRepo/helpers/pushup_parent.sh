@@ -1038,7 +1038,7 @@ ensure_current_up_to_date_with_parent() {
     2>/dev/null || true)"
   if [[ -n "$merge_base" ]] && \
     git diff --quiet "$merge_base" "$parent_ref" 2>/dev/null; then
-    bt_info "Parent-only commits contain no file changes; pushup will incorporate them"
+    bt_info "Parent-only commits contain no file or directory changes; pushup will incorporate them"
     return 0
   fi
 

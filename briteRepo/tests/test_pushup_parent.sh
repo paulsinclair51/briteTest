@@ -891,9 +891,11 @@ pass "parent checkout failure returns exit 15 with actionable report"
 # incorporates their history without requiring a separate pulldown.
 rc=$(run_pushup "$TMPDIR/current-behind-content-neutral-parent.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
-  "FAKE_CURRENT_BEHIND_PARENT=1" -- -o -d)
+  "FAKE_CURRENT_BEHIND_PARENT=1" -- -o -d -v)
 [[ "$rc" -eq 0 ]] || \
   fail "content-neutral parent-only commits should be accepted (got $rc)"
+assert_contains "Parent-only commits contain no file or directory changes" \
+  "$TMPDIR/current-behind-content-neutral-parent.out"
 pass "content-neutral parent-only commits are accepted"
 
 # Current branch behind parent file changes returns exit 13
