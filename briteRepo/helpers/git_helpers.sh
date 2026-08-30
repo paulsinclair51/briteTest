@@ -47,28 +47,29 @@ bt_git_format_tracking_relation_tag() {
   local mode="$1"
   local ahead="$2"
   local behind="$3"
-  local has_uncommitted="$4"
+  local changes="${4:-0}"
+  local change_label="changes"
 
   [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
+  [[ "$changes" =~ ^[0-9]+$ && "$changes" -gt 0 ]] || return 0
+  [[ "$changes" -ne 1 ]] || change_label="change"
 
-  if [[ "$ahead" -eq 0 && "$behind" -eq 0 ]]; then
-    return 0
-  elif [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
+  if [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
     if [[ "$mode" == "local" ]]; then
-      printf '[ahead of remote by %s]' "$ahead"
+      printf '[remote behind by %s %s]' "$changes" "$change_label"
     else
-      printf '[behind local by %s]' "$ahead"
+      printf '[behind local by %s %s]' "$changes" "$change_label"
     fi
   elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
     if [[ "$mode" == "local" ]]; then
-      printf '[behind remote by %s]' "$behind"
+      printf '[behind remote by %s %s]' "$changes" "$change_label"
     else
-      printf '[ahead of local by %s]' "$behind"
+      printf '[local behind by %s %s]' "$changes" "$change_label"
     fi
   elif [[ "$mode" == "local" ]]; then
-    printf '[diverged from remote: %s/%s]' "$ahead" "$behind"
+    printf '[differs from remote by %s %s]' "$changes" "$change_label"
   else
-    printf '[diverged from local: %s/%s]' "$behind" "$ahead"
+    printf '[differs from local by %s %s]' "$changes" "$change_label"
   fi
   return 0
 }
@@ -78,6 +79,8 @@ bt_git_format_parent_relation_tags() {
   local ahead="$2"
   local behind="$3"
   local available="$4"
+  local changes="${5:-0}"
+  local change_label="changes"
 
   [[ -n "$parent" ]] || return 0
   if [[ "$available" != true ]]; then
@@ -85,15 +88,24 @@ bt_git_format_parent_relation_tags() {
     return 0
   fi
 
-  printf '[parent: %s]' "$parent"
-  [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
+  if [[ ! "$ahead" =~ ^[0-9]+$ || ! "$behind" =~ ^[0-9]+$ || \
+    ! "$changes" =~ ^[0-9]+$ || "$changes" -eq 0 ]]; then
+    printf '[parent: %s]' "$parent"
+    return 0
+  fi
+  [[ "$changes" -ne 1 ]] || change_label="change"
 
   if [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
-    printf ' [ahead of parent by %s]' "$ahead"
+    printf '[parent: %s behind by %s %s]' \
+      "$parent" "$changes" "$change_label"
   elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
-    printf ' [behind parent by %s]' "$behind"
+    printf '[parent: %s ahead by %s %s]' \
+      "$parent" "$changes" "$change_label"
   elif [[ "$ahead" -gt 0 && "$behind" -gt 0 ]]; then
-    printf ' [diverged from parent: %s/%s]' "$ahead" "$behind"
+    printf '[parent: %s differs by %s %s]' \
+      "$parent" "$changes" "$change_label"
+  else
+    printf '[parent: %s]' "$parent"
   fi
   return 0
 }
@@ -102,16 +114,23 @@ bt_git_tracking_relation_tag() {
   local mode="$1"
   local local_ref="$2"
   local remote_ref="$3"
-  local has_uncommitted="$4"
   local ahead=0
   local behind=0
   local counts=""
+  local changes=0
 
   counts=$(git rev-list --left-right --count \
     "$local_ref...$remote_ref" 2>/dev/null || true)
   read -r ahead behind <<< "$counts"
+  if ! git diff --quiet "$local_ref" "$remote_ref" 2>/dev/null; then
+    bt_git_collect_ref_change_summary "$remote_ref" "$local_ref"
+    changes=$((BT_CHANGE_MODIFIED_FILES + BT_CHANGE_DELETED_FILES + \
+      BT_CHANGE_ADDED_FILES + BT_CHANGE_RENAMED_FILES + \
+      BT_CHANGE_RENAMED_MODIFIED_FILES + BT_CHANGE_DELETED_DIRECTORIES + \
+      BT_CHANGE_ADDED_DIRECTORIES + BT_CHANGE_RENAMED_DIRECTORIES))
+  fi
   bt_git_format_tracking_relation_tag \
-    "$mode" "$ahead" "$behind" "$has_uncommitted"
+    "$mode" "$ahead" "$behind" "$changes"
 }
 
 bt_git_parent_relation_tags() {
@@ -125,6 +144,7 @@ bt_git_parent_relation_tags() {
   local counts=""
   local merge_base=""
   local available=false
+  local changes=0
 
   parent=$(bt_resolve_parent_branch "$branch" "main" 2>/dev/null || true)
   [[ -n "$parent" ]] || return 0
@@ -147,9 +167,14 @@ bt_git_parent_relation_tags() {
         behind=0
       fi
     fi
+    bt_git_collect_ref_change_summary "$parent_ref" "$selected_ref"
+    changes=$((BT_CHANGE_MODIFIED_FILES + BT_CHANGE_DELETED_FILES + \
+      BT_CHANGE_ADDED_FILES + BT_CHANGE_RENAMED_FILES + \
+      BT_CHANGE_RENAMED_MODIFIED_FILES + BT_CHANGE_DELETED_DIRECTORIES + \
+      BT_CHANGE_ADDED_DIRECTORIES + BT_CHANGE_RENAMED_DIRECTORIES))
   fi
   bt_git_format_parent_relation_tags \
-    "$parent" "$ahead" "$behind" "$available"
+    "$parent" "$ahead" "$behind" "$available" "$changes"
 }
 
 bt_git_reset_change_summary() {
@@ -750,7 +775,7 @@ bt_git_file_action() {
 }
 
 # Branch status tags used in report headers, for example:
-# [uncommitted] [local] [parent: v1.0.0] [ahead of parent by 49]
+# [uncommitted] [local] [parent: v1.0.0] [parent behind by 4 changes]
 bt_git_branch_status_tags() {
   local branch="$1"
   local mode="$2"

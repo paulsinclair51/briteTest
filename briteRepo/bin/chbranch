@@ -79,23 +79,31 @@ Status tags:
   [read-only]                   The selected branch must not be modified.
   [invalid name]                Branch name violates repository naming rules.
   [offline]                     Remote status could not be retrieved.
-  [ahead of remote by N]        Local has N commits not on the remote.
-  [behind remote by N]          Remote has N commits not on the local branch.
-  [ahead of local by N]         Remote has N commits not on the local branch.
-  [behind local by N]           Local has N commits not on the remote.
-  [diverged from remote: N/M]   Local and remote have diverged; N local-only
-                                and M remote-only commits.
-  [diverged from local: N/M]    Remote and local have diverged; N remote-only
-                                and M local-only commits.
-  [parent: NAME]                NAME is the selected branch's parent.
+  [remote behind by N changes]  Local has N file or directory changes not on
+                                the remote.
+  [behind remote by N changes]  Remote has N file or directory changes not on
+                                the local branch.
+  [differs from remote by N changes]
+                                Local and remote content differs by N file or
+                                directory changes.
+  [differs from local by N changes]
+                                Remote and local content differs by N file or
+                                directory changes.
+  [parent: NAME]                NAME is the selected branch's parent and content
+                                matches.
   [parent unavailable: NAME]    NAME is the selected branch's parent, but that
                                 branch is not available locally or among
                                 downloaded remote branches. It may not have
                                 been fetched, or it may have been deleted.
-  [ahead of parent by N]        Selected branch has N commits not on its parent.
-  [behind parent by N]          Parent has N commits not on the selected branch.
-  [diverged from parent: N/M]   Selected branch and parent have diverged; N
-                                selected-only and M parent-only commits.
+  [parent: NAME behind by N changes]
+                                Selected branch has N file or directory changes
+                                not on its parent.
+  [parent: NAME ahead by N changes]
+                                Parent has N file or directory changes not on
+                                the selected branch.
+  [parent: NAME differs by N changes]
+                                Selected branch and parent content differs by N
+                                file or directory changes.
   [copyfix in progress]        Rerun copyfix to resume.
   [pushup in progress]         Rerun pushup to resume.
   [pull in progress]            Resolve conflicts, then rerun pull.
@@ -221,7 +229,6 @@ emit_success_changed() {
   local branch="$2"
   local refreshed="${3:-false}"
   local status_output=""
-  local has_uncommitted=false
   local local_ref="refs/heads/$branch"
   local tracking_local_ref="$local_ref"
   local remote_ref="refs/remotes/origin/$branch"
@@ -249,7 +256,6 @@ emit_success_changed() {
   if [[ "$mode" == "local" ]]; then
     status_output="$(git status --porcelain 2>/dev/null || true)"
     if [[ -n "$status_output" ]]; then
-      has_uncommitted=true
       tags+=("[uncommitted]")
     fi
   fi
@@ -265,7 +271,7 @@ emit_success_changed() {
   elif git rev-parse --verify "$tracking_local_ref" >/dev/null 2>&1 && \
     git rev-parse --verify "$remote_ref" >/dev/null 2>&1; then
     relation_tag="$(bt_git_tracking_relation_tag \
-      "$mode" "$tracking_local_ref" "$remote_ref" "$has_uncommitted")"
+      "$mode" "$tracking_local_ref" "$remote_ref")"
     [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
   fi
 

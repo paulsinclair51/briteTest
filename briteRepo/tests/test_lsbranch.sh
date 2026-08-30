@@ -51,9 +51,9 @@ rc=$(run_capture "$TMPDIR/help.out" "$LSBRANCH" -h)
 grep -q '^Usage:' "$TMPDIR/help.out" || fail "lsbranch -h should print Usage"
 for status_tag in \
   "[local only]" "[remote only]" "[uncommitted]" "[invalid name]" \
-  "[offline]" "[diverged from remote: N/M]" \
-  "[diverged from local: N/M]" "[parent: NAME]" \
-  "[parent unavailable: NAME]" "[diverged from parent: N/M]" \
+  "[offline]" "[differs from remote by N changes]" \
+  "[differs from local by N changes]" "[parent: NAME]" \
+  "[parent unavailable: NAME]" "[parent: NAME differs by N changes]" \
   "[copyfix in progress]" "[pushup in progress]" \
   "[pull in progress]" "[retarget in progress]" \
   "[pulldown in progress]" \
@@ -301,11 +301,11 @@ git update-ref "$status_remote_ref" "$status_parent_tip"
 rc=$(run_capture "$TMPDIR/status-ahead.out" env PATH="$STATUS_BIN:$PATH" \
   "$LSBRANCH" "$status_branch")
 [[ "$rc" -eq 0 ]] || fail "ahead status fixture should exit 0"
-grep -Fq "[ahead of remote by 1]" "$TMPDIR/status-ahead.out" || \
+grep -Fq "[remote behind by 1 change]" "$TMPDIR/status-ahead.out" || \
   fail "local row should report ahead of remote"
-grep -Fq "[behind local by 1]" "$TMPDIR/status-ahead.out" || \
+grep -Fq "[behind local by 1 change]" "$TMPDIR/status-ahead.out" || \
   fail "remote row should report behind local"
-grep -Fq "[parent: v1.0.0] [ahead of parent by 1]" \
+grep -Fq "[parent: v1.0.0 behind by 1 change]" \
   "$TMPDIR/status-ahead.out" || fail "row should report parent identity"
 
 status_parent_remote_tip=$(git rev-parse refs/remotes/origin/v1.0.0)
@@ -319,10 +319,10 @@ git update-ref "$status_remote_ref" "$status_local_tip"
 rc=$(run_capture "$TMPDIR/status-neutral-parent.out" \
   env PATH="$STATUS_BIN:$PATH" "$LSBRANCH" "$status_branch")
 [[ "$rc" -eq 0 ]] || fail "content-neutral parent fixture should exit 0"
-if grep -Fq "[diverged from parent" "$TMPDIR/status-neutral-parent.out"; then
+if grep -Fq "[differs from parent" "$TMPDIR/status-neutral-parent.out"; then
   fail "content-neutral parent-only commits should not report divergence"
 fi
-[[ "$(grep -Fc "[ahead of parent by 1]" \
+[[ "$(grep -Fc "[parent: v1.0.0 behind by 1 change]" \
   "$TMPDIR/status-neutral-parent.out")" -eq 2 ]] || \
   fail "local and remote rows should retain the child's actionable ahead count"
 git update-ref refs/heads/v1.0.0 "$status_parent_tip"
@@ -339,7 +339,7 @@ rc=$(run_capture "$TMPDIR/status-content-match.out" env PATH="$STATUS_BIN:$PATH"
 grep -Fq "[parent: v1.0.0]" \
   "$TMPDIR/status-content-match.out" || \
   fail "matching-content row should identify its parent"
-if grep -E "^${status_branch} \[local\].*\[ahead of parent" \
+if grep -E "^${status_branch} \[local\].*\[parent: .* behind" \
   "$TMPDIR/status-content-match.out" >/dev/null; then
   fail "matching-content row should not imply another pushup is needed"
 fi
@@ -349,18 +349,18 @@ git update-ref "$status_remote_ref" "$status_remote_tip"
 rc=$(run_capture "$TMPDIR/status-behind.out" env PATH="$STATUS_BIN:$PATH" \
   "$LSBRANCH" "$status_branch")
 [[ "$rc" -eq 0 ]] || fail "behind status fixture should exit 0"
-grep -Fq "[behind remote by 1]" "$TMPDIR/status-behind.out" || \
-  fail "local row should report behind remote"
-grep -Fq "[ahead of local by 1]" "$TMPDIR/status-behind.out" || \
-  fail "remote row should report ahead of local"
+if grep -Eq '\[(remote behind|behind remote|local behind|behind local|differs)' \
+  "$TMPDIR/status-behind.out"; then
+  fail "content-neutral tracking history should not produce a status tag"
+fi
 
 git update-ref "$status_local_ref" "$status_local_tip"
 rc=$(run_capture "$TMPDIR/status-diverged.out" env PATH="$STATUS_BIN:$PATH" \
   "$LSBRANCH" "$status_branch")
 [[ "$rc" -eq 0 ]] || fail "diverged status fixture should exit 0"
-grep -Fq "[diverged from remote: 1/1]" "$TMPDIR/status-diverged.out" || \
+grep -Fq "[differs from remote by 1 change]" "$TMPDIR/status-diverged.out" || \
   fail "local row should report divergence from remote"
-grep -Fq "[diverged from local: 1/1]" "$TMPDIR/status-diverged.out" || \
+grep -Fq "[differs from local by 1 change]" "$TMPDIR/status-diverged.out" || \
   fail "remote row should report divergence from local"
 
 git update-ref "$status_remote_ref" "$status_local_tip"

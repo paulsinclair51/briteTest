@@ -108,22 +108,29 @@ Status tags:
   [offline]                     Current remote status could not be retrieved;
                                 cached remote information is displayed when
                                 available.
-  [ahead of remote by N]        Local has N commits not on the remote.
-  [behind remote by N]          Remote has N commits not on the local branch.
-  [ahead of local by N]         Remote has N commits not on the local branch.
-  [behind local by N]           Local has N commits not on the remote.
-  [diverged from remote: N/M]   Local and remote have diverged; N local-only
-                                and M remote-only commits.
-  [diverged from local: N/M]    Remote and local have diverged; N remote-only
-                                and M local-only commits.
-  [parent: NAME]                NAME is the branch's parent.
+  [remote behind by N changes]  Local has N file or directory changes not on
+                                the remote.
+  [behind remote by N changes]  Remote has N file or directory changes not on
+                                the local branch.
+  [differs from remote by N changes]
+                                Local and remote content differs by N file or
+                                directory changes.
+  [differs from local by N changes]
+                                Remote and local content differs by N file or
+                                directory changes.
+  [parent: NAME]                NAME is the branch's parent and content matches.
   [parent unavailable: NAME]    NAME is the branch's parent, but that branch is
                                 unavailable locally and among downloaded remote
                                 branches; it may be unfetched or deleted.
-  [ahead of parent by N]        Branch has N commits not on its parent.
-  [behind parent by N]          Parent has N commits not on the branch.
-  [diverged from parent: N/M]   Branch and parent have diverged; N branch-only
-                                and M parent-only commits.
+  [parent: NAME behind by N changes]
+                                Branch has N file or directory changes not on
+                                its parent.
+  [parent: NAME ahead by N changes]
+                                Parent has N file or directory changes not on
+                                the branch.
+  [parent: NAME differs by N changes]
+                                Branch and parent content differs by N file or
+                                directory changes.
   [copyfix in progress]         Rerun copyfix to resume.
   [pushup in progress]          Rerun pushup to resume.
   [pull in progress]            Resolve conflicts, then rerun pull.
@@ -943,7 +950,6 @@ build_compact_status_tags() {
   local repo_status="$5"
   local pr_count="$6"
   local include_remote_rows="$7"
-  local has_uncommitted=false
   local mode_tag="$mode"
   local relation_tag=""
   local parent_tags=""
@@ -962,7 +968,6 @@ build_compact_status_tags() {
   if [[ "$is_current" == true ]]; then
     tags+=("[current]")
     if [[ "$repo_status" == "dirty" ]]; then
-      has_uncommitted=true
       tags+=("[uncommitted]")
     fi
   fi
@@ -982,7 +987,7 @@ build_compact_status_tags() {
     tags+=("[offline]")
   elif [[ "$branch_type" == "local (tracking origin)" ]]; then
     relation_tag=$(bt_git_tracking_relation_tag \
-      "$mode" "$branch" "origin/$branch" "$has_uncommitted")
+      "$mode" "$branch" "origin/$branch")
     [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
   fi
 

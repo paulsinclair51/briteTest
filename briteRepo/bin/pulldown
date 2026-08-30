@@ -37,6 +37,8 @@ Allowed branches (can use pulldown):
 Features:
   - Automatically determines parent branch
   - Merges parent branch into current branch
+  - Treats content-equivalent parent history as already synchronized without
+    creating an additional merge commit
   - Shows instructions for complex conflicts
 
 Options:
@@ -208,9 +210,6 @@ collect_staged_merge_file_summary() {
   MERGE_ADDED_DIRECTORIES="$BT_CHANGE_ADDED_DIRECTORIES"
   MERGE_RENAMED_DIRECTORIES="$BT_CHANGE_RENAMED_DIRECTORIES"
   MERGE_FILE_SUMMARY_TEXT="$(bt_format_change_summary)"
-  if [[ "$MERGE_FILE_SUMMARY_TEXT" == "no changes" ]]; then
-    MERGE_FILE_SUMMARY_TEXT="$((commits_to_merge + 1)) commits with no file or directory changes"
-  fi
 }
 
 cleanup_success_transient_reports() {
@@ -617,6 +616,13 @@ if [[ "$commits_to_merge" == "0" ]]; then
 fi
 
 bt_info "Commits to merge: $commits_to_merge"
+
+if git diff --quiet HEAD "origin/$PARENT_BRANCH" 2>/dev/null; then
+  cleanup_success_transient_reports
+  bt_success \
+    "Current branch '$CURRENT_BRANCH' already matches parent '$PARENT_BRANCH' files and directories."
+  exit 0
+fi
 
 # Determine merge message
 if [[ -z "$CUSTOM_MESSAGE" ]]; then

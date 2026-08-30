@@ -298,7 +298,7 @@ reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
   fail "second merge-down should not add an immediate report"
 pass "merge reporting is deferred"
 
-# 7) A content-neutral merge reports parent commits plus its merge commit.
+# 7) Content-equivalent parent history is accepted without a merge commit.
 (
   cd "$PEER"
   git checkout v1.0.0 >/dev/null 2>&1
@@ -306,13 +306,17 @@ pass "merge reporting is deferred"
   git commit --allow-empty -m "content-neutral parent commit" >/dev/null 2>&1
   git push origin v1.0.0 >/dev/null 2>&1
 )
+content_neutral_before="$(git -C "$WORK" rev-parse dev/current-v1.0.0)"
 rc=$(run_capture "$TMPDIR/content-neutral.out" bash -lc \
   "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -c 'sync content-neutral parent'")
 [[ "$rc" -eq 0 ]] || fail "content-neutral pulldown should exit 0 (got $rc)"
 assert_contains \
-  "Merged parent 'v1.0.0' into 'dev/current-v1.0.0': 2 commits with no file or directory changes." \
+  "Current branch 'dev/current-v1.0.0' already matches parent 'v1.0.0' files and directories." \
   "$TMPDIR/content-neutral.out"
-pass "content-neutral merge summary"
+[[ "$(git -C "$WORK" rev-parse dev/current-v1.0.0)" == \
+  "$content_neutral_before" ]] || \
+  fail "content-neutral pulldown should not create a merge commit"
+pass "content-neutral synchronization without merge commit"
 
 # 8) Whitespace-only comments should be rejected.
 rc=$(run_capture "$TMPDIR/empty-comment.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -c '   '")
