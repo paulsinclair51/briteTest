@@ -22,11 +22,8 @@ set -euo pipefail
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GITHOOK_HELPER="$HOOK_DIR/githook_helper.sh"
 
-# Fallback for legacy installs that still run from .git/hooks.
-if [[ ! -f "$GITHOOK_HELPER" ]]; then
-  GITHOOK_HELPER="$(git rev-parse --git-dir)/hooks/githook_helper.sh"
-fi
 if [[ -f "$GITHOOK_HELPER" ]]; then
+  # shellcheck disable=SC1090  # Hook path is resolved at runtime.
   source "$GITHOOK_HELPER" 2>/dev/null || true
 fi
 

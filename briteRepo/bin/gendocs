@@ -634,9 +634,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 export BT_REMOTE_TIMEOUT_SECONDS="$remote_timeout_seconds"
-if declare -F bt_propagate_repository_history >/dev/null 2>&1; then
-  bt_propagate_repository_history >/dev/null 2>&1 || true
-fi
 
 [[ $pdf_only -eq 1 && $docx_only -eq 1 ]] && \
   exit_with "$EXIT_INVALID_ARGUMENT" "-p and -d are mutually exclusive."

@@ -73,6 +73,7 @@ EOF
 set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../.. && pwd)"
 common_helper="$repo_root/briteRepo/helpers/common.sh"
+# shellcheck disable=SC1090  # Repository-relative path resolved at runtime.
 [[ -f "$common_helper" ]] && source "$common_helper"
 branding_dir="$repo_root/docs/branding"
 docs_md_dir="$repo_root/docs/md"

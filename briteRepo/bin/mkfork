@@ -679,14 +679,6 @@ verify_file_update() {
 # Main flow
 echo "Preparing to create fork of $REPO_OWNER/$REPO_NAME..."
 
-# Propagate repository history from remote if available
-bt_propagate_repository_history
-case $? in
-  0) echo "Repository history already up to date" ;;
-  1) echo "Updated repository history from remote" ;;
-  *) ;;  # offline or unavailable, continue silently
-esac
-
 # Get authenticated user
 GH_USER=$(get_github_username)
 echo "Authenticated as: $GH_USER"
@@ -755,10 +747,6 @@ else
   echo "Next steps:"
   echo "  mkclone  # Clone the repository locally"
   
-  # Log fork creation to repository history and push to origin/main
-  log_fork_creation_to_repository_history "$GH_USER"
-  bt_commit_and_push_repository_history "mkfork: Created fork" \
-                                        "$GH_USER/$REPO_NAME"
 fi
 
 exit 0

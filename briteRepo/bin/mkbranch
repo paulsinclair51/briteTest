@@ -376,8 +376,6 @@ log_operation() {
     commit_ref="$branchname"
   fi
 
-  # status/branchname are retained for compatibility with existing callers.
-  : "$branchname"
   if ! bt_record_workflow_event "mkbranch" "${branchname:-$parentbranchname}" \
       "$command_line" "$summary" "$commit_ref" \
       "New-Branch" "$branchname" \
@@ -746,19 +744,6 @@ if ! bt_run_remote_command git fetch origin >/dev/null 2>&1; then
     "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 log_verbose "Fetched origin successfully"
-
-# Propagate repository history from remote if available
-history_status=0
-if bt_propagate_repository_history; then
-  history_status=0
-else
-  history_status=$?
-fi
-case "$history_status" in
-  0) log_verbose "Repository history already up to date" ;;
-  1) log_verbose "Updated repository history from remote" ;;
-  *) ;;
-esac
 
 # Check if parent branch exists according to mode-specific rules.
 resolve_parent_reference_for_mode

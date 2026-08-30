@@ -143,11 +143,5 @@ if [[ -d "$WORK/logs" ]] && \
   find "$WORK/logs" -maxdepth 1 -type f -name '*_history.md' -print -quit | grep -q .; then
   fail "release should not create branch history log files"
 fi
-if [[ ! -e "$WORK/logs/repository_history.md" ]] || \
-  git -C "$WORK" diff --quiet -- logs/repository_history.md; then
-  :
-else
-  fail "release should not modify repository history logs"
-fi
 echo "PASS: release workflow metadata"
 echo "All release smoke tests passed."

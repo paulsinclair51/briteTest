@@ -77,6 +77,25 @@ bt_trim_whitespace() {
   printf '%s' "$value"
 }
 
+bt_normalize_whitespace() {
+  printf '%s' "$1" | tr '\t' ' ' | tr -s '[:space:]' ' ' | \
+    sed 's/^ //; s/ $//'
+}
+
+bt_increment_counter() {
+  local var_name="$1"
+  printf -v "$var_name" '%d' "$(( ${!var_name} + 1 ))"
+}
+
+bt_repo_has_required_api_files() {
+  local repo_path="$1"
+
+  [[ -f "$repo_path/src/runnerapi.c" || \
+    -f "$repo_path/src/testapi.c" || \
+    -f "$repo_path/include/runnerapi.h" || \
+    -f "$repo_path/include/testapi.h" ]]
+}
+
 bt_emit_error() {
   local message="$1"
   printf 'Error: %s\n' "$(bt_ensure_trailing_period "$message")" >&2
@@ -259,7 +278,6 @@ bt_require_login() {
 }
 
 # Resolve role code for a login from contributors.md.
-# Supports both current format "- login, R, email" and legacy "- R/login,...".
 bt_contributors_get_role_or_empty() {
   local login="$1"
   local contributors_file="${2:-config/contributors.md}"
@@ -279,7 +297,6 @@ bt_contributors_get_role_or_empty() {
   local line
   local role_code
   local parsed_login
-  local parsed_role
 
   while IFS= read -r line; do
     local entry
@@ -292,18 +309,6 @@ bt_contributors_get_role_or_empty() {
       entry="${entry#- }"
     fi
 
-    # Legacy format: - A/login,... or - R/login,...
-    if [[ "$entry" =~ ^([CRA])/([^,[:space:]]+) ]]; then
-      parsed_role="${BASH_REMATCH[1]}"
-      parsed_login="$(bt_normalize_login "${BASH_REMATCH[2]}")"
-      if [[ "$parsed_login" == "$target_login" ]]; then
-        printf '%s' "$parsed_role"
-        return 0
-      fi
-      continue
-    fi
-
-    # Current format: - login, R, email
     local raw_login raw_role
     IFS=',' read -r raw_login raw_role _ <<< "$entry"
 

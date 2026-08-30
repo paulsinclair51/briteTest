@@ -31,26 +31,7 @@ run_capture() {
   echo "$rc"
 }
 
-AUTO_STASH_LABEL=""
 STATUS_TEST_REFS=()
-
-cleanup_auto_stash() {
-  local line=""
-  local stash_ref=""
-
-  [[ -n "$AUTO_STASH_LABEL" ]] || return 0
-
-  while IFS= read -r line; do
-    [[ -n "$line" ]] || continue
-    stash_ref="${line%% *}"
-    if [[ "${line#* }" == *"$AUTO_STASH_LABEL" ]]; then
-      git stash drop "$stash_ref" >/dev/null 2>&1 || true
-      break
-    fi
-  done < <(git stash list --format='%gd %gs')
-
-  AUTO_STASH_LABEL=""
-}
 
 cleanup_status_test_refs() {
   local ref
@@ -61,7 +42,7 @@ cleanup_status_test_refs() {
 }
 
 TMPDIR="$(mktemp -d)"
-trap 'cleanup_auto_stash; cleanup_status_test_refs; rm -rf "$TMPDIR"' EXIT
+trap 'cleanup_status_test_refs; rm -rf "$TMPDIR"' EXIT
 REAL_GIT="$(command -v git)"
 
 # 1) Help output
@@ -76,7 +57,7 @@ for status_tag in \
   "[copyfix in progress]" "[pushup in progress]" \
   "[pull in progress]" "[retarget in progress]" \
   "[pulldown in progress]" \
-  "[auto-stash: N]" "[PRs: N]"; do
+  "[PRs: N]"; do
   grep -Fq "$status_tag" "$TMPDIR/help.out" || \
     fail "lsbranch help should document $status_tag"
 done
@@ -242,7 +223,7 @@ done)
 cp "$scratch_file" "$backup_file"
 trap 'rm -rf "$TMPDIR"; if [[ -f "$backup_file" && \
   -n "${scratch_file:-}" ]]; then cp "$backup_file" "$scratch_file"; fi; \
-  cleanup_auto_stash; cleanup_status_test_refs' EXIT
+  cleanup_status_test_refs' EXIT
 printf '\nlsbranch dirty smoke test\n' >> "$scratch_file"
 rc=$(run_capture "$TMPDIR/dirty.out" "$LSBRANCH" -a -l)
 [[ "$rc" -eq 0 ]] || fail "lsbranch -a -l should exit 0 with a dirty worktree"
@@ -277,35 +258,7 @@ fi
 cp "$backup_file" "$scratch_file"
 pass "dirty worktree local branch inspection"
 
-# 8) Branch-matching legacy auto-stash label should be indicated in stdout
-# and report status
-current_branch=$(git rev-parse --abbrev-ref HEAD)
-stash_scratch_file=$(git ls-files | while IFS= read -r path; do
-  [[ -n "$path" ]] || continue
-  [[ "$path" == reports/* ]] && continue
-  if ! git diff --quiet -- "$path"; then
-    continue
-  fi
-  echo "$path"
-  break
-done)
-[[ -n "$stash_scratch_file" ]] || \
-  fail "need one clean tracked file for auto-stash smoke test"
-stash_stamp="$(date +%Y%m%d-%H%M%S)-$$"
-AUTO_STASH_LABEL="chcurrent-auto:${current_branch}:${stash_stamp}"
-printf '\nlsbranch auto-stash smoke test\n' >> "$stash_scratch_file"
-git stash push -m "$AUTO_STASH_LABEL" -- "$stash_scratch_file" >/dev/null || \
-  fail "failed to create auto-stash test entry"
-
-rc=$(run_capture "$TMPDIR/auto_stash.out" "$LSBRANCH" "$current_branch")
-[[ "$rc" -eq 0 ]] || fail "lsbranch BRANCH should exit 0"
-grep -Eq '\[auto-stash: [1-9][0-9]*\]' "$TMPDIR/auto_stash.out" || \
-  fail "lsbranch stdout should indicate branch-matching auto-stash"
-
-cleanup_auto_stash
-pass "branch auto-stash indicator"
-
-# 9) Compact status tags cover tracking relations and branch availability.
+# 8) Compact status tags cover tracking relations and branch availability.
 STATUS_BIN="$TMPDIR/status-bin"
 mkdir -p "$STATUS_BIN"
 cat > "$STATUS_BIN/git" <<EOF

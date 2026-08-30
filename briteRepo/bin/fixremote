@@ -69,7 +69,7 @@ What Does NOT Get Recovered:
 
 Outputs:
   - Writes an untracked local recovery report to:
-      <repo>/reports/recovery-<date>-<time>-<pid>.md
+  <repo>/reports/recovery-<datetime>.md
     <repo>/reports is created if absent. If it is unwritable, exits with
     code 100.
   - Prints issue counts and report path to stdout.
@@ -121,7 +121,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd -P)"
 RECOVERY_REPORTS_DIR="$REPO_ROOT/reports"
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S%z')"
-RUN_ID="${RUN_TS_FILE}-${BASHPID}"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
 REPORT_FILE=""
 CLONE_PATH=""
@@ -146,18 +145,18 @@ if [[ ! -f "$SCRIPT_DIR/../helpers/common.sh" ]]; then
   exit "$EXIT_MISSING_DEPENDENCIES"
 fi
 if [[ ! -f "$SCRIPT_DIR/../helpers/git_helpers.sh" ]]; then
-  bt_emit_error "Required helper not found: "\
-"$SCRIPT_DIR/../helpers/git_helpers.sh"
+  bt_emit_error \
+    "Required helper not found: $SCRIPT_DIR/../helpers/git_helpers.sh"
   exit "$EXIT_MISSING_DEPENDENCIES"
 fi
 if [[ ! -f "$SCRIPT_DIR/../helpers/report_helpers.sh" ]]; then
-  bt_emit_error "Required helper not found: "\
-"$SCRIPT_DIR/../helpers/report_helpers.sh"
+  bt_emit_error \
+    "Required helper not found: $SCRIPT_DIR/../helpers/report_helpers.sh"
   exit "$EXIT_MISSING_DEPENDENCIES"
 fi
 if [[ ! -f "$SCRIPT_DIR/../helpers/health_report.sh" ]]; then
-  bt_emit_error "Required helper not found: "\
-"$SCRIPT_DIR/../helpers/health_report.sh"
+  bt_emit_error \
+    "Required helper not found: $SCRIPT_DIR/../helpers/health_report.sh"
   exit "$EXIT_MISSING_DEPENDENCIES"
 fi
 # shellcheck source=helpers/common.sh
@@ -175,11 +174,6 @@ usage_error() {
   echo >&2
   echo "$message. See usage above for details." >&2
   exit "$EXIT_INVALID_ARGUMENT"
-}
-
-increment_counter() {
-  local var_name="$1"
-  printf -v "$var_name" '%d' "$(( ${!var_name} + 1 ))"
 }
 
 # log_verbose: printed only when -v (verbose mode).
@@ -376,7 +370,7 @@ run_recovery_if_requested() {
     return 1
   fi
 
-  increment_counter REMEDIATIONS_ATTEMPTED
+  bt_increment_counter REMEDIATIONS_ATTEMPTED
 
   if ! bt_git_run_with_retry \
     "$REMOTE_RETRY_ATTEMPTS" "$REMOTE_RETRY_BASE_DELAY_SECONDS" \
@@ -386,7 +380,7 @@ run_recovery_if_requested() {
     append_check "Push Clone Refs To Origin" "ISSUE" \
       "Failed to push source clone refs to origin. See git stderr output" \
       "from manual run for details."
-    increment_counter REMEDIATIONS_FAILED
+    bt_increment_counter REMEDIATIONS_FAILED
     return 1
   fi
 
@@ -402,14 +396,14 @@ run_recovery_if_requested() {
     "$clone_main_sha" == "$remote_main_sha" ]]; then
     append_check "Post-Recovery Main Branch Parity" "FIXED" \
       "origin/main now matches source clone main ($clone_main_sha)"
-    increment_counter REMEDIATIONS_VERIFIED
+    bt_increment_counter REMEDIATIONS_VERIFIED
     return 0
   fi
 
   append_check "Post-Recovery Main Branch Parity" "ISSUE" \
     "Recovery push completed, but main parity could not be verified. Check" \
     "source/remote branch state manually."
-  increment_counter REMEDIATIONS_UNVERIFIED
+  bt_increment_counter REMEDIATIONS_UNVERIFIED
   return 1
 }
 
@@ -497,8 +491,8 @@ if [[ "${#POSITIONAL[@]}" -ne 1 ]]; then
 fi
 
 if [[ ! "$REMOTE_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]]; then
-  usage_error "Invalid -t value: $REMOTE_TIMEOUT_SECONDS "\
-"(expected integer >= 0)"
+  usage_error \
+    "Invalid -t value: $REMOTE_TIMEOUT_SECONDS (expected integer >= 0)"
 fi
 
 CLONE_PATH="${POSITIONAL[0]}"
@@ -521,7 +515,8 @@ if ! mkdir -p "$RECOVERY_REPORTS_DIR"; then
     "Unable to create reports directory: $RECOVERY_REPORTS_DIR"
 fi
 
-REPORT_FILE="$RECOVERY_REPORTS_DIR/recovery-${RUN_ID}.md"
+REPORT_FILE="$(bt_report_retained_path \
+  "$RECOVERY_REPORTS_DIR" "recovery" "$RUN_TS_FILE")"
 
 init_report
 

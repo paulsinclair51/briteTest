@@ -74,6 +74,27 @@ bt_record_remote_workflow_event() {
   bt_record_workflow_event_to_ref "briteRepo-remote-workflow" "$@"
 }
 
+bt_undo_sequence_state_file() {
+  local branch="$1"
+  local common_dir=""
+  local sequence_dir=""
+  local branch_id=""
+
+  common_dir="$(git rev-parse --path-format=absolute --git-common-dir \
+    2>/dev/null)" || return 1
+  sequence_dir="$common_dir/briteRepo/undo-report-sequences"
+  branch_id="$(printf '%s' "$branch" | cksum | awk '{print $1}')"
+  printf '%s/%s.state\n' "$sequence_dir" "$branch_id"
+}
+
+bt_undo_reset_sequence() {
+  local branch="$1"
+  local state_file=""
+
+  state_file="$(bt_undo_sequence_state_file "$branch")" || return 1
+  rm -f "$state_file"
+}
+
 bt_undo_record_operation() {
   local operation="$1"
   local branch="$2"
@@ -106,6 +127,7 @@ bt_undo_record_operation() {
   git config --file "$state_file" undo.remote-after-tip "$remote_after"
   git config --file "$state_file" undo.target "$target"
   git config --file "$state_file" undo.undone false
+  bt_undo_reset_sequence "$branch" || return 1
   printf '%s\n' "$state_file"
 }
 
@@ -169,17 +191,4 @@ bt_workflow_note_field() {
      END { print value }'
 }
 
-# Compatibility shim for older callers that still reference the legacy
-# repository_history.md propagation helper. The repository now records
-# workflow history in Git notes instead of tracked log files.
-bt_propagate_repository_history() {
-  return 0
-}
-
-bt_commit_and_push_repository_history() {
-  return 0
-}
-
-# The legacy tracked repository_history.md flow has been removed.
-# Workflow metadata is now recorded through Git notes attached to the
-# appropriate main branch ref rather than a file under logs/.
+# Workflow history is stored in Git notes rather than tracked files.

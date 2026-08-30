@@ -94,9 +94,6 @@ EOF
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-
 # ============================================================================
 # CONFIGURATION AND CONSTANTS
 # ============================================================================
@@ -744,8 +741,8 @@ EOF
           return 0
         else
           status=$?
-          log_warn "pandoc with engine '$pandoc_engine' failed with exit code "\
-"$status for: $target_file"
+          log_warn \
+            "pandoc with engine '$pandoc_engine' failed with exit code $status for: $target_file"
           if [[ "$backend" == "pandoc" ]]; then
             rm -f "$header_file" 2>/dev/null || true
             return 1
@@ -760,8 +757,8 @@ EOF
           return 0
         else
           status=$?
-          log_warn "pandoc default conversion failed with exit code $status "\
-"for: $target_file"
+          log_warn \
+            "pandoc default conversion failed with exit code $status for: $target_file"
           if [[ "$backend" == "pandoc" ]]; then
             rm -f "$header_file" 2>/dev/null || true
             return 1
@@ -1590,8 +1587,8 @@ PY
     fi
   fi
 
-  log_debug "scan metadata: logo=${logo_png} versions=${have_versions} "\
-"source=$source_file"
+  log_debug \
+    "scan metadata: logo=${logo_png} versions=${have_versions} source=$source_file"
 
   # Extract copyright line for centered running footer (strip heading markup)
   copyright_text=$(grep -im1 '^[[:space:]#*]*copyright' "$source_file" | \
@@ -1797,8 +1794,8 @@ if [[ $check_only -eq 1 ]]; then
   fi
 
   log_error "no supported Markdown-to-PDF toolchain found"
-  log_info "Install pandoc (recommended), or install python3 with "\
-"wkhtmltopdf or weasyprint."
+  log_info \
+    "Install pandoc (recommended), or install python3 with wkhtmltopdf or weasyprint."
   exit 1
 fi
 

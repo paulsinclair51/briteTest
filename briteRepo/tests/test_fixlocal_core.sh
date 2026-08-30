@@ -29,7 +29,7 @@ attach_reachable_origin "$BRITE_FAIL_REPO" britefail
 rc=$(run_capture "$TMPDIR/help.out" bash "$BRITE_REPO/briteRepo/bin/fixlocal" -h)
 [[ "$rc" -eq 0 ]] || fail "fixlocal -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
-assert_contains "repository-d-<date>-<time>-<pid>.md" "$TMPDIR/help.out"
+assert_contains "repository-d-<datetime>.md" "$TMPDIR/help.out"
 assert_contains "<repo>/reports/" "$TMPDIR/help.out"
 pass "help output"
 
