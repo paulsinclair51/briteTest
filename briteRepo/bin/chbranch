@@ -79,33 +79,35 @@ Status tags:
   [read-only]                   The selected branch must not be modified.
   [invalid name]                Branch name violates repository naming rules.
   [offline]                     Remote status could not be retrieved.
-  [remote behind by N changes]  Local has N file or directory changes not on
-                                the remote.
-  [behind remote by N changes]  Remote has N file or directory changes not on
-                                the local branch.
-  [differs from remote by N changes]
-                                Local and remote content differs by N file or
-                                directory changes.
-  [differs from local by N changes]
-                                Remote and local content differs by N file or
-                                directory changes.
+  [remote behind by N]          For a local branch, local has N file or
+                                directory changes not on the remote.
+  [local behind by N]           For a remote branch, remote has N file or
+                                directory changes not on the local branch.
+  [remote ahead by N]           For a local branch, remote has N file or
+                                directory changes not on the local branch.
+  [local ahead by N]            For a remote branch, local has N file or
+                                directory changes not on the remote branch.
+  [remote differs by N]         For a local branch, local and remote differ by
+                                N file or directory changes.
+  [local differs by N]          For a remote branch, remote and local differ by
+                                N file or directory changes.
   [parent: NAME]                NAME is the selected branch's parent and content
                                 matches.
   [parent unavailable: NAME]    NAME is the selected branch's parent, but that
                                 branch is not available locally or among
                                 downloaded remote branches. It may not have
                                 been fetched, or it may have been deleted.
-  [parent: NAME behind by N changes]
+  [parent: NAME behind by N]
                                 Selected branch has N file or directory changes
                                 not on its parent.
-  [parent: NAME ahead by N changes]
+  [parent: NAME ahead by N]
                                 Parent has N file or directory changes not on
                                 the selected branch.
-  [parent: NAME differs by N changes]
+  [parent: NAME differs by N]
                                 Selected branch and parent content differs by N
                                 file or directory changes.
-  [copyfix in progress]        Rerun copyfix to resume.
-  [pushup in progress]         Rerun pushup to resume.
+  [copyfix in progress]         Rerun copyfix to resume.
+  [pushup in progress]          Rerun pushup to resume.
   [pull in progress]            Resolve conflicts, then rerun pull.
   [retarget in progress]        Resolve conflicts, then rerun retarget -r.
   [pulldown in progress]        Resolve conflicts, then rerun pulldown.

@@ -23,17 +23,17 @@ fail() {
 [[ -z "$(bt_git_format_tracking_relation_tag local 0 0 0)" ]] || \
   fail "zero-difference tracking tag should be omitted"
 [[ "$(bt_git_format_tracking_relation_tag local 2 0 1)" == \
-  "[remote behind by 1 change]" ]] || fail "local-ahead tracking tag"
+  "[remote behind by 1]" ]] || fail "local-ahead tracking tag"
 [[ "$(bt_git_format_tracking_relation_tag remote 2 0 1)" == \
-  "[behind local by 1 change]" ]] || fail "remote-behind tracking tag"
+  "[local ahead by 1]" ]] || fail "remote-behind tracking tag"
 [[ "$(bt_git_format_tracking_relation_tag local 2 3 4)" == \
-  "[differs from remote by 4 changes]" ]] || \
+  "[remote differs by 4]" ]] || \
   fail "local tracking divergence tag"
 [[ "$(bt_git_format_tracking_relation_tag remote 2 3 4)" == \
-  "[differs from local by 4 changes]" ]] || \
+  "[local differs by 4]" ]] || \
   fail "remote tracking divergence tag"
 [[ "$(bt_git_format_parent_relation_tags v1.0.0 2 3 true 4)" == \
-  "[parent: v1.0.0 differs by 4 changes]" ]] || \
+  "[parent: v1.0.0 differs by 4]" ]] || \
   fail "parent divergence tags"
 [[ "$(bt_git_format_parent_relation_tags v2.0.0 0 0 false)" == \
   "[parent unavailable: v2.0.0]" ]] || fail "unavailable parent tag"

@@ -136,10 +136,10 @@ assert_contains "Status tags:" "$TMPDIR/help.out"
 assert_contains "[local only]" "$TMPDIR/help.out"
 assert_contains "[remote snapshot]" "$TMPDIR/help.out"
 assert_contains "[invalid name]" "$TMPDIR/help.out"
-assert_contains "[differs from remote by N changes]" "$TMPDIR/help.out"
-assert_contains "[parent: NAME behind by N changes]" "$TMPDIR/help.out"
-assert_contains "[parent: NAME ahead by N changes]" "$TMPDIR/help.out"
-assert_contains "[parent: NAME differs by N changes]" "$TMPDIR/help.out"
+assert_contains "[remote differs by N]" "$TMPDIR/help.out"
+assert_contains "[parent: NAME behind by N]" "$TMPDIR/help.out"
+assert_contains "[parent: NAME ahead by N]" "$TMPDIR/help.out"
+assert_contains "[parent: NAME differs by N]" "$TMPDIR/help.out"
 assert_contains "[copyfix in progress]" "$TMPDIR/help.out"
 assert_contains "[pushup in progress]" "$TMPDIR/help.out"
 assert_contains "[pull in progress]" "$TMPDIR/help.out"
@@ -549,7 +549,7 @@ git clone "$ORIGIN" "$PROTECTED_PEER" >/dev/null 2>&1
 )
 rc=$(run_in_work_capture "$TMPDIR/remote-ahead-local.out" -r main)
 [[ "$rc" -eq 0 ]] || fail "remote-ahead selection should exit 0 (got $rc)"
-assert_contains "[local behind by 1 change]" "$TMPDIR/remote-ahead-local.out"
+assert_contains "[local behind by 1]" "$TMPDIR/remote-ahead-local.out"
 rc=$(run_in_work_capture "$TMPDIR/protected-refresh.out" main)
 [[ "$rc" -eq 0 ]] || fail "protected refresh should exit 0 (got $rc)"
 [[ "$(git -C "$WORK" rev-parse main)" == \
@@ -612,13 +612,13 @@ rc=$(run_in_work_capture "$TMPDIR/protected-diverged.out" main)
   fail "diverged protected selection should exit 0 (got $rc)"
 assert_contains "was not refreshed because it has diverged from origin/main" \
   "$TMPDIR/protected-diverged.out"
-assert_contains "[differs from remote by 1 change]" \
+assert_contains "[remote differs by 1]" \
   "$TMPDIR/protected-diverged.out"
 [[ "$(git -C "$WORK" rev-parse main)" == "$protected_tip_before" ]] || \
   fail "diverged protected branch should remain unchanged"
 rc=$(run_in_work_capture "$TMPDIR/remote-diverged-local.out" -r main)
 [[ "$rc" -eq 0 ]] || fail "remote diverged selection should exit 0 (got $rc)"
-assert_contains "[differs from local by 1 change]" \
+assert_contains "[local differs by 1]" \
   "$TMPDIR/remote-diverged-local.out"
 rc=$(run_in_work_capture "$TMPDIR/restore-diverged-local.out" -l main)
 [[ "$rc" -eq 0 ]] || fail "restore diverged local should exit 0 (got $rc)"
@@ -704,7 +704,7 @@ set -e
 [[ "$rc" -eq 0 ]] || fail "failed protected update should exit 0 (got $rc)"
 assert_contains "was not refreshed because the fast-forward update failed" \
   "$TMPDIR/protected-update-failed.out"
-assert_contains "[behind remote by 1 change]" \
+assert_contains "[remote ahead by 1]" \
   "$TMPDIR/protected-update-failed.out"
 [[ "$(git -C "$WORK" symbolic-ref --short HEAD)" == "main" ]] || \
   fail "failed protected update should leave main selected"

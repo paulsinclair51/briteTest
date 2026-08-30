@@ -48,28 +48,26 @@ bt_git_format_tracking_relation_tag() {
   local ahead="$2"
   local behind="$3"
   local changes="${4:-0}"
-  local change_label="changes"
 
   [[ "$ahead" =~ ^[0-9]+$ && "$behind" =~ ^[0-9]+$ ]] || return 0
   [[ "$changes" =~ ^[0-9]+$ && "$changes" -gt 0 ]] || return 0
-  [[ "$changes" -ne 1 ]] || change_label="change"
 
   if [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
     if [[ "$mode" == "local" ]]; then
-      printf '[remote behind by %s %s]' "$changes" "$change_label"
+      printf '[remote behind by %s]' "$changes"
     else
-      printf '[behind local by %s %s]' "$changes" "$change_label"
+      printf '[local ahead by %s]' "$changes"
     fi
   elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
     if [[ "$mode" == "local" ]]; then
-      printf '[behind remote by %s %s]' "$changes" "$change_label"
+      printf '[remote ahead by %s]' "$changes"
     else
-      printf '[local behind by %s %s]' "$changes" "$change_label"
+      printf '[local behind by %s]' "$changes"
     fi
   elif [[ "$mode" == "local" ]]; then
-    printf '[differs from remote by %s %s]' "$changes" "$change_label"
+    printf '[remote differs by %s]' "$changes"
   else
-    printf '[differs from local by %s %s]' "$changes" "$change_label"
+    printf '[local differs by %s]' "$changes"
   fi
   return 0
 }
@@ -80,7 +78,6 @@ bt_git_format_parent_relation_tags() {
   local behind="$3"
   local available="$4"
   local changes="${5:-0}"
-  local change_label="changes"
 
   [[ -n "$parent" ]] || return 0
   if [[ "$available" != true ]]; then
@@ -93,17 +90,12 @@ bt_git_format_parent_relation_tags() {
     printf '[parent: %s]' "$parent"
     return 0
   fi
-  [[ "$changes" -ne 1 ]] || change_label="change"
-
   if [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
-    printf '[parent: %s behind by %s %s]' \
-      "$parent" "$changes" "$change_label"
+    printf '[parent: %s behind by %s]' "$parent" "$changes"
   elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
-    printf '[parent: %s ahead by %s %s]' \
-      "$parent" "$changes" "$change_label"
+    printf '[parent: %s ahead by %s]' "$parent" "$changes"
   elif [[ "$ahead" -gt 0 && "$behind" -gt 0 ]]; then
-    printf '[parent: %s differs by %s %s]' \
-      "$parent" "$changes" "$change_label"
+    printf '[parent: %s differs by %s]' "$parent" "$changes"
   else
     printf '[parent: %s]' "$parent"
   fi
@@ -775,7 +767,7 @@ bt_git_file_action() {
 }
 
 # Branch status tags used in report headers, for example:
-# [uncommitted] [local] [parent: v1.0.0] [parent behind by 4 changes]
+# [uncommitted] [local] [parent: v1.0.0 behind by 4]
 bt_git_branch_status_tags() {
   local branch="$1"
   local mode="$2"
