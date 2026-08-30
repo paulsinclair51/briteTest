@@ -126,6 +126,11 @@ Run any command with `-h` for current usage, prerequisites, and exit statuses.
 
 ### 2.1. Set Up Your Clone
 
+All `briteRepo` commands require Bash and standard POSIX utilities. On Linux
+and macOS, run them from a Bash-compatible terminal. On Windows, use WSL, Git
+Bash, or MSYS2. Native Command Prompt and PowerShell do not run these scripts
+directly, but they can launch a script through an installed `bash` executable.
+
 1. Create the clone with `mkclone`. It configures the commands and local
    safeguards required by the workflow.
 2. Enter the new repository directory.
@@ -237,13 +242,14 @@ automatically, follow the command's report, resolve the files, and rerun it.
 ### 3.4. Undo a Change
 
 ```bash
-undo                 # Undo uncommitted changes.
-undo commit          # Undo the latest local commit and keep its changes.
-undo pull            # Undo the latest pull.
-undo pulldown        # Undo the latest pull down.
+undo                 # Undo the latest reversible operation.
+undo -d              # Preview the automatically selected operation.
+undo -v              # Show additional progress and diagnostics.
 ```
 
-Run `undo -h` before using other modes. Do not use direct reset commands.
+Uncommitted changes take precedence; otherwise `undo` selects the latest
+supported operation recorded for the current branch. Run `undo -h` before use.
+Do not pass an operation name or use direct reset commands.
 </details>
 </details>
 
@@ -288,6 +294,11 @@ Correct failed checks locally, then run `commit` and `push` again.
 Use `feedback view`, `feedback respond -i ID -c "Response"`, and
 `feedback resolve -i ID` throughout review. Reviewers and approvers use
 `feedback approve` or `feedback disapprove` for approval decisions.
+
+GitHub uses `.github/CODEOWNERS` to request reviewers for changed paths.
+CODEOWNERS routes review but does not by itself grant approval or authorize
+`pushup`; repository roles, required approvals, and rulesets remain
+authoritative.
 
 Approval applies to the current source commit. A later commit requires review
 and approval again. Only one approved pull request may wait to push up to a
@@ -341,13 +352,18 @@ see [Branch and Permission Reference](./Contributor_Reference.md#2-branch-and-pe
 
 **Tests**
 
-Run relevant tests and, when practical, the complete suite with `make run`.
+- Run `make run` for the C runner workflow.
+- Run `make test-all-scripts` for all `briteRepo` script workflows.
+- Run focused test targets while developing, then all applicable suites before
+  requesting review.
 
 **Documentation**
 
 - Use precise, neutral language and consistent terminology.
 - Use backticks for commands, paths, and identifiers.
 - Run `make check-doc` after changing canonical documentation.
+- See [Documentation_Guide.md](./Documentation_Guide.md) for the document map,
+  canonical sources, formatting, and generated-document workflow.
 
 **Security**
 
@@ -359,7 +375,10 @@ Run relevant tests and, when practical, the complete suite with `make run`.
 
 The repository uses `M.m.p` version numbers. Patch releases contain fixes, minor
 releases add backward-compatible features, and major releases contain breaking
-changes. Update branding through `rebrand`.
+changes. Check `config/version_status.md` for versions currently accepting
+development or fixes. Update branding through `rebrand`; see the
+[Contributor Reference](./Contributor_Reference.md#134-rebrand) for command
+details.
 </details>
 
 <details>

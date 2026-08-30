@@ -8,7 +8,7 @@ For license details, see `<repo>/LICENSE`.
 
 See `<repo>/README.md` for an introduction to the repository.
 
-See `<repo>/docs/md/Contributot_Guide.md` for more information about version and release
+See `<repo>/docs/md/Contributor_Guide.md` for more information about version and release
 workflows.
 
 ## Dev Status
