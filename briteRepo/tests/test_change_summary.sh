@@ -37,6 +37,9 @@ fail() {
   fail "parent divergence tags"
 [[ "$(bt_git_format_parent_relation_tags v2.0.0 0 0 false)" == \
   "[parent unavailable v2.0.0]" ]] || fail "unavailable parent tag"
+if bt_git_collect_ref_change_summary missing-ref HEAD; then
+  fail "invalid ref comparison should fail"
+fi
 
 cat > "$TMPDIR/old-files" <<'EOF'
 same.txt
@@ -78,14 +81,14 @@ bt_git_collect_change_summary_from_files \
 [[ "$BT_CHANGE_RENAMED_FILES" -eq 3 ]] || fail "renamed file count"
 [[ "$BT_CHANGE_RENAMED_MODIFIED_FILES" -eq 1 ]] || \
   fail "renamed/modified file count"
-[[ "$BT_CHANGE_DELETED_DIRECTORIES" -eq 1 ]] || \
+[[ "$BT_CHANGE_DELETED_DIRECTORIES" -eq 2 ]] || \
   fail "deleted directory count"
-[[ "$BT_CHANGE_ADDED_DIRECTORIES" -eq 1 ]] || \
+[[ "$BT_CHANGE_ADDED_DIRECTORIES" -eq 3 ]] || \
   fail "added directory count"
-[[ "$BT_CHANGE_RENAMED_DIRECTORIES" -eq 4 ]] || \
+[[ "$BT_CHANGE_RENAMED_DIRECTORIES" -eq 2 ]] || \
   fail "renamed directory count"
 
-expected="1 modified file, 2 deleted files, 2 added files, 3 renamed files, 1 renamed/modified file, 1 deleted directory, 1 added directory and 4 renamed directories"
+expected="1 modified file, 2 deleted files, 2 added files, 3 renamed files, 1 renamed/modified file, 2 deleted directories, 3 added directories and 2 renamed directories"
 [[ "$(bt_format_change_summary)" == "$expected" ]] || \
   fail "comprehensive summary formatting"
 

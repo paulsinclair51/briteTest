@@ -51,7 +51,7 @@ rc=$(run_capture "$TMPDIR/help.out" "$LSBRANCH" -h)
 grep -q '^Usage:' "$TMPDIR/help.out" || fail "lsbranch -h should print Usage"
 for status_tag in \
   "[local only]" "[remote only]" "[uncommitted]" "[invalid name]" \
-  "[offline]" "[remote differs by N]" \
+  "[offline]" "[status unavailable]" "[remote differs by N]" \
   "[local differs by N]" "[parent NAME]" \
   "[parent unavailable NAME]" "[parent NAME differs by N]" \
   "[copyfix in progress]" "[pushup in progress]" \
@@ -112,7 +112,8 @@ remote_only_branch=$(git branch -r | sed 's|^..origin/||' | \
   fi
 done)
 if [[ -n "$remote_only_branch" ]]; then
-  grep -E "^${remote_only_branch} \[remote\]( .*)?$" "$TMPDIR/remote.out" >/dev/null || \
+  grep -E "^${remote_only_branch} \[remote only\]( .*)?$" \
+    "$TMPDIR/remote.out" >/dev/null || \
     fail "remote-only branch should be present in -a -r output"
 fi
 pass "-a -r includes remote rows"

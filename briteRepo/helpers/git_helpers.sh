@@ -112,14 +112,18 @@ bt_git_tracking_relation_tag() {
   local changes=0
 
   counts=$(git rev-list --left-right --count \
-    "$local_ref...$remote_ref" 2>/dev/null || true)
+    "$local_ref...$remote_ref" 2>/dev/null) || return 1
   read -r ahead behind <<< "$counts"
-  if ! git diff --quiet "$local_ref" "$remote_ref" 2>/dev/null; then
-    bt_git_collect_ref_change_summary "$remote_ref" "$local_ref"
+  if git diff --quiet "$local_ref" "$remote_ref" 2>/dev/null; then
+    changes=0
+  elif [[ "$?" -eq 1 ]]; then
+    bt_git_collect_ref_change_summary "$remote_ref" "$local_ref" || return 1
     changes=$((BT_CHANGE_MODIFIED_FILES + BT_CHANGE_DELETED_FILES + \
       BT_CHANGE_ADDED_FILES + BT_CHANGE_RENAMED_FILES + \
       BT_CHANGE_RENAMED_MODIFIED_FILES + BT_CHANGE_DELETED_DIRECTORIES + \
       BT_CHANGE_ADDED_DIRECTORIES + BT_CHANGE_RENAMED_DIRECTORIES))
+  else
+    return 1
   fi
   bt_git_format_tracking_relation_tag \
     "$mode" "$ahead" "$behind" "$changes"
@@ -149,7 +153,7 @@ bt_git_parent_relation_tags() {
       return 0
     fi
     counts=$(git rev-list --left-right --count \
-      "$selected_ref...$parent_ref" 2>/dev/null || true)
+      "$selected_ref...$parent_ref" 2>/dev/null) || return 1
     read -r ahead behind <<< "$counts"
     if [[ "$behind" =~ ^[0-9]+$ && "$behind" -gt 0 ]]; then
       merge_base="$(git merge-base "$selected_ref" "$parent_ref" \
@@ -159,7 +163,8 @@ bt_git_parent_relation_tags() {
         behind=0
       fi
     fi
-    bt_git_collect_ref_change_summary "$parent_ref" "$selected_ref"
+    bt_git_collect_ref_change_summary "$parent_ref" "$selected_ref" || \
+      return 1
     changes=$((BT_CHANGE_MODIFIED_FILES + BT_CHANGE_DELETED_FILES + \
       BT_CHANGE_ADDED_FILES + BT_CHANGE_RENAMED_FILES + \
       BT_CHANGE_RENAMED_MODIFIED_FILES + BT_CHANGE_DELETED_DIRECTORIES + \
@@ -206,7 +211,9 @@ bt_git_collect_change_summary_from_files() {
   local new_files="$3"
   local old_directories=""
   local new_directories=""
+  local directory_rename_candidates=""
   local renamed_directory_pairs=""
+  local one_to_one_directory_pairs=""
   local renamed_old_directories=""
   local renamed_new_directories=""
   local status=""
@@ -219,7 +226,9 @@ bt_git_collect_change_summary_from_files() {
   bt_git_reset_change_summary
   old_directories="$(mktemp)"
   new_directories="$(mktemp)"
+  directory_rename_candidates="$(mktemp)"
   renamed_directory_pairs="$(mktemp)"
+  one_to_one_directory_pairs="$(mktemp)"
   renamed_old_directories="$(mktemp)"
   renamed_new_directories="$(mktemp)"
   bt_git_list_parent_directories "$old_files" "$old_directories"
@@ -250,7 +259,7 @@ bt_git_collect_change_summary_from_files() {
           "$new_directory" != "$new_path" && \
           "$old_directory" != "$new_directory" ]]; then
           printf '%s\t%s\n' "$old_directory" "$new_directory" \
-            >> "$renamed_directory_pairs"
+            >> "$directory_rename_candidates"
         fi
         ;;
       *)
@@ -261,7 +270,24 @@ bt_git_collect_change_summary_from_files() {
   done
   exec 8<&-
 
-  sort -u -o "$renamed_directory_pairs" "$renamed_directory_pairs"
+  sort -u -o "$directory_rename_candidates" "$directory_rename_candidates"
+  awk -F '\t' '
+    { rows[NR] = $0; old[NR] = $1; new[NR] = $2; old_count[$1]++; new_count[$2]++ }
+    END {
+      for (row_index = 1; row_index <= NR; row_index++) {
+        if (old_count[old[row_index]] == 1 && new_count[new[row_index]] == 1) {
+          print rows[row_index]
+        }
+      }
+    }
+  ' "$directory_rename_candidates" > "$one_to_one_directory_pairs"
+  while IFS=$'\t' read -r old_directory new_directory; do
+    [[ -n "$old_directory" && -n "$new_directory" ]] || continue
+    grep -Fxq -- "$old_directory" "$new_directories" && continue
+    grep -Fxq -- "$new_directory" "$old_directories" && continue
+    printf '%s\t%s\n' "$old_directory" "$new_directory" \
+      >> "$renamed_directory_pairs"
+  done < "$one_to_one_directory_pairs"
   cut -f1 "$renamed_directory_pairs" | sort -u \
     > "$renamed_old_directories"
   cut -f2 "$renamed_directory_pairs" | sort -u \
@@ -289,7 +315,8 @@ bt_git_collect_change_summary_from_files() {
   done < "$renamed_directory_pairs"
 
   rm -f "$old_directories" "$new_directories" \
-    "$renamed_directory_pairs" "$renamed_old_directories" \
+    "$directory_rename_candidates" "$renamed_directory_pairs" \
+    "$one_to_one_directory_pairs" "$renamed_old_directories" \
     "$renamed_new_directories"
 }
 
@@ -301,6 +328,7 @@ bt_git_collect_ref_change_summary() {
   local new_files=""
   local excluded_files=""
   local excluded_path=""
+  local result=0
   local -a pathspecs=(-- .)
 
   shift 2
@@ -315,10 +343,17 @@ bt_git_collect_ref_change_summary() {
   status_file="$(mktemp)"
   old_files="$(mktemp)"
   new_files="$(mktemp)"
+  bt_git_reset_change_summary
   git diff --name-status -z --find-renames "$old_ref" "$new_ref" \
-    "${pathspecs[@]}" > "$status_file" 2>/dev/null || true
-  git ls-tree -r --name-only "$old_ref" > "$old_files" 2>/dev/null || true
-  git ls-tree -r --name-only "$new_ref" > "$new_files" 2>/dev/null || true
+    "${pathspecs[@]}" > "$status_file" 2>/dev/null || result=1
+  git ls-tree -r --name-only "$old_ref" > "$old_files" 2>/dev/null || \
+    result=1
+  git ls-tree -r --name-only "$new_ref" > "$new_files" 2>/dev/null || \
+    result=1
+  if [[ "$result" -ne 0 ]]; then
+    rm -f "$status_file" "$old_files" "$new_files" "$excluded_files"
+    return 1
+  fi
   if [[ -s "$excluded_files" ]]; then
     grep -Fvx -f "$excluded_files" "$old_files" > "${old_files}.filtered" || true
     grep -Fvx -f "$excluded_files" "$new_files" > "${new_files}.filtered" || true

@@ -298,7 +298,8 @@ reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
   fail "second merge-down should not add an immediate report"
 pass "merge reporting is deferred"
 
-# 7) Content-equivalent parent history is accepted without a merge commit.
+# 7) Content-equivalent parent history is synchronized without exposing commit
+# counts as user work.
 (
   cd "$PEER"
   git checkout v1.0.0 >/dev/null 2>&1
@@ -307,16 +308,30 @@ pass "merge reporting is deferred"
   git push origin v1.0.0 >/dev/null 2>&1
 )
 content_neutral_before="$(git -C "$WORK" rev-parse dev/current-v1.0.0)"
+content_neutral_parent="$(git -C "$WORK" rev-parse origin/v1.0.0)"
+rc=$(run_capture "$TMPDIR/content-neutral-dry.out" bash -lc \
+  "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -d -c 'preview content-neutral parent'")
+[[ "$rc" -eq 0 ]] || \
+  fail "content-neutral pulldown dry-run should exit 0 (got $rc)"
+assert_contains "Dry-run: merge v1.0.0 -> dev/current-v1.0.0" \
+  "$TMPDIR/content-neutral-dry.out"
+content_neutral_dry_report="$(find "$WORK/reports" -maxdepth 1 -type f \
+  -name 'pulldown-d-*.md' -print -quit)"
+[[ -f "$content_neutral_dry_report" ]] || \
+  fail "content-neutral dry-run should write a report"
 rc=$(run_capture "$TMPDIR/content-neutral.out" bash -lc \
   "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -c 'sync content-neutral parent'")
 [[ "$rc" -eq 0 ]] || fail "content-neutral pulldown should exit 0 (got $rc)"
 assert_contains \
-  "Current branch 'dev/current-v1.0.0' already matches parent 'v1.0.0' files and directories." \
+  "Synchronized parent 'v1.0.0' with 'dev/current-v1.0.0': no file or directory changes." \
   "$TMPDIR/content-neutral.out"
-[[ "$(git -C "$WORK" rev-parse dev/current-v1.0.0)" == \
+[[ "$(git -C "$WORK" rev-parse dev/current-v1.0.0)" != \
   "$content_neutral_before" ]] || \
-  fail "content-neutral pulldown should not create a merge commit"
-pass "content-neutral synchronization without merge commit"
+  fail "content-neutral pulldown should record ancestry synchronization"
+git -C "$WORK" merge-base --is-ancestor "$content_neutral_parent" \
+  dev/current-v1.0.0 || \
+  fail "content-neutral pulldown should incorporate the parent tip"
+pass "content-neutral ancestry synchronization"
 
 # 8) Whitespace-only comments should be rejected.
 rc=$(run_capture "$TMPDIR/empty-comment.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -c '   '")

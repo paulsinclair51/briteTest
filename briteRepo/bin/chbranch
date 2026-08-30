@@ -79,6 +79,7 @@ Status tags:
   [read-only]                   The selected branch must not be modified.
   [invalid name]                Branch name violates repository naming rules.
   [offline]                     Remote status could not be retrieved.
+  [status unavailable]          Branch relation could not be calculated.
   [remote behind by N]          For a local branch, local has N file or
                                 directory changes not on the remote.
   [local behind by N]           For a remote branch, remote has N file or
@@ -272,15 +273,21 @@ emit_success_changed() {
     tags+=("[offline]")
   elif git rev-parse --verify "$tracking_local_ref" >/dev/null 2>&1 && \
     git rev-parse --verify "$remote_ref" >/dev/null 2>&1; then
-    relation_tag="$(bt_git_tracking_relation_tag \
-      "$mode" "$tracking_local_ref" "$remote_ref")"
-    [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
+    if relation_tag="$(bt_git_tracking_relation_tag \
+      "$mode" "$tracking_local_ref" "$remote_ref")"; then
+      [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
+    else
+      tags+=("[status unavailable]")
+    fi
   fi
 
   [[ "$mode" == "remote" ]] && selected_ref="$remote_ref"
-  parent_tag="$(bt_git_parent_relation_tags \
-    "$mode" "$comparison_branch" "$selected_ref")"
-  [[ -z "$parent_tag" ]] || tags+=("$parent_tag")
+  if parent_tag="$(bt_git_parent_relation_tags \
+    "$mode" "$comparison_branch" "$selected_ref")"; then
+    [[ -z "$parent_tag" ]] || tags+=("$parent_tag")
+  else
+    tags+=("[status unavailable]")
+  fi
   if [[ "$mode" == "local" ]]; then
     workflow_tags="$(bt_git_workflow_in_progress_tags "$comparison_branch")"
     [[ -z "$workflow_tags" ]] || tags+=("$workflow_tags")

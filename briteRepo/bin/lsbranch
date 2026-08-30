@@ -108,6 +108,7 @@ Status tags:
   [offline]                     Current remote status could not be retrieved;
                                 cached remote information is displayed when
                                 available.
+  [status unavailable]          Branch relation could not be calculated.
   [remote behind by N]          For a local branch, local has N file or
                                 directory changes not on the remote.
   [local behind by N]           For a remote branch, remote has N file or
@@ -368,13 +369,14 @@ resolve_current_branch_name() {
     return 0
   fi
 
-  remote_branches=$(git for-each-ref --format='%(refname:short)' \
+  remote_branches=$(git for-each-ref --format='%(refname)' \
     --points-at HEAD refs/remotes/origin 2>/dev/null | \
-    grep -v '^origin/HEAD$' || true)
+    grep -v '^refs/remotes/origin/HEAD$' | \
+    sed 's#^refs/remotes/origin/##' || true)
   remote_count=$(printf '%s\n' "$remote_branches" | sed '/^$/d' | \
     wc -l | tr -d ' ')
   if [[ "$remote_count" == "1" ]]; then
-    printf '%s\n' "${remote_branches#origin/}"
+    printf '%s\n' "$remote_branches"
     return 0
   fi
 
@@ -985,9 +987,13 @@ build_compact_status_tags() {
     ( "$mode" == "remote" || "$include_remote_rows" == true ) ]]; then
     tags+=("[offline]")
   elif [[ "$branch_type" == "local (tracking origin)" ]]; then
-    relation_tag=$(bt_git_tracking_relation_tag \
-      "$mode" "$branch" "origin/$branch")
-    [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
+    if relation_tag=$(bt_git_tracking_relation_tag \
+      "$mode" "$branch" "origin/$branch"); then
+      [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
+    else
+      tags+=("[status unavailable]")
+      record_diagnostic "Unable to compare '$branch' with origin/$branch."
+    fi
   fi
 
   [[ "$mode" == "remote" ]] && selected_ref="origin/$branch"
@@ -995,9 +1001,13 @@ build_compact_status_tags() {
     workflow_tags="$(bt_git_workflow_in_progress_tags "$branch")"
     [[ -z "$workflow_tags" ]] || tags+=("$workflow_tags")
   fi
-  parent_tags=$(bt_git_parent_relation_tags \
-    "$mode" "$branch" "$selected_ref")
-  [[ -z "$parent_tags" ]] || tags+=("$parent_tags")
+  if parent_tags=$(bt_git_parent_relation_tags \
+    "$mode" "$branch" "$selected_ref"); then
+    [[ -z "$parent_tags" ]] || tags+=("$parent_tags")
+  else
+    tags+=("[status unavailable]")
+    record_diagnostic "Unable to compare '$branch' with its parent."
+  fi
 
   if [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 && \
     ( "$mode" == "remote" || "$include_remote_rows" == false ) ]]; then
