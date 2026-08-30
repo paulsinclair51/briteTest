@@ -222,16 +222,6 @@ if [[ "$args" == *"pulls/"*"/reviews"* ]]; then
   fi
   exit 0
 fi
-# PR metadata validation (no-op retry-close compatibility query)
-if [[ "$args" == *"state,isDraft,headRefName,baseRefName,mergedAt"* ]]; then
-  echo -e "${FAKE_GH_PR_STATE:-OPEN}\t${FAKE_GH_PR_DRAFT:-false}\t${FAKE_GH_PR_HEAD:-dev/feat-v1.0.0}\t${FAKE_GH_PR_BASE:-v1.0.0}\t${FAKE_GH_PR_MERGED_AT:-}"
-  exit 0
-fi
-# PR review decision (legacy query compatibility)
-if [[ "$args" == *"reviewDecision"* ]]; then
-  echo "${FAKE_GH_REVIEW_DECISION:-APPROVED}"
-  exit 0
-fi
 # PR status checks (check_status_checks)
 if [[ "$args" == *"statusCheckRollup"* ]]; then
   echo "${FAKE_GH_STATUS_CHECKS:-SUCCESS}"
@@ -288,7 +278,6 @@ done
 MDEOF
 
   echo "# README" > README.md
-  echo "# Repository History" > logs/repository_history.md
   "$REAL_GIT" add .
   "$REAL_GIT" commit -m "seed" >/dev/null 2>&1
   "$REAL_GIT" branch -M main
@@ -296,11 +285,11 @@ MDEOF
 
   # v1.0.0 — parent protected version branch
   "$REAL_GIT" checkout -b v1.0.0 >/dev/null 2>&1
-  cat > briteRepo/bin/push <<'LEGACYPUSHEOF'
+  cat > briteRepo/bin/push <<'FORBIDDENPUSHEOF'
 #!/usr/bin/env bash
-echo "Error: legacy parent push must not be executed" >&2
+echo "Error: parent push must not be executed by pushup" >&2
 exit 3
-LEGACYPUSHEOF
+FORBIDDENPUSHEOF
   chmod +x briteRepo/bin/push
   "$REAL_GIT" add briteRepo/bin/push
   "$REAL_GIT" commit --allow-empty -m "v1.0.0 base" >/dev/null 2>&1
@@ -944,8 +933,7 @@ if find "$WORK/reports" -maxdepth 1 -type f \
   fail "successful merge-up should not create an immediate local report"
 fi
 if find "$WORK/logs" -maxdepth 1 -type f \
-  -name '*_history.md' ! -name 'repository_history.md' \
-  -print -quit | grep -q .; then
+  -name '*_history.md' -print -quit | grep -q .; then
   fail "successful merge-up should not create branch history log files"
 fi
 merge_body="$(git -C "$WORK" log -1 --format=%B v1.0.0)"

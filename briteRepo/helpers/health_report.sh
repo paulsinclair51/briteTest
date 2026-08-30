@@ -6,11 +6,6 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
-bt_hr_increment_counter() {
-  local var_name="$1"
-  printf -v "$var_name" '%d' "$(( ${!var_name} + 1 ))"
-}
-
 bt_hr_append_section() {
   local report_file="$1"
   local section_title="$2"
@@ -44,7 +39,7 @@ bt_hr_append_check() {
     ISSUE)
       echo "- [ISSUE] **$check_name**" >> "$report_file"
       if [[ -n "$issue_counter_var" ]]; then
-        bt_hr_increment_counter "$issue_counter_var"
+        bt_increment_counter "$issue_counter_var"
       fi
       ;;
     FIXABLE)
@@ -53,20 +48,20 @@ bt_hr_append_check() {
     FIXED)
       echo "- [FIXED] **$check_name**" >> "$report_file"
       if [[ -n "$fixed_counter_var" ]]; then
-        bt_hr_increment_counter "$fixed_counter_var"
+        bt_increment_counter "$fixed_counter_var"
       fi
       ;;
     ERROR)
       echo "- [ERROR] **$check_name**" >> "$report_file"
       if [[ -n "$issue_counter_var" ]]; then
-        bt_hr_increment_counter "$issue_counter_var"
+        bt_increment_counter "$issue_counter_var"
       fi
       ;;
     *)
       echo "- [ERROR] **$check_name**" >> "$report_file"
       echo "  - Invalid status '$status' passed to bt_hr_append_check." >> "$report_file"
       if [[ -n "$issue_counter_var" ]]; then
-        bt_hr_increment_counter "$issue_counter_var"
+        bt_increment_counter "$issue_counter_var"
       fi
       ;;
   esac

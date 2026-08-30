@@ -275,7 +275,6 @@ generate_repo_activity_entries() {
   local note_summary=""
   local note_details=""
   local note_user_display=""
-  local change_summary=""
   local affected_tables=""
   local entry=""
   local line=""
@@ -286,7 +285,6 @@ generate_repo_activity_entries() {
   local action_user_display=""
   local entry_text=""
   local repo_entries=()
-  local repo_entry=""
 
   local repo_log_target="--all"
   if [[ "$REMOTE_BRANCH_REPORT" == true ]]; then
@@ -335,7 +333,6 @@ generate_repo_activity_entries() {
         note_summary="$(recorded_field_value "$note_record" "Summary")"
         note_details="$(printf '%s\n' "$note_record" | workflow_event_details)"
         note_user_display="$(format_user_with_role "$note_user")"
-        change_summary="$(recorded_change_summary "$note_record")"
         affected_tables="$(render_affected_tables "$full_hash")"
 
         if ! entry_matches_filters "$note_type" "$note_user" \
@@ -530,7 +527,7 @@ generate_repository_report() {
 
   rm -rf "$branch_report_dir"
   remove_stale_reports "$report_file" \
-    "$REPORTS_DIR/repo-*.md" "$REPORTS_DIR/repository/repo-*.md"
+    "$REPORTS_DIR/repo-*.md"
   bt_report_release_lock "$report_lock_fd"
 
   printf "See '%s'.\n" "$report_rel"
@@ -1093,7 +1090,6 @@ render_push_commits() {
   local pushed_tip="$2"
   local parent_action_number="$3"
   local nested_number=1
-  local parent_hash=""
   local commit_hash=""
   local commit_date=""
   local commit_subject=""
@@ -1584,14 +1580,12 @@ while IFS= read -r -d $'\x1e' row; do
       fi
       note_type="$(recorded_field_value "$note_record" "Workflow-Type")"
       note_date="$(normalize_report_datetime "$(recorded_field_value "$note_record" "Workflow-Time")")"
-      note_branch="$(recorded_field_value "$note_record" "Workflow-Branch")"
       note_user="$(recorded_field_value "$note_record" "Workflow-User")"
       note_command="$(recorded_field_value "$note_record" "Command-Line")"
       note_command="$(expand_command_line_placeholders "$note_command" "$note_record")"
       note_summary="$(recorded_field_value "$note_record" "Summary")"
       note_details="$(printf '%s\n' "$note_record" | workflow_event_details)"
       note_user_display="$(format_user_with_role "$note_user")"
-      change_summary="$(recorded_change_summary "$note_record")"
       affected_tables="$(render_affected_tables "$full_hash")"
 
       workflow_record_matches_branch "$note_record" "$TARGET_REF" || continue
@@ -1729,7 +1723,6 @@ while IFS= read -r -d $'\x1e' row; do
   command_line="$(recorded_field_value "$body" "Command-Line")"
   [[ -n "${push_commit_hashes[$full_hash]+x}" ]] && continue
   command_line="$(expand_command_line_placeholders "$command_line" "$body")"
-  change_summary="$(recorded_change_summary "$body")"
   entry_type="$(activity_type "$command_line")"
   sanitized_body="$(sanitize_commit_body_for_report "$body" "$subject")"
   while [[ "$sanitized_body" == $'\n'* ]]; do
@@ -1806,8 +1799,7 @@ if ! {
 fi
 
 remove_stale_reports "$report_file" \
-  "$REPORTS_DIR/${BRANCH_REPORT_PREFIX}-*.md" \
-  "$REPORTS_DIR/branch/history-*.md"
+  "$REPORTS_DIR/${BRANCH_REPORT_PREFIX}-*.md"
 bt_report_release_lock "$report_lock_fd"
 
 if [[ "$VERBOSE" == true ]]; then

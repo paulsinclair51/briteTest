@@ -139,8 +139,8 @@ Outputs:
   - stderr: errors and diagnostics.
   - Report artifact behavior:
     - Writes a repository diagnostic report:
-      - The report file name is repository-<date>-<time>-<pid>.md or, if -d
-        specified, repository-d-<date>-<time>-<pid>.md. The report file is
+      - The report file name is repository-<datetime>.md or, if -d
+        specified, repository-d-<datetime>.md. The report file is
         untracked.
       - The report file is written to <repo>/reports/.
       - If this directory cannot be created or written, fixlocal exits with
@@ -255,13 +255,6 @@ source "$SCRIPT_DIR/../helpers/report_helpers.sh"
 # shellcheck source=helpers/health_report.sh
 source "$SCRIPT_DIR/../helpers/health_report.sh"
 
-# history_log.sh is optional in isolated test fixtures.
-# The legacy tracked repository history flow has been removed.
-# Provide a no-op compatibility shim for older callers.
-bt_propagate_repository_history() {
-  return 0
-}
-
 usage_error() {
   local message="$1"
   usage
@@ -357,11 +350,6 @@ probe_origin_reachability_with_code() {
   return 0
 }
 
-increment_counter() {
-  local var_name="$1"
-  printf -v "$var_name" '%d' "$(( ${!var_name} + 1 ))"
-}
-
 run_noncritical_check() {
   local check_label="$1"
   shift
@@ -389,11 +377,6 @@ log_verbose() {
   bt_info "$1"
 }
 
-safe_trim_spaces() {
-  # Normalize mixed whitespace to single spaces for robust token parsing.
-  printf '%s' "$1" | tr '\t' ' ' | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//'
-}
-
 filtered_status_output() {
   local repo_path="$1"
   local status_output=""
@@ -403,7 +386,7 @@ filtered_status_output() {
     status_output="$(printf '%s\n' "$status_output" | awk '
       BEGIN {
         report_re = "^reports/repository(-d)?-[0-9]{8}-[0-9]{6}"
-        report_re = report_re "[+-][0-9]{4}(-[0-9]+)?\\.md$"
+        report_re = report_re "[+-][0-9]{4}\\.md$"
       }
       {
         path = substr($0, 4)
@@ -420,19 +403,6 @@ filtered_status_output() {
 
 is_valid_timeout_seconds() {
   [[ "$1" =~ ^[0-9]+$ ]] && [[ "$1" -gt 0 ]]
-}
-
-has_required_api_files() {
-  local repo_path="$1"
-
-  # Treat as valid repository when required API files exist.
-  if [[ -f "$repo_path/src/runnerapi.c" || -f "$repo_path/src/testapi.c" || \
-    -f "$repo_path/include/runnerapi.h" || \
-    -f "$repo_path/include/testapi.h" ]]; then
-    return 0
-  fi
-
-  return 1
 }
 
 add_target_repo() {
@@ -486,16 +456,16 @@ append_check() {
     ISSUES_FOUND ISSUES_FIXED
 
   if [[ "$status" == "ISSUE" ]]; then
-    increment_counter TARGET_ISSUES_FOUND
+    bt_increment_counter TARGET_ISSUES_FOUND
     if [[ "$fixable" == "true" ]]; then
-      increment_counter FIXABLE_ISSUES_FOUND
-      increment_counter TARGET_FIXABLE_ISSUES_FOUND
+      bt_increment_counter FIXABLE_ISSUES_FOUND
+      bt_increment_counter TARGET_FIXABLE_ISSUES_FOUND
     fi
   elif [[ "$status" == "FIXABLE" ]]; then
-    increment_counter FIXABLE_ISSUES_FOUND
-    increment_counter TARGET_FIXABLE_ISSUES_FOUND
+    bt_increment_counter FIXABLE_ISSUES_FOUND
+    bt_increment_counter TARGET_FIXABLE_ISSUES_FOUND
   elif [[ "$status" == "ERROR" ]]; then
-    increment_counter TARGET_ISSUES_FOUND
+    bt_increment_counter TARGET_ISSUES_FOUND
     CRITICAL_ERROR=true
   fi
 }
@@ -594,7 +564,7 @@ check_remote_connectivity() {
   local counts
   counts="$(git -C "$CURRENT_REPO" rev-list --left-right --count \
     HEAD..."$upstream" 2>/dev/null || true)"
-  counts="$(safe_trim_spaces "$counts")"
+  counts="$(bt_normalize_whitespace "$counts")"
   local ahead=""
   local behind=""
   local extra=""
@@ -615,7 +585,7 @@ check_remote_connectivity() {
 refresh_remote_tracking_state() {
   append_section "Remote Tracking Remediation"
 
-  increment_counter REMEDIATIONS_ATTEMPTED
+  bt_increment_counter REMEDIATIONS_ATTEMPTED
   if bt_git_fetch_prune_origin_with_retry \
     "$CURRENT_REPO" "$REMOTE_RETRY_ATTEMPTS" \
     "$REMOTE_RETRY_BASE_DELAY_SECONDS" >/dev/null 2>&1; then
@@ -631,7 +601,7 @@ refresh_remote_tracking_state() {
     "a fresh local clone/working copy from remote."
   # A refresh failure with configured origin is treated as remote unreachable.
   set_remote_exit_code_once "$EXIT_REMOTE_UNREACHABLE"
-  increment_counter REMEDIATIONS_FAILED
+  bt_increment_counter REMEDIATIONS_FAILED
   return 1
 }
 
@@ -713,7 +683,7 @@ check_all_local_branch_tracking() {
 
     counts="$(git -C "$CURRENT_REPO" rev-list --left-right --count \
       "$branch_name...$upstream" 2>/dev/null || true)"
-    counts="$(safe_trim_spaces "$counts")"
+    counts="$(bt_normalize_whitespace "$counts")"
     ahead=""
     behind=""
     extra=""
@@ -747,7 +717,7 @@ check_all_local_branch_tracking() {
 
       counts="$(git -C "$CURRENT_REPO" rev-list --left-right --count \
         "$branch_name...$upstream" 2>/dev/null || true)"
-      counts="$(safe_trim_spaces "$counts")"
+      counts="$(bt_normalize_whitespace "$counts")"
       ahead=""
       behind=""
       extra=""
@@ -861,7 +831,7 @@ safe_sync_current_branch_from_upstream() {
   local extra=""
   counts="$(git -C "$CURRENT_REPO" rev-list --left-right --count \
     HEAD..."$upstream" 2>/dev/null || true)"
-  counts="$(safe_trim_spaces "$counts")"
+  counts="$(bt_normalize_whitespace "$counts")"
   read -r ahead behind extra <<< "$counts"
 
   if ! [[ "$ahead" =~ ^[0-9]+$ ]] || ! [[ "$behind" =~ ^[0-9]+$ ]] || \
@@ -909,14 +879,14 @@ safe_sync_current_branch_from_upstream() {
       "true"
   fi
 
-  increment_counter REMEDIATIONS_ATTEMPTED
+  bt_increment_counter REMEDIATIONS_ATTEMPTED
 
   local current_commit=""
   current_commit="$(git -C "$CURRENT_REPO" rev-parse HEAD 2>/dev/null || true)"
   if [[ -z "$current_commit" ]]; then
     append_check "Current Branch Remote Synchronization" "ISSUE" \
       "Unable to capture current commit for backup. Sync aborted."
-    increment_counter REMEDIATIONS_FAILED
+    bt_increment_counter REMEDIATIONS_FAILED
     return 1
   fi
 
@@ -927,7 +897,7 @@ safe_sync_current_branch_from_upstream() {
     append_check "Current Branch Remote Synchronization" "ISSUE" \
       "Unable to create backup ref '$backup_ref'. Sync aborted to preserve" \
       "safety."
-    increment_counter REMEDIATIONS_FAILED
+    bt_increment_counter REMEDIATIONS_FAILED
     return 1
   fi
 
@@ -937,13 +907,13 @@ safe_sync_current_branch_from_upstream() {
       append_check "Current Branch Remote Synchronization" "ISSUE" \
         "Force mode failed to reset working tree to HEAD. Restore point:" \
         "$backup_ref"
-      increment_counter REMEDIATIONS_FAILED
+      bt_increment_counter REMEDIATIONS_FAILED
       return 1
     fi
     if ! git -C "$CURRENT_REPO" clean -fd >/dev/null 2>&1; then
       append_check "Current Branch Remote Synchronization" "ISSUE" \
         "Force mode failed to clean untracked files. Restore point: $backup_ref"
-      increment_counter REMEDIATIONS_FAILED
+      bt_increment_counter REMEDIATIONS_FAILED
       return 1
     fi
   fi
@@ -952,7 +922,7 @@ safe_sync_current_branch_from_upstream() {
     if git -C "$CURRENT_REPO" reset --hard "$upstream" >/dev/null 2>&1; then
       counts="$(git -C "$CURRENT_REPO" rev-list --left-right --count \
         HEAD..."$upstream" 2>/dev/null || true)"
-      counts="$(safe_trim_spaces "$counts")"
+      counts="$(bt_normalize_whitespace "$counts")"
       ahead=""
       behind=""
       extra=""
@@ -963,28 +933,28 @@ safe_sync_current_branch_from_upstream() {
         append_check "Current Branch Remote Synchronization" "FIXED" \
           "Forced reset to '$upstream' completed for '$current_branch'." \
           "Backup ref: $backup_ref"
-        increment_counter REMEDIATIONS_VERIFIED
+        bt_increment_counter REMEDIATIONS_VERIFIED
         return 0
       fi
 
       append_check "Current Branch Remote Synchronization" "ISSUE" \
         "Forced reset executed but verification did not converge to" \
         "'$upstream'. Restore point: $backup_ref"
-      increment_counter REMEDIATIONS_UNVERIFIED
+      bt_increment_counter REMEDIATIONS_UNVERIFIED
       return 1
     fi
 
     append_check "Current Branch Remote Synchronization" "ISSUE" \
       "Forced reset to '$upstream' failed for '$current_branch'. Restore" \
       "point: $backup_ref"
-    increment_counter REMEDIATIONS_FAILED
+    bt_increment_counter REMEDIATIONS_FAILED
     return 1
   fi
 
   if git -C "$CURRENT_REPO" merge --ff-only "$upstream" >/dev/null 2>&1; then
     counts="$(git -C "$CURRENT_REPO" rev-list --left-right --count \
       HEAD..."$upstream" 2>/dev/null || true)"
-    counts="$(safe_trim_spaces "$counts")"
+    counts="$(bt_normalize_whitespace "$counts")"
     ahead=""
     behind=""
     extra=""
@@ -995,21 +965,21 @@ safe_sync_current_branch_from_upstream() {
       append_check "Current Branch Remote Synchronization" "FIXED" \
         "Fast-forward sync completed for '$current_branch'. Backup ref:" \
         "$backup_ref"
-      increment_counter REMEDIATIONS_VERIFIED
+      bt_increment_counter REMEDIATIONS_VERIFIED
       return 0
     fi
 
     append_check "Current Branch Remote Synchronization" "ISSUE" \
       "Fast-forward merge ran, but verification did not confirm sync." \
       "Review branch state; backup ref: $backup_ref"
-    increment_counter REMEDIATIONS_UNVERIFIED
+    bt_increment_counter REMEDIATIONS_UNVERIFIED
     return 1
   fi
 
   append_check "Current Branch Remote Synchronization" "ISSUE" \
     "Fast-forward merge failed for '$current_branch' from '$upstream'." \
     "Restore point: $backup_ref"
-  increment_counter REMEDIATIONS_FAILED
+  bt_increment_counter REMEDIATIONS_FAILED
   return 1
 }
 
@@ -1144,7 +1114,7 @@ check_repository_layout() {
     target_kind="clone"
   fi
 
-  if ! has_required_api_files "$CURRENT_REPO"; then
+  if ! bt_repo_has_required_api_files "$CURRENT_REPO"; then
     append_check "Repository Structure Checks" "PASS" \
       "Repository structure checks skipped for this $target_kind because it" \
       "does not appear to have required API files."
@@ -1170,7 +1140,7 @@ cleanup_repository() {
   append_section "Cleanup Operations"
   log_verbose "Performing safe cleanup for $CURRENT_TARGET_NAME..."
 
-  increment_counter REMEDIATIONS_ATTEMPTED
+  bt_increment_counter REMEDIATIONS_ATTEMPTED
   if git -C "$CURRENT_REPO" gc --prune=now >/dev/null 2>&1; then
     append_check "Garbage Collection" "PASS" \
       "Ran garbage collection and object pruning"
@@ -1181,7 +1151,7 @@ cleanup_repository() {
       "Garbage collection failed during cleanup. Not auto-handled;" \
       "suggested fix: If remote is healthy/reachable, replace this local" \
       "working copy with a fresh clone from remote."
-    increment_counter REMEDIATIONS_FAILED
+    bt_increment_counter REMEDIATIONS_FAILED
   fi
 }
 
@@ -1237,13 +1207,13 @@ verify_cleanup_effects() {
   if [[ "$verification_failed" == false ]]; then
     append_check "Repository Cleanup" "FIXED" \
       "Safe cleanup completed and post-cleanup verification passed."
-    increment_counter REMEDIATIONS_VERIFIED
+    bt_increment_counter REMEDIATIONS_VERIFIED
   else
     append_check "Repository Cleanup" "ISSUE" \
       "Cleanup completed, but post-cleanup verification still found issues." \
       "Not auto-handled; suggested fix: Review the verification failures" \
       "above."
-    increment_counter REMEDIATIONS_UNVERIFIED
+    bt_increment_counter REMEDIATIONS_UNVERIFIED
   fi
 }
 
@@ -1380,8 +1350,8 @@ cleanup_old_reports() {
   local old_report
   local current_basename
   local non_dry_report
-  local dry_report_re='^repository-d-[0-9]{8}-[0-9]{6}[+-][0-9]{4}-[0-9]+\.md$'
-  local full_report_re='^repository-[0-9]{8}-[0-9]{6}[+-][0-9]{4}-[0-9]+\.md$'
+  local dry_report_re='^repository-d-[0-9]{8}-[0-9]{6}[+-][0-9]{4}\.md$'
+  local full_report_re='^repository-[0-9]{8}-[0-9]{6}[+-][0-9]{4}\.md$'
   local deleted_any=false
   local mtime=0
   local cutoff=0
@@ -1506,9 +1476,11 @@ if ! mkdir -p "$REPOSITORY_REPORTS_DIR"; then
 fi
 
 if [[ "$DRY_RUN" == true ]]; then
-  OUTPUT_FILE="$REPOSITORY_REPORTS_DIR/repository-d-${RUN_ID}.md"
+  OUTPUT_FILE="$(bt_report_retained_path \
+    "$REPOSITORY_REPORTS_DIR" "repository-d" "$RUN_TS_FILE")"
 else
-  OUTPUT_FILE="$REPOSITORY_REPORTS_DIR/repository-${RUN_ID}.md"
+  OUTPUT_FILE="$(bt_report_retained_path \
+    "$REPOSITORY_REPORTS_DIR" "repository" "$RUN_TS_FILE")"
 fi
 
 add_target_repo "This Repository" "$REPO_ROOT"

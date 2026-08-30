@@ -114,20 +114,9 @@ else
   repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 fi
 
-# Propagate repository history from remote if available
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_name="$(basename "$repo_root")"
 hooks_dir="$SCRIPT_DIR/../helpers/.githooks"
-HISTORY_HELPER="$SCRIPT_DIR/../helpers/history_log.sh"
-GIT_HELPER="$SCRIPT_DIR/../helpers/git_helpers.sh"
-if [[ -f "$HISTORY_HELPER" ]]; then
-  # shellcheck disable=SC1090  # Repository-relative helper path.
-  if source "$HISTORY_HELPER" 2>/dev/null; then
-    # shellcheck disable=SC1090  # Repository-relative helper path.
-    source "$GIT_HELPER" 2>/dev/null || true
-    bt_propagate_repository_history >/dev/null 2>&1 || true
-  fi
-fi
 
 scripts_bin="$SCRIPT_DIR"
 
@@ -162,8 +151,7 @@ else
   echo "  ✓ Added to ~/.bashrc"
 fi
 
-bind_hook_line="if [[ \$- == *i* ]] && [[ -f \"\$HOME/.inputrc\" ]]; then "\
-"bind -f \"\$HOME/.inputrc\" >/dev/null 2>&1 || true; fi"
+bind_hook_line="if [[ \$- == *i* ]] && [[ -f \"\$HOME/.inputrc\" ]]; then bind -f \"\$HOME/.inputrc\" >/dev/null 2>&1 || true; fi"
 if grep -qxF "$bind_hook_line" ~/.bashrc 2>/dev/null; then
   echo "  → ~/.bashrc already auto-loads ~/.inputrc"
 else

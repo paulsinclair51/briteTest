@@ -307,15 +307,23 @@ bt_report_dir_enable_writes() {
   fi
 }
 
-# Retained reports keep every run, so an ID distinguishes same-second files.
+# Retained reports keep every run, so reserve a free timestamp atomically.
 bt_report_retained_path() {
   local report_dir="$1"
   local prefix="$2"
   local timestamp="$3"
-  local process_id="${4:-$BASHPID}"
+  local report_path=""
 
-  printf '%s/%s-%s-%s.md\n' \
-    "${report_dir%/}" "$prefix" "$timestamp" "$process_id"
+  while true; do
+    report_path="${report_dir%/}/${prefix}-${timestamp}.md"
+    if (set -o noclobber; : > "$report_path") 2>/dev/null; then
+      printf '%s\n' "$report_path"
+      return 0
+    fi
+    [[ -e "$report_path" ]] || return 1
+    sleep 1
+    timestamp="$(date '+%Y%m%d-%H%M%S%z')"
+  done
 }
 
 # Transient reports replace earlier dry-run/error output. Call while holding

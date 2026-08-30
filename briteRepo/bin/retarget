@@ -422,14 +422,6 @@ if ! bt_run_remote_command git fetch origin >/dev/null 2>&1; then
   bt_error_exit "$EXIT_OPERATION_FAILED" "Failed to fetch from origin"
 fi
 
-# Propagate repository history from remote if available
-bt_propagate_repository_history
-case $? in
-  0) log_verbose "Repository history already up to date" ;;
-  1) log_verbose "Updated repository history from remote" ;;
-  *) ;;
-esac
-
 if ! git show-ref --verify --quiet "refs/remotes/origin/$NEW_PARENT"; then
   bt_error_exit "$EXIT_INVALID_ARGUMENT" \
     "New parent version branch '$NEW_PARENT' not found on origin"

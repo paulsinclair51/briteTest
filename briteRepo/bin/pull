@@ -853,18 +853,6 @@ elif [[ "$DRY_RUN" == false ]]; then
   fi
   bt_success "Fetched successfully"
 
-  # Propagate repository history from remote if available
-  history_status=0
-  if bt_propagate_repository_history; then
-    history_status=0
-  else
-    history_status=$?
-  fi
-  case "$history_status" in
-    0) ;;
-    1) bt_info "Updated repository history from remote." ;;
-    *) ;;
-  esac
 else
   bt_info "Dry-run: no fetch, pull, or branch updates will be performed."
 fi

@@ -15,7 +15,7 @@ Usage:
   test_scripts.sh {-h | --help}
 
 Run all script smoke tests in briteRepo/tests matching test_*.sh
-(excluding this runner itself).
+(excluding this runner and test support libraries).
 
 When present, test_chbranch.sh is prioritized to run first.
 
@@ -61,7 +61,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fail_count=0
 
 mapfile -t test_files < <(
-  find "$SCRIPT_DIR" -maxdepth 1 -type f -name 'test_*.sh' ! -name 'test_scripts.sh' | sort
+  find "$SCRIPT_DIR" -maxdepth 1 -type f -name 'test_*.sh' \
+    ! -name 'test_scripts.sh' ! -name 'test_*_lib.sh' | sort
 )
 
 # If split fixlocal test files are present, skip the fixlocal orchestrator to

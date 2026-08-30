@@ -1164,10 +1164,9 @@ guide_check_files_section() {
       continue
     fi
 
-    # Accept both legacy "- **entry**:" and the newer "**entry**:" styles.
     # Use sed extraction so wildcard-bearing entries like "validate-*.yml" and
     # "*.pdf" are captured correctly.
-    if [[ "$line" =~ ^(-[[:space:]]*)?\*\*.+\*\*:[[:space:]]* ]]; then
+    if [[ "$line" =~ ^\*\*.+\*\*:[[:space:]]* ]]; then
       if [[ -n "$pending_entry" && "$pending_needs_period" -eq 1 && \
         "$pending_has_continuation" -eq 0 ]]; then
         add_issue "$readme" \
@@ -1175,9 +1174,9 @@ guide_check_files_section() {
       fi
 
       entry="$(printf '%s\n' "$line" | sed -nE \
-        's/^[[:space:]]*(-[[:space:]]*)?\*\*(.+)\*\*:[[:space:]]*.*/\2/p')"
+        's/^[[:space:]]*\*\*(.+)\*\*:[[:space:]]*.*/\1/p')"
       desc="$(printf '%s\n' "$line" | sed -nE \
-        's/^[[:space:]]*(-[[:space:]]*)?\*\*.+\*\*:[[:space:]]*(.*)$/\2/p')"
+        's/^[[:space:]]*\*\*.+\*\*:[[:space:]]*(.*)$/\1/p')"
       entry="$(normalize_file_entry "$entry")"
       desc="$(printf '%s' "$desc" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
       files_section_entries+=("$entry")

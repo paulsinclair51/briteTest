@@ -14,26 +14,19 @@ source "$SCRIPT_DIR/test_commit_lib.sh"
 
 commit_test_init
 
-# Seed stale dry-run, stale error, legacy failed, and success reports.
+# Seed stale dry-run and error reports.
 old_dry="$WORK/reports/commit-d-20000101-000000+0000.md"
 old_error="$WORK/reports/commit-e-20000101-000000+0000.md"
-old_legacy_failed="$WORK/reports/commit-f-20000101-000000+0000.md"
-old_success="$WORK/reports/commit-20000101-000000+0000-12345.md"
 printf 'old dry\n' > "$old_dry"
 printf 'old error\n' > "$old_error"
-printf 'old legacy failed\n' > "$old_legacy_failed"
-printf 'old success\n' > "$old_success"
-chmod 0444 "$old_dry" "$old_error" "$old_legacy_failed" "$old_success"
+chmod 0444 "$old_dry" "$old_error"
 
-# 1) New dry-run should prune stale dry-run/error reports while keeping
-# legacy failed and success reports under the current usage contract.
+# 1) New dry-run should prune stale dry-run/error reports.
 printf '\nretention trigger\n' >> "$WORK/README.md"
 rc=$(run_capture "$TMPDIR/retention.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/commit -d -c 'retention cleanup test'")
 [[ "$rc" -eq 0 ]] || fail "commit -d retention scenario should exit 0 (got $rc)"
 [[ ! -e "$old_dry" ]] || fail "old dry-run report should be pruned"
 [[ ! -e "$old_error" ]] || fail "old error report should be pruned"
-[[ -e "$old_legacy_failed" ]] || fail "legacy failed report should be retained under current usage"
-[[ -e "$old_success" ]] || fail "old success report should be retained"
 new_report="$(latest_report "$WORK")"
 [[ -f "$new_report" ]] || fail "expected new dry-run report"
 pass "report retention policy"

@@ -232,8 +232,11 @@ main() {
   fi
 
   if [[ "$state" == "on" ]]; then
-    local current_local_state="$(get_override_value "$OWNER_OVERRIDE_KEY")"
-    local current_remote_state="$(get_override_value "$REMOTE_REPAIR_OVERRIDE_KEY")"
+    local current_local_state=""
+    local current_remote_state=""
+
+    current_local_state="$(get_override_value "$OWNER_OVERRIDE_KEY")"
+    current_remote_state="$(get_override_value "$REMOTE_REPAIR_OVERRIDE_KEY")"
 
     if [[ "$remote_repair" == true ]]; then
       if [[ "$current_remote_state" == "true" ]]; then
@@ -259,8 +262,11 @@ main() {
       bt_success "Owner unrestricted mode is ON for this clone"
     fi
   else
-    local current_local_state="$(get_override_value "$OWNER_OVERRIDE_KEY")"
-    local current_remote_state="$(get_override_value "$REMOTE_REPAIR_OVERRIDE_KEY")"
+    local current_local_state=""
+    local current_remote_state=""
+
+    current_local_state="$(get_override_value "$OWNER_OVERRIDE_KEY")"
+    current_remote_state="$(get_override_value "$REMOTE_REPAIR_OVERRIDE_KEY")"
 
     if [[ "$current_local_state" != "true" && "$current_remote_state" != "true" ]]; then
       log_verbose "Both local and remote override flags are already disabled"

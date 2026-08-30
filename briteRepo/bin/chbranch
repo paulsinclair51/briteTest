@@ -429,7 +429,6 @@ fetch_remote_branch_ref() {
 
 refresh_remote_branch_ref() {
   local branch="$1"
-  local history_rc=0
 
   fetch_remote_branch_ref "$branch" || return $?
 
@@ -438,17 +437,6 @@ refresh_remote_branch_ref() {
   bt_run_remote_command git fetch origin \
     "+refs/notes/briteRepo-remote-workflow:refs/notes/briteRepo-remote-workflow" \
     >/dev/null 2>&1 || true
-
-  if bt_propagate_repository_history; then
-    history_rc=0
-  else
-    history_rc=$?
-  fi
-  case "$history_rc" in
-    0) ;;
-    1) verbose_info "Updated repository history from remote" ;;
-    *) ;;
-  esac
 
   return 0
 }

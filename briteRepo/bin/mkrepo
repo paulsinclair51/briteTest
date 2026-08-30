@@ -317,14 +317,8 @@ last_run_output() {
 # Progress accounting
 # ---------------------------------------------------------------------------
 
-increment_counter() {
-  local name="$1"
-  local value="${!name}"
-  printf -v "$name" '%s' "$((value + 1))"
-}
-
 report_created() {
-  increment_counter CREATED_COUNT
+  bt_increment_counter CREATED_COUNT
   CREATED_PATHS+=("$1")
   if [[ "$VERBOSE" == true ]]; then
     echo "  + $1"
@@ -332,7 +326,7 @@ report_created() {
 }
 
 report_divergent() {
-  increment_counter DIVERGENT_COUNT
+  bt_increment_counter DIVERGENT_COUNT
   DIVERGENT_PATHS+=("$1")
   if [[ "$VERBOSE" == true ]]; then
     echo "  ! $1 (non-canonical content; canonical copy:" \
@@ -341,7 +335,7 @@ report_divergent() {
 }
 
 report_unchanged() {
-  increment_counter UNCHANGED_COUNT
+  bt_increment_counter UNCHANGED_COUNT
   if [[ "$VERBOSE" == true ]]; then
     echo "  = $1 (canonical)"
   fi
@@ -492,7 +486,7 @@ write_symlink() {
     fi
   elif [[ -e "$abs_path" ]]; then
     README_SYMLINK_PENDING=true
-    increment_counter DIVERGENT_COUNT
+    bt_increment_counter DIVERGENT_COUNT
     echo "  ! $rel_path (not a symbolic link to $target; kept as is)"
     return 0
   fi

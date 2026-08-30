@@ -128,10 +128,15 @@ bt_report_cleanup_transient_reports \
 [[ -f "$cleanup_repo/reports/remove.md" ]] && fail "expected branch-matching report to be removed"
 [[ -f "$cleanup_repo/reports/source-remove.md" ]] && fail "expected source-branch-matching report to be removed"
 
-# 4) Shared report names include process identity, and locks serialize writers.
-unique_path="$(bt_report_retained_path "/tmp/reports" "push-d" "20260802-120000+0000" "12345")"
-[[ "$unique_path" == "/tmp/reports/push-d-20260802-120000+0000-12345.md" ]] || \
+# 4) Shared retained report names are PID-free and atomically reserved.
+unique_path="$(bt_report_retained_path "$DELETE_REPO/reports" "push-d" "20260802-120000+0000")"
+[[ "$unique_path" == "$DELETE_REPO/reports/push-d-20260802-120000+0000.md" ]] || \
   fail "unexpected unique report path: $unique_path"
+[[ -f "$unique_path" ]] || fail "expected retained report path to be reserved"
+if bt_report_retained_path "$DELETE_REPO/missing/reports" \
+  "push-d" "20260802-120001+0000" >/dev/null; then
+  fail "retained report allocation should fail when its directory is missing"
+fi
 transient_path="$(bt_report_transient_path "$DELETE_REPO/reports" "local" "20000101-000000")"
 [[ "$(basename "$transient_path")" =~ ^local-[0-9]{8}-[0-9]{6}[+-][0-9]{4}\.md$ ]] || \
   fail "unexpected transient report path: $transient_path"

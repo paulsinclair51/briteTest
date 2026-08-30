@@ -231,17 +231,6 @@ fi
 
 success "Repository cloned successfully"
 
-# Propagate repository history from remote if available
-if cd "$TARGET_DIR"; then
-  bt_propagate_repository_history
-  case $? in
-    0) ;;
-    1) info "Updated repository history from remote" ;;
-    *) ;;
-  esac
-  cd - >/dev/null
-fi
-
 # Display repository information
 info "Repository: $REPO_URL"
 info "Cloned to: ./$TARGET_DIR"
