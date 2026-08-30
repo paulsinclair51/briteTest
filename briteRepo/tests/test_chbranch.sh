@@ -137,16 +137,16 @@ assert_contains "[local only]" "$TMPDIR/help.out"
 assert_contains "[remote snapshot]" "$TMPDIR/help.out"
 assert_contains "[invalid name]" "$TMPDIR/help.out"
 assert_contains "[remote differs by N]" "$TMPDIR/help.out"
-assert_contains "[parent: NAME behind by N]" "$TMPDIR/help.out"
-assert_contains "[parent: NAME ahead by N]" "$TMPDIR/help.out"
-assert_contains "[parent: NAME differs by N]" "$TMPDIR/help.out"
+assert_contains "[parent NAME behind by N]" "$TMPDIR/help.out"
+assert_contains "[parent NAME ahead by N]" "$TMPDIR/help.out"
+assert_contains "[parent NAME differs by N]" "$TMPDIR/help.out"
 assert_contains "[copyfix in progress]" "$TMPDIR/help.out"
 assert_contains "[pushup in progress]" "$TMPDIR/help.out"
 assert_contains "[pull in progress]" "$TMPDIR/help.out"
 assert_contains "[retarget in progress]" "$TMPDIR/help.out"
 assert_contains "[pulldown in progress]" "$TMPDIR/help.out"
-assert_contains "[parent: NAME]" "$TMPDIR/help.out"
-assert_contains "[parent unavailable: NAME]" "$TMPDIR/help.out"
+assert_contains "[parent NAME]" "$TMPDIR/help.out"
+assert_contains "[parent unavailable NAME]" "$TMPDIR/help.out"
 assert_matches '^[[:space:]]*8[[:space:]]+Running outside a Git repository\.$' \
   "$TMPDIR/help.out"
 assert_matches '^[[:space:]]*9[[:space:]]+Required command is not available \(git or timeout\)\.$' \
@@ -266,7 +266,7 @@ pass "local branch switch"
 rc=$(run_in_work_capture "$TMPDIR/parent-ahead.out" \
   dev/parent-relation-v1.0.0)
 [[ "$rc" -eq 0 ]] || fail "parent-ahead selection should exit 0 (got $rc)"
-assert_contains "[parent: v1.0.0]" "$TMPDIR/parent-ahead.out"
+assert_contains "[parent v1.0.0]" "$TMPDIR/parent-ahead.out"
 if grep -Fq "[ahead of parent" "$TMPDIR/parent-ahead.out"; then
   fail "tree-equivalent branch should not report actionable parent divergence"
 fi
@@ -279,7 +279,7 @@ fi
 rc=$(run_in_work_capture "$TMPDIR/remote-parent.out" -r \
   dev/parent-relation-v1.0.0)
 [[ "$rc" -eq 0 ]] || fail "remote-parent selection should exit 0 (got $rc)"
-assert_contains "[parent: v1.0.0]" "$TMPDIR/remote-parent.out"
+assert_contains "[parent v1.0.0]" "$TMPDIR/remote-parent.out"
 if grep -Fq "[ahead of parent" "$TMPDIR/remote-parent.out"; then
   fail "tree-equivalent remote snapshot should not report actionable parent divergence"
 fi
@@ -288,14 +288,14 @@ git -C "$WORK" push origin --delete v1.0.0 \
 rc=$(run_in_work_capture "$TMPDIR/parent-behind.out" \
   dev/parent-behind-v1.0.0)
 [[ "$rc" -eq 0 ]] || fail "parent-behind selection should exit 0 (got $rc)"
-assert_contains "[parent: v1.0.0]" "$TMPDIR/parent-behind.out"
+assert_contains "[parent v1.0.0]" "$TMPDIR/parent-behind.out"
 if grep -Fq "[behind parent" "$TMPDIR/parent-behind.out"; then
   fail "tree-equivalent branch should not report actionable parent divergence"
 fi
 rc=$(run_in_work_capture "$TMPDIR/parent-diverged.out" \
   dev/parent-relation-v1.0.0)
 [[ "$rc" -eq 0 ]] || fail "parent-diverged selection should exit 0 (got $rc)"
-assert_contains "[parent: v1.0.0]" "$TMPDIR/parent-diverged.out"
+assert_contains "[parent v1.0.0]" "$TMPDIR/parent-diverged.out"
 if grep -Fq "[diverged from parent" "$TMPDIR/parent-diverged.out"; then
   fail "tree-equivalent branches should not report actionable parent divergence"
 fi
@@ -317,7 +317,7 @@ rc=$(run_in_work_capture "$TMPDIR/parent-unavailable.out" \
   dev/missing-parent-v2.0.0)
 [[ "$rc" -eq 0 ]] || \
   fail "unavailable-parent selection should exit 0 (got $rc)"
-assert_contains "[parent unavailable: v2.0.0]" \
+assert_contains "[parent unavailable v2.0.0]" \
   "$TMPDIR/parent-unavailable.out"
 git -C "$WORK" switch dev/target >/dev/null 2>&1
 git -C "$WORK" branch -D dev/missing-parent-v2.0.0 >/dev/null 2>&1

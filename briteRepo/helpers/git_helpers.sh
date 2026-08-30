@@ -81,23 +81,23 @@ bt_git_format_parent_relation_tags() {
 
   [[ -n "$parent" ]] || return 0
   if [[ "$available" != true ]]; then
-    printf '[parent unavailable: %s]' "$parent"
+    printf '[parent unavailable %s]' "$parent"
     return 0
   fi
 
   if [[ ! "$ahead" =~ ^[0-9]+$ || ! "$behind" =~ ^[0-9]+$ || \
     ! "$changes" =~ ^[0-9]+$ || "$changes" -eq 0 ]]; then
-    printf '[parent: %s]' "$parent"
+    printf '[parent %s]' "$parent"
     return 0
   fi
   if [[ "$ahead" -gt 0 && "$behind" -eq 0 ]]; then
-    printf '[parent: %s behind by %s]' "$parent" "$changes"
+    printf '[parent %s behind by %s]' "$parent" "$changes"
   elif [[ "$ahead" -eq 0 && "$behind" -gt 0 ]]; then
-    printf '[parent: %s ahead by %s]' "$parent" "$changes"
+    printf '[parent %s ahead by %s]' "$parent" "$changes"
   elif [[ "$ahead" -gt 0 && "$behind" -gt 0 ]]; then
-    printf '[parent: %s differs by %s]' "$parent" "$changes"
+    printf '[parent %s differs by %s]' "$parent" "$changes"
   else
-    printf '[parent: %s]' "$parent"
+    printf '[parent %s]' "$parent"
   fi
   return 0
 }
@@ -145,7 +145,7 @@ bt_git_parent_relation_tags() {
   if [[ -n "$parent_ref" ]]; then
     available=true
     if git diff --quiet "$selected_ref" "$parent_ref" 2>/dev/null; then
-      printf '[parent: %s]' "$parent"
+      printf '[parent %s]' "$parent"
       return 0
     fi
     counts=$(git rev-list --left-right --count \
@@ -767,7 +767,7 @@ bt_git_file_action() {
 }
 
 # Branch status tags used in report headers, for example:
-# [uncommitted] [local] [parent: v1.0.0 behind by 4]
+# [uncommitted] [local] [parent v1.0.0 behind by 4]
 bt_git_branch_status_tags() {
   local branch="$1"
   local mode="$2"

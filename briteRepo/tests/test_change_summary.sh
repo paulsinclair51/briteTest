@@ -33,10 +33,10 @@ fail() {
   "[local differs by 4]" ]] || \
   fail "remote tracking divergence tag"
 [[ "$(bt_git_format_parent_relation_tags v1.0.0 2 3 true 4)" == \
-  "[parent: v1.0.0 differs by 4]" ]] || \
+  "[parent v1.0.0 differs by 4]" ]] || \
   fail "parent divergence tags"
 [[ "$(bt_git_format_parent_relation_tags v2.0.0 0 0 false)" == \
-  "[parent unavailable: v2.0.0]" ]] || fail "unavailable parent tag"
+  "[parent unavailable v2.0.0]" ]] || fail "unavailable parent tag"
 
 cat > "$TMPDIR/old-files" <<'EOF'
 same.txt

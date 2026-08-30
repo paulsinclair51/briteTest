@@ -120,15 +120,15 @@ Status tags:
                                 N file or directory changes.
   [local differs by N]          For a remote branch, remote and local differ
                                 by N file or directory changes.
-  [parent: NAME]                NAME is the branch's parent and content matches.
-  [parent unavailable: NAME]    NAME is the branch's parent, but that branch is
+  [parent NAME]                 NAME is the branch's parent and content matches.
+  [parent unavailable NAME]     NAME is the branch's parent, but that branch is
                                 unavailable locally and among downloaded remote
                                 branches; it may be unfetched or deleted.
-  [parent: NAME behind by N]    Branch has N file or directory changes not on
+  [parent NAME behind by N]     Branch has N file or directory changes not on
                                 its parent.
-  [parent: NAME ahead by N]     Parent has N file or directory changes not on
+  [parent NAME ahead by N]      Parent has N file or directory changes not on
                                 the branch.
-  [parent: NAME differs by N]   Branch and parent content differs by N file or
+  [parent NAME differs by N]    Branch and parent content differs by N file or
                                 directory changes.
   [copyfix in progress]         Rerun copyfix to resume.
   [pushup in progress]          Rerun pushup to resume.
