@@ -136,17 +136,18 @@ assert_contains "Status tags:" "$TMPDIR/help.out"
 assert_contains "[local only]" "$TMPDIR/help.out"
 assert_contains "[remote snapshot]" "$TMPDIR/help.out"
 assert_contains "[invalid name]" "$TMPDIR/help.out"
-assert_contains "[diverged from remote: N/M]" "$TMPDIR/help.out"
-assert_contains "[ahead of parent by N]" "$TMPDIR/help.out"
-assert_contains "[behind parent by N]" "$TMPDIR/help.out"
-assert_contains "[diverged from parent: N/M]" "$TMPDIR/help.out"
+assert_contains "[status unavailable]" "$TMPDIR/help.out"
+assert_contains "[remote differs by N]" "$TMPDIR/help.out"
+assert_contains "[parent NAME behind by N]" "$TMPDIR/help.out"
+assert_contains "[parent NAME ahead by N]" "$TMPDIR/help.out"
+assert_contains "[parent NAME differs by N]" "$TMPDIR/help.out"
 assert_contains "[copyfix in progress]" "$TMPDIR/help.out"
 assert_contains "[pushup in progress]" "$TMPDIR/help.out"
 assert_contains "[pull in progress]" "$TMPDIR/help.out"
 assert_contains "[retarget in progress]" "$TMPDIR/help.out"
 assert_contains "[pulldown in progress]" "$TMPDIR/help.out"
-assert_contains "[parent: NAME]" "$TMPDIR/help.out"
-assert_contains "[parent unavailable: NAME]" "$TMPDIR/help.out"
+assert_contains "[parent NAME]" "$TMPDIR/help.out"
+assert_contains "[parent unavailable NAME]" "$TMPDIR/help.out"
 assert_matches '^[[:space:]]*8[[:space:]]+Running outside a Git repository\.$' \
   "$TMPDIR/help.out"
 assert_matches '^[[:space:]]*9[[:space:]]+Required command is not available \(git or timeout\)\.$' \
@@ -266,7 +267,7 @@ pass "local branch switch"
 rc=$(run_in_work_capture "$TMPDIR/parent-ahead.out" \
   dev/parent-relation-v1.0.0)
 [[ "$rc" -eq 0 ]] || fail "parent-ahead selection should exit 0 (got $rc)"
-assert_contains "[parent: v1.0.0]" "$TMPDIR/parent-ahead.out"
+assert_contains "[parent v1.0.0]" "$TMPDIR/parent-ahead.out"
 if grep -Fq "[ahead of parent" "$TMPDIR/parent-ahead.out"; then
   fail "tree-equivalent branch should not report actionable parent divergence"
 fi
@@ -279,7 +280,7 @@ fi
 rc=$(run_in_work_capture "$TMPDIR/remote-parent.out" -r \
   dev/parent-relation-v1.0.0)
 [[ "$rc" -eq 0 ]] || fail "remote-parent selection should exit 0 (got $rc)"
-assert_contains "[parent: v1.0.0]" "$TMPDIR/remote-parent.out"
+assert_contains "[parent v1.0.0]" "$TMPDIR/remote-parent.out"
 if grep -Fq "[ahead of parent" "$TMPDIR/remote-parent.out"; then
   fail "tree-equivalent remote snapshot should not report actionable parent divergence"
 fi
@@ -288,14 +289,14 @@ git -C "$WORK" push origin --delete v1.0.0 \
 rc=$(run_in_work_capture "$TMPDIR/parent-behind.out" \
   dev/parent-behind-v1.0.0)
 [[ "$rc" -eq 0 ]] || fail "parent-behind selection should exit 0 (got $rc)"
-assert_contains "[parent: v1.0.0]" "$TMPDIR/parent-behind.out"
+assert_contains "[parent v1.0.0]" "$TMPDIR/parent-behind.out"
 if grep -Fq "[behind parent" "$TMPDIR/parent-behind.out"; then
   fail "tree-equivalent branch should not report actionable parent divergence"
 fi
 rc=$(run_in_work_capture "$TMPDIR/parent-diverged.out" \
   dev/parent-relation-v1.0.0)
 [[ "$rc" -eq 0 ]] || fail "parent-diverged selection should exit 0 (got $rc)"
-assert_contains "[parent: v1.0.0]" "$TMPDIR/parent-diverged.out"
+assert_contains "[parent v1.0.0]" "$TMPDIR/parent-diverged.out"
 if grep -Fq "[diverged from parent" "$TMPDIR/parent-diverged.out"; then
   fail "tree-equivalent branches should not report actionable parent divergence"
 fi
@@ -317,7 +318,7 @@ rc=$(run_in_work_capture "$TMPDIR/parent-unavailable.out" \
   dev/missing-parent-v2.0.0)
 [[ "$rc" -eq 0 ]] || \
   fail "unavailable-parent selection should exit 0 (got $rc)"
-assert_contains "[parent unavailable: v2.0.0]" \
+assert_contains "[parent unavailable v2.0.0]" \
   "$TMPDIR/parent-unavailable.out"
 git -C "$WORK" switch dev/target >/dev/null 2>&1
 git -C "$WORK" branch -D dev/missing-parent-v2.0.0 >/dev/null 2>&1
@@ -549,7 +550,7 @@ git clone "$ORIGIN" "$PROTECTED_PEER" >/dev/null 2>&1
 )
 rc=$(run_in_work_capture "$TMPDIR/remote-ahead-local.out" -r main)
 [[ "$rc" -eq 0 ]] || fail "remote-ahead selection should exit 0 (got $rc)"
-assert_contains "[ahead of local by 1]" "$TMPDIR/remote-ahead-local.out"
+assert_contains "[local behind by 1]" "$TMPDIR/remote-ahead-local.out"
 rc=$(run_in_work_capture "$TMPDIR/protected-refresh.out" main)
 [[ "$rc" -eq 0 ]] || fail "protected refresh should exit 0 (got $rc)"
 [[ "$(git -C "$WORK" rev-parse main)" == \
@@ -581,14 +582,18 @@ rc=$(run_in_work_capture_streams "$TMPDIR/protected-ahead.out" \
 [[ "$rc" -eq 0 ]] || fail "ahead protected selection should exit 0 (got $rc)"
 assert_contains "was not refreshed because it is ahead of origin/main" \
   "$TMPDIR/protected-ahead.out"
-assert_contains "[ahead of remote by 1]" "$TMPDIR/protected-ahead.out"
+if grep -Fq "[remote behind" "$TMPDIR/protected-ahead.out"; then
+  fail "content-neutral local history should not produce a status tag"
+fi
 [[ ! -s "$TMPDIR/protected-ahead.err" ]] || \
   fail "non-fatal refresh warning should not be written to stderr"
 [[ "$(git -C "$WORK" rev-parse main)" == "$protected_tip_before" ]] || \
   fail "ahead protected branch should remain unchanged"
 rc=$(run_in_work_capture "$TMPDIR/remote-behind-local.out" -r main)
 [[ "$rc" -eq 0 ]] || fail "remote-behind selection should exit 0 (got $rc)"
-assert_contains "[behind local by 1]" "$TMPDIR/remote-behind-local.out"
+if grep -Fq "[behind local" "$TMPDIR/remote-behind-local.out"; then
+  fail "content-neutral remote history should not produce a status tag"
+fi
 rc=$(run_in_work_capture "$TMPDIR/restore-ahead-local.out" -l main)
 [[ "$rc" -eq 0 ]] || fail "restore ahead local should exit 0 (got $rc)"
 pass "ahead protected refresh warning"
@@ -608,13 +613,13 @@ rc=$(run_in_work_capture "$TMPDIR/protected-diverged.out" main)
   fail "diverged protected selection should exit 0 (got $rc)"
 assert_contains "was not refreshed because it has diverged from origin/main" \
   "$TMPDIR/protected-diverged.out"
-assert_contains "[diverged from remote: 1/1]" \
+assert_contains "[remote differs by 1]" \
   "$TMPDIR/protected-diverged.out"
 [[ "$(git -C "$WORK" rev-parse main)" == "$protected_tip_before" ]] || \
   fail "diverged protected branch should remain unchanged"
 rc=$(run_in_work_capture "$TMPDIR/remote-diverged-local.out" -r main)
 [[ "$rc" -eq 0 ]] || fail "remote diverged selection should exit 0 (got $rc)"
-assert_contains "[diverged from local: 1/1]" \
+assert_contains "[local differs by 1]" \
   "$TMPDIR/remote-diverged-local.out"
 rc=$(run_in_work_capture "$TMPDIR/restore-diverged-local.out" -l main)
 [[ "$rc" -eq 0 ]] || fail "restore diverged local should exit 0 (got $rc)"
@@ -700,7 +705,7 @@ set -e
 [[ "$rc" -eq 0 ]] || fail "failed protected update should exit 0 (got $rc)"
 assert_contains "was not refreshed because the fast-forward update failed" \
   "$TMPDIR/protected-update-failed.out"
-assert_contains "[behind remote by 1]" \
+assert_contains "[remote ahead by 1]" \
   "$TMPDIR/protected-update-failed.out"
 [[ "$(git -C "$WORK" symbolic-ref --short HEAD)" == "main" ]] || \
   fail "failed protected update should leave main selected"

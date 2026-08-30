@@ -20,23 +20,26 @@ fail() {
   exit 1
 }
 
-[[ -z "$(bt_git_format_tracking_relation_tag local 0 0 false)" ]] || \
+[[ -z "$(bt_git_format_tracking_relation_tag local 0 0 0)" ]] || \
   fail "zero-difference tracking tag should be omitted"
-[[ -z "$(bt_git_format_tracking_relation_tag local 0 0 true)" ]] || \
-  fail "uncommitted zero-difference tracking tag should be omitted"
-[[ "$(bt_git_format_tracking_relation_tag local 2 0 false)" == \
-  "[ahead of remote by 2]" ]] || fail "local-ahead tracking tag"
-[[ "$(bt_git_format_tracking_relation_tag remote 2 0 false)" == \
-  "[behind local by 2]" ]] || fail "remote-behind tracking tag"
-[[ "$(bt_git_format_tracking_relation_tag local 2 3 false)" == \
-  "[diverged from remote: 2/3]" ]] || fail "local tracking divergence tag"
-[[ "$(bt_git_format_tracking_relation_tag remote 2 3 false)" == \
-  "[diverged from local: 3/2]" ]] || fail "remote tracking divergence tag"
-[[ "$(bt_git_format_parent_relation_tags v1.0.0 2 3 true)" == \
-  "[parent: v1.0.0] [diverged from parent: 2/3]" ]] || \
+[[ "$(bt_git_format_tracking_relation_tag local 2 0 1)" == \
+  "[remote behind by 1]" ]] || fail "local-ahead tracking tag"
+[[ "$(bt_git_format_tracking_relation_tag remote 2 0 1)" == \
+  "[local ahead by 1]" ]] || fail "remote-behind tracking tag"
+[[ "$(bt_git_format_tracking_relation_tag local 2 3 4)" == \
+  "[remote differs by 4]" ]] || \
+  fail "local tracking divergence tag"
+[[ "$(bt_git_format_tracking_relation_tag remote 2 3 4)" == \
+  "[local differs by 4]" ]] || \
+  fail "remote tracking divergence tag"
+[[ "$(bt_git_format_parent_relation_tags v1.0.0 2 3 true 4)" == \
+  "[parent v1.0.0 differs by 4]" ]] || \
   fail "parent divergence tags"
 [[ "$(bt_git_format_parent_relation_tags v2.0.0 0 0 false)" == \
-  "[parent unavailable: v2.0.0]" ]] || fail "unavailable parent tag"
+  "[parent unavailable v2.0.0]" ]] || fail "unavailable parent tag"
+if bt_git_collect_ref_change_summary missing-ref HEAD; then
+  fail "invalid ref comparison should fail"
+fi
 
 cat > "$TMPDIR/old-files" <<'EOF'
 same.txt
@@ -78,14 +81,14 @@ bt_git_collect_change_summary_from_files \
 [[ "$BT_CHANGE_RENAMED_FILES" -eq 3 ]] || fail "renamed file count"
 [[ "$BT_CHANGE_RENAMED_MODIFIED_FILES" -eq 1 ]] || \
   fail "renamed/modified file count"
-[[ "$BT_CHANGE_DELETED_DIRECTORIES" -eq 1 ]] || \
+[[ "$BT_CHANGE_DELETED_DIRECTORIES" -eq 2 ]] || \
   fail "deleted directory count"
-[[ "$BT_CHANGE_ADDED_DIRECTORIES" -eq 1 ]] || \
+[[ "$BT_CHANGE_ADDED_DIRECTORIES" -eq 3 ]] || \
   fail "added directory count"
-[[ "$BT_CHANGE_RENAMED_DIRECTORIES" -eq 4 ]] || \
+[[ "$BT_CHANGE_RENAMED_DIRECTORIES" -eq 2 ]] || \
   fail "renamed directory count"
 
-expected="1 modified file, 2 deleted files, 2 added files, 3 renamed files, 1 renamed/modified file, 1 deleted directory, 1 added directory and 4 renamed directories"
+expected="1 modified file, 2 deleted files, 2 added files, 3 renamed files, 1 renamed/modified file, 2 deleted directories, 3 added directories and 2 renamed directories"
 [[ "$(bt_format_change_summary)" == "$expected" ]] || \
   fail "comprehensive summary formatting"
 

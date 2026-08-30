@@ -108,22 +108,29 @@ Status tags:
   [offline]                     Current remote status could not be retrieved;
                                 cached remote information is displayed when
                                 available.
-  [ahead of remote by N]        Local has N commits not on the remote.
-  [behind remote by N]          Remote has N commits not on the local branch.
-  [ahead of local by N]         Remote has N commits not on the local branch.
-  [behind local by N]           Local has N commits not on the remote.
-  [diverged from remote: N/M]   Local and remote have diverged; N local-only
-                                and M remote-only commits.
-  [diverged from local: N/M]    Remote and local have diverged; N remote-only
-                                and M local-only commits.
-  [parent: NAME]                NAME is the branch's parent.
-  [parent unavailable: NAME]    NAME is the branch's parent, but that branch is
+  [status unavailable]          Branch relation could not be calculated.
+  [remote behind by N]          For a local branch, local has N file or
+                                directory changes not on the remote.
+  [local behind by N]           For a remote branch, remote has N file or
+                                directory changes not on the local branch.
+  [remote ahead by N]           For a local branch, remote has N file or
+                                directory changes not on the local.
+  [local ahead by N]            For a remote branch, local has N file or
+                                directory changes not on the remote branch.
+  [remote differs by N]         For a local branch, local and remote differ by
+                                N file or directory changes.
+  [local differs by N]          For a remote branch, remote and local differ
+                                by N file or directory changes.
+  [parent NAME]                 NAME is the branch's parent and content matches.
+  [parent unavailable NAME]     NAME is the branch's parent, but that branch is
                                 unavailable locally and among downloaded remote
                                 branches; it may be unfetched or deleted.
-  [ahead of parent by N]        Branch has N commits not on its parent.
-  [behind parent by N]          Parent has N commits not on the branch.
-  [diverged from parent: N/M]   Branch and parent have diverged; N branch-only
-                                and M parent-only commits.
+  [parent NAME behind by N]     Branch has N file or directory changes not on
+                                its parent.
+  [parent NAME ahead by N]      Parent has N file or directory changes not on
+                                the branch.
+  [parent NAME differs by N]    Branch and parent content differs by N file or
+                                directory changes.
   [copyfix in progress]         Rerun copyfix to resume.
   [pushup in progress]          Rerun pushup to resume.
   [pull in progress]            Resolve conflicts, then rerun pull.
@@ -362,13 +369,14 @@ resolve_current_branch_name() {
     return 0
   fi
 
-  remote_branches=$(git for-each-ref --format='%(refname:short)' \
+  remote_branches=$(git for-each-ref --format='%(refname)' \
     --points-at HEAD refs/remotes/origin 2>/dev/null | \
-    grep -v '^origin/HEAD$' || true)
+    grep -v '^refs/remotes/origin/HEAD$' | \
+    sed 's#^refs/remotes/origin/##' || true)
   remote_count=$(printf '%s\n' "$remote_branches" | sed '/^$/d' | \
     wc -l | tr -d ' ')
   if [[ "$remote_count" == "1" ]]; then
-    printf '%s\n' "${remote_branches#origin/}"
+    printf '%s\n' "$remote_branches"
     return 0
   fi
 
@@ -943,7 +951,6 @@ build_compact_status_tags() {
   local repo_status="$5"
   local pr_count="$6"
   local include_remote_rows="$7"
-  local has_uncommitted=false
   local mode_tag="$mode"
   local relation_tag=""
   local parent_tags=""
@@ -962,7 +969,6 @@ build_compact_status_tags() {
   if [[ "$is_current" == true ]]; then
     tags+=("[current]")
     if [[ "$repo_status" == "dirty" ]]; then
-      has_uncommitted=true
       tags+=("[uncommitted]")
     fi
   fi
@@ -981,9 +987,13 @@ build_compact_status_tags() {
     ( "$mode" == "remote" || "$include_remote_rows" == true ) ]]; then
     tags+=("[offline]")
   elif [[ "$branch_type" == "local (tracking origin)" ]]; then
-    relation_tag=$(bt_git_tracking_relation_tag \
-      "$mode" "$branch" "origin/$branch" "$has_uncommitted")
-    [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
+    if relation_tag=$(bt_git_tracking_relation_tag \
+      "$mode" "$branch" "origin/$branch"); then
+      [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
+    else
+      tags+=("[status unavailable]")
+      record_diagnostic "Unable to compare '$branch' with origin/$branch."
+    fi
   fi
 
   [[ "$mode" == "remote" ]] && selected_ref="origin/$branch"
@@ -991,9 +1001,13 @@ build_compact_status_tags() {
     workflow_tags="$(bt_git_workflow_in_progress_tags "$branch")"
     [[ -z "$workflow_tags" ]] || tags+=("$workflow_tags")
   fi
-  parent_tags=$(bt_git_parent_relation_tags \
-    "$mode" "$branch" "$selected_ref")
-  [[ -z "$parent_tags" ]] || tags+=("$parent_tags")
+  if parent_tags=$(bt_git_parent_relation_tags \
+    "$mode" "$branch" "$selected_ref"); then
+    [[ -z "$parent_tags" ]] || tags+=("$parent_tags")
+  else
+    tags+=("[status unavailable]")
+    record_diagnostic "Unable to compare '$branch' with its parent."
+  fi
 
   if [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 && \
     ( "$mode" == "remote" || "$include_remote_rows" == false ) ]]; then
