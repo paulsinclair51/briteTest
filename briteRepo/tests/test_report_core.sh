@@ -59,6 +59,7 @@ assert_contains "SEC for -t must be an integer > 0" \
 pass "branch remote timeout validation"
 
 # 3) Default type all should write one newest activity
+printf 'current branch worktree change\n' > "$WORK/current-only-uncommitted.txt"
 rc=$(run_capture "$TMPDIR/default.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report")
 [[ "$rc" -eq 0 ]] || fail "default report should exit 0 (got $rc)"
 default_rel="$(report_path_from_output "$TMPDIR/default.out")"
@@ -67,7 +68,7 @@ if grep -Fq '**Type:**' "$WORK/$default_rel"; then
   fail "report should not include redundant Type metadata"
 fi
 assert_contains '**Branch:** `dev/report-tests-v1.0.0`' "$WORK/$default_rel"
-assert_contains '**Status:** [local]' "$WORK/$default_rel"
+assert_contains '**Status:** [uncommitted] [local]' "$WORK/$default_rel"
 if grep -Fq '[current]' "$WORK/$default_rel"; then
   fail "branch report should not include the current tag"
 fi
@@ -87,8 +88,13 @@ rc=$(run_capture "$TMPDIR/local-parent.out" bash -lc \
   "cd '$WORK' && bash ./briteRepo/bin/report -p")
 [[ "$rc" -eq 0 ]] || fail "local parent report should exit 0 (got $rc)"
 local_parent_rel="$(report_path_from_output "$TMPDIR/local-parent.out")"
+[[ "$local_parent_rel" == reports/p-local-*.md ]] || \
+  fail "local parent report should use the p-local prefix"
 assert_contains '**Branch:** `v1.0.0`' "$WORK/$local_parent_rel"
 assert_matches '^\*\*Status:\*\* .*\[local\]' "$WORK/$local_parent_rel"
+if grep -Fq '[uncommitted]' "$WORK/$local_parent_rel"; then
+  fail "local parent report should not inherit current branch uncommitted status"
+fi
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/report-tests-v1.0.0" ]] || \
   fail "local parent report should not change the current branch"
 
@@ -96,10 +102,13 @@ rc=$(run_capture "$TMPDIR/remote-parent.out" bash -lc \
   "cd '$WORK' && bash ./briteRepo/bin/report -p -r")
 [[ "$rc" -eq 0 ]] || fail "remote parent report should exit 0 (got $rc)"
 remote_parent_rel="$(report_path_from_output "$TMPDIR/remote-parent.out")"
+[[ "$remote_parent_rel" == reports/p-remote-*.md ]] || \
+  fail "remote parent report should use the p-remote prefix"
 assert_contains '**Branch:** `v1.0.0`' "$WORK/$remote_parent_rel"
 assert_matches '^\*\*Status:\*\* .*\[remote\]' "$WORK/$remote_parent_rel"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/report-tests-v1.0.0" ]] || \
   fail "remote parent report should not change the current branch"
+rm -f "$WORK/current-only-uncommitted.txt"
 pass "local and remote parent reports"
 
 # 4) Verbose mode should report progress while details remain in the file
@@ -107,7 +116,7 @@ rc=$(run_capture "$TMPDIR/verbose.out" bash -lc "cd '$WORK' && bash ./briteRepo/
 [[ "$rc" -eq 0 ]] || fail "verbose report should exit 0 (got $rc)"
 assert_contains "matching activities" "$TMPDIR/verbose.out"
 verbose_rel="$(report_path_from_output "$TMPDIR/verbose.out")"
-assert_contains "<summary>Files</summary>" "$WORK/$verbose_rel"
+[[ -f "$WORK/$verbose_rel" ]] || fail "verbose report file was not created"
 pass "verbose progress output"
 
 # 5) Branch type with no limit should include generic commits and workflow activity
@@ -141,12 +150,12 @@ rc=$(run_capture "$TMPDIR/pulldown.out" bash -lc "cd '$WORK' && bash ./briteRepo
 pulldown_rel="$(report_path_from_output "$TMPDIR/pulldown.out")"
 assert_contains "pulldown activity" "$WORK/$pulldown_rel"
 assert_contains '**Command:** `pulldown -f`' "$WORK/$pulldown_rel"
-assert_contains "Source-Branch: v1.0.0" "$WORK/$pulldown_rel"
-assert_contains "Target-Branch: dev/report-tests-v1.0.0" "$WORK/$pulldown_rel"
-assert_contains "Parent-Commits-Integrated: 2" "$WORK/$pulldown_rel"
-assert_contains "Files-Modified: 1" "$WORK/$pulldown_rel"
-assert_contains "Status: Parent branch merged into current branch" "$WORK/$pulldown_rel"
-assert_contains "Method: Merge commit (--no-ff) created by pulldown" "$WORK/$pulldown_rel"
+if grep -Fq '## Workflow Metadata' "$WORK/$pulldown_rel"; then
+  fail "pulldown report should omit Workflow Metadata"
+fi
+if grep -Fq '<summary>Files</summary>' "$WORK/$pulldown_rel"; then
+  fail "content-neutral pulldown report should omit the Files section"
+fi
 pass "pulldown report details"
 
 # 8) Merge-up reports should render durable workflow details
@@ -155,7 +164,12 @@ rc=$(run_capture "$TMPDIR/pushup.out" bash -lc "cd '$WORK' && bash ./briteRepo/b
 pushup_rel="$(report_path_from_output "$TMPDIR/pushup.out")"
 assert_contains "pushup activity" "$WORK/$pushup_rel"
 assert_contains '**Command:** `pushup -o`' "$WORK/$pushup_rel"
-assert_contains "Source-Branch: dev/report-tests-v1.0.0" "$WORK/$pushup_rel"
+assert_matches \
+  '^Source-Branch: dev/report-tests-v1\.0\.0 \([0-9a-f]{40}\)$' \
+  "$WORK/$pushup_rel"
+if grep -Eq '^Source-Tip:' "$WORK/$pushup_rel"; then
+  fail "pushup report should combine Source-Tip with Source-Branch"
+fi
 assert_contains "Target-Branch: v1.0.0" "$WORK/$pushup_rel"
 assert_contains "PR: 42" "$WORK/$pushup_rel"
 assert_contains "Status: Current branch merged into parent branch" "$WORK/$pushup_rel"
