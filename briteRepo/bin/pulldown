@@ -742,8 +742,9 @@ fi
 cleanup_success_transient_reports
 
 if [[ "$MERGE_FILE_SUMMARY_TEXT" == "no changes" ]]; then
+  synchronized_tip_short="$(git rev-parse --short=7 HEAD 2>/dev/null || true)"
   bt_success \
-    "Synchronized parent '$PARENT_BRANCH' with '$CURRENT_BRANCH': no file or directory changes."
+    "Synchronized (${synchronized_tip_short}) parent '$PARENT_BRANCH' with '$CURRENT_BRANCH': no file or directory changes."
 else
   bt_success \
     "Merged parent '$PARENT_BRANCH' into '$CURRENT_BRANCH': ${MERGE_FILE_SUMMARY_TEXT}."

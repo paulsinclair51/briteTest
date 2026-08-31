@@ -787,6 +787,15 @@ if grep -Fq "**Lines:**" "$empty_report"; then
 fi
 pass "empty commit dry-run summary omission"
 
+empty_tip_short="$(git -C "$WORK" rev-parse --short=7 HEAD)"
+rc=$(run_capture "$TMPDIR/empty-push.out" env GITHUB_ACTOR=testuser bash -lc "cd '$WORK' && bash ./briteRepo/bin/push -t 5")
+[[ "$rc" -eq 0 ]] || fail "empty commit push should exit 0 (got $rc)"
+assert_contains \
+  "Synchronized (${empty_tip_short}) remote dev/push-tests-v1.0.0 with local: no file or directory changes." \
+  "$TMPDIR/empty-push.out"
+assert_contains "Run report -r for details." "$TMPDIR/empty-push.out"
+pass "empty commit push synchronization output"
+
 # 14) Dry-run report should handle unusual file deltas (rename/delete/binary)
 # in file summary output.
 (

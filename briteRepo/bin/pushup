@@ -957,6 +957,11 @@ fi
 if [[ "$(state_get phase)" == source-published ]]; then
   source_branch="$(state_get source)"
   parent_branch="$(state_get parent)"
+  completed_parent_tip="$(state_get prepared-parent-tip)"
+  [[ -n "$completed_parent_tip" ]] || \
+    completed_parent_tip="$(local_tip "$parent_branch")"
+  completed_parent_tip_short="$(git rev-parse --short=7 \
+    "$completed_parent_tip" 2>/dev/null || true)"
   completed_publication_mode="$(publication_mode)"
   if branch_has_saved_remote parent; then
     completed_parent_has_remote=true
@@ -966,10 +971,10 @@ if [[ "$(state_get phase)" == source-published ]]; then
   rm -f "$STATE_FILE"
   remove_tool_snapshot
   if [[ "$completed_publication_mode" == local ]]; then
-    echo "Pushed up '$source_branch' to '$parent_branch' locally."
+    echo "Pushed up '$source_branch' to '$parent_branch' (${completed_parent_tip_short}) locally."
     echo "Run report -p for local parent details."
   else
-    echo "Pushed up '$source_branch' to '$parent_branch' locally and remotely."
+    echo "Pushed up '$source_branch' to '$parent_branch' (${completed_parent_tip_short}) locally and remotely."
     if [[ "$completed_parent_has_remote" == true ]]; then
       echo "Run report -p for local parent details; run report -p -r for remote parent details."
     else

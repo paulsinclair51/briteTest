@@ -194,6 +194,22 @@ assert_contains "no changes to pull" "$TMPDIR/main-owner-policy.out"
 pass "owner override main branch policy"
 
 (
+  cd "$PEER"
+  git checkout dev/current-v1.0.0 >/dev/null 2>&1
+  git commit --allow-empty -m "content-neutral remote update" >/dev/null 2>&1
+  git push origin dev/current-v1.0.0 >/dev/null 2>&1
+)
+content_neutral_tip_short="$(git -C "$PEER" rev-parse --short=7 HEAD)"
+rc=$(run_capture "$TMPDIR/content-neutral.out" bash -lc \
+  "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pull")
+[[ "$rc" -eq 0 ]] || fail "content-neutral pull should exit 0 (got $rc)"
+assert_contains \
+  "Synchronized (${content_neutral_tip_short}) local dev/current-v1.0.0 with remote: no file or directory changes." \
+  "$TMPDIR/content-neutral.out"
+assert_contains "Run report for details." "$TMPDIR/content-neutral.out"
+pass "content-neutral pull synchronization output"
+
+(
   cd "$WORK"
   git checkout -b v1.0.0 >/dev/null 2>&1
   git push -u origin v1.0.0 >/dev/null 2>&1
