@@ -235,7 +235,7 @@ status="$(run_capture "$TMPDIR/finalize-fail.out" bash -c \
   parent-finalization-failed ]] || fail "finalization failure phase should be retained"
 [[ "$(git -C "$WORK" branch --show-current)" == feature ]] || \
   fail "partial pushup should return to the saved source branch"
-assert_contains "parent was published" "$TMPDIR/finalize-fail.out"
+assert_contains "parent was updated on the remote" "$TMPDIR/finalize-fail.out"
 status="$(run_capture "$TMPDIR/finalize-continue.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 0 ]] || fail "finalization continuation should complete, got $status"
@@ -277,7 +277,7 @@ status="$(run_capture "$TMPDIR/network-offline.out" bash -c \
 [[ "$(git config --file "$WORK/.git/briteRepo/pushup.state" \
   --get pushup.phase)" == publication-uncertain ]] || \
   fail "offline recovery should record publication uncertainty"
-assert_contains "origin is unavailable" "$TMPDIR/network-offline.out"
+assert_contains "remote is unavailable" "$TMPDIR/network-offline.out"
 mv "$ORIGIN.offline" "$ORIGIN"
 status="$(run_capture "$TMPDIR/network-reconnected.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup")"
@@ -310,7 +310,7 @@ status="$(run_capture "$TMPDIR/crash-before-publish.out" bash -c \
 [[ "$status" -eq 0 ]] || fail "plain restart before publication should complete, got $status"
 [[ "$(git --git-dir="$ORIGIN" rev-parse main)" != "$orphaned_tip" ]] || \
   fail "orphaned local preparation must not be published"
-assert_contains "Recovered an interrupted prepublication" \
+assert_contains "Recovered an interrupted push-up before its remote update" \
   "$TMPDIR/crash-before-publish.out"
 echo "PASS: plain pushup recovers a prepublication hard crash"
 
@@ -325,11 +325,18 @@ status="$(run_capture "$TMPDIR/partial.out" bash -c \
 [[ -f "$WORK/.git/briteRepo/pushup.state" ]] || fail "partial run should retain state"
 [[ "$(git config --file "$WORK/.git/briteRepo/pushup.state" --get pushup.phase)" == \
   source-sync-failed ]] || fail "partial run should record failed synchronization"
+saved_source_version="$(git config --file "$WORK/.git/briteRepo/pushup.state" \
+  --get pushup.source-tip)"
+saved_parent_version="$(git config --file "$WORK/.git/briteRepo/pushup.state" \
+  --get pushup.parent-tip)"
 # Earlier scenarios leave their own error reports, so take the newest one.
 report="$(ls -t "$WORK/reports"/pushup-e-*.md 2>/dev/null | head -n 1)"
 [[ -n "$report" ]] || fail "partial run should write a pushup error report"
-assert_contains '| Publish parent | Completed |' "$report"
+assert_contains '| Update parent on remote | Completed |' "$report"
 assert_contains '| Synchronize source from parent | Pending |' "$report"
+assert_contains '## Saved Branch Versions' "$report"
+assert_contains "| Source: \`feature\` | \`$saved_source_version\` |" "$report"
+assert_contains "| Parent: \`main\` | \`$saved_parent_version\` |" "$report"
 assert_contains 'rerun `pushup`' "$report"
 echo "PASS: partial report identifies completed and pending work"
 
@@ -345,7 +352,8 @@ status="$(run_capture "$TMPDIR/continue.out" bash -c \
   fail "parent should be published"
 [[ "$(git --git-dir="$ORIGIN" rev-parse feature)" == \
   "$(git -C "$WORK" rev-parse feature)" ]] || fail "source should be published"
-assert_contains 'Push-up complete' "$TMPDIR/continue.out"
+assert_contains "Pushed up 'feature' to 'main' locally and remotely." \
+  "$TMPDIR/continue.out"
 if grep -Eq 'Local merge complete|Run report|^Pushed \(' \
   "$TMPDIR/continue.out"; then
   fail "normal pushup output should suppress delegated command summaries"

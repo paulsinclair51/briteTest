@@ -926,7 +926,7 @@ assert_contains "Merged to local v1.0.0:" "$TMPDIR/verify-repair.out"
 assert_not_contains "Pushed (" "$TMPDIR/verify-repair.out"
 assert_contains "Local merge complete on v1.0.0." \
   "$TMPDIR/verify-repair.out"
-assert_contains "Run push when ready to publish v1.0.0 and finalize its PR." \
+assert_contains "Run push when ready to update remote v1.0.0 and finalize its PR." \
   "$TMPDIR/verify-repair.out"
 [[ "$(git -C "$WORK" branch --show-current)" == "v1.0.0" ]] || \
   fail "successful pushup should leave the local parent checked out"

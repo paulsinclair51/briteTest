@@ -587,8 +587,8 @@ print_failure_guidance() {
                        "available in this worktree, then rerun pushup"
       ;;
     "$EXIT_CURRENT_PROTECTED_REMOTE_MISSING"|"$EXIT_PARENT_PROTECTED_REMOTE_MISSING")
-      bt_emit_guidance_joined "fetch or publish the protected branch so its origin" \
-                       "ref exists, then rerun pushup"
+      bt_emit_guidance_joined "fetch or create the protected remote branch," \
+                       "then rerun pushup"
       ;;
     "$EXIT_REMOTE_UNCONFIGURED")
       bt_emit_guidance_joined "configure the origin remote, then rerun pushup"
@@ -1658,7 +1658,7 @@ CURRENT_BRANCH=$(bt_get_current_branch || \
   bt_error_exit "$EXIT_CURRENT_NOT_CHECKED_OUT" "Failed to determine current branch")
 if bt_is_current_internal_remote_copy; then
   bt_emit_prerequisite_failure "$EXIT_INVALID_CURRENT_BRANCH" \
-    "Current branch '$CURRENT_BRANCH' is a read-only remote snapshot." \
+    "Current branch '$CURRENT_BRANCH' is a read-only remote copy." \
     "switch to a local targeted branch before running pushup."
 fi
 
@@ -1927,5 +1927,5 @@ fi
 print_merge_change_summary "$MERGE_COMMIT_SHA"
 bt_success "Local merge complete on $PARENT_BRANCH."
 bt_success "Run report for local details."
-bt_success "Run push when ready to publish $PARENT_BRANCH and finalize its PR."
+bt_success "Run push when ready to update remote $PARENT_BRANCH and finalize its PR."
 exit 0

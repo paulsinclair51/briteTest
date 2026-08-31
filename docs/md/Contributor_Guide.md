@@ -86,6 +86,7 @@ This document is the task-oriented guide for routine contribution work.
     10.1. [Common Problems](#101-common-problems)<br>
     10.2. [Interrupted Pushup](#102-interrupted-pushup)<br>
     10.3. [Getting Help](#103-getting-help)<br>
+11. [Key Terms](#11-key-terms)<br>
 </details>
 
 <details>
@@ -232,8 +233,9 @@ unneeded branch. Protected branches cannot be removed.
 - Run `pulldown` when the parent branch has newer changes that must be pulled
   down into the current branch.
 
-Both commands require a clean working tree. If a conflict cannot be resolved
-automatically, follow the command's report, resolve the files, and rerun it.
+Both commands require all local changes to be committed or undone. If a
+conflict cannot be resolved automatically, follow the command's report,
+resolve the listed files, and rerun the command.
 </details>
 
 <details>
@@ -313,7 +315,9 @@ earlier pull request has completed `pushup` or is no longer approved.
 
 Run `pushup` from the source branch. It determines the parent branch, validates
 the path and permissions, checks any required approval, publishes the parent,
-then pulls the published parent changes down into the source branch.
+then updates the source branch from the published parent. When `pushup`
+completes, the source and parent have matching files and directories, although
+their branch histories may differ.
 
 If the source is behind its parent, run `pulldown` first. For interruption
 recovery, see [Interrupted Pushup](#102-interrupted-pushup).
@@ -419,10 +423,10 @@ edit them through GitHub.com, delete them, or rewrite their history.
 
 Use `pushup` through an allowed push-up path. It validates branch versions,
 permissions, synchronization, and required pull requests before publication.
-GitHub rulesets separately prevent deletion and non-fast-forward updates.
+GitHub rulesets separately prevent branch deletion and unsafe history changes.
 
 Releases are approver operations. Before running `release`, verify the version
-branch, version numbers, release notes, tests, stale references, and generated
+branch, version numbers, release notes, tests, outdated links, and generated
 documents. Commit and push preparation changes through project commands. Run
 `release -h` for current prerequisites. Do not create or push release tags with
 direct Git commands.
@@ -475,11 +479,13 @@ If local safeguards are missing, run `setupclone` to restore them.
 ### 10.2. Interrupted Pushup
 
 - Restore the system or network connection.
-- Rerun `pushup`; it inspects the saved phase and exact local and remote tips.
+- Rerun `pushup`; it compares its saved progress with the current local and
+  remote branch versions.
 - If recovery proves publication did not occur, it restores the saved
   local branch versions. Run `pushup` to begin again.
-- If the remote remains unavailable, restore connectivity and retry. The
-  command retains saved recovery information rather than guessing.
+- If the remote remains unavailable, restore network access or authentication,
+  then rerun `pushup`. The command retains its recovery information until it
+  can verify both branches.
 
 Do not edit participating branches or delete saved recovery information while
 recovery is pending. Repeated continuation checks exact local and remote branch
@@ -498,4 +504,29 @@ versions before resuming.
   internal policy and recovery work.
 - Open a GitHub issue for a defect or a GitHub Discussion for a question.
 </details>
+</details>
+
+<details>
+<summary><strong>11. Key Terms</strong></summary>
+
+## 11. Key Terms
+
+- **Contributor branch**: A branch for general contribution work that is not
+  tied to one version. Its name is `[<type>/]<description>`.
+- **Parent branch**: The destination immediately above a branch in an allowed
+  push-up path.
+- **Protected branch**: A branch, such as `main` or a version branch, that
+  cannot be edited directly through routine contributor workflows.
+- **Push up**: Publish an approved source branch into its parent branch using
+  `pushup`, then update the source so its files and directories match the
+  published parent. The branch histories may differ.
+- **Remote copy**: The version of a branch stored in the remote repository.
+- **Targeted branch**: A `dev/` or `fix/` branch whose work belongs to a
+  specific version.
+
+See the
+[Contributor-Specific Glossary](./Contributor_Reference.md#7-contributor-specific-glossary)
+for role, versioning, API, documentation, release, and testing terms. See the
+[Glossary Reference](./Glossary_Reference.md) for terms used throughout the
+broader documentation and testing framework.
 </details>

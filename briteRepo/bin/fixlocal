@@ -15,24 +15,24 @@ Usage:
   fixlocal [OPTIONS]
   fixlocal {-h | --help}
 
-fixlocal checks the local repository (see below) for integrity, worktree
-state, layout, and branch tracking.
+fixlocal checks this clone for damaged Git data, uncommitted changes, missing
+repository files, and branch synchronization problems.
 
 It applies safe cleanup/fixes when allowed and generates a diagnostic report.
 
-It also checks the remote (origin), but does not attempt to fix the remote;
-it only reports issues found there.
+It also checks the remote repository, but does not change it; remote problems
+are reported for follow-up.
 
 When to use this script:
   - Use fixlocal first when the problem is in the current local clone or
-    working copy: worktree state, tracking status, object database, branch
-    hygiene, or local repo cleanup.
+    working copy: uncommitted changes, branch synchronization, damaged Git
+    data, or local repository cleanup.
   - This is the default starting point for fixing the current local repository
     before broader repo-wide checks.
   - Use fixrepo next when you need a broader repository-level check across the
     current repo and optionally one additional clone path.
-  - Use fixremote only when the problem is remote (origin) corruption or a
-    damaged remote ref that must be recovered from a known-good local clone.
+  - Use fixremote only when remote branches, tags, or Git data must be recovered
+    from a known-good local clone.
   - Use override only for exceptional owner-authorized local recovery or a
     temporary remote repair authorization window; it does not replace the
     repair scripts.
@@ -44,10 +44,10 @@ Recommended order when more than one repair path applies:
   4. owner-admin remote repair workflow, if required
 
 Remote checks performed by fixlocal are:
-  - origin connectivity/reachability (including timeout handling)
-  - current-branch upstream/tracking reachability status
-  - per-local-branch upstream ahead/behind availability and tracking refresh
-  - remote corruption signals on origin main (reported only)
+  - whether a remote repository URL exists and can be reached
+  - whether the current branch matches its remote branch
+  - whether other local branches can be compared with their remote branches
+  - signs of damaged Git data on remote main (reported only)
 
 If the remote is healthy and safeguards are satisfied, it may be used by
 fixlocal to fix a corrupted local repository.
@@ -67,26 +67,21 @@ the repository based on the directory from which it is invoked.
 
      <repo>/briteRepo/bin/fixlocal -> <repo>
 
-Terminology:
-  - Unconnected remote: origin is not configured.
-  - Unreachable remote: connection fails before timeout.
-  - Timed-out remote: reachability check exceeds configured timeout.
-  - Fixable issue: can be safely auto-remediated by fixlocal.
-  - Non-fixable issue: requires manual follow-up.
+Remote results:
+  - No remote repository: this clone has no remote repository URL.
+  - Remote unreachable: the remote URL exists, but cannot be reached.
+  - Remote timed out: the connection did not finish before the timeout.
+  - Fixable issues are repaired automatically unless -d is used.
+  - Other issues require the follow-up shown in the report.
 
 Features:
-  - Validates git object database integrity (`git fsck --full`).
-  - Verifies working tree cleanliness and repository structure/layout.
-  - Checks remote connectivity/tracking status.
-  - Iterates all local branches to evaluate upstream ahead/behind status.
-  - Attempts safe remote-tracking refresh (`git fetch --prune origin`) when
-    tracking metrics cannot be computed.
-  - Attempts guarded remote synchronization of the current local branch from
-    its configured remote-tracking branch.
-  - Optional force mode (`-f`) can discard local-only divergence/working-tree
-    changes (after creating a backup ref) to converge this local branch to
-    remote branch for stabilization (with potential local loss of recent
-    changes).
+  - Checks local Git data for damage.
+  - Verifies uncommitted changes and required repository files.
+  - Checks remote access and branch synchronization.
+  - Refreshes remote branch information when comparisons are unavailable.
+  - Safely updates the current local branch from its remote branch when needed.
+  - Optional force mode (`-f`) can discard uncommitted or local-only changes
+    after creating a restore point, so the local branch matches the remote.
   - Runs safe cleanup (`git gc --prune=now`) and reruns affected verification
     checks after cleanup.
   - Continues through remaining checks when non-critical checks/fixes fail and
@@ -101,38 +96,35 @@ Prerequisites:
     or the repository owner if the current branch is main or a version branch.
   - The current branch must be a contributor, targeted, version, or main branch.
   - Current branch must be a local branch.
-  - The remote (origin) must be connected and reachable.
+  - The remote repository must exist and be reachable.
 
 Options:
   -d                Dry-run mode: report issues only, do not attempt repairs.
-  -f                Force local stabilization: allow discarding local dirty
-                    changes and local-ahead commits during guarded remote
-                    synchronization (backup ref created first).
+  -f                Force local repair: allow discarding uncommitted and
+                    local-only changes after creating a restore point.
   -h, --help  Output this help to stdout and exit (other options and
               arguments are ignored).
   -t SEC            Remote reachability timeout in seconds (default: 10).
                     Exit code is 1 if SEC is not an integer greater than 0.
   -v                Output verbose progress and details to stdout.
 
-Remote failure state definitions (mapped to exit codes):
-  - Unconnected remote: origin is not configured for this local repository.
+Remote failure results (mapped to exit codes):
+  - No remote repository URL exists for this clone.
     Exit code: 3.
-  - Unreachable remote: origin is configured, but connection fails before
-    timeout (for example: DNS/auth/network/transport failure).
+  - The remote URL exists, but the remote cannot be reached.
     Exit code: 4.
-  - Timed-out remote: origin is configured, but reachability check exceeds
-    configured timeout (-t SEC).
+  - The remote connection exceeds the configured timeout (-t SEC).
     Exit code: 5.
 
 Common runs (default timeout 10 seconds; specify -t SEC to override):
   fixlocal             Full checks with safe auto-fixes and remote checks/
-                       tracking refresh.
+                       branch synchronization.
   fixlocal -d          Full checks in report-only mode.
   fixlocal -f          Full checks with safe auto-fixes and remote checks/
-                       tracking refresh plus forced local stabilization
+                       branch synchronization plus forced local repair
                        safeguards if needed.
   fixlocal -v          Full checks with safe auto-fixes and remote checks/
-                       tracking refresh and per-step verbose detail.
+                       branch synchronization and per-step verbose detail.
 
 Outputs:
   - stdout: issue counts and report path (plus per-step detail with -v).
@@ -152,7 +144,7 @@ Outputs:
     - "Deletable" means report files can be deleted with current local
       filesystem permissions. If permissions cannot be modified to permit
       deletion or deletion fails, the failure is non-fatal and is reported.
-    - Branch tracking checks do not require manual branch switching.
+    - Branch synchronization checks do not require manual branch switching.
     - Report includes:
         - Timestamp of the run.
         - User and machine information.
@@ -169,7 +161,7 @@ Outputs:
             - Git checkout or branch operation failed.
             - Missing or invalid configuration file.
         - Remote corruption warnings (if detected):
-            - If remote (origin) main branch has corruption, the report
+            - If remote main has damaged Git data, the report
               documents it.
             - Local clone pushes are blocked until remote is verified clean.
             - If this local copy cannot be stabilized, follow the recovery
@@ -522,16 +514,15 @@ check_remote_connectivity() {
 
   if [[ -z "$origin_url" ]]; then
     set_remote_exit_code_once "$EXIT_REMOTE_UNCONNECTED"
-    append_check "Origin Remote" "ISSUE" \
-      "No origin remote configured. Remote reachability is required. Not" \
-      "auto-handled; suggested fix: Configure origin to a valid remote and" \
-      "verify reachability."
-    append_check "Origin Reachability" "ISSUE" \
-      "Unable to validate reachability because origin is not configured."
+    append_check "Remote Repository" "ISSUE" \
+      "This clone has no remote repository URL. Add the repository's remote" \
+      "URL, then rerun fixlocal."
+    append_check "Remote Reachability" "ISSUE" \
+      "Remote access cannot be checked until a remote URL is added."
     return 1
   fi
 
-  append_check "Origin Remote" "PASS" "$origin_url"
+  append_check "Remote Repository" "PASS" "$origin_url"
 
   local reachability_rc=0
   reachability_rc="$(probe_origin_reachability_with_code \
@@ -539,16 +530,15 @@ check_remote_connectivity() {
     "$REMOTE_RETRY_ATTEMPTS" "$REMOTE_RETRY_BASE_DELAY_SECONDS")"
 
   if [[ "$reachability_rc" -eq 0 ]]; then
-    append_check "Origin Reachability" "PASS" "Remote is reachable"
+    append_check "Remote Reachability" "PASS" "Remote is reachable"
   else
     set_remote_exit_code_once "$(classify_remote_failure_code \
       "$reachability_rc")"
-    append_check "Origin Reachability" "ISSUE" \
-      "Remote is configured but not reachable (timeout:" \
-      "${REMOTE_TIMEOUT_SECONDS}s). Not auto-handled; suggested fix: Verify" \
-      "network/auth and confirm the origin URL. If the remote is healthy" \
-      "but this local copy remains unstable, create a fresh local" \
-      "clone/working copy from remote."
+    append_check "Remote Reachability" "ISSUE" \
+      "The remote repository could not be reached within" \
+      "${REMOTE_TIMEOUT_SECONDS}s. Verify network access, authentication," \
+      "and the remote URL. If this clone remains unstable after remote access" \
+      "is restored, create a fresh clone with mkclone."
     return 1
   fi
 
@@ -556,8 +546,8 @@ check_remote_connectivity() {
   upstream="$(git -C "$CURRENT_REPO" rev-parse --abbrev-ref \
     --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
   if [[ -z "$upstream" ]]; then
-    append_check "Tracking Branch" "PASS" \
-      "No upstream configured for current branch"
+    append_check "Remote Branch" "PASS" \
+      "The current branch has no corresponding remote branch"
     return 0
   fi
 
@@ -571,34 +561,33 @@ check_remote_connectivity() {
   read -r ahead behind extra <<< "$counts"
   if [[ "$ahead" =~ ^[0-9]+$ ]] && [[ "$behind" =~ ^[0-9]+$ ]] && \
     [[ -z "$extra" ]]; then
-    append_check "Tracking Branch" "PASS" \
-      "Upstream: $upstream (ahead $ahead, behind $behind)"
+    append_check "Remote Branch" "PASS" \
+      "$upstream: local-only changes $ahead, remote-only changes $behind"
   else
-    append_check "Tracking Branch" "PASS" \
-      "Unable to compute ahead/behind for current branch; see 'Local Branch" \
-      "Tracking' section for per-branch remediation attempt."
+    append_check "Remote Branch" "PASS" \
+      "The current branch could not be compared with its remote branch; see" \
+      "the Local Branch Synchronization section."
   fi
 
   return 0
 }
 
 refresh_remote_tracking_state() {
-  append_section "Remote Tracking Remediation"
+  append_section "Remote Branch Refresh"
 
   bt_increment_counter REMEDIATIONS_ATTEMPTED
   if bt_git_fetch_prune_origin_with_retry \
     "$CURRENT_REPO" "$REMOTE_RETRY_ATTEMPTS" \
     "$REMOTE_RETRY_BASE_DELAY_SECONDS" >/dev/null 2>&1; then
-    append_check "Remote Tracking Refresh" "PASS" \
-      "Refreshed remote-tracking references"
+    append_check "Remote Branch Refresh" "PASS" \
+      "Updated local information about remote branches"
     return 0
   fi
 
-  append_check "Remote Tracking Refresh" "ISSUE" \
-    "Unable to refresh remote-tracking references. Not auto-handled;" \
-    "suggested fix: Verify remote branch/upstream configuration. If remote" \
-    "is reachable and healthy but this local copy remains unstable, create" \
-    "a fresh local clone/working copy from remote."
+  append_check "Remote Branch Refresh" "ISSUE" \
+    "Local information about remote branches could not be updated. Verify" \
+    "remote access and branch availability. If this clone remains unstable," \
+    "create a fresh clone with mkclone."
   # A refresh failure with configured origin is treated as remote unreachable.
   set_remote_exit_code_once "$EXIT_REMOTE_UNREACHABLE"
   bt_increment_counter REMEDIATIONS_FAILED

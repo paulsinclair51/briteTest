@@ -479,10 +479,13 @@ record_copyfix_success() {
   [[ -z "$COMMITS" ]] || \
     commit_count="$(printf '%s\n' "$COMMITS" | sed '/^$/d' | wc -l | tr -d ' ')"
   command_line="$(format_command_line)"
-  bt_undo_record_operation copyfix "$TARGET_BRANCH" "$COPYFIX_BEFORE_TIP" \
-    "$(git rev-parse "$TARGET_BRANCH")" hard-reset \
-    "Copied ${commit_count} fix commit(s) from $SOURCE_BRANCH" >/dev/null || \
-    bt_warn "Copy completed, but undo metadata could not be recorded"
+  if ! bt_undo_record_operation copyfix "$TARGET_BRANCH" \
+    "$COPYFIX_BEFORE_TIP" "$(git rev-parse "$TARGET_BRANCH")" hard-reset \
+    "Copied ${commit_count} fix commit(s) from $SOURCE_BRANCH" >/dev/null; then
+    bt_warn "Copied fix commits, but undo metadata was not recorded"
+    bt_emit_guidance \
+      "undo cannot reverse this copy automatically; preserve the target branch and contact an approver if it must be reversed."
+  fi
   if ! bt_record_workflow_event "copyfix" "$TARGET_BRANCH" "$command_line" \
     "Copied ${commit_count} fix commit(s) from $SOURCE_BRANCH to $TARGET_BRANCH" \
     "$TARGET_BRANCH" \
@@ -500,7 +503,8 @@ record_copyfix_success() {
     "Status" "Fix commits copied to target branch" \
     "Method" "Cherry-pick created by copyfix"; then
     bt_error_exit "$EXIT_GIT_FAILED" \
-      "Copy completed, but its report history could not be recorded"
+      "Copied fix commits, but workflow history was not recorded" \
+      "Do not rerun copyfix; inspect the target branch and contact an approver if history must be repaired."
   fi
 }
 
@@ -751,7 +755,6 @@ if [[ "$CONTINUE_MODE" == true ]]; then
   summary_line="$(format_file_copy_summary "copied")"
   record_copyfix_success
   cleanup_success_transient_reports
-  bt_success "Copy continued successfully"
   bt_success "$summary_line"
   bt_success "Run report for details."
   exit 0
@@ -769,7 +772,7 @@ TARGET_BRANCH=$(bt_get_current_branch || \
 COPYFIX_BEFORE_TIP="$(git rev-parse "$TARGET_BRANCH" 2>/dev/null || true)"
 if bt_is_current_internal_remote_copy; then
   bt_emit_prerequisite_failure "$EXIT_OPERATION_FAILED" \
-    "Current branch '$TARGET_BRANCH' is a read-only remote snapshot." \
+    "Current branch '$TARGET_BRANCH' is a read-only remote copy." \
     "switch to a local targeted branch before running copyfix."
 fi
 bt_info "Target branch: $TARGET_BRANCH"
@@ -854,7 +857,6 @@ summary_line="$(format_file_copy_summary "copied")"
 record_copyfix_success
 cleanup_success_transient_reports
 
-bt_success "Copy completed successfully"
 bt_success "$summary_line"
 if [[ "$VERBOSE" == true ]]; then
   bt_info "Details:"
@@ -863,6 +865,5 @@ if [[ "$VERBOSE" == true ]]; then
   echo "  Commits picked: $(echo "$COMMITS" | wc -l)"
 fi
 
-bt_success "Done"
 bt_success "Run report for details."
 exit 0

@@ -69,7 +69,7 @@ override.
 **chbranch**: Select an existing local branch or a fresh read-only remote
 snapshot. Local branches are preferred by default, including protected
 branches. A local protected branch is refreshed only by a safe fast-forward;
-protected branches and remote snapshots remain read-only.
+protected branches and remote copies remain read-only.
 
 **commit**: Commit and optionally push changes to remote.
 
@@ -96,15 +96,16 @@ protection.
 **push**: Push from current branch (which must be local) to its
 corresponding remote branch.
 
-**pushup**: Push the current branch up to its parent, publish the parent,
-resynchronize the source branch, and publish the source. Partial push-up workflows
-are recorded and resumed by rerunning `pushup`.
+**pushup**: Push the current branch up to its parent, update the parent on the
+remote, resynchronize the source branch, and update the source on the remote.
+Incomplete push-up workflows are recorded and resumed by rerunning `pushup`.
 
 **release**: Create and publish releases.
 
 **report**: Generate repository health, branch activity, and style reports.
 
-**retarget**: Retarget a targeted branch locally; use `-r` to publish it.
+**retarget**: Retarget a targeted branch locally; use `-r` to update its remote
+branch.
 targeted branch is renamed to have its version as the specified version.
 
 **restore**: Select a committed version of one file and place it in the

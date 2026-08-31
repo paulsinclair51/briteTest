@@ -351,14 +351,15 @@ check_remote_connectivity() {
     || true)"
 
   if [[ -z "$origin_url" ]]; then
-    append_check "Origin Remote" "PASS" "No origin remote configured"
+    append_check "Remote Repository" "PASS" \
+      "This clone has no remote repository"
     return 0
   fi
 
-  append_check "Origin Remote" "PASS" "$origin_url"
+  append_check "Remote Repository" "PASS" "$origin_url"
 
   if [[ "$REMOTE_TIMEOUT_SECONDS" -eq 0 ]]; then
-    append_check "Origin Reachability" "PASS" \
+    append_check "Remote Reachability" "PASS" \
       "Skipped (disabled by -t 0)"
     append_check "Tracking Branch" "PASS" \
       "Skipped (disabled by -t 0)"
@@ -366,7 +367,7 @@ check_remote_connectivity() {
   fi
 
   if [[ "$QUICK_MODE" == true ]]; then
-    append_check "Origin Reachability" "PASS" \
+    append_check "Remote Reachability" "PASS" \
       "Skipped in quick mode (run without -q for network validation)"
     append_check "Tracking Branch" "PASS" \
       "Skipped in quick mode (run without -q for ahead/behind metrics)"
@@ -374,12 +375,12 @@ check_remote_connectivity() {
   fi
 
   if git_ls_remote_with_timeout "$CURRENT_REPO"; then
-    append_check "Origin Reachability" "PASS" "Remote is reachable"
+    append_check "Remote Reachability" "PASS" "Remote is reachable"
   else
-    append_check "Origin Reachability" "ISSUE" \
-      "Remote is configured but not reachable (timeout:" \
-      "${REMOTE_TIMEOUT_SECONDS}s). Not auto-handled; suggested fix: Verify" \
-      "network/auth and confirm the origin URL."
+    append_check "Remote Reachability" "ISSUE" \
+      "The remote repository could not be reached within" \
+      "${REMOTE_TIMEOUT_SECONDS}s. Not auto-handled; suggested fix: Verify" \
+      "network access, authentication, and the remote URL."
     return 1
   fi
 
@@ -756,6 +757,23 @@ Report Generated: This report is local and untracked.
 EOF
 }
 
+emit_repository_summary() {
+  local repository_name=""
+  local issues_remaining="$1"
+
+  repository_name="$(basename "$REPO_ROOT")"
+  if [[ "$ISSUES_FOUND" -eq 0 ]]; then
+    bt_success "Repository '$repository_name' is clean."
+  elif [[ "$issues_remaining" -eq 0 && "$ISSUES_FIXED" -gt 0 ]]; then
+    bt_success "Repository '$repository_name' repaired."
+  elif [[ "$ISSUES_FIXED" -gt 0 ]]; then
+    bt_success "Repository '$repository_name' partially repaired."
+  else
+    bt_success "Repository '$repository_name' not repaired."
+  fi
+  bt_success "See ${OUTPUT_FILE#"${REPO_ROOT}"/} for details."
+}
+
 cleanup_old_reports() {
   local old_report
   local keep_recent_cutoff
@@ -886,7 +904,11 @@ done
 finalize_report
 cleanup_old_reports
 
-bt_success "Repository check complete. Report: ${OUTPUT_FILE#"${REPO_ROOT}"/}"
+ISSUES_REMAINING=$((ISSUES_FOUND - ISSUES_FIXED))
+if [[ "$ISSUES_REMAINING" -lt 0 ]]; then
+  ISSUES_REMAINING=0
+fi
+emit_repository_summary "$ISSUES_REMAINING"
 
 if [[ "$VERBOSE" == true ]]; then
   echo ""
@@ -896,11 +918,6 @@ fi
 
 if [[ "$CRITICAL_ERROR" == true ]]; then
   exit "$EXIT_CONFIG_ERROR"
-fi
-
-ISSUES_REMAINING=$((ISSUES_FOUND - REMEDIATIONS_VERIFIED))
-if [[ "$ISSUES_REMAINING" -lt 0 ]]; then
-  ISSUES_REMAINING=0
 fi
 
 if [[ "$ISSUES_REMAINING" -gt 0 ]]; then

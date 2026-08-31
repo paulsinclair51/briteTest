@@ -428,7 +428,7 @@ push_validate_prerequisites() {
   current_branch="$(bt_get_current_branch || true)"
   if bt_is_current_internal_remote_copy; then
     bt_emit_prerequisite_failure 3 \
-      "Current branch '$current_branch' is a read-only remote snapshot." \
+      "Current branch '$current_branch' is a read-only remote copy." \
       "switch to a local targeted or contributor branch, then retry push."
   fi
   if [[ -z "$current_branch" || "$current_branch" == "HEAD" ]] || \
@@ -497,20 +497,20 @@ push_validate_prerequisites() {
   fi
   if ! git remote get-url origin >/dev/null 2>&1; then
     bt_emit_prerequisite_failure 4 \
-      "No remote 'origin' configured." \
-      "configure the origin remote and rerun push."
+      "This clone has no remote repository." \
+      "add the repository's remote URL, then rerun push."
   fi
   bt_git_ls_remote_origin_with_timeout \
     "$(git rev-parse --show-toplevel)" \
     "$timeout_seconds" >/dev/null 2>&1 || remote_probe_rc=$?
   if [[ "$remote_probe_rc" -eq 124 ]]; then
     bt_emit_prerequisite_failure 6 \
-      "Remote connectivity check timed out after ${timeout_seconds}s." \
-      "restore remote connectivity (origin) and rerun push."
+      "The remote repository did not respond within ${timeout_seconds}s." \
+      "restore network access or increase -t, then rerun push."
   elif [[ "$remote_probe_rc" -ne 0 ]]; then
     bt_emit_prerequisite_failure 5 \
-      "Remote is unreachable before timeout." \
-      "restore remote connectivity (origin) and rerun push."
+      "The remote repository could not be reached." \
+      "check network access and authentication, then rerun push."
   fi
 
   export BT_REMOTE_TIMEOUT_SECONDS="$timeout_seconds"

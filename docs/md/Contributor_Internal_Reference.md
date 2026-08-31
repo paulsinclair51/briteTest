@@ -88,8 +88,8 @@ procedures, see the
 
 ### 1.1. fixlocal
 
-**Purpose:** Repair the current local clone, worktree state, tracking, or local
-repository integrity issues.
+**Purpose:** Repair damaged Git data, uncommitted changes, missing repository
+files, remote access, or branch synchronization problems in the current clone.
 
 **Usage:**
 
@@ -100,7 +100,7 @@ fixlocal [-d] [-f] [-t SEC] [-v]
 **Key Options:**
 
 - `-d` reports issues without repairs.
-- `-f` permits guarded local stabilization after creating a backup ref.
+- `-f` permits guarded local repairs after saving a recovery point.
 - `-t SEC` sets the remote timeout.
 - `-v` prints detailed progress.
 
@@ -137,8 +137,8 @@ The optional clone path is positional; `fixrepo` does not have an `-x` option.
 
 ### 1.3. fixremote
 
-**Purpose:** Recover a damaged remote repository state from a clean local clone,
-including remote refs or object issues that cannot be resolved in-place.
+**Purpose:** Restore remote branches, tags, and required Git data from a healthy
+local clone when local repair is insufficient.
 
 **Usage:**
 
@@ -149,8 +149,9 @@ fixremote -x [-t SEC] [-v] <clean-clone-path>
 
 **Key Options:**
 
-- Without `-x`, the command performs preflight checks and writes a report only.
-- `-x` executes guarded recovery from the required clean clone path.
+- Without `-x`, the command checks the source and remote and writes a report
+  without changing either repository.
+- `-x` restores the remote from the required healthy clone path.
 - `-t SEC` sets the remote timeout; `0` skips reachability checks.
 - `-v` adds per-step detail and prints the report.
 
@@ -214,7 +215,7 @@ must be performed by the appropriate server-side admin workflow.
 The repository protection model is enforced by GitHub rulesets and branch protection
 policies, not by local scripts alone:
 
-- protected refs are managed as server-side policies
+- protected branches are managed by GitHub policies
 - direct pushes to protected branches are blocked by GitHub
 - deletion and force-push operations require explicit admin handling
 - a temporary override hook on a local clone cannot undo server enforcement
@@ -230,8 +231,8 @@ restore the protection immediately.
 ## 4. Operational Notes and Security Boundaries
 
 - Local-first repair should be attempted before remote recovery.
-- Remote repair is reserved for protected ref issues, repository state damage, or
-  bad object/data issues that cannot be corrected locally.
+- Remote repair is reserved for protected branch problems or damaged Git data
+  that cannot be corrected locally.
 - The owner override is not a general bypass and should be kept as short-lived as
   possible.
 - All exceptional repair actions should be logged and reviewed before returning to
