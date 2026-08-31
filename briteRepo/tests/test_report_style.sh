@@ -172,7 +172,7 @@ rc=$(run_capture "$TMPDIR/basename.out" bash -lc "cd '$WORK' && bash ./briteRepo
 assert_success_message "$TMPDIR/basename.out"
 basename_report="$(latest_report "$WORK")"
 [[ -f "$basename_report" ]] || fail "expected ckstyle basename report to be created"
-assert_contains "- Selected files: 1" "$basename_report"
+assert_contains "- **Selected Files:** 1" "$basename_report"
 pass "basename selection"
 
 # 7) Bare filenames should also select tracked headers by basename.
@@ -182,7 +182,7 @@ rc=$(run_capture "$TMPDIR/header-basename.out" bash -lc "cd '$WORK' && bash ./br
 assert_success_message "$TMPDIR/header-basename.out"
 header_basename_report="$(latest_report "$WORK")"
 [[ -f "$header_basename_report" ]] || fail "expected ckstyle header basename report to be created"
-assert_contains "- Selected files: 1" "$header_basename_report"
+assert_contains "- **Selected Files:** 1" "$header_basename_report"
 pass "header basename selection"
 
 # 8) Extensionless public commands should be checked as scripts.
@@ -190,7 +190,7 @@ reset_report_dir "$WORK"
 rc=$(run_capture "$TMPDIR/extensionless-script.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report style -s -f briteRepo/bin/samplecommand")
 [[ "$rc" -eq 0 ]] || fail "extensionless script check should exit 0 (got $rc)"
 extensionless_report="$(latest_report "$WORK")"
-assert_contains "- Selected files: 1" "$extensionless_report"
+assert_contains "- **Selected Files:** 1" "$extensionless_report"
 pass "extensionless public script selection"
 
 # 9) Fix branches must preserve the main branch major.minor version.

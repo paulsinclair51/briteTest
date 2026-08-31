@@ -116,6 +116,7 @@ rc=$(run_capture "$TMPDIR/multiple-records.out" bash -lc \
 multiple_rel="$(report_path_from_output "$TMPDIR/multiple-records.out")"
 assert_contains "pull activity" "$WORK/$multiple_rel"
 assert_contains "retarget activity" "$WORK/$multiple_rel"
+assert_contains "**Record Group:** appended pair" "$WORK/$multiple_rel"
 [[ "$(grep -c '^## ' "$WORK/$multiple_rel")" -eq 2 ]] || \
 	fail "multiple appended records should render as two activities"
 if ! grep -Eq '^## 1\. ' "$WORK/$multiple_rel" || \

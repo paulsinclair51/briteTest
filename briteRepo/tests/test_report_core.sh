@@ -81,6 +81,10 @@ assert_contains "**Commit:** \`$default_commit_hash\`" "$WORK/$default_rel"
 if grep -Fq '**Summary:**' "$WORK/$default_rel"; then
   fail "action summary line should be omitted"
 fi
+if [[ "$(tail -c 1 "$WORK/$default_rel" | od -An -t x1 | tr -d ' \n')" != "0a" ]] || \
+  [[ "$(tail -c 2 "$WORK/$default_rel" | od -An -t x1 | tr -d ' \n')" == "0a0a" ]]; then
+  fail "branch report should end with exactly one newline"
+fi
 pass "default all report"
 
 # 3b) Parent reports do not change the current branch
@@ -165,16 +169,16 @@ pushup_rel="$(report_path_from_output "$TMPDIR/pushup.out")"
 assert_contains "pushup activity" "$WORK/$pushup_rel"
 assert_contains '**Command:** `pushup -o`' "$WORK/$pushup_rel"
 assert_matches \
-  '^Source-Branch: dev/report-tests-v1\.0\.0 \([0-9a-f]{40}\)$' \
+  '^\*\*Source Branch:\*\* dev/report-tests-v1\.0\.0 \([0-9a-f]{40}\)  $' \
   "$WORK/$pushup_rel"
 if grep -Eq '^Source-Tip:' "$WORK/$pushup_rel"; then
   fail "pushup report should combine Source-Tip with Source-Branch"
 fi
-assert_contains "Target-Branch: v1.0.0" "$WORK/$pushup_rel"
-assert_contains "PR: 42" "$WORK/$pushup_rel"
-assert_contains "Status: Current branch merged into parent branch" "$WORK/$pushup_rel"
-assert_contains "Method: Squash merge created by pushup" "$WORK/$pushup_rel"
-assert_contains "CI-CD: ci build SUCCESS" "$WORK/$pushup_rel"
+assert_contains "**Target Branch:** v1.0.0" "$WORK/$pushup_rel"
+assert_contains "**PR:** 42" "$WORK/$pushup_rel"
+assert_contains "**Status:** Current branch merged into parent branch" "$WORK/$pushup_rel"
+assert_contains "**Method:** Squash merge created by pushup" "$WORK/$pushup_rel"
+assert_contains "**CI CD:** ci build SUCCESS" "$WORK/$pushup_rel"
 pass "pushup report details"
 
 # 8b) Other metadata-only workflow actions should render durable details.
@@ -183,22 +187,22 @@ rc=$(run_capture "$TMPDIR/mkbranch.out" bash -lc "cd '$WORK' && bash ./briteRepo
 mkbranch_rel="$(report_path_from_output "$TMPDIR/mkbranch.out")"
 assert_contains "mkbranch activity" "$WORK/$mkbranch_rel"
 assert_contains '**Command:** `mkbranch dev/report-tests-v1.0.0 v1.0.0`' "$WORK/$mkbranch_rel"
-assert_contains "New-Branch: dev/report-tests-v1.0.0" "$WORK/$mkbranch_rel"
-assert_contains "Parent-Branch: v1.0.0" "$WORK/$mkbranch_rel"
+assert_contains "**New Branch:** dev/report-tests-v1.0.0" "$WORK/$mkbranch_rel"
+assert_contains "**Parent Branch:** v1.0.0" "$WORK/$mkbranch_rel"
 
 rc=$(run_capture "$TMPDIR/release.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'release activity'")
 [[ "$rc" -eq 0 ]] || fail "release report should exit 0 (got $rc)"
 release_rel="$(report_path_from_output "$TMPDIR/release.out")"
 assert_contains "release activity" "$WORK/$release_rel"
 assert_contains '**Command:** `release v1.2.0`' "$WORK/$release_rel"
-assert_contains "Version: v1.2.0" "$WORK/$release_rel"
+assert_contains "**Version:** v1.2.0" "$WORK/$release_rel"
 
 rc=$(run_capture "$TMPDIR/undo.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'undo activity'")
 [[ "$rc" -eq 0 ]] || fail "undo report should exit 0 (got $rc)"
 undo_rel="$(report_path_from_output "$TMPDIR/undo.out")"
 assert_contains "undo activity" "$WORK/$undo_rel"
 assert_contains '**Command:** `undo commit`' "$WORK/$undo_rel"
-assert_contains "Undo-Type: commit" "$WORK/$undo_rel"
+assert_contains "**Undo Type:** commit" "$WORK/$undo_rel"
 pass "metadata action report details"
 
 # 9) Copyfix reports should render durable workflow details
@@ -207,12 +211,12 @@ rc=$(run_capture "$TMPDIR/copyfix.out" bash -lc "cd '$WORK' && bash ./briteRepo/
 copyfix_rel="$(report_path_from_output "$TMPDIR/copyfix.out")"
 assert_contains "copyfix activity" "$WORK/$copyfix_rel"
 assert_contains '**Command:** `copyfix fix/source-v1.0.0`' "$WORK/$copyfix_rel"
-assert_contains "Source-Branch: fix/source-v1.0.0" "$WORK/$copyfix_rel"
-assert_contains "Target-Branch: dev/report-tests-v1.0.0" "$WORK/$copyfix_rel"
-assert_contains "Commits-Copied: 2" "$WORK/$copyfix_rel"
-assert_contains "Files-Modified: 1" "$WORK/$copyfix_rel"
-assert_contains "Status: Fix commits copied to target branch" "$WORK/$copyfix_rel"
-assert_contains "Method: Cherry-pick created by copyfix" "$WORK/$copyfix_rel"
+assert_contains "**Source Branch:** fix/source-v1.0.0" "$WORK/$copyfix_rel"
+assert_contains "**Target Branch:** dev/report-tests-v1.0.0" "$WORK/$copyfix_rel"
+assert_contains "**Commits Copied:** 2" "$WORK/$copyfix_rel"
+assert_contains "**Files Modified:** 1" "$WORK/$copyfix_rel"
+assert_contains "**Status:** Fix commits copied to target branch" "$WORK/$copyfix_rel"
+assert_contains "**Method:** Cherry-pick created by copyfix" "$WORK/$copyfix_rel"
 pass "copyfix report details"
 
 # 10) Retarget reports should render durable workflow details
@@ -222,10 +226,10 @@ retarget_rel="$(report_path_from_output "$TMPDIR/retarget.out")"
 assert_contains "retarget activity" "$WORK/$retarget_rel"
 assert_contains '**Command:** `retarget -c move\ branch v1.1.0`' \
   "$WORK/$retarget_rel"
-assert_contains "Old-Parent: v1.0.0" "$WORK/$retarget_rel"
-assert_contains "New-Parent: v1.1.0" "$WORK/$retarget_rel"
-assert_contains "Retargeted-Tip:" "$WORK/$retarget_rel"
-assert_contains "Comment: move branch" "$WORK/$retarget_rel"
+assert_contains "**Old Parent:** v1.0.0" "$WORK/$retarget_rel"
+assert_contains "**New Parent:** v1.1.0" "$WORK/$retarget_rel"
+assert_contains "**Retargeted Tip:**" "$WORK/$retarget_rel"
+assert_contains "**Comment:** move branch" "$WORK/$retarget_rel"
 pass "retarget report details"
 
 # 11) TYPE may be specified only once

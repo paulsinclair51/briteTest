@@ -148,6 +148,9 @@ assert_contains "[retarget in progress]" "$TMPDIR/help.out"
 assert_contains "[pulldown in progress]" "$TMPDIR/help.out"
 assert_contains "[parent NAME]" "$TMPDIR/help.out"
 assert_contains "[parent unavailable NAME]" "$TMPDIR/help.out"
+assert_contains "-u" "$TMPDIR/help.out"
+assert_matches '^[[:space:]]*3[[:space:]]+Branch not found, no previous branch is recorded, no branch stack entry$' \
+  "$TMPDIR/help.out"
 assert_matches '^[[:space:]]*8[[:space:]]+Running outside a Git repository\.$' \
   "$TMPDIR/help.out"
 assert_matches '^[[:space:]]*9[[:space:]]+Required command is not available \(git or timeout\)\.$' \
@@ -177,10 +180,38 @@ assert_contains "integer greater than 0" "$TMPDIR/invalid-timeout.out"
 rc=$(run_in_work_capture "$TMPDIR/mutually-exclusive.out" -l -r dev/target)
 [[ "$rc" -eq 1 ]] || fail "-l with -r should exit 1 (got $rc)"
 assert_contains "mutually exclusive" "$TMPDIR/mutually-exclusive.out"
+rc=$(run_in_work_capture "$TMPDIR/back-with-branch.out" -b dev/target)
+[[ "$rc" -eq 1 ]] || fail "-b with branch should exit 1 (got $rc)"
+assert_contains "BRANCH is not allowed with -b" "$TMPDIR/back-with-branch.out"
+rc=$(run_in_work_capture "$TMPDIR/up-with-branch.out" -u dev/target)
+[[ "$rc" -eq 1 ]] || fail "-u with branch should exit 1 (got $rc)"
+assert_contains "BRANCH is not allowed with -u" "$TMPDIR/up-with-branch.out"
+rc=$(run_in_work_capture "$TMPDIR/parent-with-back.out" -p -b)
+[[ "$rc" -eq 1 ]] || fail "-p with -b should exit 1 (got $rc)"
+assert_contains "mutually exclusive" "$TMPDIR/parent-with-back.out"
+rc=$(run_in_work_capture "$TMPDIR/parent-with-up.out" -p -u)
+[[ "$rc" -eq 1 ]] || fail "-p with -u should exit 1 (got $rc)"
+assert_contains "mutually exclusive" "$TMPDIR/parent-with-up.out"
+rc=$(run_in_work_capture "$TMPDIR/parent-invalid-branch.out" -p 'bad..branch')
+[[ "$rc" -eq 1 ]] || fail "-p invalid branch should exit 1 (got $rc)"
+assert_contains "Invalid branch name" "$TMPDIR/parent-invalid-branch.out"
 rc=$(run_in_work_capture "$TMPDIR/invalid-branch.out" 'bad..branch')
 [[ "$rc" -eq 1 ]] || fail "invalid branch name should exit 1 (got $rc)"
 assert_contains "Invalid branch name" "$TMPDIR/invalid-branch.out"
 pass "argument validation"
+
+# Navigation target resolution failures use exit 3.
+rc=$(run_in_work_capture "$TMPDIR/back-missing-history.out" -b)
+[[ "$rc" -eq 3 ]] || fail "-b without previous branch should exit 3 (got $rc)"
+assert_contains "No previous branch is recorded" "$TMPDIR/back-missing-history.out"
+rc=$(run_in_work_capture "$TMPDIR/up-missing-history.out" -u)
+[[ "$rc" -eq 3 ]] || fail "-u without branch stack should exit 3 (got $rc)"
+assert_contains "No branch stack entry is recorded" "$TMPDIR/up-missing-history.out"
+rc=$(run_in_work_capture "$TMPDIR/parent-missing.out" -p main)
+[[ "$rc" -eq 3 ]] || fail "-p without parent should exit 3 (got $rc)"
+assert_contains "Parent branch could not be resolved for 'main'" \
+  "$TMPDIR/parent-missing.out"
+pass "navigation target resolution errors"
 
 # Help/status use stdout; errors use stderr.
 rc=$(run_in_work_capture_streams "$TMPDIR/stream-error.out" \
@@ -215,6 +246,105 @@ rc=$(run_in_work_capture "$TMPDIR/implicit-current.out")
 assert_contains "dev/local-only" \
   "$TMPDIR/implicit-current.out"
 pass "implicit current branch"
+
+# -p resolves the parent of the current branch or supplied branch.
+(
+  cd "$WORK"
+  git branch dev/nav-parent-v1.0.0 v1.0.0
+  git switch dev/nav-parent-v1.0.0 >/dev/null 2>&1
+)
+rc=$(run_in_work_capture "$TMPDIR/parent-current.out" -p)
+[[ "$rc" -eq 0 ]] || fail "-p current parent should exit 0 (got $rc)"
+assert_contains "v1.0.0" "$TMPDIR/parent-current.out"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD || true)" == "v1.0.0" ]] || \
+  fail "-p should select the local current branch parent"
+rc=$(run_in_work_capture "$TMPDIR/parent-argument.out" -p dev/nav-parent-v1.0.0)
+[[ "$rc" -eq 0 ]] || fail "-p branch parent should exit 0 (got $rc)"
+assert_contains "v1.0.0" "$TMPDIR/parent-argument.out"
+(
+  cd "$WORK"
+  git push origin v1.0.0 >/dev/null 2>&1
+)
+rc=$(run_in_work_capture "$TMPDIR/parent-remote.out" -r -p dev/nav-parent-v1.0.0)
+[[ "$rc" -eq 0 ]] || fail "-r -p branch parent should exit 0 (got $rc)"
+assert_contains "v1.0.0" "$TMPDIR/parent-remote.out"
+assert_contains "[remote copy]" "$TMPDIR/parent-remote.out"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "r-v1.0.0" ]] || \
+  fail "-r -p should select the remote parent copy"
+(
+  cd "$WORK"
+  git switch dev/local-only >/dev/null 2>&1
+  git branch -D dev/nav-parent-v1.0.0 >/dev/null 2>&1
+  git push origin --delete v1.0.0 >/dev/null 2>&1
+)
+pass "parent navigation"
+
+# -b returns to the previously selected branch and defaults to local mode.
+rc=$(run_in_work_capture "$TMPDIR/back-setup-local.out" dev/target)
+[[ "$rc" -eq 0 ]] || fail "back setup local should exit 0 (got $rc)"
+rc=$(run_in_work_capture "$TMPDIR/back-local.out" -b)
+[[ "$rc" -eq 0 ]] || fail "-b local should exit 0 (got $rc)"
+assert_contains "dev/local-only" "$TMPDIR/back-local.out"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "dev/local-only" ]] || \
+  fail "-b should select the previous local branch"
+rc=$(run_in_work_capture "$TMPDIR/back-remote.out" -r -b)
+[[ "$rc" -eq 0 ]] || fail "-r -b should exit 0 (got $rc)"
+assert_contains "dev/target" "$TMPDIR/back-remote.out"
+assert_contains "[remote copy]" "$TMPDIR/back-remote.out"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "r-dev/target" ]] || \
+  fail "-r -b should select the remote previous branch copy"
+rc=$(run_in_work_capture "$TMPDIR/back-restore-local.out" dev/local-only)
+[[ "$rc" -eq 0 ]] || fail "back restore local should exit 0 (got $rc)"
+pass "previous branch navigation"
+
+# -u walks up the branch stack, while -b remains a two-branch toggle.
+(
+  cd "$WORK"
+  git config --local --unset-all chbranch.previousBranch >/dev/null 2>&1 || true
+  git config --local --unset-all chbranch.branchStack >/dev/null 2>&1 || true
+)
+rc=$(run_in_work_capture "$TMPDIR/up-stack-b.out" dev/target)
+[[ "$rc" -eq 0 ]] || fail "up stack b setup should exit 0 (got $rc)"
+rc=$(run_in_work_capture "$TMPDIR/up-stack-c.out" main)
+[[ "$rc" -eq 0 ]] || fail "up stack c setup should exit 0 (got $rc)"
+rc=$(run_in_work_capture "$TMPDIR/up-stack-first.out" -u)
+[[ "$rc" -eq 0 ]] || fail "first -u should exit 0 (got $rc)"
+assert_contains "dev/target" "$TMPDIR/up-stack-first.out"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "dev/target" ]] || \
+  fail "first -u should select the previous branch in the stack"
+rc=$(run_in_work_capture "$TMPDIR/up-stack-back.out" -b)
+[[ "$rc" -eq 0 ]] || fail "-b after -u should exit 0 (got $rc)"
+assert_contains "main" "$TMPDIR/up-stack-back.out"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "main" ]] || \
+  fail "-b after -u should toggle back to the branch left by -u"
+rc=$(run_in_work_capture "$TMPDIR/up-stack-second.out" -u)
+[[ "$rc" -eq 0 ]] || fail "second -u should exit 0 (got $rc)"
+assert_contains "dev/local-only" "$TMPDIR/up-stack-second.out"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "dev/local-only" ]] || \
+  fail "second -u should continue up the branch stack"
+pass "up branch stack navigation"
+
+# -r -u selects the remote copy of the stacked branch.
+(
+  cd "$WORK"
+  git config --local --unset-all chbranch.previousBranch >/dev/null 2>&1 || true
+  git config --local --unset-all chbranch.branchStack >/dev/null 2>&1 || true
+)
+rc=$(run_in_work_capture "$TMPDIR/up-remote-a.out" main)
+[[ "$rc" -eq 0 ]] || fail "remote up a setup should exit 0 (got $rc)"
+rc=$(run_in_work_capture "$TMPDIR/up-remote-b.out" dev/target)
+[[ "$rc" -eq 0 ]] || fail "remote up b setup should exit 0 (got $rc)"
+rc=$(run_in_work_capture "$TMPDIR/up-remote-c.out" dev/local-only)
+[[ "$rc" -eq 0 ]] || fail "remote up c setup should exit 0 (got $rc)"
+rc=$(run_in_work_capture "$TMPDIR/up-remote.out" -r -u)
+[[ "$rc" -eq 0 ]] || fail "-r -u should exit 0 (got $rc)"
+assert_contains "dev/target" "$TMPDIR/up-remote.out"
+assert_contains "[remote copy]" "$TMPDIR/up-remote.out"
+[[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "r-dev/target" ]] || \
+  fail "-r -u should select the remote copy of the stacked branch"
+rc=$(run_in_work_capture "$TMPDIR/up-restore-local.out" dev/local-only)
+[[ "$rc" -eq 0 ]] || fail "up restore local should exit 0 (got $rc)"
+pass "remote up branch stack navigation"
 
 # Missing branches use mode-specific exits.
 rc=$(run_in_work_capture "$TMPDIR/missing-default.out" zz-missing-branch)

@@ -210,18 +210,13 @@ init_report() {
       bt_error_exit "$EXIT_OPERATION_FAILED" \
         "Unable to update report: $OUTPUT_FILE"
   fi
-  cat > "$OUTPUT_FILE" << EOF
-# Repository Repair Report
-
-**Timestamp:** ${RUN_TS_DISPLAY}
-
-**Report Source Repository:** $REPO_ROOT
-
----
-
-## Checks Performed
-
-EOF
+  {
+    printf '# Repository Repair Report\n\n'
+    printf '**Timestamp:** %s  \n' "$RUN_TS_DISPLAY"
+    printf '**Report Source Repository:** %s\n\n' "$REPO_ROOT"
+    printf '%s\n\n' '---'
+    printf '## Checks Performed\n\n'
+  } > "$OUTPUT_FILE"
 }
 
 append_target_header() {
