@@ -885,6 +885,7 @@ if [[ "$(state_get phase)" == source-published ]]; then
   rm -f "$STATE_FILE"
   remove_tool_snapshot
   echo "Pushed up '$source_branch' to '$parent_branch' locally and remotely."
+  echo "Run report -p for local parent details; run report -p -r for remote parent details."
   exit 0
 fi
 

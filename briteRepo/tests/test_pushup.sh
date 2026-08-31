@@ -354,7 +354,9 @@ status="$(run_capture "$TMPDIR/continue.out" bash -c \
   "$(git -C "$WORK" rev-parse feature)" ]] || fail "source should be published"
 assert_contains "Pushed up 'feature' to 'main' locally and remotely." \
   "$TMPDIR/continue.out"
-if grep -Eq 'Local merge complete|Run report|^Pushed \(' \
+assert_contains "Run report -p for local parent details; run report -p -r for remote parent details." \
+  "$TMPDIR/continue.out"
+if grep -Eq 'Local merge complete|^Pushed \(' \
   "$TMPDIR/continue.out"; then
   fail "normal pushup output should suppress delegated command summaries"
 fi

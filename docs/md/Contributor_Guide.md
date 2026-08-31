@@ -72,6 +72,7 @@ This document is the task-oriented guide for routine contribution work.
    3.2. [Edit, Test, Commit, and Push](#32-edit-test-commit-and-push)<br>
    3.3. [Keep Your Branch Current](#33-keep-your-branch-current)<br>
    3.4. [Undo a Change](#34-undo-a-change)<br>
+  3.5. [Move Targeted Work to Another Version](#35-move-targeted-work-to-another-version)<br>
 4. [Pull Requests and Feedback](#4-pull-requests-and-feedback)<br>
    4.1. [Prepare a Pull Request](#41-prepare-a-pull-request)<br>
    4.2. [Open and Update a Pull Request](#42-open-and-update-a-pull-request)<br>
@@ -235,7 +236,8 @@ unneeded branch. Protected branches cannot be removed.
 
 Both commands require all local changes to be committed or undone. If a
 conflict cannot be resolved automatically, follow the command's report,
-resolve the listed files, and rerun the command.
+resolve the listed files, and rerun the command. After either command
+completes, run `report` to review the recorded local branch activity.
 </details>
 
 <details>
@@ -252,6 +254,33 @@ undo -v              # Show additional progress and diagnostics.
 Uncommitted changes take precedence; otherwise `undo` selects the latest
 supported operation recorded for the current branch. Run `undo -h` before use.
 Do not pass an operation name or use direct reset commands.
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.5. Move Targeted Work to Another Version</summary>
+
+### 3.5. Move Targeted Work to Another Version
+
+An approver can move a targeted `dev/` or `fix/` branch to another open version:
+
+```bash
+chbranch TARGET_BRANCH
+retarget NEW_PARENT_VERSION
+report
+```
+
+`retarget` always changes the current local branch. Review and test the local
+result first. When it is ready for the remote repository, run:
+
+```bash
+retarget -r NEW_PARENT_VERSION
+report -r
+```
+
+If conflicts occur, resolve the listed files while remaining on the targeted
+branch, then rerun the displayed `retarget` command. See
+[retarget](./Contributor_Reference.md#1112-retarget) for policy, options, and
+exit statuses.
 </details>
 </details>
 
@@ -471,6 +500,10 @@ If local safeguards are missing, run `setupclone` to restore them.
   changes, run `commit` and `push`, then respond and resolve addressed threads.
 - **Wrong files or commit:** run `undo`; it selects the current branch's latest
   reversible operation. Do not use direct reset commands.
+- **Local repository problem:** run `fixlocal` and open the report path it
+  prints. Use `fixrepo` if the problem may affect more than the current clone.
+  An approver or owner may use `fixremote` when a healthy clone must restore
+  the remote repository; each repair command prints its own diagnostic report.
 </details>
 
 <details>

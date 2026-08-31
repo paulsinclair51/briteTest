@@ -62,7 +62,10 @@ Additional options only for a branch report:
               are selected. In report, listed newest to oldest.
   -q TEXT     Include activity whose summary or details contain TEXT.
               Matching is case-insensitive.
-  -r          Report for the remote, if there is one, of the current branch.
+  -p          Report for the parent of the current branch instead of the
+              current branch. Combine with -r for the remote parent.
+  -r          Report for the remote, if there is one, of the selected current
+              or parent branch.
               If the current branch is a remote copy, the report is for the
               current state of the remote and not the local copy.
   -t SEC      Remote timeout in seconds (default: 10 seconds).
@@ -88,6 +91,8 @@ Repo Examples:
 
 Branch Examples:
   report
+  report -p
+  report -p -r
   report branch -u testuser -q "authentication" -l 10
   report branch -l 2
   report -l 0
@@ -1347,6 +1352,7 @@ REPORT_TYPE_SPECIFIED=false
 REMOTE_TIMEOUT=10
 REMOTE_TIMEOUT_SPECIFIED=false
 REMOTE_BRANCH_REPORT=false
+PARENT_BRANCH_REPORT=false
 TYPE_FILTER="all"
 FILTER_USER=""
 FILTER_TEXT=""
@@ -1442,6 +1448,12 @@ while [[ $# -gt 0 ]]; do
       fi
       shift
       ;;
+    -p)
+      [[ "$REPORT_TYPE" == "branch" ]] || \
+        usage_error "Option -p requires TYPE branch"
+      PARENT_BRANCH_REPORT=true
+      shift
+      ;;
     -v)
       VERBOSE=true
       shift
@@ -1498,8 +1510,18 @@ if [[ -z "$CURRENT_REF" ]]; then
   SNAPSHOT_TARGET_REF="${SNAPSHOT_HISTORY_REF#origin/}"
 fi
 
+if [[ "$PARENT_BRANCH_REPORT" == true ]]; then
+  BASIS_REF="${CURRENT_REF:-$SNAPSHOT_TARGET_REF}"
+  TARGET_REF="$(bt_resolve_parent_branch "$BASIS_REF" main)"
+  [[ -n "$TARGET_REF" ]] || \
+    usage_error "Current branch '$BASIS_REF' has no parent branch"
+  HISTORY_REF="$TARGET_REF"
+fi
+
 if [[ "$REMOTE_BRANCH_REPORT" == true ]]; then
-  TARGET_REF="${CURRENT_REF:-$SNAPSHOT_TARGET_REF}"
+  if [[ "$PARENT_BRANCH_REPORT" == false ]]; then
+    TARGET_REF="${CURRENT_REF:-$SNAPSHOT_TARGET_REF}"
+  fi
   refresh_remote_branch_report_refs "$TARGET_REF"
   HISTORY_REF="origin/$TARGET_REF"
   WORKFLOW_NOTES_REF="briteRepo-remote-workflow"

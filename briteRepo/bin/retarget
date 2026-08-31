@@ -11,8 +11,8 @@
 usage() {
   cat <<'EOF'
 Usage:
-  retarget [OPTIONS] <targeted-branch> <new-parent-version> [-- TOKEN...]
-  retarget -e [<targeted-branch> <new-parent-version>]
+  retarget [OPTIONS] <new-parent-version> [-- TOKEN...]
+  retarget -e [<new-parent-version>]
   retarget {-h | --help}
 
 Retarget a targeted branch to a different version parent and rebase it locally.
@@ -22,13 +22,10 @@ branch must move to another version (defer to later version or pull into
 an earlier version).
 
 Prerequisites:
-  - The current branch and targeted branch must not have an unfinished
-    copyfix operation.
+  - The current branch must be a local targeted branch.
+  - The current branch must not have an unfinished copyfix operation.
 
 Arguments:
-  <targeted-branch>     Targeted branch to retarget.
-                        Must be: dev/<desc>-v<M>.<m>.0 or
-                                 fix/<desc>-v<M>.<m>.0
   <new-parent-version>  New parent version branch (v<M>.<m>.0)
 
 Options:
@@ -66,10 +63,10 @@ Conflict handling:
   - Branch owner (contributor) resolves conflicts and continues rebase.
 
 Examples:
-  retarget dev/parser-v1.0.0 v1.1.0
-  retarget -r dev/parser-v1.0.0 v1.1.0
-  retarget fix/memory-v1.0.0 v1.2.0 -c "Defer fix to later version"
-  retarget -d dev/parser-v1.0.0 v1.1.0
+  retarget v1.1.0
+  retarget -r v1.1.0
+  retarget v1.2.0 -c "Defer fix to later version"
+  retarget -d v1.1.0
 
 Outputs:
   - Writes help text, status messages, and summaries to stdout.
@@ -90,12 +87,12 @@ EOF
 }
 
 # High-Level Flow:
-# - Validate approver identity, target naming, version access, and clean state.
-# - Preview the new parent for -d; otherwise rebase the target locally.
+# - Validate approver identity, current branch, version access, and clean state.
+# - Preview the new parent for -d; otherwise rebase the current branch locally.
 # - Publish the rewritten target with force-with-lease only when -r is used.
 # - Preserve conflicts for branch-owner handoff instead of recording success.
 # - Append tracked history and one structured event to the rewritten target tip,
-#   then direct users back to that branch for report generation.
+#   then direct users to report generation.
 
 # shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
 
@@ -194,7 +191,7 @@ retarget_publication_pending_exit() {
   bt_emit_error \
     "Retargeted '$TARGET_BRANCH' to '$NEW_PARENT' locally, but the remote update is pending: $reason."
   bt_emit_guidance \
-    "Address the error, then run retarget -r $TARGET_BRANCH $NEW_PARENT."
+    "Address the error, then run retarget -r $NEW_PARENT."
   exit "$EXIT_OPERATION_FAILED"
 }
 
@@ -318,8 +315,9 @@ set -- "${POSITIONAL_ARGS[@]}"
 export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
 
 if [[ "$ERROR_RUN" == true ]]; then
-  TARGET_BRANCH="${1:-unknown}"
-  NEW_PARENT="${2:-unknown}"
+  TARGET_BRANCH="$(bt_get_current_branch_or_empty)"
+  TARGET_BRANCH="${TARGET_BRANCH:-unknown}"
+  NEW_PARENT="${1:-unknown}"
   generate_error_report "Retarget skipped due to -e option."
   bt_emit_error "Retarget skipped due to -e option."
   bt_emit_guidance "Run without -e option."
@@ -327,12 +325,17 @@ if [[ "$ERROR_RUN" == true ]]; then
   exit "$EXIT_WORKFLOW_SKIPPED"
 fi
 
-if [[ $# -ne 2 ]]; then
-  usage_error "Expected 2 arguments: <targeted-branch> <new-parent-version>"
+if [[ $# -ne 1 ]]; then
+  usage_error "Expected 1 argument: <new-parent-version>"
 fi
 
-TARGET_BRANCH="$1"
-NEW_PARENT="$2"
+TARGET_BRANCH="$(bt_get_current_branch_or_empty)"
+NEW_PARENT="$1"
+
+if [[ -z "$TARGET_BRANCH" ]]; then
+  bt_error_exit "$EXIT_INVALID_ARGUMENT" \
+    "Current branch must be a local targeted branch"
+fi
 
 if [[ "$TARGET_BRANCH" =~ ^(dev|fix)/.+-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0)$
  ]]; then
@@ -340,8 +343,8 @@ if [[ "$TARGET_BRANCH" =~ ^(dev|fix)/.+-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0)$
   OLD_PARENT="${BASH_REMATCH[2]}"
 else
   bt_error_exit "$EXIT_INVALID_ARGUMENT" \
-    "Invalid targeted branch '$TARGET_BRANCH'. Use dev/...-v<M>.<m>.0 or" \
-    "fix/...-v<M>.<m>.0"
+    "Current branch '$TARGET_BRANCH' is not targeted. Use chbranch to select" \
+    "a local dev/...-v<M>.<m>.0 or fix/...-v<M>.<m>.0 branch"
 fi
 
 if ! bt_is_version_branch "$NEW_PARENT"; then
@@ -386,20 +389,10 @@ if [[ "$status" != "open" ]]; then
     "Version '$NEW_PARENT' is closed for '$TARGET_TYPE' branches"
 fi
 
-ORIGINAL_BRANCH="$(bt_get_current_branch_or_empty)"
-
-if [[ -n "$ORIGINAL_BRANCH" ]] && \
-  bt_is_copyfix_in_progress "$ORIGINAL_BRANCH"; then
+if bt_is_copyfix_in_progress "$TARGET_BRANCH"; then
   bt_emit_prerequisite_failure "$EXIT_OPERATION_FAILED" \
-    "Current branch '$ORIGINAL_BRANCH' has an unfinished copyfix operation." \
+    "Current branch '$TARGET_BRANCH' has an unfinished copyfix operation." \
     "rerun copyfix to complete it before rerunning retarget."
-fi
-if [[ "$TARGET_BRANCH" != "$ORIGINAL_BRANCH" ]] && \
-  bt_is_copyfix_in_progress "$TARGET_BRANCH"; then
-  bt_emit_prerequisite_failure "$EXIT_OPERATION_FAILED" \
-    "Targeted branch '$TARGET_BRANCH' has an unfinished copyfix operation." \
-    "rerun copyfix in that branch to complete it before rerunning" \
-    "retarget."
 fi
 
 cd "$REPO_ROOT"
@@ -410,14 +403,14 @@ if bt_git_workflow_marker_matches retarget "$TARGET_BRANCH" && \
   if ! bt_git_stage_resolved_rebase_files; then
     bt_emit_prerequisite_failure "$EXIT_REBASE_CONFLICT" \
       "Retarget still has unresolved conflicts on '$TARGET_BRANCH'." \
-      "resolve the remaining conflicts and rerun retarget -r."
+      "resolve the remaining conflicts and rerun retarget -r $NEW_PARENT."
   fi
   while bt_git_is_rebase_in_progress; do
     if ! GIT_BYPASS_HOOKS=true GIT_EDITOR=true \
       git rebase --continue >/dev/null 2>&1; then
       bt_emit_prerequisite_failure "$EXIT_REBASE_CONFLICT" \
         "Retarget rebase paused again on '$TARGET_BRANCH'." \
-        "resolve the remaining conflicts and rerun retarget -r."
+        "resolve the remaining conflicts and rerun retarget -r $NEW_PARENT."
     fi
   done
   bt_git_clear_workflow_in_progress retarget
@@ -438,31 +431,12 @@ if ! git show-ref --verify --quiet "refs/remotes/origin/$NEW_PARENT"; then
     "New parent version branch '$NEW_PARENT' not found on remote"
 fi
 
-if git show-ref --verify --quiet "refs/heads/$TARGET_BRANCH"; then
-  if ! git checkout "$TARGET_BRANCH" >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_OPERATION_FAILED" \
-      "Failed to checkout local targeted branch '$TARGET_BRANCH'"
-  fi
-elif git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
-  if ! git checkout -b "$TARGET_BRANCH" "origin/$TARGET_BRANCH" \
-    >/dev/null 2>&1; then
-    bt_error_exit "$EXIT_OPERATION_FAILED" \
-      "Failed to create local branch '$TARGET_BRANCH' from remote"
-  fi
-else
-  bt_error_exit "$EXIT_INVALID_ARGUMENT" \
-    "Targeted branch '$TARGET_BRANCH' not found locally or on remote"
-fi
-
 log_verbose "Retargeting '$TARGET_BRANCH' from '$OLD_PARENT' to '$NEW_PARENT'"
 [[ -n "$RETARGET_BEFORE_TIP" ]] || \
   RETARGET_BEFORE_TIP="$(git rev-parse HEAD 2>/dev/null || true)"
 if [[ "$DRY_RUN" == true ]]; then
   bt_success "Dry-run: retarget $TARGET_BRANCH -> $NEW_PARENT"
   log_verbose "Rebase preview: git rebase origin/$NEW_PARENT"
-  if [[ -n "$ORIGINAL_BRANCH" && "$ORIGINAL_BRANCH" != "$TARGET_BRANCH" ]]; then
-    git checkout "$ORIGINAL_BRANCH" >/dev/null 2>&1 || true
-  fi
   exit 0
 fi
 
@@ -478,7 +452,7 @@ if [[ "$ALREADY_RETARGETED" == false ]]; then
   if ! git rebase "origin/$NEW_PARENT"; then
     bt_emit_error "Retarget in progress for '$TARGET_BRANCH'."
     bt_emit_guidance \
-      "Resolve conflicts in the current branch worktree, then rerun retarget -r $TARGET_BRANCH $NEW_PARENT."
+      "Resolve conflicts in the current branch, then rerun retarget -r $NEW_PARENT."
     exit "$EXIT_REBASE_CONFLICT"
   fi
   bt_git_clear_workflow_in_progress retarget
@@ -512,7 +486,7 @@ if [[ "$local_retarget_recorded" == false ]]; then
     bt_emit_error \
       "Retargeted '$TARGET_BRANCH' to '$NEW_PARENT' locally, but report metadata was not recorded."
     bt_emit_guidance \
-      "Rerun retarget -r $TARGET_BRANCH $NEW_PARENT to record metadata and update the remote branch."
+      "Rerun retarget -r $NEW_PARENT to record metadata and update the remote branch."
     exit "$EXIT_OPERATION_FAILED"
   fi
 fi
@@ -561,13 +535,11 @@ else
     "Retarget cannot be undone; rerunning retarget cannot recreate the missing metadata."
 fi
 
-if [[ -n "$ORIGINAL_BRANCH" && "$ORIGINAL_BRANCH" != "$TARGET_BRANCH" ]]; then
-  git checkout "$ORIGINAL_BRANCH" >/dev/null 2>&1 || true
-fi
-
-bt_success "Run chbranch $TARGET_BRANCH. For local details, run report."
-if [[ "$REMOTE" == false ]]; then
-  bt_success "Run retarget -r $TARGET_BRANCH $NEW_PARENT when ready to update remote."
+bt_success "Run report for local details."
+if [[ "$REMOTE" == true ]]; then
+  bt_success "For remote details, run report -r."
+else
+  bt_success "Run retarget -r $NEW_PARENT when ready to update remote."
 fi
 
 exit 0
