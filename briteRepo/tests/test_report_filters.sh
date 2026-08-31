@@ -224,6 +224,9 @@ assert_contains '**Commits:** 1' "$WORK/$remote_push_rel"
 if grep -Fq '**Directories:**' "$WORK/$remote_push_rel"; then
 	fail "remote push report should omit Directories when no directories changed"
 fi
+if grep -Fq '<summary>Directories</summary>' "$WORK/$remote_push_rel"; then
+	fail "remote push report should omit the Directories table when no directories changed"
+fi
 assert_contains '**Files:** 1 modified.' "$WORK/$remote_push_rel"
 if grep -Fq '**Changes:**' "$WORK/$remote_push_rel"; then
 	fail "remote push report should not include the legacy combined Changes line"
@@ -246,11 +249,17 @@ assert_contains 'empty push metadata only' "$WORK/$remote_empty_rel"
 if grep -Fq '**Directories:**' "$WORK/$remote_empty_rel"; then
 	fail "remote empty push report should omit Directories"
 fi
+if grep -Fq '<summary>Directories</summary>' "$WORK/$remote_empty_rel"; then
+	fail "remote empty push report should omit the Directories table"
+fi
 if grep -Fq '**Files:**' "$WORK/$remote_empty_rel"; then
 	fail "remote empty push report should omit Files"
 fi
 if grep -Fq '**Lines:**' "$WORK/$remote_empty_rel"; then
 	fail "remote empty push report should omit Lines"
+fi
+if grep -Fq '<summary>Files</summary>' "$WORK/$remote_empty_rel"; then
+	fail "remote empty push report should omit the Files table"
 fi
 pass "remote empty push summary omission"
 
