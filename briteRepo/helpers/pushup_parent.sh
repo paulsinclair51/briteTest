@@ -1677,6 +1677,7 @@ if [[ -z "$CURRENT_SOURCE_TIP" ]]; then
   bt_error_exit "$EXIT_GIT_OPERATION_FAILED" \
     "Failed to resolve current branch commit for '$CURRENT_BRANCH'"
 fi
+APPROVED_SOURCE_TIP="$CURRENT_SOURCE_TIP"
 
 if bt_is_copyfix_in_progress "$CURRENT_BRANCH"; then
   bt_emit_prerequisite_failure "$EXIT_COPYFIX_IN_PROGRESS" \

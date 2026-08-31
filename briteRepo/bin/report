@@ -110,6 +110,8 @@ Outputs:
       - 'repo-<datetime>.md' for a repository report.
       - 'local-<datetime>.md' for a local branch report.
       - 'remote-<datetime>.md' for a remote branch report.
+      - 'p-local-<datetime>.md' for a local parent branch report.
+      - 'p-remote-<datetime>.md' for a remote parent branch report.
       - 'style-<datetime>.md' for a style report.
     The previous report of the same type is deleted.
   - Writes 'See <reportpath>' to stdout when a
@@ -601,11 +603,41 @@ workflow_note_records() {
 
 workflow_event_details() {
   awk '
+    function print_source_branch() {
+      if (source_branch == "") return
+      if (source_tip != "") {
+        print source_branch " (" source_tip ")"
+      } else {
+        print source_branch
+      }
+      source_branch = ""
+      source_tip = ""
+    }
     /^--- briteRepo workflow ---$/ { next }
     /^(Workflow-Type|Workflow-Time|Workflow-Branch|Workflow-User|Command-Line|Summary):/ {
       next
     }
-    NF > 0 { print }
+    /^Source-Branch:/ {
+      print_source_branch()
+      source_branch = $0
+      next
+    }
+    /^Source-Tip:/ {
+      source_tip = $0
+      sub(/^Source-Tip:[[:space:]]*/, "", source_tip)
+      if (source_branch != "") {
+        print_source_branch()
+      } else if (source_tip != "") {
+        print "Source-Tip: " source_tip
+        source_tip = ""
+      }
+      next
+    }
+    NF > 0 {
+      print_source_branch()
+      print
+    }
+    END { print_source_branch() }
   '
 }
 
@@ -834,15 +866,16 @@ sanitize_commit_body_for_report() {
       skip = 1
       next
     }
-    /^## Commit Metadata[[:space:]]*$/ {
+    /^## (Commit|Workflow) Metadata[[:space:]]*$/ {
+      skip = 1
+      next
+    }
+    /^## Summary[[:space:]]*$/ {
       skip = 1
       next
     }
     skip == 1 && /^## / {
       skip = 0
-    }
-    skip == 0 && /^## Summary[[:space:]]*$/ {
-      next
     }
     skip == 0 {
       if (started == 0 && $0 ~ /^[[:space:]]*$/) {
@@ -916,6 +949,8 @@ render_affected_tables() {
   local total_net=0
   local total_lines=0
   local directories_row_count=0
+  local directories_summary=""
+  local files_summary=""
   local -a files_order=()
   local -a directories_before_order=()
   local -a directories_after_order=()
@@ -934,17 +969,17 @@ render_affected_tables() {
   declare -A directories_deleted=()
   declare -A directories_renamed_to=()
 
-  if ! numstat="$(git show --numstat --format='' --find-renames "$commit_ref" \
-    2>/dev/null || true)"; then
-    numstat=""
-  fi
-
   parent_info="$(git rev-list --parents -n 1 "$commit_ref" 2>/dev/null || true)"
   set -- $parent_info
   if [[ "$#" -ge 2 ]]; then
     parent_ref="$2"
   fi
   tree_ref_before="${parent_ref:-$empty_tree_ref}"
+
+  if ! numstat="$(git diff --numstat --find-renames \
+    "$tree_ref_before" "$tree_ref_after" 2>/dev/null || true)"; then
+    numstat=""
+  fi
 
   while IFS= read -r file_path; do
     [[ -n "$file_path" ]] || continue
@@ -980,8 +1015,8 @@ render_affected_tables() {
     fi
   done
 
-  if ! name_status="$(git diff-tree --root -r --name-status --find-renames \
-    --no-commit-id "$commit_ref" 2>/dev/null || true)"; then
+  if ! name_status="$(git diff --name-status --find-renames \
+    "$tree_ref_before" "$tree_ref_after" 2>/dev/null || true)"; then
     name_status=""
   fi
   while IFS=$'\t' read -r key old_path new_path; do
@@ -1027,10 +1062,30 @@ render_affected_tables() {
     file_count=$((file_count + 1))
   done <<< "$numstat"
 
-  rendered+=$'\n<details>\n<summary>Files</summary>\n\n'
-  if [[ "$file_count" -eq 0 ]]; then
-    rendered+="None."$'\n'
-  else
+  bt_git_collect_ref_change_summary "$tree_ref_before" "$tree_ref_after"
+  directories_summary="$(push_directory_summary \
+    "$BT_CHANGE_DELETED_DIRECTORIES" "$BT_CHANGE_ADDED_DIRECTORIES" \
+    "$BT_CHANGE_RENAMED_DIRECTORIES")"
+  files_summary="$(push_file_summary \
+    "$BT_CHANGE_MODIFIED_FILES" "$BT_CHANGE_DELETED_FILES" \
+    "$BT_CHANGE_ADDED_FILES" "$BT_CHANGE_RENAMED_FILES" \
+    "$BT_CHANGE_RENAMED_MODIFIED_FILES")"
+  if [[ -n "$directories_summary" ]]; then
+    printf -v line '\n**Directories:** %s  \n' "$directories_summary"
+    rendered+="$line"
+  fi
+  if [[ -n "$files_summary" ]]; then
+    printf -v line '**Files:** %s.  \n' "$files_summary"
+    rendered+="$line"
+  fi
+  if [[ "$total_added" -gt 0 || "$total_deleted" -gt 0 ]]; then
+    printf -v line '**Lines:** %s added and %s deleted.  \n' \
+      "$total_added" "$total_deleted"
+    rendered+="$line"
+  fi
+
+  if [[ "$file_count" -gt 0 ]]; then
+    rendered+=$'\n<details>\n<summary>Files</summary>\n\n'
     rendered+="| **File** | **Added** | **Deleted** | **Net** | **Lines** |"
     rendered+=" **Action** |"$'\n'
     rendered+="| --- | ---: | ---: | ---: | ---: | --- |"$'\n'
@@ -1047,8 +1102,8 @@ render_affected_tables() {
     printf -v line '| **Total** | %s | %s | %+d | %s |  |\n' \
       "$total_added" "$total_deleted" "$total_net" "$total_lines"
     rendered+="$line"
+    rendered+='</details>'$'\n'
   fi
-  rendered+='</details>'$'\n'
 
   for key in "${directories_renamed_order[@]}"; do
     [[ -n "${directories_renamed_to[$key]+x}" ]] && \
@@ -1536,6 +1591,9 @@ elif [[ -z "$TARGET_REF" ]]; then
   HISTORY_REF="$SNAPSHOT_HISTORY_REF"
   TARGET_REF="$SNAPSHOT_TARGET_REF"
   BRANCH_SCOPE_LABEL="remote"
+fi
+if [[ "$PARENT_BRANCH_REPORT" == true ]]; then
+  BRANCH_REPORT_PREFIX="p-$BRANCH_REPORT_PREFIX"
 fi
 [[ -n "$TARGET_REF" ]] || usage_error "Could not resolve current branch/ref"
 

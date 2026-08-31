@@ -811,13 +811,16 @@ bt_git_branch_status_tags() {
   local branch_tag=""
   local relation_tag=""
   local parent_tags=""
+  local current_branch=""
   local has_local=false
   local has_remote=false
   local has_uncommitted=false
 
   git show-ref --verify --quiet "refs/heads/$branch" && has_local=true
   git show-ref --verify --quiet "refs/remotes/origin/$branch" && has_remote=true
-  if [[ "$mode" == "local" ]] && bt_is_worktree_dirty; then
+  current_branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  if [[ "$mode" == "local" && "$branch" == "$current_branch" ]] && \
+    bt_is_worktree_dirty; then
     has_uncommitted=true
   fi
 

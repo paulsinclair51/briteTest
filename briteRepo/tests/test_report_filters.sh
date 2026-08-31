@@ -38,7 +38,7 @@ assert_contains "No matching activity was found" "$TMPDIR/literal.out"
 pass "literal text filter robustness"
 
 # 3) Text filter should match summary or details
-rc=$(run_capture "$TMPDIR/text-filter.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'Files-Modified: 1'")
+rc=$(run_capture "$TMPDIR/text-filter.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'first line'")
 [[ "$rc" -eq 0 ]] || fail "detail text filter should exit 0 (got $rc)"
 text_rel="$(report_path_from_output "$TMPDIR/text-filter.out")"
 if grep -Fq "## Commit Metadata" "$WORK/$text_rel"; then
@@ -75,6 +75,9 @@ rc=$(run_capture "$TMPDIR/directory-actions.out" bash -lc \
 	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'directory action fixture' -l 1")
 [[ "$rc" -eq 0 ]] || fail "directory action report should exit 0 (got $rc)"
 directory_rel="$(report_path_from_output "$TMPDIR/directory-actions.out")"
+assert_contains "**Directories:**" "$WORK/$directory_rel"
+assert_contains "**Files:**" "$WORK/$directory_rel"
+assert_contains "**Lines:**" "$WORK/$directory_rel"
 assert_contains "<summary>Directories</summary>" "$WORK/$directory_rel"
 assert_contains "| **Directory** | **Action** |" "$WORK/$directory_rel"
 assert_contains '| `dir-renamed` | Renamed (was dir-rename) |' "$WORK/$directory_rel"
