@@ -258,7 +258,8 @@ ensure_tool_snapshot() {
   if [[ -n "$saved_tool_dir" && -x "$saved_tool_dir/bin/push" && \
     -x "$saved_tool_dir/bin/pulldown" && \
     -f "$saved_tool_dir/helpers/pushup_parent.sh" && \
-    $(grep -F -c -- '--pushup-source' "$saved_tool_dir/bin/push" 2>/dev/null) -gt 0 ]]; then
+    $(grep -F -c -- '"$state_version" == 2' \
+      "$saved_tool_dir/bin/push" 2>/dev/null) -gt 0 ]]; then
     TOOL_DIR="$saved_tool_dir"
     return 0
   fi

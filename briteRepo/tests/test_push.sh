@@ -514,7 +514,7 @@ pass "approved contributor pushup publication and PR finalization"
   git add merged.txt
   git commit -m "synchronized protected source" >/dev/null 2>&1
   mkdir -p .git/briteRepo
-  git config --file .git/briteRepo/pushup.state pushup.version 1
+  git config --file .git/briteRepo/pushup.state pushup.version 2
   git config --file .git/briteRepo/pushup.state pushup.source v1.0.0
   git config --file .git/briteRepo/pushup.state pushup.phase source-synchronized
 )
