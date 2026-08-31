@@ -350,7 +350,7 @@ generate_repo_activity_entries() {
         action_number=$((action_number + 1))
         printf -v entry '## %d. %s: %s\n\n' "$action_number" "$note_type" "$note_date"
         if [[ "$note_type" == "push" ]]; then
-          printf -v line '**Pushed-Tip:** `%s`  \n' "$(recorded_field_value "$note_record" "Pushed-Tip")"
+          printf -v line '**Pushed Branch Tip:** `%s`  \n' "$(recorded_field_value "$note_record" "Pushed-Tip")"
           entry+="$line"
         else
           printf -v line '**Commit:** `%s`  \n' "$full_hash"
@@ -1724,7 +1724,7 @@ while IFS= read -r -d $'\x1e' row; do
       fi
       entry+="$line"
       if [[ "$note_type" == "push" ]]; then
-        printf -v line '**Pushed-Tip:** `%s`  \n' "$pushed_tip"
+        printf -v line '**Pushed Branch Tip:** `%s`  \n' "$pushed_tip"
         entry+="$line"
       fi
       printf -v line '**Command:** `%s`  \n' "$note_command"

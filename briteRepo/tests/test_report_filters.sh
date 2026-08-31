@@ -219,10 +219,10 @@ assert_contains '**Branch:** `dev/report-tests-v1.0.0`' "$WORK/$remote_push_rel"
 assert_contains '**Status:** [remote]' "$WORK/$remote_push_rel"
 assert_contains '**Command:** `push -t 5`' "$WORK/$remote_push_rel"
 assert_contains '## 1. push: 2026-08-16 11:59:59+00:00' "$WORK/$remote_push_rel"
-assert_contains '**Pushed-Tip:** `' "$WORK/$remote_push_rel"
-if ! grep -Eq '^\*\*Pushed-Tip:\*\* `[0-9a-f]{40}`' \
+assert_contains '**Pushed Branch Tip:** `' "$WORK/$remote_push_rel"
+if ! grep -Eq '^\*\*Pushed Branch Tip:\*\* `[0-9a-f]{40}`' \
 	"$WORK/$remote_push_rel"; then
-	fail "remote push Pushed-Tip should be a full commit hash"
+	fail "remote push Pushed Branch Tip should be a full commit hash"
 fi
 assert_contains '**Commits:** 1' "$WORK/$remote_push_rel"
 if grep -Fq '**Directories:**' "$WORK/$remote_push_rel"; then
