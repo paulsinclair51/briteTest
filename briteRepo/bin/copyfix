@@ -84,7 +84,7 @@ Workflow:
 Outputs:
   - Writes help text, status messages, and results or summaries to stdout.
   - Writes errors and diagnostics to stderr.
-  - The current worktree remains on the current branch.
+  - The current branch remains selected.
   - No-work prerequisite failures do not generate or delete reports.
   - After a successful copy, records history for the report command and
     writes 'Run report for details.' to stdout. It does not write an immediate

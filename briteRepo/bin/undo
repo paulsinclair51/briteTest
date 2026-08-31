@@ -74,14 +74,12 @@ Examples:
 
 Limits:
   - Completed pushup operations cannot be undone by undo.
-  - Manually performed operations or operations where metadata is removed
-    cannot be undone by undo. Except for uncommitted working tree changes,
-    undo can only undo supported operations performed by briteRepo scripts
-    while their undo records, workflow state, and referenced Git tips remain
-    available.
+  - Changes made outside project commands, or changes whose recovery
+    information is unavailable, cannot be undone by undo. Except for
+    uncommitted changes, undo supports only operations performed by briteRepo
+    commands while their recovery information remains available.
   - undo does not restore deleted branches, repositories, clones, or GitHub
-    administration settings. The user must recover them manually from any
-    available backup or retained Git ref.
+    administration settings. Recover them from an available backup.
   - Repair commands cannot be undone by undo since reversing a repair could
     reintroduce the repository damage it corrected.
 

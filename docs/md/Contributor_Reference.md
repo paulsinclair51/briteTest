@@ -320,6 +320,12 @@ mkbranch [OPTIONS] <newbranch> [<parentbranch>] [-- TOKEN...]
 For a targeted branch, the parent defaults to the version in its name. Other
 branch types use the parent rules described by `mkbranch -h`.
 
+Creating a remote branch with `-r` requires its parent to exist both locally
+and remotely. While `pushup` is unfinished, `mkbranch` refuses to create a
+remote copy for its source or parent branch so the remote-copy choices saved
+by `pushup` cannot change during recovery. Local-only branch creation does not
+require a configured or reachable remote.
+
 **Branch Naming Guide:**
 
 - **Contributor:** `[<type>/]<description>` (type: dev, fix, feature, docs)
@@ -371,11 +377,13 @@ the recorded local branch activity.
 
 #### 1.1.10. pushup
 
-**Purpose:** Push the current branch up to its parent, publish both updated
-branches, and leave the source branch selected with files and directories that
-match the parent. Their branch histories may differ. Interrupted work is
-recovered or resumed by rerunning `pushup`, which compares its saved progress
-with the current local and remote branch versions.
+**Purpose:** Update the parent with the current source branch's files and
+directories so both local branches contain the same files and directories. If
+the parent or source has a remote copy, its files and directories finish aligned
+with its corresponding local branch. A source remote copy requires a parent
+remote copy. Missing optional remote copies are not created, and protected
+branches must have remote copies. Interrupted work is recovered or resumed by
+rerunning `pushup`.
 
 **Usage:**
 
@@ -430,7 +438,7 @@ retarget [OPTIONS] <new-parent-version> [-- TOKEN...]
 
 - The current branch must be a local targeted branch
 - Renames the current branch with the new version
-- Approver role required
+- Contributor, reviewer, or approver role required
 - A successful local retarget records activity for `report`.
 - With `-r`, the command also updates remote activity and directs the user to
   `report -r`.
@@ -558,7 +566,7 @@ fixlocal [OPTIONS]
 - 0: Success - no issues or all issues fixed
 - 1: Invalid option or argument
 - 2: User is not authorized (requires contributor role or higher)
-- 3: Remote is not configured
+- 3: This clone has no remote repository URL
 - 4: Remote is unreachable
 - 5: Remote connectivity check timed out
 - 6: One or more issues were not fixable
@@ -612,7 +620,8 @@ the `report` command.
 
 #### 1.2.3. setupclone
 
-**Purpose:** Setup clone environment - install scripts, add to PATH, and configure Git hooks.
+**Purpose:** Configure a clone so project commands are available and local
+safeguards are active.
 
 **Usage:**
 
@@ -624,7 +633,7 @@ bash briteRepo/bin/setupclone [-t SEC]
 
 - Make all scripts executable
 - Add `briteRepo/bin/` to PATH in `~/.bashrc`
-- Configure Git hooks via `core.hooksPath`
+- Activate local repository safeguards
 - Load configuration immediately
 </details>
 
@@ -1153,9 +1162,10 @@ the [Glossary Reference](./Glossary_Reference.md).
   users. A breaking public API change requires a major version increment.
 - **Pull request**: A proposal to review and approve changes before they are
   pushed up to a parent branch.
-- **Push up**: Publish an approved source branch into its parent branch using
-  `pushup`, then update the source so its files and directories match the
-  published parent. The branch histories may differ.
+- **Push up**: Update the parent with the source branch's files and directories
+  using `pushup` so both local branches contain the same files and directories.
+  Existing remote copies finish with the same files and directories as their
+  corresponding local branches.
 - **Release**: A published, versioned project state made available to users.
 - **Remote copy**: The version of a branch stored in the remote repository.
 - **Reviewer**: A contributor authorized to formally review changes and manage

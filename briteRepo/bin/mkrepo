@@ -15,9 +15,8 @@ Usage:
   mkrepo [OPTIONS] <repository>
   mkrepo {-h | --help}
 
-Create a GitHub remote (origin) repository, or update an existing GitHub
-repository, so it has the canonical directory layout and files required
-by the briteRepo scripts.
+Create or update a GitHub repository so it has the canonical directory layout
+and files required by the briteRepo commands.
 
 Arguments:
   <repository>       Repository name for the authenticated GitHub user.

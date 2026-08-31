@@ -95,14 +95,14 @@ This document is the task-oriented guide for routine contribution work.
 
 ## 1. Introduction
 
-The repository provides commands in `briteRepo/bin/` to perform repository-changing
-actions. Contributors, reviewers, and approvers must use these commands instead
-of direct Git commands for branch modification operations.
+briteRepo provides a simple, higher-level source-management workflow. Its
+commands handle the underlying Git and GitHub operations, policy checks,
+reporting, and recovery so contributors can work with branches, changes,
+reviews, and releases without managing low-level source-control details.
 
-The commands validate each action, enforce repository policy, and
-provide recovery guidance. After `setupclone`, the commands are normally
-available by name. You may also run them by path, such as
-`briteRepo/bin/commit`.
+Use the commands in `briteRepo/bin/` for repository-changing actions. After
+`setupclone`, they are normally available by name. You may also run them by
+path, such as `briteRepo/bin/commit`.
 
 | Task | Command |
 |------|---------|
@@ -198,13 +198,17 @@ chbranch BRANCH
 Examples:
 
 ```bash
-mkbranch -r mywork/feature main
 mkbranch -r dev/parser-fix-v1.0.0 v1.0.0
 mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
+mkbranch -r mywork/parser-tests dev/parser-fix-v1.0.0
 ```
 
 Use `lsbranch` to inspect branches. Use `rmbranch BRANCH` to remove an
-unneeded branch. Protected branches cannot be removed.
+unneeded branch. Protected branches cannot be removed. Creating a remote copy
+with `-r` requires the parent branch to exist both locally and remotely. Do not
+create a remote copy for a source or parent branch while its `pushup` workflow
+is unfinished; rerun `pushup` first. Local-only branch creation does not require
+remote access.
 </details>
 
 <details>
@@ -261,7 +265,8 @@ Do not pass an operation name or use direct reset commands.
 
 ### 3.5. Move Targeted Work to Another Version
 
-An approver can move a targeted `dev/` or `fix/` branch to another open version:
+A contributor, reviewer, or approver with access to the clone can move the
+current targeted `dev/` or `fix/` branch to another open version:
 
 ```bash
 chbranch TARGET_BRANCH
@@ -343,10 +348,18 @@ earlier pull request has completed `pushup` or is no longer approved.
 ### 4.4. Push Up an Approved Change
 
 Run `pushup` from the source branch. It determines the parent branch, validates
-the path and permissions, checks any required approval, publishes the parent,
-then updates the source branch from the published parent. When `pushup`
-completes, the source and parent have matching files and directories, although
-their branch histories may differ.
+the path and permissions, and checks any required approval. It updates the
+parent with the source branch's files and directories. When `pushup` completes,
+the local source and parent contain the same files and directories.
+
+If the parent has a remote copy, `pushup` updates its files and directories to
+match the local parent. If the source has a remote copy, its files and
+directories match the local source when `pushup` completes. A source remote
+copy requires a parent remote copy. Missing optional remote copies are not
+created, and protected branches must have remote copies.
+
+Run `report -p` for local parent details. If the parent has a remote copy, also
+run `report -p -r` for remote parent details.
 
 If the source is behind its parent, run `pulldown` first. For interruption
 recovery, see [Interrupted Pushup](#102-interrupted-pushup).
@@ -466,15 +479,14 @@ direct Git commands.
 
 ## 9. Validation and Local Safeguards
 
-GitHub validates branch relationships, commit metadata, authors, signatures,
+GitHub validates branch relationships, change information, authors, signatures,
 protected files, large files, secrets, license headers, code quality, and
-workflow syntax. When a check fails, read its first actionable error, correct
-and test the problem locally, then run `commit` and `push`.
+workflow configuration. When a check fails, read its first actionable error,
+correct and test the problem locally, then run `commit` and `push`.
 
-`setupclone` configures local hooks that prevent accidental direct commits,
-pushes, and pulls. Project commands perform policy and permission checks and
-invoke Git safely. Contributors do not need to know or set internal hook-bypass
-variables.
+`setupclone` installs local safeguards that route repository changes through
+project commands. These commands perform the required policy, permission, and
+safety checks.
 
 If local safeguards are missing, run `setupclone` to restore them.
 </details>
@@ -511,14 +523,14 @@ If local safeguards are missing, run `setupclone` to restore them.
 
 ### 10.2. Interrupted Pushup
 
-- Restore the system or network connection.
-- Rerun `pushup`; it compares its saved progress with the current local and
-  remote branch versions.
+- Rerun `pushup`; it uses the saved local branch versions and the remote copies
+  that existed when the workflow started.
 - If recovery proves publication did not occur, it restores the saved
   local branch versions. Run `pushup` to begin again.
-- If the remote remains unavailable, restore network access or authentication,
-  then rerun `pushup`. The command retains its recovery information until it
-  can verify both branches.
+- A local-only workflow resumes without remote access. If a required remote
+  copy is unavailable, restore network access or authentication, then rerun
+  `pushup`. The command retains its recovery information until it can verify
+  every required branch.
 
 Do not edit participating branches or delete saved recovery information while
 recovery is pending. Repeated continuation checks exact local and remote branch
@@ -548,11 +560,12 @@ versions before resuming.
   tied to one version. Its name is `[<type>/]<description>`.
 - **Parent branch**: The destination immediately above a branch in an allowed
   push-up path.
-- **Protected branch**: A branch, such as `main` or a version branch, that
+- **Protected branch**: The `main` or a version branch that
   cannot be edited directly through routine contributor workflows.
-- **Push up**: Publish an approved source branch into its parent branch using
-  `pushup`, then update the source so its files and directories match the
-  published parent. The branch histories may differ.
+- **Push up**: Update the parent with the source branch's files and directories
+  using `pushup` so both local branches contain the same files and directories.
+  Existing remote copies finish with the same files and directories as their
+  corresponding local branches.
 - **Remote copy**: The version of a branch stored in the remote repository.
 - **Targeted branch**: A `dev/` or `fix/` branch whose work belongs to a
   specific version.

@@ -1089,6 +1089,30 @@ rc=$(run_pushup "$TMPDIR/contributor-approved-pr.out" \
   fail "contributor merge with approved PR should succeed (got $rc)"
 pass "contributor merge validates approval only when a PR exists"
 
+# A branch with a remote copy cannot push up to a local-only parent.
+(
+  cd "$WORK"
+  "$REAL_GIT" switch dev/feat-v1.0.0 >/dev/null 2>&1
+  "$REAL_GIT" switch -c local-parent >/dev/null 2>&1
+  echo "local parent" > local-parent.txt
+  "$REAL_GIT" add local-parent.txt
+  "$REAL_GIT" commit -m "local-only contributor parent" >/dev/null 2>&1
+  "$REAL_GIT" switch -c remote-child >/dev/null 2>&1
+  echo "remote child" > remote-child.txt
+  "$REAL_GIT" add remote-child.txt
+  "$REAL_GIT" commit -m "remote contributor child" >/dev/null 2>&1
+  "$REAL_GIT" push -u origin remote-child >/dev/null 2>&1
+)
+rc=$(run_pushup "$TMPDIR/remote-child-local-parent.out" \
+  "GITHUB_ACTOR=otheruser" "FAKE_REPO_OWNER=testowner" \
+  "FAKE_GH_PR_NUMBER=" -- -d)
+[[ "$rc" -eq 17 ]] || \
+  fail "remote child with local-only parent should exit 17 (got $rc)"
+assert_contains "Parent branch 'local-parent' must have a remote copy" \
+  "$TMPDIR/remote-child-local-parent.out"
+"$REAL_GIT" -C "$WORK" switch contributor-work >/dev/null 2>&1
+pass "remote source requires remote parent"
+
 rc=$(run_pushup "$TMPDIR/contributor-failed-ci-merge.out" \
   "GITHUB_ACTOR=otheruser" "FAKE_REPO_OWNER=testowner" \
   "FAKE_GH_PR_NUMBER=42" "FAKE_GH_PR_HEAD=contributor-work" \

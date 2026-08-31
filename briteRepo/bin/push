@@ -27,7 +27,7 @@ Policy:
 Prerequisites:
   - The user must be a contributor, reviewer, or approver (listed in
     <repo>/config/contributors.md).
-  - The remote (origin) must be connected and reachable.
+  - The remote repository must be connected and reachable.
   - The current branch must be a local branch.
   - The current branch must be a targeted or contributor branch, and
     must not be the main or a version branch, except when pushing a local
@@ -40,10 +40,10 @@ Prerequisites:
 
 Remote state requirements:
   - The remote branch must exist.
-  - The current branch must be ahead of the remote branch (that is, there
-    must be unpushed committed changes).
-  - The current branch and its remote must not have diverged.
-    - If they have diverged, run pull to synchronize first.
+  - The current branch must contain committed changes that are not yet on its
+    remote copy.
+  - If the local and remote branches contain different changes, run pull to
+    synchronize them first.
   - If another user pushes the same parent first, return to the source branch,
     run pulldown, obtain approval for the updated source commit, then rerun
     pushup and push.
@@ -76,9 +76,9 @@ Outputs:
   - No-work prerequisite failures do not generate or delete reports.
   - No report is written when a non-dry-run push succeeds. Older dry-run and
     error reports for the current branch are deleted.
-  - After a successful non-dry-run push, records history for the report
-    command in remote workflow history. When the pushed tip is a local pushup
-    result, push comments on and closes its associated PR after pushing.
+  - After a successful non-dry-run push, details are available through
+    `report -r`. When publishing a pushup result, push also updates and closes
+    its associated pull request.
   - For a dry-run, writes an untracked report locally to:
       '<repo>/reports/push-d-<datetime>.md'
   - If a non-dry-run operation fails after push work starts, writes an
@@ -93,7 +93,7 @@ Exit codes:
   1    Invalid option or argument.
   2    User is not a contributor.
   3    Current branch is main or a version branch and is protected.
-  4    Remote is unconnected (origin is not configured).
+  4    This clone has no remote repository URL.
   5    Remote is unreachable (connection failed before timeout).
   6    Remote connectivity check timed out.
   7    Remote branch for the current branch not found.

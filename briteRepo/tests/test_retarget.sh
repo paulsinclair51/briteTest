@@ -145,11 +145,15 @@ rc=$(run_capture "$TMPDIR/mode-conflict.out" bash -lc \
 assert_contains "mutually exclusive" "$TMPDIR/mode-conflict.out"
 pass "dry-run and error-run conflict"
 
-# 3) Unauthorized user should be blocked (permission denied exit code).
-rc=$(run_capture "$TMPDIR/unauth.out" env GITHUB_ACTOR=testcontrib bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -d v1.1.0")
+# 3) Contributors may retarget a branch in a clone they can access.
+rc=$(run_capture "$TMPDIR/contributor.out" env GITHUB_ACTOR=testcontrib bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -d v1.1.0")
+[[ "$rc" -eq 0 ]] || fail "contributor retarget should exit 0 (got $rc)"
+pass "contributor authorization"
+
+rc=$(run_capture "$TMPDIR/unauth.out" env GITHUB_ACTOR=outsider bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -d v1.1.0")
 [[ "$rc" -eq 2 ]] || fail "unauthorized retarget should exit 2 (got $rc)"
-assert_contains "is not an approver" "$TMPDIR/unauth.out"
-pass "authorization enforcement"
+assert_contains "is not a contributor" "$TMPDIR/unauth.out"
+pass "non-contributor authorization enforcement"
 
 # 3) Missing version policy should map to policy-denied exit code.
 cat > "$WORK/config/version_branch_access.csv" <<'EOF'

@@ -1733,7 +1733,11 @@ if bt_is_protected_branch "$PARENT_BRANCH" && \
     "Protected parent branch '$PARENT_BRANCH' must have a corresponding" \
     "remote branch"
 fi
-
+if [[ "$CURRENT_HAS_REMOTE" == true && "$PARENT_HAS_REMOTE" != true ]]; then
+  bt_error_exit "$EXIT_PARENT_PROTECTED_REMOTE_MISSING" \
+    "Parent branch '$PARENT_BRANCH' must have a remote copy because current" \
+    "branch '$CURRENT_BRANCH' has one"
+fi
 # Remote access is a conditional prerequisite: local-only contributor and
 # targeted branch merges do not contact origin unless one side has a remote.
 if [[ "$CURRENT_HAS_REMOTE" == true || "$PARENT_HAS_REMOTE" == true ]]; then

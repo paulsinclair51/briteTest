@@ -15,11 +15,10 @@ Usage:
   retarget -e [<new-parent-version>]
   retarget {-h | --help}
 
-Retarget a targeted branch to a different version parent and rebase it locally.
+Move the current targeted branch to a different version parent.
 
-This script is approver-only and is intended for cases where a targeted
-branch must move to another version (defer to later version or pull into
-an earlier version).
+This command is available to contributors, reviewers, and approvers when a
+targeted branch must move to another version.
 
 Prerequisites:
   - The current branch must be a local targeted branch.
@@ -29,7 +28,7 @@ Arguments:
   <new-parent-version>  New parent version branch (v<M>.<m>.0)
 
 Options:
-  -d                    Validate only. Do not rebase or push.
+  -d                    Validate only. Do not change or publish the branch.
   -e                    Generate an error report without retargeting.
   -h, --help  Output this help to stdout and exit (other options and
               arguments are ignored).
@@ -52,15 +51,16 @@ Options:
       at least one non-whitespace character.
 
 Policy checks:
-  - Caller must be an approver.
+  - Caller must be a contributor, reviewer, or approver.
   - New parent version branch must exist.
   - For dev/* targeted branches, new parent must be open for dev.
   - For fix/* targeted branches, new parent must be open for fixes.
   - Version openness is read from: config/version_branch_access.csv
 
 Conflict handling:
-  - If rebase conflicts, script stops and prints handoff steps.
-  - Branch owner (contributor) resolves conflicts and continues rebase.
+  - If conflicts occur, the command stops and prints the required steps.
+  - A contributor with access to this clone resolves the listed files and
+    reruns retarget.
 
 Examples:
   retarget v1.1.0
@@ -78,19 +78,19 @@ Outputs:
 Exit codes:
   0   Success.
   1   Argument or validation error.
-  2   Permission denied (approver required or identity unavailable).
+  2   Permission denied (contributor access required or identity unavailable).
   3   Policy denied (branch type/version access window).
   4   Git/prerequisite operation failed.
-  5   Rebase conflicts detected (handoff to contributor).
+  5   Conflicts require resolution by the contributor.
   6   Retarget skipped because -e was specified.
 EOF
 }
 
 # High-Level Flow:
-# - Validate approver identity, current branch, version access, and clean state.
+# - Validate contributor identity, current branch, version access, and clean state.
 # - Preview the new parent for -d; otherwise rebase the current branch locally.
 # - Publish the rewritten target with force-with-lease only when -r is used.
-# - Preserve conflicts for branch-owner handoff instead of recording success.
+# - Preserve conflicts for another contributor with clone access if needed.
 # - Append tracked history and one structured event to the rewritten target tip,
 #   then direct users to report generation.
 
@@ -202,10 +202,10 @@ trim() {
   printf '%s' "$value"
 }
 
-is_approver() {
+is_contributor_or_higher() {
   local user_name="$1"
   bt_contributors_has_min_role \
-    "$user_name" "approver" "$REPO_ROOT/config/contributors.md"
+    "$user_name" "contributor" "$REPO_ROOT/config/contributors.md"
 }
 
 version_window_status() {
@@ -364,12 +364,12 @@ if [[ -z "$CURRENT_USER" ]]; then
     "Unable to determine GitHub login identity for permission check"
 fi
 
-if ! is_approver "$CURRENT_USER"; then
+if ! is_contributor_or_higher "$CURRENT_USER"; then
   bt_error_exit "$EXIT_PERMISSION_DENIED" \
-    "User '$CURRENT_USER' is not an approver"
+    "User '$CURRENT_USER' is not a contributor"
 fi
 
-log_verbose "Approver verified: $CURRENT_USER"
+log_verbose "Contributor access verified: $CURRENT_USER"
 
 status=""
 if status=$(version_window_status "$NEW_PARENT" "$TARGET_TYPE"); then

@@ -15,22 +15,19 @@ Usage:
   release -e
   release {-h | --help}
 
-Create and publish a release with annotated git tag and GitHub release.
+Create and publish a versioned GitHub release.
 
 Before releasing:
-  - Verifies current branch is protected (base is remote-only main)
-  - Checks working directory is clean
+  - Verifies the current branch is the protected release branch
+  - Checks that there are no uncommitted changes
   - Verifies all status checks and CI/CD pass
-  - Creates annotated git tag
-  - Pushes tag to remote
-  - Creates GitHub release
-  - Records release workflow metadata for branch reports
+  - Publishes the version marker and GitHub release
+  - Records details for branch reports
 
 Features:
   - Semantic versioning support (v1.2.3)
-  - Annotated git tags
   - GitHub release creation
-  - Release workflow metadata for branch reports
+  - Release details for branch reports
   - Pre-release validation
 
 Arguments:
