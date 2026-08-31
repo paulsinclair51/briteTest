@@ -28,7 +28,7 @@ When to use this script:
   - Use fixlocal first when the issue is isolated to the current local working
     copy or local branch state. This is the default order for fixing the current
     local repository.
-  - Use fixremote only when the remote (origin) is damaged and must be recovered
+  - Use fixremote only when the remote repository is damaged and must be recovered
     from a known-good clean clone.
   - Use override only for owner-authorized local recovery or a temporary remote
     repair authorization window; it is not a repair script itself.
@@ -40,11 +40,10 @@ Recommended order when more than one repair path applies:
   4. owner-admin remote repair workflow, if required
 
 Features:
-  - Validates git object database integrity (`git fsck --full`)
-  - Verifies working tree cleanliness and repository structure
-  - Checks remote connectivity/tracking status when origin exists
-  - Runs safe cleanup (`git gc --prune=now`) and reruns affected verification
-    checks after cleanup
+  - Checks for damaged Git data
+  - Checks for uncommitted changes and missing repository files
+  - Checks remote access and branch synchronization when a remote exists
+  - Safely cleans unused local Git data and repeats affected checks
   - Generates a detailed markdown report
   - Distinguishes fixable vs non-fixable issues
 
@@ -56,7 +55,7 @@ Options:
                         repairs.
   -q                    Faster checks using reduced-cost diagnostics.
   -t SEC                Remote reachability timeout in seconds (default: 10).
-                        Use 0 to skip remote connectivity/tracking checks.
+                        Use 0 to skip remote access and branch checks.
 
 Common runs:
   fixrepo              Full checks with safe auto-fixes.

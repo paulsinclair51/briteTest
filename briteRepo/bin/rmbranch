@@ -523,7 +523,7 @@ fi
 
 if [[ "$MODE" == "remote" || "$MODE" == "both" ]]; then
   if ! git remote get-url origin >/dev/null 2>&1; then
-    error_exit 2 "Remote 'origin' is not configured" "$BRANCHNAME" "$COMMENT"
+    error_exit 2 "This clone has no remote repository URL" "$BRANCHNAME" "$COMMENT"
   fi
 fi
 

@@ -21,7 +21,7 @@ Default safety checks:
   - no working-tree changes (staged, unstaged, untracked)
   - no stash entries
   - no local-only commits not present on remotes
-  - origin remote is reachable when configured
+  - the remote repository is reachable when this clone has its URL
   - target is not the current working directory (or its parent)
 
 Arguments:

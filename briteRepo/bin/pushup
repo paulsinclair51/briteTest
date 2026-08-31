@@ -12,11 +12,16 @@ Usage:
   pushup [OPTIONS] [-- TOKEN...]
   pushup {-h | --help}
 
-Push the current local branch up to its parent, update the parent on the remote,
-merge the updated parent back into the source branch, and update the source on
-the remote.
+Update the parent with the current source branch's files and directories, then
+align the local source and parent so both contain the same files and
+directories. Existing remote copies finish with the same files and directories
+as their corresponding local branches. Contributor and targeted branches may
+remain local-only. A source remote copy requires a parent remote copy, and
+protected branches must have remote copies.
 
-Before the parent is updated on the remote, a failure restores the original
+When both branches are local-only, no remote access is required. A failure
+restores the original local branches when possible. For remote workflows,
+before the parent is updated on the remote, a failure restores the original
 local branches. After the remote update, progress is retained and an error
 report explains what completed, what remains, and how to continue.
 
@@ -25,6 +30,8 @@ present, or optional and absent. When a PR exists, its state and approval are
 validated.
 
 Crash and interruption recovery:
+  - A local-only workflow resumes using its saved local branch versions and
+    does not begin remote publication if a remote branch is later created.
   - Rerun pushup after an interruption before the parent remote update. It
     verifies the remote parent, restores the saved local branch versions, and
     restarts validation.
@@ -74,10 +81,9 @@ EOF
 # - Persist the source/parent refs and options before any branch mutation.
 # - On every invocation, reconcile saved state with local and remote refs so a
 #   crash between an operation and its phase update is safe to resume.
-# - Prepare the parent locally, then publish it. Before publication, failures
-#   may roll back to the saved refs; afterward, the workflow is resumable only.
-# - Return to the source, merge the published parent down, publish the source,
-#   and remove state only after both remote refs contain the expected commits.
+# - Prepare the parent locally. Publish it only for a saved remote workflow.
+# - Return to the source, merge the parent down, optionally publish the source,
+#   and remove state after all required local and remote steps complete.
 # - On interruption, retain state and direct the contributor to rerun pushup;
 #   saved phase and exact remote tips determine restart or continuation.
 
@@ -98,7 +104,7 @@ readonly EXIT_ACTIVE=2
 readonly EXIT_PREPUBLICATION_FAILED=4
 readonly EXIT_PARTIAL=5
 readonly EXIT_INTERNAL=200
-readonly STATE_VERSION=1
+readonly STATE_VERSION=2
 readonly REMOTE_REACCESS_MULTIPLIER=3
 
 OWNER_OVERRIDE=false
@@ -121,6 +127,22 @@ state_get() {
 
 state_set() {
   git config --file "$STATE_FILE" "pushup.$1" "$2"
+}
+
+publication_mode() {
+  if branch_has_saved_remote source || branch_has_saved_remote parent; then
+    printf 'remote\n'
+  else
+    printf 'local\n'
+  fi
+}
+
+branch_has_saved_remote() {
+  local branch_role="$1"
+  local saved_value=""
+
+  saved_value="$(state_get "${branch_role}-has-remote")"
+  [[ "$saved_value" == true ]]
 }
 
 set_phase() {
@@ -190,6 +212,10 @@ state_is_complete() {
   [[ "$comment_mode" == none || "$comment_mode" == option || \
     "$comment_mode" == tokens ]] || return 1
   [[ "$comment_mode" == none || -n "$(state_get comment)" ]] || return 1
+  for key in source-has-remote parent-has-remote; do
+    [[ "$(state_get "$key")" == true || \
+      "$(state_get "$key")" == false ]] || return 1
+  done
 }
 
 initialize_state() {
@@ -209,6 +235,16 @@ initialize_state() {
   git config --file "$state_tmp" pushup.verbose "$VERBOSE"
   git config --file "$state_tmp" pushup.owner-override "$OWNER_OVERRIDE"
   git config --file "$state_tmp" pushup.comment-mode "${COMMENT_MODE:-none}"
+  if git show-ref --verify --quiet "refs/remotes/origin/$source_branch"; then
+    git config --file "$state_tmp" pushup.source-has-remote true
+  else
+    git config --file "$state_tmp" pushup.source-has-remote false
+  fi
+  if git show-ref --verify --quiet "refs/remotes/origin/$parent_branch"; then
+    git config --file "$state_tmp" pushup.parent-has-remote true
+  else
+    git config --file "$state_tmp" pushup.parent-has-remote false
+  fi
   [[ -z "$COMMENT_MODE" ]] || \
     git config --file "$state_tmp" pushup.comment "$COMMENT"
   git config --file "$state_tmp" pushup.phase initialized
@@ -316,8 +352,15 @@ reconcile_state() {
     fi
   fi
 
+  if [[ "$phase" == parent-prepared ]] && \
+    ! branch_has_saved_remote parent; then
+    set_phase parent-published
+    phase=parent-published
+  fi
+
   if [[ "$phase" == parent-publishing || \
-    "$phase" == publication-uncertain || "$phase" == parent-prepared ]]; then
+    "$phase" == publication-uncertain || "$phase" == parent-prepared ]] && \
+    branch_has_saved_remote parent; then
     timeout_seconds="$(state_get timeout)"
     [[ "$phase" == parent-prepared ]] || \
       timeout_seconds="$(extended_remote_timeout)"
@@ -372,12 +415,16 @@ reconcile_state() {
   phase="$(state_get phase)"
   if [[ "$phase" == source-selected || "$phase" == source-sync-failed ]]; then
     source_local="$(local_tip "$source_branch")"
-    if ! parent_remote="$(remote_tip_checked "$parent_branch" \
-      "$(extended_remote_timeout)")"; then
-      write_partial_report \
-        "The parent branch cannot be read from the remote." \
-        "Restore remote access before continuing source synchronization."
-      exit "$EXIT_PARTIAL"
+    if ! branch_has_saved_remote parent; then
+      parent_remote="$(local_tip "$parent_branch")"
+    else
+      if ! parent_remote="$(remote_tip_checked "$parent_branch" \
+        "$(extended_remote_timeout)")"; then
+        write_partial_report \
+          "The parent branch cannot be read from the remote." \
+          "Restore remote access before continuing source synchronization."
+        exit "$EXIT_PARTIAL"
+      fi
     fi
     if [[ -n "$source_local" ]] && \
       git merge-base --is-ancestor "$parent_remote" "$source_local" \
@@ -389,8 +436,14 @@ reconcile_state() {
   # Either push may have succeeded just before the process stopped. Exact-tip
   # comparison makes completion idempotent without assuming command status.
   phase="$(state_get phase)"
+  if [[ "$phase" == source-synchronized ]] && \
+    ! branch_has_saved_remote source; then
+    set_phase source-published
+    phase=source-published
+  fi
   if [[ "$phase" == source-publishing || \
-    "$phase" == source-publish-failed || "$phase" == source-synchronized ]]; then
+    "$phase" == source-publish-failed || "$phase" == source-synchronized ]] && \
+    branch_has_saved_remote source; then
     source_local="$(local_tip "$source_branch")"
     if source_remote="$(remote_tip_checked "$source_branch" \
       "$(extended_remote_timeout)")" && \
@@ -464,10 +517,10 @@ write_partial_report() {
 | Step | Status |
 |---|---|
 | Prepare parent locally | $(phase_status parent-prepared) |
-| Update parent on remote | $(phase_status parent-published) |
+| Update parent on remote | $(remote_phase_status parent parent-published) |
 | Select source | $(phase_status source-selected) |
 | Synchronize source from parent | $(phase_status source-synchronized) |
-| Update source on remote | $(phase_status source-published) |
+| Update source on remote | $(remote_phase_status source source-published) |
 
 ## Failure
 
@@ -505,6 +558,17 @@ phase_status() {
     printf 'Completed'
   else
     printf 'Pending'
+  fi
+}
+
+remote_phase_status() {
+  local branch_role="$1"
+  local required="$2"
+
+  if ! branch_has_saved_remote "$branch_role"; then
+    printf 'Not required'
+  else
+    phase_status "$required"
   fi
 }
 
@@ -862,7 +926,13 @@ if [[ "$phase" == initialized ]]; then
   set_phase parent-prepared
 fi
 
-[[ "$(state_get phase)" != parent-prepared ]] || publish_parent
+if [[ "$(state_get phase)" == parent-prepared ]]; then
+  if ! branch_has_saved_remote parent; then
+    set_phase parent-published
+  else
+    publish_parent
+  fi
+fi
 [[ "$(state_get phase)" != parent-finalization-failed ]] || \
   retry_parent_finalization
 [[ "$(state_get phase)" != parent-published ]] || select_source
@@ -876,16 +946,35 @@ fi
 
 phase="$(state_get phase)"
 if [[ "$phase" == source-synchronized || "$phase" == source-publish-failed ]]; then
-  publish_source
+  if ! branch_has_saved_remote source; then
+    set_phase source-published
+  else
+    publish_source
+  fi
 fi
 
 if [[ "$(state_get phase)" == source-published ]]; then
   source_branch="$(state_get source)"
   parent_branch="$(state_get parent)"
+  completed_publication_mode="$(publication_mode)"
+  if branch_has_saved_remote parent; then
+    completed_parent_has_remote=true
+  else
+    completed_parent_has_remote=false
+  fi
   rm -f "$STATE_FILE"
   remove_tool_snapshot
-  echo "Pushed up '$source_branch' to '$parent_branch' locally and remotely."
-  echo "Run report -p for local parent details; run report -p -r for remote parent details."
+  if [[ "$completed_publication_mode" == local ]]; then
+    echo "Pushed up '$source_branch' to local parent '$parent_branch'."
+    echo "Run report -p for local parent details."
+  else
+    echo "Pushed up '$source_branch' to '$parent_branch' locally and updated available remote copies."
+    if [[ "$completed_parent_has_remote" == true ]]; then
+      echo "Run report -p for local parent details; run report -p -r for remote parent details."
+    else
+      echo "Run report -p for local parent details."
+    fi
+  fi
   exit 0
 fi
 

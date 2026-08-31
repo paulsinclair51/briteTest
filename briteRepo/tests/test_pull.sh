@@ -280,7 +280,7 @@ pass "remote timeout"
 rc=$(run_capture "$TMPDIR/no-origin.out" \
   bash -lc "cd '$WORK' && bash ./briteRepo/bin/pull")
 [[ "$rc" -eq 8 ]] || fail "missing origin should exit 8 (got $rc)"
-assert_contains "Remote 'origin' is not configured" "$TMPDIR/no-origin.out"
+assert_contains "This clone has no remote repository URL" "$TMPDIR/no-origin.out"
 (
   cd "$WORK"
   git remote add origin "$ORIGIN"

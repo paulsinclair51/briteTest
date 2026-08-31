@@ -428,9 +428,37 @@ is_pushup_source_sync() {
   state_parent="$(git config --file "$state_file" --get pushup.parent 2>/dev/null || true)"
   state_phase="$(git config --file "$state_file" --get pushup.phase 2>/dev/null || true)"
 
-  [[ "$state_version" == 1 && "$state_source" == "$CURRENT_BRANCH" && \
+  [[ "$state_version" == 2 && "$state_source" == "$CURRENT_BRANCH" && \
     "$state_parent" == "$PARENT_BRANCH" ]] || return 1
   [[ "$state_phase" == source-selected || "$state_phase" == source-sync-failed ]]
+}
+
+pushup_saved_parent() {
+  local state_file=""
+  local state_source=""
+  local state_parent=""
+  local state_phase=""
+
+  [[ "$PUSHUP_SYNC" == true ]] || return 1
+  state_file="$(git rev-parse --git-path briteRepo/pushup.state 2>/dev/null || true)"
+  [[ -f "$state_file" ]] || return 1
+  state_source="$(git config --file "$state_file" --get pushup.source 2>/dev/null || true)"
+  state_parent="$(git config --file "$state_file" --get pushup.parent 2>/dev/null || true)"
+  state_phase="$(git config --file "$state_file" --get pushup.phase 2>/dev/null || true)"
+  [[ "$state_source" == "$CURRENT_BRANCH" && -n "$state_parent" ]] || return 1
+  [[ "$state_phase" == source-selected || "$state_phase" == source-sync-failed ]] || return 1
+  printf '%s\n' "$state_parent"
+}
+
+pushup_uses_local_parent() {
+  local state_file=""
+  local parent_has_remote=""
+
+  is_pushup_source_sync || return 1
+  state_file="$(git rev-parse --git-path briteRepo/pushup.state 2>/dev/null || true)"
+  parent_has_remote="$(git config --file "$state_file" \
+    --get pushup.parent-has-remote 2>/dev/null || true)"
+  [[ "$parent_has_remote" == false ]]
 }
 
 # Parse options and arguments
@@ -561,7 +589,9 @@ fi
 
 # Determine parent branch before validating an internal pushup continuation.
 bt_info "Determining parent branch..."
-PARENT_BRANCH=$(bt_resolve_parent_branch "$CURRENT_BRANCH" "main")
+if ! PARENT_BRANCH="$(pushup_saved_parent)"; then
+  PARENT_BRANCH=$(bt_resolve_parent_branch "$CURRENT_BRANCH" "main")
+fi
 if [[ -z "$PARENT_BRANCH" ]]; then
   bt_error_exit "$EXIT_INTERNAL_ERROR" "Failed to determine parent branch"
 fi
@@ -596,17 +626,22 @@ if [[ "$CONTINUING_MERGE" == false ]]; then
   ensure_clean_worktree
 fi
 
-# Ensure parent branch exists and is up to date
-bt_info "Fetching latest from remote..."
-if ! bt_run_remote_command git fetch origin "$PARENT_BRANCH" \
-  >/dev/null 2>&1; then
-  bt_error_exit "$EXIT_NOT_FOUND" \
-    "Failed to fetch parent branch '$PARENT_BRANCH' from remote"
+# Ensure parent branch exists and select its source.
+PARENT_SOURCE_REF="origin/$PARENT_BRANCH"
+if pushup_uses_local_parent; then
+  PARENT_SOURCE_REF="$PARENT_BRANCH"
+else
+  bt_info "Fetching latest from remote..."
+  if ! bt_run_remote_command git fetch origin "$PARENT_BRANCH" \
+    >/dev/null 2>&1; then
+    bt_error_exit "$EXIT_NOT_FOUND" \
+      "Failed to fetch parent branch '$PARENT_BRANCH' from remote"
+  fi
 fi
 
 # Count commits from parent branch to current branch
 commits_to_merge=""
-commits_to_merge=$(git rev-list --count "HEAD..origin/$PARENT_BRANCH" \
+commits_to_merge=$(git rev-list --count "HEAD..$PARENT_SOURCE_REF" \
   2>/dev/null || echo "0")
 
 if [[ "$commits_to_merge" == "0" ]]; then
@@ -644,7 +679,7 @@ if [[ "$CONTINUING_MERGE" == false ]]; then
       "Failed to record pulldown progress for '$CURRENT_BRANCH'"
 fi
 if [[ "$CONTINUING_MERGE" == false ]] && \
-  ! git merge --no-commit --no-ff "origin/$PARENT_BRANCH" >/dev/null 2>&1; then
+  ! git merge --no-commit --no-ff "$PARENT_SOURCE_REF" >/dev/null 2>&1; then
   # Check if merge failed due to conflicts
   conflicted_files=$(git diff --name-only --diff-filter=U)
   if [[ -n "$conflicted_files" ]]; then

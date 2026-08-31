@@ -108,6 +108,12 @@ EOF
   git checkout -b dev/remote-exists-v1.0.0 v1.0.0 >/dev/null 2>&1
   git push -u origin dev/remote-exists-v1.0.0 >/dev/null 2>&1
   git checkout main >/dev/null 2>&1
+
+  # remote-only parent for remote-mode parent checks
+  git checkout -b dev/remote-parent-v1.0.0 v1.0.0 >/dev/null 2>&1
+  git push -u origin dev/remote-parent-v1.0.0 >/dev/null 2>&1
+  git checkout main >/dev/null 2>&1
+  git branch -D dev/remote-parent-v1.0.0 >/dev/null 2>&1
 )
 
 # 1) Help output
@@ -175,6 +181,80 @@ if find "$WORK/logs" -maxdepth 1 -type f -name '*_history.md' -print -quit | gre
 fi
 pass "workflow metadata on branch creation"
 
+# 6d) A remote branch requires a parent that exists both locally and remotely.
+rc=$(run_capture "$TMPDIR/remote-only-parent.out" \
+  bash "$WORK/briteRepo/bin/mkbranch" -r mywork/remote-child \
+  dev/remote-parent-v1.0.0)
+[[ "$rc" -eq 6 ]] || \
+  fail "remote-only parent should fail local parent check (got $rc)"
+assert_contains "Local parent branch 'dev/remote-parent-v1.0.0' does not exist" \
+  "$TMPDIR/remote-only-parent.out"
+if git -C "$WORK" show-ref --verify --quiet \
+  refs/remotes/origin/mywork/remote-child; then
+  fail "remote child should not be created without a local parent"
+fi
+pass "remote branch requires local and remote parent"
+
+# 6e) Active pushup participants cannot gain a remote copy mid-workflow.
+state_file="$WORK/.git/briteRepo/pushup.state"
+mkdir -p "$(dirname "$state_file")"
+git config --file "$state_file" pushup.source dev/local-exists-v1.0.0
+git config --file "$state_file" pushup.parent v1.0.0
+notes_before="$(git -C "$WORK" rev-parse refs/notes/briteRepo-workflow \
+  2>/dev/null || true)"
+rc=$(run_capture "$TMPDIR/pushup-source-remote.out" \
+  bash "$WORK/briteRepo/bin/mkbranch" -r dev/local-exists-v1.0.0 v1.0.0)
+[[ "$rc" -eq 5 ]] || \
+  fail "active pushup source remote creation should exit 5 (got $rc)"
+assert_contains "participating in an unfinished pushup workflow" \
+  "$TMPDIR/pushup-source-remote.out"
+[[ "$(git -C "$WORK" rev-parse refs/notes/briteRepo-workflow \
+  2>/dev/null || true)" == "$notes_before" ]] || \
+  fail "blocked remote creation should not change workflow notes"
+
+git config --file "$state_file" pushup.source mywork/pushup-child
+git config --file "$state_file" pushup.parent dev/local-exists-v1.0.0
+rc=$(run_capture "$TMPDIR/pushup-parent-remote.out" \
+  bash "$WORK/briteRepo/bin/mkbranch" -r dev/local-exists-v1.0.0 v1.0.0)
+[[ "$rc" -eq 5 ]] || \
+  fail "active pushup parent remote creation should exit 5 (got $rc)"
+assert_contains "participating in an unfinished pushup workflow" \
+  "$TMPDIR/pushup-parent-remote.out"
+rm -f "$state_file"
+if git -C "$WORK" show-ref --verify --quiet \
+  refs/remotes/origin/dev/local-exists-v1.0.0; then
+  fail "active pushup participant should remain local-only"
+fi
+pass "active pushup participants remain local-only"
+
+# 6f) Remote creation and pushup use the same repository lock.
+lock_file="$WORK/.git/briteRepo/pushup.lock"
+mkdir -p "$(dirname "$lock_file")"
+(
+  exec 9>"$lock_file"
+  flock -n 9
+  printf 'locked\n' > "$TMPDIR/pushup-lock-ready"
+  while [[ ! -f "$TMPDIR/release-pushup-lock" ]]; do
+    read -r -t 0.1 _ </dev/null || true
+  done
+) &
+lock_pid=$!
+while [[ ! -f "$TMPDIR/pushup-lock-ready" ]]; do
+  read -r -t 0.1 _ </dev/null || true
+done
+rc=$(run_capture "$TMPDIR/pushup-lock.out" \
+  bash "$WORK/briteRepo/bin/mkbranch" -r dev/locked-v1.0.0 v1.0.0)
+touch "$TMPDIR/release-pushup-lock"
+wait "$lock_pid"
+[[ "$rc" -eq 5 ]] || \
+  fail "remote creation during active pushup lock should exit 5 (got $rc)"
+assert_contains "pushup process is active" "$TMPDIR/pushup-lock.out"
+if git -C "$WORK" show-ref --verify --quiet \
+  refs/remotes/origin/dev/locked-v1.0.0; then
+  fail "lock contention should prevent remote branch creation"
+fi
+pass "remote creation shares pushup lock"
+
 # 7) Missing helper fails gracefully with exit 5
 mv "$WORK/briteRepo/helpers/history_log.sh" \
   "$WORK/briteRepo/helpers/history_log.sh.bak"
@@ -186,15 +266,25 @@ mv "$WORK/briteRepo/helpers/history_log.sh.bak" \
   "$WORK/briteRepo/helpers/history_log.sh"
 pass "missing helper graceful failure"
 
-# 8) Missing origin fails gracefully with exit 5
+# 8) Local creation does not require a configured remote.
 (
   cd "$WORK"
   git remote remove origin
 )
 rc=$(run_capture "$TMPDIR/missing-origin.out" \
   bash "$WORK/briteRepo/bin/mkbranch" dev/new-v2.0.0 v2.0.0)
-[[ "$rc" -eq 5 ]] || fail "missing origin should exit 5 (got $rc)"
-assert_contains "Remote 'origin' is not configured" "$TMPDIR/missing-origin.out"
-pass "missing origin graceful failure"
+[[ "$rc" -eq 0 ]] || \
+  fail "local creation without origin should exit 0 (got $rc)"
+git -C "$WORK" show-ref --verify --quiet refs/heads/dev/new-v2.0.0 || \
+  fail "local creation without origin should create the branch"
+pass "local creation without remote"
+
+rc=$(run_capture "$TMPDIR/missing-origin-remote.out" \
+  bash "$WORK/briteRepo/bin/mkbranch" -r dev/remote-v2.0.0 v2.0.0)
+[[ "$rc" -eq 5 ]] || \
+  fail "remote creation without origin should exit 5 (got $rc)"
+assert_contains "This clone has no remote repository URL" \
+  "$TMPDIR/missing-origin-remote.out"
+pass "remote creation requires configured remote"
 
 echo "All mkbranch smoke tests passed."

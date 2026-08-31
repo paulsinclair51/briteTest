@@ -15,10 +15,10 @@ Usage:
   restore {-h | --help}
 
 List prior committed versions of FILE from the current branch and place the
-selected version in the worktree. If FILE is a base name, restore searches all
-tracked files and asks which path to use only when more than one matches.
-File history follows renames. restore does not create a commit or rewrite
-history. Review the restored file, then use commit if it should be retained.
+selected version in the working directory. If FILE is a base name, restore
+searches repository files and asks which path to use only when more than one
+matches. File history follows renames. restore does not save the selection as a
+new change. Review the restored file, then use commit if it should be retained.
 
 README.md is common throughout the repository, so it must be specified with an
 explicit path, such as docs/README.md or ./README.md. Files that are symbolic

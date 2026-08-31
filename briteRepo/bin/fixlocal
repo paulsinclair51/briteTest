@@ -171,7 +171,7 @@ Exit codes:
   0   Success - no issues or all issues fixed.
   1   Invalid option or argument.
   2   User is not a contributor, reviewer, approver, or the repository owner.
-  3   Remote is unconnected (origin is not configured).
+  3   This clone has no remote repository URL.
   4   Remote is unreachable (connection failed before timeout).
   5   Remote connectivity check timed out.
   6   Issues detected - one or more were not fixable.

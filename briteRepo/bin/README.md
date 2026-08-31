@@ -80,7 +80,10 @@ the current branch.
 
 **lsbranch**: List a branch or branches and their status.
 
-**mkbranch**: Create branches with policy validation.
+**mkbranch**: Create branches with policy validation. A remote branch requires
+its parent both locally and remotely, and active pushup participants cannot
+gain a remote copy until pushup completes. Local-only creation does not require
+remote access.
 
 **override**: Repository owner only. Toggle local or remote-repair authorization
 for this clone (`override on` / `override off`, and `override -r on`). Use
@@ -96,9 +99,11 @@ protection.
 **push**: Push from current branch (which must be local) to its
 corresponding remote branch.
 
-**pushup**: Push the current branch up to its parent, update the parent on the
-remote, resynchronize the source branch, and update the source on the remote.
-Incomplete push-up workflows are recorded and resumed by rerunning `pushup`.
+**pushup**: Update the parent with the source branch's files and directories,
+then align both local branches so they contain the same files and directories.
+Existing remote copies finish with the same files and directories as their
+corresponding local branches. A source remote copy requires a parent remote
+copy. Incomplete workflows resume by rerunning `pushup`.
 
 **release**: Create and publish releases.
 

@@ -114,9 +114,8 @@ Options:
 
 Notes:
   - Change detection for a source '.md' in repository root docs/md/
-    uses the file name with line count, character count, and
-    SHA-256 fingerprint, and stores this metadata in
-    repository root docs/md/.md_metadata with one line per file.
+    compares a content fingerprint with saved generation information in
+    repository root docs/md/.md_metadata.
 
 Examples:
   gendocs

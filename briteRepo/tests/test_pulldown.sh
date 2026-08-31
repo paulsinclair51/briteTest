@@ -146,6 +146,43 @@ rc=$(run_capture "$TMPDIR/arg-reject.out" bash -lc "cd '$WORK' && bash ./briteRe
 assert_contains "Unknown argument: unexpected" "$TMPDIR/arg-reject.out"
 pass "positional argument rejected"
 
+# Internal pushup synchronization can merge a saved local-only parent without
+# contacting the configured remote.
+(
+  cd "$WORK"
+  git checkout dev/current-v1.0.0 >/dev/null 2>&1
+  git checkout -b local-parent >/dev/null 2>&1
+  git checkout -b local-child >/dev/null 2>&1
+  echo "local child" > local-child.txt
+  git add local-child.txt
+  git commit -m "local child work" >/dev/null 2>&1
+  git checkout local-parent >/dev/null 2>&1
+  echo "local parent" > local-parent.txt
+  git add local-parent.txt
+  git commit -m "local parent update" >/dev/null 2>&1
+  git checkout local-child >/dev/null 2>&1
+
+  state_file="$(git rev-parse --git-path briteRepo/pushup.state)"
+  mkdir -p "$(dirname "$state_file")"
+  git config --file "$state_file" pushup.version 2
+  git config --file "$state_file" pushup.source local-child
+  git config --file "$state_file" pushup.parent local-parent
+  git config --file "$state_file" pushup.phase source-selected
+  git config --file "$state_file" pushup.source-has-remote false
+  git config --file "$state_file" pushup.parent-has-remote false
+  git remote set-url origin "$TMPDIR/unreachable-origin.git"
+)
+rc=$(run_capture "$TMPDIR/local-parent-sync.out" bash -lc \
+  "cd '$WORK' && bash ./briteRepo/bin/pulldown --pushup -f")
+[[ "$rc" -eq 0 ]] || \
+  fail "local pushup synchronization should exit 0 (got $rc)"
+[[ -f "$WORK/local-parent.txt" && -f "$WORK/local-child.txt" ]] || \
+  fail "local pushup synchronization should combine source and parent files"
+git -C "$WORK" remote set-url origin "file://$ORIGIN"
+rm -f "$WORK/.git/briteRepo/pushup.state"
+git -C "$WORK" checkout dev/current-v1.0.0 >/dev/null 2>&1
+pass "local-only pushup source synchronization"
+
 # Nothing to merge down should not create a report.
 cat > "$WORK/reports/pulldown-d-20000101-000000+0000.md" <<'EOF'
 # Stale Merge-Down Report
@@ -207,10 +244,12 @@ rc=$(run_capture "$TMPDIR/protected-pushup.out" bash -lc "cd '$WORK' && git chec
   cd "$WORK"
   git checkout v1.0.0 >/dev/null 2>&1
   mkdir -p .git/briteRepo
-  git config --file .git/briteRepo/pushup.state pushup.version 1
+  git config --file .git/briteRepo/pushup.state pushup.version 2
   git config --file .git/briteRepo/pushup.state pushup.source v1.0.0
   git config --file .git/briteRepo/pushup.state pushup.parent main
   git config --file .git/briteRepo/pushup.state pushup.phase source-selected
+  git config --file .git/briteRepo/pushup.state pushup.source-has-remote true
+  git config --file .git/briteRepo/pushup.state pushup.parent-has-remote true
 )
 rc=$(run_capture "$TMPDIR/protected-pushup-sync.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/pulldown --pushup -f")
 [[ "$rc" -eq 0 ]] || fail "validated pushup source sync should succeed (got $rc)"
