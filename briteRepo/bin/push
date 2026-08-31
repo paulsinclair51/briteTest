@@ -264,7 +264,7 @@ push_is_pushup_source_sync() {
   state_source="$(git config --file "$state_file" --get pushup.source 2>/dev/null || true)"
   state_phase="$(git config --file "$state_file" --get pushup.phase 2>/dev/null || true)"
 
-  [[ "$state_version" == 1 && "$state_source" == "$1" ]] || return 1
+  [[ "$state_version" == 2 && "$state_source" == "$1" ]] || return 1
   [[ "$state_phase" == source-synchronized || \
     "$state_phase" == source-publishing || "$state_phase" == source-publish-failed ]]
 }
