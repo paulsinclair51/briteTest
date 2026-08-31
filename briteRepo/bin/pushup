@@ -966,10 +966,10 @@ if [[ "$(state_get phase)" == source-published ]]; then
   rm -f "$STATE_FILE"
   remove_tool_snapshot
   if [[ "$completed_publication_mode" == local ]]; then
-    echo "Pushed up '$source_branch' to local parent '$parent_branch'."
+    echo "Pushed up '$source_branch' to '$parent_branch' locally."
     echo "Run report -p for local parent details."
   else
-    echo "Pushed up '$source_branch' to '$parent_branch' locally and updated available remote copies."
+    echo "Pushed up '$source_branch' to '$parent_branch' locally and remotely."
     if [[ "$completed_parent_has_remote" == true ]]; then
       echo "Run report -p for local parent details; run report -p -r for remote parent details."
     else
