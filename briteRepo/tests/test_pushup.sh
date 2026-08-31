@@ -230,7 +230,8 @@ git -C "$WORK" diff --quiet feature main || \
   fail "local-only pushup should remove completed state"
 [[ ! -f "$WORK/.remote-timeouts" ]] || \
   fail "local-only pushup should not call remote push or synchronization"
-assert_contains "Pushed up 'feature' to 'main' locally." \
+local_only_parent_tip_short="$(git -C "$WORK" rev-parse --short=7 main)"
+assert_contains "Pushed up 'feature' to 'main' (${local_only_parent_tip_short}) locally." \
   "$TMPDIR/local-only.out"
 if grep -Fq "and remotely" "$TMPDIR/local-only.out"; then
   fail "local-only pushup should not claim a remote update"
@@ -406,7 +407,8 @@ status="$(run_capture "$TMPDIR/continue.out" bash -c \
   fail "parent should be published"
 [[ "$(git --git-dir="$ORIGIN" rev-parse feature)" == \
   "$(git -C "$WORK" rev-parse feature)" ]] || fail "source should be published"
-assert_contains "Pushed up 'feature' to 'main' locally and remotely." \
+published_parent_tip_short="$(git -C "$WORK" rev-parse --short=7 main)"
+assert_contains "Pushed up 'feature' to 'main' (${published_parent_tip_short}) locally and remotely." \
   "$TMPDIR/continue.out"
 assert_contains "Run report -p for local parent details; run report -p -r for remote parent details." \
   "$TMPDIR/continue.out"
