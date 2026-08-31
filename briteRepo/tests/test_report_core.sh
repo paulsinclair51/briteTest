@@ -20,6 +20,8 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin
 assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "-q TEXT" "$TMPDIR/help.out"
 assert_contains "If the current branch is a remote copy" "$TMPDIR/help.out"
+assert_contains "-p" "$TMPDIR/help.out"
+assert_contains "Combine with -r for the remote parent" "$TMPDIR/help.out"
 assert_contains "TYPE may appear before or after options" "$TMPDIR/help.out"
 assert_contains "Additional options only for a style report:" \
   "$TMPDIR/help.out"
@@ -33,6 +35,16 @@ rc=$(run_capture "$TMPDIR/invalid-limit.out" bash -lc "cd '$WORK' && bash ./brit
 [[ "$rc" -eq 1 ]] || fail "report -l nope should exit 1 (got $rc)"
 assert_contains "N for -l must be an integer >= 0" "$TMPDIR/invalid-limit.out"
 pass "invalid limit rejection"
+
+rc=$(run_capture "$TMPDIR/repo-parent.out" bash -lc \
+  "cd '$WORK' && bash ./briteRepo/bin/report repo -p")
+[[ "$rc" -eq 1 ]] || fail "report repo -p should exit 1 (got $rc)"
+assert_contains "Option -p requires TYPE branch" "$TMPDIR/repo-parent.out"
+rc=$(run_capture "$TMPDIR/style-parent.out" bash -lc \
+  "cd '$WORK' && bash ./briteRepo/bin/report style -p")
+[[ "$rc" -eq 1 ]] || fail "report style -p should exit 1 (got $rc)"
+assert_contains "Option -p requires TYPE branch" "$TMPDIR/style-parent.out"
+pass "parent option type validation"
 
 rc=$(run_capture "$TMPDIR/branch-timeout-without-remote.out" bash -lc \
   "cd '$WORK' && bash ./briteRepo/bin/report branch -t 2")
@@ -69,6 +81,26 @@ if grep -Fq '**Summary:**' "$WORK/$default_rel"; then
   fail "action summary line should be omitted"
 fi
 pass "default all report"
+
+# 3b) Parent reports do not change the current branch
+rc=$(run_capture "$TMPDIR/local-parent.out" bash -lc \
+  "cd '$WORK' && bash ./briteRepo/bin/report -p")
+[[ "$rc" -eq 0 ]] || fail "local parent report should exit 0 (got $rc)"
+local_parent_rel="$(report_path_from_output "$TMPDIR/local-parent.out")"
+assert_contains '**Branch:** `v1.0.0`' "$WORK/$local_parent_rel"
+assert_matches '^\*\*Status:\*\* .*\[local\]' "$WORK/$local_parent_rel"
+[[ "$(git -C "$WORK" branch --show-current)" == "dev/report-tests-v1.0.0" ]] || \
+  fail "local parent report should not change the current branch"
+
+rc=$(run_capture "$TMPDIR/remote-parent.out" bash -lc \
+  "cd '$WORK' && bash ./briteRepo/bin/report -p -r")
+[[ "$rc" -eq 0 ]] || fail "remote parent report should exit 0 (got $rc)"
+remote_parent_rel="$(report_path_from_output "$TMPDIR/remote-parent.out")"
+assert_contains '**Branch:** `v1.0.0`' "$WORK/$remote_parent_rel"
+assert_matches '^\*\*Status:\*\* .*\[remote\]' "$WORK/$remote_parent_rel"
+[[ "$(git -C "$WORK" branch --show-current)" == "dev/report-tests-v1.0.0" ]] || \
+  fail "remote parent report should not change the current branch"
+pass "local and remote parent reports"
 
 # 4) Verbose mode should report progress while details remain in the file
 rc=$(run_capture "$TMPDIR/verbose.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -v -l 10")
@@ -174,7 +206,7 @@ rc=$(run_capture "$TMPDIR/retarget.out" bash -lc "cd '$WORK' && bash ./briteRepo
 [[ "$rc" -eq 0 ]] || fail "retarget report should exit 0 (got $rc)"
 retarget_rel="$(report_path_from_output "$TMPDIR/retarget.out")"
 assert_contains "retarget activity" "$WORK/$retarget_rel"
-assert_contains '**Command:** `retarget -c move\ branch dev/report-tests-v1.0.0 v1.1.0`' \
+assert_contains '**Command:** `retarget -c move\ branch v1.1.0`' \
   "$WORK/$retarget_rel"
 assert_contains "Old-Parent: v1.0.0" "$WORK/$retarget_rel"
 assert_contains "New-Parent: v1.1.0" "$WORK/$retarget_rel"

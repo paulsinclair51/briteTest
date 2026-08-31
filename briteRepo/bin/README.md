@@ -103,10 +103,11 @@ Incomplete push-up workflows are recorded and resumed by rerunning `pushup`.
 **release**: Create and publish releases.
 
 **report**: Generate repository health, branch activity, and style reports.
+For branch activity, use `-p` to report the current branch's parent and combine
+`-p -r` to report the remote parent without changing branches.
 
-**retarget**: Retarget a targeted branch locally; use `-r` to update its remote
-branch.
-targeted branch is renamed to have its version as the specified version.
+**retarget**: Retarget the current local targeted branch to a different version
+branch; use `-r` to update its remote copy.
 
 **restore**: Select a committed version of one file and place it in the
 worktree for review and optional commit.
