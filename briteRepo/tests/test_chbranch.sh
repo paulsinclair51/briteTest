@@ -134,7 +134,7 @@ rc=$(run_in_work_capture "$TMPDIR/help.out" -h)
 assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "Status tags:" "$TMPDIR/help.out"
 assert_contains "[local only]" "$TMPDIR/help.out"
-assert_contains "[remote snapshot]" "$TMPDIR/help.out"
+assert_contains "[remote copy]" "$TMPDIR/help.out"
 assert_contains "[invalid name]" "$TMPDIR/help.out"
 assert_contains "[status unavailable]" "$TMPDIR/help.out"
 assert_contains "[remote differs by N]" "$TMPDIR/help.out"
@@ -360,7 +360,7 @@ rc=$(run_in_work_capture "$TMPDIR/remote-success.out" -r dev/target)
 [[ "$rc" -eq 0 ]] || fail "remote switch should exit 0 (got $rc)"
 assert_contains "dev/target" \
   "$TMPDIR/remote-success.out"
-assert_contains "[current] [remote snapshot] [read-only]" \
+assert_contains "[current] [remote copy] [read-only]" \
   "$TMPDIR/remote-success.out"
 [[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == "r-dev/target" ]] || \
   fail "expected named local remote copy in remote mode"
@@ -368,7 +368,7 @@ pass "remote branch switch"
 
 rc=$(run_in_work_capture "$TMPDIR/remote-refreshed.out" -r dev/target)
 [[ "$rc" -eq 0 ]] || fail "remote snapshot refresh should exit 0 (got $rc)"
-assert_contains "dev/target [current] [remote snapshot] [refreshed] [read-only]" \
+assert_contains "dev/target [current] [remote copy] [refreshed] [read-only]" \
   "$TMPDIR/remote-refreshed.out"
 assert_contains "[refreshed]" "$TMPDIR/remote-refreshed.out"
 pass "current remote snapshot refresh status"
@@ -490,7 +490,7 @@ rc=$(run_in_work_capture "$TMPDIR/default-remote-only.out" dev/remote-only)
 [[ "$rc" -eq 0 ]] || fail "default remote-only switch should exit 0 (got $rc)"
 assert_contains "dev/remote-only" \
   "$TMPDIR/default-remote-only.out"
-assert_contains "[current] [remote snapshot] [read-only]" \
+assert_contains "[current] [remote copy] [read-only]" \
   "$TMPDIR/default-remote-only.out"
 [[ "$(git -C "$WORK" symbolic-ref -q --short HEAD)" == \
   "r-dev/remote-only" ]] || fail "expected named local copy for remote branch"

@@ -134,7 +134,7 @@ rc=$(run_capture "$TMPDIR/preflight.out" env GITHUB_ACTOR="paulsinclair51" bash 
 [[ "$rc" -eq 0 ]] || fail "fixremote preflight should exit 0 (got $rc)"
 report="$(latest_recovery_report "$RUNNER")"
 [[ -f "$report" ]] || fail "expected recovery report for preflight run"
-assert_contains "Preflight-only mode" "$report"
+assert_contains "Checks only" "$report"
 pass "preflight mode"
 
 # 4) Unauthorized user should be blocked
@@ -161,7 +161,7 @@ rc=$(run_capture "$TMPDIR/execute.out" env GITHUB_ACTOR="paulsinclair51" bash "$
 [[ "$rc" -eq 0 ]] || fail "fixremote -x should succeed on healthy setup (got $rc)"
 execute_report="$(latest_recovery_report "$RUNNER")"
 [[ -f "$execute_report" ]] || fail "expected recovery report for execute run"
-assert_contains "Post-Recovery Main Branch Parity" "$execute_report"
+assert_contains "Main Branch Match" "$execute_report"
 assert_contains "[FIXED]" "$execute_report"
 
 # Confirm origin received the new source commit.

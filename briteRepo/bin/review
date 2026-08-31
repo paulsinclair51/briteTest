@@ -25,7 +25,7 @@ started by requesting reviews from the reviewers and approvers
 (listed in <repo>/config/contributors.md).
 
 Contributors should use the commit and push commands to create local
-commits and publish branch updates. To respond to review feedback,
+commits and update remote branches. To respond to review feedback,
 use the feedback command.
 
 The target branch is determined automatically based on the current

@@ -20,7 +20,7 @@ Prerequisites:
   - The current branch must not have any uncommitted changes except when
     selecting the current local non-protected branch. Use commit or undo
     first.
-  - If changing to a remote snapshot branch, the remote must be reachable
+  - If changing to a remote copy, the remote must be reachable
     and the branch must exist on the remote.
   - If changing to a local branch, it must exist locally.
 
@@ -33,27 +33,27 @@ Options:
   -h, --help  Output this help to stdout and exit (other options and
               arguments are ignored).
   -l          Change to local BRANCH.
-  -r          Change to a fresh snapshot of remote BRANCH. The remote must be
+  -r          Change to a fresh read-only copy of remote BRANCH. The remote must be
               reachable. This option is mutually exclusive with -l.
   -t SEC      Timeout in seconds for accessing remote branch (default
               10 seconds). SEC must be an integer greater than 0.
   -v          Output verbose progress and diagnostics to stdout.
 
 If neither -l nor -r is specified, changes to local BRANCH when it exists;
-otherwise, changes to a snapshot of the remote branch if it exists and is
+otherwise, changes to a read-only copy of the remote branch if it exists and is
 connected and reachable within the specified or default timeout.
 
 Notes:
   - The local branch is preferred by default, including for protected branches
     main and v<M>.<m>.0.
-  - A remote snapshot is refreshed each time it is selected.
-  - For a remote snapshot, the terminal prompt shows r-<branch>.
+  - A remote copy is refreshed each time it is selected.
+  - For a remote copy, the terminal prompt shows r-<branch>.
   - A local protected branch is refreshed each time it is selected when
     it can be safely updated to match its remote. If it is ahead of or has
     diverged from its remote, the remote is missing or unreachable, the remote
     request times out, or the update fails, it is left unchanged and a warning
     explaining why is output to stdout.
-  - Protected branches, remote snapshots, and branches with invalid names are
+  - Protected branches, remote copies, and branches with invalid names are
     effectively read-only. chbranch prints a warning when one is selected.
   - Undo accidental changes to a read-only branch before changing to another
     branch.
@@ -73,7 +73,8 @@ Status tags:
   [local]                       Selected the local branch; a remote also exists
                                 or current remote status is unavailable.
   [local only]                  Selected a local branch with no remote branch.
-  [remote snapshot]             Selected the remote snapshot; a local also exists.
+  [remote copy]                 Selected a read-only copy of the remote branch;
+                                a local branch also exists.
   [current]                     This is the currently selected branch.
   [uncommitted]                 There are changes that have not been committed.
   [read-only]                   The selected branch must not be modified.
@@ -245,7 +246,7 @@ emit_success_changed() {
   local -a tags=()
 
   if [[ "$mode" == "remote" ]]; then
-    mode_tag="remote snapshot"
+    mode_tag="remote copy"
     comparison_branch="${REMOTE_SOURCE_BRANCH:-$branch}"
     display_branch="$comparison_branch"
     remote_ref="refs/remotes/origin/$comparison_branch"

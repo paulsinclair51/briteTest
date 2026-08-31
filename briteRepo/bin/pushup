@@ -12,35 +12,40 @@ Usage:
   pushup [OPTIONS] [-- TOKEN...]
   pushup {-h | --help}
 
-Push the current local branch up to its parent, publish the parent, merge the
-published parent back into the source branch, and publish the source branch.
+Push the current local branch up to its parent, update the parent on the remote,
+merge the updated parent back into the source branch, and update the source on
+the remote.
 
-Before the parent is published, a failure restores the original local branch
-and branch tips. After publication, progress is retained and an error report
-explains what completed, what remains, and how to continue.
+Before the parent is updated on the remote, a failure restores the original
+local branches. After the remote update, progress is retained and an error
+report explains what completed, what remains, and how to continue.
 
 Parent preparation enforces PR policy: a PR may be required, optional but
 present, or optional and absent. When a PR exists, its state and approval are
 validated.
 
 Crash and interruption recovery:
-  - Rerun pushup after an interruption before parent publication. It verifies
-    the remote parent, restores the saved local refs, and restarts validation.
-  - Rerun pushup when the parent may have been published. It compares exact
-    local and remote tips, resumes the first incomplete step, and safely handles
-    an operation that completed just before the process stopped.
+  - Rerun pushup after an interruption before the parent remote update. It
+    verifies the remote parent, restores the saved local branch versions, and
+    restarts validation.
+  - Rerun pushup when the parent may have been updated on the remote. It compares
+    exact
+    local and remote branch versions, resumes the first incomplete step, and
+    safely handles an operation that completed just before the process stopped.
   - If remote state cannot be verified, pushup retains its state and does not
-    roll back local refs. Restore connectivity and rerun the indicated command.
+    restore local branches. Restore connectivity and rerun pushup.
   - Do not edit branches or remove <git-dir>/briteRepo/pushup.state while a
     push-up workflow is incomplete.
-  - After parent publication starts, later remote access uses three times the
-    configured timeout to allow additional time for recovery and verification.
+  - After the parent remote update starts, later remote access uses three times
+    the configured timeout to allow additional time for recovery and
+    verification.
 
 Options:
   -c TOKEN      Commit comment for the parent push-up commit.
   -- TOKEN...   Commit comment built from one or more tokens.
   -d            Dry-run. Validate and preview the parent preparation without
-                creating commits, publishing branches, or saving pushup state.
+                creating commits, updating remote branches, or saving pushup
+                state.
   -e            Emit an error report for the merge-up workflow. This option is
                 intended for testing and debugging purposes and is not typically
                 used in normal operation. Mutually exclusive with -d.
@@ -54,9 +59,10 @@ Exit codes:
   0    Push-up workflow completed.
   1    Invalid option or argument.
   2    Another pushup process is active.
-  4    Push-up workflow failed before publication; local state was restored.
-  5    Push-up workflow partially completed; rerun pushup after following
-       the guidance in the reported pushup error report.
+    4    Push-up workflow failed before the remote update; local state was
+      restored.
+  5    Push-up in progress; follow the required action in the
+       pushup error report, then run pushup.
   36   Push-up skipped because -e was specified.
   200  Internal state or recovery error.
 EOF
@@ -319,8 +325,8 @@ reconcile_state() {
       "$timeout_seconds")"; then
       set_phase publication-uncertain
       write_partial_report \
-        "The parent publication state cannot be verified while origin is unavailable." \
-        "Restore remote access; no local refs will be rolled back until publication is known."
+        "The parent remote update cannot be verified while the remote is unavailable." \
+        "Restore remote access; local branches will not be restored until the remote update status is known."
       exit "$EXIT_PARTIAL"
     fi
     if [[ -n "$prepared_tip" && "$parent_remote" == "$prepared_tip" ]]; then
@@ -335,8 +341,8 @@ reconcile_state() {
         if ! fast_forward_local_parent "$parent_branch"; then
           set_phase publication-uncertain
           write_partial_report \
-            "The remote parent contains the prepared commit, but the local parent could not be fast-forwarded to it." \
-            "Restore a clean worktree and ensure the parent is not checked out in another worktree, then rerun pushup."
+            "The remote parent has the prepared update, but the local parent could not be updated to match it." \
+            "Commit or undo local changes, ensure the parent branch is not open in another working copy, then rerun pushup."
           exit "$EXIT_PARTIAL"
         fi
         set_phase parent-published
@@ -344,20 +350,20 @@ reconcile_state() {
       elif [[ "$contains_status" -eq 2 ]]; then
         set_phase publication-uncertain
         write_partial_report \
-          "The remote parent tip was read, but its history could not be fetched for recovery verification." \
-          "Restore remote access; pushup will not roll back until commit ancestry is known."
+          "The remote parent version was found, but its history could not be downloaded for recovery checks." \
+          "Restore remote access; pushup will preserve local branches until it can verify the update."
         exit "$EXIT_PARTIAL"
       elif [[ "$phase" == parent-publishing || \
         "$phase" == publication-uncertain ]]; then
         fail_before_publication \
-          "the prepared parent commit was not published"
+          "the parent was not updated on the remote"
       fi
     elif [[ "$phase" == parent-publishing || \
       "$phase" == publication-uncertain ]]; then
       # The attempted update did not publish our exact commit. A normal push
       # cannot overwrite a competing remote tip, so local rollback is safe.
       fail_before_publication \
-        "the prepared parent commit was not published"
+        "the parent was not updated on the remote"
     fi
   fi
 
@@ -369,7 +375,7 @@ reconcile_state() {
     if ! parent_remote="$(remote_tip_checked "$parent_branch" \
       "$(extended_remote_timeout)")"; then
       write_partial_report \
-        "The published parent cannot be read while origin is unavailable." \
+        "The parent branch cannot be read from the remote." \
         "Restore remote access before continuing source synchronization."
       exit "$EXIT_PARTIAL"
     fi
@@ -426,9 +432,12 @@ return_to_source_if_safe() {
 write_partial_report() {
   local reason="$1"
   local action="$2"
-  local source_branch parent_branch phase report_file timestamp
+  local source_branch parent_branch source_version parent_version
+  local phase report_file timestamp
   source_branch="$(state_get source)"
   parent_branch="$(state_get parent)"
+  source_version="$(state_get source-tip)"
+  parent_version="$(state_get parent-tip)"
   phase="$(state_get phase)"
   timestamp="$(bt_datetime_filename_now)"
 
@@ -443,15 +452,22 @@ write_partial_report() {
 **Parent branch:** \`$parent_branch\`  
 **Saved phase:** \`$phase\`
 
+## Saved Branch Versions
+
+| Branch | Saved Version |
+|---|---|
+| Source: \`$source_branch\` | \`$source_version\` |
+| Parent: \`$parent_branch\` | \`$parent_version\` |
+
 ## Progress
 
 | Step | Status |
 |---|---|
 | Prepare parent locally | $(phase_status parent-prepared) |
-| Publish parent | $(phase_status parent-published) |
+| Update parent on remote | $(phase_status parent-published) |
 | Select source | $(phase_status source-selected) |
 | Synchronize source from parent | $(phase_status source-synchronized) |
-| Publish source | $(phase_status source-published) |
+| Update source on remote | $(phase_status source-published) |
 
 ## Failure
 
@@ -464,8 +480,10 @@ $action
 After completing that action, rerun \`pushup\`.
 EOF
   chmod a-w "$report_file" 2>/dev/null || true
-  printf '%s\n' "Push-up workflow partially completed: $reason" >&2
-  printf '%s\n' "See ${report_file#"$REPO_ROOT"/} for completed and remaining steps." >&2
+  printf '%s\n' "Push-up in progress: $reason" >&2
+  printf '%s\n' \
+    "See ${report_file#"$REPO_ROOT"/} for current state and required action." \
+    >&2
   printf '%s\n' "$action" >&2
   printf '%s\n' "Then run: pushup" >&2
 }
@@ -528,7 +546,7 @@ fail_before_publication() {
   fi
   write_partial_report \
     "Local restoration could not be completed after: $reason" \
-    "Run fixlocal, restore the recorded branch tips, and rerun pushup."
+    "Run fixlocal. Preserve the participating branches and saved pushup state, then give the pushup error report to an approver for recovery."
   exit "$EXIT_PARTIAL"
 }
 
@@ -613,7 +631,7 @@ publish_parent() {
     if [[ "$push_status" -eq 202 ]]; then
       set_phase parent-finalization-failed
       write_partial_report \
-        "The parent was published, but its pull request was not finalized." \
+        "The parent was updated on the remote, but its pull request was not finalized." \
         "Restore GitHub access or PR permissions; continuation will retry finalization."
       exit "$EXIT_PARTIAL"
     fi
@@ -621,13 +639,14 @@ publish_parent() {
     return 0
   fi
   if [[ -n "$published_tip" ]]; then
-    fail_before_publication "the parent changed before it could be published"
+    fail_before_publication \
+      "the parent changed before it could be updated on the remote"
   fi
 
   set_phase publication-uncertain
   write_partial_report \
-    "The parent push result could not be verified because the remote is unavailable." \
-    "Restore remote access; pushup will verify whether the parent was published."
+    "The parent remote update could not be verified because the remote is unavailable." \
+    "Restore remote access; pushup will verify whether the parent was updated."
   exit "$EXIT_PARTIAL"
 }
 
@@ -637,7 +656,7 @@ retry_parent_finalization() {
   if [[ "$(bt_get_current_branch || true)" != "$parent_branch" ]] && \
     ! run_delegated "$TOOL_DIR/bin/chbranch" -l "$parent_branch"; then
     write_partial_report \
-      "The published parent could not be selected to retry PR finalization." \
+      "The parent branch could not be selected to retry PR finalization." \
       "Resolve the local checkout problem without changing branch history."
     exit "$EXIT_PARTIAL"
   fi
@@ -646,7 +665,7 @@ retry_parent_finalization() {
     return 0
   fi
   write_partial_report \
-    "The parent is published, but its pull request still could not be finalized." \
+    "The parent is updated on the remote, but its pull request still could not be finalized." \
     "Restore GitHub access or PR permissions, then retry continuation."
   exit "$EXIT_PARTIAL"
 }
@@ -655,7 +674,7 @@ select_source() {
   local source_branch
   source_branch="$(state_get source)"
   if ! run_delegated "$TOOL_DIR/bin/chbranch" -l "$source_branch"; then
-    write_partial_report "The published parent could not be followed by selecting the source branch." \
+    write_partial_report "The source branch could not be selected after updating the parent on the remote." \
       "Resolve the local checkout problem without changing branch history."
     exit "$EXIT_PARTIAL"
   fi
@@ -681,11 +700,11 @@ synchronize_source() {
   fi
   if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
     set_phase source-conflicted
-    write_partial_report "The parent was published, but source synchronization has unresolved conflicts." \
+    write_partial_report "The parent was updated on the remote, but source synchronization has unresolved conflicts." \
       "Resolve the listed conflicts and stage every resolved file."
   else
     set_phase source-sync-failed
-    write_partial_report "The parent was published, but the source could not be synchronized." \
+    write_partial_report "The parent was updated on the remote, but the source could not be synchronized." \
       "Address the pulldown prerequisite or remote error shown above."
   fi
   exit "$EXIT_PARTIAL"
@@ -717,7 +736,7 @@ publish_source() {
   source_branch="$(state_get source)"
   if [[ "$(bt_get_current_branch || true)" != "$source_branch" ]] && \
     ! run_delegated "$TOOL_DIR/bin/chbranch" -l "$source_branch"; then
-    write_partial_report "The source branch could not be selected for publication." \
+    write_partial_report "The source branch could not be selected for its remote update." \
       "Resolve the local checkout problem without changing branch history."
     exit "$EXIT_PARTIAL"
   fi
@@ -747,7 +766,7 @@ publish_source() {
   fi
 
   set_phase source-publish-failed
-  write_partial_report "The parent and local source were updated, but the source was not published." \
+  write_partial_report "The parent and local source were updated, but the source was not updated on the remote." \
     "Resolve the pull/push error shown above; safe remote divergence is reconciled automatically when pushup is rerun."
   exit "$EXIT_PARTIAL"
 }
@@ -792,7 +811,8 @@ trap 'on_interrupt TERM' TERM
 
 if [[ "$DRY_RUN" == true || "$ERROR_RUN" == true ]]; then
   if [[ -f "$STATE_FILE" ]]; then
-    echo "Error: pushup state already exists; rerun pushup without -d/-e or use fixlocal." >&2
+    echo "Error: Push-up is in progress; -d and -e are unavailable." >&2
+    echo "Guidance: Run pushup to continue, or run fixlocal if the saved state is invalid." >&2
     exit "$EXIT_ACTIVE"
   fi
   if [[ "$DRY_RUN" == true ]]; then
@@ -816,11 +836,11 @@ if [[ -f "$STATE_FILE" ]]; then
     # local refs and restart validation.
     rollback_local_prepublication || {
       write_partial_report \
-        "Prepublication state was found, but local rollback failed." \
-        "Run fixlocal and restore the source and parent refs recorded in the state file."
+        "Saved state from before the remote update was found, but local restoration failed." \
+        "Run fixlocal. Do not edit the participating branches or remove the saved pushup state. Give this report to an approver for manual recovery using the saved branch versions."
       exit "$EXIT_PARTIAL"
     }
-    echo "Recovered an interrupted prepublication push-up; restarting validation."
+    echo "Recovered an interrupted push-up before its remote update; restarting validation."
   fi
 fi
 
@@ -864,7 +884,7 @@ if [[ "$(state_get phase)" == source-published ]]; then
   parent_branch="$(state_get parent)"
   rm -f "$STATE_FILE"
   remove_tool_snapshot
-  echo "Push-up complete: $source_branch pushed up to $parent_branch and resynchronized."
+  echo "Pushed up '$source_branch' to '$parent_branch' locally and remotely."
   exit 0
 fi
 

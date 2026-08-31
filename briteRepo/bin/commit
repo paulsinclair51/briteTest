@@ -31,7 +31,7 @@ Prerequisites:
     conflicts and rerun pull to continue it.
 
 Note: To make changes to main, a version branch (v<M>.<m>.0), or a
-remote snapshot, first make the changes in a local targeted or contributor branch, run
+remote copy, first make the changes in a local targeted or contributor branch, run
 commit, and then run push. Run review on a targeted branch to start a pull
 request. An approver can then use pushup to apply changes to its parent branch.
 

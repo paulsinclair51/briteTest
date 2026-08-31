@@ -19,16 +19,16 @@ Generate a report as specified by the TYPE argument:
     branches (local and remote) and activity.
 
   - branch generates a report of activity for the current
-    branch (local or remote snapshot). An activity is a commit,
+    branch (local or remote copy). An activity is a commit,
     pull, push, pushup, pulldown, copyfix, or retarget.
 
   - style generates a report of style violations for the current branch.
 
 Prerequisites for a repo report:
-  - Current branch must be a local or remote snapshot branch.
+  - Current branch must be a local branch or remote copy.
 
 Prerequisites for a branch report:
-  - Current branch must be a local or remote snapshot branch.
+  - Current branch must be a local branch or remote copy.
 
 Prerequisites for a style report:
   - Current branch must be a local branch.
@@ -63,8 +63,8 @@ Additional options only for a branch report:
   -q TEXT     Include activity whose summary or details contain TEXT.
               Matching is case-insensitive.
   -r          Report for the remote, if there is one, of the current branch.
-              If the current branch is a remote snapshot, the report is for the
-              current state of the remote and not the snapshot.
+              If the current branch is a remote copy, the report is for the
+              current state of the remote and not the local copy.
   -t SEC      Remote timeout in seconds (default: 10 seconds).
               SEC must be an integer greater than 0. Only allowed if
               the -r option is specified
@@ -117,8 +117,8 @@ Exit codes:
        as the current branch.
   3    Style report found validation issues.
   4    Style report is not authorized for the current user.
-  5    Repo and branch reports require a local or remote snapshot
-       branch as the current branch.
+    5    Repo and branch reports require a local branch or remote copy as the
+      current branch.
   6    No matching activity was found for branch report.
   200  Failed to read recorded activity.
   201  Failed to create or write the report.
@@ -163,7 +163,7 @@ usage_error() {
 ensure_git_repository() {
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     bt_error_exit "$EXIT_CURRENT_BRANCH_REQUIRED" \
-      "Repo and branch reports require a local or remote snapshot branch as the current branch."
+      "Repo and branch reports require a local branch or remote copy as the current branch."
   fi
 }
 
@@ -1493,7 +1493,7 @@ REPORT_USER_LOGIN="$(bt_resolve_login_or_empty)"
 REPORT_USER="$(format_user_with_role "$REPORT_USER_LOGIN" "$REPORT_USER_LOGIN" "")"
 if [[ -z "$CURRENT_REF" ]]; then
   if ! SNAPSHOT_HISTORY_REF="$(resolve_remote_snapshot_ref)"; then
-    usage_error "Could not resolve current remote snapshot branch"
+    usage_error "Could not identify the branch for the current remote copy"
   fi
   SNAPSHOT_TARGET_REF="${SNAPSHOT_HISTORY_REF#origin/}"
 fi

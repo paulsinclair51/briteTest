@@ -76,21 +76,21 @@ For the internal implementation reference, see the [Contributor_Internal_Referen
 
 ## 1. Internal Role and Policy Model
 
-This repository uses script-enforced workflow boundaries together with GitHub-side
-rulesets and branch protection. The public contributor guide describes the user
-level of the model; this document captures the internal enforcement model.
+This repository uses project-command safeguards together with GitHub rulesets
+and branch protection. The public contributor guide describes the user-facing
+workflow; this document explains how its safeguards are enforced.
 
-- Direct git operations that modify the repository are intentionally discouraged
-  and blocked by local hooks unless the workflow requires a local exceptional
-  override.
-- Protected branches and version branches are server-authoritative; GitHub rulesets
-  enforce deletion and non-fast-forward protections.
+- Direct Git operations that change the repository are intentionally discouraged
+  and blocked by local hooks unless an exceptional repair workflow requires
+  them.
+- GitHub controls protected and version branches and prevents deletion and unsafe
+  history changes.
 - The repository owner is not automatically exempt from these protections.
-- Script-level checks are enforced locally and remain authoritative for workflow
-  semantics that GitHub cannot express from a ref update alone.
+- Project commands enforce additional workflow rules that GitHub cannot determine
+  from a branch update alone.
 
-These rules are intended to preserve auditability and to keep repository mutations
-bound to known project workflows rather than direct branch editing.
+These rules preserve an auditable history and keep repository changes within
+known project workflows rather than direct branch editing.
 </details>
 
 <details>
@@ -101,16 +101,16 @@ bound to known project workflows rather than direct branch editing.
 Use the repair scripts in the following order unless a different issue is already
 known:
 
-1. `fixlocal` for the current local clone, branch tracking, worktree state, or
-   local repository integrity issues. This is the default starting point for
-   repairing the current local repository.
+1. `fixlocal` for damaged Git data, uncommitted changes, missing repository
+  files, remote access, or branch synchronization problems in the current
+  clone. This is the default starting point.
 2. `fixrepo` for broader repository-level validation when the issue may affect
    more than the current working copy or when a second clone needs review.
-3. `fixremote` when the issue is in the remote origin repository or a remote
-   ref/object must be recovered from a known-good local clone.
-4. GitHub admin-side remote repair workflow only when protected remote refs or
-   rulesets must be changed. Use `override -r` only as the temporary owner
-   authorization marker; it does not perform the repair itself.
+3. `fixremote` when remote branches, tags, or required Git data must be restored
+  from a healthy local clone.
+4. Use GitHub administrator controls only when a protected remote branch or
+  ruleset must be changed. Use `override -r` only to record the temporary owner
+  authorization; it does not perform the repair itself.
 
 This order keeps the repair scope narrow first and only expands to broader or
 remote recovery steps when the local repository is clean and the issue remains.
@@ -131,7 +131,7 @@ Protected branches are enforced at the server level for:
 The ruleset model is intentionally conservative:
 
 - no bypass actor is configured for protected branch enforcement
-- direct branch mutation on GitHub.com is not treated as a valid routine path
+- direct branch editing on GitHub.com is not a valid routine path
 - remote repair requires admin-side exception or explicit rule adjustment
 
 This means that a contributor or owner cannot rely on local config to bypass
@@ -151,20 +151,20 @@ further layout changes follow the normal branch and pull request workflow.
 
 ## 4. Remote Repair Procedure
 
-When a protected branch or remote ref must be repaired, the repository owner must
-use GitHub-side admin controls and a documented repair sequence, not a local clone
-override.
+When a protected remote branch must be repaired, the repository owner must use
+GitHub administrator controls and a documented repair sequence. A local override
+alone cannot bypass GitHub protection.
 
 1. Verify the acting user is a GitHub repository admin or organization admin.
 2. Run `override -r on` to mark the start of a temporary remote repair session.
-3. In GitHub, temporarily disable or update the relevant ruleset or
-   branch-protection rule for the damaged ref.
+3. In GitHub, temporarily disable or update the ruleset or branch-protection
+  rule for the damaged branch.
 4. Repair the remote state from a clean clone using the approved recovery
    workflow, such as `fixremote -x <clean-clone-path>`.
 5. Re-enable the same ruleset or protection immediately after verification.
 6. Run `override off` to close the repair session and restore the normal local
    and remote authorization state.
-7. Confirm the protected ref is back to a clean, valid state before resuming
+7. Confirm the protected branch is back to a clean, valid state before resuming
    normal workflow.
 
 This process must be explicit, logged, and temporary. Routine direct edits to
@@ -212,9 +212,9 @@ Prerequisites for `override`:
   not meant to be treated as normal operations by all contributors.
 - Server-side protections remain the final authority over branch deletion and
   history rewriting.
-- Script-only invocation is a local guardrail; stronger identity enforcement would
-  require a dedicated GitHub App or bot if direct ref updates must be attributed
-  to a system identity rather than a user identity.
+- Project-command safeguards run locally. A dedicated GitHub App or bot would be
+  required to attribute direct branch updates to a system identity rather than
+  a user identity.
 
 Keep this document aligned with the repository policy whenever workflows, rulesets,
 or protected branch policy change.

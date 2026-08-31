@@ -26,7 +26,7 @@ rc=$(run_capture "$TMPDIR/unreachable.out" bash "$UNREACHABLE_REMOTE_REPO/briteR
 [[ "$rc" -eq 4 ]] || fail "fixlocal -d -t 1 with unreachable origin should exit 4 (got $rc)"
 unreachable_report="$(latest_report "$UNREACHABLE_REMOTE_REPO")"
 [[ -f "$unreachable_report" ]] || fail "expected report file for unreachable-origin run"
-assert_contains "Remote is configured but not reachable" "$unreachable_report"
+assert_contains "The remote repository could not be reached" "$unreachable_report"
 pass "remote reachability failure"
 
 # 2) Remote tracking refresh failure should classify as remote unreachable (exit 4)
@@ -69,7 +69,7 @@ rc=$(run_capture "$TMPDIR/tracking-refresh-fail.out" env PATH="$TRACKING_FAKEBIN
 [[ "$rc" -eq 4 ]] || fail "fixlocal should exit 4 when remote tracking refresh fails (got $rc)"
 tracking_fail_report="$(latest_report "$TRACKING_FAIL_REPO")"
 [[ -f "$tracking_fail_report" ]] || fail "expected report file for tracking-refresh-failure run"
-assert_contains "Unable to refresh remote-tracking references" "$tracking_fail_report"
+assert_contains "Local information about remote branches could not be updated" "$tracking_fail_report"
 pass "remote tracking refresh failure classification"
 
 # 3) Timed-out origin probe should classify as timeout (exit 5)

@@ -175,11 +175,12 @@ remote_tip_before="$(git -C "$ORIGIN" rev-parse refs/heads/dev/parser-v1.0.0)"
 rc=$(run_capture "$TMPDIR/success.out" env GITHUB_ACTOR=testapprover \
   bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -c 'move parser' dev/parser-v1.0.0 v1.1.0")
 [[ "$rc" -eq 0 ]] || fail "retarget should exit 0 (got $rc)"
-assert_contains "Local retarget complete" "$TMPDIR/success.out"
-assert_contains \
-  "Run chbranch dev/parser-v1.0.0, then run report for local details." \
+assert_contains "Retargeted 'dev/parser-v1.0.0' to 'v1.1.0'" \
   "$TMPDIR/success.out"
-assert_contains "Run retarget -r dev/parser-v1.0.0 v1.1.0 when ready to update origin." \
+assert_contains \
+  "Run chbranch dev/parser-v1.0.0. For local details, run report." \
+  "$TMPDIR/success.out"
+assert_contains "Run retarget -r dev/parser-v1.0.0 v1.1.0 when ready to update remote." \
   "$TMPDIR/success.out"
 remote_tip_after="$(git -C "$ORIGIN" rev-parse refs/heads/dev/parser-v1.0.0)"
 [[ "$remote_tip_after" == "$remote_tip_before" ]] || \
@@ -222,6 +223,11 @@ local_event_count_before="$(printf '%s\n' "$retarget_note" | \
 rc=$(run_capture "$TMPDIR/remote-rejected.out" env GITHUB_ACTOR=testapprover \
   bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -r dev/parser-v1.0.0 v1.1.0")
 [[ "$rc" -eq 4 ]] || fail "rejected retarget -r should exit 4 (got $rc)"
+assert_contains "Retargeted 'dev/parser-v1.0.0' to 'v1.1.0' locally, but the remote update is pending" \
+  "$TMPDIR/remote-rejected.out"
+assert_contains \
+  "then run retarget -r dev/parser-v1.0.0 v1.1.0" \
+  "$TMPDIR/remote-rejected.out"
 [[ "$(git -C "$ORIGIN" rev-parse refs/heads/dev/parser-v1.0.0)" == \
   "$remote_tip_before" ]] || \
   fail "rejected retarget should not update the remote branch"
@@ -240,7 +246,8 @@ rm -f "$ORIGIN/hooks/pre-receive"
 rc=$(run_capture "$TMPDIR/remote-success.out" env GITHUB_ACTOR=testapprover \
   bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -r dev/parser-v1.0.0 v1.1.0")
 [[ "$rc" -eq 0 ]] || fail "retarget -r should exit 0 (got $rc)"
-assert_contains "Retarget complete locally and on origin" "$TMPDIR/remote-success.out"
+assert_contains "Retargeted 'dev/parser-v1.0.0' to 'v1.1.0'" \
+  "$TMPDIR/remote-success.out"
 remote_tip_after="$(git -C "$ORIGIN" rev-parse refs/heads/dev/parser-v1.0.0)"
 local_tip="$(git -C "$WORK" rev-parse dev/parser-v1.0.0)"
 [[ "$remote_tip_after" == "$local_tip" ]] || \
@@ -253,5 +260,34 @@ remote_retarget_note="$(git --git-dir="$ORIGIN" notes \
   grep -Fc -- 'Workflow-Type: retarget')" -eq 1 ]] || \
   fail "retarget retry should publish one remote history event"
 pass "atomic remote retarget publication and retry"
+
+# 8) Missing undo storage does not invalidate the retarget, but rerunning cannot
+# recover the original branch tip needed for undo metadata.
+(
+  cd "$WORK"
+  git checkout -b dev/metadata-v1.0.0 origin/v1.0.0 >/dev/null 2>&1
+  echo "metadata failure fixture" > metadata.txt
+  git add metadata.txt
+  git commit -m "metadata failure fixture" >/dev/null 2>&1
+)
+undo_history_dir="$(git -C "$WORK" rev-parse \
+  --path-format=absolute --git-common-dir)/briteRepo-undo-history"
+mv "$undo_history_dir" "${undo_history_dir}.saved"
+: > "$undo_history_dir"
+rc=$(run_capture "$TMPDIR/undo-metadata-fail.out" \
+  env GITHUB_ACTOR=testapprover bash -lc \
+  "cd '$WORK' && bash ./briteRepo/bin/retarget dev/metadata-v1.0.0 v1.1.0")
+rm -f "$undo_history_dir"
+mv "${undo_history_dir}.saved" "$undo_history_dir"
+[[ "$rc" -eq 0 ]] || \
+  fail "retarget with unavailable undo storage should exit 0 (got $rc)"
+assert_contains \
+  "Retargeted 'dev/metadata-v1.0.0' to 'v1.1.0', but undo metadata could not be recorded" \
+  "$TMPDIR/undo-metadata-fail.out"
+assert_contains "rerunning retarget cannot recreate the missing metadata" \
+  "$TMPDIR/undo-metadata-fail.out"
+assert_contains "Retarget cannot be undone" \
+  "$TMPDIR/undo-metadata-fail.out"
+pass "undo metadata failure guidance"
 
 echo "All retarget smoke tests passed."

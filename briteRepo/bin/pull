@@ -95,8 +95,10 @@ Exit codes:
   7    Remote branch does not exist.
   8    Remote is unreachable.
   9    Accessing remote timed out.
-  10   Unresolved divergence. Manually resolve and then rerun pull.
-  11   Unsafe fast-forward. Manually resolve and then rerun pull.
+    10   Local and remote changes conflict. Resolve the listed files, then rerun
+      pull.
+    11   The local branch could not be safely updated. Follow the displayed
+      guidance, then rerun pull.
   12   Pull skipped because -e was specified.
   13   No remote changes are available to pull.
   14   The current branch has an unfinished copyfix operation.
@@ -401,7 +403,7 @@ require_remote_branch() {
     2)
       bt_emit_prerequisite_failure "$EXIT_REMOTE_BRANCH_MISSING" \
         "Remote branch 'origin/$branch' does not exist." \
-        "publish the branch or switch to a branch that exists on origin."
+        "run mkbranch -r to create the remote branch, or switch to a branch that exists on the remote."
       ;;
     124)
       bt_emit_prerequisite_failure "$EXIT_REMOTE_TIMEOUT" \
@@ -748,7 +750,7 @@ fi
 
 if bt_is_current_internal_remote_copy; then
   bt_emit_prerequisite_failure "$EXIT_NOT_LOCAL_BRANCH" \
-    "Current branch '$CURRENT_BRANCH' is a read-only remote snapshot." \
+    "Current branch '$CURRENT_BRANCH' is a read-only remote copy." \
     "use 'chbranch -r $CURRENT_BRANCH' to refresh it, or switch to a local branch."
 fi
 

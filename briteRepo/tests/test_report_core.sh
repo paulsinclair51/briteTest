@@ -19,7 +19,7 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin
 [[ "$rc" -eq 0 ]] || fail "report -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "-q TEXT" "$TMPDIR/help.out"
-assert_contains "If the current branch is a remote snapshot" "$TMPDIR/help.out"
+assert_contains "If the current branch is a remote copy" "$TMPDIR/help.out"
 assert_contains "TYPE may appear before or after options" "$TMPDIR/help.out"
 assert_contains "Additional options only for a style report:" \
   "$TMPDIR/help.out"
@@ -198,12 +198,12 @@ mkdir -p "$TMPDIR/not-a-repo"
 rc=$(run_capture "$TMPDIR/repo-outside.out" bash -lc \
   "cd '$TMPDIR/not-a-repo' && bash '$WORK/briteRepo/bin/report' repo")
 [[ "$rc" -eq 5 ]] || fail "report repo outside git should exit 5 (got $rc)"
-assert_contains "local or remote snapshot branch as the current branch" \
+assert_contains "local branch or remote copy as the current branch" \
   "$TMPDIR/repo-outside.out"
 rc=$(run_capture "$TMPDIR/branch-outside.out" bash -lc \
   "cd '$TMPDIR/not-a-repo' && bash '$WORK/briteRepo/bin/report' branch")
 [[ "$rc" -eq 5 ]] || fail "report branch outside git should exit 5 (got $rc)"
-assert_contains "local or remote snapshot branch as the current branch" \
+assert_contains "local branch or remote copy as the current branch" \
   "$TMPDIR/branch-outside.out"
 pass "outside repository exit"
 

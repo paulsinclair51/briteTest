@@ -212,8 +212,8 @@ echo ""
 echo "Loading updated configuration..."
 # shellcheck disable=SC1090  # Intentional user shell profile source.
 if ! source ~/.bashrc 2>/dev/null; then
-  echo "Warning: Failed to load configuration, but changes have been made" >&2
-  echo "Run 'source ~/.bashrc' or start a new shell session." >&2
+  echo "Warning: Updated ~/.bashrc, but could not reload it." >&2
+  echo "Run: source ~/.bashrc, or start a new shell session." >&2
 else
   if [[ -f "$inputrc_file" ]]; then
     bind -f "$inputrc_file" 2>/dev/null || true
@@ -221,7 +221,7 @@ else
 fi
 
 echo ""
-echo "✓ Installation complete!"
+echo "Installed briteRepo scripts and configured Git hooks for this clone."
 echo ""
 echo "Scripts in $scripts_bin are now:"
 echo "  - Executable"
