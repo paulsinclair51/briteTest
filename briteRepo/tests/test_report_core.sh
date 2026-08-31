@@ -19,7 +19,7 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin
 [[ "$rc" -eq 0 ]] || fail "report -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "-q TEXT" "$TMPDIR/help.out"
-assert_contains "If the current branch is a remote copy" "$TMPDIR/help.out"
+assert_contains "Report on remote activity instead of local activity" "$TMPDIR/help.out"
 assert_contains "-p" "$TMPDIR/help.out"
 assert_contains "Combine with -r for the remote parent" "$TMPDIR/help.out"
 assert_contains "TYPE may appear before or after options" "$TMPDIR/help.out"
@@ -31,9 +31,12 @@ fi
 pass "help output"
 
 # 2) Invalid -l should fail with usage message
-rc=$(run_capture "$TMPDIR/invalid-limit.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -l nope")
-[[ "$rc" -eq 1 ]] || fail "report -l nope should exit 1 (got $rc)"
-assert_contains "N for -l must be an integer >= 0" "$TMPDIR/invalid-limit.out"
+rc=$(run_capture "$TMPDIR/invalid-limit.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -n nope")
+[[ "$rc" -eq 1 ]] || fail "report -n nope should exit 1 (got $rc)"
+assert_contains "N for -n must be an integer >= 0" "$TMPDIR/invalid-limit.out"
+rc=$(run_capture "$TMPDIR/old-limit-option.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -l 1")
+[[ "$rc" -eq 1 ]] || fail "report -l should no longer be accepted (got $rc)"
+assert_contains "Unknown option: -l" "$TMPDIR/old-limit-option.out"
 pass "invalid limit rejection"
 
 rc=$(run_capture "$TMPDIR/repo-parent.out" bash -lc \
@@ -116,7 +119,7 @@ rm -f "$WORK/current-only-uncommitted.txt"
 pass "local and remote parent reports"
 
 # 4) Verbose mode should report progress while details remain in the file
-rc=$(run_capture "$TMPDIR/verbose.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -v -l 10")
+rc=$(run_capture "$TMPDIR/verbose.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -v -n 10")
 [[ "$rc" -eq 0 ]] || fail "verbose report should exit 0 (got $rc)"
 assert_contains "matching activities" "$TMPDIR/verbose.out"
 verbose_rel="$(report_path_from_output "$TMPDIR/verbose.out")"
@@ -124,7 +127,7 @@ verbose_rel="$(report_path_from_output "$TMPDIR/verbose.out")"
 pass "verbose progress output"
 
 # 5) Branch type with no limit should include generic commits and workflow activity
-rc=$(run_capture "$TMPDIR/type-all.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -l 0")
+rc=$(run_capture "$TMPDIR/type-all.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -n 0")
 [[ "$rc" -eq 0 ]] || fail "report branch should exit 0 (got $rc)"
 all_rel="$(report_path_from_output "$TMPDIR/type-all.out")"
 assert_contains "seed repo" "$WORK/$all_rel"
@@ -132,7 +135,7 @@ assert_contains "pull activity" "$WORK/$all_rel"
 pass "branch report includes every activity once"
 
 # 6) TYPE may appear before or after options
-rc=$(run_capture "$TMPDIR/type-before.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'pull activity' -l 1")
+rc=$(run_capture "$TMPDIR/type-before.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'pull activity' -n 1")
 [[ "$rc" -eq 0 ]] || fail "TYPE before options should exit 0 (got $rc)"
 before_rel="$(report_path_from_output "$TMPDIR/type-before.out")"
 assert_contains "pull activity" "$WORK/$before_rel"
@@ -142,7 +145,7 @@ before_command_line="$(grep -n '\*\*Command:\*\* `pull -v`' "$WORK/$before_rel" 
 before_user_line="$(grep -n '\*\*User:\*\* testuser (contributor)' "$WORK/$before_rel" | head -n 1 | cut -d: -f1 || true)"
 [[ -n "$before_command_line" && -n "$before_user_line" && "$before_command_line" -lt "$before_user_line" ]] || \
   fail "action command line should appear before action user line"
-rc=$(run_capture "$TMPDIR/type-after.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -q 'pull activity' -l 1 branch")
+rc=$(run_capture "$TMPDIR/type-after.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -q 'pull activity' -n 1 branch")
 [[ "$rc" -eq 0 ]] || fail "TYPE after options should exit 0 (got $rc)"
 after_rel="$(report_path_from_output "$TMPDIR/type-after.out")"
 assert_contains "pull activity" "$WORK/$after_rel"
@@ -268,7 +271,7 @@ assert_contains "## Branch Status" "$WORK/$repo_rel"
 pass "repository report dispatch"
 
 # 13b) Repo reports accept filtered activity and render a repo activity section
-rc=$(run_capture "$TMPDIR/repo-activity.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report repo -q 'pull activity' -u testuser -l 1 -t 2")
+rc=$(run_capture "$TMPDIR/repo-activity.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report repo -q 'pull activity' -u testuser -n 1 -t 2")
 [[ "$rc" -eq 0 ]] || fail "filtered repo report should exit 0 (got $rc)"
 repo_activity_rel="$(sed -n "s/^See '\(reports\/repo-[^ ]*\.md\)'\.$/\1/p" \
   "$TMPDIR/repo-activity.out" | tail -n 1)"

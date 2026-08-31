@@ -34,7 +34,7 @@ Prerequisites for a style report:
   - Current branch must be a local branch.
 
 Arguments:
-  TYPE        Report type: repo, branch, or style (default: branch).
+  TYPE        Report type: branch, repo, or style (default: branch).
               TYPE may appear before or after options, but may be specified
               only once.
 
@@ -43,37 +43,21 @@ Options:
               and arguments are ignored).
   -v          Output progress and diagnostics to stdout.
 
-Additional options only for a repo report:
-  -l N        Limit the report to N matching activities (default: 1).
+Additional options only for a branch or repo report:
+  -n N        Limit the report to N matching activities (default: 1).
               N must be 0 or an integer greater than 0; 0 means all matching
               activities are included. The newest N matches are selected.
   -q TEXT     Include activity whose summary or details contain TEXT.
               Matching is case-insensitive.
-  -r          Report on remote activity instead of local repo activity.
+  -r          Report on remote activity instead of local activity.
   -t SEC      Remote timeout in seconds (default: 10 seconds).
               SEC must be an integer greater than 0.
   -u USER     Include activity whose associated user contains USER.
               Matching is case-insensitive.
 
 Additional options only for a branch report:
-  -l N        Limit the report to N matching activities (default: 1).
-              N must be 0 or an integer greater than 0; 0 means all matching
-              activities are included. The newest N matches
-              are selected. In report, listed newest to oldest.
-  -q TEXT     Include activity whose summary or details contain TEXT.
-              Matching is case-insensitive.
   -p          Report for the parent of the current branch instead of the
               current branch. Combine with -r for the remote parent.
-  -r          Report for the remote, if there is one, of the selected current
-              or parent branch.
-              If the current branch is a remote copy, the report is for the
-              current state of the remote and not the local copy.
-  -t SEC      Remote timeout in seconds (default: 10 seconds).
-              SEC must be an integer greater than 0. Only allowed if
-              the -r option is specified
-  -u USER     Include activity whose associated user contains USER.
-              Matching is case-insensitive. Activity without a recorded user
-              does not match.
 
 Additional options only for a style report:
   -f FILE     Check only FILE. May be specified more than once.
@@ -93,9 +77,9 @@ Branch Examples:
   report
   report -p
   report -p -r
-  report branch -u testuser -q "authentication" -l 10
-  report branch -l 2
-  report -l 0
+  report branch -u testuser -q "authentication" -n 10
+  report branch -n 2
+  report -n 0
   report -v
 
 Style Examples:
@@ -1456,7 +1440,7 @@ done
 for ((index=0; index < ${#ORIGINAL_ARGS[@]}; index++)); do
   arg="${ORIGINAL_ARGS[index]}"
   case "$arg" in
-    -u|-q|-l|-t|-f)
+    -u|-q|-n|-l|-t|-f)
       ((index += 1))
       ;;
     repo|branch|style)
@@ -1492,11 +1476,11 @@ while [[ $# -gt 0 ]]; do
       FILTER_TEXT="$2"
       shift 2
       ;;
-    -l)
+    -n)
       [[ "$REPORT_TYPE" == "branch" || "$REPORT_TYPE" == "repo" ]] || \
-        usage_error "Option -l requires TYPE branch or TYPE repo"
-      [[ $# -ge 2 ]] || usage_error "Option -l requires N"
-      is_non_negative_integer "$2" || usage_error "N for -l must be an integer >= 0"
+        usage_error "Option -n requires TYPE branch or TYPE repo"
+      [[ $# -ge 2 ]] || usage_error "Option -n requires N"
+      is_non_negative_integer "$2" || usage_error "N for -n must be an integer >= 0"
       LIMIT="$2"
       shift 2
       ;;

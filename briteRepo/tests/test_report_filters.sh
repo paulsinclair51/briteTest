@@ -15,7 +15,7 @@ source "$SCRIPT_DIR/test_report_lib.sh"
 report_test_init
 
 # 1) User substring filter should match author/login text in commit records
-rc=$(run_capture "$TMPDIR/user-filter.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -u testuser -q 'committed by contributor' -l 10")
+rc=$(run_capture "$TMPDIR/user-filter.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -u testuser -q 'committed by contributor' -n 10")
 [[ "$rc" -eq 0 ]] || fail "user filter should exit 0 (got $rc)"
 user_rel="$(report_path_from_output "$TMPDIR/user-filter.out")"
 assert_contains "committed by contributor testuser" "$WORK/$user_rel"
@@ -24,7 +24,7 @@ if grep -Fq '\\ ' "$WORK/$user_rel"; then
 	fail "user comment should not contain shell-escape backslashes"
 fi
 rc=$(run_capture "$TMPDIR/user-filter-false-positive.out" bash -lc \
-	"cd '$WORK' && bash ./briteRepo/bin/report branch -u 'pushup activity' -l 0")
+	"cd '$WORK' && bash ./briteRepo/bin/report branch -u 'pushup activity' -n 0")
 [[ "$rc" -eq 6 ]] || \
 	fail "user filter should not match activity text (got $rc)"
 assert_contains "No matching activity was found" \
@@ -72,7 +72,7 @@ pass "summary and detail filtering"
 	git commit -m "directory action fixture" >/dev/null 2>&1
 )
 rc=$(run_capture "$TMPDIR/directory-actions.out" bash -lc \
-	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'directory action fixture' -l 1")
+	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'directory action fixture' -n 1")
 [[ "$rc" -eq 0 ]] || fail "directory action report should exit 0 (got $rc)"
 directory_rel="$(report_path_from_output "$TMPDIR/directory-actions.out")"
 assert_contains "**Directories:**" "$WORK/$directory_rel"
@@ -94,7 +94,7 @@ pass "directory action rendering"
 		>/dev/null 2>&1
 )
 rc=$(run_capture "$TMPDIR/empty-summary.out" bash -lc \
-	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'empty summary fixture' -l 1")
+	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'empty summary fixture' -n 1")
 [[ "$rc" -eq 0 ]] || fail "empty summary report should exit 0 (got $rc)"
 empty_summary_rel="$(report_path_from_output "$TMPDIR/empty-summary.out")"
 if grep -Fq '**Directories:**' "$WORK/$empty_summary_rel"; then
@@ -111,7 +111,7 @@ pass "empty summary omission"
 # 4) Multiple appended records should render independently, and delimiter-like
 # text inside a detail value must not split a record.
 rc=$(run_capture "$TMPDIR/multiple-records.out" bash -lc \
-	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'Record-Group: appended pair' -l 0")
+	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'Record-Group: appended pair' -n 0")
 [[ "$rc" -eq 0 ]] || fail "multiple-record report should exit 0 (got $rc)"
 multiple_rel="$(report_path_from_output "$TMPDIR/multiple-records.out")"
 assert_contains "pull activity" "$WORK/$multiple_rel"
@@ -153,7 +153,7 @@ assert_contains "retarget activity" "$WORK/$malformed_rel"
 pass "malformed workflow record handling"
 
 # 6) Branch reports should always list the newest selected activity first
-rc=$(run_capture "$TMPDIR/newest-first.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'directory action' -l 2")
+rc=$(run_capture "$TMPDIR/newest-first.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'directory action' -n 2")
 [[ "$rc" -eq 0 ]] || fail "newest-first report should exit 0 (got $rc)"
 newest_first_rel="$(report_path_from_output "$TMPDIR/newest-first.out")"
 newer_line="$(grep -n 'directory action fixture' "$WORK/$newest_first_rel" | head -n 1 | cut -d: -f1 || true)"
@@ -327,10 +327,10 @@ pass "subdirectory tracked report preservation"
 # 13) Concurrent branch reports should serialize write and cleanup, leaving one
 # complete latest local report.
 set +e
-bash -c "cd '$WORK' && bash ./briteRepo/bin/report branch -l 2" \
+bash -c "cd '$WORK' && bash ./briteRepo/bin/report branch -n 2" \
 	>"$TMPDIR/concurrent-1.out" 2>&1 &
 report_pid_1=$!
-bash -c "cd '$WORK' && bash ./briteRepo/bin/report branch -l 2" \
+bash -c "cd '$WORK' && bash ./briteRepo/bin/report branch -n 2" \
 	>"$TMPDIR/concurrent-2.out" 2>&1 &
 report_pid_2=$!
 wait "$report_pid_1"; report_rc_1=$?
