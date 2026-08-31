@@ -698,9 +698,6 @@ EOF
     pushed_added_directories="$BT_CHANGE_ADDED_DIRECTORIES"
     pushed_renamed_directories="$BT_CHANGE_RENAMED_DIRECTORIES"
     pushed_change_summary="$(bt_format_change_summary)"
-    if [[ "$pushed_change_summary" == "no changes" ]]; then
-      pushed_change_summary="remote branch history updated with no file or directory changes"
-    fi
   }
 
   while [[ $# -gt 0 ]]; do
@@ -890,6 +887,10 @@ EOF
         "Push completed, but its pull request could not be finalized"
     fi
   fi
-  echo "Pushed (${pushed_tip_short}) to remote $current_branch: ${pushed_change_summary}."
+  if [[ "$pushed_change_summary" == "no changes" ]]; then
+    echo "Synchronized (${pushed_tip_short}) remote $current_branch with local: no file or directory changes."
+  else
+    echo "Pushed (${pushed_tip_short}) to remote $current_branch: ${pushed_change_summary}."
+  fi
   echo "Run report -r for details."
 )

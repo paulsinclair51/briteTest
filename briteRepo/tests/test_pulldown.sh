@@ -361,8 +361,9 @@ content_neutral_dry_report="$(find "$WORK/reports" -maxdepth 1 -type f \
 rc=$(run_capture "$TMPDIR/content-neutral.out" bash -lc \
   "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -c 'sync content-neutral parent'")
 [[ "$rc" -eq 0 ]] || fail "content-neutral pulldown should exit 0 (got $rc)"
+content_neutral_tip_short="$(git -C "$WORK" rev-parse --short=7 dev/current-v1.0.0)"
 assert_contains \
-  "Synchronized parent 'v1.0.0' with 'dev/current-v1.0.0': no file or directory changes." \
+  "Synchronized (${content_neutral_tip_short}) parent 'v1.0.0' with 'dev/current-v1.0.0': no file or directory changes." \
   "$TMPDIR/content-neutral.out"
 [[ "$(git -C "$WORK" rev-parse dev/current-v1.0.0)" != \
   "$content_neutral_before" ]] || \
