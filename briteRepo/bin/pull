@@ -483,7 +483,8 @@ continue_rebase_if_in_progress() {
 
   if [[ "$progressed" == true ]]; then
     bt_git_clear_workflow_in_progress pull
-    bt_success "Completed in-progress rebase for '$branch'."
+    print_pull_sync_result "$branch" \
+      "Completed in-progress rebase for '$branch'."
   fi
   return 1
 }
@@ -549,6 +550,24 @@ branch_fast_forward_possible() {
   [[ "$merge_base" == "$local_commit" ]]
 }
 
+print_pull_sync_result() {
+  local branch="$1"
+  local changed_message="$2"
+  local synchronized_tip_short=""
+
+  if [[ -n "$PULL_BEFORE_TIP" ]] && \
+    git diff --quiet "$PULL_BEFORE_TIP" HEAD -- 2>/dev/null; then
+    synchronized_tip_short="$(git rev-parse --short=7 HEAD 2>/dev/null || true)"
+    if [[ -n "$synchronized_tip_short" ]]; then
+      bt_success \
+        "Synchronized (${synchronized_tip_short}) local $branch with remote: no file or directory changes."
+      return 0
+    fi
+  fi
+
+  bt_success "$changed_message"
+}
+
 attempt_auto_resolve_divergence() {
   local branch="$1"
 
@@ -568,7 +587,8 @@ attempt_auto_resolve_divergence() {
   if GIT_BYPASS_HOOKS=true git rebase "origin/$branch" >/dev/null 2>&1; then
     bt_git_clear_workflow_in_progress pull
     SYNCED_COUNT=$((SYNCED_COUNT + 1))
-    bt_success "Synchronized '$branch' (auto-resolved divergence)."
+    print_pull_sync_result "$branch" \
+      "Synchronized '$branch' (auto-resolved divergence)."
     warn_branch_behind_parent "$branch"
     return 0
   fi
@@ -682,7 +702,7 @@ evaluate_branch() {
   if GIT_BYPASS_HOOKS=true git merge --ff-only "origin/$branch" \
     >/dev/null 2>&1; then
     SYNCED_COUNT=$((SYNCED_COUNT + 1))
-    bt_success "Synchronized '$branch'."
+    print_pull_sync_result "$branch" "Synchronized '$branch'."
     warn_branch_behind_parent "$branch"
     return 0
   fi
@@ -905,9 +925,6 @@ else
     bt_error_exit "$EXIT_REPORT_ERROR" \
       "Pull completed, but its report history could not be recorded"
   fi
-  bt_success "$(printf '%s%s' \
-    "Pull complete: synchronized=$SYNCED_COUNT, " \
-    "skipped=$SKIPPED_COUNT, total=$EVALUATED_COUNT branches.")"
   cleanup_success_transient_reports
   bt_success "Run report for details."
 fi
