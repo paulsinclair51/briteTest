@@ -346,7 +346,7 @@ create_fork() {
     bt_error_exit "$EXIT_NOT_FOUND" "Failed to create fork via GitHub API"
   fi
   
-  echo "Fork created successfully"
+  echo "Fork created. Waiting for remote availability..."
 }
 
 wait_for_fork() {
@@ -697,8 +697,7 @@ if fork_exists "$GH_USER"; then
       echo "Dry-run completed. Fork is already complete, no changes needed."
     else
       echo ""
-      echo "Fork setup already complete!"
-      echo "Fork URL: https://github.com/$GH_USER/$REPO_NAME"
+      echo "Fork already configured: https://github.com/$GH_USER/$REPO_NAME"
       echo ""
       echo "Next steps:"
       echo "  mkclone  # Clone the repository locally"
@@ -741,8 +740,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
   echo "Dry-run completed. No changes were made."
 else
   echo ""
-  echo "Fork setup completed successfully!"
-  echo "Fork URL: https://github.com/$GH_USER/$REPO_NAME"
+  echo "Fork configured: https://github.com/$GH_USER/$REPO_NAME"
   echo ""
   echo "Next steps:"
   echo "  mkclone  # Clone the repository locally"

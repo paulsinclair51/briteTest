@@ -169,6 +169,8 @@ pass "help output"
 # 2) Verified remediation flow should resolve fixable loose-object issues
 rc=$(run_capture "$TMPDIR/brite.out" bash "$BRITE_REPO/briteRepo/bin/fixrepo" -q)
 [[ "$rc" -eq 0 ]] || fail "fixrepo -q should exit 0 after verified remediation (got $rc)"
+assert_contains "Repository 'brite' repaired." "$TMPDIR/brite.out"
+assert_contains "See reports/repository-" "$TMPDIR/brite.out"
 brite_report="$(latest_report "$BRITE_REPO")"
 [[ -f "$brite_report" ]] || fail "expected report file for brite fixture"
 assert_contains "- [ISSUE] **Loose Objects**" "$brite_report"
@@ -183,8 +185,11 @@ pass "verified remediation flow"
 # 3) Non-API fixture should skip repository structure layout checks
 rc=$(run_capture "$TMPDIR/plain.out" bash "$PLAIN_REPO/briteRepo/bin/fixrepo" -d -q)
 [[ "$rc" -eq 0 ]] || fail "fixrepo -d -q should exit 0 on clean plain fixture (got $rc)"
+assert_contains "Repository 'plain' is clean." "$TMPDIR/plain.out"
+assert_contains "See reports/repository-" "$TMPDIR/plain.out"
 plain_report="$(latest_report "$PLAIN_REPO")"
 [[ -f "$plain_report" ]] || fail "expected report file for plain fixture"
+assert_contains "This clone has no remote repository" "$plain_report"
 assert_contains "Repository structure checks skipped" "$plain_report"
 pass "non-API fixture skip path"
 
@@ -209,7 +214,8 @@ rc=$(run_capture "$TMPDIR/unreachable.out" bash "$UNREACHABLE_REMOTE_REPO/briteR
 [[ "$rc" -eq 2 ]] || fail "fixrepo -d -t 1 with unreachable origin should exit 2 (got $rc)"
 unreachable_report="$(latest_report "$UNREACHABLE_REMOTE_REPO")"
 [[ -f "$unreachable_report" ]] || fail "expected report file for unreachable-origin run"
-assert_contains "Remote is configured but not reachable" "$unreachable_report"
+assert_contains "The remote repository could not be reached within 1s" \
+  "$unreachable_report"
 pass "remote reachability failure"
 
 # 7) Invalid timeout should fail with argument error
@@ -228,6 +234,8 @@ pass "invalid clone path handling"
 printf '\nlocal dirty change\n' >> "$PLAIN_REPO/README.md"
 rc=$(run_capture "$TMPDIR/dirty.out" bash "$PLAIN_REPO/briteRepo/bin/fixrepo" -d -q)
 [[ "$rc" -eq 2 ]] || fail "fixrepo -d -q on dirty worktree should exit 2 (got $rc)"
+assert_contains "Repository 'plain' not repaired." "$TMPDIR/dirty.out"
+assert_contains "See reports/repository-" "$TMPDIR/dirty.out"
 dirty_report="$(latest_report "$PLAIN_REPO")"
 [[ -f "$dirty_report" ]] || fail "expected report file for dirty worktree run"
 assert_contains "- [ISSUE] **Uncommitted Changes**" "$dirty_report"
@@ -265,5 +273,20 @@ assert_contains "git gc failed during cleanup" "$gc_fail_report"
 assert_contains "**Remediations Failed:** 1" "$gc_fail_report"
 assert_contains "Status: Remediation attempts were made, but none were fully verified." "$gc_fail_report"
 pass "remediation failure path"
+
+# 11) A verified cleanup with another unresolved issue is partially repaired.
+PARTIAL_REPO="$(make_fixture_repo partial brite)"
+printf '\nunresolved worktree change\n' >> "$PARTIAL_REPO/README.md"
+rc=$(run_capture "$TMPDIR/partial.out" \
+  bash "$PARTIAL_REPO/briteRepo/bin/fixrepo" -q)
+[[ "$rc" -eq 2 ]] || \
+  fail "partially repaired fixture should exit 2 (got $rc)"
+assert_contains "Repository 'partial' partially repaired." \
+  "$TMPDIR/partial.out"
+assert_contains "See reports/repository-" "$TMPDIR/partial.out"
+partial_report="$(latest_report "$PARTIAL_REPO")"
+assert_contains "**Remediations Verified:** 1" "$partial_report"
+assert_contains "**Issues Remaining:** 1" "$partial_report"
+pass "partial repair summary"
 
 echo "All fixrepo smoke tests passed."

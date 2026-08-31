@@ -35,7 +35,7 @@ write_state() {
 
   mkdir -p "$(dirname "$state_file")"
   rm -f "$state_file"
-  git config --file "$state_file" pushup.version 1
+  git config --file "$state_file" pushup.version 2
   git config --file "$state_file" pushup.source feature
   git config --file "$state_file" pushup.parent main
   git config --file "$state_file" pushup.source-tip "$source_tip"
@@ -44,6 +44,8 @@ write_state() {
   git config --file "$state_file" pushup.verbose false
   git config --file "$state_file" pushup.owner-override false
   git config --file "$state_file" pushup.comment-mode none
+  git config --file "$state_file" pushup.source-has-remote true
+  git config --file "$state_file" pushup.parent-has-remote true
   [[ -z "$prepared_tip" ]] || \
     git config --file "$state_file" pushup.prepared-parent-tip "$prepared_tip"
   git config --file "$state_file" pushup.phase "$phase"
@@ -163,13 +165,19 @@ while [[ $# -gt 0 ]]; do
     *) shift ;;
   esac
 done
-printf 'pulldown %s\n' "$timeout_seconds" >> .remote-timeouts
 if [[ -f .fail-sync-once ]]; then
   rm -f .fail-sync-once
   exit 81
 fi
-git fetch origin main >/dev/null
-git merge --no-edit origin/main >/dev/null
+state_file="$(git rev-parse --git-path briteRepo/pushup.state)"
+parent_has_remote="$(git config --file "$state_file" --get pushup.parent-has-remote 2>/dev/null || true)"
+if [[ "$parent_has_remote" == false ]]; then
+  git merge --no-edit main >/dev/null
+else
+  printf 'pulldown %s\n' "$timeout_seconds" >> .remote-timeouts
+  git fetch origin main >/dev/null
+  git merge --no-edit origin/main >/dev/null
+fi
 EOF
 cat > "$WORK/briteRepo/bin/pull" <<'EOF'
 #!/usr/bin/env bash
@@ -207,6 +215,34 @@ assert_contains "Merge-up skipped due to -e option" "$TMPDIR/error-run.out"
   fail "top-level pushup -e should not write pushup state"
 echo "PASS: top-level error-run delegates without state"
 
+# Local-only contributor/targeted paths update neither remote branch.
+git -C "$WORK" update-ref -d refs/remotes/origin/main
+git -C "$WORK" update-ref -d refs/remotes/origin/feature
+rm -f "$WORK/.remote-timeouts"
+status="$(run_capture "$TMPDIR/local-only.out" bash -c \
+  "cd '$WORK' && ./briteRepo/bin/pushup")"
+[[ "$status" -eq 0 ]] || fail "local-only pushup should exit 0, got $status"
+[[ "$(git -C "$WORK" branch --show-current)" == feature ]] || \
+  fail "local-only pushup should leave the source branch selected"
+git -C "$WORK" diff --quiet feature main || \
+  fail "local-only pushup should leave source and parent files matching"
+[[ ! -f "$WORK/.git/briteRepo/pushup.state" ]] || \
+  fail "local-only pushup should remove completed state"
+[[ ! -f "$WORK/.remote-timeouts" ]] || \
+  fail "local-only pushup should not call remote push or synchronization"
+assert_contains "Pushed up 'feature' to local parent 'main'." \
+  "$TMPDIR/local-only.out"
+assert_contains "Run report -p for local parent details." \
+  "$TMPDIR/local-only.out"
+if grep -Fq "remote parent details" "$TMPDIR/local-only.out"; then
+  fail "local-only pushup should not suggest a remote parent report"
+fi
+git -C "$WORK" fetch origin main feature >/dev/null
+git -C "$WORK" checkout feature >/dev/null
+git -C "$WORK" reset --hard origin/feature >/dev/null
+git -C "$WORK" branch -f main origin/main >/dev/null
+echo "PASS: local-only pushup completion"
+
 source_tip="$(git -C "$WORK" rev-parse feature)"
 parent_tip="$(git -C "$WORK" rev-parse main)"
 touch "$WORK/.fail-parent-push"
@@ -235,7 +271,7 @@ status="$(run_capture "$TMPDIR/finalize-fail.out" bash -c \
   parent-finalization-failed ]] || fail "finalization failure phase should be retained"
 [[ "$(git -C "$WORK" branch --show-current)" == feature ]] || \
   fail "partial pushup should return to the saved source branch"
-assert_contains "parent was published" "$TMPDIR/finalize-fail.out"
+assert_contains "parent was updated on the remote" "$TMPDIR/finalize-fail.out"
 status="$(run_capture "$TMPDIR/finalize-continue.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 0 ]] || fail "finalization continuation should complete, got $status"
@@ -258,6 +294,21 @@ assert_contains "state is incomplete" "$TMPDIR/incomplete-state.out"
 rm -f "$WORK/.git/briteRepo/pushup.state"
 echo "PASS: incomplete state fails closed"
 
+source_tip="$(git -C "$WORK" rev-parse feature)"
+parent_tip="$(git -C "$WORK" rev-parse main)"
+write_state initialized "$source_tip" "$parent_tip"
+git config --file "$WORK/.git/briteRepo/pushup.state" \
+  --unset pushup.parent-has-remote
+status="$(run_capture "$TMPDIR/missing-remote-flag.out" bash -c \
+  "cd '$WORK' && ./briteRepo/bin/pushup")"
+[[ "$status" -eq 200 ]] || \
+  fail "state without a remote-presence flag should exit 200, got $status"
+[[ -f "$WORK/.git/briteRepo/pushup.state" ]] || \
+  fail "invalid v2 state should be retained for inspection"
+assert_contains "state is incomplete" "$TMPDIR/missing-remote-flag.out"
+rm -f "$WORK/.git/briteRepo/pushup.state"
+echo "PASS: state v2 requires remote-presence flags"
+
 # If origin disappears while a parent push result is uncertain, continuation
 # must retain state until remote history can prove whether publication occurred.
 add_feature_change "network recovery feature"
@@ -277,7 +328,7 @@ status="$(run_capture "$TMPDIR/network-offline.out" bash -c \
 [[ "$(git config --file "$WORK/.git/briteRepo/pushup.state" \
   --get pushup.phase)" == publication-uncertain ]] || \
   fail "offline recovery should record publication uncertainty"
-assert_contains "origin is unavailable" "$TMPDIR/network-offline.out"
+assert_contains "remote is unavailable" "$TMPDIR/network-offline.out"
 mv "$ORIGIN.offline" "$ORIGIN"
 status="$(run_capture "$TMPDIR/network-reconnected.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup")"
@@ -310,7 +361,7 @@ status="$(run_capture "$TMPDIR/crash-before-publish.out" bash -c \
 [[ "$status" -eq 0 ]] || fail "plain restart before publication should complete, got $status"
 [[ "$(git --git-dir="$ORIGIN" rev-parse main)" != "$orphaned_tip" ]] || \
   fail "orphaned local preparation must not be published"
-assert_contains "Recovered an interrupted prepublication" \
+assert_contains "Recovered an interrupted push-up before its remote update" \
   "$TMPDIR/crash-before-publish.out"
 echo "PASS: plain pushup recovers a prepublication hard crash"
 
@@ -325,11 +376,18 @@ status="$(run_capture "$TMPDIR/partial.out" bash -c \
 [[ -f "$WORK/.git/briteRepo/pushup.state" ]] || fail "partial run should retain state"
 [[ "$(git config --file "$WORK/.git/briteRepo/pushup.state" --get pushup.phase)" == \
   source-sync-failed ]] || fail "partial run should record failed synchronization"
+saved_source_version="$(git config --file "$WORK/.git/briteRepo/pushup.state" \
+  --get pushup.source-tip)"
+saved_parent_version="$(git config --file "$WORK/.git/briteRepo/pushup.state" \
+  --get pushup.parent-tip)"
 # Earlier scenarios leave their own error reports, so take the newest one.
 report="$(ls -t "$WORK/reports"/pushup-e-*.md 2>/dev/null | head -n 1)"
 [[ -n "$report" ]] || fail "partial run should write a pushup error report"
-assert_contains '| Publish parent | Completed |' "$report"
+assert_contains '| Update parent on remote | Completed |' "$report"
 assert_contains '| Synchronize source from parent | Pending |' "$report"
+assert_contains '## Saved Branch Versions' "$report"
+assert_contains "| Source: \`feature\` | \`$saved_source_version\` |" "$report"
+assert_contains "| Parent: \`main\` | \`$saved_parent_version\` |" "$report"
 assert_contains 'rerun `pushup`' "$report"
 echo "PASS: partial report identifies completed and pending work"
 
@@ -345,8 +403,11 @@ status="$(run_capture "$TMPDIR/continue.out" bash -c \
   fail "parent should be published"
 [[ "$(git --git-dir="$ORIGIN" rev-parse feature)" == \
   "$(git -C "$WORK" rev-parse feature)" ]] || fail "source should be published"
-assert_contains 'Push-up complete' "$TMPDIR/continue.out"
-if grep -Eq 'Local merge complete|Run report|^Pushed \(' \
+assert_contains "Pushed up 'feature' to 'main' locally and updated available remote copies." \
+  "$TMPDIR/continue.out"
+assert_contains "Run report -p for local parent details; run report -p -r for remote parent details." \
+  "$TMPDIR/continue.out"
+if grep -Eq 'Local merge complete|^Pushed \(' \
   "$TMPDIR/continue.out"; then
   fail "normal pushup output should suppress delegated command summaries"
 fi

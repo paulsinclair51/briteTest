@@ -21,7 +21,7 @@ Default safety checks:
   - no working-tree changes (staged, unstaged, untracked)
   - no stash entries
   - no local-only commits not present on remotes
-  - origin remote is reachable when configured
+  - the remote repository is reachable when this clone has its URL
   - target is not the current working directory (or its parent)
 
 Arguments:
@@ -210,7 +210,7 @@ check_git_safety() {
   if [[ -n "$origin_url" ]]; then
     if ! bt_run_remote_command git -C "$TARGET_ABS" \
       ls-remote --exit-code origin HEAD >/dev/null 2>&1; then
-      add_issue "Origin remote is configured but not reachable: $origin_url"
+      add_issue "Remote is configured but not reachable: $origin_url"
     fi
   fi
 }
@@ -229,8 +229,8 @@ confirm_removal() {
 
   local response
   echo ""
-  bt_warn "About to permanently delete: $TARGET_ABS"
-  read -r -p "Type DELETE to confirm: " response
+  bt_warn "Will permanently delete the clone and all its files: $TARGET_ABS"
+  read -r -p "Type DELETE to confirm permanent deletion: " response
 
   if [[ "$response" != "DELETE" ]]; then
     return 1
@@ -330,7 +330,7 @@ if [[ -e "$TARGET_ABS" ]]; then
     "Target still exists after removal attempt: $TARGET_ABS"
 fi
 
-bt_success "Clone removed successfully: $TARGET_ABS"
+bt_success "Removed clone '$TARGET_ABS'"
 
 record_removal_note_on_remote_main "$TARGET_ABS"
 

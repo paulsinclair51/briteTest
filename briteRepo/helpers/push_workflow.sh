@@ -699,7 +699,7 @@ EOF
     pushed_renamed_directories="$BT_CHANGE_RENAMED_DIRECTORIES"
     pushed_change_summary="$(bt_format_change_summary)"
     if [[ "$pushed_change_summary" == "no changes" ]]; then
-      pushed_change_summary="branch history published with no file or directory changes"
+      pushed_change_summary="remote branch history updated with no file or directory changes"
     fi
   }
 

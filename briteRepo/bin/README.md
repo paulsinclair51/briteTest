@@ -69,7 +69,7 @@ override.
 **chbranch**: Select an existing local branch or a fresh read-only remote
 snapshot. Local branches are preferred by default, including protected
 branches. A local protected branch is refreshed only by a safe fast-forward;
-protected branches and remote snapshots remain read-only.
+protected branches and remote copies remain read-only.
 
 **commit**: Commit and optionally push changes to remote.
 
@@ -80,7 +80,10 @@ the current branch.
 
 **lsbranch**: List a branch or branches and their status.
 
-**mkbranch**: Create branches with policy validation.
+**mkbranch**: Create branches with policy validation. A remote branch requires
+its parent both locally and remotely, and active pushup participants cannot
+gain a remote copy until pushup completes. Local-only creation does not require
+remote access.
 
 **override**: Repository owner only. Toggle local or remote-repair authorization
 for this clone (`override on` / `override off`, and `override -r on`). Use
@@ -96,16 +99,20 @@ protection.
 **push**: Push from current branch (which must be local) to its
 corresponding remote branch.
 
-**pushup**: Push the current branch up to its parent, publish the parent,
-resynchronize the source branch, and publish the source. Partial push-up workflows
-are recorded and resumed by rerunning `pushup`.
+**pushup**: Update the parent with the source branch's files and directories,
+then align both local branches so they contain the same files and directories.
+Existing remote copies finish with the same files and directories as their
+corresponding local branches. A source remote copy requires a parent remote
+copy. Incomplete workflows resume by rerunning `pushup`.
 
 **release**: Create and publish releases.
 
 **report**: Generate repository health, branch activity, and style reports.
+For branch activity, use `-p` to report the current branch's parent and combine
+`-p -r` to report the remote parent without changing branches.
 
-**retarget**: Retarget a targeted branch locally; use `-r` to publish it.
-targeted branch is renamed to have its version as the specified version.
+**retarget**: Retarget the current local targeted branch to a different version
+branch; use `-r` to update its remote copy.
 
 **restore**: Select a committed version of one file and place it in the
 worktree for review and optional commit.

@@ -128,6 +128,8 @@ see [Contributor_Internal_Guide.md](./Contributor_Internal_Guide.md) and
       [Permission Denied](#permission-denied)<br>
       [Role Check Fails for Known Approver/Reviewer](#role-check-fails-for-known-approverreviewer)<br>
       [Repository Operation Fails](#repository-operation-fails)<br>
+
+7. [Contributor-Specific Glossary](#7-contributor-specific-glossary)<br>
 </details>
 
 <details>
@@ -148,7 +150,7 @@ information, run any script with `-h` or `--help`.
 
 #### 1.1.1. chbranch
 
-**Purpose:** Select a local branch or a read-only snapshot of a remote branch.
+**Purpose:** Select a local branch or a read-only copy of a remote branch.
 
 **Usage:**
 
@@ -159,10 +161,10 @@ chbranch [-l | -r] [-t SEC] [-v] [BRANCH]
 **Notes:**
 
 - Prefers an existing local branch when neither `-l` nor `-r` is specified.
-- `-l` requires an existing local branch; `-r` selects a fresh read-only
-  snapshot of an existing remote branch.
-- Local protected branches may be selected and are refreshed only by a safe
-  fast-forward. Protected branches and remote snapshots are read-only.
+- `-l` requires an existing local branch; `-r` selects a refreshed, read-only
+  copy of an existing remote branch.
+- Local protected branches are updated only when they can safely match their
+  remote copy. Protected branches and remote copies are read-only.
 </details>
 
 <details>
@@ -210,7 +212,8 @@ Use `-c TOKEN` or `-- TOKEN...` to replace the comment on each copied fix
 commit. Without either option, copied commits retain their original comments.
 
 Use `-d` to preview the copy without changing the target. Successful copies
-are available through `report`. Dry runs and operation errors write
+are available through `report`, and the command prints `Run report for
+details.` Dry runs and operation errors write
 `copyfix-d-<datetime>.md` and `copyfix-e-<datetime>.md` for the current target
 branch. Reports are untracked files in `reports/`.
 </details>
@@ -286,10 +289,11 @@ Only one report with each filename prefix is kept. Local and remote reports
 are retained independently.
 
 Use `report branch -r [-t SEC]` to refresh and report the remote corresponding
-to the current local branch or remote snapshot without changing the checked-out
-branch, detached snapshot, or worktree. For a remote snapshot, `-r` reports the
-current remote state rather than the snapshot state. The timeout defaults to
-10 seconds.
+to the current local branch or remote copy without changing the checked-out
+branch or read-only copy. Use `report -p` for the local parent or
+`report -p -r` for the remote parent, also without changing branches. For a
+remote copy, `-r` reports the current remote state rather than the previously
+downloaded state. The timeout defaults to 10 seconds.
 </details>
 
 <details>
@@ -316,6 +320,12 @@ mkbranch [OPTIONS] <newbranch> [<parentbranch>] [-- TOKEN...]
 For a targeted branch, the parent defaults to the version in its name. Other
 branch types use the parent rules described by `mkbranch -h`.
 
+Creating a remote branch with `-r` requires its parent to exist both locally
+and remotely. While `pushup` is unfinished, `mkbranch` refuses to create a
+remote copy for its source or parent branch so the remote-copy choices saved
+by `pushup` cannot change during recovery. Local-only branch creation does not
+require a configured or reachable remote.
+
 **Branch Naming Guide:**
 
 - **Contributor:** `[<type>/]<description>` (type: dev, fix, feature, docs)
@@ -339,7 +349,8 @@ pull [OPTIONS]
 `pull` synchronizes the current local branch with its corresponding remote;
 it does not accept a branch-name argument. Use `-d` for a dry run, `-o` for an
 owner-authorized version-branch pull, `-t SEC` for the remote timeout, and `-v`
-for verbose output.
+for verbose output. After a successful pull, run `report` to review the
+recorded local branch activity.
 </details>
 
 <details>
@@ -357,7 +368,8 @@ pulldown [OPTIONS] [-- TOKEN...]
 
 Use `-d` for a dry run, `-c TOKEN` or `-- TOKEN...` for the commit comment,
 `-o` for an eligible owner-authorized version-branch operation, and `-t SEC`
-for the remote timeout.
+for the remote timeout. After a successful pull-down, run `report` to review
+the recorded local branch activity.
 </details>
 
 <details>
@@ -365,10 +377,13 @@ for the remote timeout.
 
 #### 1.1.10. pushup
 
-**Purpose:** Push the current branch up to its parent, publish both updated
-branches, and leave the resynchronized source branch selected. Interrupted
-work is recovered or resumed by rerunning `pushup`, which reconciles its saved
-phase with exact local and remote tips.
+**Purpose:** Update the parent with the current source branch's files and
+directories so both local branches contain the same files and directories. If
+the parent or source has a remote copy, its files and directories finish aligned
+with its corresponding local branch. A source remote copy requires a parent
+remote copy. Missing optional remote copies are not created, and protected
+branches must have remote copies. Interrupted work is recovered or resumed by
+rerunning `pushup`.
 
 **Usage:**
 
@@ -410,18 +425,23 @@ release [OPTIONS] VERSION
 
 #### 1.1.12. retarget
 
-**Purpose:** Retarget a targeted branch locally to a different version branch.
+**Purpose:** Retarget the current local targeted branch to a different version
+branch.
 
 **Usage:**
 
 ```bash
-retarget [OPTIONS] <targeted-branch> <new-parent-version> [-- TOKEN...]
+retarget [OPTIONS] <new-parent-version> [-- TOKEN...]
 ```
 
 **Notes:**
 
-- Renames targeted branch with new version
-- Approver role required
+- The current branch must be a local targeted branch
+- Renames the current branch with the new version
+- Contributor, reviewer, or approver role required
+- A successful local retarget records activity for `report`.
+- With `-r`, the command also updates remote activity and directs the user to
+  `report -r`.
 </details>
 
 <details>
@@ -508,9 +528,9 @@ push [OPTIONS]
 - `-t SEC` - Set the remote reachability timeout.
 - `-v` - Show progress and diagnostics.
 
-**Related Commands:** Run `commit` before `push`, `pull` when local and remote
-branches have diverged, and `report` to inspect recorded activity.
-</details>
+**Related Commands:** Run `commit` before `push`, `pull` when both the local and
+remote branches contain different changes, and `report` to inspect recorded
+activity.
 </details>
 
 <details>
@@ -523,7 +543,8 @@ branches have diverged, and `report` to inspect recorded activity.
 
 #### 1.2.1. fixlocal
 
-**Purpose:** Check local repository health, apply guarded local remediations, and produce a diagnostic report.
+**Purpose:** Check this local repository, safely fix supported problems, and
+produce a diagnostic report.
 
 **Usage:**
 
@@ -533,25 +554,27 @@ fixlocal [OPTIONS]
 
 **Functions:**
 
-- Verify git object database integrity (`git fsck --full`)
-- Verify working tree cleanliness
-- Check remote connectivity and per-branch tracking status
-- Attempt guarded current-branch synchronization from upstream
-- Run safe cleanup (`git gc --prune=now`)
-- Continue on non-critical check/fix failures and record them in report
-- Distinguish fixable vs. non-fixable issues and verified vs. unverified remediation
+- Check for damaged Git data
+- Check for uncommitted changes and missing repository files
+- Check remote access and whether local branches match their remote copies
+- Safely update the current branch when only its remote copy has newer changes
+- Clean unused local Git data and repeat affected checks
+- Record checks, fixes, and remaining problems in the report
 
 **Exit Codes:**
 
 - 0: Success - no issues or all issues fixed
 - 1: Invalid option or argument
 - 2: User is not authorized (requires contributor role or higher)
-- 3: Remote is not configured
+- 3: This clone has no remote repository URL
 - 4: Remote is unreachable
 - 5: Remote connectivity check timed out
 - 6: One or more issues were not fixable
 - 7: Dry run found only issues that a normal run can fix
 - 100: Missing required helper files, dependencies, or configuration
+
+Every completed run writes a diagnostic report and prints its path. Open that
+file for details; these diagnostics are not generated by the `report` command.
 </details>
 
 <details>
@@ -559,7 +582,8 @@ fixlocal [OPTIONS]
 
 #### 1.2.2. fixremote
 
-**Purpose:** Run owner/approver-only origin recovery workflow from a clean local clone.
+**Purpose:** Restore remote branches, tags, and required Git data from a healthy
+local clone. This command is restricted to approvers and owners.
 
 **Usage:**
 
@@ -569,12 +593,13 @@ fixremote [OPTIONS] <clone-path>
 
 **Functions:**
 
-- Verify user is approver/owner
-- Run preflight validation (clone integrity/cleanliness, origin URL/reachability)
-- Execute recovery only with `-x` (safe default is preflight-only)
-- Push branch/tag refs from clean clone to origin during execution mode
-- Verify post-recovery origin/main parity with source clone
-- Generate recovery report with actionable follow-up details
+- Verify that the user is an approver or owner
+- Verify that the source clone is healthy, has no uncommitted changes, and uses
+  the same remote repository
+- Preview checks by default; restore the remote only when `-x` is specified
+- Restore branches, tags, and required Git data from the source clone
+- Verify that the remote `main` branch matches the source clone
+- Generate a recovery report with specific follow-up actions
 
 **Exit Codes:**
 
@@ -584,6 +609,10 @@ fixremote [OPTIONS] <clone-path>
 - 3: Recovery failed - see report for details
 - 100: Missing required dependencies or configuration files
 - 200: Git operation failed during recovery
+
+Every completed preview or recovery run writes a diagnostic report and prints
+its path. Open that file for details; these diagnostics are not generated by
+the `report` command.
 </details>
 
 <details>
@@ -591,7 +620,8 @@ fixremote [OPTIONS] <clone-path>
 
 #### 1.2.3. setupclone
 
-**Purpose:** Setup clone environment - install scripts, add to PATH, and configure Git hooks.
+**Purpose:** Configure a clone so project commands are available and local
+safeguards are active.
 
 **Usage:**
 
@@ -603,7 +633,7 @@ bash briteRepo/bin/setupclone [-t SEC]
 
 - Make all scripts executable
 - Add `briteRepo/bin/` to PATH in `~/.bashrc`
-- Configure Git hooks via `core.hooksPath`
+- Activate local repository safeguards
 - Load configuration immediately
 </details>
 
@@ -629,7 +659,8 @@ timeout.
 
 #### 1.2.5. mkfork
 
-**Purpose:** Create a fork of the repository and optionally configure upstream.
+**Purpose:** Create a fork of the repository and optionally connect it to the
+source repository.
 
 **Usage:**
 
@@ -689,6 +720,10 @@ fixrepo [OPTIONS] [<clone-path>]
 
 **Related Commands:** Use `fixlocal` first for an isolated local problem and
 `fixremote` only to recover a damaged remote from a known-good clone.
+
+Every completed run writes a repository diagnostic report and prints its path.
+Open that file for details; these diagnostics are not generated by the
+`report` command.
 </details>
 
 <details>
@@ -1058,8 +1093,8 @@ automation and troubleshooting aligned with the executable interface.
 
 1. Run: `report style -m`
 2. Review the differences reported
-3. Manually update version numbers in affected files
-4. Re-run `report style -m` to verify
+3. Update the listed version numbers to the expected version
+4. Rerun `report style -m` to verify
 
 #### Permission Denied
 
@@ -1088,8 +1123,66 @@ Run `setupclone` to restore command permissions and local configuration.
 **Solution:**
 
 1. Run the command again with `-v` when supported
-2. Run `fixlocal` for local clone, worktree, or tracking problems
+2. Run `fixlocal` for damaged Git data, uncommitted changes, missing repository
+  files, remote access, or branch synchronization problems
 3. See the [Repair Decision Tree](./Contributor_Internal_Guide.md#2-repair-decision-tree)
    if the local repair does not resolve the issue
 </details>
+</details>
+
+<details>
+<summary><strong>7. Contributor-Specific Glossary</strong></summary>
+
+## 7. Contributor-Specific Glossary
+
+For terms used throughout the broader documentation and testing framework, see
+the [Glossary Reference](./Glossary_Reference.md).
+
+- **Approver**: A reviewer authorized to approve changes and perform protected
+  workflows such as release publication.
+- **Breaking change**: A change that removes or changes supported public
+  behavior and normally requires a major version increment.
+- **Contributor**: A person authorized to submit code, documentation, fixes,
+  or other improvements through the project workflow.
+- **Contributor branch**: A branch for general contribution work that is not
+  tied to one version. Its name is `[<type>/]<description>`.
+- **Deprecated**: Supported public behavior marked for removal in a future
+  major version. Deprecation requires documentation and migration guidance.
+- **Documentation update**: A change to a canonical Markdown document. Update
+  versioned documentation and regenerate its output formats when required.
+- **Internal API change**: An implementation change that does not alter public
+  API behavior but may require updates to an Internal Guide or Reference.
+- **Major increment**: An increase to the first component of an `M.m.p`
+  version, used for a breaking or major structural change.
+- **Parent branch**: The destination immediately above a branch in an allowed
+  push-up path.
+- **Protected branch**: A branch, such as `main` or a version branch, that
+  cannot be edited directly through routine contributor workflows.
+- **Public API change**: A change to the Runner or Test API visible to API
+  users. A breaking public API change requires a major version increment.
+- **Pull request**: A proposal to review and approve changes before they are
+  pushed up to a parent branch.
+- **Push up**: Update the parent with the source branch's files and directories
+  using `pushup` so both local branches contain the same files and directories.
+  Existing remote copies finish with the same files and directories as their
+  corresponding local branches.
+- **Release**: A published, versioned project state made available to users.
+- **Remote copy**: The version of a branch stored in the remote repository.
+- **Reviewer**: A contributor authorized to formally review changes and manage
+  review feedback. An approver is also a reviewer.
+- **Synchronize**: Update a branch so it contains the required version or
+  changes from another branch or its remote copy. A synchronized branch may
+  retain its own additional changes; the command report identifies what was
+  updated. **Synchronized**, **synchronization**, and **resynchronize** describe
+  the completed action, the process, and repeating that process after another
+  branch changes. When a command guarantees matching files and directories,
+  its description states that explicitly.
+- **Targeted branch**: A `dev/` or `fix/` branch whose work belongs to a
+  specific version.
+- **Test coverage requirement**: The expectation that changed behavior has
+  focused tests and that applicable existing tests continue to pass.
+- **Version branch**: A protected branch named `v<M>.<m>.0` for work belonging
+  to one release line.
+- **Versioned file**: A file that records a document or component version and
+  its version history.
 </details>

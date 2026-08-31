@@ -103,7 +103,7 @@ Workflow:
          # Edit files, then use commit to create the follow-up commit:
          commit -c "Address reviewer feedback on auth logic."
 
-  4. Publish the branch updates to remote:
+  4. Push the branch updates to remote:
          push
 
   5. If the branch needs to be brought up to date with parent changes:
@@ -135,7 +135,7 @@ Examples:
   # Contributor: Commit fixes for feedback:
   commit -c "Add fix for error handling."
 
-  # Contributor: Publish fixes to remote:
+  # Contributor: Push fixes to remote:
   push
 
   # Contributor or Reviewer: view comments with IDs:
@@ -192,7 +192,7 @@ Remote Workflow (Codespaces, SSH, etc.):
   - Use `feedback view` to see feedback with ids in stdout.
   - Use `feedback respond` to communicate feedback without using PR UI.
   - Use `commit` to create your follow-up commits.
-  - Use `push` to publish changes to remote.
+  - Use `push` to update the remote branch.
   - Use `pulldown` to sync with parent branch changes when needed.
 
 Outputs:
@@ -448,7 +448,7 @@ view_feedback() {
   repo_full_name=$(get_repo_full_name)
   if [[ -z "$repo_full_name" ]]; then
     bt_error_exit "$EXIT_CONFIG_ERROR" \
-      "Unable to determine repository owner/name from origin"
+      "Unable to determine repository owner/name from the remote URL"
   fi
   
   if command -v gh &> /dev/null; then
@@ -468,7 +468,7 @@ view_feedback() {
       fi
 
       bt_error_exit "$EXIT_OPERATION_FAILED" \
-        "No PR found for branch '$branch'. Create a PR first using review."
+        "No PR found for branch '$branch'. Create one by running review."
     fi
     
     bt_info "Fetching review comments for PR #$pr_number..."
@@ -480,7 +480,7 @@ view_feedback() {
         >/dev/null 2>&1 || true
     fi
     
-    bt_success "Done"
+    bt_success "Viewed feedback for PR #$pr_number"
   else
     bt_error_exit "$EXIT_CONFIG_ERROR" \
       "GitHub CLI (gh) not installed. Install gh to use feedback."
@@ -630,7 +630,7 @@ respond_to_feedback() {
   repo_full_name=$(get_repo_full_name)
   if [[ -z "$repo_full_name" ]]; then
     bt_error_exit "$EXIT_CONFIG_ERROR" \
-      "Unable to determine repository owner/name from origin"
+      "Unable to determine repository owner/name from the remote URL"
   fi
   
   if command -v gh &> /dev/null; then
@@ -691,7 +691,7 @@ resolve_feedback() {
   repo_full_name=$(get_repo_full_name)
   if [[ -z "$repo_full_name" ]]; then
     bt_error_exit "$EXIT_CONFIG_ERROR" \
-      "Unable to determine repository owner/name from origin"
+      "Unable to determine repository owner/name from the remote URL"
   fi
 
   if [[ -z "$COMMENT_ID" ]]; then

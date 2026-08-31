@@ -96,8 +96,6 @@ EOF
   git checkout -b dev/parser-v1.0.0 v1.0.0 >/dev/null 2>&1
   git commit --allow-empty -m "targeted branch" >/dev/null 2>&1
   git push -u origin dev/parser-v1.0.0 >/dev/null 2>&1
-
-  git checkout main >/dev/null 2>&1
 )
 
 # 1) Help output
@@ -108,11 +106,21 @@ assert_contains "-e" "$TMPDIR/help.out"
 assert_contains "-r" "$TMPDIR/help.out"
 pass "help output"
 
+rc=$(run_capture "$TMPDIR/non-targeted.out" bash -lc \
+  "cd '$WORK' && git checkout main >/dev/null 2>&1 && bash ./briteRepo/bin/retarget -d v1.1.0")
+[[ "$rc" -eq 1 ]] || \
+  fail "retarget on non-targeted current branch should exit 1 (got $rc)"
+assert_contains "Current branch 'main' is not targeted" \
+  "$TMPDIR/non-targeted.out"
+assert_contains "Use chbranch to select" "$TMPDIR/non-targeted.out"
+git -C "$WORK" checkout dev/parser-v1.0.0 >/dev/null 2>&1
+pass "current targeted branch requirement"
+
 copyfix_state_root="$(git -C "$WORK" rev-parse \
   --path-format=absolute --git-common-dir)/briteRepo-copyfix-state"
 mkdir -p "$copyfix_state_root/dev/parser-v1.0.0"
 rc=$(run_capture "$TMPDIR/copyfix-active.out" env GITHUB_ACTOR=testapprover \
-  bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -d dev/parser-v1.0.0 v1.1.0")
+  bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -d v1.1.0")
 [[ "$rc" -eq 4 ]] || fail "unfinished copyfix should block retarget (got $rc)"
 assert_contains "has an unfinished copyfix operation" \
   "$TMPDIR/copyfix-active.out"
@@ -121,7 +129,7 @@ pass "unfinished copyfix blocks retarget"
 
 # 2) Explicit error mode should write a report without retargeting.
 rc=$(run_capture "$TMPDIR/error-run.out" bash -lc \
-  "cd '$WORK' && bash ./briteRepo/bin/retarget -e dev/parser-v1.0.0 v1.1.0")
+  "cd '$WORK' && bash ./briteRepo/bin/retarget -e v1.1.0")
 [[ "$rc" -eq 6 ]] || fail "retarget -e should exit 6 (got $rc)"
 assert_contains "Retarget skipped due to -e option" "$TMPDIR/error-run.out"
 assert_contains "See reports/retarget-e-" "$TMPDIR/error-run.out"
@@ -137,18 +145,22 @@ rc=$(run_capture "$TMPDIR/mode-conflict.out" bash -lc \
 assert_contains "mutually exclusive" "$TMPDIR/mode-conflict.out"
 pass "dry-run and error-run conflict"
 
-# 3) Unauthorized user should be blocked (permission denied exit code).
-rc=$(run_capture "$TMPDIR/unauth.out" env GITHUB_ACTOR=testcontrib bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -d dev/parser-v1.0.0 v1.1.0")
+# 3) Contributors may retarget a branch in a clone they can access.
+rc=$(run_capture "$TMPDIR/contributor.out" env GITHUB_ACTOR=testcontrib bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -d v1.1.0")
+[[ "$rc" -eq 0 ]] || fail "contributor retarget should exit 0 (got $rc)"
+pass "contributor authorization"
+
+rc=$(run_capture "$TMPDIR/unauth.out" env GITHUB_ACTOR=outsider bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -d v1.1.0")
 [[ "$rc" -eq 2 ]] || fail "unauthorized retarget should exit 2 (got $rc)"
-assert_contains "is not an approver" "$TMPDIR/unauth.out"
-pass "authorization enforcement"
+assert_contains "is not a contributor" "$TMPDIR/unauth.out"
+pass "non-contributor authorization enforcement"
 
 # 3) Missing version policy should map to policy-denied exit code.
 cat > "$WORK/config/version_branch_access.csv" <<'EOF'
 version,dev,fix
 v1.0.0,open,open
 EOF
-rc=$(run_capture "$TMPDIR/policy-missing.out" env GITHUB_ACTOR=testapprover bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -d dev/parser-v1.0.0 v1.1.0")
+rc=$(run_capture "$TMPDIR/policy-missing.out" env GITHUB_ACTOR=testapprover bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -d v1.1.0")
 [[ "$rc" -eq 3 ]] || fail "missing access policy should exit 3 (got $rc)"
 assert_contains "has no access policy" "$TMPDIR/policy-missing.out"
 pass "missing policy exit mapping"
@@ -161,7 +173,7 @@ v1.1.0,open,open
 EOF
 
 # 4) Authorized dry-run should succeed using login identity resolution.
-rc=$(run_capture "$TMPDIR/dry-run.out" env GITHUB_ACTOR=testapprover bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -d dev/parser-v1.0.0 v1.1.0")
+rc=$(run_capture "$TMPDIR/dry-run.out" env GITHUB_ACTOR=testapprover bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -d v1.1.0")
 [[ "$rc" -eq 0 ]] || fail "authorized dry-run retarget should exit 0 (got $rc)"
 assert_contains "Dry-run: retarget dev/parser-v1.0.0 -> v1.1.0" \
   "$TMPDIR/dry-run.out"
@@ -173,13 +185,14 @@ pass "dry-run success with login identity"
 # 5) Successful retarget should remain local and record details for report.
 remote_tip_before="$(git -C "$ORIGIN" rev-parse refs/heads/dev/parser-v1.0.0)"
 rc=$(run_capture "$TMPDIR/success.out" env GITHUB_ACTOR=testapprover \
-  bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -c 'move parser' dev/parser-v1.0.0 v1.1.0")
+  bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -c 'move parser' v1.1.0")
 [[ "$rc" -eq 0 ]] || fail "retarget should exit 0 (got $rc)"
-assert_contains "Local retarget complete" "$TMPDIR/success.out"
-assert_contains \
-  "Run chbranch dev/parser-v1.0.0, then run report for local details." \
+assert_contains "Retargeted 'dev/parser-v1.0.0' to 'v1.1.0'" \
   "$TMPDIR/success.out"
-assert_contains "Run retarget -r dev/parser-v1.0.0 v1.1.0 when ready to update origin." \
+assert_contains \
+  "Run report for local details." \
+  "$TMPDIR/success.out"
+assert_contains "Run retarget -r v1.1.0 when ready to update remote." \
   "$TMPDIR/success.out"
 remote_tip_after="$(git -C "$ORIGIN" rev-parse refs/heads/dev/parser-v1.0.0)"
 [[ "$remote_tip_after" == "$remote_tip_before" ]] || \
@@ -188,7 +201,7 @@ retarget_note="$(git -C "$WORK" notes --ref=briteRepo-workflow show \
   dev/parser-v1.0.0)"
 [[ "$retarget_note" == *"Workflow-Type: retarget"* ]] || \
   fail "retarget should record its workflow type"
-[[ "$retarget_note" == *"Command-Line: retarget -c move\\ parser dev/parser-v1.0.0 v1.1.0"* ]] || \
+[[ "$retarget_note" == *"Command-Line: retarget -c move\\ parser v1.1.0"* ]] || \
   fail "retarget should record its command line"
 [[ "$retarget_note" == *"Old-Parent: v1.0.0"* ]] || \
   fail "retarget should record its old parent"
@@ -220,8 +233,13 @@ remote_notes_before="$(git --git-dir="$ORIGIN" rev-parse \
 local_event_count_before="$(printf '%s\n' "$retarget_note" | \
   grep -Fc -- 'Workflow-Type: retarget')"
 rc=$(run_capture "$TMPDIR/remote-rejected.out" env GITHUB_ACTOR=testapprover \
-  bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -r dev/parser-v1.0.0 v1.1.0")
+  bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -r v1.1.0")
 [[ "$rc" -eq 4 ]] || fail "rejected retarget -r should exit 4 (got $rc)"
+assert_contains "Retargeted 'dev/parser-v1.0.0' to 'v1.1.0' locally, but the remote update is pending" \
+  "$TMPDIR/remote-rejected.out"
+assert_contains \
+  "then run retarget -r v1.1.0" \
+  "$TMPDIR/remote-rejected.out"
 [[ "$(git -C "$ORIGIN" rev-parse refs/heads/dev/parser-v1.0.0)" == \
   "$remote_tip_before" ]] || \
   fail "rejected retarget should not update the remote branch"
@@ -238,9 +256,12 @@ rm -f "$ORIGIN/hooks/pre-receive"
 
 # 7) -r should publish the already-retargeted local branch after rejection.
 rc=$(run_capture "$TMPDIR/remote-success.out" env GITHUB_ACTOR=testapprover \
-  bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -r dev/parser-v1.0.0 v1.1.0")
+  bash -lc "cd '$WORK' && bash ./briteRepo/bin/retarget -r v1.1.0")
 [[ "$rc" -eq 0 ]] || fail "retarget -r should exit 0 (got $rc)"
-assert_contains "Retarget complete locally and on origin" "$TMPDIR/remote-success.out"
+assert_contains "Retargeted 'dev/parser-v1.0.0' to 'v1.1.0'" \
+  "$TMPDIR/remote-success.out"
+assert_contains "For remote details, run report -r." \
+  "$TMPDIR/remote-success.out"
 remote_tip_after="$(git -C "$ORIGIN" rev-parse refs/heads/dev/parser-v1.0.0)"
 local_tip="$(git -C "$WORK" rev-parse dev/parser-v1.0.0)"
 [[ "$remote_tip_after" == "$local_tip" ]] || \
@@ -253,5 +274,34 @@ remote_retarget_note="$(git --git-dir="$ORIGIN" notes \
   grep -Fc -- 'Workflow-Type: retarget')" -eq 1 ]] || \
   fail "retarget retry should publish one remote history event"
 pass "atomic remote retarget publication and retry"
+
+# 8) Missing undo storage does not invalidate the retarget, but rerunning cannot
+# recover the original branch tip needed for undo metadata.
+(
+  cd "$WORK"
+  git checkout -b dev/metadata-v1.0.0 origin/v1.0.0 >/dev/null 2>&1
+  echo "metadata failure fixture" > metadata.txt
+  git add metadata.txt
+  git commit -m "metadata failure fixture" >/dev/null 2>&1
+)
+undo_history_dir="$(git -C "$WORK" rev-parse \
+  --path-format=absolute --git-common-dir)/briteRepo-undo-history"
+mv "$undo_history_dir" "${undo_history_dir}.saved"
+: > "$undo_history_dir"
+rc=$(run_capture "$TMPDIR/undo-metadata-fail.out" \
+  env GITHUB_ACTOR=testapprover bash -lc \
+  "cd '$WORK' && bash ./briteRepo/bin/retarget v1.1.0")
+rm -f "$undo_history_dir"
+mv "${undo_history_dir}.saved" "$undo_history_dir"
+[[ "$rc" -eq 0 ]] || \
+  fail "retarget with unavailable undo storage should exit 0 (got $rc)"
+assert_contains \
+  "Retargeted 'dev/metadata-v1.0.0' to 'v1.1.0', but undo metadata could not be recorded" \
+  "$TMPDIR/undo-metadata-fail.out"
+assert_contains "rerunning retarget cannot recreate the missing metadata" \
+  "$TMPDIR/undo-metadata-fail.out"
+assert_contains "Retarget cannot be undone" \
+  "$TMPDIR/undo-metadata-fail.out"
+pass "undo metadata failure guidance"
 
 echo "All retarget smoke tests passed."

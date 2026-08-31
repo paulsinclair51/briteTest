@@ -72,6 +72,7 @@ This document is the task-oriented guide for routine contribution work.
    3.2. [Edit, Test, Commit, and Push](#32-edit-test-commit-and-push)<br>
    3.3. [Keep Your Branch Current](#33-keep-your-branch-current)<br>
    3.4. [Undo a Change](#34-undo-a-change)<br>
+  3.5. [Move Targeted Work to Another Version](#35-move-targeted-work-to-another-version)<br>
 4. [Pull Requests and Feedback](#4-pull-requests-and-feedback)<br>
    4.1. [Prepare a Pull Request](#41-prepare-a-pull-request)<br>
    4.2. [Open and Update a Pull Request](#42-open-and-update-a-pull-request)<br>
@@ -86,6 +87,7 @@ This document is the task-oriented guide for routine contribution work.
     10.1. [Common Problems](#101-common-problems)<br>
     10.2. [Interrupted Pushup](#102-interrupted-pushup)<br>
     10.3. [Getting Help](#103-getting-help)<br>
+11. [Key Terms](#11-key-terms)<br>
 </details>
 
 <details>
@@ -93,14 +95,14 @@ This document is the task-oriented guide for routine contribution work.
 
 ## 1. Introduction
 
-The repository provides commands in `briteRepo/bin/` to perform repository-changing
-actions. Contributors, reviewers, and approvers must use these commands instead
-of direct Git commands for branch modification operations.
+briteRepo provides a simple, higher-level source-management workflow. Its
+commands handle the underlying Git and GitHub operations, policy checks,
+reporting, and recovery so contributors can work with branches, changes,
+reviews, and releases without managing low-level source-control details.
 
-The commands validate each action, enforce repository policy, and
-provide recovery guidance. After `setupclone`, the commands are normally
-available by name. You may also run them by path, such as
-`briteRepo/bin/commit`.
+Use the commands in `briteRepo/bin/` for repository-changing actions. After
+`setupclone`, they are normally available by name. You may also run them by
+path, such as `briteRepo/bin/commit`.
 
 | Task | Command |
 |------|---------|
@@ -125,6 +127,11 @@ Run any command with `-h` for current usage, prerequisites, and exit statuses.
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;2.1. Set Up Your Clone</summary>
 
 ### 2.1. Set Up Your Clone
+
+All `briteRepo` commands require Bash and standard POSIX utilities. On Linux
+and macOS, run them from a Bash-compatible terminal. On Windows, use WSL, Git
+Bash, or MSYS2. Native Command Prompt and PowerShell do not run these scripts
+directly, but they can launch a script through an installed `bash` executable.
 
 1. Create the clone with `mkclone`. It configures the commands and local
    safeguards required by the workflow.
@@ -191,13 +198,17 @@ chbranch BRANCH
 Examples:
 
 ```bash
-mkbranch -r mywork/feature main
 mkbranch -r dev/parser-fix-v1.0.0 v1.0.0
 mkbranch -r fix/memory-leak-v1.0.0 v1.0.0
+mkbranch -r mywork/parser-tests dev/parser-fix-v1.0.0
 ```
 
 Use `lsbranch` to inspect branches. Use `rmbranch BRANCH` to remove an
-unneeded branch. Protected branches cannot be removed.
+unneeded branch. Protected branches cannot be removed. Creating a remote copy
+with `-r` requires the parent branch to exist both locally and remotely. Do not
+create a remote copy for a source or parent branch while its `pushup` workflow
+is unfinished; rerun `pushup` first. Local-only branch creation does not require
+remote access.
 </details>
 
 <details>
@@ -227,8 +238,10 @@ unneeded branch. Protected branches cannot be removed.
 - Run `pulldown` when the parent branch has newer changes that must be pulled
   down into the current branch.
 
-Both commands require a clean working tree. If a conflict cannot be resolved
-automatically, follow the command's report, resolve the files, and rerun it.
+Both commands require all local changes to be committed or undone. If a
+conflict cannot be resolved automatically, follow the command's report,
+resolve the listed files, and rerun the command. After either command
+completes, run `report` to review the recorded local branch activity.
 </details>
 
 <details>
@@ -237,13 +250,42 @@ automatically, follow the command's report, resolve the files, and rerun it.
 ### 3.4. Undo a Change
 
 ```bash
-undo                 # Undo uncommitted changes.
-undo commit          # Undo the latest local commit and keep its changes.
-undo pull            # Undo the latest pull.
-undo pulldown        # Undo the latest pull down.
+undo                 # Undo the latest reversible operation.
+undo -d              # Preview the automatically selected operation.
+undo -v              # Show additional progress and diagnostics.
 ```
 
-Run `undo -h` before using other modes. Do not use direct reset commands.
+Uncommitted changes take precedence; otherwise `undo` selects the latest
+supported operation recorded for the current branch. Run `undo -h` before use.
+Do not pass an operation name or use direct reset commands.
+</details>
+
+<details>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;3.5. Move Targeted Work to Another Version</summary>
+
+### 3.5. Move Targeted Work to Another Version
+
+A contributor, reviewer, or approver with access to the clone can move the
+current targeted `dev/` or `fix/` branch to another open version:
+
+```bash
+chbranch TARGET_BRANCH
+retarget NEW_PARENT_VERSION
+report
+```
+
+`retarget` always changes the current local branch. Review and test the local
+result first. When it is ready for the remote repository, run:
+
+```bash
+retarget -r NEW_PARENT_VERSION
+report -r
+```
+
+If conflicts occur, resolve the listed files while remaining on the targeted
+branch, then rerun the displayed `retarget` command. See
+[retarget](./Contributor_Reference.md#1112-retarget) for policy, options, and
+exit statuses.
 </details>
 </details>
 
@@ -289,6 +331,11 @@ Use `feedback view`, `feedback respond -i ID -c "Response"`, and
 `feedback resolve -i ID` throughout review. Reviewers and approvers use
 `feedback approve` or `feedback disapprove` for approval decisions.
 
+GitHub uses `.github/CODEOWNERS` to request reviewers for changed paths.
+CODEOWNERS routes review but does not by itself grant approval or authorize
+`pushup`; repository roles, required approvals, and rulesets remain
+authoritative.
+
 Approval applies to the current source commit. A later commit requires review
 and approval again. Only one approved pull request may wait to push up to a
 given parent branch. `feedback approve` refuses another approval until the
@@ -301,8 +348,18 @@ earlier pull request has completed `pushup` or is no longer approved.
 ### 4.4. Push Up an Approved Change
 
 Run `pushup` from the source branch. It determines the parent branch, validates
-the path and permissions, checks any required approval, publishes the parent,
-then pulls the published parent changes down into the source branch.
+the path and permissions, and checks any required approval. It updates the
+parent with the source branch's files and directories. When `pushup` completes,
+the local source and parent contain the same files and directories.
+
+If the parent has a remote copy, `pushup` updates its files and directories to
+match the local parent. If the source has a remote copy, its files and
+directories match the local source when `pushup` completes. A source remote
+copy requires a parent remote copy. Missing optional remote copies are not
+created, and protected branches must have remote copies.
+
+Run `report -p` for local parent details. If the parent has a remote copy, also
+run `report -p -r` for remote parent details.
 
 If the source is behind its parent, run `pulldown` first. For interruption
 recovery, see [Interrupted Pushup](#102-interrupted-pushup).
@@ -341,13 +398,18 @@ see [Branch and Permission Reference](./Contributor_Reference.md#2-branch-and-pe
 
 **Tests**
 
-Run relevant tests and, when practical, the complete suite with `make run`.
+- Run `make run` for the C runner workflow.
+- Run `make test-all-scripts` for all `briteRepo` script workflows.
+- Run focused test targets while developing, then all applicable suites before
+  requesting review.
 
 **Documentation**
 
 - Use precise, neutral language and consistent terminology.
 - Use backticks for commands, paths, and identifiers.
 - Run `make check-doc` after changing canonical documentation.
+- See [Documentation_Guide.md](./Documentation_Guide.md) for the document map,
+  canonical sources, formatting, and generated-document workflow.
 
 **Security**
 
@@ -359,7 +421,10 @@ Run relevant tests and, when practical, the complete suite with `make run`.
 
 The repository uses `M.m.p` version numbers. Patch releases contain fixes, minor
 releases add backward-compatible features, and major releases contain breaking
-changes. Update branding through `rebrand`.
+changes. Check `config/version_status.md` for versions currently accepting
+development or fixes. Update branding through `rebrand`; see the
+[Contributor Reference](./Contributor_Reference.md#134-rebrand) for command
+details.
 </details>
 
 <details>
@@ -400,10 +465,10 @@ edit them through GitHub.com, delete them, or rewrite their history.
 
 Use `pushup` through an allowed push-up path. It validates branch versions,
 permissions, synchronization, and required pull requests before publication.
-GitHub rulesets separately prevent deletion and non-fast-forward updates.
+GitHub rulesets separately prevent branch deletion and unsafe history changes.
 
 Releases are approver operations. Before running `release`, verify the version
-branch, version numbers, release notes, tests, stale references, and generated
+branch, version numbers, release notes, tests, outdated links, and generated
 documents. Commit and push preparation changes through project commands. Run
 `release -h` for current prerequisites. Do not create or push release tags with
 direct Git commands.
@@ -414,15 +479,14 @@ direct Git commands.
 
 ## 9. Validation and Local Safeguards
 
-GitHub validates branch relationships, commit metadata, authors, signatures,
+GitHub validates branch relationships, change information, authors, signatures,
 protected files, large files, secrets, license headers, code quality, and
-workflow syntax. When a check fails, read its first actionable error, correct
-and test the problem locally, then run `commit` and `push`.
+workflow configuration. When a check fails, read its first actionable error,
+correct and test the problem locally, then run `commit` and `push`.
 
-`setupclone` configures local hooks that prevent accidental direct commits,
-pushes, and pulls. Project commands perform policy and permission checks and
-invoke Git safely. Contributors do not need to know or set internal hook-bypass
-variables.
+`setupclone` installs local safeguards that route repository changes through
+project commands. These commands perform the required policy, permission, and
+safety checks.
 
 If local safeguards are missing, run `setupclone` to restore them.
 </details>
@@ -448,6 +512,10 @@ If local safeguards are missing, run `setupclone` to restore them.
   changes, run `commit` and `push`, then respond and resolve addressed threads.
 - **Wrong files or commit:** run `undo`; it selects the current branch's latest
   reversible operation. Do not use direct reset commands.
+- **Local repository problem:** run `fixlocal` and open the report path it
+  prints. Use `fixrepo` if the problem may affect more than the current clone.
+  An approver or owner may use `fixremote` when a healthy clone must restore
+  the remote repository; each repair command prints its own diagnostic report.
 </details>
 
 <details>
@@ -455,12 +523,14 @@ If local safeguards are missing, run `setupclone` to restore them.
 
 ### 10.2. Interrupted Pushup
 
-- Restore the system or network connection.
-- Rerun `pushup`; it inspects the saved phase and exact local and remote tips.
+- Rerun `pushup`; it uses the saved local branch versions and the remote copies
+  that existed when the workflow started.
 - If recovery proves publication did not occur, it restores the saved
   local branch versions. Run `pushup` to begin again.
-- If the remote remains unavailable, restore connectivity and retry. The
-  command retains saved recovery information rather than guessing.
+- A local-only workflow resumes without remote access. If a required remote
+  copy is unavailable, restore network access or authentication, then rerun
+  `pushup`. The command retains its recovery information until it can verify
+  every required branch.
 
 Do not edit participating branches or delete saved recovery information while
 recovery is pending. Repeated continuation checks exact local and remote branch
@@ -479,4 +549,30 @@ versions before resuming.
   internal policy and recovery work.
 - Open a GitHub issue for a defect or a GitHub Discussion for a question.
 </details>
+</details>
+
+<details>
+<summary><strong>11. Key Terms</strong></summary>
+
+## 11. Key Terms
+
+- **Contributor branch**: A branch for general contribution work that is not
+  tied to one version. Its name is `[<type>/]<description>`.
+- **Parent branch**: The destination immediately above a branch in an allowed
+  push-up path.
+- **Protected branch**: The `main` or a version branch that
+  cannot be edited directly through routine contributor workflows.
+- **Push up**: Update the parent with the source branch's files and directories
+  using `pushup` so both local branches contain the same files and directories.
+  Existing remote copies finish with the same files and directories as their
+  corresponding local branches.
+- **Remote copy**: The version of a branch stored in the remote repository.
+- **Targeted branch**: A `dev/` or `fix/` branch whose work belongs to a
+  specific version.
+
+See the
+[Contributor-Specific Glossary](./Contributor_Reference.md#7-contributor-specific-glossary)
+for role, versioning, API, documentation, release, and testing terms. See the
+[Glossary Reference](./Glossary_Reference.md) for terms used throughout the
+broader documentation and testing framework.
 </details>

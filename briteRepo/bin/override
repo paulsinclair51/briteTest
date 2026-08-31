@@ -27,16 +27,15 @@ Prerequisites:
   - If -r is specified,
     - The owner must also have the GitHub repository admin or
       organization admin authority required to modify remote
-      protected refs or rulesets.
+      protected branches or rulesets.
     - The remote must be reachable within the timeout.
 
 Behavior:
-  - Without -r, 'on' enables unrestricted mode in this clone for direct git
-    commands that are normally blocked by local hooks. This is a local recovery
-    mode only.
+  - Without -r, 'on' temporarily permits exceptional local recovery actions
+    that normal safeguards block.
   - With -r, 'on' enables a temporary remote repair authorization window.
     This records that the owner has explicitly entered a GitHub-side repair
-    workflow. Actual remote repair of protected refs or repository state must
+    workflow. Actual remote repair of protected branches or repository state must
     still be performed through GitHub repository admin or organization admin
     controls, or through an explicit server-side exception approved by
     repository admins.

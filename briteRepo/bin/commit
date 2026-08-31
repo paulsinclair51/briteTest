@@ -15,9 +15,8 @@ Usage:
   commit [OPTIONS] [-- TOKEN...]
   commit {-h | --help}
 
-Commit changes to the current branch (local, non-protected) with an
-auto-generated subject line and body (body includes the user comment
-and other relevant details) for tracking changes.
+Save changes to the current local, non-protected branch with an automatically
+generated description that includes the user comment and change details.
 
 Prerequisites:
   - The user must be a contributor, reviewer, or approver (listed in
@@ -27,11 +26,11 @@ Prerequisites:
     branch.
   - The current branch must be a local branch.
   - The current branch must not have an unfinished copyfix operation.
-  - The current branch must not have a pull rebase in progress. Resolve
-    conflicts and rerun pull to continue it.
+  - The current branch must not have an unfinished pull. Resolve conflicts and
+    rerun pull to continue it.
 
 Note: To make changes to main, a version branch (v<M>.<m>.0), or a
-remote snapshot, first make the changes in a local targeted or contributor branch, run
+remote copy, first make the changes in a local targeted or contributor branch, run
 commit, and then run push. Run review on a targeted branch to start a pull
 request. An approver can then use pushup to apply changes to its parent branch.
 
@@ -60,8 +59,8 @@ Options:
       and whitespace between tokens is reduced to a single space.
     - For a quoted token, whitespace is preserved and the quotes are
       removed.
-    - The user comment is quoted in the commit body to avoid ambiguity
-      with metadata trailer lines.
+    - The user comment is kept separate from automatically generated change
+      details.
     - '\\n' in the user comment is interpreted as a newline in the
       commit body.
     - For example, the following both have the same user comment:
@@ -118,7 +117,7 @@ Exit codes:
   6   Commit skipped due to -e option.
   7   No changes are available to commit.
   8   The current branch has an unfinished copyfix operation.
-  9   A pull rebase is in progress. Resolve conflicts and rerun pull.
+  9   A pull is in progress. Resolve conflicts and rerun pull.
   200 Failed to inspect, stage, or commit changes. Run `fixrepo` and retry.
       If the issue persists, create a new clone with `mkclone`, apply the
       changes, and retry.

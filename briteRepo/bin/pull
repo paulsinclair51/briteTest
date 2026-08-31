@@ -18,10 +18,9 @@ If the current local branch is behind its remote branch, pull the latest
 changes from the remote branch into the local branch when it is safe to
 do so, so that the local branch is synchronized with its remote branch.
 
-If local and remote branches have diverged, pull automatically resolves
-the divergence when it is safe to do so (local commits may be rewritten).
-If unresolved conflicts occur, manual resolution is required. After resolving
-conflicts, rerun pull to continue the in-progress rebase.
+If the local and remote branches contain different changes, pull combines them
+when it can do so safely. If conflicts remain, resolve the listed files and
+rerun pull to continue.
 
 Prerequisites:
   - If the -o option is specified, the user must be the repository owner.
@@ -37,7 +36,7 @@ Prerequisites:
     specified by the -t option (default: 10 seconds).
   - A corresponding remote branch must exist.
   - The remote branch must contain changes that are not in the current local
-    branch, or a pull rebase must already be in progress.
+    branch, or a pull must already be in progress.
 
 Options:
   -d          Generate a dry-run report for the pull workflow without
@@ -95,8 +94,10 @@ Exit codes:
   7    Remote branch does not exist.
   8    Remote is unreachable.
   9    Accessing remote timed out.
-  10   Unresolved divergence. Manually resolve and then rerun pull.
-  11   Unsafe fast-forward. Manually resolve and then rerun pull.
+    10   Local and remote changes conflict. Resolve the listed files, then rerun
+      pull.
+    11   The local branch could not be safely updated. Follow the displayed
+      guidance, then rerun pull.
   12   Pull skipped because -e was specified.
   13   No remote changes are available to pull.
   14   The current branch has an unfinished copyfix operation.
@@ -384,7 +385,7 @@ require_remote_branch() {
 
   if ! git remote get-url origin >/dev/null 2>&1; then
     bt_emit_prerequisite_failure "$EXIT_REMOTE_UNREACHABLE" \
-      "Remote 'origin' is not configured." \
+      "This clone has no remote repository URL." \
       "configure origin and rerun pull."
   fi
 
@@ -401,7 +402,7 @@ require_remote_branch() {
     2)
       bt_emit_prerequisite_failure "$EXIT_REMOTE_BRANCH_MISSING" \
         "Remote branch 'origin/$branch' does not exist." \
-        "publish the branch or switch to a branch that exists on origin."
+        "run mkbranch -r to create the remote branch, or switch to a branch that exists on the remote."
       ;;
     124)
       bt_emit_prerequisite_failure "$EXIT_REMOTE_TIMEOUT" \
@@ -748,7 +749,7 @@ fi
 
 if bt_is_current_internal_remote_copy; then
   bt_emit_prerequisite_failure "$EXIT_NOT_LOCAL_BRANCH" \
-    "Current branch '$CURRENT_BRANCH' is a read-only remote snapshot." \
+    "Current branch '$CURRENT_BRANCH' is a read-only remote copy." \
     "use 'chbranch -r $CURRENT_BRANCH' to refresh it, or switch to a local branch."
 fi
 

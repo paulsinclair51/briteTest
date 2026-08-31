@@ -21,7 +21,8 @@ Prerequisites:
 
 Arguments:
   REPOSITORY  Repository in OWNER/NAME form. If omitted, the repository is
-              resolved from GITHUB_REPOSITORY or the current clone's origin.
+              resolved from GITHUB_REPOSITORY or the remote repository URL
+              saved for the current clone.
 
 Options:
   --check     Verify rulesets without changing them.

@@ -164,9 +164,9 @@ rc=$(run_capture "$TMPDIR/remote-snapshot.out" "$LSBRANCH")
 [[ "$rc" -eq 0 ]] || fail "remote snapshot status should exit 0"
 grep -Fq "${snapshot_branch} [current]" \
   "$TMPDIR/remote-snapshot.out" || \
-  fail "current remote snapshot should be labeled [remote snapshot]"
-grep -Fq "[remote snapshot]" "$TMPDIR/remote-snapshot.out" || \
-  fail "current remote snapshot should be labeled [remote snapshot]"
+  fail "current remote copy should be labeled [remote copy]"
+grep -Fq "[remote copy]" "$TMPDIR/remote-snapshot.out" || \
+  fail "current remote copy should be labeled [remote copy]"
 git switch "$snapshot_branch" >/dev/null 2>&1 || \
   fail "could not restore branch after remote snapshot fixture"
 pass "current remote snapshot status"
@@ -181,7 +181,7 @@ rc=$(run_capture "$TMPDIR/internal-remote-snapshot.out" "$LSBRANCH")
 grep -Fq "${snapshot_branch} [current]" \
   "$TMPDIR/internal-remote-snapshot.out" || \
   fail "lsbranch should display the source branch for an internal snapshot"
-grep -Fq "[remote snapshot]" "$TMPDIR/internal-remote-snapshot.out" || \
+grep -Fq "[remote copy]" "$TMPDIR/internal-remote-snapshot.out" || \
   fail "lsbranch should label an internal snapshot"
 if grep -Eq '^r-' "$TMPDIR/internal-remote-snapshot.out"; then
   fail "lsbranch should hide internal r- branches"

@@ -69,6 +69,7 @@ Policy:
   - Remote branches are read-only for editing in this workflow.
   - To make changes, use a local branch.
   - A local branch may exist without a corresponding remote branch.
+  - Creating a local-only branch does not require remote access.
 
 Arguments:
   <newbranch>        Name of the new branch to create.
@@ -119,7 +120,7 @@ Arguments:
      The user must be a contributor (see <repo>/docs/md/Contributor_Guide.md).
 
     By default, the new branch is created locally (no remote required).
-    Specify -r to publish the local branch to remote.
+    Specify -r to create the remote branch.
 
   3. If the <newbranch> is a 'contributor' branch, i.e., the name has the
      form:
@@ -138,7 +139,7 @@ Arguments:
      The user must be a contributor (see <repo>/docs/md/Contributor_Guide.md).
 
     By default, the new branch is created locally (no remote required).
-    Specify -r to publish the local branch to remote.
+    Specify -r to create the remote branch.
 
   4. If <newbranch> is none of the above, creating the branch fails.
 
@@ -207,14 +208,16 @@ Local branch:
     error that local branch already exists.
   - If new branch does not exist locally,
     - Create the new branch from the parent branch.
-    - Record workflow metadata for branch reports.
+    - Record details for branch reports.
 
 Remote branch (-r or if the new branch is a 'version' branch):
-  - If the parent branch doesn't exist remotely, fail with error
-    that remote parent branch doesn't exist.
+  - The parent branch must exist both locally and remotely.
+  - A remote copy cannot be created for a source or parent branch that is
+    participating in an unfinished pushup workflow because pushup must retain
+    the remote-copy choices saved when it started.
   - If the new branch doesn't exist remotely:
     - Push the new or existing local branch to the remote repository.
-    - Record workflow metadata for branch reports.
+    - Record details for branch reports.
 
 Validate (-d):
   - Verify the parent branch exists.
@@ -333,6 +336,7 @@ COMMENT=""
 ORIGINAL_ARGS=("$@")
 EXPLICIT_LOCAL_MODE=0
 REMOTE_TIMEOUT_SECONDS=10
+PUSHUP_LOCK_FD=""
 
 readonly EXIT_INVALID_ARGUMENT=1
 
@@ -479,12 +483,41 @@ get_target_version_from_targeted_branch() {
 
 branch_exists_local() {
   local branchname="$1"
-  git rev-parse --verify "$branchname" >/dev/null 2>&1
+  git show-ref --verify --quiet "refs/heads/$branchname"
 }
 
 branch_exists_remote() {
   local branchname="$1"
-  git rev-parse --verify "origin/$branchname" >/dev/null 2>&1
+  git show-ref --verify --quiet "refs/remotes/origin/$branchname"
+}
+
+active_pushup_participant() {
+  local branchname="$1"
+  local state_file=""
+  local source_branch=""
+  local parent_branch=""
+
+  state_file="$(git rev-parse --git-path briteRepo/pushup.state \
+    2>/dev/null || true)"
+  [[ -n "$state_file" && -f "$state_file" ]] || return 1
+  source_branch="$(git config --file "$state_file" \
+    --get pushup.source 2>/dev/null || true)"
+  parent_branch="$(git config --file "$state_file" \
+    --get pushup.parent 2>/dev/null || true)"
+  [[ "$branchname" == "$source_branch" || "$branchname" == "$parent_branch" ]]
+}
+
+acquire_pushup_lock() {
+  local lock_file=""
+
+  lock_file="$(git rev-parse --git-path briteRepo/pushup.lock)"
+  mkdir -p "$(dirname "$lock_file")"
+  exec {PUSHUP_LOCK_FD}>"$lock_file"
+  if ! flock -n "$PUSHUP_LOCK_FD"; then
+    bt_emit_error \
+      "Cannot create a remote branch while a pushup process is active"
+    exit 5
+  fi
 }
 
 # Resolve and validate the parent reference based on mode.
@@ -503,6 +536,10 @@ resolve_parent_reference_for_mode() {
   if [[ "$MODE" == "remote" ]]; then
     if ! branch_exists_remote "$PARENTBRANCHNAME"; then
       error_exit 7 "Remote parent branch '$PARENTBRANCHNAME' does not exist" \
+        "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
+    fi
+    if ! branch_exists_local "$PARENTBRANCHNAME"; then
+      error_exit 6 "Local parent branch '$PARENTBRANCHNAME' does not exist" \
         "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
     fi
     PARENTBRANCHNAME="origin/$PARENTBRANCHNAME"
@@ -686,11 +723,6 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     "tree" "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"
 fi
 
-if ! git remote get-url origin >/dev/null 2>&1; then
-  error_exit 5 "Remote 'origin' is not configured" "$BRANCHNAME" \
-    "$PARENTBRANCHNAME" "" "$COMMENT"
-fi
-
 CURRENT_USER="$(bt_require_login || true)"
 if [[ -z "$CURRENT_USER" ]]; then
   error_exit 2 \
@@ -737,13 +769,20 @@ case "$MODE" in
     ;;
 esac
 
-# Fetch latest refs from remote
-echo "Fetching latest refs from remote..."
-if ! bt_run_remote_command git fetch origin >/dev/null 2>&1; then
-  error_exit 5 "Failed to fetch from remote" "$BRANCHNAME" \
-    "$PARENTBRANCHNAME" "" "$COMMENT"
+# Refresh remote information only when this operation inspects or creates a
+# remote branch.
+if [[ "$MODE" != "local" ]]; then
+  if ! git remote get-url origin >/dev/null 2>&1; then
+    error_exit 5 "This clone has no remote repository URL" "$BRANCHNAME" \
+      "$PARENTBRANCHNAME" "" "$COMMENT"
+  fi
+  echo "Fetching latest refs from remote..."
+  if ! bt_run_remote_command git fetch origin >/dev/null 2>&1; then
+    error_exit 5 "Failed to fetch from remote" "$BRANCHNAME" \
+      "$PARENTBRANCHNAME" "" "$COMMENT"
+  fi
+  log_verbose "Fetched origin successfully"
 fi
-log_verbose "Fetched origin successfully"
 
 # Check if parent branch exists according to mode-specific rules.
 resolve_parent_reference_for_mode
@@ -789,6 +828,12 @@ fi
 
 # Remote mode: remote branch must not already exist. Use existing
 # local if present, otherwise create from parent and then push.
+acquire_pushup_lock
+if active_pushup_participant "$BRANCHNAME"; then
+  bt_emit_error \
+    "Cannot create a remote copy for '$BRANCHNAME' while it is participating in an unfinished pushup workflow"
+  exit 5
+fi
 if [[ "$REMOTE_EXISTS" -eq 1 ]]; then
   error_exit 9 "Branch '$BRANCHNAME' already exists on remote" \
     "$BRANCHNAME" "$PARENTBRANCHNAME" "" "$COMMENT"

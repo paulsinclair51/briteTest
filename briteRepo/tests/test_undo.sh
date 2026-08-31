@@ -85,11 +85,13 @@ assert_contains "-e" "$TMPDIR/help.out"
 assert_contains "-v" "$TMPDIR/help.out"
 assert_contains "pushup operations cannot be undone by undo" \
   "$TMPDIR/help.out"
-assert_contains "Except for uncommitted working tree changes" \
+assert_contains "Changes made outside project commands" \
   "$TMPDIR/help.out"
-assert_contains "records, workflow state, and referenced Git tips" \
+assert_contains "uncommitted changes, undo supports only operations" \
   "$TMPDIR/help.out"
-assert_contains "recover them manually" "$TMPDIR/help.out"
+assert_contains "recovery information remains available" \
+  "$TMPDIR/help.out"
+assert_contains "Recover them from an available backup" "$TMPDIR/help.out"
 assert_contains "Related recovery:" "$TMPDIR/help.out"
 pass "help output"
 

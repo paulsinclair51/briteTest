@@ -25,7 +25,7 @@ started by requesting reviews from the reviewers and approvers
 (listed in <repo>/config/contributors.md).
 
 Contributors should use the commit and push commands to create local
-commits and publish branch updates. To respond to review feedback,
+commits and update remote branches. To respond to review feedback,
 use the feedback command.
 
 The target branch is determined automatically based on the current
@@ -40,7 +40,7 @@ Prerequisites:
   - The current branch must be a contributor, targeted, or version
     branch (the current branch must not be the main branch).
   - The current branch must be a local branch with a remote branch.
-  - The current branch must have a configured remote origin.
+  - This clone must have the repository's remote URL.
     Reachability and timeouts are validated when remote operations run.
   - An open non-draft PR must not exist for the current branch.
   - A draft PR must exist for the current branch if the --delete
@@ -339,7 +339,7 @@ require_contributors_config() {
 
 validate_remote_connectivity() {
   bt_git_has_origin . || bt_error_exit "$EXIT_NO_REMOTE" \
-    "Current branch has no remote origin"
+    "This clone has no remote repository URL"
 }
 
 validate_current_branch_requirements() {

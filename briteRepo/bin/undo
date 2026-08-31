@@ -33,7 +33,7 @@ Prerequisites:
     read-only branch can still be undone and the user can then change to
     another branch. Use rmbranch to delete invalid branches if needed.
   - The current branch must be local, except that accidental uncommitted
-    changes on a remote snapshot may be discarded.
+    changes on a remote copy may be discarded.
 
 Options:
   -c TOKEN      undo comment from TOKEN.
@@ -74,14 +74,12 @@ Examples:
 
 Limits:
   - Completed pushup operations cannot be undone by undo.
-  - Manually performed operations or operations where metadata is removed
-    cannot be undone by undo. Except for uncommitted working tree changes,
-    undo can only undo supported operations performed by briteRepo scripts
-    while their undo records, workflow state, and referenced Git tips remain
-    available.
+  - Changes made outside project commands, or changes whose recovery
+    information is unavailable, cannot be undone by undo. Except for
+    uncommitted changes, undo supports only operations performed by briteRepo
+    commands while their recovery information remains available.
   - undo does not restore deleted branches, repositories, clones, or GitHub
-    administration settings. The user must recover them manually from any
-    available backup or retained Git ref.
+    administration settings. Recover them from an available backup.
   - Repair commands cannot be undone by undo since reversing a repair could
     reintroduce the repository damage it corrected.
 
@@ -396,7 +394,7 @@ detect_active_undo_type() {
     pushup)
       bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
         "A pushup operation is in progress on '$branch'." \
-        "rerun pushup to resume; pushup cannot be safely undone after publication begins."
+        "rerun pushup to resume; pushup cannot be safely undone after the parent remote update begins."
       ;;
   esac
 }
@@ -749,7 +747,7 @@ fi
 log_verbose "Selected $UNDO_TYPE operation on $CURRENT_BRANCH"
 if bt_is_current_internal_remote_copy; then
   bt_emit_prerequisite_failure "$EXIT_CONFIG_ERROR" \
-    "Current branch '$CURRENT_BRANCH' is a read-only remote snapshot." \
+    "Current branch '$CURRENT_BRANCH' is a read-only remote copy." \
     "switch to a writable local branch before running undo."
 fi
 if [[ "$UNDO_TYPE" != "uncommitted" ]] && \

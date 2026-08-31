@@ -97,7 +97,8 @@ Branch markers:
 Status tags:
   [local]                       Local branch; a remote branch also exists or
                                 current remote status is unavailable.
-  [remote snapshot]             Current branch is a remote snapshot.
+  [remote copy]                 Current branch is a read-only copy of a remote
+                                branch.
   [local only]                  Local branch with no remote branch.
   [remote]                      Remote branch; a local branch also exists.
   [remote only]                 Remote branch with no local branch.
@@ -959,7 +960,7 @@ build_compact_status_tags() {
   local -a tags=()
 
   if [[ "$is_current" == true && "$CURRENT_IS_REMOTE_SNAPSHOT" == true ]]; then
-    mode_tag="remote snapshot"
+    mode_tag="remote copy"
   elif [[ "$mode" == "local" && "$branch_type" == "local" && \
     "$FETCH_FAILED" == false ]]; then
     mode_tag="local only"

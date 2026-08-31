@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# fixremote - Recover origin repository refs/objects from a clean local clone.
+# fixremote - Recover a remote repository from a healthy local clone.
 #
 # See usage below for details, or run: fixremote -h
 #
@@ -14,15 +14,15 @@ Usage:
   fixremote [OPTIONS] <clone-path>
   fixremote {-h | --help}
 
-Recover origin refs/objects from a clean local clone.
+Restore remote branches, tags, and required Git data from a healthy local clone.
 
-By default, fixremote performs preflight checks and writes a report only.
-Use -x to execute recovery actions.
+By default, fixremote checks whether recovery can be performed and writes a
+report without changing the remote. Use -x to perform the recovery.
 
 When to use this script:
   - Use fixremote only after fixlocal and fixrepo show that the issue is in the
-    remote repository, or when a remote ref/object recovery is required.
-  - Use fixlocal first for local working-copy integrity or tracking problems;
+    remote repository, or when remote branches, tags, or Git data are damaged.
+  - Use fixlocal first for local files or branch synchronization problems;
     fixlocal is the default starting point for fixing the current local repo.
   - Use fixrepo for broader local repository-level verification/repair.
   - Use override -r only to mark a temporary owner-admin remote repair window;
@@ -37,13 +37,13 @@ Recommended order when more than one repair path applies:
 Prerequisites:
   - User must be an approver/owner (checked via config/contributors.md).
   - Clone-path must point to a clean, healthy clone of the same repository.
-  - Remote (origin) must be connected/reachable for recovery execution.
+  - The remote repository must exist and be reachable for recovery.
 
 Arguments:
   <clone-path>      Path to clean local clone used as recovery source.
 
 Options:
-  -d                Dry-run mode (report only). Does not mutate origin.
+  -d                Check and report only. Does not change the remote.
   -h, --help  Output this help to stdout and exit (other options and
               arguments are ignored).
   -t SEC            Remote reachability timeout in seconds (default: 10).
@@ -54,18 +54,18 @@ Options:
 What This Script Does:
   1. Verifies user authorization (approver/owner).
   2. Validates source clone integrity and cleanliness.
-  3. Validates source/target origin alignment and remote reachability.
-  4. Optionally (with -x) pushes branch/tag refs from clean clone to origin.
-  5. Verifies post-recovery main-branch parity between clone and origin.
+  3. Verifies that both local repositories refer to the same remote.
+  4. With -x, restores remote branches and tags from the healthy clone.
+  5. Verifies that remote main matches the healthy clone after recovery.
   6. Generates a recovery report.
 
 What Gets Recovered:
-  - Origin branch/tag refs from the clean source clone (-x mode).
-  - Missing objects reachable from pushed refs (-x mode).
+  - Remote branches and tags found in the healthy clone (-x mode).
+  - Required Git data available from those branches and tags (-x mode).
 
 What Does NOT Get Recovered:
   - Data not present in the source clone.
-  - Non-git remote metadata/settings.
+  - GitHub settings, permissions, issues, pull requests, or other service data.
 
 Outputs:
   - Writes an untracked local recovery report to:
@@ -78,7 +78,7 @@ Outputs:
 
 Common Run:
   fixremote /path/to/clean-clone
-    Run preflight checks only.
+    Check whether recovery can be performed.
   fixremote -x /path/to/clean-clone
     Execute guarded recovery.
 
@@ -86,7 +86,7 @@ Exit codes:
   0   Success - checks passed and no unresolved issues.
   1   Invalid option or argument.
   2   User is not authorized - only approver/owner can run fixremote.
-  3   Recovery failed - see report for details and manual intervention steps.
+  3   Recovery failed - see the report for the next action.
   100 Missing required dependencies or configuration files.
   200 Git operation failed during recovery (fetch, push, fsck, etc.).
 EOF
@@ -235,7 +235,7 @@ init_report() {
 **Timestamp:** ${RUN_TS_DISPLAY}
 
 **Repository for Reports:** $REPO_ROOT
-**Target Origin (from this repository):**
+**Target Remote (from this repository):**
 $(bt_git_get_origin_url_or_empty "$REPO_ROOT")
 **Source Clone Path:** $CLONE_ABS
 
@@ -298,7 +298,7 @@ check_clone_fsck() {
 }
 
 check_origin_configuration() {
-  append_section "Origin Configuration and Reachability"
+  append_section "Remote Repository"
 
   local target_origin=""
   local clone_origin=""
@@ -306,44 +306,44 @@ check_origin_configuration() {
   clone_origin="$(bt_git_get_origin_url_or_empty "$CLONE_ABS")"
 
   if [[ -z "$target_origin" ]]; then
-    append_check "Target Origin Configured" "ERROR" \
-      "No origin remote configured in repository root"
+    append_check "Target Remote" "ERROR" \
+      "This repository has no remote repository URL"
     return 1
   fi
 
-  append_check "Target Origin Configured" "PASS" "$target_origin"
+  append_check "Target Remote" "PASS" "$target_origin"
 
   if [[ -z "$clone_origin" ]]; then
-    append_check "Clone Origin Configured" "ISSUE" \
-      "No origin remote configured in source clone. Recovery can still run" \
-      "against this repository's origin."
+    append_check "Source Clone Remote" "ISSUE" \
+      "The source clone has no remote URL. Recovery can still use this" \
+      "repository's remote."
   else
-    append_check "Clone Origin Configured" "PASS" "$clone_origin"
+    append_check "Source Clone Remote" "PASS" "$clone_origin"
     if [[ "$(normalize_remote_url "$target_origin")" == \
       "$(normalize_remote_url "$clone_origin")" ]]; then
-      append_check "Origin URL Match" "PASS" \
-        "Clone origin matches target origin"
+      append_check "Remote URL Match" "PASS" \
+        "The source clone and this repository use the same remote"
     else
-      append_check "Origin URL Match" "ISSUE" \
-        "Clone origin URL does not match target origin URL. Verify you" \
+      append_check "Remote URL Match" "ISSUE" \
+        "The source clone uses a different remote URL. Verify you" \
         "selected the correct clean clone."
     fi
   fi
 
   if [[ "$REMOTE_TIMEOUT_SECONDS" -eq 0 ]]; then
-    append_check "Origin Reachability" "PASS" "Skipped (disabled by -t 0)"
+    append_check "Remote Reachability" "PASS" "Skipped (disabled by -t 0)"
     return 0
   fi
 
   if bt_git_ls_remote_origin_with_timeout_and_retry \
     "$REPO_ROOT" "$REMOTE_TIMEOUT_SECONDS" \
     "$REMOTE_RETRY_ATTEMPTS" "$REMOTE_RETRY_BASE_DELAY_SECONDS"; then
-    append_check "Origin Reachability" "PASS" "Origin is reachable"
+    append_check "Remote Reachability" "PASS" "Remote is reachable"
     return 0
   fi
 
-  append_check "Origin Reachability" "ISSUE" \
-    "Origin is not reachable (timeout: ${REMOTE_TIMEOUT_SECONDS}s)." \
+  append_check "Remote Reachability" "ISSUE" \
+    "Remote could not be reached within ${REMOTE_TIMEOUT_SECONDS}s." \
     "Recovery execution is blocked."
   return 1
 }
@@ -353,7 +353,7 @@ run_recovery_if_requested() {
 
   if [[ "$EXECUTE_RECOVERY" == false ]]; then
     append_check "Recovery Mode" "PASS" \
-      "Preflight-only mode (use -x to execute recovery)"
+      "Checks only (use -x to perform recovery)"
     return 0
   fi
 
@@ -377,8 +377,8 @@ run_recovery_if_requested() {
     git -C "$CLONE_ABS" push --prune origin \
     '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*' \
     >/dev/null 2>&1; then
-    append_check "Push Clone Refs To Origin" "ISSUE" \
-      "Failed to push source clone refs to origin. See git stderr output" \
+    append_check "Restore Remote Branches and Tags" "ISSUE" \
+      "Failed to restore branches and tags from the source clone. See Git output" \
       "from manual run for details."
     bt_increment_counter REMEDIATIONS_FAILED
     return 1
@@ -394,14 +394,14 @@ run_recovery_if_requested() {
 
   if [[ -n "$clone_main_sha" && -n "$remote_main_sha" && \
     "$clone_main_sha" == "$remote_main_sha" ]]; then
-    append_check "Post-Recovery Main Branch Parity" "FIXED" \
-      "origin/main now matches source clone main ($clone_main_sha)"
+    append_check "Main Branch Match" "FIXED" \
+      "Remote main now matches source clone main ($clone_main_sha)"
     bt_increment_counter REMEDIATIONS_VERIFIED
     return 0
   fi
 
-  append_check "Post-Recovery Main Branch Parity" "ISSUE" \
-    "Recovery push completed, but main parity could not be verified. Check" \
+  append_check "Main Branch Match" "ISSUE" \
+    "Remote recovery finished, but main could not be verified. Check" \
     "source/remote branch state manually."
   bt_increment_counter REMEDIATIONS_UNVERIFIED
   return 1
@@ -450,8 +450,8 @@ EOF
 
 - Review ISSUE/ERROR entries in this report before retrying recovery.
 - Ensure source clone is clean and passes `git fsck --full`.
-- Verify origin URL/auth/reachability when remote checks fail.
-- Use `fixremote -x <clone-path>` only after preflight checks pass.
+- Verify the remote URL, authentication, and network access when checks fail.
+- Use `fixremote -x <clone-path>` only after the checks pass.
 
 EOF
 }

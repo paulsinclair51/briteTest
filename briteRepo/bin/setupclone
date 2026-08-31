@@ -15,16 +15,15 @@ Usage:
   setupclone [-t SEC]
   setupclone {-h | --help}
 
-Make all scripts in the script directory executable, add it to PATH, and
-configure Git hooks.
+Make project commands available by name and activate local repository
+safeguards.
 
 This script:
   - Makes all scripts in the script directory executable (chmod +x).
   - Adds the script directory to PATH in ~/.bashrc if not already present.
   - Configures ~/.inputrc to make command completion more discoverable.
-  - Adds a ~/.bashrc hook to auto-load ~/.inputrc in interactive shells.
-  - Configures Git to use hooks from the adjacent helpers/.githooks/ directory
-    via core.hooksPath.
+  - Updates ~/.bashrc so command completion loads in interactive shells.
+  - Activates the safeguards supplied with the repository.
   - Updates the shell configuration for current and future sessions.
 
 After running, scripts in the script directory will be:
@@ -32,10 +31,7 @@ After running, scripts in the script directory will be:
   - Available by name in the shell (e.g., lsbranch -h, setupclone -h).
   - Persistent across new shell sessions.
 
-Git hooks will be:
-  - Configured to use the versioned hooks directory (helpers/.githooks/)
-  - Active immediately on checkout operations
-  - Automatically maintained through version control
+Local safeguards will be active immediately and maintained with the repository.
 
 Options:
   -h, --help  Output this help to stdout and exit (other options
@@ -212,8 +208,8 @@ echo ""
 echo "Loading updated configuration..."
 # shellcheck disable=SC1090  # Intentional user shell profile source.
 if ! source ~/.bashrc 2>/dev/null; then
-  echo "Warning: Failed to load configuration, but changes have been made" >&2
-  echo "Run 'source ~/.bashrc' or start a new shell session." >&2
+  echo "Warning: Updated ~/.bashrc, but could not reload it." >&2
+  echo "Run: source ~/.bashrc, or start a new shell session." >&2
 else
   if [[ -f "$inputrc_file" ]]; then
     bind -f "$inputrc_file" 2>/dev/null || true
@@ -221,7 +217,7 @@ else
 fi
 
 echo ""
-echo "✓ Installation complete!"
+echo "Installed briteRepo scripts and configured Git hooks for this clone."
 echo ""
 echo "Scripts in $scripts_bin are now:"
 echo "  - Executable"

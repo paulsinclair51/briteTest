@@ -120,6 +120,9 @@ EOF
     git add README.md briteRepo
     git commit -m "seed repo" >/dev/null 2>&1
 
+    git branch v1.0.0
+    git push origin v1.0.0 >/dev/null 2>&1
+
     git checkout -b dev/report-tests-v1.0.0 >/dev/null 2>&1
 
     echo "payload" > payload.txt
@@ -270,7 +273,7 @@ Workflow-Type: retarget
 Workflow-Time: 2026-08-16 12:00:08
 Workflow-Branch: dev/report-tests-v1.0.0
 Workflow-User: testuser <test@example.com>
-Command-Line: retarget -c move\\ branch dev/report-tests-v1.0.0 v1.1.0
+Command-Line: retarget -c move\\ branch v1.1.0
 Summary: retarget activity
 Old-Parent: v1.0.0
 New-Parent: v1.1.0
