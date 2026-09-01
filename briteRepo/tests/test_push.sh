@@ -12,6 +12,7 @@ export LC_ALL=C
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PUSH_SRC="$REPO_ROOT/briteRepo/bin/push"
+PUSH_COMMAND_SRC="$REPO_ROOT/briteRepo/helpers/push_command.sh"
 COMMON_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/common.sh"
 GIT_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/git_helpers.sh"
 GITHUB_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/github_helpers.sh"
@@ -58,6 +59,9 @@ latest_report() {
   find "$repo/reports" -maxdepth 1 -type f -name "$pattern" -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
 }
 
+[[ -f "$PUSH_SRC" ]] || fail "missing script: $PUSH_SRC"
+[[ -f "$PUSH_COMMAND_SRC" ]] || fail "missing helper: $PUSH_COMMAND_SRC"
+
 TMPDIR="$(mktemp -d)"
 cleanup() {
   chmod -R u+w "$TMPDIR" 2>/dev/null || true
@@ -73,6 +77,7 @@ git clone "file://$ORIGIN" "$WORK" >/dev/null 2>&1
 
 mkdir -p "$WORK/briteRepo/bin" "$WORK/briteRepo/helpers" "$WORK/config"
 cp "$PUSH_SRC" "$WORK/briteRepo/bin/push"
+cp "$PUSH_COMMAND_SRC" "$WORK/briteRepo/helpers/push_command.sh"
 cp "$COMMON_HELPER_SRC" "$WORK/briteRepo/helpers/common.sh"
 cp "$GIT_HELPER_SRC" "$WORK/briteRepo/helpers/git_helpers.sh"
 cp "$GITHUB_HELPER_SRC" "$WORK/briteRepo/helpers/github_helpers.sh"
@@ -234,10 +239,15 @@ assert_contains "Cannot push policy-invalid read-only branch" \
 pass "policy-invalid branch gate"
 
 # Internal helper modes are not options of the direct push command.
-rc=$(run_capture "$TMPDIR/internal-option.out" env GITHUB_ACTOR=testuser \
-  bash -lc "cd '$WORK' && bash ./briteRepo/bin/push -d --pushup dev/fake-v1.0.0 -t 5")
-[[ "$rc" -eq 1 ]] || fail "direct internal option should exit 1 (got $rc)"
-assert_contains "Internal push workflow options cannot be used" "$TMPDIR/internal-option.out"
+for internal_option in --pushup --pushup-source --preview-ref; do
+  rc=$(run_capture "$TMPDIR/internal-option-${internal_option#--}.out" \
+    env GITHUB_ACTOR=testuser bash -lc \
+    "cd '$WORK' && bash ./briteRepo/bin/push '$internal_option'")
+  [[ "$rc" -eq 1 ]] || \
+    fail "direct $internal_option should exit 1 (got $rc)"
+  assert_contains "Unknown option: $internal_option" \
+    "$TMPDIR/internal-option-${internal_option#--}.out"
+done
 pass "internal helper option rejected by direct push"
 
 # 6) Valid dry-run should report what would be pushed.
@@ -407,6 +417,7 @@ git clone "file://$PUSHUP_ORIGIN" "$PUSHUP_WORK" >/dev/null 2>&1
 mkdir -p "$PUSHUP_WORK/briteRepo/bin" "$PUSHUP_WORK/briteRepo/helpers" \
   "$PUSHUP_WORK/config" "$PUSHUP_WORK/reports" "$PUSHUP_BIN"
 cp "$PUSH_SRC" "$PUSHUP_WORK/briteRepo/bin/push"
+cp "$PUSH_COMMAND_SRC" "$PUSHUP_WORK/briteRepo/helpers/push_command.sh"
 cp "$COMMON_HELPER_SRC" "$PUSHUP_WORK/briteRepo/helpers/common.sh"
 cp "$GIT_HELPER_SRC" "$PUSHUP_WORK/briteRepo/helpers/git_helpers.sh"
 cp "$GITHUB_HELPER_SRC" "$PUSHUP_WORK/briteRepo/helpers/github_helpers.sh"
@@ -520,7 +531,7 @@ pass "approved contributor pushup publication and PR finalization"
 )
 rc=$(run_capture "$TMPDIR/pushup-source-push.out" env GITHUB_ACTOR=testapprover \
   PATH="$PUSHUP_BIN:$PATH" \
-  bash -c "cd '$PUSHUP_WORK' && bash ./briteRepo/bin/push --pushup-source -t 5")
+  bash -c "cd '$PUSHUP_WORK' && bash ./briteRepo/helpers/push_command.sh --pushup-source -t 5")
 [[ "$rc" -eq 0 ]] || fail "pushup should publish synchronized protected source (got $rc)"
 rm -f "$PUSHUP_WORK/.git/briteRepo/pushup.state"
 pass "pushup source publication"

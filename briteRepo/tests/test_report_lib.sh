@@ -216,7 +216,7 @@ Method: Cherry-pick created by copyfix" \
 
     git commit --allow-empty \
       -m "pulldown activity" \
-      -m $'## Workflow Metadata\n\nCommand-Line: pulldown -f\nSource-Branch: v1.0.0\nTarget-Branch: dev/report-tests-v1.0.0\nParent-Commits-Integrated: 2\nFiles-Modified: 1\nFiles-Added: 1\nFiles-Deleted: 0\nStatus: Parent branch merged into current branch\nMethod: Merge commit (--no-ff) created by pulldown' \
+      -m $'## Workflow Metadata\n\nCommand-Line: pulldown\nSource-Branch: v1.0.0\nTarget-Branch: dev/report-tests-v1.0.0\nParent-Commits-Integrated: 2\nFiles-Modified: 1\nFiles-Added: 1\nFiles-Deleted: 0\nStatus: Parent branch merged into current branch\nMethod: Merge commit (--no-ff) created by pulldown' \
       >/dev/null 2>&1
 
     git notes --ref=briteRepo-workflow append -m \

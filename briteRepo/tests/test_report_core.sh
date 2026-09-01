@@ -156,7 +156,7 @@ rc=$(run_capture "$TMPDIR/pulldown.out" bash -lc "cd '$WORK' && bash ./briteRepo
 [[ "$rc" -eq 0 ]] || fail "pulldown report should exit 0 (got $rc)"
 pulldown_rel="$(report_path_from_output "$TMPDIR/pulldown.out")"
 assert_contains "pulldown activity" "$WORK/$pulldown_rel"
-assert_contains '**Command:** `pulldown -f`' "$WORK/$pulldown_rel"
+assert_contains '**Command:** `pulldown`' "$WORK/$pulldown_rel"
 if grep -Fq '## Workflow Metadata' "$WORK/$pulldown_rel"; then
   fail "pulldown report should omit Workflow Metadata"
 fi
