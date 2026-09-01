@@ -15,7 +15,7 @@ source "$SCRIPT_DIR/test_report_lib.sh"
 report_test_init
 
 # 1) User substring filter should match author/login text in commit records
-rc=$(run_capture "$TMPDIR/user-filter.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -u testuser -q 'committed by contributor' -l 10")
+rc=$(run_capture "$TMPDIR/user-filter.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -u testuser -q 'committed by contributor' -n 10")
 [[ "$rc" -eq 0 ]] || fail "user filter should exit 0 (got $rc)"
 user_rel="$(report_path_from_output "$TMPDIR/user-filter.out")"
 assert_contains "committed by contributor testuser" "$WORK/$user_rel"
@@ -24,7 +24,7 @@ if grep -Fq '\\ ' "$WORK/$user_rel"; then
 	fail "user comment should not contain shell-escape backslashes"
 fi
 rc=$(run_capture "$TMPDIR/user-filter-false-positive.out" bash -lc \
-	"cd '$WORK' && bash ./briteRepo/bin/report branch -u 'pushup activity' -l 0")
+	"cd '$WORK' && bash ./briteRepo/bin/report branch -u 'pushup activity' -n 0")
 [[ "$rc" -eq 6 ]] || \
 	fail "user filter should not match activity text (got $rc)"
 assert_contains "No matching activity was found" \
@@ -72,7 +72,7 @@ pass "summary and detail filtering"
 	git commit -m "directory action fixture" >/dev/null 2>&1
 )
 rc=$(run_capture "$TMPDIR/directory-actions.out" bash -lc \
-	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'directory action fixture' -l 1")
+	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'directory action fixture' -n 1")
 [[ "$rc" -eq 0 ]] || fail "directory action report should exit 0 (got $rc)"
 directory_rel="$(report_path_from_output "$TMPDIR/directory-actions.out")"
 assert_contains "**Directories:**" "$WORK/$directory_rel"
@@ -94,7 +94,7 @@ pass "directory action rendering"
 		>/dev/null 2>&1
 )
 rc=$(run_capture "$TMPDIR/empty-summary.out" bash -lc \
-	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'empty summary fixture' -l 1")
+	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'empty summary fixture' -n 1")
 [[ "$rc" -eq 0 ]] || fail "empty summary report should exit 0 (got $rc)"
 empty_summary_rel="$(report_path_from_output "$TMPDIR/empty-summary.out")"
 if grep -Fq '**Directories:**' "$WORK/$empty_summary_rel"; then
@@ -111,11 +111,12 @@ pass "empty summary omission"
 # 4) Multiple appended records should render independently, and delimiter-like
 # text inside a detail value must not split a record.
 rc=$(run_capture "$TMPDIR/multiple-records.out" bash -lc \
-	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'Record-Group: appended pair' -l 0")
+	"cd '$WORK' && bash ./briteRepo/bin/report branch -q 'Record-Group: appended pair' -n 0")
 [[ "$rc" -eq 0 ]] || fail "multiple-record report should exit 0 (got $rc)"
 multiple_rel="$(report_path_from_output "$TMPDIR/multiple-records.out")"
 assert_contains "pull activity" "$WORK/$multiple_rel"
 assert_contains "retarget activity" "$WORK/$multiple_rel"
+assert_contains "**Record Group:** appended pair" "$WORK/$multiple_rel"
 [[ "$(grep -c '^## ' "$WORK/$multiple_rel")" -eq 2 ]] || \
 	fail "multiple appended records should render as two activities"
 if ! grep -Eq '^## 1\. ' "$WORK/$multiple_rel" || \
@@ -152,7 +153,7 @@ assert_contains "retarget activity" "$WORK/$malformed_rel"
 pass "malformed workflow record handling"
 
 # 6) Branch reports should always list the newest selected activity first
-rc=$(run_capture "$TMPDIR/newest-first.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'directory action' -l 2")
+rc=$(run_capture "$TMPDIR/newest-first.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'directory action' -n 2")
 [[ "$rc" -eq 0 ]] || fail "newest-first report should exit 0 (got $rc)"
 newest_first_rel="$(report_path_from_output "$TMPDIR/newest-first.out")"
 newer_line="$(grep -n 'directory action fixture' "$WORK/$newest_first_rel" | head -n 1 | cut -d: -f1 || true)"
@@ -168,7 +169,7 @@ rc=$(run_capture "$TMPDIR/branch-r.out" bash -lc \
 	"cd '$WORK' && bash ./briteRepo/bin/report -t 2 -r branch -q 'Pushed 1 commit'")
 [[ "$rc" -eq 0 ]] || fail "remote branch report should exit 0 (got $rc)"
 branch_r_rel="$(report_path_from_output "$TMPDIR/branch-r.out")"
-[[ "$branch_r_rel" == reports/remote-*.md ]] || \
+[[ "$branch_r_rel" == reports/branch-r-*.md ]] || \
 	fail "branch -r should write a remote report"
 assert_contains '**Commits:** 1' "$WORK/$branch_r_rel"
 [[ "$(git -C "$WORK" symbolic-ref --short HEAD)" == "$branch_before" ]] || \
@@ -195,9 +196,9 @@ pass "missing direct remote branch"
 
 # 9) A remote snapshot should resolve its branch and push history
 local_report="$(find "$WORK/reports" -maxdepth 1 -type f \
-	-name 'local-*.md' -print -quit)"
+	-name 'branch-l-*.md' -print -quit)"
 [[ -n "$local_report" ]] || fail "expected local report before remote snapshot"
-printf 'stale remote report\n' > "$WORK/reports/remote-20000101-000000+0000.md"
+printf 'stale remote report\n' > "$WORK/reports/branch-r-20000101-000000+0000.md"
 (
 	cd "$WORK"
 	git update-ref refs/remotes/origin/alias-report-tests \
@@ -207,21 +208,21 @@ printf 'stale remote report\n' > "$WORK/reports/remote-20000101-000000+0000.md"
 rc=$(run_capture "$TMPDIR/remote-push.out" bash -lc "cd '$WORK' && git switch --detach origin/dev/report-tests-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/report branch -q 'Pushed 1 commit'")
 [[ "$rc" -eq 0 ]] || fail "remote snapshot push report should exit 0 (got $rc)"
 remote_push_rel="$(report_path_from_output "$TMPDIR/remote-push.out")"
-[[ "$remote_push_rel" == reports/remote-*.md ]] || \
+[[ "$remote_push_rel" == reports/branch-r-*.md ]] || \
 	fail "remote snapshot should write a remote report"
 [[ -f "$local_report" ]] || fail "remote report should preserve the local report"
-[[ ! -e "$WORK/reports/remote-20000101-000000+0000.md" ]] || \
+[[ ! -e "$WORK/reports/branch-r-20000101-000000+0000.md" ]] || \
 	fail "remote report should replace the prior remote report"
-[[ "$(find "$WORK/reports" -maxdepth 1 -type f -name 'remote-*.md' | wc -l | tr -d ' ')" -eq 1 ]] || \
+[[ "$(find "$WORK/reports" -maxdepth 1 -type f -name 'branch-r-*.md' | wc -l | tr -d ' ')" -eq 1 ]] || \
 	fail "only one remote report should remain"
 assert_contains '**Branch:** `dev/report-tests-v1.0.0`' "$WORK/$remote_push_rel"
 assert_contains '**Status:** [remote]' "$WORK/$remote_push_rel"
 assert_contains '**Command:** `push -t 5`' "$WORK/$remote_push_rel"
 assert_contains '## 1. push: 2026-08-16 11:59:59+00:00' "$WORK/$remote_push_rel"
-assert_contains '**Pushed-Tip:** `' "$WORK/$remote_push_rel"
-if ! grep -Eq '^\*\*Pushed-Tip:\*\* `[0-9a-f]{40}`' \
+assert_contains '**Pushed Branch Tip:** `' "$WORK/$remote_push_rel"
+if ! grep -Eq '^\*\*Pushed Branch Tip:\*\* `[0-9a-f]{40}`' \
 	"$WORK/$remote_push_rel"; then
-	fail "remote push Pushed-Tip should be a full commit hash"
+	fail "remote push Pushed Branch Tip should be a full commit hash"
 fi
 assert_contains '**Commits:** 1' "$WORK/$remote_push_rel"
 if grep -Fq '**Directories:**' "$WORK/$remote_push_rel"; then
@@ -296,24 +297,24 @@ pass "current remote report from snapshot"
 
 # 11) A new local report should replace only the previous local report
 remote_report="$WORK/$snapshot_remote_rel"
-printf 'stale local report\n' > "$WORK/reports/local-20000101-000000+0000.md"
+printf 'stale local report\n' > "$WORK/reports/branch-l-20000101-000000+0000.md"
 rc=$(run_capture "$TMPDIR/local-again.out" bash -lc \
 	"cd '$WORK' && git switch dev/report-tests-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/report branch -q 'retarget activity'")
 [[ "$rc" -eq 0 ]] || fail "replacement local report should exit 0 (got $rc)"
 local_again_rel="$(report_path_from_output "$TMPDIR/local-again.out")"
-[[ "$local_again_rel" == reports/local-*.md ]] || \
+[[ "$local_again_rel" == reports/branch-l-*.md ]] || \
 	fail "local branch should write a local report"
 [[ -f "$remote_report" ]] || fail "local report should preserve the remote report"
-[[ ! -e "$WORK/reports/local-20000101-000000+0000.md" ]] || \
+[[ ! -e "$WORK/reports/branch-l-20000101-000000+0000.md" ]] || \
 	fail "local report should replace the prior local report"
-[[ "$(find "$WORK/reports" -maxdepth 1 -type f -name 'local-*.md' | wc -l | tr -d ' ')" -eq 1 ]] || \
+[[ "$(find "$WORK/reports" -maxdepth 1 -type f -name 'branch-l-*.md' | wc -l | tr -d ' ')" -eq 1 ]] || \
 	fail "only one local report should remain"
 pass "independent local report retention"
 
 # 12) Cleanup should preserve tracked reports when invoked from a subdirectory.
-tracked_report="$WORK/reports/local-20000101-000002+0000.md"
+tracked_report="$WORK/reports/branch-l-20000101-000002+0000.md"
 printf 'tracked local report\n' > "$tracked_report"
-git -C "$WORK" add reports/local-20000101-000002+0000.md
+git -C "$WORK" add reports/branch-l-20000101-000002+0000.md
 git -C "$WORK" commit -m "track report fixture" >/dev/null 2>&1
 mkdir -p "$WORK/nested/report-test"
 rc=$(run_capture "$TMPDIR/subdirectory.out" bash -lc \
@@ -326,10 +327,10 @@ pass "subdirectory tracked report preservation"
 # 13) Concurrent branch reports should serialize write and cleanup, leaving one
 # complete latest local report.
 set +e
-bash -c "cd '$WORK' && bash ./briteRepo/bin/report branch -l 2" \
+bash -c "cd '$WORK' && bash ./briteRepo/bin/report branch -n 2" \
 	>"$TMPDIR/concurrent-1.out" 2>&1 &
 report_pid_1=$!
-bash -c "cd '$WORK' && bash ./briteRepo/bin/report branch -l 2" \
+bash -c "cd '$WORK' && bash ./briteRepo/bin/report branch -n 2" \
 	>"$TMPDIR/concurrent-2.out" 2>&1 &
 report_pid_2=$!
 wait "$report_pid_1"; report_rc_1=$?
@@ -338,13 +339,13 @@ set -e
 [[ "$report_rc_1" -eq 0 && "$report_rc_2" -eq 0 ]] || \
 	fail "concurrent branch reports should both succeed"
 concurrent_report_count="$(find "$WORK/reports" -maxdepth 1 -type f \
-	-name 'local-*.md' ! -name 'local-20000101-000002+0000.md' | \
+	-name 'branch-l-*.md' ! -name 'branch-l-20000101-000002+0000.md' | \
 	wc -l | tr -d ' ')"
 [[ "$concurrent_report_count" -eq 1 ]] || \
 	fail "concurrent branch reports should leave one local report"
 concurrent_report="$(find "$WORK/reports" -maxdepth 1 -type f \
-	-name 'local-*.md' ! -name 'local-20000101-000002+0000.md' -print -quit)"
-assert_contains "# Branch History Report" "$concurrent_report"
+	-name 'branch-l-*.md' ! -name 'branch-l-20000101-000002+0000.md' -print -quit)"
+assert_contains "# Branch Report" "$concurrent_report"
 [[ "$(grep -c '^## ' "$concurrent_report")" -eq 2 ]] || \
 	fail "concurrent branch report should contain two complete entries"
 if ! awk '

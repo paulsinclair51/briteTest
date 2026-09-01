@@ -155,7 +155,9 @@ information, run any script with `-h` or `--help`.
 **Usage:**
 
 ```bash
-chbranch [-l | -r] [-t SEC] [-v] [BRANCH]
+chbranch [-l | -r] [-p] [-t SEC] [-v] [BRANCH]
+chbranch [-l | -r] -b [-t SEC] [-v]
+chbranch [-l | -r] -u [-t SEC] [-v]
 ```
 
 **Notes:**
@@ -163,6 +165,15 @@ chbranch [-l | -r] [-t SEC] [-v] [BRANCH]
 - Prefers an existing local branch when neither `-l` nor `-r` is specified.
 - `-l` requires an existing local branch; `-r` selects a refreshed, read-only
   copy of an existing remote branch.
+- `-p` selects the parent of the current branch, or the parent of `BRANCH` when
+  a branch is supplied. It selects the local parent by default; use `-r` for the
+  remote parent copy. It is mutually exclusive with `-b` and `-u`.
+- `-b` returns to the previously selected branch. `BRANCH` is not allowed with
+  `-b`. It selects the local previous branch by default; use `-r` for the remote
+  previous branch copy.
+- `-u` walks up the current branch stack. `BRANCH` is not allowed with `-u`. It
+  selects the local stacked branch by default; use `-r` for the remote stacked
+  branch copy.
 - Local protected branches are updated only when they can safely match their
   remote copy. Protected branches and remote copies are read-only.
 </details>
@@ -284,9 +295,10 @@ report [OPTIONS] [TYPE]
 
 `TYPE` is `repo`, `branch`, or `style` and defaults to `branch`. The latest
 report is written directly in `reports/` as `repo-<datetime>.md`,
-`local-<datetime>.md`, `remote-<datetime>.md`, or `style-<datetime>.md`.
-Only one report with each filename prefix is kept. Local and remote reports
-are retained independently.
+`branch-l-<datetime>.md`, `branch-r-<datetime>.md`,
+`branch-p-l-<datetime>.md`, `branch-p-r-<datetime>.md`, or
+`style-<datetime>.md`. Only one report with each filename prefix is kept.
+Local, remote, and parent reports are retained independently.
 
 Use `report branch -r [-t SEC]` to refresh and report the remote corresponding
 to the current local branch or remote copy without changing the checked-out

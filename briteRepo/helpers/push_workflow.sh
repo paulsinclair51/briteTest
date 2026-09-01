@@ -290,7 +290,7 @@ bt_push_workflow() (
 
 ## 1. push: ${run_ts_display}
 
-**Pushed-Tip:** \`To be determined\`  
+**Pushed Branch Tip:** \`To be determined\`  
 **Command:** \`${command_text}\`  
 **User:** ${user_display}  
 **Commits:** ${commits_ahead}  
@@ -498,7 +498,7 @@ EOF
 
 ## 1. push: ${run_ts_display}
 
-**Pushed-Tip:** \`To be determined\`${markdown_break}
+**Pushed Branch Tip:** \`To be determined\`${markdown_break}
 **Command:** \`${command_text}\`${markdown_break}
 **User:** ${report_user}${markdown_break}
 **Commits:** ${commits_ahead}${markdown_break}

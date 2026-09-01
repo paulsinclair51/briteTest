@@ -50,21 +50,21 @@ To generate a report of the local repository history for the most
 recent 20 activities, run:
 
 ```bash
-report repo -l 20
+report repo -n 20
 ```
 
 To filter the local repository report by text, user (named user-approver),
 run:
 
 ```bash
-report repo -q "release" -u user-approver -l 100
+report repo -q "release" -u user-approver -n 100
 ```
 
 To generate a report of remote repository history limited to the most
 recent 30 activities, run:
 
 ```bash
-report repo -r -t 20 -l 30
+report repo -r -t 20 -n 30
 ```
 
 ## Examples of Generating Branch History Reports
@@ -73,12 +73,12 @@ To generate a report of the local current branch history limited to the most
 recent 20 activities, run:
 
 ```bash
-report branch -l 20
+report branch -n 20
 ```
 
 To generate a report of remote branch history for the current branch limited
 to the most recent 30 activities, run:
 
 ```bash
-report branch -r -t 20 -l 30
+report branch -r -t 20 -n 30
 ```

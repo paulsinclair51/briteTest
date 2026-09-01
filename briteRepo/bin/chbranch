@@ -11,7 +11,9 @@
 usage() {
   cat <<'EOF'
 Usage:
-  chbranch [-l | -r] [-t SEC] [-v] [BRANCH]
+  chbranch [-l | -r] [-p] [-t SEC] [-v] [BRANCH]
+  chbranch [-l | -r] -b [-t SEC] [-v]
+  chbranch [-l | -r] -u [-t SEC] [-v]
   chbranch {-h | --help}
 
 Change current branch to BRANCH.
@@ -30,13 +32,25 @@ Arguments:
               uses the most recently selected branch name.
 
 Options:
+  -b          Change back to the previously selected branch. BRANCH is not
+              allowed with -b. Defaults to the local previous branch; use -r
+              to select the remote previous branch copy.
+              This option is mutually exclusive with -u and -p.
   -h, --help  Output this help to stdout and exit (other options and
               arguments are ignored).
   -l          Change to local BRANCH.
+  -p          Change to the parent of BRANCH. If BRANCH is omitted, change to
+              the parent of the current branch. Defaults to the local parent;
+              use -r to select the remote parent copy.
+              This option is mutually exclusive with -b and -u.
   -r          Change to a fresh read-only copy of remote BRANCH. The remote must be
               reachable. This option is mutually exclusive with -l.
   -t SEC      Timeout in seconds for accessing remote branch (default
               10 seconds). SEC must be an integer greater than 0.
+  -u          Change up to the previous branch in the current branch stack.
+              BRANCH is not allowed with -u. Defaults to the local stacked
+              branch; use -r to select the remote stacked branch copy.
+              This option is mutually exclusive with -b and -p.
   -v          Output verbose progress and diagnostics to stdout.
 
 If neither -l nor -r is specified, changes to local BRANCH when it exists;
@@ -119,7 +133,8 @@ Exit codes:
        current writable local branch, or -h/--help specified).
   1    Invalid option or argument.
   2    Current branch has uncommitted changes; commit/undo and then rerun.
-  3    Branch not found (when neither -l nor -r specified).
+  3    Branch not found, no previous branch is recorded, no branch stack entry
+      is recorded, or parent branch cannot be resolved.
   4    Local branch not found when -l specified.
   5    Remote branch not found when -r specified.
   6    Remote is not connected/reachable.
@@ -191,6 +206,8 @@ REMOTE_SOURCE_BRANCH=""
 # failures to "offline".
 SELECTED_REMOTE_STATE="unknown"
 readonly LAST_BRANCH_KEY="chbranch.lastBranch"
+readonly PREVIOUS_BRANCH_KEY="chbranch.previousBranch"
+readonly BRANCH_STACK_KEY="chbranch.branchStack"
 
 arg_error() {
   local message="$1"
@@ -331,10 +348,84 @@ remember_last_branch() {
   git config --local "$LAST_BRANCH_KEY" "$branch" >/dev/null 2>&1 || true
 }
 
+push_branch_stack() {
+  local branch="$1"
+
+  [[ -n "$branch" ]] || return 0
+  git config --local --add "$BRANCH_STACK_KEY" "$branch" \
+    >/dev/null 2>&1 || true
+}
+
+top_branch_stack_or_empty() {
+  local branch=""
+  local top_branch=""
+
+  while IFS= read -r branch; do
+    if [[ -n "$branch" ]] && \
+      git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+      top_branch="$branch"
+    fi
+  done < <(git config --local --get-all "$BRANCH_STACK_KEY" 2>/dev/null || true)
+
+  echo "$top_branch"
+}
+
+pop_branch_stack() {
+  local branch=""
+  local index=0
+  local last_index=-1
+  local -a branches=()
+
+  while IFS= read -r branch; do
+    if [[ -n "$branch" ]] && \
+      git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+      branches+=("$branch")
+    fi
+  done < <(git config --local --get-all "$BRANCH_STACK_KEY" 2>/dev/null || true)
+
+  git config --local --unset-all "$BRANCH_STACK_KEY" >/dev/null 2>&1 || true
+  last_index=$((${#branches[@]} - 1))
+  for index in "${!branches[@]}"; do
+    [[ "$index" -lt "$last_index" ]] || continue
+    git config --local --add "$BRANCH_STACK_KEY" "${branches[$index]}" \
+      >/dev/null 2>&1 || true
+  done
+}
+
+remember_successful_selection() {
+  local branch="$1"
+  local previous_branch="$2"
+  local stack_action="${3:-push}"
+
+  if [[ -n "$previous_branch" && "$previous_branch" != "$branch" ]]; then
+    git config --local "$PREVIOUS_BRANCH_KEY" "$previous_branch" \
+      >/dev/null 2>&1 || true
+    case "$stack_action" in
+      push) push_branch_stack "$previous_branch" ;;
+      pop) pop_branch_stack ;;
+      none) ;;
+    esac
+  fi
+  remember_last_branch "$branch"
+}
+
 last_branch_or_empty() {
   local branch=""
 
   branch="$(git config --local --get "$LAST_BRANCH_KEY" 2>/dev/null || true)"
+  if [[ -n "$branch" ]] && \
+    git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+    echo "$branch"
+    return 0
+  fi
+
+  echo ""
+}
+
+previous_branch_or_empty() {
+  local branch=""
+
+  branch="$(git config --local --get "$PREVIOUS_BRANCH_KEY" 2>/dev/null || true)"
   if [[ -n "$branch" ]] && \
     git check-ref-format --branch "$branch" >/dev/null 2>&1; then
     echo "$branch"
@@ -527,17 +618,21 @@ is_current_remote_branch() {
 
 switch_local() {
   local branch="$1"
+  local previous_branch="${2:-}"
+  local stack_action="${3:-push}"
 
   verbose_info "Switching to local branch '$branch'"
   if ! git switch "$branch" >/dev/null 2>&1; then
     bt_error_exit "$EXIT_CHANGE_FAILED" \
       "Failed to switch to local branch '$branch'"
   fi
-  remember_last_branch "$branch"
+  remember_successful_selection "$branch" "$previous_branch" "$stack_action"
 }
 
 switch_remote_copy() {
   local branch="$1"
+  local previous_branch="${2:-}"
+  local stack_action="${3:-push}"
   local local_branch="r-$branch"
 
   REMOTE_SOURCE_BRANCH="$branch"
@@ -552,18 +647,20 @@ switch_remote_copy() {
     bt_error_exit "$EXIT_CHANGE_FAILED" \
       "Failed to create local remote copy '$local_branch'"
   fi
-  remember_last_branch "$branch"
+  remember_successful_selection "$branch" "$previous_branch" "$stack_action"
 }
 
 switch_local_snapshot() {
   local branch="$1"
+  local previous_branch="${2:-}"
+  local stack_action="${3:-push}"
 
   verbose_info "Switching to read-only local branch '$branch'"
   if ! git switch --detach "$branch" >/dev/null 2>&1; then
     bt_error_exit "$EXIT_CHANGE_FAILED" \
       "Failed to switch to read-only local branch '$branch'"
   fi
-  remember_last_branch "$branch"
+  remember_successful_selection "$branch" "$previous_branch" "$stack_action"
 }
 
 remove_previous_remote_copy() {
@@ -652,6 +749,9 @@ finish_local_selection() {
 parse_args() {
   FORCE_REMOTE=false
   FORCE_LOCAL=false
+  USE_PARENT=false
+  USE_PREVIOUS=false
+  USE_UP=false
   BRANCH_ARG=""
 
   while [[ $# -gt 0 ]]; do
@@ -661,6 +761,15 @@ parse_args() {
         ;;
       -r)
         FORCE_REMOTE=true
+        ;;
+      -p)
+        USE_PARENT=true
+        ;;
+      -b)
+        USE_PREVIOUS=true
+        ;;
+      -u)
+        USE_UP=true
         ;;
       -t)
         shift
@@ -694,6 +803,17 @@ parse_args() {
   if [[ "$FORCE_LOCAL" == true && "$FORCE_REMOTE" == true ]]; then
     arg_error "Options -l and -r are mutually exclusive"
   fi
+  if [[ "$USE_PARENT" == true && "$USE_PREVIOUS" == true ]] || \
+    [[ "$USE_PARENT" == true && "$USE_UP" == true ]] || \
+    [[ "$USE_PREVIOUS" == true && "$USE_UP" == true ]]; then
+    arg_error "Options -p, -b, and -u are mutually exclusive"
+  fi
+  if [[ "$USE_PREVIOUS" == true && -n "$BRANCH_ARG" ]]; then
+    arg_error "BRANCH is not allowed with -b"
+  fi
+  if [[ "$USE_UP" == true && -n "$BRANCH_ARG" ]]; then
+    arg_error "BRANCH is not allowed with -u"
+  fi
 
 }
 
@@ -706,6 +826,52 @@ resolve_branch_argument() {
   if [[ -z "$BRANCH_ARG" ]]; then
     arg_error "BRANCH is required when current branch name cannot be resolved"
   fi
+}
+
+resolve_navigation_branch() {
+  local base_branch=""
+  local parent_branch=""
+
+  if [[ "$USE_PREVIOUS" == true ]]; then
+    BRANCH_ARG="$(previous_branch_or_empty)"
+    if [[ -z "$BRANCH_ARG" ]]; then
+      bt_error_exit "$EXIT_BRANCH_NOT_FOUND" \
+        "No previous branch is recorded"
+    fi
+    return 0
+  fi
+
+  if [[ "$USE_UP" == true ]]; then
+    BRANCH_ARG="$(top_branch_stack_or_empty)"
+    if [[ -z "$BRANCH_ARG" ]]; then
+      bt_error_exit "$EXIT_BRANCH_NOT_FOUND" \
+        "No branch stack entry is recorded"
+    fi
+    return 0
+  fi
+
+  if [[ "$USE_PARENT" == true ]]; then
+    base_branch="$BRANCH_ARG"
+    if [[ -z "$base_branch" ]]; then
+      base_branch="$(current_branch_name_or_empty)"
+    fi
+    if [[ -z "$base_branch" ]]; then
+      bt_error_exit "$EXIT_BRANCH_NOT_FOUND" \
+        "Parent branch cannot be resolved because current branch name is unknown"
+    fi
+    if ! git check-ref-format --branch "$base_branch" >/dev/null 2>&1; then
+      arg_error "Invalid branch name: '$base_branch'"
+    fi
+    parent_branch="$(bt_resolve_parent_branch "$base_branch" "")"
+    if [[ -z "$parent_branch" ]]; then
+      bt_error_exit "$EXIT_BRANCH_NOT_FOUND" \
+        "Parent branch could not be resolved for '$base_branch'"
+    fi
+    BRANCH_ARG="$parent_branch"
+    return 0
+  fi
+
+  resolve_branch_argument
 }
 
 validate_git_branch_name() {
@@ -744,14 +910,16 @@ main() {
   local desired_mode="local"
   local curr_branch
   local previous_remote_copy=""
+  local previous_selection_branch=""
   local refreshing_remote_copy=false
+  local stack_action="push"
   local msg=""
 
   show_help_if_requested "$@"
   ensure_required_commands
   parse_args "$@"
   ensure_git_repository
-  resolve_branch_argument
+  resolve_navigation_branch
   export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT_SECONDS"
 
   TARGET_BRANCH="$BRANCH_ARG"
@@ -772,8 +940,19 @@ main() {
 
   if [[ "$FORCE_LOCAL" == true ]]; then
     desired_mode="local"
-  elif [[ "$FORCE_REMOTE" == true || "$has_local" == false ]]; then
+  elif [[ "$FORCE_REMOTE" == true ]]; then
     desired_mode="remote"
+  elif [[ "$USE_PARENT" == true || "$USE_PREVIOUS" == true || \
+    "$USE_UP" == true ]]; then
+    desired_mode="local"
+  elif [[ "$has_local" == false ]]; then
+    desired_mode="remote"
+  fi
+
+  if [[ "$USE_PREVIOUS" == true ]]; then
+    stack_action="none"
+  elif [[ "$USE_UP" == true ]]; then
+    stack_action="pop"
   fi
 
   # Protected branches are read-only only in remote mode; local mode should
@@ -787,6 +966,7 @@ main() {
   fi
 
   curr_branch="$(current_local_branch)"
+  previous_selection_branch="$(current_branch_name_or_empty)"
   if is_remote_copy_branch "$curr_branch"; then
     previous_remote_copy="$curr_branch"
     if [[ "$FORCE_REMOTE" == true && \
@@ -800,7 +980,8 @@ main() {
       is_remote_copy_branch "$TARGET_BRANCH"; then
       ensure_no_uncommitted_changes "$curr_branch"
     fi
-    remember_last_branch "$TARGET_BRANCH"
+    remember_successful_selection "$TARGET_BRANCH" \
+      "$previous_selection_branch" "$stack_action"
     finish_local_selection "$TARGET_BRANCH" "$protected_branch"
     exit 0
   fi
@@ -826,14 +1007,17 @@ main() {
   # for names outside repository branch policy; protected locals stay attached
   # so downstream commands can identify the checked-out branch.
   if [[ "$desired_mode" == "remote" ]]; then
-    switch_remote_copy "$TARGET_BRANCH"
+    switch_remote_copy "$TARGET_BRANCH" "$previous_selection_branch" \
+      "$stack_action"
     emit_success_changed "remote" "r-$TARGET_BRANCH" \
       "$refreshing_remote_copy"
   elif [[ "$detach_local" == true ]]; then
-    switch_local_snapshot "$TARGET_BRANCH"
+    switch_local_snapshot "$TARGET_BRANCH" "$previous_selection_branch" \
+      "$stack_action"
     finish_local_selection "$TARGET_BRANCH" false
   else
-    switch_local "$TARGET_BRANCH"
+    switch_local "$TARGET_BRANCH" "$previous_selection_branch" \
+      "$stack_action"
     finish_local_selection "$TARGET_BRANCH" "$protected_branch"
   fi
 

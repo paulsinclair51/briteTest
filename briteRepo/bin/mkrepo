@@ -557,21 +557,21 @@ emit_report_body() {
   local commit="$1"
   local path
 
-  printf 'Generated: %s\n\n' "$(bt_datetime_display_now)"
-  printf 'Repository: %s\n\n' "$TARGET_SLUG"
+  printf '**Generated:** %s  \n' "$(bt_datetime_display_now)"
+  printf '**Repository:** %s  \n' "$TARGET_SLUG"
   if [[ "$REPO_EXISTS" == true ]]; then
-    printf 'Repository state: existing\n\n'
+    printf '**Repository State:** existing  \n'
   else
-    printf 'Repository state: new (%s)\n\n' "$VISIBILITY"
+    printf '**Repository State:** new (%s)  \n' "$VISIBILITY"
   fi
-  printf 'Default branch: %s\n\n' "$REPO_DEFAULT_BRANCH"
-  printf 'Commit: %s\n\n' "$commit"
+  printf '**Default Branch:** %s  \n' "$REPO_DEFAULT_BRANCH"
+  printf '**Commit:** %s\n\n' "$commit"
 
   printf '## Summary\n\n'
-  printf -- '- Canonical items: %s\n' "$CREATED_COUNT"
-  printf -- '- Canonical names with non-canonical content: %s\n' \
+  printf -- '- **Canonical Items:** %s\n' "$CREATED_COUNT"
+  printf -- '- **Canonical Names With Non-Canonical Content:** %s\n' \
     "$DIVERGENT_COUNT"
-  printf -- '- Items already canonical: %s\n\n' "$UNCHANGED_COUNT"
+  printf -- '- **Items Already Canonical:** %s\n\n' "$UNCHANGED_COUNT"
 
   printf '## Canonical Items\n\n'
   if [[ "${#CREATED_PATHS[@]}" -eq 0 ]]; then
@@ -699,8 +699,8 @@ write_report() {
     emit_report_body "$commit"
     if [[ "$mode" == "error" ]]; then
       printf '\n## Error\n\n'
-      printf -- '- Exit code: %s\n' "$ERROR_CODE"
-      printf -- '- Message: %s\n\n' "$ERROR_MESSAGE"
+      printf -- '- **Exit Code:** %s\n' "$ERROR_CODE"
+      printf -- '- **Message:** %s\n\n' "$ERROR_MESSAGE"
       if output="$(last_run_output)"; then
         printf '## Last Command Output\n\n'
         printf '```text\n%s\n```\n\n' "$output"
