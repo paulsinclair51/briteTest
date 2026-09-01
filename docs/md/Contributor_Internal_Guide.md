@@ -210,6 +210,12 @@ Prerequisites for `override`:
 - The public document set is intentionally written for contributor-facing use.
 - The internal documents capture policy, enforcement, and repair details that are
   not meant to be treated as normal operations by all contributors.
+- User-facing commands may call another user-facing command only through its
+  documented public interface. Shared or privileged workflow behavior must be
+  implemented in a helper and called directly by each command that needs it.
+- Do not add undocumented options to a user-facing command for command-to-command
+  integration. Internal helper entry modes must validate the workflow state that
+  authorizes their behavior.
 - Server-side protections remain the final authority over branch deletion and
   history rewriting.
 - Project-command safeguards run locally. A dedicated GitHub App or bot would be

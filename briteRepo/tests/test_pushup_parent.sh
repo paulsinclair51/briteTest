@@ -259,7 +259,8 @@ cp "$PUSH_SRC" "$WORK/briteRepo/bin/push"
 chmod +x "$WORK/briteRepo/helpers/pushup_parent.sh" "$WORK/briteRepo/bin/push"
 for helper in common.sh git_helpers.sh github_helpers.sh \
               validation_helpers.sh history_log.sh report_helpers.sh report_sync.sh rbac.sh \
-              push_workflow.sh ckrole.sh common_utils.sh ckbranchname.sh; do
+              push_command.sh push_workflow.sh ckrole.sh common_utils.sh \
+              ckbranchname.sh; do
   [[ -f "$HELPERS_DIR/$helper" ]] && \
     cp "$HELPERS_DIR/$helper" "$WORK/briteRepo/helpers/$helper"
 done

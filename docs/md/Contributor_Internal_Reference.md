@@ -272,8 +272,9 @@ workflows must invoke the corresponding command in `briteRepo/bin/`.
 | `common.sh`, `common_utils.sh` | Shared paths, output, identity, and utility functions |
 | `git_helpers.sh`, `github_helpers.sh` | Git and GitHub API operations |
 | `history_log.sh`, `report_helpers.sh`, `report_sync.sh` | History and report generation or synchronization |
+| `pulldown_workflow.sh` | Shared merge-down implementation for `pulldown` and `pushup` |
 | `health_report.sh` | Repository health report support |
-| `push_workflow.sh`, `pushup_parent.sh` | Shared push and push-up state transitions |
+| `push_command.sh`, `push_workflow.sh`, `pushup_parent.sh` | Shared push and push-up command implementation and state transitions |
 | `gendocx.sh`, `genpdf.sh` | Document conversion backends |
 | `install_git_hooks.sh` | Configure the versioned hooks directory |
 

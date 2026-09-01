@@ -151,11 +151,12 @@ if [[ -f .fail-parent-finalize-once && "$branch" == main ]]; then
   exit 202
 fi
 EOF
+cp "$WORK/briteRepo/bin/push" "$WORK/briteRepo/helpers/push_command.sh"
 cat > "$WORK/briteRepo/bin/chbranch" <<'EOF'
 #!/usr/bin/env bash
 git checkout "${@: -1}" >/dev/null
 EOF
-cat > "$WORK/briteRepo/bin/pulldown" <<'EOF'
+cat > "$WORK/briteRepo/helpers/pulldown_workflow.sh" <<'EOF'
 #!/usr/bin/env bash
 set -e
 timeout_seconds=""
@@ -183,7 +184,8 @@ cat > "$WORK/briteRepo/bin/pull" <<'EOF'
 #!/usr/bin/env bash
 git pull --rebase origin "$(git branch --show-current)" >/dev/null
 EOF
-chmod +x "$WORK/briteRepo/bin/"{push,chbranch,pulldown,pull} "$WORK/briteRepo/helpers/pushup_parent.sh"
+chmod +x "$WORK/briteRepo/bin/"{push,chbranch,pull} \
+  "$WORK/briteRepo/helpers/"{pulldown_workflow.sh,push_command.sh,pushup_parent.sh}
 
 source_tip="$(git -C "$WORK" rev-parse feature)"
 parent_tip="$(git -C "$WORK" rev-parse main)"
@@ -465,12 +467,12 @@ prepared_tip="$(git -C "$WORK" rev-parse main)"
 git -C "$WORK" checkout feature >/dev/null
 git -C "$WORK" merge --no-edit main >/dev/null
 write_state source-selected "$source_tip" "$parent_tip" "$prepared_tip"
-cat > "$WORK/briteRepo/bin/pulldown" <<'EOF'
+cat > "$WORK/briteRepo/helpers/pulldown_workflow.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "pulldown must not rerun after its commit is detected" >&2
 exit 91
 EOF
-chmod +x "$WORK/briteRepo/bin/pulldown"
+chmod +x "$WORK/briteRepo/helpers/pulldown_workflow.sh"
 status="$(run_capture "$TMPDIR/sync-commit-continue.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 0 ]] || fail "committed synchronization should be inferred, got $status"
@@ -514,12 +516,13 @@ cat > "$WORK/briteRepo/bin/chbranch" <<'EOF'
 #!/usr/bin/env bash
 git checkout "${@: -1}" >/dev/null
 EOF
-cat > "$WORK/briteRepo/bin/pulldown" <<'EOF'
+cat > "$WORK/briteRepo/helpers/pulldown_workflow.sh" <<'EOF'
 #!/usr/bin/env bash
 git fetch origin main >/dev/null
 git merge --no-edit origin/main >/dev/null
 EOF
-chmod +x "$WORK/briteRepo/bin/chbranch" "$WORK/briteRepo/bin/pulldown"
+chmod +x "$WORK/briteRepo/bin/chbranch" \
+  "$WORK/briteRepo/helpers/pulldown_workflow.sh"
 rm -rf "$WORK/.git/briteRepo/pushup-tools"
 status="$(run_capture "$TMPDIR/signal-continue.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup")"

@@ -14,6 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common_test_helpers.sh"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PULLDOWN_SRC="$REPO_ROOT/briteRepo/bin/pulldown"
+PULLDOWN_WORKFLOW_SRC="$REPO_ROOT/briteRepo/helpers/pulldown_workflow.sh"
 COMMON_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/common.sh"
 GIT_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/git_helpers.sh"
 HISTORY_HELPER_SRC="$REPO_ROOT/briteRepo/helpers/history_log.sh"
@@ -39,6 +40,8 @@ for dep in bash find git grep mktemp; do
 done
 
 [[ -f "$PULLDOWN_SRC" ]] || fail "missing script: $PULLDOWN_SRC"
+[[ -f "$PULLDOWN_WORKFLOW_SRC" ]] || \
+  fail "missing helper: $PULLDOWN_WORKFLOW_SRC"
 [[ -f "$COMMON_HELPER_SRC" ]] || fail "missing helper: $COMMON_HELPER_SRC"
 [[ -f "$GIT_HELPER_SRC" ]] || fail "missing helper: $GIT_HELPER_SRC"
 [[ -f "$HISTORY_HELPER_SRC" ]] || fail "missing helper: $HISTORY_HELPER_SRC"
@@ -68,6 +71,7 @@ git clone "file://$ORIGIN" "$PEER" >/dev/null 2>&1
 
 mkdir -p "$WORK/briteRepo/bin" "$WORK/briteRepo/helpers" "$WORK/reports"
 cp "$PULLDOWN_SRC" "$WORK/briteRepo/bin/pulldown"
+cp "$PULLDOWN_WORKFLOW_SRC" "$WORK/briteRepo/helpers/pulldown_workflow.sh"
 cp "$COMMON_HELPER_SRC" "$WORK/briteRepo/helpers/common.sh"
 cp "$GIT_HELPER_SRC" "$WORK/briteRepo/helpers/git_helpers.sh"
 cp "$HISTORY_HELPER_SRC" "$WORK/briteRepo/helpers/history_log.sh"
@@ -113,14 +117,29 @@ GITIGNORE
 rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/pulldown -h")
 [[ "$rc" -eq 0 ]] || fail "pulldown -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
-assert_contains "-e" "$TMPDIR/help.out"
 pass "help output"
+
+rc=$(run_capture "$TMPDIR/help-overrides.out" bash -lc \
+  "cd '$WORK' && bash ./briteRepo/bin/pulldown unexpected --help")
+[[ "$rc" -eq 0 ]] || fail "pulldown --help should override arguments"
+assert_contains "Usage:" "$TMPDIR/help-overrides.out"
+pass "help overrides arguments"
+
+for internal_option in --pushup --force --verbose -f -e; do
+  rc=$(run_capture "$TMPDIR/internal-option-${internal_option#-}.out" \
+    bash -lc "cd '$WORK' && bash ./briteRepo/bin/pulldown '$internal_option'")
+  [[ "$rc" -eq 1 ]] || \
+    fail "public pulldown should reject $internal_option (got $rc)"
+  assert_contains "Unknown option: $internal_option" \
+    "$TMPDIR/internal-option-${internal_option#-}.out"
+done
+pass "internal options rejected by public command"
 
 copyfix_state_root="$(git -C "$WORK" rev-parse \
   --path-format=absolute --git-common-dir)/briteRepo-copyfix-state"
 mkdir -p "$copyfix_state_root/dev/current-v1.0.0"
 rc=$(run_capture "$TMPDIR/copyfix-active.out" \
-  bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -f")
+  bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown")
 [[ "$rc" -eq 3 ]] || fail "unfinished copyfix should block pulldown (got $rc)"
 assert_contains "has an unfinished copyfix operation" \
   "$TMPDIR/copyfix-active.out"
@@ -128,8 +147,8 @@ rm -rf "$copyfix_state_root"
 pass "unfinished copyfix blocks pulldown"
 
 # 2) Skip mode should emit an error report and summary line.
-rc=$(run_capture "$TMPDIR/skip-e.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -e")
-[[ "$rc" -eq 6 ]] || fail "pulldown -e should exit 6 (got $rc)"
+rc=$(run_capture "$TMPDIR/skip-e.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/helpers/pulldown_workflow.sh --error-run")
+[[ "$rc" -eq 6 ]] || fail "pulldown error mode should exit 6 (got $rc)"
 assert_contains "Error: Merge down skipped due to -e option." "$TMPDIR/skip-e.out"
 assert_contains "Guidance: Run without -e option." "$TMPDIR/skip-e.out"
 assert_contains "See reports/pulldown-e-" "$TMPDIR/skip-e.out"
@@ -173,7 +192,7 @@ pass "positional argument rejected"
   git remote set-url origin "$TMPDIR/unreachable-origin.git"
 )
 rc=$(run_capture "$TMPDIR/local-parent-sync.out" bash -lc \
-  "cd '$WORK' && bash ./briteRepo/bin/pulldown --pushup -f")
+  "cd '$WORK' && bash ./briteRepo/helpers/pulldown_workflow.sh --pushup")
 [[ "$rc" -eq 0 ]] || \
   fail "local pushup synchronization should exit 0 (got $rc)"
 [[ -f "$WORK/local-parent.txt" && -f "$WORK/local-child.txt" ]] || \
@@ -197,7 +216,7 @@ EOF
 chmod a-w "$WORK/reports/pulldown-d-20000101-000000+0000.md" \
   "$WORK/reports/pulldown-e-20000101-000001+0000.md"
 rc=$(run_capture "$TMPDIR/noop.out" \
-  bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -f")
+  bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown")
 [[ "$rc" -eq 5 ]] || fail "no-work pulldown should exit 5 (got $rc)"
 assert_contains "no changes to merge" "$TMPDIR/noop.out"
 [[ -f "$WORK/reports/pulldown-d-20000101-000000+0000.md" ]] || \
@@ -223,14 +242,14 @@ assert_contains "See reports/pulldown-d-" "$TMPDIR/dryrun.out"
 pass "dry-run output stays compact"
 
 # 4) Protected branch is blocked
-rc=$(run_capture "$TMPDIR/protected.out" bash -lc "cd '$WORK' && git checkout main >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -f")
+rc=$(run_capture "$TMPDIR/protected.out" bash -lc "cd '$WORK' && git checkout main >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown")
 [[ "$rc" -eq 4 ]] || fail "protected branch should exit 4 (got $rc)"
 assert_contains "Error: Cannot sync up on protected branch 'main'" "$TMPDIR/protected.out"
 assert_contains "Guidance: use pushup to merge changes to this branch." "$TMPDIR/protected.out"
 pass "protected branch gate"
 
 # pushup alone may merge a published parent into its protected source branch.
-rc=$(run_capture "$TMPDIR/protected-pushup.out" bash -lc "cd '$WORK' && git checkout v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown --pushup -f")
+rc=$(run_capture "$TMPDIR/protected-pushup.out" bash -lc "cd '$WORK' && git checkout v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/helpers/pulldown_workflow.sh --pushup")
 [[ "$rc" -eq 4 ]] || fail "unvalidated pushup mode should remain blocked (got $rc)"
 (
   cd "$PEER"
@@ -251,7 +270,7 @@ rc=$(run_capture "$TMPDIR/protected-pushup.out" bash -lc "cd '$WORK' && git chec
   git config --file .git/briteRepo/pushup.state pushup.source-has-remote true
   git config --file .git/briteRepo/pushup.state pushup.parent-has-remote true
 )
-rc=$(run_capture "$TMPDIR/protected-pushup-sync.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/pulldown --pushup -f")
+rc=$(run_capture "$TMPDIR/protected-pushup-sync.out" bash -lc "cd '$WORK' && bash ./briteRepo/helpers/pulldown_workflow.sh --pushup")
 [[ "$rc" -eq 0 ]] || fail "validated pushup source sync should succeed (got $rc)"
 rm -f "$WORK/.git/briteRepo/pushup.state"
 pass "pushup can synchronize protected source branch"
@@ -270,7 +289,7 @@ remote_report_count_before="$(find "$ORIGIN/reports" -maxdepth 1 -type f -name '
 
 reports_before="$(find "$WORK/reports" -maxdepth 1 -type f \
   -name 'pulldown-[0-9]*.md' -print | sort)"
-rc=$(run_capture "$TMPDIR/merge-push.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -f -c 'sync parent one'")
+rc=$(run_capture "$TMPDIR/merge-push.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -c 'sync parent one'")
 [[ "$rc" -eq 0 ]] || fail "forced merge/push should exit 0 (got $rc)"
 assert_contains "Merged parent 'v1.0.0' into 'dev/current-v1.0.0'" \
   "$TMPDIR/merge-push.out"
@@ -284,7 +303,7 @@ reports_after="$(find "$WORK/reports" -maxdepth 1 -type f \
 [[ "$reports_after" == "$reports_before" ]] || \
   fail "successful merge-down should not add an immediate report"
 merge_body="$(git -C "$WORK" log -1 --format=%B dev/current-v1.0.0)"
-[[ "$merge_body" == *'Command-Line: pulldown -f -c sync\ parent\ one'* ]] || \
+[[ "$merge_body" == *'Command-Line: pulldown -c sync\ parent\ one'* ]] || \
   fail "merge-down commit should record its command line"
 [[ "$merge_body" == *"Source-Branch: v1.0.0"* ]] || \
   fail "merge-down commit should record its source branch"

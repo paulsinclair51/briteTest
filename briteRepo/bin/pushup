@@ -2,6 +2,8 @@
 
 # pushup - Push the current branch up to its parent and resynchronize it.
 #
+# See usage below for details, or run: pushup -h
+#
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see '<repo>/LICENSE'.
@@ -256,7 +258,8 @@ ensure_tool_snapshot() {
 
   saved_tool_dir="$(state_get tool-dir)"
   if [[ -n "$saved_tool_dir" && -x "$saved_tool_dir/bin/push" && \
-    -x "$saved_tool_dir/bin/pulldown" && \
+    -f "$saved_tool_dir/helpers/push_command.sh" && \
+    -f "$saved_tool_dir/helpers/pulldown_workflow.sh" && \
     -f "$saved_tool_dir/helpers/pushup_parent.sh" && \
     $(grep -F -c -- '"$state_version" == 2' \
       "$saved_tool_dir/bin/push" 2>/dev/null) -gt 0 ]]; then
@@ -667,7 +670,7 @@ run_push_source() {
   local timeout_seconds="$1"
   local -a args=(--pushup-source -t "$timeout_seconds")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  run_delegated "$TOOL_DIR/bin/push" "${args[@]}"
+  run_delegated bash "$TOOL_DIR/helpers/push_command.sh" "${args[@]}"
 }
 
 run_push_finalization_retry() {
@@ -748,7 +751,7 @@ select_source() {
 
 synchronize_source() {
   local source_branch
-  local -a args=(--pushup -f -t "$(extended_remote_timeout)")
+  local -a args=(--pushup -t "$(extended_remote_timeout)")
 
   source_branch="$(state_get source)"
   if [[ "$(bt_get_current_branch || true)" != "$source_branch" ]] && \
@@ -759,7 +762,8 @@ synchronize_source() {
   fi
 
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  if run_delegated "$TOOL_DIR/bin/pulldown" "${args[@]}"; then
+  if run_delegated bash "$TOOL_DIR/helpers/pulldown_workflow.sh" \
+    "${args[@]}"; then
     set_phase source-synchronized
     return 0
   fi
