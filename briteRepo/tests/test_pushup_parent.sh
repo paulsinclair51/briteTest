@@ -949,6 +949,8 @@ merge_note="$(git -C "$WORK" notes --ref=briteRepo-workflow show v1.0.0)"
   fail "completed merge-up should record one final workflow event"
 [[ "$merge_note" == *"Command-Line: pushup -o -c verify\\ repair\\ path"* ]] || \
   fail "merge-up event should record its command line"
+[[ "$merge_note" == *"Authority: owner"* ]] || \
+  fail "owner-override merge-up should record owner authority"
 [[ "$merge_note" == *"Source-Branch: dev/feat-v1.0.0"* ]] || \
   fail "merge-up event should record its source branch"
 [[ "$merge_note" == *"Source-Tip: $owner_source_tip"* ]] || \

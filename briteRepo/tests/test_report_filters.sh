@@ -18,8 +18,9 @@ report_test_init
 rc=$(run_capture "$TMPDIR/user-filter.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -u testuser -q 'committed by contributor' -n 10")
 [[ "$rc" -eq 0 ]] || fail "user filter should exit 0 (got $rc)"
 user_rel="$(report_path_from_output "$TMPDIR/user-filter.out")"
-assert_contains "committed by contributor testuser" "$WORK/$user_rel"
 assert_contains '**Command:** `commit -c' "$WORK/$user_rel"
+assert_contains '**Action:** Committed changes.' "$WORK/$user_rel"
+assert_contains '**Branch:** dev/report-tests-v1.0.0 (local)' "$WORK/$user_rel"
 if grep -Fq '\\ ' "$WORK/$user_rel"; then
 	fail "user comment should not contain shell-escape backslashes"
 fi

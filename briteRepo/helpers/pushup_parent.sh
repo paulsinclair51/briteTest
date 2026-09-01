@@ -382,6 +382,19 @@ bt_emit_guidance_joined() {
 }
 
 format_command_line() {
+  local state_file=""
+  local initiating_command=""
+
+  state_file="$(git rev-parse --git-path briteRepo/pushup.state \
+    2>/dev/null || true)"
+  if [[ -f "$state_file" ]]; then
+    initiating_command="$(git config --file "$state_file" \
+      --get pushup.command-line 2>/dev/null || true)"
+  fi
+  if [[ -n "$initiating_command" ]]; then
+    printf '%s\n' "$initiating_command"
+    return 0
+  fi
   bt_format_command_line "pushup" "${ORIGINAL_ARGS[@]}"
 }
 
@@ -1900,9 +1913,15 @@ cleanup_old_transient_reports
 OPERATION_STARTED=false
 
 ci_history_details="$(printf '%s' "$CI_CD_REPORT_DETAILS" | tr '\n' ' ')"
+workflow_authority_args=()
+if [[ "$OWNER_OVERRIDE_ACTIVE" == true ]]; then
+  workflow_authority_args=("Authority" "owner")
+fi
 if ! bt_record_workflow_event "pushup" "$PARENT_BRANCH" \
   "$(format_command_line)" \
   "$COMMIT_MESSAGE" "$MERGE_COMMIT_SHA" \
+  "${workflow_authority_args[@]}" \
+  "Command-Source" "user" \
   "Source-Branch" "$CURRENT_BRANCH" \
   "Source-Tip" "$APPROVED_SOURCE_TIP" \
   "Target-Branch" "$PARENT_BRANCH" \

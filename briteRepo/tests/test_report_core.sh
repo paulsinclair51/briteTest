@@ -19,6 +19,8 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin
 [[ "$rc" -eq 0 ]] || fail "report -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "-q TEXT" "$TMPDIR/help.out"
+assert_contains "Limit the report to N matching activities (default: 10)" \
+  "$TMPDIR/help.out"
 assert_contains "Report on remote activity instead of local activity" "$TMPDIR/help.out"
 assert_contains "-p" "$TMPDIR/help.out"
 assert_contains "Combine with -r for the remote parent" "$TMPDIR/help.out"
@@ -61,7 +63,7 @@ assert_contains "SEC for -t must be an integer > 0" \
   "$TMPDIR/invalid-remote-timeout.out"
 pass "branch remote timeout validation"
 
-# 3) Default type all should write one newest activity
+# 3) Default type all should write the ten newest activities
 printf 'current branch worktree change\n' > "$WORK/current-only-uncommitted.txt"
 rc=$(run_capture "$TMPDIR/default.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report")
 [[ "$rc" -eq 0 ]] || fail "default report should exit 0 (got $rc)"
@@ -80,7 +82,11 @@ assert_contains '**User:** testuser (contributor)' "$WORK/$default_rel"
 assert_contains "retarget activity" "$WORK/$default_rel"
 default_commit_hash="$(git -C "$WORK" rev-parse HEAD)"
 assert_contains "**Commit:** \`$default_commit_hash\`" "$WORK/$default_rel"
-[[ "$(grep -c '^## ' "$WORK/$default_rel")" -eq 1 ]] || fail "default limit should be one activity"
+if grep -Eq '^## [0-9]+\. pushup:' "$WORK/$default_rel"; then
+  fail "source branch report should not include pushup actions owned by parent"
+fi
+[[ "$(grep -c '^## ' "$WORK/$default_rel")" -eq 10 ]] || \
+  fail "default limit should be ten activities"
 if grep -Fq '**Summary:**' "$WORK/$default_rel"; then
   fail "action summary line should be omitted"
 fi
@@ -99,6 +105,7 @@ local_parent_rel="$(report_path_from_output "$TMPDIR/local-parent.out")"
   fail "local parent report should use the branch-p-l prefix"
 assert_contains '**Branch:** `v1.0.0`' "$WORK/$local_parent_rel"
 assert_matches '^\*\*Status:\*\* .*\[local\]' "$WORK/$local_parent_rel"
+assert_contains '**Action:** Pushed up to parent.' "$WORK/$local_parent_rel"
 if grep -Fq '[uncommitted]' "$WORK/$local_parent_rel"; then
   fail "local parent report should not inherit current branch uncommitted status"
 fi
@@ -155,8 +162,15 @@ pass "positional type placement"
 rc=$(run_capture "$TMPDIR/pulldown.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'pulldown activity'")
 [[ "$rc" -eq 0 ]] || fail "pulldown report should exit 0 (got $rc)"
 pulldown_rel="$(report_path_from_output "$TMPDIR/pulldown.out")"
-assert_contains "pulldown activity" "$WORK/$pulldown_rel"
-assert_contains '**Command:** `pulldown`' "$WORK/$pulldown_rel"
+assert_matches '^## 1\. pulldown:' "$WORK/$pulldown_rel"
+assert_contains '**Command:** `pushup -o`' "$WORK/$pulldown_rel"
+assert_contains '**User:** testuser (owner)' "$WORK/$pulldown_rel"
+assert_contains '**Action:** Synchronized with parent.' "$WORK/$pulldown_rel"
+assert_contains '**Source Branch:** v1.0.0 (local)' "$WORK/$pulldown_rel"
+assert_contains '**Target Branch:** dev/report-tests-v1.0.0 (local)' \
+  "$WORK/$pulldown_rel"
+assert_contains '**PR:** 42' "$WORK/$pulldown_rel"
+assert_contains '**CI/CD:** ci build SUCCESS' "$WORK/$pulldown_rel"
 if grep -Fq '## Workflow Metadata' "$WORK/$pulldown_rel"; then
   fail "pulldown report should omit Workflow Metadata"
 fi
@@ -166,22 +180,32 @@ fi
 pass "pulldown report details"
 
 # 8) Merge-up reports should render durable workflow details
-rc=$(run_capture "$TMPDIR/pushup.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'pushup activity'")
+rc=$(run_capture "$TMPDIR/pushup.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -p -q 'pushup activity'")
 [[ "$rc" -eq 0 ]] || fail "pushup report should exit 0 (got $rc)"
 pushup_rel="$(report_path_from_output "$TMPDIR/pushup.out")"
-assert_contains "pushup activity" "$WORK/$pushup_rel"
 assert_contains '**Command:** `pushup -o`' "$WORK/$pushup_rel"
+assert_contains '**User:** testuser (owner)' "$WORK/$pushup_rel"
+assert_contains '**Action:** Pushed up to parent.' "$WORK/$pushup_rel"
+if grep -Fq '**Authority:**' "$WORK/$pushup_rel"; then
+  fail "pushup report should express owner authority in the User field"
+fi
 assert_matches \
-  '^\*\*Source Branch:\*\* dev/report-tests-v1\.0\.0 \([0-9a-f]{40}\)  $' \
+  '^\*\*Source Branch:\*\* dev/report-tests-v1\.0\.0 \(local\)  $' \
   "$WORK/$pushup_rel"
 if grep -Eq '^Source-Tip:' "$WORK/$pushup_rel"; then
   fail "pushup report should combine Source-Tip with Source-Branch"
 fi
-assert_contains "**Target Branch:** v1.0.0" "$WORK/$pushup_rel"
+assert_contains "**Target Branch:** v1.0.0 (local)" "$WORK/$pushup_rel"
 assert_contains "**PR:** 42" "$WORK/$pushup_rel"
-assert_contains "**Status:** Current branch merged into parent branch" "$WORK/$pushup_rel"
-assert_contains "**Method:** Squash merge created by pushup" "$WORK/$pushup_rel"
-assert_contains "**CI CD:** ci build SUCCESS" "$WORK/$pushup_rel"
+assert_contains "**CI/CD:** ci build SUCCESS" "$WORK/$pushup_rel"
+if awk '
+  /^## 1\. pushup:/ { in_pushup = 1; next }
+  /^## / { in_pushup = 0 }
+  in_pushup && /^\*\*(Status|Method):\*\*/ { found = 1 }
+  END { exit found ? 0 : 1 }
+' "$WORK/$pushup_rel"; then
+  fail "pushup report should omit internal status and method metadata"
+fi
 pass "pushup report details"
 
 # 8b) Other metadata-only workflow actions should render durable details.

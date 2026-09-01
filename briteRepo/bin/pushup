@@ -116,6 +116,8 @@ ERROR_RUN=false
 TIMEOUT_SECONDS=10
 COMMENT_MODE=""
 COMMENT=""
+ORIGINAL_ARGS=("$@")
+PUSHUP_COMMAND_LINE="$(bt_format_command_line "pushup" "${ORIGINAL_ARGS[@]}")"
 STATE_FILE=""
 LOCK_FILE=""
 LOCK_FD=""
@@ -178,7 +180,7 @@ state_is_complete() {
 
   [[ "$(state_get version)" == "$STATE_VERSION" ]] || return 1
   for key in phase source parent source-tip parent-tip timeout verbose \
-    owner-override comment-mode; do
+    owner-override comment-mode command-line; do
     [[ -n "$(state_get "$key")" ]] || return 1
   done
   phase="$(state_get phase)"
@@ -237,6 +239,7 @@ initialize_state() {
   git config --file "$state_tmp" pushup.verbose "$VERBOSE"
   git config --file "$state_tmp" pushup.owner-override "$OWNER_OVERRIDE"
   git config --file "$state_tmp" pushup.comment-mode "${COMMENT_MODE:-none}"
+  git config --file "$state_tmp" pushup.command-line "$PUSHUP_COMMAND_LINE"
   if git show-ref --verify --quiet "refs/remotes/origin/$source_branch"; then
     git config --file "$state_tmp" pushup.source-has-remote true
   else
@@ -661,9 +664,9 @@ error_run_parent() {
 
 run_push() {
   local timeout_seconds="$1"
-  local -a args=(-t "$timeout_seconds")
+  local -a args=(--pushup-publish -t "$timeout_seconds")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  run_delegated "$TOOL_DIR/bin/push" "${args[@]}"
+  run_delegated bash "$TOOL_DIR/helpers/push_command.sh" "${args[@]}"
 }
 
 run_push_source() {
@@ -674,10 +677,10 @@ run_push_source() {
 }
 
 run_push_finalization_retry() {
-  local -a args=(-t "$(extended_remote_timeout)")
+  local -a args=(--pushup-publish -t "$(extended_remote_timeout)")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
   BT_PUSHUP_FINALIZATION_RETRY=true \
-    run_delegated "$TOOL_DIR/bin/push" "${args[@]}"
+    run_delegated bash "$TOOL_DIR/helpers/push_command.sh" "${args[@]}"
 }
 
 publish_parent() {
