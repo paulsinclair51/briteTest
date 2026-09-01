@@ -173,9 +173,6 @@ Details: Previous-Remote-Tip: $remote_push_tip; Pushed-Tip: $empty_push_tip; Com
       >/dev/null 2>&1
 
     pushup_source_tip="$(git rev-parse HEAD)"
-    git commit --allow-empty \
-      -m "pushup activity" \
-      >/dev/null 2>&1
     git notes --ref=briteRepo-workflow append -m \
       "--- briteRepo workflow ---
 Workflow-Type: pushup
@@ -183,7 +180,9 @@ Workflow-Time: 2026-08-16 12:00:01
 Workflow-Branch: v1.0.0
 Workflow-User: testuser <test@example.com>
 Command-Line: pushup -o
+Command-Source: user
 Summary: pushup activity
+Authority: owner
 Source-Branch: dev/report-tests-v1.0.0
 Source-Tip: $pushup_source_tip
 Target-Branch: v1.0.0
@@ -191,7 +190,7 @@ PR: 42
 Status: Current branch merged into parent branch
 Method: Squash merge created by pushup
 CI-CD: ci build SUCCESS" \
-      HEAD >/dev/null 2>&1
+  v1.0.0 >/dev/null 2>&1
 
     git commit --allow-empty \
       -m "copyfix activity" \
@@ -216,7 +215,7 @@ Method: Cherry-pick created by copyfix" \
 
     git commit --allow-empty \
       -m "pulldown activity" \
-      -m $'## Workflow Metadata\n\nCommand-Line: pulldown\nSource-Branch: v1.0.0\nTarget-Branch: dev/report-tests-v1.0.0\nParent-Commits-Integrated: 2\nFiles-Modified: 1\nFiles-Added: 1\nFiles-Deleted: 0\nStatus: Parent branch merged into current branch\nMethod: Merge commit (--no-ff) created by pulldown' \
+      -m $'## Workflow Metadata\n\nCommand-Line: pushup -o\nCommand-Source: user\nWorkflow-Type: pulldown\nAuthority: owner\nPR: 42\nCI-CD: ci build SUCCESS\nSource-Branch: v1.0.0\nTarget-Branch: dev/report-tests-v1.0.0\nParent-Commits-Integrated: 2\nFiles-Modified: 1\nFiles-Added: 1\nFiles-Deleted: 0\nStatus: Parent branch merged into current branch\nMethod: Merge commit (--no-ff) created by pulldown' \
       >/dev/null 2>&1
 
     git notes --ref=briteRepo-workflow append -m \

@@ -44,6 +44,7 @@ write_state() {
   git config --file "$state_file" pushup.verbose false
   git config --file "$state_file" pushup.owner-override false
   git config --file "$state_file" pushup.comment-mode none
+  git config --file "$state_file" pushup.command-line pushup
   git config --file "$state_file" pushup.source-has-remote true
   git config --file "$state_file" pushup.parent-has-remote true
   [[ -z "$prepared_tip" ]] || \

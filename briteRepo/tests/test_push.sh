@@ -528,11 +528,20 @@ pass "approved contributor pushup publication and PR finalization"
   git config --file .git/briteRepo/pushup.state pushup.version 2
   git config --file .git/briteRepo/pushup.state pushup.source v1.0.0
   git config --file .git/briteRepo/pushup.state pushup.phase source-synchronized
+  git config --file .git/briteRepo/pushup.state pushup.command-line \
+    "pushup -t 5 -o"
+  git config --file .git/briteRepo/pushup.state pushup.owner-override true
 )
 rc=$(run_capture "$TMPDIR/pushup-source-push.out" env GITHUB_ACTOR=testapprover \
   PATH="$PUSHUP_BIN:$PATH" \
   bash -c "cd '$PUSHUP_WORK' && bash ./briteRepo/helpers/push_command.sh --pushup-source -t 5")
 [[ "$rc" -eq 0 ]] || fail "pushup should publish synchronized protected source (got $rc)"
+pushup_source_note="$(git -C "$PUSHUP_WORK" notes \
+  --ref=briteRepo-remote-workflow show HEAD)"
+[[ "$pushup_source_note" == *"Command-Line: pushup -t 5 -o"* ]] || \
+  fail "pushup source publication should record its initiating command"
+[[ "$pushup_source_note" == *"Authority: owner"* ]] || \
+  fail "pushup source publication should record owner authority"
 rm -f "$PUSHUP_WORK/.git/briteRepo/pushup.state"
 pass "pushup source publication"
 

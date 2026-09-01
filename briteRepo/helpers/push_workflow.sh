@@ -46,6 +46,7 @@ bt_push_workflow() (
   local pushed_renamed_directories=0
   local pushed_change_summary=""
   local -a original_args=("$@")
+  local -a authority_args=()
 
   bt_push_error_exit() {
     local code="$1"
@@ -833,10 +834,15 @@ EOF
 
   bt_push_collect_stdout_summary_counts
   if declare -F bt_record_remote_workflow_event >/dev/null 2>&1; then
+    if [[ -n "${BT_PUSH_AUTHORITY:-}" ]]; then
+      authority_args=("Authority" "$BT_PUSH_AUTHORITY")
+    fi
     if ! bt_record_remote_workflow_event "push" "$current_branch" \
       "${BT_PUSH_COMMAND_LINE:-push}" \
       "Pushed ${commits_ahead} commit(s) to origin/$current_branch" \
       "$push_content_ref" \
+      "${authority_args[@]}" \
+      "Command-Source" "user" \
       "Previous-Remote-Tip" "$remote_branch_tip" \
       "Pushed-Tip" "$push_content_ref" \
       "Commits" "$commits_ahead" \

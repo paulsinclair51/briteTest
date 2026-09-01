@@ -187,8 +187,13 @@ pass "positional argument rejected"
   git config --file "$state_file" pushup.source local-child
   git config --file "$state_file" pushup.parent local-parent
   git config --file "$state_file" pushup.phase source-selected
+  git config --file "$state_file" pushup.command-line "pushup -t 10 -o"
+  git config --file "$state_file" pushup.owner-override true
   git config --file "$state_file" pushup.source-has-remote false
   git config --file "$state_file" pushup.parent-has-remote false
+  git notes --ref=briteRepo-workflow append -m \
+    $'--- briteRepo workflow ---\nWorkflow-Type: pushup\nWorkflow-Time: 2026-09-01 00:00:00+00:00\nWorkflow-Branch: local-parent\nWorkflow-User: testuser <test@example.com>\nCommand-Line: pushup -o\nCommand-Source: user\nSummary: local pushup\nAuthority: owner\nSource-Branch: local-child\nTarget-Branch: local-parent\nPR: 42\nCI-CD: ci build SUCCESS' \
+    local-parent
   git remote set-url origin "$TMPDIR/unreachable-origin.git"
 )
 rc=$(run_capture "$TMPDIR/local-parent-sync.out" bash -lc \
@@ -197,6 +202,17 @@ rc=$(run_capture "$TMPDIR/local-parent-sync.out" bash -lc \
   fail "local pushup synchronization should exit 0 (got $rc)"
 [[ -f "$WORK/local-parent.txt" && -f "$WORK/local-child.txt" ]] || \
   fail "local pushup synchronization should combine source and parent files"
+local_sync_body="$(git -C "$WORK" log -1 --format=%B)"
+[[ "$local_sync_body" == *"Command-Line: pushup -t 10 -o"* ]] || \
+  fail "internal synchronization should record its initiating pushup command"
+[[ "$local_sync_body" == *"Workflow-Type: pulldown"* ]] || \
+  fail "internal synchronization should record the pulldown operation type"
+[[ "$local_sync_body" == *"Authority: owner"* ]] || \
+  fail "internal synchronization should copy owner authority"
+[[ "$local_sync_body" == *"PR: 42"* ]] || \
+  fail "internal synchronization should copy pushup PR context"
+[[ "$local_sync_body" == *"CI-CD: ci build SUCCESS"* ]] || \
+  fail "internal synchronization should copy pushup CI/CD context"
 git -C "$WORK" remote set-url origin "file://$ORIGIN"
 rm -f "$WORK/.git/briteRepo/pushup.state"
 git -C "$WORK" checkout dev/current-v1.0.0 >/dev/null 2>&1

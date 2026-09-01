@@ -118,7 +118,8 @@ EOF
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-[[ "${1:-}" == "--public" || "${1:-}" == "--pushup-source" ]] || {
+[[ "${1:-}" == "--public" || "${1:-}" == "--pushup-publish" || \
+  "${1:-}" == "--pushup-source" ]] || {
   echo "push_command.sh must be called by a briteRepo command." >&2
   exit 1
 }
@@ -169,6 +170,16 @@ PENDING_PUSHUP_TARGET=""
 PENDING_PUSHUP_PR=""
 PUSHUP_SOURCE_SYNC=false
 [[ "$ENTRY_MODE" != "--pushup-source" ]] || PUSHUP_SOURCE_SYNC=true
+
+pushup_state_value() {
+  local key="$1"
+  local state_file=""
+
+  state_file="$(git rev-parse --git-path briteRepo/pushup.state \
+    2>/dev/null || true)"
+  [[ -f "$state_file" ]] || return 0
+  git config --file "$state_file" --get "pushup.$key" 2>/dev/null || true
+}
 
 push_error_exit() {
   local code="$1"
@@ -519,7 +530,20 @@ push_validate_prerequisites() {
   export BT_REMOTE_TIMEOUT_SECONDS="$timeout_seconds"
 }
 
-BT_PUSH_COMMAND_LINE="$(bt_format_command_line "push" "$@")"
+if [[ "$ENTRY_MODE" == "--public" ]]; then
+  BT_PUSH_COMMAND_LINE="$(bt_format_command_line "push" "$@")"
+  BT_PUSH_AUTHORITY=""
+else
+  BT_PUSH_COMMAND_LINE="$(pushup_state_value command-line)"
+  [[ -n "$BT_PUSH_COMMAND_LINE" ]] || \
+    push_error_exit 1 "Active pushup state is missing its initiating command"
+  if [[ "$(pushup_state_value owner-override)" == true ]]; then
+    BT_PUSH_AUTHORITY="owner"
+  else
+    BT_PUSH_AUTHORITY=""
+  fi
+fi
 export BT_PUSH_COMMAND_LINE
+export BT_PUSH_AUTHORITY
 push_validate_prerequisites "$@"
 bt_push_workflow "${PUSH_WORKFLOW_ARGS[@]}"

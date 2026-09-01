@@ -44,7 +44,7 @@ Options:
   -v          Output progress and diagnostics to stdout.
 
 Additional options only for a branch or repo report:
-  -n N        Limit the report to N matching activities (default: 1).
+  -n N        Limit the report to N matching activities (default: 10).
               N must be 0 or an integer greater than 0; 0 means all matching
               activities are included. The newest N matches are selected.
   -q TEXT     Include activity whose summary or details contain TEXT.
@@ -323,7 +323,9 @@ generate_repo_activity_entries() {
         note_command="$(expand_command_line_placeholders "$note_command" "$note_record")"
         note_summary="$(recorded_field_value "$note_record" "Summary")"
         note_details="$(printf '%s\n' "$note_record" | workflow_event_details)"
-        note_user_display="$(format_user_with_role "$note_user")"
+        note_authority="$(recorded_field_value "$note_record" "Authority")"
+        note_user_display="$(format_user_with_role "$note_user" "" "" \
+          "$note_authority")"
         affected_tables="$(render_affected_tables "$full_hash")"
 
         if ! entry_matches_filters "$note_type" "$note_user" \
@@ -600,7 +602,11 @@ workflow_event_details() {
       sub(/:.*/, "", label)
       value = text
       sub(/^[^:]+:[[:space:]]*/, "", value)
-      gsub(/-/, " ", label)
+      if (label == "CI-CD") {
+        label = "CI/CD"
+      } else {
+        gsub(/-/, " ", label)
+      }
       printf "**%s:** %s  \n", label, value
       return 1
     }
@@ -615,7 +621,7 @@ workflow_event_details() {
       source_tip = ""
     }
     /^--- briteRepo workflow ---$/ { next }
-    /^(Workflow-Type|Workflow-Time|Workflow-Branch|Workflow-User|Command-Line|Summary):/ {
+    /^(Workflow-Type|Workflow-Time|Workflow-Branch|Workflow-User|Command-Line|Command-Source|Summary|Authority):/ {
       next
     }
     /^Source-Branch:/ {
@@ -640,6 +646,59 @@ workflow_event_details() {
     }
     END { print_source_branch() }
   '
+}
+
+render_activity_context() {
+  local activity_type="$1"
+  local record="$2"
+  local scope="$3"
+  local target_ref="$4"
+  local affected_tables="$5"
+  local include_workflow_details="${6:-true}"
+  local source_branch=""
+  local target_branch=""
+  local pr_number=""
+  local ci_cd=""
+  local action=""
+
+  source_branch="$(recorded_field_value "$record" "Source-Branch")"
+  target_branch="$(recorded_field_value "$record" "Target-Branch")"
+  pr_number="$(recorded_field_value "$record" "PR")"
+  ci_cd="$(recorded_field_value "$record" "CI-CD")"
+
+  case "$activity_type" in
+    pulldown)
+      action="Synchronized with parent."
+      [[ -n "$affected_tables" ]] || \
+        action+=" No file or directory changes."
+      ;;
+    pushup)
+      action="Pushed up to parent."
+      ;;
+    push)
+      action="Published branch to remote."
+      ;;
+    commit)
+      action="Committed changes."
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+
+  printf '**Action:** %s  \n' "$action"
+  if [[ -n "$source_branch" ]]; then
+    printf '**Source Branch:** %s (%s)  \n' "$source_branch" "$scope"
+  fi
+  if [[ -n "$target_branch" ]]; then
+    printf '**Target Branch:** %s (%s)  \n' "$target_branch" "$scope"
+  elif [[ "$activity_type" == "commit" || "$activity_type" == "push" ]]; then
+    printf '**Branch:** %s (%s)  \n' "$target_ref" "$scope"
+  fi
+  if [[ "$include_workflow_details" == true ]]; then
+    [[ -z "$pr_number" ]] || printf '**PR:** %s  \n' "$pr_number"
+    [[ -z "$ci_cd" ]] || printf '**CI/CD:** %s  \n' "$ci_cd"
+  fi
 }
 
 role_name_from_code() {
@@ -790,6 +849,7 @@ format_user_with_role() {
   local identity="$1"
   local fallback_login="${2:-}"
   local fallback_email="${3:-}"
+  local authority="${4:-}"
   local login=""
   local role_name=""
 
@@ -802,7 +862,11 @@ format_user_with_role() {
   fi
   [[ -n "$login" ]] || login="unknown"
 
-  role_name="$(role_name_for_login "$login")"
+  if [[ -n "$authority" ]]; then
+    role_name="$authority"
+  else
+    role_name="$(role_name_for_login "$login")"
+  fi
   printf '%s (%s)' "$login" "$role_name"
 }
 
@@ -1146,6 +1210,19 @@ render_affected_tables() {
   printf '%s' "$rendered"
 }
 
+render_affected_tables_cached() {
+  local commit_ref="$1"
+  local output_name="$2"
+  local -n output_ref="$output_name"
+
+  if [[ -n "${affected_tables_cache[$commit_ref]+x}" ]]; then
+    output_ref="${affected_tables_cache[$commit_ref]}"
+    return 0
+  fi
+  output_ref="$(render_affected_tables "$commit_ref")"
+  affected_tables_cache["$commit_ref"]="$output_ref"
+}
+
 render_push_commits() {
   local previous_tip="$1"
   local pushed_tip="$2"
@@ -1405,15 +1482,9 @@ workflow_record_missing_fields() {
 workflow_record_matches_branch() {
   local record="$1"
   local target_branch="$2"
-  local branch_field=""
 
-  for branch_field in Workflow-Branch Source-Branch Target-Branch; do
-    if [[ "$(recorded_field_value "$record" "$branch_field")" == "$target_branch" ]]; then
-      return 0
-    fi
-  done
-
-  return 1
+  [[ "$(recorded_field_value "$record" "Workflow-Branch")" == \
+    "$target_branch" ]]
 }
 
 REPORT_TYPE="branch"
@@ -1425,7 +1496,7 @@ PARENT_BRANCH_REPORT=false
 TYPE_FILTER="all"
 FILTER_USER=""
 FILTER_TEXT=""
-LIMIT=1
+LIMIT=10
 VERBOSE=false
 declare -a ORIGINAL_ARGS=("$@")
 declare -a STYLE_ARGS=()
@@ -1620,6 +1691,7 @@ BRANCH_STATUS_TAGS="$(branch_status_tags "$TARGET_REF" "$BRANCH_SCOPE_LABEL")"
 log_format='%H%x1f%h%x1f%cI%x1f%an%x1f%ae%x1f%s%x1f%B%x1e'
 git_log_args=(
   "$HISTORY_REF"
+  --first-parent
   --pretty=format:"$log_format"
 )
 if ! history="$(git log "${git_log_args[@]}" 2>/dev/null)"; then
@@ -1630,22 +1702,7 @@ fi
 entries=()
 action_number=0
 declare -A push_commit_hashes=()
-
-while IFS= read -r -d $'\x1e' row; do
-  [[ -n "$row" ]] || continue
-  full_hash="${row%%$'\x1f'*}"
-  note="$(git notes --ref="$WORKFLOW_NOTES_REF" show "$full_hash" 2>/dev/null || true)"
-  while IFS= read -r -d $'\x1e' note_record; do
-    [[ "$(recorded_field_value "$note_record" "Workflow-Type")" == "push" ]] || continue
-    note_detail_text="$(printf '%s\n' "$note_record" | workflow_event_details)"
-    previous_tip="$(workflow_detail_value "$note_detail_text" "Previous-Remote-Tip")"
-    pushed_tip="$(workflow_detail_value "$note_detail_text" "Pushed-Tip")"
-    [[ -n "$previous_tip" && -n "$pushed_tip" ]] || continue
-    while IFS= read -r push_commit_hash; do
-      [[ -n "$push_commit_hash" ]] && push_commit_hashes["$push_commit_hash"]=1
-    done < <(git rev-list "$previous_tip..$pushed_tip" 2>/dev/null || true)
-  done < <(printf '%s\n' "$note" | workflow_note_records)
-done < <(printf '%s' "$history")
+declare -A affected_tables_cache=()
 
 while IFS= read -r -d $'\x1e' row; do
   while [[ "$row" == $'\n'* ]]; do
@@ -1683,18 +1740,8 @@ while IFS= read -r -d $'\x1e' row; do
       note_command="$(expand_command_line_placeholders "$note_command" "$note_record")"
       note_summary="$(recorded_field_value "$note_record" "Summary")"
       note_details="$(printf '%s\n' "$note_record" | workflow_event_details)"
-      note_user_display="$(format_user_with_role "$note_user")"
-      affected_tables="$(render_affected_tables "$full_hash")"
+      note_authority="$(recorded_field_value "$note_record" "Authority")"
 
-      workflow_record_matches_branch "$note_record" "$TARGET_REF" || continue
-      if ! entry_matches_filters "$note_type" "$note_user" \
-        "$note_summary $note_details $note_command"; then
-        continue
-      fi
-
-      action_number=$((action_number + 1))
-      printf -v entry '## %d. %s: %s\n\n' "$action_number" "$note_type" "$note_date"
-      line=""
       previous_tip=""
       pushed_tip=""
       if [[ "$note_type" == "push" ]]; then
@@ -1707,7 +1754,28 @@ while IFS= read -r -d $'\x1e' row; do
         if [[ "$pushed_tip" == "HEAD" ]]; then
           pushed_tip="$(git rev-parse "$HISTORY_REF" 2>/dev/null || true)"
         fi
-      else
+        if [[ -n "$previous_tip" && -n "$pushed_tip" ]]; then
+          while IFS= read -r push_commit_hash; do
+            [[ -n "$push_commit_hash" ]] && \
+              push_commit_hashes["$push_commit_hash"]=1
+          done < <(git rev-list "$previous_tip..$pushed_tip" \
+            2>/dev/null || true)
+        fi
+      fi
+
+      workflow_record_matches_branch "$note_record" "$TARGET_REF" || continue
+      if ! entry_matches_filters "$note_type" "$note_user" \
+        "$note_summary $note_details $note_command"; then
+        continue
+      fi
+      note_user_display="$(format_user_with_role "$note_user" "" "" \
+        "$note_authority")"
+      render_affected_tables_cached "$full_hash" affected_tables
+
+      action_number=$((action_number + 1))
+      printf -v entry '## %d. %s: %s\n\n' "$action_number" "$note_type" "$note_date"
+      line=""
+      if [[ "$note_type" != "push" ]]; then
         printf -v line '**Commit:** `%s`  \n' "$full_hash"
       fi
       entry+="$line"
@@ -1719,12 +1787,18 @@ while IFS= read -r -d $'\x1e' row; do
       entry+="$line"
       printf -v line '**User:** %s  \n' "$note_user_display"
       entry+="$line"
-      if [[ -n "$note_summary" && "$note_type" != "push" ]]; then
-        printf -v line '\n%s\n' "$note_summary"
-        entry+="$line"
-      fi
-      if [[ -n "$note_details" ]]; then
-        if [[ "$note_type" != "push" ]]; then
+      activity_context="$(render_activity_context "$note_type" \
+        "$note_record" "$BRANCH_SCOPE_LABEL" "$TARGET_REF" \
+        "$affected_tables")"
+      if [[ -n "$activity_context" ]]; then
+        entry+="$activity_context"
+        entry+=$'\n'
+      else
+        if [[ -n "$note_summary" && "$note_type" != "push" ]]; then
+          printf -v line '\n%s\n' "$note_summary"
+          entry+="$line"
+        fi
+        if [[ -n "$note_details" && "$note_type" != "push" ]]; then
           entry+=$'\n'
           entry+="$note_details"
           entry+=$'\n'
@@ -1821,17 +1895,22 @@ while IFS= read -r -d $'\x1e' row; do
   command_line="$(recorded_field_value "$body" "Command-Line")"
   [[ -n "${push_commit_hashes[$full_hash]+x}" ]] && continue
   command_line="$(expand_command_line_placeholders "$command_line" "$body")"
-  entry_type="$(activity_type "$command_line")"
-  sanitized_body="$(sanitize_commit_body_for_report "$body" "$subject")"
-  while [[ "$sanitized_body" == $'\n'* ]]; do
-    sanitized_body="${sanitized_body#$'\n'}"
-  done
-  action_user_display="$(format_user_with_role "$author_name" "$author_name" "$author_email")"
-  affected_tables="$(render_affected_tables "$full_hash")"
+  entry_type="$(recorded_field_value "$body" "Workflow-Type")"
+  [[ -n "$entry_type" ]] || entry_type="$(activity_type "$command_line")"
+  context_type="$entry_type"
+  context_record="$body"
+  action_authority="$(recorded_field_value "$body" "Authority")"
   if ! entry_matches_filters "$entry_type" "$author_name $author_email" \
     "$subject $body"; then
     continue
   fi
+  sanitized_body="$(sanitize_commit_body_for_report "$body" "$subject")"
+  while [[ "$sanitized_body" == $'\n'* ]]; do
+    sanitized_body="${sanitized_body#$'\n'}"
+  done
+  action_user_display="$(format_user_with_role "$author_name" "$author_name" \
+    "$author_email" "$action_authority")"
+  render_affected_tables_cached "$full_hash" affected_tables
 
   action_number=$((action_number + 1))
   printf -v entry '## %d. %s: %s\n\n' "$action_number" "$entry_type" "$date_text"
@@ -1843,7 +1922,13 @@ while IFS= read -r -d $'\x1e' row; do
   fi
   printf -v line '**User:** %s  \n' "$action_user_display"
   entry+="$line"
-  if [[ -n "$subject" ]] && ! is_redundant_commit_summary "$subject"; then
+  activity_context="$(render_activity_context "$context_type" \
+    "$context_record" "$BRANCH_SCOPE_LABEL" "$TARGET_REF" \
+    "$affected_tables")"
+  entry+="$activity_context"
+  [[ -z "$activity_context" ]] || entry+=$'\n'
+  if [[ -z "$command_line" && -n "$subject" ]] && \
+    ! is_redundant_commit_summary "$subject"; then
     printf -v line '\n%s\n' "$subject"
     entry+="$line"
   fi

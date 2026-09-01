@@ -356,7 +356,27 @@ skip_merge_down_and_exit() {
 }
 
 format_command_line() {
+  local pushup_command=""
+
+  if [[ "$PUSHUP_SYNC" == true ]]; then
+    pushup_command="$(state_get_pushup_value command-line)"
+    [[ -n "$pushup_command" ]] || \
+      bt_error_exit "$EXIT_INTERNAL_ERROR" \
+        "Active pushup state is missing its initiating command"
+    printf '%s\n' "$pushup_command"
+    return 0
+  fi
   bt_format_command_line "pulldown" "${ORIGINAL_ARGS[@]}"
+}
+
+state_get_pushup_value() {
+  local key="$1"
+  local state_file=""
+
+  state_file="$(git rev-parse --git-path briteRepo/pushup.state \
+    2>/dev/null || true)"
+  [[ -f "$state_file" ]] || return 0
+  git config --file "$state_file" --get "pushup.$key" 2>/dev/null || true
 }
 
 # Default options
@@ -707,11 +727,38 @@ fi
 
 collect_staged_merge_file_summary
 
+workflow_context_metadata=""
+if [[ "$PUSHUP_SYNC" == true ]]; then
+  pushup_authority=""
+  pushup_note="$(git notes --ref=briteRepo-workflow show \
+    "$PARENT_SOURCE_REF" 2>/dev/null || true)"
+  if [[ "$(state_get_pushup_value owner-override)" == true ]]; then
+    pushup_authority="owner"
+  fi
+  [[ -z "$pushup_authority" ]] || \
+    workflow_context_metadata+=$'Authority: '"$pushup_authority"$'\n'
+  if [[ "$(bt_workflow_note_field "$pushup_note" "Workflow-Type")" == \
+    "pushup" && \
+    "$(bt_workflow_note_field "$pushup_note" "Source-Branch")" == \
+    "$CURRENT_BRANCH" && \
+    "$(bt_workflow_note_field "$pushup_note" "Target-Branch")" == \
+    "$PARENT_BRANCH" ]]; then
+    pushup_pr="$(bt_workflow_note_field "$pushup_note" "PR")"
+    pushup_ci_cd="$(bt_workflow_note_field "$pushup_note" "CI-CD")"
+    [[ -z "$pushup_pr" ]] || \
+      workflow_context_metadata+=$'PR: '"$pushup_pr"$'\n'
+    [[ -z "$pushup_ci_cd" ]] || \
+      workflow_context_metadata+=$'CI-CD: '"$pushup_ci_cd"$'\n'
+  fi
+fi
+
 if ! GIT_BYPASS_HOOKS=true git commit -m "$MERGE_MESSAGE" \
   -m "## Workflow Metadata
 
 Command-Line: $(format_command_line)
-Source-Branch: $PARENT_BRANCH
+Command-Source: user
+Workflow-Type: pulldown
+${workflow_context_metadata}Source-Branch: $PARENT_BRANCH
 Target-Branch: $CURRENT_BRANCH
 Parent-Commits-Integrated: $commits_to_merge
 Files-Modified: $MERGE_UPDATED_FILES
