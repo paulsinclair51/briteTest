@@ -50,7 +50,7 @@ assert_matches() {
 report_path_from_output() {
   local output_file="$1"
 
-  sed -n "s/^See '\(reports\/\(local\|remote\)-[0-9]\{8\}-[0-9]\{6\}[+-][0-9]\{4\}\.md\)'\.$/\1/p" \
+  sed -n "s/^See '\(reports\/branch-\(p-\)\{0,1\}\(l\|r\)-[0-9]\{8\}-[0-9]\{6\}[+-][0-9]\{4\}\.md\)'\.$/\1/p" \
     "$output_file" | tail -n 1
 }
 
@@ -172,6 +172,7 @@ Details: Previous-Remote-Tip: $remote_push_tip; Pushed-Tip: $empty_push_tip; Com
       refs/notes/briteRepo-remote-workflow:refs/notes/briteRepo-remote-workflow \
       >/dev/null 2>&1
 
+    pushup_source_tip="$(git rev-parse HEAD)"
     git commit --allow-empty \
       -m "pushup activity" \
       >/dev/null 2>&1
@@ -184,6 +185,7 @@ Workflow-User: testuser <test@example.com>
 Command-Line: pushup -o
 Summary: pushup activity
 Source-Branch: dev/report-tests-v1.0.0
+Source-Tip: $pushup_source_tip
 Target-Branch: v1.0.0
 PR: 42
 Status: Current branch merged into parent branch

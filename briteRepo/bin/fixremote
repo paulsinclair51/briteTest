@@ -229,21 +229,16 @@ require_approver_role() {
 }
 
 init_report() {
-  cat > "$REPORT_FILE" << EOF
-# Remote Recovery Report
-
-**Timestamp:** ${RUN_TS_DISPLAY}
-
-**Repository for Reports:** $REPO_ROOT
-**Target Remote (from this repository):**
-$(bt_git_get_origin_url_or_empty "$REPO_ROOT")
-**Source Clone Path:** $CLONE_ABS
-
----
-
-## Checks Performed
-
-EOF
+  {
+    printf '# Remote Recovery Report\n\n'
+    printf '**Timestamp:** %s  \n' "$RUN_TS_DISPLAY"
+    printf '**Repository for Reports:** %s  \n' "$REPO_ROOT"
+    printf '**Target Remote (from this repository):** %s  \n' \
+      "$(bt_git_get_origin_url_or_empty "$REPO_ROOT")"
+    printf '**Source Clone Path:** %s\n\n' "$CLONE_ABS"
+    printf '%s\n\n' '---'
+    printf '## Checks Performed\n\n'
+  } > "$REPORT_FILE"
 }
 
 check_clone_repository() {

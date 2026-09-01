@@ -140,7 +140,7 @@ DRY_REPORT="$(sed -n 's/^Report: //p' "$WORK_DIR/dry.out")"
   fail "unexpected dry-run report name: $DRY_REPORT"
 grep -Fxq "# mkrepo Dry-Run Report" "$DRY_REPORT" || \
   fail "dry-run report missing its heading"
-grep -Fxq "Commit: To be determined" "$DRY_REPORT" || \
+grep -Fxq "**Commit:** To be determined" "$DRY_REPORT" || \
   fail "dry-run report missing the placeholder commit"
 grep -Fq "## Follow-Up Items" "$DRY_REPORT" || \
   fail "dry-run report missing the follow-up section"
@@ -174,7 +174,7 @@ FINAL_REPORT="$(sed -n 's/^Report: //p' "$WORK_DIR/new.out")"
   fail "unexpected success report name: $FINAL_REPORT"
 grep -Fxq "# mkrepo Report" "$FINAL_REPORT" || \
   fail "success report missing its heading"
-grep -Eq "^Commit: [0-9a-f]{40}$" "$FINAL_REPORT" || \
+grep -Eq "^\*\*Commit:\*\* [0-9a-f]{40}$" "$FINAL_REPORT" || \
   fail "success report missing the commit hash"
 rm -f "$DRY_REPORT" "$FINAL_REPORT"
 pass "mkrepo writes a success report alongside the dry-run report"
@@ -236,7 +236,7 @@ grep -Fxq "# mkrepo Error Report" "$ERROR_REPORT" || \
   fail "error report missing its heading"
 grep -Fq "## Canonical Items" "$ERROR_REPORT" || \
   fail "error report missing the shared report body"
-grep -Fq "Exit code: 4" "$ERROR_REPORT" || \
+grep -Fq "**Exit Code:** 4" "$ERROR_REPORT" || \
   fail "error report missing the exit code"
 grep -Fq "Forced error requested with -e" "$ERROR_REPORT" || \
   fail "error report missing the error message"
@@ -281,15 +281,15 @@ rc="$(run_capture "$WORK_DIR/legacy.out" bash "$MKREPO" -v legacy-repo)"
 LEGACY_FINAL="$(sed -n 's/^Report: //p' "$WORK_DIR/legacy.out")"
 
 normalize_report() {
-  sed -e '1s/.*/HEADING/' -e 's/^Commit: .*/COMMIT/' \
-    -e 's/^Generated: .*/GENERATED/' "$1"
+  sed -e '1s/.*/HEADING/' -e 's/^\*\*Commit:\*\* .*/COMMIT/' \
+    -e 's/^\*\*Generated:\*\* .*/GENERATED/' "$1"
 }
 normalize_report "$LEGACY_DRY" > "$WORK_DIR/legacy-dry.norm"
 normalize_report "$LEGACY_FINAL" > "$WORK_DIR/legacy-final.norm"
 diff -u "$WORK_DIR/legacy-dry.norm" "$WORK_DIR/legacy-final.norm" \
   > "$WORK_DIR/report.diff" || \
   fail "dry-run and success reports differ beyond heading and commit"
-grep -Fxq "Commit: To be determined" "$LEGACY_DRY" || \
+grep -Fxq "**Commit:** To be determined" "$LEGACY_DRY" || \
   fail "dry-run report missing the placeholder commit"
 rm -f "$LEGACY_DRY" "$LEGACY_FINAL"
 pass "dry-run and success reports match except heading and commit"

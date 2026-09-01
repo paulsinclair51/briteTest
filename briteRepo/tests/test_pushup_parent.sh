@@ -910,6 +910,7 @@ pass "current branch behind parent returns exit 13"
 # ---------------------------------------------------------------------------
 # Local merge succeeds without remote post-merge repair
 # ---------------------------------------------------------------------------
+owner_source_tip="$(git -C "$WORK" rev-parse dev/feat-v1.0.0)"
 VERIFY_MARKER="$TMPDIR/revparse-once.marker"
 rc=$(run_pushup "$TMPDIR/verify-repair.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
@@ -949,6 +950,8 @@ merge_note="$(git -C "$WORK" notes --ref=briteRepo-workflow show v1.0.0)"
   fail "merge-up event should record its command line"
 [[ "$merge_note" == *"Source-Branch: dev/feat-v1.0.0"* ]] || \
   fail "merge-up event should record its source branch"
+[[ "$merge_note" == *"Source-Tip: $owner_source_tip"* ]] || \
+  fail "merge-up event should record its source commit"
 [[ "$merge_note" == *"Target-Branch: v1.0.0"* ]] || \
   fail "merge-up event should record its target branch"
 [[ "$merge_note" == *"PR: none"* ]] || \

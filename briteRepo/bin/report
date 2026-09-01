@@ -34,7 +34,7 @@ Prerequisites for a style report:
   - Current branch must be a local branch.
 
 Arguments:
-  TYPE        Report type: repo, branch, or style (default: branch).
+  TYPE        Report type: branch, repo, or style (default: branch).
               TYPE may appear before or after options, but may be specified
               only once.
 
@@ -43,37 +43,21 @@ Options:
               and arguments are ignored).
   -v          Output progress and diagnostics to stdout.
 
-Additional options only for a repo report:
-  -l N        Limit the report to N matching activities (default: 1).
+Additional options only for a branch or repo report:
+  -n N        Limit the report to N matching activities (default: 1).
               N must be 0 or an integer greater than 0; 0 means all matching
               activities are included. The newest N matches are selected.
   -q TEXT     Include activity whose summary or details contain TEXT.
               Matching is case-insensitive.
-  -r          Report on remote activity instead of local repo activity.
+  -r          Report on remote activity instead of local activity.
   -t SEC      Remote timeout in seconds (default: 10 seconds).
               SEC must be an integer greater than 0.
   -u USER     Include activity whose associated user contains USER.
               Matching is case-insensitive.
 
 Additional options only for a branch report:
-  -l N        Limit the report to N matching activities (default: 1).
-              N must be 0 or an integer greater than 0; 0 means all matching
-              activities are included. The newest N matches
-              are selected. In report, listed newest to oldest.
-  -q TEXT     Include activity whose summary or details contain TEXT.
-              Matching is case-insensitive.
   -p          Report for the parent of the current branch instead of the
               current branch. Combine with -r for the remote parent.
-  -r          Report for the remote, if there is one, of the selected current
-              or parent branch.
-              If the current branch is a remote copy, the report is for the
-              current state of the remote and not the local copy.
-  -t SEC      Remote timeout in seconds (default: 10 seconds).
-              SEC must be an integer greater than 0. Only allowed if
-              the -r option is specified
-  -u USER     Include activity whose associated user contains USER.
-              Matching is case-insensitive. Activity without a recorded user
-              does not match.
 
 Additional options only for a style report:
   -f FILE     Check only FILE. May be specified more than once.
@@ -93,9 +77,9 @@ Branch Examples:
   report
   report -p
   report -p -r
-  report branch -u testuser -q "authentication" -l 10
-  report branch -l 2
-  report -l 0
+  report branch -u testuser -q "authentication" -n 10
+  report branch -n 2
+  report -n 0
   report -v
 
 Style Examples:
@@ -108,8 +92,10 @@ Outputs:
   - Writes verbose (-v) progress and diagnostics to stdout.
   - Writes one untracked report directly in '<repo>/reports/':
       - 'repo-<datetime>.md' for a repository report.
-      - 'local-<datetime>.md' for a local branch report.
-      - 'remote-<datetime>.md' for a remote branch report.
+      - 'branch-l-<datetime>.md' for a local branch report.
+      - 'branch-r-<datetime>.md' for a remote branch report.
+      - 'branch-p-l-<datetime>.md' for a local parent branch report.
+      - 'branch-p-r-<datetime>.md' for a remote parent branch report.
       - 'style-<datetime>.md' for a style report.
     The previous report of the same type is deleted.
   - Writes 'See <reportpath>' to stdout when a
@@ -348,7 +334,7 @@ generate_repo_activity_entries() {
         action_number=$((action_number + 1))
         printf -v entry '## %d. %s: %s\n\n' "$action_number" "$note_type" "$note_date"
         if [[ "$note_type" == "push" ]]; then
-          printf -v line '**Pushed-Tip:** `%s`  \n' "$(recorded_field_value "$note_record" "Pushed-Tip")"
+          printf -v line '**Pushed Branch Tip:** `%s`  \n' "$(recorded_field_value "$note_record" "Pushed-Tip")"
           entry+="$line"
         else
           printf -v line '**Commit:** `%s`  \n' "$full_hash"
@@ -544,10 +530,16 @@ contains_ci() {
   local needle="$2"
   local hay_lc=""
   local needle_lc=""
+  local hay_normalized=""
+  local needle_normalized=""
 
   hay_lc="$(printf '%s' "$haystack" | tr '[:upper:]' '[:lower:]')"
   needle_lc="$(printf '%s' "$needle" | tr '[:upper:]' '[:lower:]')"
-  [[ "$hay_lc" == *"$needle_lc"* ]]
+  [[ "$hay_lc" == *"$needle_lc"* ]] && return 0
+
+  hay_normalized="$(printf '%s' "$hay_lc" | tr -d '*' | tr '-' ' ')"
+  needle_normalized="$(printf '%s' "$needle_lc" | tr -d '*' | tr '-' ' ')"
+  [[ "$hay_normalized" == *"$needle_normalized"* ]]
 }
 
 entry_matches_filters() {
@@ -601,11 +593,52 @@ workflow_note_records() {
 
 workflow_event_details() {
   awk '
+    function render_metadata_line(text, label, value) {
+      sub(/^[[:space:]]+/, "", text)
+      if (text !~ /^[A-Z][A-Za-z0-9-]*:[[:space:]]/) return 0
+      label = text
+      sub(/:.*/, "", label)
+      value = text
+      sub(/^[^:]+:[[:space:]]*/, "", value)
+      gsub(/-/, " ", label)
+      printf "**%s:** %s  \n", label, value
+      return 1
+    }
+    function print_source_branch() {
+      if (source_branch == "") return
+      if (source_tip != "") {
+        render_metadata_line(source_branch " (" source_tip ")")
+      } else {
+        render_metadata_line(source_branch)
+      }
+      source_branch = ""
+      source_tip = ""
+    }
     /^--- briteRepo workflow ---$/ { next }
     /^(Workflow-Type|Workflow-Time|Workflow-Branch|Workflow-User|Command-Line|Summary):/ {
       next
     }
-    NF > 0 { print }
+    /^Source-Branch:/ {
+      print_source_branch()
+      source_branch = $0
+      next
+    }
+    /^Source-Tip:/ {
+      source_tip = $0
+      sub(/^Source-Tip:[[:space:]]*/, "", source_tip)
+      if (source_branch != "") {
+        print_source_branch()
+      } else if (source_tip != "") {
+        print "Source-Tip: " source_tip
+        source_tip = ""
+      }
+      next
+    }
+    NF > 0 {
+      print_source_branch()
+      if (!render_metadata_line($0)) print
+    }
+    END { print_source_branch() }
   '
 }
 
@@ -834,15 +867,16 @@ sanitize_commit_body_for_report() {
       skip = 1
       next
     }
-    /^## Commit Metadata[[:space:]]*$/ {
+    /^## (Commit|Workflow) Metadata[[:space:]]*$/ {
+      skip = 1
+      next
+    }
+    /^## Summary[[:space:]]*$/ {
       skip = 1
       next
     }
     skip == 1 && /^## / {
       skip = 0
-    }
-    skip == 0 && /^## Summary[[:space:]]*$/ {
-      next
     }
     skip == 0 {
       if (started == 0 && $0 ~ /^[[:space:]]*$/) {
@@ -916,6 +950,8 @@ render_affected_tables() {
   local total_net=0
   local total_lines=0
   local directories_row_count=0
+  local directories_summary=""
+  local files_summary=""
   local -a files_order=()
   local -a directories_before_order=()
   local -a directories_after_order=()
@@ -934,17 +970,17 @@ render_affected_tables() {
   declare -A directories_deleted=()
   declare -A directories_renamed_to=()
 
-  if ! numstat="$(git show --numstat --format='' --find-renames "$commit_ref" \
-    2>/dev/null || true)"; then
-    numstat=""
-  fi
-
   parent_info="$(git rev-list --parents -n 1 "$commit_ref" 2>/dev/null || true)"
   set -- $parent_info
   if [[ "$#" -ge 2 ]]; then
     parent_ref="$2"
   fi
   tree_ref_before="${parent_ref:-$empty_tree_ref}"
+
+  if ! numstat="$(git diff --numstat --find-renames \
+    "$tree_ref_before" "$tree_ref_after" 2>/dev/null || true)"; then
+    numstat=""
+  fi
 
   while IFS= read -r file_path; do
     [[ -n "$file_path" ]] || continue
@@ -980,8 +1016,8 @@ render_affected_tables() {
     fi
   done
 
-  if ! name_status="$(git diff-tree --root -r --name-status --find-renames \
-    --no-commit-id "$commit_ref" 2>/dev/null || true)"; then
+  if ! name_status="$(git diff --name-status --find-renames \
+    "$tree_ref_before" "$tree_ref_after" 2>/dev/null || true)"; then
     name_status=""
   fi
   while IFS=$'\t' read -r key old_path new_path; do
@@ -1027,10 +1063,30 @@ render_affected_tables() {
     file_count=$((file_count + 1))
   done <<< "$numstat"
 
-  rendered+=$'\n<details>\n<summary>Files</summary>\n\n'
-  if [[ "$file_count" -eq 0 ]]; then
-    rendered+="None."$'\n'
-  else
+  bt_git_collect_ref_change_summary "$tree_ref_before" "$tree_ref_after"
+  directories_summary="$(push_directory_summary \
+    "$BT_CHANGE_DELETED_DIRECTORIES" "$BT_CHANGE_ADDED_DIRECTORIES" \
+    "$BT_CHANGE_RENAMED_DIRECTORIES")"
+  files_summary="$(push_file_summary \
+    "$BT_CHANGE_MODIFIED_FILES" "$BT_CHANGE_DELETED_FILES" \
+    "$BT_CHANGE_ADDED_FILES" "$BT_CHANGE_RENAMED_FILES" \
+    "$BT_CHANGE_RENAMED_MODIFIED_FILES")"
+  if [[ -n "$directories_summary" ]]; then
+    printf -v line '\n**Directories:** %s  \n' "$directories_summary"
+    rendered+="$line"
+  fi
+  if [[ -n "$files_summary" ]]; then
+    printf -v line '**Files:** %s.  \n' "$files_summary"
+    rendered+="$line"
+  fi
+  if [[ "$total_added" -gt 0 || "$total_deleted" -gt 0 ]]; then
+    printf -v line '**Lines:** %s added and %s deleted.  \n' \
+      "$total_added" "$total_deleted"
+    rendered+="$line"
+  fi
+
+  if [[ "$file_count" -gt 0 ]]; then
+    rendered+=$'\n<details>\n<summary>Files</summary>\n\n'
     rendered+="| **File** | **Added** | **Deleted** | **Net** | **Lines** |"
     rendered+=" **Action** |"$'\n'
     rendered+="| --- | ---: | ---: | ---: | ---: | --- |"$'\n'
@@ -1047,8 +1103,8 @@ render_affected_tables() {
     printf -v line '| **Total** | %s | %s | %+d | %s |  |\n' \
       "$total_added" "$total_deleted" "$total_net" "$total_lines"
     rendered+="$line"
+    rendered+='</details>'$'\n'
   fi
-  rendered+='</details>'$'\n'
 
   for key in "${directories_renamed_order[@]}"; do
     [[ -n "${directories_renamed_to[$key]+x}" ]] && \
@@ -1276,12 +1332,22 @@ workflow_detail_value() {
   local key="$2"
 
   printf '%s\n' "$details" | awk -F ';' -v key="$key" '
+    function normalized_label(value) {
+      gsub(/\*/, "", value)
+      gsub(/-/, " ", value)
+      return tolower(value)
+    }
     {
       for (item = 1; item <= NF; item++) {
-        sub(/^[[:space:]]*Details:[[:space:]]*/, "", $item)
-        if ($item ~ "^[[:space:]]*" key ":") {
-          sub("^[[:space:]]*" key ":[[:space:]]*", "", $item)
-          print $item
+        value = $item
+        gsub(/\*/, "", value)
+        sub(/^[[:space:]]+/, "", value)
+        sub(/^[[:space:]]*Details:[[:space:]]*/, "", value)
+        label = value
+        sub(/:.*/, "", label)
+        if (normalized_label(label) == normalized_label(key)) {
+          sub(/^[^:]+:[[:space:]]*/, "", value)
+          print value
           exit
         }
       }
@@ -1374,7 +1440,7 @@ done
 for ((index=0; index < ${#ORIGINAL_ARGS[@]}; index++)); do
   arg="${ORIGINAL_ARGS[index]}"
   case "$arg" in
-    -u|-q|-l|-t|-f)
+    -u|-q|-n|-l|-t|-f)
       ((index += 1))
       ;;
     repo|branch|style)
@@ -1410,11 +1476,11 @@ while [[ $# -gt 0 ]]; do
       FILTER_TEXT="$2"
       shift 2
       ;;
-    -l)
+    -n)
       [[ "$REPORT_TYPE" == "branch" || "$REPORT_TYPE" == "repo" ]] || \
-        usage_error "Option -l requires TYPE branch or TYPE repo"
-      [[ $# -ge 2 ]] || usage_error "Option -l requires N"
-      is_non_negative_integer "$2" || usage_error "N for -l must be an integer >= 0"
+        usage_error "Option -n requires TYPE branch or TYPE repo"
+      [[ $# -ge 2 ]] || usage_error "Option -n requires N"
+      is_non_negative_integer "$2" || usage_error "N for -n must be an integer >= 0"
       LIMIT="$2"
       shift 2
       ;;
@@ -1498,7 +1564,7 @@ fi
 TARGET_REF="$CURRENT_REF"
 HISTORY_REF="$CURRENT_REF"
 WORKFLOW_NOTES_REF="briteRepo-workflow"
-BRANCH_REPORT_PREFIX="local"
+BRANCH_REPORT_PREFIX="branch-l"
 SNAPSHOT_HISTORY_REF=""
 SNAPSHOT_TARGET_REF=""
 BRANCH_SCOPE_LABEL="local"
@@ -1528,14 +1594,21 @@ if [[ "$REMOTE_BRANCH_REPORT" == true ]]; then
   refresh_remote_branch_report_refs "$TARGET_REF"
   HISTORY_REF="origin/$TARGET_REF"
   WORKFLOW_NOTES_REF="briteRepo-remote-workflow"
-  BRANCH_REPORT_PREFIX="remote"
+  BRANCH_REPORT_PREFIX="branch-r"
   BRANCH_SCOPE_LABEL="remote"
 elif [[ -z "$TARGET_REF" ]]; then
-  BRANCH_REPORT_PREFIX="remote"
+  BRANCH_REPORT_PREFIX="branch-r"
   WORKFLOW_NOTES_REF="briteRepo-remote-workflow"
   HISTORY_REF="$SNAPSHOT_HISTORY_REF"
   TARGET_REF="$SNAPSHOT_TARGET_REF"
   BRANCH_SCOPE_LABEL="remote"
+fi
+if [[ "$PARENT_BRANCH_REPORT" == true ]]; then
+  if [[ "$BRANCH_SCOPE_LABEL" == "remote" ]]; then
+    BRANCH_REPORT_PREFIX="branch-p-r"
+  else
+    BRANCH_REPORT_PREFIX="branch-p-l"
+  fi
 fi
 [[ -n "$TARGET_REF" ]] || usage_error "Could not resolve current branch/ref"
 
@@ -1639,7 +1712,7 @@ while IFS= read -r -d $'\x1e' row; do
       fi
       entry+="$line"
       if [[ "$note_type" == "push" ]]; then
-        printf -v line '**Pushed-Tip:** `%s`  \n' "$pushed_tip"
+        printf -v line '**Pushed Branch Tip:** `%s`  \n' "$pushed_tip"
         entry+="$line"
       fi
       printf -v line '**Command:** `%s`  \n' "$note_command"
@@ -1791,6 +1864,15 @@ if [[ "${#entries[@]}" -eq 0 ]]; then
   exit "$EXIT_NO_MATCH"
 fi
 
+trim_trailing_newlines() {
+  local text="$1"
+
+  while [[ "$text" == *$'\n' ]]; do
+    text="${text%$'\n'}"
+  done
+  printf '%s' "$text"
+}
+
 report_lock_fd=""
 
 bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_WRITE_FAILED"
@@ -1803,19 +1885,17 @@ report_file="$(bt_report_transient_path \
   "$REPORTS_DIR" "$BRANCH_REPORT_PREFIX" "$RUN_TS_FILE")"
 report_rel="${report_file#"${REPO_ROOT}"/}"
 if ! {
-  printf '# Branch History Report\n\n'
+  printf '# Branch Report\n\n'
   printf '**Branch:** `%s`  \n' "$TARGET_REF"
   printf '**Status:** %s  \n' "$BRANCH_STATUS_TAGS"
   printf '**Generated:** %s  \n' "$RUN_TS_DISPLAY"
   printf '**Command:** `%s`  \n' "$REPORT_COMMAND_LINE"
   printf '**User:** %s\n\n' "$REPORT_USER"
   for entry_index in "${!entries[@]}"; do
-    printf '%s' "${entries[$entry_index]}"
-    if [[ "$entry_index" -lt $((${#entries[@]} - 1)) ]]; then
-      printf '\n\n'
-    else
+    if [[ "$entry_index" -gt 0 ]]; then
       printf '\n'
     fi
+    printf '%s\n' "$(trim_trailing_newlines "${entries[$entry_index]}")"
   done
 } > "$report_file"; then
   bt_report_release_lock "$report_lock_fd"

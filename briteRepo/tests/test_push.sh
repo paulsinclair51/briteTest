@@ -267,11 +267,11 @@ assert_contains '**Status:** ' "$dry_report"
 assert_contains '## 1. push: ' "$dry_report"
 assert_matches '^## 1\. push: [0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$' "$dry_report"
 assert_contains '**User:** testuser' "$dry_report"
-assert_contains '**Pushed-Tip:** `To be determined`' "$dry_report"
-push_tip_line="$(grep -n '\*\*Pushed-Tip:\*\*' "$dry_report" | head -n 1 | cut -d: -f1)"
+assert_contains '**Pushed Branch Tip:** `To be determined`' "$dry_report"
+push_tip_line="$(grep -n '\*\*Pushed Branch Tip:\*\*' "$dry_report" | head -n 1 | cut -d: -f1)"
 push_command_line="$(grep -n '\*\*Command:\*\*' "$dry_report" | head -n 1 | cut -d: -f1)"
 [[ "$push_tip_line" -lt "$push_command_line" ]] || \
-  fail "push-d Pushed-Tip should precede Command"
+  fail "push-d Pushed Branch Tip should precede Command"
 if grep -Fq "**Triggered By:**" "$dry_report"; then
   fail "dry-run push report should not include Triggered By"
 fi

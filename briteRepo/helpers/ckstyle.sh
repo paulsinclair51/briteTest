@@ -2036,26 +2036,25 @@ fi
 
   echo "# Style Validation Report"
   echo
-  echo "**Command:** \`${command_line}\`"
-  echo
+  echo "**Command:** \`${command_line}\`  "
   echo "**Timestamp:** $RUN_TS_DISPLAY"
   echo
   echo "## Configuration"
   echo
-  echo "- Selected files: $ELIGIBLE_SELECTED_COUNT"
-  echo "- Include checks: $CHECK_INCLUDES"
-  echo "- Documents checks: $CHECK_DOCUMENTS"
-  echo "- Directory guide checks: $CHECK_GUIDES"
-  echo "- Source/script checks: $CHECK_SOURCES"
-  echo "- Branch: $REPORT_BRANCH_NAME ($REPORT_BRANCH_SCOPE)"
-  echo "- Version consistency included in -m: $CHECK_DOCUMENTS"
-  echo "- Verbose output: $VERBOSE"
-  echo "- Excluded paths: .git, obsolete"
+  echo "- **Selected Files:** $ELIGIBLE_SELECTED_COUNT"
+  echo "- **Include Checks:** $CHECK_INCLUDES"
+  echo "- **Documents Checks:** $CHECK_DOCUMENTS"
+  echo "- **Directory Guide Checks:** $CHECK_GUIDES"
+  echo "- **Source/Script Checks:** $CHECK_SOURCES"
+  echo "- **Branch:** $REPORT_BRANCH_NAME ($REPORT_BRANCH_SCOPE)"
+  echo "- **Version Consistency Included in -m:** $CHECK_DOCUMENTS"
+  echo "- **Verbose Output:** $VERBOSE"
+  echo "- **Excluded Paths:** .git, obsolete"
   echo
   echo "## Summary"
   echo
-  echo "- Files with issues: ${#ISSUE_FILES[@]}"
-  echo "- Total issues: $TOTAL_ISSUES"
+  echo "- **Files With Issues:** ${#ISSUE_FILES[@]}"
+  echo "- **Total Issues:** $TOTAL_ISSUES"
   echo
 
   if [[ ${#ISSUE_FILES[@]} -eq 0 ]]; then

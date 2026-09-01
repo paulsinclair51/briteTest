@@ -19,7 +19,7 @@ rc=$(run_capture "$TMPDIR/help.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin
 [[ "$rc" -eq 0 ]] || fail "report -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
 assert_contains "-q TEXT" "$TMPDIR/help.out"
-assert_contains "If the current branch is a remote copy" "$TMPDIR/help.out"
+assert_contains "Report on remote activity instead of local activity" "$TMPDIR/help.out"
 assert_contains "-p" "$TMPDIR/help.out"
 assert_contains "Combine with -r for the remote parent" "$TMPDIR/help.out"
 assert_contains "TYPE may appear before or after options" "$TMPDIR/help.out"
@@ -31,9 +31,12 @@ fi
 pass "help output"
 
 # 2) Invalid -l should fail with usage message
-rc=$(run_capture "$TMPDIR/invalid-limit.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -l nope")
-[[ "$rc" -eq 1 ]] || fail "report -l nope should exit 1 (got $rc)"
-assert_contains "N for -l must be an integer >= 0" "$TMPDIR/invalid-limit.out"
+rc=$(run_capture "$TMPDIR/invalid-limit.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -n nope")
+[[ "$rc" -eq 1 ]] || fail "report -n nope should exit 1 (got $rc)"
+assert_contains "N for -n must be an integer >= 0" "$TMPDIR/invalid-limit.out"
+rc=$(run_capture "$TMPDIR/old-limit-option.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -l 1")
+[[ "$rc" -eq 1 ]] || fail "report -l should no longer be accepted (got $rc)"
+assert_contains "Unknown option: -l" "$TMPDIR/old-limit-option.out"
 pass "invalid limit rejection"
 
 rc=$(run_capture "$TMPDIR/repo-parent.out" bash -lc \
@@ -59,6 +62,7 @@ assert_contains "SEC for -t must be an integer > 0" \
 pass "branch remote timeout validation"
 
 # 3) Default type all should write one newest activity
+printf 'current branch worktree change\n' > "$WORK/current-only-uncommitted.txt"
 rc=$(run_capture "$TMPDIR/default.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report")
 [[ "$rc" -eq 0 ]] || fail "default report should exit 0 (got $rc)"
 default_rel="$(report_path_from_output "$TMPDIR/default.out")"
@@ -67,7 +71,7 @@ if grep -Fq '**Type:**' "$WORK/$default_rel"; then
   fail "report should not include redundant Type metadata"
 fi
 assert_contains '**Branch:** `dev/report-tests-v1.0.0`' "$WORK/$default_rel"
-assert_contains '**Status:** [local]' "$WORK/$default_rel"
+assert_contains '**Status:** [uncommitted] [local]' "$WORK/$default_rel"
 if grep -Fq '[current]' "$WORK/$default_rel"; then
   fail "branch report should not include the current tag"
 fi
@@ -80,6 +84,10 @@ assert_contains "**Commit:** \`$default_commit_hash\`" "$WORK/$default_rel"
 if grep -Fq '**Summary:**' "$WORK/$default_rel"; then
   fail "action summary line should be omitted"
 fi
+if [[ "$(tail -c 1 "$WORK/$default_rel" | od -An -t x1 | tr -d ' \n')" != "0a" ]] || \
+  [[ "$(tail -c 2 "$WORK/$default_rel" | od -An -t x1 | tr -d ' \n')" == "0a0a" ]]; then
+  fail "branch report should end with exactly one newline"
+fi
 pass "default all report"
 
 # 3b) Parent reports do not change the current branch
@@ -87,8 +95,13 @@ rc=$(run_capture "$TMPDIR/local-parent.out" bash -lc \
   "cd '$WORK' && bash ./briteRepo/bin/report -p")
 [[ "$rc" -eq 0 ]] || fail "local parent report should exit 0 (got $rc)"
 local_parent_rel="$(report_path_from_output "$TMPDIR/local-parent.out")"
+[[ "$local_parent_rel" == reports/branch-p-l-*.md ]] || \
+  fail "local parent report should use the branch-p-l prefix"
 assert_contains '**Branch:** `v1.0.0`' "$WORK/$local_parent_rel"
 assert_matches '^\*\*Status:\*\* .*\[local\]' "$WORK/$local_parent_rel"
+if grep -Fq '[uncommitted]' "$WORK/$local_parent_rel"; then
+  fail "local parent report should not inherit current branch uncommitted status"
+fi
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/report-tests-v1.0.0" ]] || \
   fail "local parent report should not change the current branch"
 
@@ -96,22 +109,25 @@ rc=$(run_capture "$TMPDIR/remote-parent.out" bash -lc \
   "cd '$WORK' && bash ./briteRepo/bin/report -p -r")
 [[ "$rc" -eq 0 ]] || fail "remote parent report should exit 0 (got $rc)"
 remote_parent_rel="$(report_path_from_output "$TMPDIR/remote-parent.out")"
+[[ "$remote_parent_rel" == reports/branch-p-r-*.md ]] || \
+  fail "remote parent report should use the branch-p-r prefix"
 assert_contains '**Branch:** `v1.0.0`' "$WORK/$remote_parent_rel"
 assert_matches '^\*\*Status:\*\* .*\[remote\]' "$WORK/$remote_parent_rel"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/report-tests-v1.0.0" ]] || \
   fail "remote parent report should not change the current branch"
+rm -f "$WORK/current-only-uncommitted.txt"
 pass "local and remote parent reports"
 
 # 4) Verbose mode should report progress while details remain in the file
-rc=$(run_capture "$TMPDIR/verbose.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -v -l 10")
+rc=$(run_capture "$TMPDIR/verbose.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -v -n 10")
 [[ "$rc" -eq 0 ]] || fail "verbose report should exit 0 (got $rc)"
 assert_contains "matching activities" "$TMPDIR/verbose.out"
 verbose_rel="$(report_path_from_output "$TMPDIR/verbose.out")"
-assert_contains "<summary>Files</summary>" "$WORK/$verbose_rel"
+[[ -f "$WORK/$verbose_rel" ]] || fail "verbose report file was not created"
 pass "verbose progress output"
 
 # 5) Branch type with no limit should include generic commits and workflow activity
-rc=$(run_capture "$TMPDIR/type-all.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -l 0")
+rc=$(run_capture "$TMPDIR/type-all.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -n 0")
 [[ "$rc" -eq 0 ]] || fail "report branch should exit 0 (got $rc)"
 all_rel="$(report_path_from_output "$TMPDIR/type-all.out")"
 assert_contains "seed repo" "$WORK/$all_rel"
@@ -119,7 +135,7 @@ assert_contains "pull activity" "$WORK/$all_rel"
 pass "branch report includes every activity once"
 
 # 6) TYPE may appear before or after options
-rc=$(run_capture "$TMPDIR/type-before.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'pull activity' -l 1")
+rc=$(run_capture "$TMPDIR/type-before.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'pull activity' -n 1")
 [[ "$rc" -eq 0 ]] || fail "TYPE before options should exit 0 (got $rc)"
 before_rel="$(report_path_from_output "$TMPDIR/type-before.out")"
 assert_contains "pull activity" "$WORK/$before_rel"
@@ -129,7 +145,7 @@ before_command_line="$(grep -n '\*\*Command:\*\* `pull -v`' "$WORK/$before_rel" 
 before_user_line="$(grep -n '\*\*User:\*\* testuser (contributor)' "$WORK/$before_rel" | head -n 1 | cut -d: -f1 || true)"
 [[ -n "$before_command_line" && -n "$before_user_line" && "$before_command_line" -lt "$before_user_line" ]] || \
   fail "action command line should appear before action user line"
-rc=$(run_capture "$TMPDIR/type-after.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -q 'pull activity' -l 1 branch")
+rc=$(run_capture "$TMPDIR/type-after.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -q 'pull activity' -n 1 branch")
 [[ "$rc" -eq 0 ]] || fail "TYPE after options should exit 0 (got $rc)"
 after_rel="$(report_path_from_output "$TMPDIR/type-after.out")"
 assert_contains "pull activity" "$WORK/$after_rel"
@@ -141,12 +157,12 @@ rc=$(run_capture "$TMPDIR/pulldown.out" bash -lc "cd '$WORK' && bash ./briteRepo
 pulldown_rel="$(report_path_from_output "$TMPDIR/pulldown.out")"
 assert_contains "pulldown activity" "$WORK/$pulldown_rel"
 assert_contains '**Command:** `pulldown -f`' "$WORK/$pulldown_rel"
-assert_contains "Source-Branch: v1.0.0" "$WORK/$pulldown_rel"
-assert_contains "Target-Branch: dev/report-tests-v1.0.0" "$WORK/$pulldown_rel"
-assert_contains "Parent-Commits-Integrated: 2" "$WORK/$pulldown_rel"
-assert_contains "Files-Modified: 1" "$WORK/$pulldown_rel"
-assert_contains "Status: Parent branch merged into current branch" "$WORK/$pulldown_rel"
-assert_contains "Method: Merge commit (--no-ff) created by pulldown" "$WORK/$pulldown_rel"
+if grep -Fq '## Workflow Metadata' "$WORK/$pulldown_rel"; then
+  fail "pulldown report should omit Workflow Metadata"
+fi
+if grep -Fq '<summary>Files</summary>' "$WORK/$pulldown_rel"; then
+  fail "content-neutral pulldown report should omit the Files section"
+fi
 pass "pulldown report details"
 
 # 8) Merge-up reports should render durable workflow details
@@ -155,12 +171,17 @@ rc=$(run_capture "$TMPDIR/pushup.out" bash -lc "cd '$WORK' && bash ./briteRepo/b
 pushup_rel="$(report_path_from_output "$TMPDIR/pushup.out")"
 assert_contains "pushup activity" "$WORK/$pushup_rel"
 assert_contains '**Command:** `pushup -o`' "$WORK/$pushup_rel"
-assert_contains "Source-Branch: dev/report-tests-v1.0.0" "$WORK/$pushup_rel"
-assert_contains "Target-Branch: v1.0.0" "$WORK/$pushup_rel"
-assert_contains "PR: 42" "$WORK/$pushup_rel"
-assert_contains "Status: Current branch merged into parent branch" "$WORK/$pushup_rel"
-assert_contains "Method: Squash merge created by pushup" "$WORK/$pushup_rel"
-assert_contains "CI-CD: ci build SUCCESS" "$WORK/$pushup_rel"
+assert_matches \
+  '^\*\*Source Branch:\*\* dev/report-tests-v1\.0\.0 \([0-9a-f]{40}\)  $' \
+  "$WORK/$pushup_rel"
+if grep -Eq '^Source-Tip:' "$WORK/$pushup_rel"; then
+  fail "pushup report should combine Source-Tip with Source-Branch"
+fi
+assert_contains "**Target Branch:** v1.0.0" "$WORK/$pushup_rel"
+assert_contains "**PR:** 42" "$WORK/$pushup_rel"
+assert_contains "**Status:** Current branch merged into parent branch" "$WORK/$pushup_rel"
+assert_contains "**Method:** Squash merge created by pushup" "$WORK/$pushup_rel"
+assert_contains "**CI CD:** ci build SUCCESS" "$WORK/$pushup_rel"
 pass "pushup report details"
 
 # 8b) Other metadata-only workflow actions should render durable details.
@@ -169,22 +190,22 @@ rc=$(run_capture "$TMPDIR/mkbranch.out" bash -lc "cd '$WORK' && bash ./briteRepo
 mkbranch_rel="$(report_path_from_output "$TMPDIR/mkbranch.out")"
 assert_contains "mkbranch activity" "$WORK/$mkbranch_rel"
 assert_contains '**Command:** `mkbranch dev/report-tests-v1.0.0 v1.0.0`' "$WORK/$mkbranch_rel"
-assert_contains "New-Branch: dev/report-tests-v1.0.0" "$WORK/$mkbranch_rel"
-assert_contains "Parent-Branch: v1.0.0" "$WORK/$mkbranch_rel"
+assert_contains "**New Branch:** dev/report-tests-v1.0.0" "$WORK/$mkbranch_rel"
+assert_contains "**Parent Branch:** v1.0.0" "$WORK/$mkbranch_rel"
 
 rc=$(run_capture "$TMPDIR/release.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'release activity'")
 [[ "$rc" -eq 0 ]] || fail "release report should exit 0 (got $rc)"
 release_rel="$(report_path_from_output "$TMPDIR/release.out")"
 assert_contains "release activity" "$WORK/$release_rel"
 assert_contains '**Command:** `release v1.2.0`' "$WORK/$release_rel"
-assert_contains "Version: v1.2.0" "$WORK/$release_rel"
+assert_contains "**Version:** v1.2.0" "$WORK/$release_rel"
 
 rc=$(run_capture "$TMPDIR/undo.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report branch -q 'undo activity'")
 [[ "$rc" -eq 0 ]] || fail "undo report should exit 0 (got $rc)"
 undo_rel="$(report_path_from_output "$TMPDIR/undo.out")"
 assert_contains "undo activity" "$WORK/$undo_rel"
 assert_contains '**Command:** `undo commit`' "$WORK/$undo_rel"
-assert_contains "Undo-Type: commit" "$WORK/$undo_rel"
+assert_contains "**Undo Type:** commit" "$WORK/$undo_rel"
 pass "metadata action report details"
 
 # 9) Copyfix reports should render durable workflow details
@@ -193,12 +214,12 @@ rc=$(run_capture "$TMPDIR/copyfix.out" bash -lc "cd '$WORK' && bash ./briteRepo/
 copyfix_rel="$(report_path_from_output "$TMPDIR/copyfix.out")"
 assert_contains "copyfix activity" "$WORK/$copyfix_rel"
 assert_contains '**Command:** `copyfix fix/source-v1.0.0`' "$WORK/$copyfix_rel"
-assert_contains "Source-Branch: fix/source-v1.0.0" "$WORK/$copyfix_rel"
-assert_contains "Target-Branch: dev/report-tests-v1.0.0" "$WORK/$copyfix_rel"
-assert_contains "Commits-Copied: 2" "$WORK/$copyfix_rel"
-assert_contains "Files-Modified: 1" "$WORK/$copyfix_rel"
-assert_contains "Status: Fix commits copied to target branch" "$WORK/$copyfix_rel"
-assert_contains "Method: Cherry-pick created by copyfix" "$WORK/$copyfix_rel"
+assert_contains "**Source Branch:** fix/source-v1.0.0" "$WORK/$copyfix_rel"
+assert_contains "**Target Branch:** dev/report-tests-v1.0.0" "$WORK/$copyfix_rel"
+assert_contains "**Commits Copied:** 2" "$WORK/$copyfix_rel"
+assert_contains "**Files Modified:** 1" "$WORK/$copyfix_rel"
+assert_contains "**Status:** Fix commits copied to target branch" "$WORK/$copyfix_rel"
+assert_contains "**Method:** Cherry-pick created by copyfix" "$WORK/$copyfix_rel"
 pass "copyfix report details"
 
 # 10) Retarget reports should render durable workflow details
@@ -208,10 +229,10 @@ retarget_rel="$(report_path_from_output "$TMPDIR/retarget.out")"
 assert_contains "retarget activity" "$WORK/$retarget_rel"
 assert_contains '**Command:** `retarget -c move\ branch v1.1.0`' \
   "$WORK/$retarget_rel"
-assert_contains "Old-Parent: v1.0.0" "$WORK/$retarget_rel"
-assert_contains "New-Parent: v1.1.0" "$WORK/$retarget_rel"
-assert_contains "Retargeted-Tip:" "$WORK/$retarget_rel"
-assert_contains "Comment: move branch" "$WORK/$retarget_rel"
+assert_contains "**Old Parent:** v1.0.0" "$WORK/$retarget_rel"
+assert_contains "**New Parent:** v1.1.0" "$WORK/$retarget_rel"
+assert_contains "**Retargeted Tip:**" "$WORK/$retarget_rel"
+assert_contains "**Comment:** move branch" "$WORK/$retarget_rel"
 pass "retarget report details"
 
 # 11) TYPE may be specified only once
@@ -250,7 +271,7 @@ assert_contains "## Branch Status" "$WORK/$repo_rel"
 pass "repository report dispatch"
 
 # 13b) Repo reports accept filtered activity and render a repo activity section
-rc=$(run_capture "$TMPDIR/repo-activity.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report repo -q 'pull activity' -u testuser -l 1 -t 2")
+rc=$(run_capture "$TMPDIR/repo-activity.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report repo -q 'pull activity' -u testuser -n 1 -t 2")
 [[ "$rc" -eq 0 ]] || fail "filtered repo report should exit 0 (got $rc)"
 repo_activity_rel="$(sed -n "s/^See '\(reports\/repo-[^ ]*\.md\)'\.$/\1/p" \
   "$TMPDIR/repo-activity.out" | tail -n 1)"
