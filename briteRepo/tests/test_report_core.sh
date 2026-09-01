@@ -95,8 +95,8 @@ rc=$(run_capture "$TMPDIR/local-parent.out" bash -lc \
   "cd '$WORK' && bash ./briteRepo/bin/report -p")
 [[ "$rc" -eq 0 ]] || fail "local parent report should exit 0 (got $rc)"
 local_parent_rel="$(report_path_from_output "$TMPDIR/local-parent.out")"
-[[ "$local_parent_rel" == reports/p-local-*.md ]] || \
-  fail "local parent report should use the p-local prefix"
+[[ "$local_parent_rel" == reports/branch-p-l-*.md ]] || \
+  fail "local parent report should use the branch-p-l prefix"
 assert_contains '**Branch:** `v1.0.0`' "$WORK/$local_parent_rel"
 assert_matches '^\*\*Status:\*\* .*\[local\]' "$WORK/$local_parent_rel"
 if grep -Fq '[uncommitted]' "$WORK/$local_parent_rel"; then
@@ -109,8 +109,8 @@ rc=$(run_capture "$TMPDIR/remote-parent.out" bash -lc \
   "cd '$WORK' && bash ./briteRepo/bin/report -p -r")
 [[ "$rc" -eq 0 ]] || fail "remote parent report should exit 0 (got $rc)"
 remote_parent_rel="$(report_path_from_output "$TMPDIR/remote-parent.out")"
-[[ "$remote_parent_rel" == reports/p-remote-*.md ]] || \
-  fail "remote parent report should use the p-remote prefix"
+[[ "$remote_parent_rel" == reports/branch-p-r-*.md ]] || \
+  fail "remote parent report should use the branch-p-r prefix"
 assert_contains '**Branch:** `v1.0.0`' "$WORK/$remote_parent_rel"
 assert_matches '^\*\*Status:\*\* .*\[remote\]' "$WORK/$remote_parent_rel"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/report-tests-v1.0.0" ]] || \

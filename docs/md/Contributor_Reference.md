@@ -295,9 +295,10 @@ report [OPTIONS] [TYPE]
 
 `TYPE` is `repo`, `branch`, or `style` and defaults to `branch`. The latest
 report is written directly in `reports/` as `repo-<datetime>.md`,
-`local-<datetime>.md`, `remote-<datetime>.md`, or `style-<datetime>.md`.
-Only one report with each filename prefix is kept. Local and remote reports
-are retained independently.
+`branch-l-<datetime>.md`, `branch-r-<datetime>.md`,
+`branch-p-l-<datetime>.md`, `branch-p-r-<datetime>.md`, or
+`style-<datetime>.md`. Only one report with each filename prefix is kept.
+Local, remote, and parent reports are retained independently.
 
 Use `report branch -r [-t SEC]` to refresh and report the remote corresponding
 to the current local branch or remote copy without changing the checked-out

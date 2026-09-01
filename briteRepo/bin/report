@@ -92,10 +92,10 @@ Outputs:
   - Writes verbose (-v) progress and diagnostics to stdout.
   - Writes one untracked report directly in '<repo>/reports/':
       - 'repo-<datetime>.md' for a repository report.
-      - 'local-<datetime>.md' for a local branch report.
-      - 'remote-<datetime>.md' for a remote branch report.
-      - 'p-local-<datetime>.md' for a local parent branch report.
-      - 'p-remote-<datetime>.md' for a remote parent branch report.
+      - 'branch-l-<datetime>.md' for a local branch report.
+      - 'branch-r-<datetime>.md' for a remote branch report.
+      - 'branch-p-l-<datetime>.md' for a local parent branch report.
+      - 'branch-p-r-<datetime>.md' for a remote parent branch report.
       - 'style-<datetime>.md' for a style report.
     The previous report of the same type is deleted.
   - Writes 'See <reportpath>' to stdout when a
@@ -1564,7 +1564,7 @@ fi
 TARGET_REF="$CURRENT_REF"
 HISTORY_REF="$CURRENT_REF"
 WORKFLOW_NOTES_REF="briteRepo-workflow"
-BRANCH_REPORT_PREFIX="local"
+BRANCH_REPORT_PREFIX="branch-l"
 SNAPSHOT_HISTORY_REF=""
 SNAPSHOT_TARGET_REF=""
 BRANCH_SCOPE_LABEL="local"
@@ -1594,17 +1594,21 @@ if [[ "$REMOTE_BRANCH_REPORT" == true ]]; then
   refresh_remote_branch_report_refs "$TARGET_REF"
   HISTORY_REF="origin/$TARGET_REF"
   WORKFLOW_NOTES_REF="briteRepo-remote-workflow"
-  BRANCH_REPORT_PREFIX="remote"
+  BRANCH_REPORT_PREFIX="branch-r"
   BRANCH_SCOPE_LABEL="remote"
 elif [[ -z "$TARGET_REF" ]]; then
-  BRANCH_REPORT_PREFIX="remote"
+  BRANCH_REPORT_PREFIX="branch-r"
   WORKFLOW_NOTES_REF="briteRepo-remote-workflow"
   HISTORY_REF="$SNAPSHOT_HISTORY_REF"
   TARGET_REF="$SNAPSHOT_TARGET_REF"
   BRANCH_SCOPE_LABEL="remote"
 fi
 if [[ "$PARENT_BRANCH_REPORT" == true ]]; then
-  BRANCH_REPORT_PREFIX="p-$BRANCH_REPORT_PREFIX"
+  if [[ "$BRANCH_SCOPE_LABEL" == "remote" ]]; then
+    BRANCH_REPORT_PREFIX="branch-p-r"
+  else
+    BRANCH_REPORT_PREFIX="branch-p-l"
+  fi
 fi
 [[ -n "$TARGET_REF" ]] || usage_error "Could not resolve current branch/ref"
 
@@ -1881,7 +1885,7 @@ report_file="$(bt_report_transient_path \
   "$REPORTS_DIR" "$BRANCH_REPORT_PREFIX" "$RUN_TS_FILE")"
 report_rel="${report_file#"${REPO_ROOT}"/}"
 if ! {
-  printf '# Branch History Report\n\n'
+  printf '# Branch Report\n\n'
   printf '**Branch:** `%s`  \n' "$TARGET_REF"
   printf '**Status:** %s  \n' "$BRANCH_STATUS_TAGS"
   printf '**Generated:** %s  \n' "$RUN_TS_DISPLAY"
