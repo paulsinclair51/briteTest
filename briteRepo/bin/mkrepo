@@ -62,10 +62,13 @@ Prerequisite for an existing repository:
 Options:
   -h, --help  Output this help to stdout and exit (other options and
               arguments are ignored).
-  -d          Dry-run mode: report the planned changes; Nothing is committed
-              or pushed.
-  -e          Force the error path after the layout is prepared, to verify
-              error reporting. Nothing is committed or pushed.
+  -d          Generate a dry-run report for the mkrepo workflow without
+              running the mkrepo workflow.
+  -e          Generate an error report for the mkrepo workflow without
+              running the mkrepo workflow. This option is intended for
+              testing and debugging the error report and is not typically
+              used in normal operation. This option is mutually exclusive
+              with the -d option.
   -t SEC      Remote operation timeout in seconds (default: 10).
               SEC must be an integer greater than 0.
   -v          Report every item that already exists, not only changes.

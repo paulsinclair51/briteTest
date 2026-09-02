@@ -16,16 +16,22 @@ one refuses to run outside a briteRepo command.
 
 Two enforcement patterns are used:
 
-- **Sourced libraries** (`ckstyle.sh`, `common.sh`, `common_utils.sh`,
-  `git_helpers.sh`, `github_helpers.sh`, `health_report.sh`, `history_log.sh`,
+- **Sourced libraries** (`branch_status.sh`, `ckstyle.sh`, `common.sh`,
+  `common_utils.sh`, `git_helpers.sh`, `github_helpers.sh`, `health_report.sh`,
+  `history_log.sh`, `pulldown_workflow.sh`, `push_command.sh`,
   `push_workflow.sh`, `report_helpers.sh`, `report_sync.sh`,
   `validation_helpers.sh`) exit with an error if executed instead of sourced.
 - **Delegated command implementations** refuse to start unless the calling
-  command identifies itself: `pulldown_workflow.sh` (`--public`, `--pushup`,
-  `--error-run`), `push_command.sh` (`--public`, `--pushup-publish`,
-  `--pushup-source`) and `pushup_parent.sh` (`--pushup`) use an entry-mode
+  command identifies itself: `pushup_parent.sh` (`--pushup`) uses an entry-mode
   argument; `ckrole.sh`, `gendocx.sh`, and `genpdf.sh` require the caller to set
   `BRITEREPO_INTERNAL=1`.
+
+A user-facing command owns its own usage text and argument validation; the
+library it sources owns the work and reports failures back through exit codes.
+`lsbranch` and `report` share `branch_status.sh`; `pulldown` and `pushup` share
+`pulldown_workflow.sh`; `push` and `pushup` share `push_command.sh`. Commands
+that must not inherit a library's function definitions call the library from a
+subshell.
 
 `install_git_hooks.sh` is the one documented exception: it is a setup utility
 invoked by `briteRepo/bin/setupclone` and by the `post-checkout` hook, and it

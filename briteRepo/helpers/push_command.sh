@@ -1,153 +1,23 @@
 #!/usr/bin/env bash
 
-# push_command.sh - Internal push command implementation.
-#
-# Internal implementation for the public push command.
+# push_command.sh - push workflow used by push and pushup.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see '<repo>/LICENSE'.
 
-usage() {
-  cat <<'EOF'
-Usage:
-  push [OPTIONS]
-  push {-h | --help}
+# Internal library: must be sourced by a briteRepo command or helper. Direct
+# execution by a user is not supported.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  echo "push_command.sh is a briteRepo internal library and must be sourced." >&2
+  exit 1
+fi
 
-Push commits on the current local branch to its corresponding remote.
-
-push validates preconditions, pushes local commits to the remote branch,
-and writes a report under <repo>/reports/.
-
-Policy:
-  - Remote branches are read-only for editing in this workflow.
-  - Changes are made on local branches, then pushed with push.
-  - A local branch may exist without a corresponding remote branch.
-
-Prerequisites:
-  - The user must be a contributor, reviewer, or approver (listed in
-    <repo>/config/contributors.md).
-  - The remote repository must be connected and reachable.
-  - The current branch must be a local branch.
-  - The current branch must be a targeted or contributor branch, and
-    must not be the main or a version branch, except when pushing a local
-    pushup result recorded on that protected parent branch.
-  - The current branch must have no uncommitted changes.
-    - If there are changes, run the commit or undo command first.
-  - The current branch must not have an unfinished copyfix operation.
-  - A contributor may push a protected parent only for a recorded pushup result
-    whose source commit still has current PR approval.
-
-Remote state requirements:
-  - The remote branch must exist.
-  - The current branch must contain committed changes that are not yet on its
-    remote copy.
-  - If the local and remote branches contain different changes, run pull to
-    synchronize them first.
-  - If another user pushes the same parent first, return to the source branch,
-    run pulldown, obtain approval for the updated source commit, then rerun
-    pushup and push.
-
-Options:
-  -d            Dry-run. Validates preconditions and reports what
-                would be pushed, but does not push.
-  -e            Emit an error report for the current branch commit workflow.
-                This option is intended for testing and debugging purposes
-                and is not typically used in normal operation.
-                Option is mutually exclusive with -d option.
-  -h, --help  Output this help to stdout and exit (other options and
-              arguments are ignored).
-  -t SEC        Remote reachability timeout in seconds (default: 10).
-                SEC must be an integer greater than 0.
-  -v            Output progress and diagnostics to stdout.
-
-Examples:
-  # Push local commits to remote.
-  push
-
-  # Preview what would be pushed.
-  push -d
-
-Outputs:
-  - Writes help text, status messages, and results or summaries to stdout.
-  - Writes errors and diagnostics to stderr.
-  - Reports are written only when prerequisites and remote state
-    requirements are satisfied and there are commits to push.
-  - No-work prerequisite failures do not generate or delete reports.
-  - No report is written when a non-dry-run push succeeds. Older dry-run and
-    error reports for the current branch are deleted.
-  - After a successful non-dry-run push, details are available through
-    `report -r`. When publishing a pushup result, push also updates and closes
-    its associated pull request.
-  - For a dry-run, writes an untracked report locally to:
-      '<repo>/reports/push-d-<datetime>.md'
-  - If a non-dry-run operation fails after push work starts, writes an
-    untracked error report to:
-      '<repo>/reports/push-e-<datetime>.md'
-    Usage and prerequisite failures do not create reports.
-  - If a report is written, older dry-run (-d) and error reports for the
-    current branch are deleted.
-
-Exit codes:
-  0    Success.
-  1    Invalid option or argument.
-  2    User is not a contributor.
-  3    Current branch is main or a version branch and is protected.
-  4    This clone has no remote repository URL.
-  5    Remote is unreachable (connection failed before timeout).
-  6    Remote connectivity check timed out.
-  7    Remote branch for the current branch not found.
-  8    Timed out waiting for report write lock.
-  9    Push skipped due to -e option.
-  10   No committed changes are available to push.
-  200  Push failed.
-  201  Failed to write report.
-  202  Push succeeded, but PR finalization failed.
-EOF
-}
-
-# High-Level Flow:
-# - Accept explicit public or pushup publication modes from briteRepo commands.
-# - Validate direct-use authorization, branch policy, worktree, and origin.
-# - Delegate range calculation, dry-run/error reports, and publication to the
-#   shared push workflow.
-# - On success, record one event on the pushed tip and remove transient reports.
-# - Direct users to report -r for remote activity details; pushup modes retain
-#   the initiating command in workflow history.
-
-# shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
-
-set -euo pipefail
+# The sourcing command owns usage and argument validation; this library owns
+# the work. Callers run bt_push_init, set the validated globals, then call
+# bt_push_run.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-[[ "${1:-}" == "--public" || "${1:-}" == "--pushup-publish" || \
-  "${1:-}" == "--pushup-source" ]] || {
-  echo "push_command.sh must be called by a briteRepo command." >&2
-  exit 1
-}
-ENTRY_MODE="$1"
-shift
-
-for arg in "$@"; do
-  case "$arg" in
-    -h|--help)
-      usage
-      exit 0
-      ;;
-  esac
-done
-
-for arg in "$@"; do
-  case "$arg" in
-    --pushup|--preview-ref)
-      usage
-      echo >&2
-      echo "Internal push workflow options cannot be used with the push"
-      echo "command. See usage above in remote for details." >&2
-      exit 1
-      ;;
-  esac
-done
 
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/common.sh"
@@ -164,14 +34,18 @@ source "$SCRIPT_DIR/report_sync.sh"
 # shellcheck source=helpers/push_workflow.sh
 source "$SCRIPT_DIR/push_workflow.sh"
 
-PUSH_WORKFLOW_ARGS=()
-PENDING_PUSHUP=false
-PENDING_PUSHUP_SOURCE=""
-PENDING_PUSHUP_SOURCE_TIP=""
-PENDING_PUSHUP_TARGET=""
-PENDING_PUSHUP_PR=""
-PUSHUP_SOURCE_SYNC=false
-[[ "$ENTRY_MODE" != "--pushup-source" ]] || PUSHUP_SOURCE_SYNC=true
+# Establish the library's own runtime state before callers override it.
+bt_push_init() {
+  PUSH_WORKFLOW_ARGS=()
+  PUSH_TIMEOUT_SECONDS=10
+  PUSH_ENTRY_MODE="--public"
+  PENDING_PUSHUP=false
+  PENDING_PUSHUP_SOURCE=""
+  PENDING_PUSHUP_SOURCE_TIP=""
+  PENDING_PUSHUP_TARGET=""
+  PENDING_PUSHUP_PR=""
+  PUSHUP_SOURCE_SYNC=false
+}
 
 pushup_state_value() {
   local key="$1"
@@ -382,53 +256,11 @@ EOF
 }
 
 push_validate_prerequisites() {
-  local timeout_seconds=10
+  local timeout_seconds="$PUSH_TIMEOUT_SECONDS"
   local current_branch=""
   local remote_probe_rc=0
   local required_tool=""
   local -a missing_tools=()
-
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      -d)
-        PUSH_WORKFLOW_ARGS+=(-d)
-        shift
-        ;;
-      -e)
-        PUSH_WORKFLOW_ARGS+=(-e)
-        shift
-        ;;
-      -v|--verbose)
-        PUSH_WORKFLOW_ARGS+=(-v)
-        shift
-        ;;
-      -t)
-        [[ $# -ge 2 ]] || {
-          usage
-          echo >&2
-          bt_emit_prerequisite_failure 1 \
-            "Option -t requires timeout seconds. See usage above for details." \
-            "provide a positive timeout value and rerun push."
-        }
-        [[ "$2" =~ ^[0-9]+$ && "$2" -gt 0 ]] || {
-          usage
-          echo >&2
-          bt_emit_prerequisite_failure 1 \
-            "Option -t requires an integer greater than 0. See usage above for details." \
-            "provide a positive timeout value and rerun push."
-        }
-        timeout_seconds="$2"
-        shift 2
-        ;;
-      *)
-        usage
-        echo >&2
-        bt_emit_prerequisite_failure 1 \
-          "Unknown option or argument: $1. See usage above for details." \
-          "review the usage text and rerun push."
-        ;;
-    esac
-  done
 
   for required_tool in \
     git awk sed grep wc cksum flock chmod rm mkdir head date; do
@@ -532,20 +364,24 @@ push_validate_prerequisites() {
   export BT_REMOTE_TIMEOUT_SECONDS="$timeout_seconds"
 }
 
-if [[ "$ENTRY_MODE" == "--public" ]]; then
-  BT_PUSH_COMMAND_LINE="$(bt_format_command_line "push" "$@")"
-  BT_PUSH_AUTHORITY=""
-else
-  BT_PUSH_COMMAND_LINE="$(pushup_state_value command-line)"
-  [[ -n "$BT_PUSH_COMMAND_LINE" ]] || \
-    push_error_exit 1 "Active pushup state is missing its initiating command"
-  if [[ "$(pushup_state_value owner-override)" == true ]]; then
-    BT_PUSH_AUTHORITY="owner"
-  else
+# Run the push workflow for the validated globals set by the caller.
+bt_push_run() {
+  [[ "$PUSH_ENTRY_MODE" != "--pushup-source" ]] || PUSHUP_SOURCE_SYNC=true
+  if [[ "$PUSH_ENTRY_MODE" == "--public" ]]; then
+    BT_PUSH_COMMAND_LINE="$(bt_format_command_line "push" "${ORIGINAL_ARGS[@]}")"
     BT_PUSH_AUTHORITY=""
+  else
+    BT_PUSH_COMMAND_LINE="$(pushup_state_value command-line)"
+    [[ -n "$BT_PUSH_COMMAND_LINE" ]] || \
+      push_error_exit 1 "Active pushup state is missing its initiating command"
+    if [[ "$(pushup_state_value owner-override)" == true ]]; then
+      BT_PUSH_AUTHORITY="owner"
+    else
+      BT_PUSH_AUTHORITY=""
+    fi
   fi
-fi
-export BT_PUSH_COMMAND_LINE
-export BT_PUSH_AUTHORITY
-push_validate_prerequisites "$@"
-bt_push_workflow "${PUSH_WORKFLOW_ARGS[@]}"
+  export BT_PUSH_COMMAND_LINE
+  export BT_PUSH_AUTHORITY
+  push_validate_prerequisites
+  bt_push_workflow "${PUSH_WORKFLOW_ARGS[@]}"
+}

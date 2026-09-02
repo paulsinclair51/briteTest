@@ -195,7 +195,10 @@ commit [OPTIONS] [-- TOKEN...]
 
 - `-c TOKEN` or `-- TOKEN...` - Add a user comment to the generated commit
   message.
-- `-d` - Generate a dry-run report without committing.
+- `-d` - Generate a dry-run report for the commit workflow without running the
+  commit workflow.
+- `-e` - Generate an error report for the commit workflow without running the
+  commit workflow.
 - `-v` - Show progress and diagnostics.
 
 Run `push` separately to publish the commit.
@@ -322,7 +325,7 @@ mkbranch [OPTIONS] <newbranch> [<parentbranch>] [-- TOKEN...]
 
 **Key Options:**
 
-- `-d` - Validate without creating a branch.
+- `-d` - Dry-run. Validate the mkbranch workflow without creating the branch.
 - `-l` - Create only a local branch.
 - `-r` - Also create the remote branch; this is the default for version
   branches.
@@ -534,8 +537,10 @@ push [OPTIONS]
 
 **Key Options:**
 
-- `-d` - Validate and report what would be pushed without publishing it.
-- `-e` - Generate an error report for testing and diagnostics.
+- `-d` - Generate a dry-run report for the push workflow without running the
+  push workflow.
+- `-e` - Generate an error report for the push workflow without running the
+  push workflow.
 - `-t SEC` - Set the remote reachability timeout.
 - `-v` - Show progress and diagnostics.
 
@@ -683,7 +688,7 @@ mkfork [OPTIONS]
 
 - `-c` - Delete an incomplete or misconfigured existing fork instead of
   completing its configuration.
-- `-d` - Show the planned operation without creating a fork.
+- `-d` - Dry-run. Validate the mkfork workflow without creating the fork.
 - `-t SEC` - Set the remote timeout.
 - `-v` - Show progress and diagnostics.
 </details>
@@ -703,8 +708,9 @@ rmclone [OPTIONS] <clone-path>
 
 **Options:**
 
-- `-d, --dry-run` - Show the checks and deletion plan.
-- `-O, --override` - Override safety checks and remove the clone.
+- `-d` - Dry-run. Validate the rmclone workflow without removing the
+  clone.
+- `--override` - Override safety checks and remove the clone.
 - `-t SEC` - Set the remote timeout.
 </details>
 
@@ -724,7 +730,8 @@ fixrepo [OPTIONS] [<clone-path>]
 
 **Key Options:**
 
-- `-d` - Report issues without attempting repairs.
+- `-d` - Generate a dry-run report for the fixrepo workflow without attempting
+  repairs.
 - `-q` - Use reduced-cost diagnostics.
 - `-t SEC` - Set the remote timeout; use `0` to skip remote checks.
 - `-v` - Show the generated report.
@@ -801,9 +808,10 @@ working clone.
 
 **Key Options:**
 
-- `-d` - Report the planned changes; create, commit, and push nothing.
-- `-e` - Force the error path after the layout is prepared, to verify error
-  reporting. Nothing is committed or pushed.
+- `-d` - Generate a dry-run report for the mkrepo workflow without running the
+  mkrepo workflow.
+- `-e` - Generate an error report for the mkrepo workflow without running the
+  mkrepo workflow.
 - `-t SEC` - Set the remote timeout.
 - `-v` - Report items that are already canonical.
 - `--public` - Create a public repository; the default is private.

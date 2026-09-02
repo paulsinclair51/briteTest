@@ -19,16 +19,17 @@ Update the branding assets and propagate a brand change across
 repository files.
 
 Options:
-    -d          Perform a dry run of branding updates. The script does not
-                            update branding assets, repository text, or Brand
-                            History,
-                            but it still generates the report and may delete
-                            stale
-                            dry-run reports and persist report updates.
-  -h, --help  Output this help to stdout and exit (other options
+  -d          Generate a dry-run report for the rebrand workflow without
+              updating branding assets, repository text, or Brand History.
+              Stale dry-run reports may still be deleted and report updates
+              persisted.    -e          Generate an error report for the rebrand workflow without
+                running the rebrand workflow. This option is intended for
+                testing and debugging the error report and is not typically
+                used in normal operation. This option is mutually exclusive
+                with the -d option.  -h, --help  Output this help to stdout and exit (other options
               and arguments are ignored).
-    -t SEC      Remote operation timeout in seconds (default: 10).
-                            SEC must be an integer greater than 0.
+  -t SEC      Remote operation timeout in seconds (default: 10).
+              SEC must be an integer greater than 0.
 
 Outputs:
   - Loaded previous/pending brand values.
@@ -38,11 +39,12 @@ Outputs:
   - Final status block (COMPLETED or DRY RUN COMPLETE).
 
 Reporting:
-    - rebrand and rebrand -d write a report in reports/.
+    - rebrand, rebrand -d, and rebrand -e write a report in reports/.
     - Non-dry run report: reports/rebrand-<datetime>.md
     - Dry-run report: reports/rebrand-d-<datetime>.md
+    - Error report: reports/rebrand-e-<datetime>.md
     - Reports are generated as local untracked files.
-    - Successful non-dry-run runs delete stale dry-run reports.
+    - Successful non-dry-run runs delete stale dry-run and error reports.
   - -h/--help does not generate a report.
   - On successful non-dry runs, existing dry-run reports are deleted.
 
@@ -52,6 +54,7 @@ Exit codes:
     2   No pending Brand History row found (nothing to do).
     3   Brand history file not found.
     4   Brand history file is empty.
+    5   Rebrand skipped due to -e option.
     100 Branding directory not found.
     101 Completed Brand History row not found for comparison.
     102 briteRepo/bin/genpngs is missing or not executable.
@@ -112,6 +115,7 @@ GENPNGS_SCRIPT="${SCRIPT_DIR}/genpngs"
 REPORTS_DIR="${REPO_ROOT}/reports"
 
 DRY_RUN=0
+ERROR_RUN=0
 REMOTE_TIMEOUT_SECONDS=10
 
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S%z')"
@@ -127,6 +131,7 @@ readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NO_PENDING_ROW=2
 readonly EXIT_CONFIG_NOT_FOUND=3
 readonly EXIT_CONFIG_EMPTY=4
+readonly EXIT_WORKFLOW_SKIPPED=5
 readonly EXIT_BRANDING_DIR_MISSING=100
 readonly EXIT_MISSING_COMPLETED_ROW=101
 readonly EXIT_MISSING_GENPNGS=102
@@ -299,6 +304,14 @@ write_run_log_on_exit() {
           "$previous_tagline_value" "$pending_tagline_value")
         printf '%s  \n' "$_fmt_tg"
         echo
+        if [[ "$ERROR_RUN" -eq 1 ]]; then
+            echo "**Error:** Rebrand skipped due to -e option."
+            echo
+            echo "## Guidance"
+            echo
+            echo "- Run without -e option."
+            echo
+        fi
         echo "## Output"
         echo '```text'
         sed -n '1,$p' "$RUN_OUTPUT_FILE"
@@ -493,7 +506,8 @@ cleanup_dry_run_reports() {
     DRY_RUN_REPORT_DELETIONS=()
 
     mapfile -t dry_run_reports < <(find "${REPORTS_DIR}" \
-        -maxdepth 1 -type f -name 'rebrand-d-*.md' | sort)
+        -maxdepth 1 -type f \( -name 'rebrand-d-*.md' -o \
+        -name 'rebrand-e-*.md' \) | sort)
 
     if [[ "${#dry_run_reports[@]}" -eq 0 ]]; then
         return
@@ -584,7 +598,14 @@ done
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -d)
+            [[ "$ERROR_RUN" -eq 0 ]] || \
+                usage_error "Cannot use both -d and -e"
             DRY_RUN=1
+            ;;
+        -e)
+            [[ "$DRY_RUN" -eq 0 ]] || \
+                usage_error "Cannot use both -d and -e"
+            ERROR_RUN=1
             ;;
         -t)
             shift
@@ -607,6 +628,9 @@ mkdir -p "$REPORTS_DIR"
 if [[ "$DRY_RUN" -eq 1 ]]; then
     RUN_LOG_FILE="$(bt_report_retained_path \
         "$REPORTS_DIR" "rebrand-d" "$RUN_TS_FILE")"
+elif [[ "$ERROR_RUN" -eq 1 ]]; then
+    RUN_LOG_FILE="$(bt_report_retained_path \
+        "$REPORTS_DIR" "rebrand-e" "$RUN_TS_FILE")"
 else
     RUN_LOG_FILE="$(bt_report_retained_path \
         "$REPORTS_DIR" "rebrand" "$RUN_TS_FILE")"
@@ -614,6 +638,11 @@ fi
 
 trap write_run_log_on_exit EXIT
 setup_output_capture
+
+if [[ "$ERROR_RUN" -eq 1 ]]; then
+    error_exit "Rebrand skipped due to -e option." \
+        "$EXIT_WORKFLOW_SKIPPED"
+fi
 
 [[ -f "$CONFIG_FILE" ]] || error_exit \
     "Brand history file not found: logs/brand_history.md" \

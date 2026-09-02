@@ -45,9 +45,13 @@ Options:
                   By default, original comments are retained.
   -- TOKEN...     Copied-commit comment from one or more tokens.
                   This option must be last.
-  -d              Dry-run. Validate and report the fixes that would be
-                  copied without updating the current target branch.
-  -e              Generate an error report without copying.
+  -d              Generate a dry-run report for the copyfix workflow without
+                  running the copyfix workflow.
+  -e              Generate an error report for the copyfix workflow without
+                  running the copyfix workflow. This option is intended for
+                  testing and debugging the error report and is not typically
+                  used in normal operation. This option is mutually exclusive
+                  with the -d option.
   -h, --help      Output this help to stdout and exit (other options and
                   arguments are ignored).
   -v              Output progress and diagnostics to stdout.

@@ -79,6 +79,17 @@ cp "$REPORT_HELPER_SRC" "$WORK/briteRepo/helpers/report_helpers.sh"
 cp "$REPORT_SYNC_HELPER_SRC" "$WORK/briteRepo/helpers/report_sync.sh"
 chmod +x "$WORK/briteRepo/bin/pulldown"
 
+# pushup drives the merge-down library directly; emulate that entry point.
+PUSHUP_SYNC_RUNNER="$TMPDIR/pushup_sync_runner.sh"
+cat > "$PUSHUP_SYNC_RUNNER" <<'EOF'
+set -euo pipefail
+source ./briteRepo/helpers/pulldown_workflow.sh
+bt_pulldown_init
+PUSHUP_SYNC=true
+ORIGINAL_ARGS=()
+bt_pulldown_run
+EOF
+
 (
   cd "$WORK"
   git config user.name "testuser"
@@ -125,7 +136,7 @@ rc=$(run_capture "$TMPDIR/help-overrides.out" bash -lc \
 assert_contains "Usage:" "$TMPDIR/help-overrides.out"
 pass "help overrides arguments"
 
-for internal_option in --pushup --force --verbose -f -e; do
+for internal_option in --pushup --force --verbose -f; do
   rc=$(run_capture "$TMPDIR/internal-option-${internal_option#-}.out" \
     bash -lc "cd '$WORK' && bash ./briteRepo/bin/pulldown '$internal_option'")
   [[ "$rc" -eq 1 ]] || \
@@ -147,7 +158,7 @@ rm -rf "$copyfix_state_root"
 pass "unfinished copyfix blocks pulldown"
 
 # 2) Skip mode should emit an error report and summary line.
-rc=$(run_capture "$TMPDIR/skip-e.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/helpers/pulldown_workflow.sh --error-run")
+rc=$(run_capture "$TMPDIR/skip-e.out" bash -lc "cd '$WORK' && git checkout dev/current-v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/bin/pulldown -e")
 [[ "$rc" -eq 6 ]] || fail "pulldown error mode should exit 6 (got $rc)"
 assert_contains "Error: Merge down skipped due to -e option." "$TMPDIR/skip-e.out"
 assert_contains "Guidance: Run without -e option." "$TMPDIR/skip-e.out"
@@ -197,7 +208,7 @@ pass "positional argument rejected"
   git remote set-url origin "$TMPDIR/unreachable-origin.git"
 )
 rc=$(run_capture "$TMPDIR/local-parent-sync.out" bash -lc \
-  "cd '$WORK' && bash ./briteRepo/helpers/pulldown_workflow.sh --pushup")
+  "cd '$WORK' && bash '$PUSHUP_SYNC_RUNNER'")
 [[ "$rc" -eq 0 ]] || \
   fail "local pushup synchronization should exit 0 (got $rc)"
 [[ -f "$WORK/local-parent.txt" && -f "$WORK/local-child.txt" ]] || \
@@ -265,7 +276,7 @@ assert_contains "Guidance: use pushup to merge changes to this branch." "$TMPDIR
 pass "protected branch gate"
 
 # pushup alone may merge a published parent into its protected source branch.
-rc=$(run_capture "$TMPDIR/protected-pushup.out" bash -lc "cd '$WORK' && git checkout v1.0.0 >/dev/null 2>&1 && bash ./briteRepo/helpers/pulldown_workflow.sh --pushup")
+rc=$(run_capture "$TMPDIR/protected-pushup.out" bash -lc "cd '$WORK' && git checkout v1.0.0 >/dev/null 2>&1 && bash '$PUSHUP_SYNC_RUNNER'")
 [[ "$rc" -eq 4 ]] || fail "unvalidated pushup mode should remain blocked (got $rc)"
 (
   cd "$PEER"
@@ -286,7 +297,7 @@ rc=$(run_capture "$TMPDIR/protected-pushup.out" bash -lc "cd '$WORK' && git chec
   git config --file .git/briteRepo/pushup.state pushup.source-has-remote true
   git config --file .git/briteRepo/pushup.state pushup.parent-has-remote true
 )
-rc=$(run_capture "$TMPDIR/protected-pushup-sync.out" bash -lc "cd '$WORK' && bash ./briteRepo/helpers/pulldown_workflow.sh --pushup")
+rc=$(run_capture "$TMPDIR/protected-pushup-sync.out" bash -lc "cd '$WORK' && bash '$PUSHUP_SYNC_RUNNER'")
 [[ "$rc" -eq 0 ]] || fail "validated pushup source sync should succeed (got $rc)"
 rm -f "$WORK/.git/briteRepo/pushup.state"
 pass "pushup can synchronize protected source branch"

@@ -13,19 +13,6 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   exit 1
 fi
 
-bt_run_lsbranch_mode() {
-  local mode="$1"
-  local lsbranch_path="$2"
-  local report_dir="$3"
-  local report_prefix="$4"
-  shift 4
-
-  [[ "$mode" == "report" ]] || return 2
-  [[ -n "$lsbranch_path" && -x "$lsbranch_path" ]] || return 2
-  [[ -n "$report_dir" && -n "$report_prefix" ]] || return 2
-  "$lsbranch_path" --report "$report_dir" "$report_prefix" "$@"
-}
-
 bt_report_capture_command_output() {
   local stdout_var="$1"
   local stderr_var="$2"

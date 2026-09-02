@@ -220,9 +220,12 @@ Prerequisites for `override`:
   carry no executable bit and must be reachable only from `briteRepo/bin/`
   commands or from other helpers. Sourced libraries abort when executed instead
   of sourced; delegated command implementations abort unless the caller supplies
-  an entry-mode argument (`pulldown_workflow.sh`, `push_command.sh`,
-  `pushup_parent.sh`) or sets `BRITEREPO_INTERNAL=1` (`ckrole.sh`, `gendocx.sh`,
-  `genpdf.sh`).
+  an entry-mode argument (`pushup_parent.sh`) or sets `BRITEREPO_INTERNAL=1`
+  (`ckrole.sh`, `gendocx.sh`, `genpdf.sh`).
+- A user-facing command owns its usage text and argument validation. The shared
+  library it sources owns the work and reports failures back through exit codes.
+  A command must not be reduced to a pass-through wrapper, and a library must
+  not define a command's public options.
 - Server-side protections remain the final authority over branch deletion and
   history rewriting.
 - Project-command safeguards run locally. A dedicated GitHub App or bot would be

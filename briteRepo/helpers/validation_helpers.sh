@@ -27,7 +27,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   exit 1
 fi
 
-set -euo pipefail
+# Shell options are the sourcing command's responsibility; do not change them.
 
 # Source common utilities (must be done before using them)
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

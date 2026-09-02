@@ -130,6 +130,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# branch_status.sh reads the repository root under this name.
+repo_root="$REPO_ROOT"
 REPORTS_DIR="$REPO_ROOT/reports"
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S%z')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
@@ -436,14 +438,11 @@ generate_repository_report() {
   local branch_report_dir=""
   local repo_activity_output=""
   local repo_log_target="--all"
-  local -a branch_report_args=(-a -t "$REMOTE_TIMEOUT")
   local -a staged_reports=()
 
   if [[ "$REMOTE_BRANCH_REPORT" == true ]]; then
     repo_log_target="origin"
   fi
-
-  [[ "$VERBOSE" == false ]] || branch_report_args+=(-v)
 
   current_ref="$(bt_get_current_branch_or_empty)"
   if [[ -z "$current_ref" ]]; then
@@ -458,13 +457,27 @@ generate_repository_report() {
   git fsck --no-dangling --no-progress >/dev/null 2>&1 || integrity="fail"
 
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_WRITE_FAILED"
+  # Only the repository report needs the branch status library.
+  # shellcheck source=helpers/branch_status.sh
+  source "$SCRIPT_DIR/../helpers/branch_status.sh"
   if ! branch_report_dir="$(mktemp -d)"; then
     bt_warn "Failed to create temporary directory for branch status"
     exit "$EXIT_REPORT_WRITE_FAILED"
   fi
-  if ! branch_output="$(bt_run_lsbranch_mode report \
-    "$SCRIPT_DIR/lsbranch" "$branch_report_dir" repo-branches \
-    "${branch_report_args[@]}")"; then
+  if ! branch_output="$(
+    bt_branch_status_init
+    GENERATE_REPORT=true
+    branch_reports_dir="$branch_report_dir"
+    branch_report_prefix=repo-branches
+    BRANCH_PATTERN='*'
+    ALL_BRANCHES=true
+    INCLUDE_LOCAL=true
+    INCLUDE_REMOTE=true
+    REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT"
+    VERBOSE="$VERBOSE"
+    ORIGINAL_ARGS=()
+    bt_branch_status_run
+  )"; then
     rm -rf "$branch_report_dir"
     bt_warn "Failed to collect branch status for repository report"
     exit "$EXIT_REPORT_WRITE_FAILED"
@@ -509,7 +522,7 @@ generate_repository_report() {
     printf '| Local branches | %s |\n' "$local_branch_count"
     printf '| Remote branches | %s |\n\n' "$remote_branch_count"
     printf '## Branch Status\n\n'
-    sed '1,2d' "$branch_report"
+    sed -n '/^| \*\*Branch\*\*/,$p' "$branch_report"
     printf '\n## Repository Activity\n\n'
     if [[ -n "$repo_activity_output" ]]; then
       printf '<details>\n<summary>Most recent repository activity</summary>\n\n'

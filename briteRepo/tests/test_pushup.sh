@@ -152,34 +152,52 @@ if [[ -f .fail-parent-finalize-once && "$branch" == main ]]; then
   exit 202
 fi
 EOF
-cp "$WORK/briteRepo/bin/push" "$WORK/briteRepo/helpers/push_command.sh"
+cat > "$WORK/briteRepo/helpers/push_command.sh" <<'EOF'
+#!/usr/bin/env bash
+bt_push_init() {
+  PUSH_WORKFLOW_ARGS=()
+  PUSH_TIMEOUT_SECONDS=""
+  PUSH_ENTRY_MODE="--public"
+}
+bt_push_run() {
+  local branch
+  branch="$(git branch --show-current)"
+  printf 'push-%s %s\n' "$branch" "$PUSH_TIMEOUT_SECONDS" >> .remote-timeouts
+  if [[ -f .fail-parent-push && "$branch" == main ]]; then
+    exit 80
+  fi
+  git push origin "$branch" >/dev/null
+  if [[ -f .fail-parent-finalize-once && "$branch" == main ]]; then
+    rm -f .fail-parent-finalize-once
+    exit 202
+  fi
+}
+EOF
 cat > "$WORK/briteRepo/bin/chbranch" <<'EOF'
 #!/usr/bin/env bash
 git checkout "${@: -1}" >/dev/null
 EOF
 cat > "$WORK/briteRepo/helpers/pulldown_workflow.sh" <<'EOF'
 #!/usr/bin/env bash
-set -e
-timeout_seconds=""
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    -t) timeout_seconds="$2"; shift 2 ;;
-    *) shift ;;
-  esac
-done
-if [[ -f .fail-sync-once ]]; then
-  rm -f .fail-sync-once
-  exit 81
-fi
-state_file="$(git rev-parse --git-path briteRepo/pushup.state)"
-parent_has_remote="$(git config --file "$state_file" --get pushup.parent-has-remote 2>/dev/null || true)"
-if [[ "$parent_has_remote" == false ]]; then
-  git merge --no-edit main >/dev/null
-else
-  printf 'pulldown %s\n' "$timeout_seconds" >> .remote-timeouts
-  git fetch origin main >/dev/null
-  git merge --no-edit origin/main >/dev/null
-fi
+bt_pulldown_init() {
+  REMOTE_TIMEOUT_SECONDS=""
+}
+bt_pulldown_run() {
+  if [[ -f .fail-sync-once ]]; then
+    rm -f .fail-sync-once
+    exit 81
+  fi
+  local state_file parent_has_remote
+  state_file="$(git rev-parse --git-path briteRepo/pushup.state)"
+  parent_has_remote="$(git config --file "$state_file" --get pushup.parent-has-remote 2>/dev/null || true)"
+  if [[ "$parent_has_remote" == false ]]; then
+    git merge --no-edit main >/dev/null
+  else
+    printf 'pulldown %s\n' "$REMOTE_TIMEOUT_SECONDS" >> .remote-timeouts
+    git fetch origin main >/dev/null
+    git merge --no-edit origin/main >/dev/null
+  fi
+}
 EOF
 cat > "$WORK/briteRepo/bin/pull" <<'EOF'
 #!/usr/bin/env bash
@@ -470,8 +488,11 @@ git -C "$WORK" merge --no-edit main >/dev/null
 write_state source-selected "$source_tip" "$parent_tip" "$prepared_tip"
 cat > "$WORK/briteRepo/helpers/pulldown_workflow.sh" <<'EOF'
 #!/usr/bin/env bash
-echo "pulldown must not rerun after its commit is detected" >&2
-exit 91
+bt_pulldown_init() { :; }
+bt_pulldown_run() {
+  echo "pulldown must not rerun after its commit is detected" >&2
+  exit 91
+}
 EOF
 chmod +x "$WORK/briteRepo/helpers/pulldown_workflow.sh"
 status="$(run_capture "$TMPDIR/sync-commit-continue.out" bash -c \
@@ -519,8 +540,11 @@ git checkout "${@: -1}" >/dev/null
 EOF
 cat > "$WORK/briteRepo/helpers/pulldown_workflow.sh" <<'EOF'
 #!/usr/bin/env bash
-git fetch origin main >/dev/null
-git merge --no-edit origin/main >/dev/null
+bt_pulldown_init() { :; }
+bt_pulldown_run() {
+  git fetch origin main >/dev/null
+  git merge --no-edit origin/main >/dev/null
+}
 EOF
 chmod +x "$WORK/briteRepo/bin/chbranch" \
   "$WORK/briteRepo/helpers/pulldown_workflow.sh"

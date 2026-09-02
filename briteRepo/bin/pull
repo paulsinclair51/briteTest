@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# pull - Pull latest changes from remote to local branch.
+# pull - Pull changes from remote to local branch.
 #
 # See usage below for details, or run: pull -h
 #
@@ -14,15 +14,17 @@ Usage:
   pull [OPTIONS]
   pull {-h | --help}
 
-If the current local branch is behind its remote branch, pull the latest
+If the current local branch is behind its remote branch, pull the
 changes from the remote branch into the local branch when it is safe to
 do so, so that the local branch is synchronized with its remote branch.
 
 If the local and remote branches contain different changes, pull combines them
-when it can do so safely. If conflicts remain, resolve the listed files and
-rerun pull to continue.
+when it can do so safely. If conflicts remain, resolve the listed files and,
+when ready, rerun pull to continue.
 
 Prerequisites:
+  - If the -o options is not specifed, the user must be a contributor,
+    reviewer, or approver.
   - If the -o option is specified, the user must be the repository owner.
   - The current branch must be a local branch.
   - The current branch must be a targeted or contributor branch if the -o
@@ -41,7 +43,7 @@ Prerequisites:
 Options:
   -d          Generate a dry-run report for the pull workflow without
               running the pull workflow.
-  -e          Generate an error report for the pull operation without
+  -e          Generate an error report for the pull workflow without
               running the pull workflow. This option is intended for
               testing and debugging the error report and is not typically
               used in normal operation. This option is mutually exclusive

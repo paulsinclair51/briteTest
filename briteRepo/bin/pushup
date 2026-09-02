@@ -52,12 +52,13 @@ Crash and interruption recovery:
 Options:
   -c TOKEN      Commit comment for the parent push-up commit.
   -- TOKEN...   Commit comment built from one or more tokens.
-  -d            Dry-run. Validate and preview the parent preparation without
-                creating commits, updating remote branches, or saving pushup
-                state.
-  -e            Emit an error report for the merge-up workflow. This option is
-                intended for testing and debugging purposes and is not typically
-                used in normal operation. Mutually exclusive with -d.
+  -d            Generate a dry-run report for the pushup workflow without
+                running the pushup workflow.
+  -e            Generate an error report for the pushup workflow without
+                running the pushup workflow. This option is intended for
+                testing and debugging the error report and is not typically
+                used in normal operation. This option is mutually exclusive
+                with the -d option.
   -h, --help    Output this help and exit.
   -o            Repository-owner override for an eligible push-up workflow.
   -t SEC        Remote timeout in seconds (default: 10).
@@ -676,25 +677,37 @@ error_run_parent() {
   bash "$SCRIPT_DIR/../helpers/pushup_parent.sh" "${args[@]}"
 }
 
+# Run the shared push library in a subshell so its function definitions do not
+# replace this command's own helpers.
+run_push_library() {
+  local entry_mode="$1"
+  local timeout_seconds="$2"
+  local verbose=""
+
+  verbose="$(state_get verbose)"
+  run_delegated bash -c '
+      set -euo pipefail
+      source "$1/helpers/push_command.sh"
+      bt_push_init
+      PUSH_ENTRY_MODE="$2"
+      PUSH_TIMEOUT_SECONDS="$3"
+      [[ "$4" != true ]] || PUSH_WORKFLOW_ARGS+=(-v)
+      ORIGINAL_ARGS=()
+      bt_push_run
+    ' bt-push "$TOOL_DIR" "$entry_mode" "$timeout_seconds" "$verbose"
+}
+
 run_push() {
-  local timeout_seconds="$1"
-  local -a args=(--pushup-publish -t "$timeout_seconds")
-  [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  run_delegated bash "$TOOL_DIR/helpers/push_command.sh" "${args[@]}"
+  run_push_library --pushup-publish "$1"
 }
 
 run_push_source() {
-  local timeout_seconds="$1"
-  local -a args=(--pushup-source -t "$timeout_seconds")
-  [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  run_delegated bash "$TOOL_DIR/helpers/push_command.sh" "${args[@]}"
+  run_push_library --pushup-source "$1"
 }
 
 run_push_finalization_retry() {
-  local -a args=(--pushup-publish -t "$(extended_remote_timeout)")
-  [[ "$(state_get verbose)" == true ]] && args+=(-v)
   BT_PUSHUP_FINALIZATION_RETRY=true \
-    run_delegated bash "$TOOL_DIR/helpers/push_command.sh" "${args[@]}"
+    run_push_library --pushup-publish "$(extended_remote_timeout)"
 }
 
 publish_parent() {
@@ -768,7 +781,6 @@ select_source() {
 
 synchronize_source() {
   local source_branch
-  local -a args=(--pushup -t "$(extended_remote_timeout)")
 
   source_branch="$(state_get source)"
   if [[ "$(bt_get_current_branch || true)" != "$source_branch" ]] && \
@@ -778,9 +790,19 @@ synchronize_source() {
     exit "$EXIT_PARTIAL"
   fi
 
-  [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  if run_delegated bash "$TOOL_DIR/helpers/pulldown_workflow.sh" \
-    "${args[@]}"; then
+  # Run the shared merge-down library in a subshell so its function
+  # definitions do not replace this command's own helpers.
+  if run_delegated bash -c '
+      set -euo pipefail
+      source "$1/helpers/pulldown_workflow.sh"
+      bt_pulldown_init
+      PUSHUP_SYNC=true
+      REMOTE_TIMEOUT_SECONDS="$2"
+      VERBOSE="$3"
+      ORIGINAL_ARGS=()
+      bt_pulldown_run
+    ' bt-pulldown "$TOOL_DIR" "$(extended_remote_timeout)" \
+    "$(state_get verbose)"; then
     set_phase source-synchronized
     return 0
   fi

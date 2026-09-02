@@ -88,23 +88,25 @@ bt_ckstyle() {
   exit 0
 }
 EOF
-  cat > "$WORK/briteRepo/bin/lsbranch" <<'EOF'
+  cat > "$WORK/briteRepo/helpers/branch_status.sh" <<'EOF'
 #!/usr/bin/env bash
-report_dir="$2"
-report_prefix="$3"
-mkdir -p "$report_dir"
-report="$report_dir/$report_prefix-test.md"
-cat > "$report" <<'REPORT'
+bt_branch_status_init() {
+  :
+}
+bt_branch_status_run() {
+  mkdir -p "$branch_reports_dir"
+  report="$branch_reports_dir/$branch_report_prefix-test.md"
+  cat > "$report" <<'REPORT'
 # Branch Report
 
 | **Branch** | **Type** | **Status** |
 | --- | --- | --- |
 | dev/report-tests-v1.0.0 | local | clean |
 REPORT
-printf "See '%s'.\n" "${report#"$PWD"/}"
+  printf "See '%s'.\n" "${report#"$PWD"/}"
+}
 EOF
-  chmod +x "$WORK/briteRepo/bin/report" "$WORK/briteRepo/helpers/ckstyle.sh" \
-    "$WORK/briteRepo/bin/lsbranch"
+  chmod +x "$WORK/briteRepo/bin/report" "$WORK/briteRepo/helpers/ckstyle.sh"
 
   (
     cd "$WORK"
