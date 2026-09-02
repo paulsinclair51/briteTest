@@ -239,7 +239,7 @@ assert_contains "Pushed up 'feature' to 'main' (${local_only_parent_tip_short}) 
 if grep -Fq "and remotely" "$TMPDIR/local-only.out"; then
   fail "local-only pushup should not claim a remote update"
 fi
-assert_contains "Run report -p for local parent details." \
+assert_contains "Run report -pl for local parent details." \
   "$TMPDIR/local-only.out"
 if grep -Fq "remote parent details" "$TMPDIR/local-only.out"; then
   fail "local-only pushup should not suggest a remote parent report"
@@ -413,7 +413,7 @@ status="$(run_capture "$TMPDIR/continue.out" bash -c \
 published_parent_tip_short="$(git -C "$WORK" rev-parse --short=7 main)"
 assert_contains "Pushed up 'feature' to 'main' (${published_parent_tip_short}) locally and remotely." \
   "$TMPDIR/continue.out"
-assert_contains "Run report -p for local parent details; run report -p -r for remote parent details." \
+assert_contains "Run report -pl for local parent details; run report -pr for remote parent details." \
   "$TMPDIR/continue.out"
 if grep -Eq 'Local merge complete|^Pushed \(' \
   "$TMPDIR/continue.out"; then

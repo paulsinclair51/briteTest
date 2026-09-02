@@ -141,6 +141,18 @@ transient_path="$(bt_report_transient_path "$DELETE_REPO/reports" "local" "20000
 [[ "$(basename "$transient_path")" =~ ^local-[0-9]{8}-[0-9]{6}[+-][0-9]{4}\.md$ ]] || \
   fail "unexpected transient report path: $transient_path"
 
+staged_path=""
+printf 'prior report\n' > "$DELETE_REPO/reports/atomic.md"
+bt_report_create_staging_file "$DELETE_REPO/reports/atomic.md" staged_path || \
+  fail "expected report staging allocation to succeed"
+printf 'complete report\n' > "$staged_path"
+assert_contains "prior report" "$DELETE_REPO/reports/atomic.md"
+bt_report_publish_staged_file "$staged_path" "$DELETE_REPO/reports/atomic.md" || \
+  fail "expected staged report publication to succeed"
+[[ ! -e "$staged_path" ]] || fail "staged report should be moved into place"
+assert_contains "complete report" "$DELETE_REPO/reports/atomic.md"
+bt_report_discard_staged_file "$DELETE_REPO/reports/missing-staging-file"
+
 lock_fd=""
 bt_report_acquire_lock "$DELETE_REPO" "test" 2 lock_fd || \
   fail "expected first report lock acquisition to succeed"
@@ -154,7 +166,7 @@ lock_rc=$?
 set -e
 [[ "$lock_rc" -eq 1 ]] || fail "expected competing report lock to time out"
 bt_report_release_lock "$lock_fd"
-pass "shared report naming and locking"
+pass "shared report naming, locking, and atomic publication"
 
 # 5) Structured workflow events should validate fields and normalize values.
 (

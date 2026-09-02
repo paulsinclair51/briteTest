@@ -300,12 +300,11 @@ report is written directly in `reports/` as `repo-<datetime>.md`,
 `style-<datetime>.md`. Only one report with each filename prefix is kept.
 Local, remote, and parent reports are retained independently.
 
-Use `report branch -r [-t SEC]` to refresh and report the remote corresponding
-to the current local branch or remote copy without changing the checked-out
-branch or read-only copy. Use `report -p` for the local parent or
-`report -p -r` for the remote parent, also without changing branches. For a
-remote copy, `-r` reports the current remote state rather than the previously
-downloaded state. The timeout defaults to 10 seconds.
+Use `report -l`, `report -r`, `report -pl`, or `report -pr` to select the
+current local, current remote, parent local, or parent remote branch report.
+Without a selection option, `report` generates all four. Remote selections
+refresh the corresponding remote branch without changing the checked-out branch
+or read-only copy. The timeout defaults to 10 seconds.
 </details>
 
 <details>

@@ -8,6 +8,13 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Internal helper: only briteRepo commands and helpers may invoke this script.
+# Callers announce themselves by exporting BRITEREPO_INTERNAL=1.
+if [[ "${BRITEREPO_INTERNAL:-}" != "1" ]]; then
+  echo "genpdf.sh must be called by a briteRepo command." >&2
+  exit 1
+fi
+
 usage() {
   cat <<'EOF'
 Internal helper interface used by gendocs:

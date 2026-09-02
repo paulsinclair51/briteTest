@@ -358,8 +358,10 @@ directories match the local source when `pushup` completes. A source remote
 copy requires a parent remote copy. Missing optional remote copies are not
 created, and protected branches must have remote copies.
 
-Run `report -p` for local parent details. If the parent has a remote copy, also
-run `report -p -r` for remote parent details.
+Run `report -pl` for local parent details. If the parent has a remote copy, also
+run `report -pr` for remote parent details. Run `report` with no branch scope
+option to generate current local, current remote, parent local, and parent
+remote reports together.
 
 If the source is behind its parent, run `pulldown` first. For interruption
 recovery, see [Interrupted Pushup](#102-interrupted-pushup).

@@ -379,10 +379,14 @@ filtered_status_output() {
       BEGIN {
         report_re = "^reports/repository(-d)?-[0-9]{8}-[0-9]{6}"
         report_re = report_re "[+-][0-9]{4}\\.md$"
+        # Staging files created by bt_report_create_staging_file while this
+        # run is still writing its own report.
+        staging_re = "^reports/\\.repository(-d)?-[0-9]{8}-[0-9]{6}"
+        staging_re = staging_re "[+-][0-9]{4}\\.md\\.tmp\\.[A-Za-z0-9]{6}$"
       }
       {
         path = substr($0, 4)
-        if (path ~ report_re) {
+        if (path ~ report_re || path ~ staging_re) {
           next
         }
         print
@@ -1352,7 +1356,7 @@ cleanup_old_reports() {
   [[ -f "$OUTPUT_FILE" ]] || return 0
   [[ -d "$REPOSITORY_REPORTS_DIR" ]] || return 0
 
-  current_basename="$(basename "$OUTPUT_FILE")"
+  current_basename="$(basename "${REPORT_TARGET_FILE:-$OUTPUT_FILE}")"
 
   # Collect candidate report files with robust null-delimited traversal.
   while IFS= read -r -d '' old_report; do
@@ -1461,12 +1465,19 @@ if ! mkdir -p "$REPOSITORY_REPORTS_DIR"; then
 fi
 
 if [[ "$DRY_RUN" == true ]]; then
-  OUTPUT_FILE="$(bt_report_retained_path \
+  REPORT_TARGET_FILE="$(bt_report_retained_path \
     "$REPOSITORY_REPORTS_DIR" "repository-d" "$RUN_TS_FILE")"
 else
-  OUTPUT_FILE="$(bt_report_retained_path \
+  REPORT_TARGET_FILE="$(bt_report_retained_path \
     "$REPOSITORY_REPORTS_DIR" "repository" "$RUN_TS_FILE")"
 fi
+
+staged_report_file=""
+if ! bt_report_create_staging_file "$REPORT_TARGET_FILE" staged_report_file; then
+  bt_error_exit "$EXIT_MISSING_DEPENDENCIES" \
+    "Unable to stage repository report: $REPORT_TARGET_FILE"
+fi
+OUTPUT_FILE="$staged_report_file"
 
 add_target_repo "This Repository" "$REPO_ROOT"
 
@@ -1478,8 +1489,15 @@ for target_path in "${TARGET_PATHS[@]}"; do
   index=$((index + 1))
 done
 
-finalize_report
 cleanup_old_reports
+finalize_report
+
+if ! bt_report_publish_staged_file "$staged_report_file" "$REPORT_TARGET_FILE"; then
+  bt_report_discard_staged_file "$staged_report_file"
+  bt_error_exit "$EXIT_MISSING_DEPENDENCIES" \
+    "Unable to publish repository report: $REPORT_TARGET_FILE"
+fi
+OUTPUT_FILE="$REPORT_TARGET_FILE"
 
 ISSUES_REMAINING=$((ISSUES_FOUND - REMEDIATIONS_VERIFIED))
 if [[ "$ISSUES_REMAINING" -lt 0 ]]; then

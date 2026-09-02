@@ -299,6 +299,7 @@ generate_pull_report() {
   local mode="$1"
   local status_line="$2"
   local command_text
+  local staged_report_file=""
 
   command_text="$(format_command_line)"
 
@@ -309,14 +310,17 @@ generate_pull_report() {
   else
     initialize_report_file "pull"
   fi
-  cleanup_old_dry_run_reports
+  if ! bt_report_create_staging_file "$REPORT_FILE" staged_report_file; then
+    bt_error_exit "$EXIT_REPORT_ERROR" "Failed to stage pull report: $REPORT_FILE"
+  fi
 
-  if ! bt_report_write_header "$REPORT_FILE" "Pull Report" \
+  if ! bt_report_write_header "$staged_report_file" "Pull Report" \
     "$RUN_TS_DISPLAY" "$command_text"; then
+    bt_report_discard_staged_file "$staged_report_file"
     bt_error_exit "$EXIT_REPORT_ERROR" \
       "Failed to write pull report: $REPORT_FILE"
   fi
-  if ! cat >> "$REPORT_FILE" <<EOF
+  if ! cat >> "$staged_report_file" <<EOF
 **Branch:** \`${CURRENT_BRANCH}\`
 
 **Mode:** ${mode}
@@ -328,9 +332,15 @@ total=${EVALUATED_COUNT}
 
 EOF
   then
+    bt_report_discard_staged_file "$staged_report_file"
     bt_error_exit "$EXIT_REPORT_ERROR" \
       "Failed to write pull report: $REPORT_FILE"
   fi
+  if ! bt_report_publish_staged_file "$staged_report_file" "$REPORT_FILE"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    bt_error_exit "$EXIT_REPORT_ERROR" "Failed to publish pull report: $REPORT_FILE"
+  fi
+  cleanup_old_dry_run_reports
 
   disable_reports_write_access
   release_report_lock
@@ -341,19 +351,23 @@ generate_error_report() {
   local code="$2"
   local guidance="${3:-Address the error and rerun pull.}"
   local command_text
+  local staged_report_file=""
 
   command_text="$(format_command_line)"
   acquire_report_lock
   enable_reports_write_access
   initialize_report_file "pull-e"
-  cleanup_old_dry_run_reports
+  if ! bt_report_create_staging_file "$REPORT_FILE" staged_report_file; then
+    return 1
+  fi
 
-  if ! bt_report_write_header "$REPORT_FILE" "Pull Error Report" \
+  if ! bt_report_write_header "$staged_report_file" "Pull Error Report" \
     "$RUN_TS_DISPLAY" "$command_text"; then
+    bt_report_discard_staged_file "$staged_report_file"
     bt_error_exit "$EXIT_REPORT_ERROR" \
       "Failed to write pull error report: $REPORT_FILE"
   fi
-  if ! cat >> "$REPORT_FILE" <<EOF
+  if ! cat >> "$staged_report_file" <<EOF
 **Branch:** \`${CURRENT_BRANCH:-unknown}\`
 
 **Exit Code:** ${code}
@@ -366,9 +380,15 @@ generate_error_report() {
 
 EOF
   then
+    bt_report_discard_staged_file "$staged_report_file"
     bt_error_exit "$EXIT_REPORT_ERROR" \
       "Failed to write pull error report: $REPORT_FILE"
   fi
+  if ! bt_report_publish_staged_file "$staged_report_file" "$REPORT_FILE"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    return 1
+  fi
+  cleanup_old_dry_run_reports
 
   disable_reports_write_access
   release_report_lock

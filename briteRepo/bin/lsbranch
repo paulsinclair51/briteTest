@@ -16,16 +16,18 @@ Usage:
   lsbranch {-a | PATTERN} [-i] [-l] [-r] [-t SEC] [-v] [-x "PATTERN"]
   lsbranch {-h | --help}
 
-For first usage, list the local and remote status of the current branch.
+For the first usage, list the local and remote status of the current
+branch and its parent branch.
 
-Use BRANCH to list status of the branch with the name BRANCH and
-its parent branch.
+Use BRANCH to list the local and remote status of the branch with the
+name BRANCH and its parent branch.
 
 Use -a or PATTERN to list the status of branches matching "*"
 or PATTERN, respectively.
 
 Arguments:
-  BRANCH      Check branch with name BRANCH (not quoted).
+  BRANCH      Status for branch with name BRANCH (not quoted) and its
+              parent branch.
   PATTERN     Filter branches by quoted (") glob pattern on
               branch name. Supports *, ?, [abc], etc.
               Examples: "*bug*", "fix*",  "*issue*".
@@ -122,6 +124,10 @@ Status tags:
                                 N file or directory changes.
   [local differs by N]          For a remote branch, remote and local differ
                                 by N file or directory changes.
+  [no parent]                   Branch main does not have a parent branch.
+  [no parent!]                  A branch (other than main) does not have a parent.
+                                A branch (other than main) should have a parent
+                                if normal workflow is followed.
   [parent NAME]                 NAME is the branch's parent and content matches.
   [parent unavailable NAME]     NAME is the branch's parent, but that branch is
                                 unavailable locally and among downloaded remote

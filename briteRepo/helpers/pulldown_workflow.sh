@@ -2,7 +2,7 @@
 
 # pulldown_workflow.sh - Internal merge-down workflow implementation.
 #
-# See usage below for details, or run: pulldown -h
+# Internal implementation for the public pulldown command.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -103,12 +103,14 @@ EOF
 }
 
 # High-Level Flow:
+# - Accept explicit public, pushup, or test entry modes from briteRepo commands.
 # - Validate actor, current/parent branch policy, worktree, and remote state.
 # - Reject runs with no parent commits; preview changes and report them for -d.
 # - Merge with --no-ff, auto-resolving only known history-log conflicts.
 # - Store command, branch, commit-count, and file-count metadata in the merge
 #   commit so report can reconstruct the completed action.
-# - Write local reports only for dry-run/error paths and clean them on success.
+# - Write local dry-run/error reports under the workflow lock; clean stale
+#   transient reports only after the current report is allocated.
 
 # shellcheck disable=SC1091,SC2317  # Helper source paths and trap-managed
 # cleanup paths.
@@ -242,6 +244,7 @@ generate_dry_run_report() {
   local merge_message="$2"
   local commits_merged="$3"
   local command_text
+  local staged_report_file=""
 
   command_text="$(format_command_line)"
   acquire_report_lock
@@ -249,11 +252,14 @@ generate_dry_run_report() {
 
   REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "pulldown-d" \
     "$RUN_TS_FILE")"
-  cleanup_old_transient_reports
+  if ! bt_report_create_staging_file "$REPORT_FILE" staged_report_file; then
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to stage dry-run report"
+  fi
 
-  bt_report_write_header "$REPORT_FILE" "Merge Report" \
-    "$RUN_TS_DISPLAY" "$command_text"
-  cat >> "$REPORT_FILE" <<EOF
+  if ! {
+    bt_report_write_header "$staged_report_file" "Merge Report" \
+      "$RUN_TS_DISPLAY" "$command_text"
+    cat >> "$staged_report_file" <<EOF
 **Branch:** \`${CURRENT_BRANCH}\`
 
 **Merge Commit Hash:** n/a (dry-run)
@@ -269,6 +275,15 @@ generate_dry_run_report() {
 | ${CURRENT_BRANCH} | ${parent_branch} | ${commits_merged} | n/a |
 
 EOF
+  }; then
+    bt_report_discard_staged_file "$staged_report_file"
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to write dry-run report"
+  fi
+  if ! bt_report_publish_staged_file "$staged_report_file" "$REPORT_FILE"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    bt_error_exit "$EXIT_CONFIG_ERROR" "Failed to publish dry-run report"
+  fi
+  cleanup_old_transient_reports
 
   disable_reports_write_access
   release_report_lock
@@ -278,6 +293,7 @@ generate_error_report() {
   local message="$1"
   local code="$2"
   local command_text
+  local staged_report_file=""
 
   command_text="$(format_command_line)"
   acquire_report_lock
@@ -285,11 +301,14 @@ generate_error_report() {
 
   REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "pulldown-e" \
     "$RUN_TS_FILE")"
-  cleanup_old_transient_reports
+  if ! bt_report_create_staging_file "$REPORT_FILE" staged_report_file; then
+    return 1
+  fi
 
-  bt_report_write_header "$REPORT_FILE" "Merge Error Report" \
-    "$RUN_TS_DISPLAY" "$command_text"
-  cat >> "$REPORT_FILE" <<EOF
+  if ! {
+    bt_report_write_header "$staged_report_file" "Merge Error Report" \
+      "$RUN_TS_DISPLAY" "$command_text"
+    cat >> "$staged_report_file" <<EOF
 **Branch:** \`${CURRENT_BRANCH:-unknown}\`
 
 **Parent Branch:** ${PARENT_BRANCH:-unknown}
@@ -303,6 +322,15 @@ generate_error_report() {
 - Run without -e option.
 
 EOF
+  }; then
+    bt_report_discard_staged_file "$staged_report_file"
+    return 1
+  fi
+  if ! bt_report_publish_staged_file "$staged_report_file" "$REPORT_FILE"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    return 1
+  fi
+  cleanup_old_transient_reports
 
   disable_reports_write_access
   release_report_lock

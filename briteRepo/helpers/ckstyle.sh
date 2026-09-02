@@ -6,6 +6,13 @@
 # SPDX-License-Identifier: MIT
 # For license details, see '<repo>/LICENSE'.
 
+# Internal library: must be sourced by a briteRepo command or helper. Direct
+# execution by a user is not supported.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  echo "ckstyle.sh is a briteRepo internal library and must be sourced." >&2
+  exit 1
+fi
+
 # High-Level Flow:
 # 1. Parse validated check flags and file arguments from report.
 # 2. Enforce prerequisites: local branch, targeted/contributor branch,

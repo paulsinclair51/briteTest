@@ -510,8 +510,14 @@ if ! mkdir -p "$RECOVERY_REPORTS_DIR"; then
     "Unable to create reports directory: $RECOVERY_REPORTS_DIR"
 fi
 
-REPORT_FILE="$(bt_report_retained_path \
+REPORT_TARGET_FILE="$(bt_report_retained_path \
   "$RECOVERY_REPORTS_DIR" "recovery" "$RUN_TS_FILE")"
+staged_report_file=""
+if ! bt_report_create_staging_file "$REPORT_TARGET_FILE" staged_report_file; then
+  bt_error_exit "$EXIT_MISSING_DEPENDENCIES" \
+    "Unable to stage recovery report: $REPORT_TARGET_FILE"
+fi
+REPORT_FILE="$staged_report_file"
 
 init_report
 
@@ -522,6 +528,13 @@ check_origin_configuration || true
 run_recovery_if_requested || true
 
 finalize_report
+
+if ! bt_report_publish_staged_file "$staged_report_file" "$REPORT_TARGET_FILE"; then
+  bt_report_discard_staged_file "$staged_report_file"
+  bt_error_exit "$EXIT_MISSING_DEPENDENCIES" \
+    "Unable to publish recovery report: $REPORT_TARGET_FILE"
+fi
+REPORT_FILE="$REPORT_TARGET_FILE"
 
 ISSUES_REMAINING=$((ISSUES_FOUND - ISSUES_FIXED))
 if [[ "$ISSUES_REMAINING" -lt 0 ]]; then

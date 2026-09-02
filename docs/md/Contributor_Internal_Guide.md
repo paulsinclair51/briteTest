@@ -216,6 +216,13 @@ Prerequisites for `override`:
 - Do not add undocumented options to a user-facing command for command-to-command
   integration. Internal helper entry modes must validate the workflow state that
   authorizes their behavior.
+- Helpers in `briteRepo/helpers/` are never directly executable by a user. They
+  carry no executable bit and must be reachable only from `briteRepo/bin/`
+  commands or from other helpers. Sourced libraries abort when executed instead
+  of sourced; delegated command implementations abort unless the caller supplies
+  an entry-mode argument (`pulldown_workflow.sh`, `push_command.sh`,
+  `pushup_parent.sh`) or sets `BRITEREPO_INTERNAL=1` (`ckrole.sh`, `gendocx.sh`,
+  `genpdf.sh`).
 - Server-side protections remain the final authority over branch deletion and
   history rewriting.
 - Project-command safeguards run locally. A dedicated GitHub App or bot would be

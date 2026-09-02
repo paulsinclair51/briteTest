@@ -2,7 +2,7 @@
 
 # push_command.sh - Internal push command implementation.
 #
-# See usage below for details, or run: push -h
+# Internal implementation for the public push command.
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
@@ -107,11 +107,13 @@ EOF
 }
 
 # High-Level Flow:
+# - Accept explicit public or pushup publication modes from briteRepo commands.
 # - Validate direct-use authorization, branch policy, worktree, and origin.
 # - Delegate range calculation, dry-run/error reports, and publication to the
 #   shared push workflow.
 # - On success, record one event on the pushed tip and remove transient reports.
-# - Direct users to report -r for remote activity details.
+# - Direct users to report -r for remote activity details; pushup modes retain
+#   the initiating command in workflow history.
 
 # shellcheck disable=SC1091  # Helper source paths are resolved at runtime.
 

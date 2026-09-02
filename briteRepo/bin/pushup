@@ -493,7 +493,7 @@ write_partial_report() {
   local reason="$1"
   local action="$2"
   local source_branch parent_branch source_version parent_version
-  local phase report_file timestamp
+  local phase report_file staged_report_file timestamp
   source_branch="$(state_get source)"
   parent_branch="$(state_get parent)"
   source_version="$(state_get source-tip)"
@@ -505,7 +505,11 @@ write_partial_report() {
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_INTERNAL"
   report_file="$(bt_report_retained_path \
     "$REPORTS_DIR" "pushup-e" "$timestamp")"
-  cat > "$report_file" <<EOF
+  if ! bt_report_create_staging_file "$report_file" staged_report_file; then
+    rm -f "$report_file"
+    bt_error_exit "$EXIT_INTERNAL" "Failed to stage pushup recovery report"
+  fi
+  if ! cat > "$staged_report_file" <<EOF
 # Pushup Error Report $(bt_datetime_display_now)
 
 **Source branch:** \`$source_branch\`  
@@ -539,6 +543,16 @@ $action
 
 After completing that action, rerun \`pushup\`.
 EOF
+  then
+    bt_report_discard_staged_file "$staged_report_file"
+    rm -f "$report_file"
+    bt_error_exit "$EXIT_INTERNAL" "Failed to write pushup recovery report"
+  fi
+  if ! bt_report_publish_staged_file "$staged_report_file" "$report_file"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    rm -f "$report_file"
+    bt_error_exit "$EXIT_INTERNAL" "Failed to publish pushup recovery report"
+  fi
   chmod a-w "$report_file" 2>/dev/null || true
   printf '%s\n' "Push-up in progress: $reason" >&2
   printf '%s\n' \
@@ -630,7 +644,7 @@ run_delegated() {
 }
 
 prepare_parent() {
-  local -a args=(-t "$(state_get timeout)")
+  local -a args=(--pushup -t "$(state_get timeout)")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
   [[ "$(state_get owner-override)" == true ]] && args+=(-o)
   case "$(state_get comment-mode)" in
@@ -641,7 +655,7 @@ prepare_parent() {
 }
 
 dry_run_parent() {
-  local -a args=(-d -t "$TIMEOUT_SECONDS")
+  local -a args=(--pushup -d -t "$TIMEOUT_SECONDS")
   [[ "$VERBOSE" == true ]] && args+=(-v)
   [[ "$OWNER_OVERRIDE" == true ]] && args+=(-o)
   case "$COMMENT_MODE" in
@@ -652,7 +666,7 @@ dry_run_parent() {
 }
 
 error_run_parent() {
-  local -a args=(-e -t "$TIMEOUT_SECONDS")
+  local -a args=(--pushup -e -t "$TIMEOUT_SECONDS")
   [[ "$VERBOSE" == true ]] && args+=(-v)
   [[ "$OWNER_OVERRIDE" == true ]] && args+=(-o)
   case "$COMMENT_MODE" in
@@ -979,13 +993,13 @@ if [[ "$(state_get phase)" == source-published ]]; then
   remove_tool_snapshot
   if [[ "$completed_publication_mode" == local ]]; then
     echo "Pushed up '$source_branch' to '$parent_branch' (${completed_parent_tip_short}) locally."
-    echo "Run report -p for local parent details."
+    echo "Run report -pl for local parent details."
   else
     echo "Pushed up '$source_branch' to '$parent_branch' (${completed_parent_tip_short}) locally and remotely."
     if [[ "$completed_parent_has_remote" == true ]]; then
-      echo "Run report -p for local parent details; run report -p -r for remote parent details."
+      echo "Run report -pl for local parent details; run report -pr for remote parent details."
     else
-      echo "Run report -p for local parent details."
+      echo "Run report -pl for local parent details."
     fi
   fi
   exit 0

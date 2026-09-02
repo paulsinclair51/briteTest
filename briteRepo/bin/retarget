@@ -147,6 +147,7 @@ UNDO_METADATA_RECORDED=true
 generate_error_report() {
   local message="$1"
   local command_text=""
+  local staged_report_file=""
 
   if ! bt_report_acquire_lock "$REPO_ROOT" "retarget" 10 REPORT_LOCK_FD; then
     bt_error_exit "$EXIT_REPORT_FAILED" \
@@ -155,13 +156,16 @@ generate_error_report() {
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_FAILED"
   REPORT_FILE="$(bt_report_transient_path \
     "$REPORTS_DIR" "retarget-e" "$(bt_datetime_filename_now)")"
-  bt_report_cleanup_transient_reports \
-    "$REPORTS_DIR" "${TARGET_BRANCH:-unknown}" "$REPORT_FILE" \
-    "retarget-e-*.md"
+  if ! bt_report_create_staging_file "$REPORT_FILE" staged_report_file; then
+    bt_report_release_lock "$REPORT_LOCK_FD"
+    REPORT_LOCK_FD=""
+    bt_error_exit "$EXIT_REPORT_FAILED" "Failed to stage retarget report"
+  fi
   command_text="$(bt_format_command_line "retarget" "${ORIGINAL_ARGS[@]}")"
-  bt_report_write_header "$REPORT_FILE" "Retarget Error Report" \
-    "$(bt_datetime_display_now)" "$command_text"
-  cat >> "$REPORT_FILE" <<EOF
+  if ! {
+    bt_report_write_header "$staged_report_file" "Retarget Error Report" \
+      "$(bt_datetime_display_now)" "$command_text"
+    cat >> "$staged_report_file" <<EOF
 **Branch:** \`${TARGET_BRANCH:-unknown}\`
 
 **New Parent:** \`${NEW_PARENT:-unknown}\`
@@ -175,6 +179,21 @@ generate_error_report() {
 - Run without -e option.
 
 EOF
+  }; then
+    bt_report_discard_staged_file "$staged_report_file"
+    bt_report_release_lock "$REPORT_LOCK_FD"
+    REPORT_LOCK_FD=""
+    bt_error_exit "$EXIT_REPORT_FAILED" "Failed to write retarget report"
+  fi
+  if ! bt_report_publish_staged_file "$staged_report_file" "$REPORT_FILE"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    bt_report_release_lock "$REPORT_LOCK_FD"
+    REPORT_LOCK_FD=""
+    bt_error_exit "$EXIT_REPORT_FAILED" "Failed to publish retarget report"
+  fi
+  bt_report_cleanup_transient_reports \
+    "$REPORTS_DIR" "${TARGET_BRANCH:-unknown}" "$REPORT_FILE" \
+    "retarget-e-*.md"
   bt_report_release_lock "$REPORT_LOCK_FD"
   REPORT_LOCK_FD=""
 }

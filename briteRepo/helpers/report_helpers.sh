@@ -6,6 +6,13 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Internal library: must be sourced by a briteRepo command or helper. Direct
+# execution by a user is not supported.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  echo "report_helpers.sh is a briteRepo internal library and must be sourced." >&2
+  exit 1
+fi
+
 bt_run_lsbranch_mode() {
   local mode="$1"
   local lsbranch_path="$2"
@@ -358,6 +365,37 @@ bt_report_write_header() {
 **Command:** \`${command_text}\`
 
 EOF
+}
+
+# Create a same-directory staging file so publishing with mv is atomic on the
+# reports filesystem. Callers keep the current report until staging succeeds.
+bt_report_create_staging_file() {
+  local report_path="$1"
+  local staging_var="$2"
+  local report_dir=""
+  local report_name=""
+  local staging_path=""
+
+  report_dir="$(dirname "$report_path")"
+  report_name="$(basename "$report_path")"
+  staging_path="$(mktemp "$report_dir/.${report_name}.tmp.XXXXXX")" || \
+    return 1
+  printf -v "$staging_var" '%s' "$staging_path"
+}
+
+bt_report_publish_staged_file() {
+  local staging_path="$1"
+  local report_path="$2"
+
+  [[ -f "$staging_path" ]] || return 1
+  mv -f "$staging_path" "$report_path"
+}
+
+# Best-effort cleanup for a staging file after a caller reports a write failure.
+bt_report_discard_staged_file() {
+  local staging_path="$1"
+
+  [[ -z "$staging_path" ]] || rm -f "$staging_path" >/dev/null 2>&1 || true
 }
 
 # Append the shared "Directories" section. Rows are "<directory>|<action>"

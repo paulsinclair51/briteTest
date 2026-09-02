@@ -8,6 +8,29 @@ For license details, see `<repo>/LICENSE`.
 
 See `<repo>/README.md` for an introduction to the repository.
 
+## Internal use only
+
+Helpers are internal implementation modules. They are not user-facing commands
+and are not directly executable: none of them carry the executable bit, and each
+one refuses to run outside a briteRepo command.
+
+Two enforcement patterns are used:
+
+- **Sourced libraries** (`ckstyle.sh`, `common.sh`, `common_utils.sh`,
+  `git_helpers.sh`, `github_helpers.sh`, `health_report.sh`, `history_log.sh`,
+  `push_workflow.sh`, `report_helpers.sh`, `report_sync.sh`,
+  `validation_helpers.sh`) exit with an error if executed instead of sourced.
+- **Delegated command implementations** refuse to start unless the calling
+  command identifies itself: `pulldown_workflow.sh` (`--public`, `--pushup`,
+  `--error-run`), `push_command.sh` (`--public`, `--pushup-publish`,
+  `--pushup-source`) and `pushup_parent.sh` (`--pushup`) use an entry-mode
+  argument; `ckrole.sh`, `gendocx.sh`, and `genpdf.sh` require the caller to set
+  `BRITEREPO_INTERNAL=1`.
+
+`install_git_hooks.sh` is the one documented exception: it is a setup utility
+invoked by `briteRepo/bin/setupclone` and by the `post-checkout` hook, and it
+may be run directly during clone repair.
+
 ## Files
 
 ### Core Helpers

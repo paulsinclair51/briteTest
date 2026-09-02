@@ -213,9 +213,14 @@ Status: Fix commits copied to target branch
 Method: Cherry-pick created by copyfix" \
       HEAD >/dev/null 2>&1
 
-    git commit --allow-empty \
+    git checkout v1.0.0 >/dev/null 2>&1
+    echo "parent update" > parent-update.txt
+    git add parent-update.txt
+    git commit -m "parent update" >/dev/null 2>&1
+    git checkout dev/report-tests-v1.0.0 >/dev/null 2>&1
+    git merge --no-ff v1.0.0 \
       -m "pulldown activity" \
-      -m $'## Workflow Metadata\n\nCommand-Line: pushup -o\nCommand-Source: user\nWorkflow-Type: pulldown\nAuthority: owner\nPR: 42\nCI-CD: ci build SUCCESS\nSource-Branch: v1.0.0\nTarget-Branch: dev/report-tests-v1.0.0\nParent-Commits-Integrated: 2\nFiles-Modified: 1\nFiles-Added: 1\nFiles-Deleted: 0\nStatus: Parent branch merged into current branch\nMethod: Merge commit (--no-ff) created by pulldown' \
+      -m $'## Workflow Metadata\n\nCommand-Line: pushup -o\nCommand-Source: user\nWorkflow-Type: pulldown\nAuthority: owner\nPR: 42\nCI-CD: ci build SUCCESS\nSource-Branch: v1.0.0\nTarget-Branch: dev/report-tests-v1.0.0\nParent-Commits-Integrated: 1\nFiles-Modified: 1\nFiles-Added: 1\nFiles-Deleted: 0\nStatus: Parent branch merged into current branch\nMethod: Merge commit (--no-ff) created by pulldown' \
       >/dev/null 2>&1
 
     git notes --ref=briteRepo-workflow append -m \

@@ -286,7 +286,6 @@ cleanup_success_transient_reports() {
 prepare_report_write() {
   acquire_report_lock
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_GIT_FAILED"
-  cleanup_old_transient_reports
 }
 
 finish_report_write() {
@@ -301,6 +300,7 @@ generate_copyfix_report() {
   local detail="${5:-}${6:-}"
   local command_text=""
   local commit_count=0
+  local staged_report_file=""
 
   detail="$(printf '%b' "$detail")"
   command_text="$(format_command_line)"
@@ -309,7 +309,11 @@ generate_copyfix_report() {
   prepare_report_write
   REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "$prefix" \
     "$RUN_TS_FILE")"
-  cat > "$REPORT_FILE" <<EOF
+  if ! bt_report_create_staging_file "$REPORT_FILE" staged_report_file; then
+    finish_report_write
+    return 1
+  fi
+  if ! cat > "$staged_report_file" <<EOF
 # Copy-Fix Report ${RUN_TS_DISPLAY}
 
 **Command:** \`${command_text}\`
@@ -328,6 +332,17 @@ generate_copyfix_report() {
 
 ${detail}
 EOF
+  then
+    bt_report_discard_staged_file "$staged_report_file"
+    finish_report_write
+    return 1
+  fi
+  if ! bt_report_publish_staged_file "$staged_report_file" "$REPORT_FILE"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    finish_report_write
+    return 1
+  fi
+  cleanup_old_transient_reports
   finish_report_write
 }
 
