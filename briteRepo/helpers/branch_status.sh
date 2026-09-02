@@ -1377,7 +1377,8 @@ if [[ "$FETCH_FAILED" == true ]] &&
       "refs from your last successful remote update.")"
 fi
 
-# No-argument invocation shows local and remote rows for the current branch.
+# No-argument invocation shows local and remote rows for the current branch
+# and its parent.
 if [[ "$NO_ARG_MODE" == true ]]; then
   if [[ -n "$BRANCHES_TO_CHECK" ]]; then
     while IFS= read -r branch; do
