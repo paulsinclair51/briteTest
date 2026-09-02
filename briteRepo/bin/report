@@ -99,8 +99,8 @@ Outputs:
       - 'repo-<datetime>.md' for a repository report.
       - 'branch-l-<datetime>.md' for a local branch report.
       - 'branch-r-<datetime>.md' for a remote branch report.
-      - 'branch-p-l-<datetime>.md' for a local parent branch report.
-      - 'branch-p-r-<datetime>.md' for a remote parent branch report.
+      - 'branch-pl-<datetime>.md' for a local parent branch report.
+      - 'branch-pr-<datetime>.md' for a remote parent branch report.
       - 'style-<datetime>.md' for a style report.
     The previous report of each generated type is deleted.
   - Writes 'See <reportpath>' to stdout for each report written.
@@ -1892,9 +1892,9 @@ elif [[ -z "$TARGET_REF" ]]; then
 fi
 if [[ "$PARENT_BRANCH_REPORT" == true ]]; then
   if [[ "$BRANCH_SCOPE_LABEL" == "remote" ]]; then
-    BRANCH_REPORT_PREFIX="branch-p-r"
+    BRANCH_REPORT_PREFIX="branch-pr"
   else
-    BRANCH_REPORT_PREFIX="branch-p-l"
+    BRANCH_REPORT_PREFIX="branch-pl"
   fi
 fi
 [[ -n "$TARGET_REF" ]] || usage_error "Could not resolve current branch/ref"

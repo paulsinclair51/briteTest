@@ -50,7 +50,7 @@ assert_matches() {
 report_path_from_output() {
   local output_file="$1"
 
-  sed -n "s/^See '\(reports\/branch-\(p-\)\{0,1\}\(l\|r\)-[0-9]\{8\}-[0-9]\{6\}[+-][0-9]\{4\}\.md\)'\.$/\1/p" \
+  sed -n "s/^See '\(reports\/branch-\(l\|r\|pl\|pr\)-[0-9]\{8\}-[0-9]\{6\}[+-][0-9]\{4\}\.md\)'\.$/\1/p" \
     "$output_file" | tail -n 1
 }
 

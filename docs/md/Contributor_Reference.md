@@ -299,7 +299,7 @@ report [OPTIONS] [TYPE]
 `TYPE` is `repo`, `branch`, or `style` and defaults to `branch`. The latest
 report is written directly in `reports/` as `repo-<datetime>.md`,
 `branch-l-<datetime>.md`, `branch-r-<datetime>.md`,
-`branch-p-l-<datetime>.md`, `branch-p-r-<datetime>.md`, or
+`branch-pl-<datetime>.md`, `branch-pr-<datetime>.md`, or
 `style-<datetime>.md`. Only one report with each filename prefix is kept.
 Local, remote, and parent reports are retained independently.
 

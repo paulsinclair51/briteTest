@@ -99,7 +99,7 @@ pass "local report"
 # 3a) Default branch report produces all four scopes.
 rc=$(run_capture "$TMPDIR/all-scopes.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/report -n 1")
 [[ "$rc" -eq 0 ]] || fail "default report should exit 0 (got $rc)"
-for prefix in branch-l branch-r branch-p-l branch-p-r; do
+for prefix in branch-l branch-r branch-pl branch-pr; do
   assert_matches "^See 'reports/${prefix}-" "$TMPDIR/all-scopes.out"
 done
 [[ "$(grep -c "^See 'reports/branch-" "$TMPDIR/all-scopes.out")" -eq 4 ]] || \
@@ -111,8 +111,8 @@ rc=$(run_capture "$TMPDIR/local-parent.out" bash -lc \
   "cd '$WORK' && bash ./briteRepo/bin/report -pl")
 [[ "$rc" -eq 0 ]] || fail "local parent report should exit 0 (got $rc)"
 local_parent_rel="$(report_path_from_output "$TMPDIR/local-parent.out")"
-[[ "$local_parent_rel" == reports/branch-p-l-*.md ]] || \
-  fail "local parent report should use the branch-p-l prefix"
+[[ "$local_parent_rel" == reports/branch-pl-*.md ]] || \
+  fail "local parent report should use the branch-pl prefix"
 assert_contains '**Branch:** `v1.0.0`' "$WORK/$local_parent_rel"
 assert_matches '^\*\*Status:\*\* .*\[local\]' "$WORK/$local_parent_rel"
 assert_contains '**Action:** Pushed up to parent.' "$WORK/$local_parent_rel"
@@ -126,8 +126,8 @@ rc=$(run_capture "$TMPDIR/remote-parent.out" bash -lc \
   "cd '$WORK' && bash ./briteRepo/bin/report -pr")
 [[ "$rc" -eq 0 ]] || fail "remote parent report should exit 0 (got $rc)"
 remote_parent_rel="$(report_path_from_output "$TMPDIR/remote-parent.out")"
-[[ "$remote_parent_rel" == reports/branch-p-r-*.md ]] || \
-  fail "remote parent report should use the branch-p-r prefix"
+[[ "$remote_parent_rel" == reports/branch-pr-*.md ]] || \
+  fail "remote parent report should use the branch-pr prefix"
 assert_contains '**Branch:** `v1.0.0`' "$WORK/$remote_parent_rel"
 assert_matches '^\*\*Status:\*\* .*\[remote\]' "$WORK/$remote_parent_rel"
 [[ "$(git -C "$WORK" branch --show-current)" == "dev/report-tests-v1.0.0" ]] || \
