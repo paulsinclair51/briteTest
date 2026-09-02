@@ -2,41 +2,173 @@
 
 # push - Push local branch commits to remote.
 #
-# Run push -h for usage.
+# See usage below for details, or run: push -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see '<repo>/LICENSE'.
 
+usage() {
+  cat <<'EOF'
+Usage:
+  push [OPTIONS]
+  push {-h | --help}
+
+Push commits on the current local branch to its corresponding remote:
+  - Validates prerequisites.
+  - Pushes local commits to the remote branch.
+
+Prerequisites:
+  - The user must be a contributor, reviewer, or approver.
+  - The remote repository must be connected and reachable.
+  - The current branch must be a local branch.
+  - The current branch must be a targeted or contributor branch, and
+    must not be the main or a version branch, except when pushing a local
+    pushup result recorded on that protected parent branch.
+  - The current branch must not have any uncommitted changes. If there are
+    changes, run commit or undo first.
+  - The current branch must not have an unfinished copyfix operation.
+  - A contributor may push a protected parent only for a recorded pushup result
+    whose source commit still has current PR approval.
+  - The remote branch must exist.
+  - The current branch must contain committed changes that are not yet on its
+    remote copy.
+  - If the local and remote branches contain different changes, run pull so
+    that the local is not behind or diverged from the remote.
+    synchronize them first.
+  - If another user pushes the same parent first, return to the source branch,
+    run pulldown, obtain approval for the updated source commit, then rerun
+    pushup and push.
+
+Options:
+  -d           Generate a dry-run report for the push workflow without
+               running the push workflow.
+  -e           Generate an error report for the push workflow without
+               running the push workflow. This option is intended for
+               testing and debugging the error report and is not typically
+               used in normal operation. This option is mutually exclusive
+               with the -d option.
+  -h, --help   Output this help to stdout and exit (other options and
+               arguments are ignored).
+  -t SEC       Remote reachability timeout in seconds (default: 10).
+               SEC must be an integer greater than 0.
+  -v           Output progress and diagnostics to stdout.
+
+Examples:
+  # Push local commits to remote.
+  push
+
+  # Preview what would be pushed.
+  push -d
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - Reports are written only when prerequisites and remote state
+    requirements are satisfied and there are commits to push.
+  - No-work prerequisite failures do not generate or delete reports.
+  - No report is written when a non-dry-run push succeeds. Older dry-run and
+    error reports for the current branch are deleted.
+  - After a successful non-dry-run push, details are available through
+    `report -r`. When publishing a pushup result, push also updates and closes
+    its associated pull request.
+  - For a dry-run, writes an untracked report locally to:
+      '<repo>/reports/push-d-<datetime>.md'
+  - If a non-dry-run operation fails after push work starts, writes an
+    untracked error report to:
+      '<repo>/reports/push-e-<datetime>.md'
+    Usage and prerequisite failures do not create reports.
+  - If a report is written, older dry-run (-d) and error reports for the
+    current branch are deleted.
+
+Exit codes:
+  0    Success.
+  1    Invalid option or argument.
+  2    User is not a contributor.
+  3    Current branch is main or a version branch and is protected.
+  4    This clone has no remote repository URL.
+  5    Remote is unreachable (connection failed before timeout).
+  6    Remote connectivity check timed out.
+  7    Remote branch for the current branch not found.
+  8    Timed out waiting for report write lock.
+  9    Push skipped due to -e option.
+  10   No committed changes are available to push.
+  200  Push failed.
+  201  Failed to write report.
+  202  Push succeeded, but PR finalization failed.
+EOF
+}
+
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PUSH_COMMAND="$SCRIPT_DIR/../helpers/push_command.sh"
+# shellcheck source=helpers/push_command.sh
+source "$SCRIPT_DIR/../helpers/push_command.sh"
+
 declare -a ORIGINAL_ARGS=("$@")
 
-for argument in "${ORIGINAL_ARGS[@]}"; do
-  if [[ "$argument" == "-h" || "$argument" == "--help" ]]; then
-    exec bash "$PUSH_COMMAND" --public --help
-  fi
-done
+bt_push_init
 
-for ((index=0; index < ${#ORIGINAL_ARGS[@]}; index++)); do
-  argument="${ORIGINAL_ARGS[index]}"
+# Help wins over every other argument.
+for argument in "${ORIGINAL_ARGS[@]}"; do
   case "$argument" in
-    -t)
-      ((index += 1))
-      ;;
-    -d|-e|-v)
-      ;;
-    -*)
-      printf 'Unknown option: %s\n' "$argument" >&2
-      exit 1
-      ;;
-    *)
-      printf 'Unknown argument: %s\n' "$argument" >&2
-      exit 1
+    -h|--help)
+      usage
+      exit 0
       ;;
   esac
 done
 
-exec bash "$PUSH_COMMAND" --public "${ORIGINAL_ARGS[@]}"
+set -- "${ORIGINAL_ARGS[@]}"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -d)
+      PUSH_WORKFLOW_ARGS+=(-d)
+      shift
+      ;;
+    -e)
+      PUSH_WORKFLOW_ARGS+=(-e)
+      shift
+      ;;
+    -v)
+      PUSH_WORKFLOW_ARGS+=(-v)
+      shift
+      ;;
+    -t)
+      [[ $# -ge 2 ]] || {
+        usage
+        echo >&2
+        bt_emit_prerequisite_failure 1 \
+          "Option -t requires timeout seconds. See usage above for details." \
+          "provide a positive timeout value and rerun push."
+      }
+      [[ "$2" =~ ^[0-9]+$ && "$2" -gt 0 ]] || {
+        usage
+        echo >&2
+        bt_emit_prerequisite_failure 1 \
+          "Option -t requires an integer greater than 0. See usage above for details." \
+          "provide a positive timeout value and rerun push."
+      }
+      PUSH_TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
+    -*)
+      usage
+      echo >&2
+      bt_emit_prerequisite_failure 1 \
+        "Unknown option: $1. See usage above for details." \
+        "review the usage text and rerun push."
+      ;;
+    *)
+      usage
+      echo >&2
+      bt_emit_prerequisite_failure 1 \
+        "Unknown argument: $1. See usage above for details." \
+        "review the usage text and rerun push."
+      ;;
+  esac
+done
+
+# Arguments are validated; the shared library performs the work.
+bt_push_run

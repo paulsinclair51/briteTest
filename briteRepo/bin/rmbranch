@@ -509,7 +509,7 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 # Require contributor role (or higher) for branch deletion operations.
-if ! bash "$CKROLE_HELPER" contributor >/dev/null 2>&1; then
+if ! BRITEREPO_INTERNAL=1 bash "$CKROLE_HELPER" contributor >/dev/null 2>&1; then
   unauthorized_msg=""
 
   ACTOR_LOGIN="$(bt_resolve_login_or_empty)"

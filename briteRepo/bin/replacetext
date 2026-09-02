@@ -36,7 +36,8 @@ Arguments:
                Command-line tokens beginning with '-' must appear after '--'.
 
 Options:
-  -d          Dry-run to show planned changes without modifying files.
+  -d          Dry-run. Validate the replacetext workflow without modifying
+              files.
   -r          Treat FIND values as Perl-compatible regex patterns
               (literal mode is default).
   -t SEC      Remote operation timeout in seconds (default: 10).

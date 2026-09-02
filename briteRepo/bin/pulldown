@@ -2,44 +2,214 @@
 
 # pulldown - Pull parent branch down into current branch.
 #
-# Run pulldown -h for usage.
+# See usage below for details, or run: pulldown -h
 #
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see '<repo>/LICENSE'.
 
+usage() {
+  cat <<'EOF'
+Usage:
+  pulldown [OPTIONS] [-- TOKEN...]
+  pulldown {-h | --help}
+
+Pull the changes from the local parent branch down to the local
+current branch:
+
+  - Automatically determines the parent branch based on branch naming
+    and Git history (the branch that the current branch was created
+    from). Handles simple conflicts automatically and provides
+    instructions for complex ones.
+  - Synchronizes content-equivalent parent history without presenting
+    it as file or directory changes.
+  - Shows instructions for complex conflicts that user must resolve.
+
+Prerequisites:
+  - The user must be a contributor, reviewer, or approver if the -o
+    option is not specified.
+  - The user must be the repository owner if the -o option is specified.
+  - The current branch must not have any uncommitted changes. If there
+    are changes, run commit or undo first.
+  - The current branch must not have an unfinished copyfix operation.
+  - The current branch must not be a version branch (e.g., v1.2.0)
+    if the -o option is not specified.
+  - The current branch must be a version branch (e.g., v2.4.0) if
+    the -o option is specified.
+  - The current branch must be a local branch.
+  - The branch must not be the main branch.
+  - The branch must have an identified parent branch (the branch that
+    the current branch was created from).
+  - The parent branch must be available as a local branch.
+
+Options:
+  -c TOKEN     Pulldown comment from TOKEN.
+  -- TOKEN...  Pulldown comment from one or more tokens.
+  -d           Generate a dry-run report for the pulldown workflow
+               without running the pulldown workflow.
+  -e           Generate an error report for the pulldown workflow
+               without running the pulldown workflow. This option is
+               intended for testing and debugging the error report and
+               is not typically used in normal operation. This option
+               is mutually exclusive with the -d option.
+  -h, --help   Output this help to stdout and exit (other options and
+               arguments are ignored).
+  -o           Owner override. Allows repository owner to run pulldown
+               on a version branch.
+  -v           Output progress and diagnostics to stdout.
+
+  For pulldown comment options '-c TOKEN' and '-- TOKEN...':
+    - These options are mutually exclusive.
+    - If not specified, the default commit comment is used.
+    - For '-- TOKEN...', '--' must be a separate token.
+    - Comment text is built by joining tokens with a single space.
+    - For a quoted token, whitespace in the token is preserved and the
+      quotes are removed.
+    - The resulting pulldown comment from TOKEN or TOKEN... must include
+      at least one non-whitespace character.
+
+  If a pulldown comment is not specified, the default pulldown comment is:
+    "Pulldown local <parent_branch> into local <current_branch>."
+
+Examples:
+  # Pull down.
+  pulldown
+
+  # Pull down with verbose output.
+  pulldown -v
+
+Outputs:
+  - Writes help text, status messages, and results or summaries to stdout.
+  - Writes errors and diagnostics to stderr.
+  - Prerequisite failures do not generate or delete reports.
+  - After a successful non-dry-run pulldown, records history for the report
+    command and writes 'Run report for details.' to stdout.
+  - A dry-run report is written (untracked) locally to:
+        <repo>/reports/pulldown-d-<datetime>.md
+  - If a non-dry-run operation fails after branch modification starts or
+    -e option is specified and branch modification is about to begin,
+    writes an untracked error report to:
+        <repo>/reports/pulldown-e-<datetime>.md
+
+Exit codes:
+  0     Success.
+  1     Invalid option or argument.
+  2     User must be a contributor, reviewer, approver if -o is not specified.
+  3     User must be the repository owner if -o is specified.
+  4     Current branch has uncommitted changes. Commit or undo changes first.
+  5     Unfinished copyfix operation in progress.
+  6     Branch must not be main.
+  7     Branch must not be a version branch if -o is not specified.
+  8     Branch must be a version branch when -o is specified.
+  9     Current branch is not local.
+  10    Parent branch is not local.
+  11    No parent changes or synchronization commits are available
+        to pulldown.
+  12    Conflicts detected. User must resolve them and, when ready,
+        run pulldown again.
+  200   Failed to determine parent branch.
+  201   Git merge failed.
+EOF
+}
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PULLDOWN_WORKFLOW="$SCRIPT_DIR/../helpers/pulldown_workflow.sh"
-declare -a ORIGINAL_ARGS=("$@")
+# shellcheck source=helpers/pulldown_workflow.sh
+source "$SCRIPT_DIR/../helpers/pulldown_workflow.sh"
 
+ORIGINAL_ARGS=("$@")
+
+usage_error() {
+  local message="$1"
+  usage
+  echo >&2
+  echo "$message. See usage above for details." >&2
+  exit "$EXIT_INVALID_ARGUMENT"
+}
+
+bt_pulldown_init
+
+# Help wins over every other argument.
 for argument in "${ORIGINAL_ARGS[@]}"; do
   if [[ "$argument" == "-h" || "$argument" == "--help" ]]; then
-    exec bash "$PULLDOWN_WORKFLOW" --public --help
+    usage
+    exit 0
   fi
 done
 
-for ((index=0; index < ${#ORIGINAL_ARGS[@]}; index++)); do
-  argument="${ORIGINAL_ARGS[index]}"
-  case "$argument" in
-    -c|-t)
-      ((index += 1))
+# Parse options and arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
       ;;
-    -d|-h|--help|-o|-v)
+    -d)
+      if [[ "$ERROR_RUN" == true ]]; then
+        usage_error "Options -d and -e are mutually exclusive."
+      fi
+      DRY_RUN=true
+      shift
+      ;;
+    -e)
+      if [[ "$DRY_RUN" == true ]]; then
+        usage_error "Options -d and -e are mutually exclusive."
+      fi
+      ERROR_RUN=true
+      shift
+      ;;
+    -o)
+      OWNER_OVERRIDE=true
+      shift
+      ;;
+    -t)
+      [[ $# -ge 2 ]] || usage_error "Option -t requires SEC"
+      bt_is_valid_remote_timeout "$2" || \
+        usage_error "SEC for -t must be an integer greater than 0"
+      REMOTE_TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
+    -v)
+      VERBOSE=true
+      shift
+      ;;
+    -c)
+      if [[ $# -lt 2 ]]; then
+        usage_error "Option $1 requires a commit comment argument"
+      fi
+      if [[ -n "$CUSTOM_MESSAGE" ]]; then
+        usage_error "Cannot use both single-token comment option and -- for "\
+      "commit comment"
+      fi
+      CUSTOM_MESSAGE="$2"
+      shift 2
       ;;
     --)
+      # '-- TOKEN...' commit comment
+      shift
+      if [[ -n "$CUSTOM_MESSAGE" ]]; then
+        usage_error "Cannot use both single-token comment option and -- for "\
+      "commit comment."
+      fi
+      CUSTOM_MESSAGE="$*"
       break
       ;;
     -*)
-      printf 'Unknown option: %s\n' "$argument" >&2
-      exit 1
+      usage_error "Unknown option: $1"
       ;;
     *)
-      printf 'Unknown argument: %s\n' "$argument" >&2
-      exit 1
+      usage_error "Unknown argument: $1"
       ;;
   esac
 done
 
-exec bash "$PULLDOWN_WORKFLOW" --public "${ORIGINAL_ARGS[@]}"
+if [[ -n "$CUSTOM_MESSAGE" ]]; then
+  CUSTOM_MESSAGE="$(bt_trim_whitespace "$CUSTOM_MESSAGE")"
+  if [[ -z "$CUSTOM_MESSAGE" ]]; then
+    usage_error "Commit comment must include at least one non-whitespace character"
+  fi
+fi
+
+# Arguments are validated; the shared library performs the work.
+bt_pulldown_run

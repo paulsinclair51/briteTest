@@ -20,7 +20,14 @@
 #   - timer_start()  - Start execution timer
 #   - timer_end()    - End execution timer and report duration
 
-set -euo pipefail
+# Internal library: must be sourced by a briteRepo command or helper. Direct
+# execution by a user is not supported.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  echo "common_utils.sh is a briteRepo internal library and must be sourced." >&2
+  exit 1
+fi
+
+# Shell options are the sourcing command's responsibility; do not change them.
 
 # Color codes for terminal output
 readonly RED='\033[0;31m'

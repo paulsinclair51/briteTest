@@ -532,9 +532,20 @@ pass "approved contributor pushup publication and PR finalization"
     "pushup -t 5 -o"
   git config --file .git/briteRepo/pushup.state pushup.owner-override true
 )
+# pushup drives the push library directly; emulate that entry point.
+PUSHUP_SOURCE_RUNNER="$TMPDIR/pushup_source_runner.sh"
+cat > "$PUSHUP_SOURCE_RUNNER" <<'EOF'
+set -euo pipefail
+source ./briteRepo/helpers/push_command.sh
+bt_push_init
+PUSH_ENTRY_MODE="--pushup-source"
+PUSH_TIMEOUT_SECONDS=5
+ORIGINAL_ARGS=()
+bt_push_run
+EOF
 rc=$(run_capture "$TMPDIR/pushup-source-push.out" env GITHUB_ACTOR=testapprover \
   PATH="$PUSHUP_BIN:$PATH" \
-  bash -c "cd '$PUSHUP_WORK' && bash ./briteRepo/helpers/push_command.sh --pushup-source -t 5")
+  bash -c "cd '$PUSHUP_WORK' && bash '$PUSHUP_SOURCE_RUNNER'")
 [[ "$rc" -eq 0 ]] || fail "pushup should publish synchronized protected source (got $rc)"
 pushup_source_note="$(git -C "$PUSHUP_WORK" notes \
   --ref=briteRepo-remote-workflow show HEAD)"

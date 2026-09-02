@@ -1,0 +1,1501 @@
+#!/usr/bin/env bash
+
+# branch_status.sh - branch status collection and rendering for lsbranch.
+#
+# Copyright (c) 2026 Paul Sinclair
+# SPDX-License-Identifier: MIT
+# For license details, see '<repo>/LICENSE'.
+
+# Internal library: must be sourced by a briteRepo command or helper. Direct
+# execution by a user is not supported.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  echo "branch_status.sh is a briteRepo internal library and must be sourced." >&2
+  exit 1
+fi
+
+# The sourcing command owns argument validation; this library owns the work.
+# Callers set the validated globals, then call bt_branch_status_run.
+
+# Report rendering is opt-in: only report sets these, via bt_branch_status_run.
+: "${GENERATE_REPORT:=false}"
+: "${branch_reports_dir:=}"
+: "${branch_report_prefix:=branch}"
+: "${OUTPUT_FILE:=}"
+: "${REPORT_LOCK_FD:=}"
+: "${REPORT_COMMAND:=}"
+BRANCH_REPORT_DELETIONS=()
+
+# Exit codes follow lsbranch semantics; other callers only need non-zero.
+: "${EXIT_NOT_FOUND:=2}"
+: "${EXIT_OPERATION_FAILED:=200}"
+: "${EXIT_CONFIG_ERROR:=4}"
+: "${EXIT_RUNTIME_ERROR:=200}"
+
+# Establish the library's own runtime state. Callers override the selection
+# globals afterwards, then call bt_branch_status_run.
+bt_branch_status_init() {
+  RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S%z')"
+  RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S%z' | \
+    sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
+
+  BRANCH_PATTERN=""
+  EXCLUDE_PATTERN=""
+  TARGET_BRANCH=""
+  VERBOSE=false
+  REMOTE_TIMEOUT_SECONDS=10
+  INVALID_BRANCHES_FOUND=0
+  ALL_BRANCHES=false
+  INCLUDE_LOCAL_FLAG=false
+  INCLUDE_REMOTE_FLAG=false
+  INCLUDE_LOCAL=false
+  INCLUDE_REMOTE=false
+  INVALID_ONLY=false
+  NO_ARG_MODE=false
+  FETCH_ATTEMPTED=false
+  FETCH_FAILED=false
+  INITIAL_STATUS_PORCELAIN=""
+  CURRENT_IS_REMOTE_SNAPSHOT=false
+
+  if ! WARNINGS_FILE="$(mktemp)"; then
+    bt_emit_error "Failed to create temporary file for warnings."
+    exit "$EXIT_RUNTIME_ERROR"
+  fi
+}
+
+cleanup_runtime_files() {
+  # shellcheck disable=SC2317  # Invoked by trap cleanup_runtime_files EXIT.
+  # Suppress errors during cleanup to ensure trap always completes
+  rm -f "$WARNINGS_FILE" 2>/dev/null || true
+  if [[ -n "$REPORT_LOCK_FD" ]]; then
+    bt_report_release_lock "$REPORT_LOCK_FD"
+    REPORT_LOCK_FD=""
+  fi
+}
+
+# Branch existence checks
+has_local_branch() {
+  local branch="$1"
+  git show-ref --verify --quiet "refs/heads/$branch"
+}
+
+has_remote_branch() {
+  local branch="$1"
+  git show-ref --verify --quiet "refs/remotes/origin/$branch"
+}
+
+capture_initial_worktree_status() {
+  # Snapshot git status before mutations to report files for accurate
+  # stdout/report
+  # Use --no-optional-locks to prevent git index refresh and opportunistic
+  # locking
+  INITIAL_STATUS_PORCELAIN="$(git --no-optional-locks status --porcelain \
+    2>/dev/null || true)"
+}
+
+# Version-name matcher used only to sort version candidates for reports.
+is_version_branch() {
+  local branch="$1"
+  [[ "$branch" =~ ^v([1-9][0-9]?)\.([0-9]|[1-9][0-9]?)\.([0-9]|[1-9][0-9]?)$ ]]
+}
+
+branch_violates_naming_rules() {
+  local branch="$1"
+
+  ! bt_is_valid_branch_name "$branch"
+}
+
+add_report_warning() {
+  local message="$1"
+
+  if grep -Fqx "$message" "$WARNINGS_FILE" 2>/dev/null; then
+    return 0
+  fi
+
+  printf '%s\n' "$message" >> "$WARNINGS_FILE"
+}
+
+record_diagnostic() {
+  local message="$1"
+  local detail="${2:-}"
+
+  add_report_warning "$message"
+
+  if [[ "$VERBOSE" == true ]]; then
+    if [[ -n "$detail" ]]; then
+      printf '  Warning: %s (%s)\n' "$message" "$detail"
+    else
+      printf '  Warning: %s\n' "$message"
+    fi
+  fi
+}
+
+capture_command_output() {
+  local stdout_var="$1"
+  local stderr_var="$2"
+  shift 2
+
+  local stdout_file
+  local stderr_file
+  local rc
+  
+  # Create temporary files for captured output
+  if ! stdout_file=$(mktemp); then
+    printf -v "$stdout_var" '%s' ""
+    printf -v "$stderr_var" '%s' "mktemp failed for stdout"
+    return 1
+  fi
+  if ! stderr_file=$(mktemp); then
+    rm -f "$stdout_file"
+    printf -v "$stdout_var" '%s' ""
+    printf -v "$stderr_var" '%s' "mktemp failed for stderr"
+    return 1
+  fi
+
+  # Execute command and capture output; preserve exit code
+  set +e
+  "$@" >"$stdout_file" 2>"$stderr_file"
+  rc=$?
+  set -e
+
+  # Read captured output into variables
+  printf -v "$stdout_var" '%s' "$(<"$stdout_file")"
+  printf -v "$stderr_var" '%s' "$(<"$stderr_file")"
+
+  # Clean up temporary files
+  rm -f "$stdout_file" "$stderr_file" || true
+  return "$rc"
+}
+
+branch_name_status_display() {
+  local branch="$1"
+  local is_current="${2:-false}"
+  local display="$branch"
+
+  if branch_violates_naming_rules "$branch"; then
+    display+="!"
+  fi
+  printf '%s\n' "$display"
+}
+
+resolve_current_branch_name() {
+  local current_branch=""
+  local remote_branches=""
+  local remote_count=""
+
+  current_branch="$(bt_get_current_branch_or_empty)"
+  if [[ "$current_branch" == r-* ]] && \
+    has_remote_branch "${current_branch#r-}"; then
+    printf '%s\n' "${current_branch#r-}"
+    return 0
+  fi
+  if [[ "$current_branch" != "HEAD" && -n "$current_branch" ]]; then
+    printf '%s\n' "$current_branch"
+    return 0
+  fi
+
+  remote_branches=$(git for-each-ref --format='%(refname)' \
+    --points-at HEAD refs/remotes/origin 2>/dev/null | \
+    grep -v '^refs/remotes/origin/HEAD$' | \
+    sed 's#^refs/remotes/origin/##' || true)
+  remote_count=$(printf '%s\n' "$remote_branches" | sed '/^$/d' | \
+    wc -l | tr -d ' ')
+  if [[ "$remote_count" == "1" ]]; then
+    printf '%s\n' "$remote_branches"
+    return 0
+  fi
+
+  printf '%s\n' "$current_branch"
+}
+
+is_current_remote_snapshot() {
+  local current_branch=""
+
+  current_branch="$(bt_get_current_branch_raw 2>/dev/null || true)"
+  if [[ "$current_branch" == r-* ]] && \
+    has_remote_branch "${current_branch#r-}"; then
+    return 0
+  fi
+  [[ "$current_branch" == "HEAD" ]] || return 1
+  [[ "$(git for-each-ref --format='%(refname)' --points-at HEAD \
+    refs/remotes/origin 2>/dev/null | grep -v '^refs/remotes/origin/HEAD$' | \
+    sed '/^$/d' | wc -l | tr -d ' ')" == "1" ]]
+}
+
+get_branch_created_date() {
+  local branch="$1"
+  local ref_type="${2:-local}"
+  local ref="$branch"
+  local log_output=""
+  local log_error=""
+
+  if [[ "$ref_type" == "remote" ]]; then
+    ref="origin/$branch"
+  fi
+
+  if ! capture_command_output \
+    log_output log_error \
+    git log "$ref" --reverse --date=short --format='%ad'; then
+    record_diagnostic \
+      "Failed to read first commit date for '$ref';" \
+      "First Commit column left blank." \
+      "$log_error"
+    echo ""
+    return 0
+  fi
+
+  printf '%s\n' "$log_output" | head -n 1
+}
+
+get_branch_last_commit_date() {
+  local branch="$1"
+  local ref_type="${2:-local}"
+  local ref="$branch"
+  local log_output=""
+  local log_error=""
+
+  if [[ "$ref_type" == "remote" ]]; then
+    ref="origin/$branch"
+  fi
+
+  if ! capture_command_output \
+    log_output log_error \
+    git log -1 --date=short --format='%ad' "$ref"; then
+    record_diagnostic \
+      "Failed to read last commit date for '$ref';" \
+      "Last Commit column left blank." \
+      "$log_error"
+    echo ""
+    return 0
+  fi
+
+  printf '%s\n' "$log_output"
+}
+
+check_repo_status() {
+  if [[ -n "$INITIAL_STATUS_PORCELAIN" ]]; then
+    echo "dirty"
+  else
+    echo "clean"
+  fi
+}
+
+get_staged_changes() {
+  # Count files with a staged change (column 1 is not a space).
+  # Exclude '??' untracked-file lines — untracked files are not staged.
+  printf '%s' "$INITIAL_STATUS_PORCELAIN" | awk '
+    substr($0,1,2) != "??" && substr($0,1,1) != " " { c++ }
+    END { print c + 0 }
+  '
+}
+
+get_unstaged_changes() {
+  # Count files with an unstaged change (column 2 is not a space).
+  # Untracked files ("??") have "?" in column 2 and are intentionally
+  # included: they represent pending work requiring "git add" before commit,
+  # consistent with bt_is_worktree_dirty and the dirty status reported above.
+  printf '%s' "$INITIAL_STATUS_PORCELAIN" | awk '
+    substr($0,2,1) != " " { c++ }
+    END { print c + 0 }
+  '
+}
+
+persist_report_changes() {
+  local report_rel
+
+  if [[ -z "$OUTPUT_FILE" || ! -f "$OUTPUT_FILE" ]]; then
+    bt_error_exit "$EXIT_OPERATION_FAILED" \
+      "Report file was not generated as expected."
+  fi
+
+  report_rel="${OUTPUT_FILE#"${repo_root}"/}"
+  bt_success "See $report_rel for details."
+}
+
+get_unpushed_commits() {
+  local branch="$1"
+  local rev_list_output=""
+  local rev_list_error=""
+
+  if ! has_remote_branch "$branch"; then
+    echo ""
+    return 0
+  fi
+
+  if ! capture_command_output \
+    rev_list_output rev_list_error \
+    git rev-list --count "origin/$branch..$branch"; then
+    record_diagnostic \
+      "Failed to compare '$branch' against 'origin/$branch';" \
+      "Unpushed Commits may be blank." \
+      "$rev_list_error"
+    echo ""
+    return 0
+  fi
+
+  printf '%s\n' "$rev_list_output"
+}
+
+get_behind_count() {
+  local branch="$1"
+  local rev_list_output=""
+  local rev_list_error=""
+
+  if ! has_remote_branch "$branch"; then
+    echo ""
+    return 0
+  fi
+
+  if ! capture_command_output \
+    rev_list_output rev_list_error \
+    git rev-list --count "$branch..origin/$branch"; then
+    record_diagnostic \
+      "Failed to compare 'origin/$branch' against '$branch';" \
+      "Ahead/Behind may be blank." \
+      "$rev_list_error"
+    echo ""
+    return 0
+  fi
+
+  printf '%s\n' "$rev_list_output"
+}
+
+get_pending_pr_count() {
+  local branch="$1"
+  local pr_output=""
+  local pr_error=""
+  local pr_count
+
+  if ! command -v gh >/dev/null 2>&1; then
+    record_diagnostic \
+      "PR lookup unavailable for '$branch'; PR column shown as N/A." \
+      "gh CLI not found"
+    echo "N/A"
+    return 0
+  fi
+
+  if ! capture_command_output \
+    pr_output pr_error \
+    bt_run_remote_command gh pr list --head "$branch" --state open \
+      --json number --jq 'length'; then
+    record_diagnostic \
+      "Failed to query pull requests for '$branch'; PR column shown as N/A." \
+      "$pr_error"
+    echo "N/A"
+    return 0
+  fi
+
+  pr_count="$pr_output"
+
+  if [[ "$pr_count" =~ ^[0-9]+$ ]]; then
+    echo "$pr_count"
+  else
+    record_diagnostic \
+      "Unexpected PR lookup output for '$branch'; PR column shown as N/A." \
+      "$pr_count"
+    echo "N/A"
+  fi
+}
+
+ensure_remote_refs_fetched() {
+  # shellcheck disable=SC2034  # capture_command_output populates by name.
+  local fetch_output=""
+  local fetch_error=""
+  local fetch_warning
+
+  if [[ "$FETCH_ATTEMPTED" == true ]]; then
+    return 0
+  fi
+
+  # Skip fetch if only listing local branches
+  if [[ "$INCLUDE_LOCAL_FLAG" == true && \
+    "$INCLUDE_REMOTE_FLAG" == false ]]; then
+    FETCH_ATTEMPTED=true
+    return 0
+  fi
+
+  FETCH_ATTEMPTED=true
+    if ! capture_command_output fetch_output fetch_error \
+      bt_run_remote_command git fetch --prune origin; then
+    FETCH_FAILED=true
+      fetch_warning="Failed to fetch remote; remote status may use cached refs"
+      fetch_warning+=" from your last successful remote update."
+      record_diagnostic \
+        "$fetch_warning" "$fetch_error"
+  fi
+  
+}
+
+format_zero_as_blank() {
+  local value="$1"
+
+  if [[ "$value" =~ ^[0-9]+$ && "$value" -eq 0 ]]; then
+    echo ""
+  else
+    echo "$value"
+  fi
+}
+
+get_branch_type() {
+  local branch="$1"
+  
+  local is_local=false
+  local is_remote=false
+  
+  # Check if branch exists locally
+  has_local_branch "$branch" && is_local=true
+  
+  # Check if branch exists on remote
+  has_remote_branch "$branch" && is_remote=true
+  
+  if [[ "$is_local" == true && "$is_remote" == true ]]; then
+    echo "local (tracking origin)"
+  elif [[ "$is_local" == true ]]; then
+    echo "local"
+  elif [[ "$is_remote" == true ]]; then
+    echo "remote"
+  else
+    echo "unknown"
+  fi
+}
+
+build_report_command() {
+  local args_rendered=""
+  local arg rendered
+
+  for arg in "${ORIGINAL_ARGS[@]}"; do
+    printf -v rendered '%q' "$arg"
+    if [[ -z "$args_rendered" ]]; then
+      args_rendered="$rendered"
+    else
+      args_rendered+=" $rendered"
+    fi
+  done
+
+  if [[ -n "$args_rendered" ]]; then
+    REPORT_COMMAND="lsbranch $args_rendered"
+  else
+    REPORT_COMMAND="lsbranch"
+  fi
+}
+
+get_branch_base_reference() {
+  local branch="$1"
+  local branch_ref="$branch"
+  local target_version=""
+  local branch_tip=""
+  local tip_error=""
+
+  if [[ "$branch" == "main" ]]; then
+    echo ""
+    return 0
+  fi
+
+  # Version branches are based on main.
+  if [[ "$branch" =~ ^v([1-9][0-9]?)\.(0|[1-9][0-9]?)\.0$ ]]; then
+    echo "main"
+    return 0
+  fi
+
+  # Directed dev/fix branches explicitly target the version suffix.
+  if [[ "$branch" =~ \
+    ^(dev|fix)/.+-(v[1-9][0-9]?\.(0|[1-9][0-9]?)\.0)$ ]]; then
+    target_version="${BASH_REMATCH[2]}"
+    echo "$target_version"
+    return 0
+  fi
+
+  # Contributor/other branches: infer the nearest ancestor branch.
+  if ! has_local_branch "$branch"; then
+    if has_remote_branch "$branch"; then
+      branch_ref="origin/$branch"
+    else
+      echo ""
+      return 0
+    fi
+  fi
+
+  if ! capture_command_output \
+    branch_tip tip_error \
+    git rev-parse "$branch_ref"; then
+    record_diagnostic \
+      "Failed to resolve branch tip for '$branch'; Parent column left blank." \
+      "$tip_error"
+    echo ""
+    return 0
+  fi
+
+  local best_base=""
+  local best_distance=""
+  local ref
+
+  while IFS= read -r ref; do
+    [[ -n "$ref" ]] || continue
+    [[ "$ref" == "origin" ]] && continue
+    [[ "$ref" == "origin/HEAD" ]] && continue
+    [[ "$ref" == "$branch" ]] && continue
+    [[ "$ref" == "origin/$branch" ]] && continue
+
+    local candidate_ref="$ref"
+    local candidate_display="$ref"
+    local candidate_tip=""
+    if [[ "$ref" == origin/* ]]; then
+      candidate_display="${ref#origin/}"
+    fi
+    [[ "$candidate_display" == "$branch" ]] && continue
+
+    # If two branches point to the same tip commit, neither should be treated
+    # as the other's parent.
+    candidate_tip=$(git rev-parse "$candidate_ref" 2>/dev/null || true)
+    if [[ -n "$branch_tip" && -n "$candidate_tip" &&
+      "$candidate_tip" == "$branch_tip" ]]; then
+      continue
+    fi
+
+    if ! git merge-base --is-ancestor \
+      "$candidate_ref" "$branch_ref" >/dev/null 2>&1; then
+      continue
+    fi
+
+    local distance
+    distance=$(git rev-list --count "$candidate_ref..$branch_ref" \
+      2>/dev/null || echo "")
+    [[ "$distance" =~ ^[0-9]+$ ]] || continue
+
+    if [[ -z "$best_distance" || "$distance" -lt "$best_distance" ]]; then
+      best_distance="$distance"
+      best_base="$candidate_display"
+    fi
+  done < <(
+    {
+      git for-each-ref --format='%(refname:short)' refs/heads
+      git for-each-ref --format='%(refname:short)' refs/remotes/origin
+    } | while IFS= read -r ref; do
+      [[ "$ref" == r-* ]] && continue
+      printf '%s\n' "$ref"
+    done | sort -u
+  )
+
+  if [[ -z "$best_base" ]]; then
+    record_diagnostic \
+      "Could not infer parent branch for '$branch'; Parent column left blank."
+  fi
+
+  echo "$best_base"
+}
+
+resolve_branch_ref() {
+  local branch="$1"
+
+  if [[ -z "$branch" ]]; then
+    echo ""
+    return 0
+  fi
+
+  if has_local_branch "$branch"; then
+    echo "$branch"
+    return 0
+  fi
+
+  if has_remote_branch "$branch"; then
+    echo "origin/$branch"
+    return 0
+  fi
+
+  echo ""
+}
+
+get_latest_version_branch() {
+  local refs_output=""
+  local refs_error=""
+
+  if ! capture_command_output \
+    refs_output refs_error \
+    git for-each-ref --format='%(refname:short)' \
+      refs/heads refs/remotes/origin; then
+    record_diagnostic \
+      "Failed to enumerate refs for version-branch comparison; parent" \
+      "inference may be incomplete." \
+      "$refs_error"
+    echo ""
+    return 0
+  fi
+
+  local versions=""
+  local ref=""
+  local branch_name=""
+
+  while IFS= read -r ref; do
+    [[ -n "$ref" ]] || continue
+    [[ "$ref" == "origin" ]] && continue
+    [[ "$ref" == "origin/HEAD" ]] && continue
+
+    branch_name="$ref"
+    if [[ "$branch_name" == origin/* ]]; then
+      branch_name="${branch_name#origin/}"
+    fi
+
+    if is_version_branch "$branch_name"; then
+      versions+="$branch_name"$'\n'
+    fi
+  done <<< "$refs_output"
+
+  if [[ -z "$versions" ]]; then
+    echo ""
+    return 0
+  fi
+
+  printf '%s' "$versions" | sort -u -V | tail -n 1
+}
+
+get_remote_comparison_target() {
+  local branch="$1"
+  local base_reference=""
+
+  if [[ "$branch" == "main" ]]; then
+    base_reference=$(get_latest_version_branch)
+    if [[ "$base_reference" == "main" ]]; then
+      echo ""
+      return 0
+    fi
+    echo "$base_reference"
+    return 0
+  fi
+
+  base_reference=$(get_branch_base_reference "$branch")
+  if [[ "$base_reference" == "$branch" ]]; then
+    echo ""
+    return 0
+  fi
+
+  echo "$base_reference"
+}
+
+get_remote_divergence_counts() {
+  local branch="$1"
+  local compare_branch="$2"
+  local compare_ref=""
+  local rev_list_output=""
+  local rev_list_error=""
+
+  if [[ -z "$compare_branch" ]]; then
+    echo ""
+    return 0
+  fi
+
+  compare_ref=$(resolve_branch_ref "$compare_branch")
+  if [[ -z "$compare_ref" ]]; then
+    record_diagnostic \
+      "Comparison ref '$compare_branch' not found for remote branch" \
+      "'$branch'; Ahead/Behind left blank."
+    echo ""
+    return 0
+  fi
+
+  if ! capture_command_output \
+    rev_list_output rev_list_error \
+    git rev-list --left-right --count "origin/$branch...$compare_ref"; then
+    record_diagnostic \
+      "Failed to compare remote branch '$branch' against '$compare_ref';" \
+      "Ahead/Behind left blank." \
+      "$rev_list_error"
+    echo ""
+    return 0
+  fi
+
+  printf '%s\n' "$rev_list_output"
+}
+
+get_branch_parent_divergence_counts() {
+  local branch="$1"
+  local compare_branch="$2"
+  local compare_ref=""
+  local rev_list_output=""
+  local rev_list_error=""
+
+  if [[ -z "$compare_branch" ]]; then
+    echo ""
+    return 0
+  fi
+
+  compare_ref=$(resolve_branch_ref "$compare_branch")
+  if [[ -z "$compare_ref" ]]; then
+    record_diagnostic \
+      "Comparison ref '$compare_branch' not found for local branch" \
+      "'$branch'; Ahead/Behind parent segment left blank."
+    echo ""
+    return 0
+  fi
+
+  if ! capture_command_output \
+    rev_list_output rev_list_error \
+    git rev-list --left-right --count "$branch...$compare_ref"; then
+    record_diagnostic \
+      "Failed to compare local branch '$branch' against '$compare_ref';" \
+      "Ahead/Behind parent segment left blank." \
+      "$rev_list_error"
+    echo ""
+    return 0
+  fi
+
+  printf '%s\n' "$rev_list_output"
+}
+
+format_ahead_behind_segments() {
+  local tracking_ahead="$1"
+  local tracking_behind="$2"
+  local parent_ahead="$3"
+  local parent_behind="$4"
+  local tracking_segment=""
+  local parent_segment=""
+
+  if [[ "$tracking_ahead" =~ ^[0-9]+$ && "$tracking_behind" =~ ^[0-9]+$ ]]; then
+    tracking_segment="remote ${tracking_ahead}/${tracking_behind}"
+  fi
+
+  if [[ "$parent_ahead" =~ ^[0-9]+$ && "$parent_behind" =~ ^[0-9]+$ ]]; then
+    parent_segment="parent ${parent_ahead}/${parent_behind}"
+  fi
+
+  if [[ -n "$tracking_segment" && -n "$parent_segment" ]]; then
+    echo "${tracking_segment}; ${parent_segment}"
+  elif [[ -n "$tracking_segment" ]]; then
+    echo "$tracking_segment"
+  elif [[ -n "$parent_segment" ]]; then
+    echo "$parent_segment"
+  else
+    echo ""
+  fi
+}
+
+build_compact_status_tags() {
+  local mode="$1"
+  local branch="$2"
+  local branch_type="$3"
+  local is_current="$4"
+  local repo_status="$5"
+  local pr_count="$6"
+  local include_remote_rows="$7"
+  local mode_tag="$mode"
+  local relation_tag=""
+  local parent_tags=""
+  local workflow_tags=""
+  local selected_ref="$branch"
+  local -a tags=()
+
+  if [[ "$is_current" == true && "$CURRENT_IS_REMOTE_SNAPSHOT" == true ]]; then
+    mode_tag="remote copy"
+  elif [[ "$mode" == "local" && "$branch_type" == "local" && \
+    "$FETCH_FAILED" == false ]]; then
+    mode_tag="local only"
+  elif [[ "$mode" == "remote" ]] && ! has_local_branch "$branch"; then
+    mode_tag="remote only"
+  fi
+  if [[ "$is_current" == true ]]; then
+    tags+=("[current]")
+    if [[ "$repo_status" == "dirty" ]]; then
+      tags+=("[uncommitted]")
+    fi
+  fi
+  tags+=("[$mode_tag]")
+  if [[ "$is_current" == true ]]; then
+    if [[ "$mode" == "remote" || "$CURRENT_IS_REMOTE_SNAPSHOT" == true ]] || \
+      bt_is_read_only_branch "$branch"; then
+      tags+=("[read-only]")
+    fi
+  fi
+  if branch_violates_naming_rules "$branch"; then
+    tags+=("[invalid name]")
+  fi
+
+  if [[ "$FETCH_FAILED" == true && \
+    ( "$mode" == "remote" || "$include_remote_rows" == true ) ]]; then
+    tags+=("[offline]")
+  elif [[ "$branch_type" == "local (tracking origin)" ]]; then
+    if relation_tag=$(bt_git_tracking_relation_tag \
+      "$mode" "$branch" "origin/$branch"); then
+      [[ -z "$relation_tag" ]] || tags+=("$relation_tag")
+    else
+      tags+=("[status unavailable]")
+      record_diagnostic "Unable to compare '$branch' with origin/$branch."
+    fi
+  fi
+
+  [[ "$mode" == "remote" ]] && selected_ref="origin/$branch"
+  if [[ "$mode" == "local" ]]; then
+    workflow_tags="$(bt_git_workflow_in_progress_tags "$branch")"
+    [[ -z "$workflow_tags" ]] || tags+=("$workflow_tags")
+  fi
+  if parent_tags=$(bt_git_parent_relation_tags \
+    "$mode" "$branch" "$selected_ref"); then
+    [[ -z "$parent_tags" ]] || tags+=("$parent_tags")
+  else
+    tags+=("[status unavailable]")
+    record_diagnostic "Unable to compare '$branch' with its parent."
+  fi
+
+  if [[ "$pr_count" =~ ^[0-9]+$ && "$pr_count" -gt 0 && \
+    ( "$mode" == "remote" || "$include_remote_rows" == false ) ]]; then
+    tags+=("[PRs: $pr_count]")
+  fi
+
+  printf '%s' "${tags[*]}"
+}
+
+# Report generation and output formatting
+generate_report_header() {
+  local report_header_cols
+
+  report_header_cols='| **Branch** | **Type** | **Parent** | **Status** | '
+  report_header_cols+='**Staged/<br>Unstaged** | **Unpushed<br>Commits** | '
+  report_header_cols+='**Ahead/<br>Behind** | **PR** | **First Commit** | '
+  report_header_cols+='**Last Commit** |'
+
+  cat > "$OUTPUT_FILE" << EOF
+# Branch Report ${RUN_TS_DISPLAY}
+
+**Command:** \`${REPORT_COMMAND}\`
+
+$report_header_cols
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+EOF
+}
+
+append_report_note_about_stale_remote() {
+  # Add note if remote refs are from cache (fetch failed/timed out)
+  # and we're showing remote branches
+  if [[ "$FETCH_FAILED" == true ]] && 
+     [[ "$INCLUDE_REMOTE_FLAG" == true || 
+        ("$INCLUDE_LOCAL_FLAG" == false && \
+          "$INCLUDE_REMOTE_FLAG" == false) ]]; then
+    cat >> "$OUTPUT_FILE" << EOF
+
+**Note:** Cannot connect to remote repository. Remote branch status uses
+cached refs from your last successful remote update.
+EOF
+  fi
+}
+
+append_report_warnings() {
+  local warning
+
+  [[ -s "$WARNINGS_FILE" ]] || return 0
+
+  cat >> "$OUTPUT_FILE" << EOF
+
+## Warnings
+
+EOF
+
+  while IFS= read -r warning; do
+    printf -- '- %s\n' "$warning" >> "$OUTPUT_FILE"
+  done < "$WARNINGS_FILE"
+}
+
+append_report_row() {
+  local branch="$1"
+  local type="$2"
+  local base="$3"
+  local status="$4"
+  local staged_unstaged="$5"
+  local unpushed_commits="$6"
+  local ahead_behind="$7"
+  local pr="$8"
+  local created="$9"
+  local last_commit="${10}"
+
+  [[ "$GENERATE_REPORT" == true ]] || return 0
+
+  # Escape markdown-table delimiters so table column counts stay stable.
+  branch="${branch//|/\\|}"
+  type="${type//|/\\|}"
+  base="${base//|/\\|}"
+  status="${status//|/\\|}"
+  staged_unstaged="${staged_unstaged//|/\\|}"
+  unpushed_commits="${unpushed_commits//|/\\|}"
+  ahead_behind="${ahead_behind//|/\\|}"
+  pr="${pr//|/\\|}"
+  created="${created//|/\\|}"
+  last_commit="${last_commit//|/\\|}"
+
+  printf '| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n' \
+    "$branch" "$type" "$base" "$status" "$staged_unstaged" \
+    "$unpushed_commits" "$ahead_behind" "$pr" "$created" \
+    "$last_commit" >> "$OUTPUT_FILE"
+}
+
+format_ratio_or_blank() {
+  local left="$1"
+  local right="$2"
+
+  if [[ "$left" =~ ^[0-9]+$ && "$right" =~ ^[0-9]+$ ]]; then
+    if [[ "$left" -eq 0 && "$right" -eq 0 ]]; then
+      echo ""
+    else
+      echo "$left/$right"
+    fi
+  else
+    echo ""
+  fi
+}
+
+cleanup_old_reports() {
+  local old_report
+  local report_rel
+  local pattern="${branch_report_prefix}-*.md"
+
+  BRANCH_REPORT_DELETIONS=()
+
+  # Validate that OUTPUT_FILE path is set (file is created after cleanup)
+  [[ -n "$OUTPUT_FILE" ]] || return 0
+
+  # Verify reports directory exists before attempting cleanup
+  [[ -d "$branch_reports_dir" ]] || return 0
+
+  # Remove all prior branch reports except the new one being generated.
+  # Delete only untracked local-only reports. Skip tracked files to avoid
+  # creating unrelated working-tree deletions that can affect merge workflows.
+  for old_report in "$branch_reports_dir"/$pattern; do
+    [[ "$old_report" == "$OUTPUT_FILE" ]] && continue
+    [[ -e "$old_report" ]] || continue
+
+    if git ls-files --error-unmatch "$old_report" >/dev/null 2>&1; then
+      continue
+    fi
+
+    report_rel="${old_report#"${repo_root}"/}"
+    if rm -f "$old_report" 2>/dev/null; then
+      BRANCH_REPORT_DELETIONS+=("$report_rel")
+    else
+      bt_warn "Could not remove stale branch report: $report_rel"
+    fi
+  done
+}
+
+emit_branch_status_lines() {
+  local branch="$1"
+  local is_current="$2"
+  local include_local_rows="$3"
+  local include_remote_rows="$4"
+  local branch_type="$5"
+  local repo_status="$6"
+  local pr_count="$7"
+  local local_display="$8"
+  local remote_display="$9"
+  local remote_is_current=false
+
+  if [[ "$CURRENT_IS_REMOTE_SNAPSHOT" == true && \
+    "$branch" == "$ORIGINAL_BRANCH" ]]; then
+    remote_is_current=true
+  fi
+
+  if [[ "$branch_type" == "local (tracking origin)" &&
+    "$include_local_rows" == true && "$include_remote_rows" == true ]]; then
+    printf '%s %s\n' "$local_display" \
+      "$(build_compact_status_tags local "$branch" "$branch_type" \
+        "$is_current" "$repo_status" "$pr_count" true)"
+    printf '%s %s\n' "$remote_display" \
+      "$(build_compact_status_tags remote "$branch" "$branch_type" \
+        "$remote_is_current" "$repo_status" "$pr_count" true)"
+  elif [[ "$branch_type" == "local (tracking origin)" &&
+    "$include_remote_rows" == true ]]; then
+    printf '%s %s\n' "$remote_display" \
+      "$(build_compact_status_tags remote "$branch" "$branch_type" \
+        "$remote_is_current" "$repo_status" "$pr_count" true)"
+  elif [[ "$include_remote_rows" == true && \
+    "$include_local_rows" == false ]]; then
+    printf '%s %s\n' "$remote_display" \
+      "$(build_compact_status_tags remote "$branch" "$branch_type" \
+        "$remote_is_current" "$repo_status" "$pr_count" true)"
+  else
+    printf '%s %s\n' "$local_display" \
+      "$(build_compact_status_tags local "$branch" "$branch_type" \
+        "$is_current" "$repo_status" "$pr_count" \
+        "$include_remote_rows")"
+  fi
+}
+
+append_branch_status_report_rows() {
+  local branch="$1"
+  local include_local_rows="$2"
+  local include_remote_rows="$3"
+  local branch_type="$4"
+  local report_display="$5"
+  local status_display="$6"
+  local repo_status="$7"
+  local staged_count="$8"
+  local unstaged_count="$9"
+  local unpushed_count="${10}"
+  local behind_count="${11}"
+  local pr_count="${12}"
+  local parent_ahead_count="${13}"
+  local parent_behind_count="${14}"
+  local base_reference="${15}"
+  local created_date="${16}"
+  local last_commit_date="${17}"
+  local local_status="$repo_status"
+  local remote_display=""
+  local pr_count_display=""
+
+  remote_display=$(branch_name_status_display "$branch" "false")
+  pr_count_display=$(format_zero_as_blank "$pr_count")
+
+  if [[ "$branch_type" == "local (tracking origin)" ]]; then
+    local unpushed_display=""
+    local local_ahead_behind=""
+    local remote_ahead_behind=""
+    local tracking_ahead=""
+    local tracking_behind=""
+
+    unpushed_display=$(format_zero_as_blank "$unpushed_count")
+    if [[ "$unpushed_count" =~ ^[0-9]+$ ]]; then
+      tracking_ahead="$unpushed_count"
+    fi
+    if [[ "$behind_count" =~ ^[0-9]+$ ]]; then
+      tracking_behind="$behind_count"
+    fi
+    local_ahead_behind=$(format_ahead_behind_segments \
+      "$tracking_ahead" "$tracking_behind" \
+      "$parent_ahead_count" "$parent_behind_count")
+    remote_ahead_behind=$(format_ahead_behind_segments \
+      "$tracking_ahead" "$tracking_behind" \
+      "$parent_ahead_count" "$parent_behind_count")
+
+    if [[ "$include_local_rows" == true ]]; then
+      local staged_unstaged_display=""
+      staged_unstaged_display=$(format_ratio_or_blank \
+        "$staged_count" "$unstaged_count")
+      append_report_row \
+        "$report_display" "local" "$base_reference" \
+        "$local_status" "$staged_unstaged_display" \
+        "$unpushed_display" "$local_ahead_behind" \
+        "$pr_count_display" "$created_date" "$last_commit_date"
+    fi
+
+    if [[ "$include_remote_rows" == true ]]; then
+      local remote_status="synced"
+      if [[ "$behind_count" =~ ^[0-9]+$ && "$behind_count" -gt 0 ]] ||
+        [[ "$unpushed_count" =~ ^[0-9]+$ && "$unpushed_count" -gt 0 ]]; then
+        remote_status="diverged"
+      fi
+      append_report_row \
+        "$remote_display" "remote" "$base_reference" "$remote_status" \
+        "" "" "$remote_ahead_behind" "$pr_count_display" \
+        "$created_date" "$last_commit_date"
+    fi
+  elif [[ "$branch_type" == "local" ]]; then
+    local staged_unstaged_display=""
+    local unpushed_display=""
+    local local_ahead_behind=""
+
+    staged_unstaged_display=$(format_ratio_or_blank \
+      "$staged_count" "$unstaged_count")
+    unpushed_display=$(format_zero_as_blank "$unpushed_count")
+    local_ahead_behind=$(format_ahead_behind_segments \
+      "" "" "$parent_ahead_count" "$parent_behind_count")
+
+    if [[ "$include_local_rows" == true ]]; then
+      append_report_row \
+        "$report_display" "local" "" "$local_status" \
+        "$staged_unstaged_display" "$unpushed_display" \
+        "$local_ahead_behind" \
+        "$pr_count_display" "$created_date" "$last_commit_date"
+    elif [[ "$include_remote_rows" == true ]]; then
+      append_report_row \
+        "$remote_display" "remote" "" "not tracking origin" \
+        "" "" "$local_ahead_behind" "$pr_count_display" \
+        "$created_date" "$last_commit_date"
+    fi
+  elif [[ "$include_remote_rows" == true ]]; then
+    append_report_row \
+      "$status_display" "remote" "" "$repo_status" "" "" "" \
+      "$pr_count_display" "$created_date" "$last_commit_date"
+  fi
+}
+
+check_branch_status() {
+  local branch="$1"
+  local is_current="${3:-false}"
+  local include_local_rows="${4:-true}"
+  local include_remote_rows="${5:-true}"
+
+  if [[ "$INVALID_ONLY" == true ]] &&
+    ! branch_violates_naming_rules "$branch"; then
+    return 0
+  fi
+
+  local branch_status_display
+  local branch_status_display_local
+  local branch_status_display_remote
+  local branch_report_display
+  branch_status_display=$(branch_name_status_display "$branch" "$is_current")
+  branch_status_display_local="$branch_status_display"
+  branch_status_display_remote=$(branch_name_status_display "$branch" "false")
+  branch_report_display="$branch_status_display"
+  if branch_violates_naming_rules "$branch"; then
+    INVALID_BRANCHES_FOUND=$((INVALID_BRANCHES_FOUND + 1))
+  fi
+
+  # Fetch latest remote refs once so remote-derived fields are less stale.
+  ensure_remote_refs_fetched
+
+  # Gather status information — use fallback values if any step fails
+  local repo_status staged_count unstaged_count
+  local unpushed_count pr_count branch_type
+  if [[ "$is_current" == true ]]; then
+    repo_status=$(check_repo_status) || repo_status="unknown"
+    staged_count=$(get_staged_changes) || staged_count="N/A"
+    unstaged_count=$(get_unstaged_changes) || unstaged_count="N/A"
+  else
+    if bt_is_read_only_branch "$branch"; then
+      repo_status="read-only"
+    else
+      repo_status="not checked out"
+    fi
+    staged_count=""
+    unstaged_count=""
+  fi
+  unpushed_count=$(get_unpushed_commits "$branch") || unpushed_count="N/A"
+  pr_count=$(get_pending_pr_count    "$branch") || pr_count="N/A"
+  branch_type=$(get_branch_type      "$branch") || branch_type="unknown"
+  local behind_count="0"
+  local parent_ahead_count=""
+  local parent_behind_count=""
+  local parent_divergence_counts=""
+  local created_date last_commit_date
+  local base_reference=""
+  created_date=$(get_branch_created_date "$branch" "local")
+  last_commit_date=$(get_branch_last_commit_date "$branch" "local")
+  base_reference=$(get_branch_base_reference "$branch")
+  [[ -z "$created_date" ]] && created_date=""
+  [[ -z "$last_commit_date" ]] && last_commit_date=""
+  [[ "$branch_type" == "local (tracking origin)" ]] && \
+    behind_count=$(get_behind_count "$branch") || behind_count="0"
+
+    if [[ -n "$base_reference" ]]; then
+      local parent_divergence_re='^([0-9]+)[[:space:]]+([0-9]+)$'
+
+      parent_divergence_counts=$(get_branch_parent_divergence_counts \
+        "$branch" "$base_reference")
+      if [[ "$parent_divergence_counts" =~ $parent_divergence_re ]]; then
+        parent_ahead_count="${BASH_REMATCH[1]}"
+        parent_behind_count="${BASH_REMATCH[2]}"
+        if git diff --quiet "$branch" "$base_reference" 2>/dev/null; then
+          parent_ahead_count="content-match"
+          parent_behind_count=""
+        fi
+      fi
+    fi
+
+  emit_branch_status_lines \
+    "$branch" "$is_current" "$include_local_rows" "$include_remote_rows" \
+    "$branch_type" "$repo_status" "$pr_count" \
+    "$branch_status_display_local" "$branch_status_display_remote"
+
+  append_branch_status_report_rows \
+    "$branch" "$include_local_rows" "$include_remote_rows" "$branch_type" \
+    "$branch_report_display" "$branch_status_display" "$repo_status" \
+    "$staged_count" "$unstaged_count" "$unpushed_count" "$behind_count" \
+    "$pr_count" \
+    "$parent_ahead_count" "$parent_behind_count" "$base_reference" \
+    "$created_date" "$last_commit_date"
+
+  if [[ "$VERBOSE" == true ]]; then
+    echo "  Status: $repo_status"
+    echo "  Staged: $staged_count"
+    echo "  Unstaged: $unstaged_count"
+    echo "  Unpushed: $unpushed_count"
+    echo "  Pending PRs: $pr_count"
+  fi
+
+}
+
+check_remote_branch_status() {
+  local branch="$1"
+  local is_current="${2:-false}"
+
+  if [[ "$INVALID_ONLY" == true ]] &&
+    ! branch_violates_naming_rules "$branch"; then
+    return 0
+  fi
+
+  local branch_status_display
+  local branch_report_display
+  branch_status_display=$(branch_name_status_display "$branch" "$is_current")
+  branch_report_display="$branch_status_display"
+  if branch_violates_naming_rules "$branch"; then
+    INVALID_BRANCHES_FOUND=$((INVALID_BRANCHES_FOUND + 1))
+  fi
+
+  ensure_remote_refs_fetched
+
+  # Get PR status and last commit
+  local pr_count created_date last_commit_date base_reference branch_type
+  local divergence_counts remote_status remote_ahead remote_behind
+  local remote_ahead_behind
+  pr_count=$(get_pending_pr_count "$branch") || pr_count="N/A"
+  created_date=$(get_branch_created_date "$branch" "remote")
+  last_commit_date=$(get_branch_last_commit_date "$branch" "remote")
+  base_reference=$(get_remote_comparison_target "$branch")
+  branch_type=$(get_branch_type "$branch") || branch_type="remote"
+  [[ -z "$created_date" ]] && created_date=""
+  [[ -z "$last_commit_date" ]] && last_commit_date=""
+
+  divergence_counts=$(get_remote_divergence_counts "$branch" "$base_reference")
+  remote_ahead=""
+  remote_behind=""
+  remote_status="unknown"
+  local remote_divergence_re='^[[:space:]]*([0-9]+)[[:space:]]+'
+  remote_divergence_re+='([0-9]+)[[:space:]]*$'
+
+  if [[ "$divergence_counts" =~ $remote_divergence_re ]]; then
+    remote_ahead="${BASH_REMATCH[1]}"
+    remote_behind="${BASH_REMATCH[2]}"
+    if [[ "$remote_ahead" -eq 0 && "$remote_behind" -eq 0 ]]; then
+      remote_status="synced"
+    else
+      remote_status="diverged"
+    fi
+  elif [[ -z "$base_reference" ]]; then
+    remote_status="synced"
+  fi
+
+  # Build and print compact status line.
+  printf '%s %s\n' "$branch_status_display" \
+    "$(build_compact_status_tags remote "$branch" "$branch_type" "$is_current" \
+      "$remote_status" 0 "$pr_count" true)"
+
+  local pr_count_display
+  pr_count_display=$(format_zero_as_blank "$pr_count")
+  remote_ahead_behind=$(format_ratio_or_blank "$remote_ahead" "$remote_behind")
+  append_report_row \
+    "$branch_report_display" "remote" "$base_reference" "$remote_status" "" \
+    "" "$remote_ahead_behind" "$pr_count_display" \
+    "$created_date" "$last_commit_date"
+
+  if [[ "$VERBOSE" == true ]]; then
+    if [[ -n "$base_reference" ]]; then
+      echo "  Parent: $base_reference"
+    fi
+    if [[ -n "$remote_ahead_behind" ]]; then
+      echo "  Ahead/Behind: $remote_ahead_behind"
+    fi
+    echo "  Last Commit: $last_commit_date"
+    echo "  Pending PRs: $pr_count"
+  fi
+}
+
+# Run the branch status collection for the validated globals set by the caller.
+# Callers that must survive a non-zero result should invoke this in a subshell.
+bt_branch_status_run() {
+  trap cleanup_runtime_files EXIT
+
+# Build the exact command string used to generate this report.
+build_report_command
+
+# Snapshot status before this run mutates report files so stdout/report status
+# reflects repository state at invocation time.
+capture_initial_worktree_status
+
+if [[ "$GENERATE_REPORT" == true ]]; then
+  bt_report_dir_enable_writes "$branch_reports_dir" "$EXIT_OPERATION_FAILED"
+fi
+
+# Get current branch to restore later
+ORIGINAL_BRANCH=$(resolve_current_branch_name ||
+  bt_error_exit "$EXIT_NOT_FOUND" "Failed to determine current branch.")
+if is_current_remote_snapshot; then
+  CURRENT_IS_REMOTE_SNAPSHOT=true
+fi
+
+# Refresh remote refs before discovery so listings include newly created remote
+# branches and exclude refs deleted from the remote.
+ensure_remote_refs_fetched
+
+# Determine branches to check
+BRANCHES_TO_CHECK=""
+REMOTE_BRANCHES_TO_CHECK=""
+REMOTE_ONLY=""
+
+if [[ -n "$TARGET_BRANCH" ]]; then
+  if ! has_local_branch "$TARGET_BRANCH" &&
+    ! has_remote_branch "$TARGET_BRANCH"; then
+    bt_error_exit "$EXIT_NOT_FOUND" "$TARGET_BRANCH branch does not exist."
+  fi
+
+  bt_collect_lsbranch_mode_branches target "$TARGET_BRANCH" \
+    "$ORIGINAL_BRANCH" "$BRANCH_PATTERN" "$EXCLUDE_PATTERN" \
+    BRANCHES_TO_CHECK REMOTE_BRANCHES_TO_CHECK REMOTE_ONLY
+elif [[ -z "$BRANCH_PATTERN" ]]; then
+  # Default scope is the current branch's local and remote refs.
+  if ! has_local_branch "$ORIGINAL_BRANCH"; then
+    bt_error_exit "$EXIT_NOT_FOUND" \
+      "Current branch $ORIGINAL_BRANCH not found locally."
+  fi
+
+  bt_collect_lsbranch_mode_branches current "$TARGET_BRANCH" \
+    "$ORIGINAL_BRANCH" "$BRANCH_PATTERN" "$EXCLUDE_PATTERN" \
+    BRANCHES_TO_CHECK REMOTE_BRANCHES_TO_CHECK REMOTE_ONLY
+else
+  # Check branches matching pattern
+  bt_collect_lsbranch_mode_branches pattern "$TARGET_BRANCH" \
+    "$ORIGINAL_BRANCH" "$BRANCH_PATTERN" "$EXCLUDE_PATTERN" \
+    BRANCHES_TO_CHECK REMOTE_BRANCHES_TO_CHECK REMOTE_ONLY
+
+  if [[ "$INCLUDE_LOCAL" == true && "$INCLUDE_REMOTE" == false &&
+    -z "$BRANCHES_TO_CHECK" ]]; then
+    bt_warn "No branches found matching pattern: $BRANCH_PATTERN"
+    exit "$EXIT_NOT_FOUND"
+  elif [[ "$INCLUDE_REMOTE" == true && "$INCLUDE_LOCAL" == false &&
+    -z "$REMOTE_BRANCHES_TO_CHECK" ]]; then
+    bt_warn "No branches found matching pattern: $BRANCH_PATTERN"
+    exit "$EXIT_NOT_FOUND"
+  elif [[ "$INCLUDE_REMOTE" == true && "$INCLUDE_LOCAL" == true &&
+    -z "$BRANCHES_TO_CHECK" && -z "$REMOTE_BRANCHES_TO_CHECK" ]]; then
+    bt_warn "No branches found matching pattern: $BRANCH_PATTERN"
+    exit "$EXIT_NOT_FOUND"
+  fi
+fi
+
+if [[ "$GENERATE_REPORT" == true ]]; then
+  if ! bt_report_acquire_lock "$repo_root" "lsbranch" 10 REPORT_LOCK_FD; then
+    bt_error_exit "$EXIT_OPERATION_FAILED" \
+      "Timed out waiting for the branch report lock."
+  fi
+  OUTPUT_FILE="$(bt_report_transient_path \
+    "$branch_reports_dir" "$branch_report_prefix" "$RUN_TS_FILE")"
+  cleanup_old_reports
+  generate_report_header
+fi
+
+# Warn if remote status is stale (fetch failed/timed out)
+if [[ "$FETCH_FAILED" == true ]] && 
+   [[ "$INCLUDE_REMOTE_FLAG" == true || 
+      ("$INCLUDE_LOCAL_FLAG" == false && \
+        "$INCLUDE_REMOTE_FLAG" == false) ]]; then
+    bt_warn "$(printf '%s%s' \
+      "Cannot connect to remote repository. Branch status uses cached " \
+      "refs from your last successful remote update.")"
+fi
+
+# No-argument invocation shows local and remote rows for the current branch.
+if [[ "$NO_ARG_MODE" == true ]]; then
+  if [[ -n "$BRANCHES_TO_CHECK" ]]; then
+    while IFS= read -r branch; do
+      [[ -n "$branch" ]] || continue
+      _is_current=false
+      [[ "$branch" == "$ORIGINAL_BRANCH" && \
+        "$CURRENT_IS_REMOTE_SNAPSHOT" == false ]] && _is_current=true
+      check_branch_status \
+        "$branch" "$OUTPUT_FILE" "$_is_current" true true || true
+    done <<< "$BRANCHES_TO_CHECK"
+  fi
+
+  if [[ -n "$REMOTE_ONLY" ]]; then
+    while IFS= read -r branch; do
+      [[ -n "$branch" ]] || continue
+      _is_current=false
+      [[ "$branch" == "$ORIGINAL_BRANCH" ]] && _is_current=true
+      check_remote_branch_status "$branch" "$_is_current" || true
+    done <<< "$REMOTE_ONLY"
+  fi
+else
+  # Check local branches only when local inclusion is enabled.
+  if [[ "$INCLUDE_LOCAL" == true ]]; then
+    local_to_check="$BRANCHES_TO_CHECK"
+    
+    if [[ -n "$local_to_check" ]]; then
+      while IFS= read -r branch; do
+        if [[ -n "$branch" ]]; then
+          _is_current=false
+          [[ "$branch" == "$ORIGINAL_BRANCH" && \
+            "$CURRENT_IS_REMOTE_SNAPSHOT" == false ]] && _is_current=true
+          check_branch_status \
+            "$branch" "$OUTPUT_FILE" "$_is_current" \
+            "$INCLUDE_LOCAL" "$INCLUDE_REMOTE" || true
+        fi
+      done <<< "$local_to_check"
+    fi
+  fi
+
+  # Check remote-only branches if enabled
+  if [[ "$INCLUDE_REMOTE" == true ]]; then
+    remote_to_check=""
+    if [[ "$INCLUDE_LOCAL" == true ]]; then
+      remote_to_check="$REMOTE_ONLY"
+    else
+      remote_to_check="$REMOTE_BRANCHES_TO_CHECK"
+    fi
+
+    if [[ -n "$remote_to_check" ]]; then
+      while IFS= read -r branch; do
+        if [[ -n "$branch" ]]; then
+          _is_current=false
+          [[ "$branch" == "$ORIGINAL_BRANCH" && \
+            "$CURRENT_IS_REMOTE_SNAPSHOT" == true ]] && _is_current=true
+          check_remote_branch_status "$branch" "$_is_current" || true
+        fi
+      done <<< "$remote_to_check"
+    fi
+  fi
+fi
+
+FOOTER_BRANCH_LINE='**Branch**: Indicates the branch name.'
+FOOTER_INVALID_LINE='! after branch name indicates the name '
+FOOTER_INVALID_LINE+='violates naming rules.'
+
+if [[ "$GENERATE_REPORT" == true ]]; then
+  cat >> "$OUTPUT_FILE" << EOF
+
+$FOOTER_BRANCH_LINE
+
+$FOOTER_INVALID_LINE
+
+**Type**: Indicates branch is \`local\` or \`remote\`.
+
+**Parent**: Parent branch reference for the row when applicable (for example,
+\`main\` or \`v1.0.0\`).
+
+**Status**: \`clean\`, \`dirty\`, or \`not checked out\` for local branch
+state, \`synced\` or \`diverged\` for tracked-branch state, or \`unknown\`.
+For the current local branch, \`dirty\` means there are changes that have not
+been committed, including untracked files.
+
+**Staged/Unstaged**: Count of staged files and count of unstaged files.
+Unstaged includes tracked modifications and untracked files (anything
+requiring \`git add\` before a commit).
+
+**Unpushed Commits**: Count of local commits pending sync for this branch.
+
+**Ahead/Behind**: Commit divergence segments for the branch. Uses
+\`remote A/B\` for ahead/behind versus tracked remote and \`parent C/D\`
+for ahead/behind versus parent branch when available.
+
+**PR**: Count of pending (not closed) pull requests.
+
+**First Commit**: Approximate branch creation date, derived from the
+first commit on the branch.
+
+**Last Commit**: Date of the last commit on the branch.
+EOF
+
+  append_report_note_about_stale_remote
+
+  append_report_warnings
+
+  bt_report_release_lock "$REPORT_LOCK_FD"
+  REPORT_LOCK_FD=""
+
+  persist_report_changes
+fi
+
+if [[ "$VERBOSE" == true && "$GENERATE_REPORT" == true ]]; then
+  echo ""
+  bt_info "Report contents:"
+  sed 's/^/  /' "$OUTPUT_FILE"
+fi
+
+if [[ "$INVALID_ONLY" == true && "$INVALID_BRANCHES_FOUND" -gt 0 ]]; then
+  exit "$EXIT_CONFIG_ERROR"
+fi
+exit 0
+}

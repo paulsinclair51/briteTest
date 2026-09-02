@@ -43,7 +43,13 @@ Arguments:
   <clone-path>      Path to clean local clone used as recovery source.
 
 Options:
-  -d                Check and report only. Does not change the remote.
+  -d                Generate a dry-run report for the fixremote workflow
+                    without changing the remote.
+  -e                Generate an error report for the fixremote workflow
+                    without running the fixremote workflow. This option is
+                    intended for testing and debugging the error report and
+                    is not typically used in normal operation. This option is
+                    mutually exclusive with the -d option.
   -h, --help  Output this help to stdout and exit (other options and
               arguments are ignored).
   -t SEC            Remote reachability timeout in seconds (default: 10).
@@ -87,6 +93,7 @@ Exit codes:
   1   Invalid option or argument.
   2   User is not authorized - only approver/owner can run fixremote.
   3   Recovery failed - see the report for the next action.
+  4   Recovery skipped due to -e option.
   100 Missing required dependencies or configuration files.
   200 Git operation failed during recovery (fetch, push, fsck, etc.).
 EOF
@@ -115,6 +122,7 @@ set -euo pipefail
 readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_UNAUTHORIZED=2
 readonly EXIT_RECOVERY_FAILED=3
+readonly EXIT_WORKFLOW_SKIPPED=4
 readonly EXIT_MISSING_DEPENDENCIES=100
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -127,6 +135,7 @@ CLONE_PATH=""
 CLONE_ABS=""
 VERBOSE=false
 DRY_RUN=false
+ERROR_RUN=false
 EXECUTE_RECOVERY=false
 REMOTE_TIMEOUT_SECONDS=10
 readonly REMOTE_RETRY_ATTEMPTS=3
@@ -226,6 +235,20 @@ require_approver_role() {
   fi
   bt_error_exit "$EXIT_UNAUTHORIZED" \
     "User is not authorized to run fixremote (requires approver/owner role)."
+}
+
+init_error_report() {
+  local message="$1"
+
+  {
+    printf '# Remote Recovery Error Report\n\n'
+    printf '**Timestamp:** %s  \n' "$RUN_TS_DISPLAY"
+    printf '**Repository for Reports:** %s  \n' "$REPO_ROOT"
+    printf '**Source Clone Path:** %s  \n' "$CLONE_ABS"
+    printf '**Error:** %s\n\n' "$message"
+    printf '## Guidance\n\n'
+    printf -- '- Run without -e option.\n'
+  } > "$REPORT_FILE"
 }
 
 init_report() {
@@ -455,7 +478,13 @@ POSITIONAL=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -d)
+      [[ "$ERROR_RUN" == false ]] || usage_error "Cannot use both -d and -e"
       DRY_RUN=true
+      shift
+      ;;
+    -e)
+      [[ "$DRY_RUN" == false ]] || usage_error "Cannot use both -d and -e"
+      ERROR_RUN=true
       shift
       ;;
     -t)
@@ -510,8 +539,35 @@ if ! mkdir -p "$RECOVERY_REPORTS_DIR"; then
     "Unable to create reports directory: $RECOVERY_REPORTS_DIR"
 fi
 
-REPORT_FILE="$(bt_report_retained_path \
-  "$RECOVERY_REPORTS_DIR" "recovery" "$RUN_TS_FILE")"
+if [[ "$ERROR_RUN" == true ]]; then
+  REPORT_TARGET_FILE="$(bt_report_retained_path \
+    "$RECOVERY_REPORTS_DIR" "recovery-e" "$RUN_TS_FILE")"
+else
+  REPORT_TARGET_FILE="$(bt_report_retained_path \
+    "$RECOVERY_REPORTS_DIR" "recovery" "$RUN_TS_FILE")"
+fi
+staged_report_file=""
+if ! bt_report_create_staging_file "$REPORT_TARGET_FILE" staged_report_file; then
+  bt_error_exit "$EXIT_MISSING_DEPENDENCIES" \
+    "Unable to stage recovery report: $REPORT_TARGET_FILE"
+fi
+REPORT_FILE="$staged_report_file"
+
+if [[ "$ERROR_RUN" == true ]]; then
+  skip_message="Remote recovery skipped due to -e option."
+  init_error_report "$skip_message"
+  if ! bt_report_publish_staged_file "$staged_report_file" \
+    "$REPORT_TARGET_FILE"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    bt_error_exit "$EXIT_MISSING_DEPENDENCIES" \
+      "Unable to publish recovery report: $REPORT_TARGET_FILE"
+  fi
+  REPORT_FILE="$REPORT_TARGET_FILE"
+  bt_emit_error "$skip_message"
+  echo "Guidance: Run without -e option." >&2
+  echo "See ${REPORT_FILE#"${REPO_ROOT}"/} for details."
+  exit "$EXIT_WORKFLOW_SKIPPED"
+fi
 
 init_report
 
@@ -522,6 +578,13 @@ check_origin_configuration || true
 run_recovery_if_requested || true
 
 finalize_report
+
+if ! bt_report_publish_staged_file "$staged_report_file" "$REPORT_TARGET_FILE"; then
+  bt_report_discard_staged_file "$staged_report_file"
+  bt_error_exit "$EXIT_MISSING_DEPENDENCIES" \
+    "Unable to publish recovery report: $REPORT_TARGET_FILE"
+fi
+REPORT_FILE="$REPORT_TARGET_FILE"
 
 ISSUES_REMAINING=$((ISSUES_FOUND - ISSUES_FIXED))
 if [[ "$ISSUES_REMAINING" -lt 0 ]]; then

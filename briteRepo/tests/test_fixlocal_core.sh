@@ -54,6 +54,27 @@ plain_report="$(latest_report "$PLAIN_REPO")"
 assert_contains "Repository structure checks skipped" "$plain_report"
 pass "non-API fixture skip path"
 
+# 3a) -e should write an error report and skip the repair workflow
+rc=$(run_capture "$TMPDIR/plain-e.out" bash "$PLAIN_REPO/briteRepo/bin/fixlocal" -e)
+[[ "$rc" -eq 8 ]] || fail "fixlocal -e should exit 8 (got $rc)"
+assert_contains "Local repository repair skipped due to -e option." "$TMPDIR/plain-e.out"
+assert_contains "Guidance: Run without -e option." "$TMPDIR/plain-e.out"
+error_report="$(latest_report "$PLAIN_REPO")"
+[[ "$(basename "$error_report")" == repository-e-* ]] || \
+  fail "expected repository-e report, got $(basename "$error_report")"
+assert_contains "# Local Repository Repair Error Report" "$error_report"
+assert_contains "**Error:** Local repository repair skipped due to -e option." "$error_report"
+assert_contains "## Guidance" "$error_report"
+assert_contains "- Run without -e option." "$error_report"
+rm -f "$error_report"
+pass "fixlocal -e writes an error report"
+
+# 3b) -d and -e are mutually exclusive
+rc=$(run_capture "$TMPDIR/plain-de.out" bash "$PLAIN_REPO/briteRepo/bin/fixlocal" -d -e)
+[[ "$rc" -eq 1 ]] || fail "fixlocal -d -e should exit 1 (got $rc)"
+assert_contains "Cannot use both -d and -e" "$TMPDIR/plain-de.out"
+pass "fixlocal -d and -e are mutually exclusive"
+
 # 4) -t 0 should fail argument validation (SEC must be > 0)
 rc=$(run_capture "$TMPDIR/remote.out" bash "$REMOTE_REPO/briteRepo/bin/fixlocal" -d -t 0)
 [[ "$rc" -eq 1 ]] || fail "fixlocal -d -t 0 should exit 1 (got $rc)"

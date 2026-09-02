@@ -137,6 +137,27 @@ report="$(latest_recovery_report "$RUNNER")"
 assert_contains "Checks only" "$report"
 pass "preflight mode"
 
+# 3a) -e should write an error report and skip the recovery workflow
+rc=$(run_capture "$TMPDIR/error.out" env GITHUB_ACTOR="paulsinclair51" bash "$RUNNER/briteRepo/bin/fixremote" -e "$SOURCE_CLONE")
+[[ "$rc" -eq 4 ]] || fail "fixremote -e should exit 4 (got $rc)"
+assert_contains "Remote recovery skipped due to -e option." "$TMPDIR/error.out"
+assert_contains "Guidance: Run without -e option." "$TMPDIR/error.out"
+error_report="$(latest_recovery_report "$RUNNER")"
+[[ "$(basename "$error_report")" == recovery-e-* ]] || \
+  fail "expected recovery-e report, got $(basename "$error_report")"
+assert_contains "# Remote Recovery Error Report" "$error_report"
+assert_contains "**Error:** Remote recovery skipped due to -e option." "$error_report"
+assert_contains "## Guidance" "$error_report"
+assert_contains "- Run without -e option." "$error_report"
+rm -f "$error_report"
+pass "fixremote -e writes an error report"
+
+# 3b) -d and -e are mutually exclusive
+rc=$(run_capture "$TMPDIR/de.out" env GITHUB_ACTOR="paulsinclair51" bash "$RUNNER/briteRepo/bin/fixremote" -d -e "$SOURCE_CLONE")
+[[ "$rc" -eq 1 ]] || fail "fixremote -d -e should exit 1 (got $rc)"
+assert_contains "Cannot use both -d and -e" "$TMPDIR/de.out"
+pass "fixremote -d and -e are mutually exclusive"
+
 # 4) Unauthorized user should be blocked
 rc=$(run_capture "$TMPDIR/unauth.out" env GITHUB_ACTOR="randomuser" bash "$RUNNER/briteRepo/bin/fixremote" "$SOURCE_CLONE")
 [[ "$rc" -eq 2 ]] || fail "fixremote unauthorized run should exit 2 (got $rc)"

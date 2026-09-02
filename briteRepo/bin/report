@@ -49,15 +49,19 @@ Additional options only for a branch or repo report:
               activities are included. The newest N matches are selected.
   -q TEXT     Include activity whose summary or details contain TEXT.
               Matching is case-insensitive.
-  -r          Report on remote activity instead of local activity.
   -t SEC      Remote timeout in seconds (default: 10 seconds).
               SEC must be an integer greater than 0.
   -u USER     Include activity whose associated user contains USER.
               Matching is case-insensitive.
 
 Additional options only for a branch report:
-  -p          Report for the parent of the current branch instead of the
-              current branch. Combine with -r for the remote parent.
+  -l          Generate the current local branch report.
+  -r          Generate the current remote branch report.
+  -pl         Generate the parent local branch report.
+  -pr         Generate the parent remote branch report.
+
+  If none of -l, -r, -pl, or -pr is specified, all four branch reports are
+  generated.
 
 Additional options only for a style report:
   -f FILE     Check only FILE. May be specified more than once.
@@ -75,8 +79,9 @@ Repo Examples:
 
 Branch Examples:
   report
-  report -p
-  report -p -r
+  report -l
+  report -l -pl
+  report -r -pr
   report branch -u testuser -q "authentication" -n 10
   report branch -n 2
   report -n 0
@@ -90,16 +95,15 @@ Style Examples:
 Outputs:
   - Writes errors and diagnostics to stderr.
   - Writes verbose (-v) progress and diagnostics to stdout.
-  - Writes one untracked report directly in '<repo>/reports/':
+  - Writes one or more untracked reports directly in '<repo>/reports/':
       - 'repo-<datetime>.md' for a repository report.
       - 'branch-l-<datetime>.md' for a local branch report.
       - 'branch-r-<datetime>.md' for a remote branch report.
-      - 'branch-p-l-<datetime>.md' for a local parent branch report.
-      - 'branch-p-r-<datetime>.md' for a remote parent branch report.
+      - 'branch-pl-<datetime>.md' for a local parent branch report.
+      - 'branch-pr-<datetime>.md' for a remote parent branch report.
       - 'style-<datetime>.md' for a style report.
-    The previous report of the same type is deleted.
-  - Writes 'See <reportpath>' to stdout when a
-    report is written.
+    The previous report of each generated type is deleted.
+  - Writes 'See <reportpath>' to stdout for each report written.
 
 Exit codes:
   0    Success (report written, -h/--help).
@@ -108,8 +112,8 @@ Exit codes:
        as the current branch.
   3    Style report found validation issues.
   4    Style report is not authorized for the current user.
-    5    Repo and branch reports require a local branch or remote copy as the
-      current branch.
+  5    Repo and branch reports require a local branch or remote copy as the
+       current branch.
   6    No matching activity was found for branch report.
   200  Failed to read recorded activity.
   201  Failed to create or write the report.
@@ -117,15 +121,17 @@ EOF
 }
 
 # High-Level Flow:
-# - Resolve the selected local branch, fetched remote branch, or remote snapshot.
-# - Read recorded commits and completed workflow activity newest first.
-# - Apply user/text filters and select the newest limit.
-# - Write one report of the selected type; never mutate workflow history.
+# - Resolve selected local, remote, and parent branch scopes without changing HEAD.
+# - Read first-parent history and completed workflow activity newest first.
+# - Apply user/text filters and the activity limit independently to each scope.
+# - Stage then atomically publish each report; never mutate workflow history.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# branch_status.sh reads the repository root under this name.
+repo_root="$REPO_ROOT"
 REPORTS_DIR="$REPO_ROOT/reports"
 RUN_TS_FILE="$(date '+%Y%m%d-%H%M%S%z')"
 RUN_TS_DISPLAY="$(date '+%Y-%m-%d %H:%M:%S%z' | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/')"
@@ -370,7 +376,10 @@ generate_repo_activity_entries() {
 
     command_line="$(recorded_field_value "$body" "Command-Line")"
     command_line="$(expand_command_line_placeholders "$command_line" "$body")"
-    entry_type="$(activity_type "$command_line")"
+    entry_type="$(recorded_field_value "$body" "Workflow-Type")"
+    [[ -n "$entry_type" ]] || entry_type="$(activity_type "$command_line")"
+    command_line="$(resolve_pulldown_initiator "$command_line" "$full_hash" \
+      "$body")"
     sanitized_body="$(sanitize_commit_body_for_report "$body" "$subject")"
     while [[ "$sanitized_body" == $'\n'* ]]; do
       sanitized_body="${sanitized_body#$'\n'}"
@@ -429,14 +438,11 @@ generate_repository_report() {
   local branch_report_dir=""
   local repo_activity_output=""
   local repo_log_target="--all"
-  local -a branch_report_args=(-a -t "$REMOTE_TIMEOUT")
   local -a staged_reports=()
 
   if [[ "$REMOTE_BRANCH_REPORT" == true ]]; then
     repo_log_target="origin"
   fi
-
-  [[ "$VERBOSE" == false ]] || branch_report_args+=(-v)
 
   current_ref="$(bt_get_current_branch_or_empty)"
   if [[ -z "$current_ref" ]]; then
@@ -451,13 +457,27 @@ generate_repository_report() {
   git fsck --no-dangling --no-progress >/dev/null 2>&1 || integrity="fail"
 
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_WRITE_FAILED"
+  # Only the repository report needs the branch status library.
+  # shellcheck source=helpers/branch_status.sh
+  source "$SCRIPT_DIR/../helpers/branch_status.sh"
   if ! branch_report_dir="$(mktemp -d)"; then
     bt_warn "Failed to create temporary directory for branch status"
     exit "$EXIT_REPORT_WRITE_FAILED"
   fi
-  if ! branch_output="$(bt_run_lsbranch_mode report \
-    "$SCRIPT_DIR/lsbranch" "$branch_report_dir" repo-branches \
-    "${branch_report_args[@]}")"; then
+  if ! branch_output="$(
+    bt_branch_status_init
+    GENERATE_REPORT=true
+    branch_reports_dir="$branch_report_dir"
+    branch_report_prefix=repo-branches
+    BRANCH_PATTERN='*'
+    ALL_BRANCHES=true
+    INCLUDE_LOCAL=true
+    INCLUDE_REMOTE=true
+    REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT"
+    VERBOSE="$VERBOSE"
+    ORIGINAL_ARGS=()
+    bt_branch_status_run
+  )"; then
     rm -rf "$branch_report_dir"
     bt_warn "Failed to collect branch status for repository report"
     exit "$EXIT_REPORT_WRITE_FAILED"
@@ -502,7 +522,7 @@ generate_repository_report() {
     printf '| Local branches | %s |\n' "$local_branch_count"
     printf '| Remote branches | %s |\n\n' "$remote_branch_count"
     printf '## Branch Status\n\n'
-    sed '1,2d' "$branch_report"
+    sed -n '/^| \*\*Branch\*\*/,$p' "$branch_report"
     printf '\n## Repository Activity\n\n'
     if [[ -n "$repo_activity_output" ]]; then
       printf '<details>\n<summary>Most recent repository activity</summary>\n\n'
@@ -656,13 +676,15 @@ render_activity_context() {
   local affected_tables="$5"
   local include_workflow_details="${6:-true}"
   local source_branch=""
-  local target_branch=""
+  local branch_label=""
   local pr_number=""
   local ci_cd=""
+  local pr_lower=""
   local action=""
 
+  # Target Branch is always this report's own branch for pulldown/pushup, so
+  # it is never rendered; only the other, informative branch is shown.
   source_branch="$(recorded_field_value "$record" "Source-Branch")"
-  target_branch="$(recorded_field_value "$record" "Target-Branch")"
   pr_number="$(recorded_field_value "$record" "PR")"
   ci_cd="$(recorded_field_value "$record" "CI-CD")"
 
@@ -671,9 +693,11 @@ render_activity_context() {
       action="Synchronized with parent."
       [[ -n "$affected_tables" ]] || \
         action+=" No file or directory changes."
+      branch_label="Parent"
       ;;
     pushup)
       action="Pushed up to parent."
+      branch_label="Source Branch"
       ;;
     push)
       action="Published branch to remote."
@@ -687,18 +711,177 @@ render_activity_context() {
   esac
 
   printf '**Action:** %s  \n' "$action"
-  if [[ -n "$source_branch" ]]; then
-    printf '**Source Branch:** %s (%s)  \n' "$source_branch" "$scope"
-  fi
-  if [[ -n "$target_branch" ]]; then
-    printf '**Target Branch:** %s (%s)  \n' "$target_branch" "$scope"
+  if [[ -n "$branch_label" && -n "$source_branch" ]]; then
+    printf '**%s:** %s (%s)  \n' "$branch_label" "$source_branch" "$scope"
   elif [[ "$activity_type" == "commit" || "$activity_type" == "push" ]]; then
     printf '**Branch:** %s (%s)  \n' "$target_ref" "$scope"
   fi
   if [[ "$include_workflow_details" == true ]]; then
-    [[ -z "$pr_number" ]] || printf '**PR:** %s  \n' "$pr_number"
-    [[ -z "$ci_cd" ]] || printf '**CI/CD:** %s  \n' "$ci_cd"
+    if [[ -n "$pr_number" ]]; then
+      pr_lower="$(printf '%s' "$pr_number" | tr '[:upper:]' '[:lower:]')"
+      [[ "$pr_lower" == "none" || "$pr_lower" == "none." ]] || \
+        printf '**PR:** %s  \n' "$pr_number"
+    fi
+    if [[ -n "$ci_cd" && "$ci_cd" != *"were not queried"* ]]; then
+      printf '**CI/CD:** %s  \n' "$ci_cd"
+    fi
   fi
+}
+
+# Lists commits reachable from new_tip but not previous_tip in a collapsible
+# table, for merge-type actions whose single branch-tip hash hides them.
+render_workflow_commits_table() {
+  local previous_tip="$1"
+  local new_tip="$2"
+  local commit_hash=""
+  local commit_date=""
+  local commit_body=""
+  local commit_comment=""
+  local line=""
+  local rows=""
+
+  [[ -n "$previous_tip" && -n "$new_tip" ]] || return 0
+  while IFS= read -r commit_hash; do
+    [[ -n "$commit_hash" ]] || continue
+    commit_date="$(normalize_report_datetime "$(git show -s --format='%cI' "$commit_hash" 2>/dev/null)")"
+    commit_comment="$(render_commit_comment "$commit_hash")"
+    printf -v line '| `%s` | %s | %s |\n' "$commit_hash" "$commit_date" \
+      "$commit_comment"
+    rows+="$line"
+  done < <(git rev-list "$previous_tip..$new_tip" 2>/dev/null || true)
+  [[ -n "$rows" ]] || return 0
+
+  printf '\n<details>\n<summary>Commits</summary>\n\n'
+  printf '| **Commit** | **Date Time** | **Comment** |\n| --- | --- | --- |\n'
+  printf '%s' "$rows"
+  printf '</details>\n'
+}
+
+render_commit_comment() {
+  local commit_hash="$1"
+  local commit_body=""
+  local commit_subject=""
+  local commit_user=""
+  local commit_email=""
+  local note=""
+  local note_record=""
+  local notes_ref=""
+  local workflow_type=""
+  local source_branch=""
+  local target_branch=""
+  local workflow_user=""
+  local authority=""
+  local summary=""
+  local user_display=""
+  local command_line=""
+  local commit_comment=""
+
+  commit_body="$(git show -s --format='%B' "$commit_hash" 2>/dev/null)"
+  commit_subject="$(git show -s --format='%s' "$commit_hash" 2>/dev/null)"
+  commit_user="$(git show -s --format='%an' "$commit_hash" 2>/dev/null)"
+  commit_email="$(git show -s --format='%ae' "$commit_hash" 2>/dev/null)"
+
+  for notes_ref in briteRepo-workflow briteRepo-remote-workflow; do
+    note="$(git notes --ref="$notes_ref" show "$commit_hash" 2>/dev/null || true)"
+    [[ -n "$note" ]] || continue
+    while IFS= read -r -d $'\x1e' note_record; do
+      workflow_type="$(recorded_field_value "$note_record" "Workflow-Type")"
+      [[ "$workflow_type" == "pushup" ]] || continue
+      source_branch="$(recorded_field_value "$note_record" "Source-Branch")"
+      target_branch="$(recorded_field_value "$note_record" "Target-Branch")"
+      workflow_user="$(recorded_field_value "$note_record" "Workflow-User")"
+      authority="$(recorded_field_value "$note_record" "Authority")"
+      summary="$(recorded_field_value "$note_record" "Summary")"
+      if [[ -z "$authority" && "$summary" == *" by owner "* ]]; then
+        authority="owner"
+      fi
+      user_display="$(format_user_with_role "$workflow_user" "" "" "$authority")"
+      if [[ "$target_branch" == "main" ]]; then
+        target_branch="main branch"
+      fi
+      printf '%s pushed up to %s by %s.' "$source_branch" "$target_branch" \
+        "$user_display"
+      return 0
+    done < <(printf '%s\n' "$note" | workflow_note_records)
+  done
+
+  command_line="$(recorded_field_value "$commit_body" "Command-Line")"
+  if [[ "$(recorded_field_value "$commit_body" "Workflow-Type")" == \
+    "pulldown" || "${command_line%% *}" == "pulldown" ]]; then
+    source_branch="$(recorded_field_value "$commit_body" "Source-Branch")"
+    target_branch="$(recorded_field_value "$commit_body" "Target-Branch")"
+    user_display="$(format_user_with_role "$commit_user" "$commit_user" \
+      "$commit_email" "$(recorded_field_value "$commit_body" "Authority")")"
+    if [[ -n "$source_branch" && -n "$target_branch" ]]; then
+      printf 'Pulled down %s into %s by %s.' "$source_branch" "$target_branch" \
+        "$user_display"
+      return 0
+    fi
+  fi
+
+  commit_comment="$(extract_user_comment_from_body "$commit_body")"
+  if [[ -n "$commit_comment" ]]; then
+    printf '%s' "$commit_comment"
+  else
+    printf '%s' "$commit_subject"
+  fi
+}
+
+normalize_historical_pushup_command() {
+  local command_line="$1"
+  local command_source="$2"
+
+  if [[ "$command_source" != "user" && \
+    "${command_line%% *}" == "pushup" ]]; then
+    command_line="$(printf '%s\n' "$command_line" | sed -E \
+      's/(^|[[:space:]])-t[[:space:]]+10([[:space:]]|$)/ /; s/[[:space:]]+/ /g; s/^ //; s/ $//')"
+  fi
+  printf '%s' "$command_line"
+}
+
+resolve_pulldown_initiator() {
+  local command_line="$1"
+  local commit_hash="$2"
+  local commit_body="$3"
+  local source_branch=""
+  local target_branch=""
+  local merge_parent=""
+  local note=""
+  local note_record=""
+  local notes_ref=""
+  local initiating_command=""
+
+  [[ "${command_line%% *}" == "pulldown" ]] || {
+    printf '%s' "$command_line"
+    return 0
+  }
+  source_branch="$(recorded_field_value "$commit_body" "Source-Branch")"
+  target_branch="$(recorded_field_value "$commit_body" "Target-Branch")"
+  merge_parent="$(git rev-parse "${commit_hash}^2" 2>/dev/null || true)"
+  [[ -n "$merge_parent" && -n "$source_branch" && -n "$target_branch" ]] || {
+    printf '%s' "$command_line"
+    return 0
+  }
+
+  for notes_ref in briteRepo-workflow briteRepo-remote-workflow; do
+    note="$(git notes --ref="$notes_ref" show "$merge_parent" 2>/dev/null || true)"
+    [[ -n "$note" ]] || continue
+    while IFS= read -r -d $'\x1e' note_record; do
+      [[ "$(recorded_field_value "$note_record" "Workflow-Type")" == \
+        "pushup" ]] || continue
+      [[ "$(recorded_field_value "$note_record" "Source-Branch")" == \
+        "$target_branch" ]] || continue
+      [[ "$(recorded_field_value "$note_record" "Target-Branch")" == \
+        "$source_branch" ]] || continue
+      initiating_command="$(recorded_field_value "$note_record" "Command-Line")"
+      [[ -n "$initiating_command" ]] || continue
+      normalize_historical_pushup_command "$initiating_command" \
+        "$(recorded_field_value "$note_record" "Command-Source")"
+      return 0
+    done < <(printf '%s\n' "$note" | workflow_note_records)
+  done
+
+  printf '%s' "$command_line"
 }
 
 role_name_from_code() {
@@ -1296,12 +1479,7 @@ render_push_summary_tables() {
   while IFS= read -r commit_hash; do
     [[ -n "$commit_hash" ]] || continue
     commit_date="$(normalize_report_datetime "$(git show -s --format='%cI' "$commit_hash")")"
-    commit_body="$(git show -s --format='%B' "$commit_hash")"
-    commit_comment="$(extract_user_comment_from_body "$commit_body")"
-    if [[ -z "$commit_comment" ]]; then
-      commit_comment="${commit_body//$'\r'/}"
-      commit_comment="${commit_comment%%$'\n'*}"
-    fi
+    commit_comment="$(render_commit_comment "$commit_hash")"
     printf '| `%s` | %s | %s |\n' "$commit_hash" "$commit_date" "$commit_comment"
   done < <(git rev-list "$previous_tip..$pushed_tip" 2>/dev/null || true)
   printf '</details>\n'
@@ -1493,6 +1671,11 @@ REMOTE_TIMEOUT=10
 REMOTE_TIMEOUT_SPECIFIED=false
 REMOTE_BRANCH_REPORT=false
 PARENT_BRANCH_REPORT=false
+BRANCH_SELECTION_SPECIFIED=false
+SELECT_BRANCH_LOCAL=false
+SELECT_BRANCH_REMOTE=false
+SELECT_PARENT_LOCAL=false
+SELECT_PARENT_REMOTE=false
 TYPE_FILTER="all"
 FILTER_USER=""
 FILTER_TEXT=""
@@ -1511,7 +1694,7 @@ done
 for ((index=0; index < ${#ORIGINAL_ARGS[@]}; index++)); do
   arg="${ORIGINAL_ARGS[index]}"
   case "$arg" in
-    -u|-q|-n|-l|-t|-f)
+    -u|-q|-n|-t|-f)
       ((index += 1))
       ;;
     repo|branch|style)
@@ -1578,20 +1761,38 @@ while [[ $# -gt 0 ]]; do
       STYLE_ARGS+=("$1")
       shift
       ;;
+    -l)
+      [[ "$REPORT_TYPE" == "branch" ]] || \
+        usage_error "Option -l requires TYPE branch"
+      SELECT_BRANCH_LOCAL=true
+      BRANCH_SELECTION_SPECIFIED=true
+      shift
+      ;;
     -r)
       if [[ "$REPORT_TYPE" == "style" ]]; then
         STYLE_ARGS+=(-r)
-      elif [[ "$REPORT_TYPE" == "branch" || "$REPORT_TYPE" == "repo" ]]; then
+      elif [[ "$REPORT_TYPE" == "repo" ]]; then
         REMOTE_BRANCH_REPORT=true
+      elif [[ "$REPORT_TYPE" == "branch" ]]; then
+        SELECT_BRANCH_REMOTE=true
+        BRANCH_SELECTION_SPECIFIED=true
       else
         usage_error "Option -r requires TYPE branch, TYPE repo, or TYPE style"
       fi
       shift
       ;;
-    -p)
+    -pl)
       [[ "$REPORT_TYPE" == "branch" ]] || \
-        usage_error "Option -p requires TYPE branch"
-      PARENT_BRANCH_REPORT=true
+        usage_error "Option -pl requires TYPE branch"
+      SELECT_PARENT_LOCAL=true
+      BRANCH_SELECTION_SPECIFIED=true
+      shift
+      ;;
+    -pr)
+      [[ "$REPORT_TYPE" == "branch" ]] || \
+        usage_error "Option -pr requires TYPE branch"
+      SELECT_PARENT_REMOTE=true
+      BRANCH_SELECTION_SPECIFIED=true
       shift
       ;;
     -v)
@@ -1608,8 +1809,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$REPORT_TYPE" == "branch" && "$REMOTE_TIMEOUT_SPECIFIED" == true && \
-  "$REMOTE_BRANCH_REPORT" == false ]]; then
-  usage_error "Option -t requires -r for TYPE branch"
+  "$BRANCH_SELECTION_SPECIFIED" == true && "$SELECT_BRANCH_REMOTE" == false && \
+  "$SELECT_PARENT_REMOTE" == false ]]; then
+  usage_error "Option -t requires -r or -pr for TYPE branch"
 fi
 export BT_REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT"
 
@@ -1625,6 +1827,20 @@ fi
 if [[ "$REPORT_TYPE" == "repo" ]]; then
   generate_repository_report
 fi
+
+generate_branch_report() {
+  local selected_scope="$1"
+  local staged_report_file=""
+
+  REMOTE_BRANCH_REPORT=false
+  PARENT_BRANCH_REPORT=false
+  case "$selected_scope" in
+    l) ;;
+    r) REMOTE_BRANCH_REPORT=true ;;
+    pl) PARENT_BRANCH_REPORT=true ;;
+    pr) REMOTE_BRANCH_REPORT=true; PARENT_BRANCH_REPORT=true ;;
+    *) usage_error "Unsupported branch report scope '$selected_scope'" ;;
+  esac
 
 CURRENT_REF="$(bt_get_current_branch_raw 2>/dev/null || true)"
 if [[ "$CURRENT_REF" != "HEAD" && -n "$CURRENT_REF" ]]; then
@@ -1676,9 +1892,9 @@ elif [[ -z "$TARGET_REF" ]]; then
 fi
 if [[ "$PARENT_BRANCH_REPORT" == true ]]; then
   if [[ "$BRANCH_SCOPE_LABEL" == "remote" ]]; then
-    BRANCH_REPORT_PREFIX="branch-p-r"
+    BRANCH_REPORT_PREFIX="branch-pr"
   else
-    BRANCH_REPORT_PREFIX="branch-p-l"
+    BRANCH_REPORT_PREFIX="branch-pl"
   fi
 fi
 [[ -n "$TARGET_REF" ]] || usage_error "Could not resolve current branch/ref"
@@ -1775,7 +1991,9 @@ while IFS= read -r -d $'\x1e' row; do
       action_number=$((action_number + 1))
       printf -v entry '## %d. %s: %s\n\n' "$action_number" "$note_type" "$note_date"
       line=""
-      if [[ "$note_type" != "push" ]]; then
+      if [[ "$note_type" == "pulldown" ]]; then
+        printf -v line '**Branch Tip:** `%s`  \n' "$full_hash"
+      elif [[ "$note_type" != "push" ]]; then
         printf -v line '**Commit:** `%s`  \n' "$full_hash"
       fi
       entry+="$line"
@@ -1803,6 +2021,10 @@ while IFS= read -r -d $'\x1e' row; do
           entry+="$note_details"
           entry+=$'\n'
         fi
+      fi
+      if [[ "$note_type" == "pulldown" ]]; then
+        entry+="$(render_workflow_commits_table "${full_hash}^1" \
+          "${full_hash}^2")"
       fi
       if [[ "$note_type" == "push" ]]; then
         if [[ -n "$previous_tip" && -n "$pushed_tip" ]]; then
@@ -1895,6 +2117,8 @@ while IFS= read -r -d $'\x1e' row; do
   command_line="$(recorded_field_value "$body" "Command-Line")"
   [[ -n "${push_commit_hashes[$full_hash]+x}" ]] && continue
   command_line="$(expand_command_line_placeholders "$command_line" "$body")"
+  display_command="$(resolve_pulldown_initiator "$command_line" "$full_hash" \
+    "$body")"
   entry_type="$(recorded_field_value "$body" "Workflow-Type")"
   [[ -n "$entry_type" ]] || entry_type="$(activity_type "$command_line")"
   context_type="$entry_type"
@@ -1914,10 +2138,14 @@ while IFS= read -r -d $'\x1e' row; do
 
   action_number=$((action_number + 1))
   printf -v entry '## %d. %s: %s\n\n' "$action_number" "$entry_type" "$date_text"
-  printf -v line '**Commit:** `%s`  \n' "$full_hash"
+  if [[ "$entry_type" == "pulldown" ]]; then
+    printf -v line '**Branch Tip:** `%s`  \n' "$full_hash"
+  else
+    printf -v line '**Commit:** `%s`  \n' "$full_hash"
+  fi
   entry+="$line"
   if [[ -n "$command_line" ]]; then
-    printf -v line '**Command:** `%s`  \n' "$command_line"
+      printf -v line '**Command:** `%s`  \n' "$display_command"
     entry+="$line"
   fi
   printf -v line '**User:** %s  \n' "$action_user_display"
@@ -1927,6 +2155,10 @@ while IFS= read -r -d $'\x1e' row; do
     "$affected_tables")"
   entry+="$activity_context"
   [[ -z "$activity_context" ]] || entry+=$'\n'
+  if [[ "$entry_type" == "pulldown" ]]; then
+    entry+="$(render_workflow_commits_table "${full_hash}^1" \
+      "${full_hash}^2")"
+  fi
   if [[ -z "$command_line" && -n "$subject" ]] && \
     ! is_redundant_commit_summary "$subject"; then
     printf -v line '\n%s\n' "$subject"
@@ -1969,6 +2201,11 @@ fi
 report_file="$(bt_report_transient_path \
   "$REPORTS_DIR" "$BRANCH_REPORT_PREFIX" "$RUN_TS_FILE")"
 report_rel="${report_file#"${REPO_ROOT}"/}"
+if ! bt_report_create_staging_file "$report_file" staged_report_file; then
+  bt_report_release_lock "$report_lock_fd"
+  bt_warn "Failed to stage report: $report_rel"
+  return "$EXIT_REPORT_WRITE_FAILED"
+fi
 if ! {
   printf '# Branch Report\n\n'
   printf '**Branch:** `%s`  \n' "$TARGET_REF"
@@ -1982,10 +2219,17 @@ if ! {
     fi
     printf '%s\n' "$(trim_trailing_newlines "${entries[$entry_index]}")"
   done
-} > "$report_file"; then
+} > "$staged_report_file"; then
+  bt_report_discard_staged_file "$staged_report_file"
   bt_report_release_lock "$report_lock_fd"
   bt_warn "Failed to write report: $report_rel"
-  exit "$EXIT_REPORT_WRITE_FAILED"
+  return "$EXIT_REPORT_WRITE_FAILED"
+fi
+if ! bt_report_publish_staged_file "$staged_report_file" "$report_file"; then
+  bt_report_discard_staged_file "$staged_report_file"
+  bt_report_release_lock "$report_lock_fd"
+  bt_warn "Failed to publish report: $report_rel"
+  return "$EXIT_REPORT_WRITE_FAILED"
 fi
 
 remove_stale_reports "$report_file" \
@@ -1996,4 +2240,29 @@ if [[ "$VERBOSE" == true ]]; then
   bt_info "Found ${#entries[@]} matching activities"
 fi
 printf "See '%s'.\n" "$report_rel"
+}
+
+if [[ "$BRANCH_SELECTION_SPECIFIED" == false ]]; then
+  DEFAULT_CURRENT_REF="$(bt_get_current_branch_raw 2>/dev/null || true)"
+  if [[ "$DEFAULT_CURRENT_REF" != "HEAD" && -n "$DEFAULT_CURRENT_REF" ]]; then
+    SELECT_BRANCH_LOCAL=true
+    SELECT_PARENT_LOCAL=true
+  fi
+  SELECT_BRANCH_REMOTE=true
+  SELECT_PARENT_REMOTE=true
+fi
+
+if [[ "$SELECT_BRANCH_LOCAL" == true ]]; then
+  generate_branch_report l
+fi
+if [[ "$SELECT_BRANCH_REMOTE" == true ]]; then
+  generate_branch_report r
+fi
+if [[ "$SELECT_PARENT_LOCAL" == true ]]; then
+  generate_branch_report pl
+fi
+if [[ "$SELECT_PARENT_REMOTE" == true ]]; then
+  generate_branch_report pr
+fi
+
 exit 0

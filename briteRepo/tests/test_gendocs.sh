@@ -565,7 +565,7 @@ test_gendocs_genpdf_helper_reorders_first_png() {
 Body line.
 EOF
 
-  PATH="$repo/bin:$PATH" bash "$repo/briteRepo/helpers/genpdf.sh" -e \
+  BRITEREPO_INTERNAL=1 PATH="$repo/bin:$PATH" bash "$repo/briteRepo/helpers/genpdf.sh" -e \
     "$emitted" "$input" "$output"
 
   assert_file_exists "$output"
@@ -598,7 +598,7 @@ test_gendocs_genpdf_helper_passthrough_when_png_is_first_line() {
 Body line.
 EOF
 
-  PATH="$repo/bin:$PATH" bash "$repo/briteRepo/helpers/genpdf.sh" -e \
+  BRITEREPO_INTERNAL=1 PATH="$repo/bin:$PATH" bash "$repo/briteRepo/helpers/genpdf.sh" -e \
     "$emitted" "$input" "$output"
 
   assert_file_exists "$emitted"
@@ -620,7 +620,7 @@ test_gendocx_helper_invalid_backend() {
   repo=$(make_gendocx_helper_repo repo_gendocx_invalid)
   printf 'pdf\n' > "$repo/in/input.pdf"
 
-  rc=$(run_capture "$tmpdir/gendocx_invalid.out" bash \
+  rc=$(run_capture "$tmpdir/gendocx_invalid.out" env BRITEREPO_INTERNAL=1 bash \
     "$repo/briteRepo/helpers/gendocx.sh" -b invalid \
     "$repo/in/input.pdf" "$repo/out/out.docx")
   [[ "$rc" -eq 2 ]] || fail "expected invalid-backend exit 2, got $rc"
@@ -634,7 +634,7 @@ test_gendocx_helper_libreoffice_backend() {
   repo=$(make_gendocx_helper_repo repo_gendocx_libreoffice)
   printf 'pdf\n' > "$repo/in/input.pdf"
 
-  PATH="$repo/bin:$PATH" bash "$repo/briteRepo/helpers/gendocx.sh" -b \
+  BRITEREPO_INTERNAL=1 PATH="$repo/bin:$PATH" bash "$repo/briteRepo/helpers/gendocx.sh" -b \
     libreoffice "$repo/in/input.pdf" "$repo/out/output.docx" > \
     "$tmpdir/gendocx_libreoffice.out"
 

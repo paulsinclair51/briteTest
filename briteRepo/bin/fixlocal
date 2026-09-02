@@ -99,7 +99,13 @@ Prerequisites:
   - The remote repository must exist and be reachable.
 
 Options:
-  -d                Dry-run mode: report issues only, do not attempt repairs.
+  -d                Generate a dry-run report for the fixlocal workflow
+                    without attempting repairs.
+  -e                Generate an error report for the fixlocal workflow
+                    without running the fixlocal workflow. This option is
+                    intended for testing and debugging the error report and
+                    is not typically used in normal operation. This option is
+                    mutually exclusive with the -d option.
   -f                Force local repair: allow discarding uncommitted and
                     local-only changes after creating a restore point.
   -h, --help  Output this help to stdout and exit (other options and
@@ -132,7 +138,8 @@ Outputs:
   - Report artifact behavior:
     - Writes a repository diagnostic report:
       - The report file name is repository-<datetime>.md or, if -d
-        specified, repository-d-<datetime>.md. The report file is
+        specified, repository-d-<datetime>.md. If -e is specified, the
+        report file name is repository-e-<datetime>.md. The report file is
         untracked.
       - The report file is written to <repo>/reports/.
       - If this directory cannot be created or written, fixlocal exits with
@@ -177,6 +184,7 @@ Exit codes:
   6   Issues detected - one or more were not fixable.
   7   For dry-run (-d) mode, fixable issues were detected that would
       be fixed if run without -d. No non-fixable issues were detected.
+  8   Repair skipped due to -e option.
   100 Missing required helper files, dependencies, or configuration.
 EOF
 }
@@ -211,6 +219,7 @@ readonly EXIT_REMOTE_UNREACHABLE=4
 readonly EXIT_REMOTE_TIMED_OUT=5
 readonly EXIT_ISSUES_DETECTED=6
 readonly EXIT_FIXABLE_ONLY=7
+readonly EXIT_WORKFLOW_SKIPPED=8
 readonly EXIT_MISSING_DEPENDENCIES=100
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -281,6 +290,7 @@ OUTPUT_FILE=""
 REPOSITORY_REPORT_DELETIONS=()
 VERBOSE=false
 DRY_RUN=false
+ERROR_RUN=false
 FORCE_LOCAL_STABILIZATION=false
 REMOTE_TIMEOUT_SECONDS=10
 readonly REMOTE_RETRY_ATTEMPTS=3
@@ -377,12 +387,16 @@ filtered_status_output() {
   if [[ -n "$status_output" ]]; then
     status_output="$(printf '%s\n' "$status_output" | awk '
       BEGIN {
-        report_re = "^reports/repository(-d)?-[0-9]{8}-[0-9]{6}"
+        report_re = "^reports/repository(-[de])?-[0-9]{8}-[0-9]{6}"
         report_re = report_re "[+-][0-9]{4}\\.md$"
+        # Staging files created by bt_report_create_staging_file while this
+        # run is still writing its own report.
+        staging_re = "^reports/\\.repository(-[de])?-[0-9]{8}-[0-9]{6}"
+        staging_re = staging_re "[+-][0-9]{4}\\.md\\.tmp\\.[A-Za-z0-9]{6}$"
       }
       {
         path = substr($0, 4)
-        if (path ~ report_re) {
+        if (path ~ report_re || path ~ staging_re) {
           next
         }
         print
@@ -419,6 +433,20 @@ init_report() {
     printf '**Command:** %s  \n' "$COMMAND_LINE"
     printf '**Repository:** %s\n\n' "$REPO_ROOT"
     printf '## Checks Performed\n'
+  } > "$OUTPUT_FILE"
+}
+
+init_error_report() {
+  local message="$1"
+
+  {
+    printf '# Local Repository Repair Error Report\n\n'
+    printf '**Timestamp:** %s  \n' "$RUN_TS_DISPLAY"
+    printf '**Command:** %s  \n' "$COMMAND_LINE"
+    printf '**Repository:** %s  \n' "$REPO_ROOT"
+    printf '**Error:** %s\n\n' "$message"
+    printf '## Guidance\n\n'
+    printf -- '- Run without -e option.\n'
   } > "$OUTPUT_FILE"
 }
 
@@ -1336,6 +1364,7 @@ cleanup_old_reports() {
   local current_basename
   local non_dry_report
   local dry_report_re='^repository-d-[0-9]{8}-[0-9]{6}[+-][0-9]{4}\.md$'
+  local error_report_re='^repository-e-[0-9]{8}-[0-9]{6}[+-][0-9]{4}\.md$'
   local full_report_re='^repository-[0-9]{8}-[0-9]{6}[+-][0-9]{4}\.md$'
   local deleted_any=false
   local mtime=0
@@ -1352,12 +1381,14 @@ cleanup_old_reports() {
   [[ -f "$OUTPUT_FILE" ]] || return 0
   [[ -d "$REPOSITORY_REPORTS_DIR" ]] || return 0
 
-  current_basename="$(basename "$OUTPUT_FILE")"
+  current_basename="$(basename "${REPORT_TARGET_FILE:-$OUTPUT_FILE}")"
 
   # Collect candidate report files with robust null-delimited traversal.
   while IFS= read -r -d '' old_report; do
     non_dry_report="$(basename "$old_report")"
     if [[ "$non_dry_report" =~ $dry_report_re ]]; then
+      dry_run_reports+=("$old_report")
+    elif [[ "$non_dry_report" =~ $error_report_re ]]; then
       dry_run_reports+=("$old_report")
     elif [[ "$non_dry_report" =~ $full_report_re ]]; then
       non_dry_reports+=("$old_report")
@@ -1365,8 +1396,8 @@ cleanup_old_reports() {
   done < <(find "$REPOSITORY_REPORTS_DIR" -maxdepth 1 -type f \
     -name 'repository-*.md' -print0 2>/dev/null)
 
-  # Policy 1: whenever a new report is written, delete all older dry-run
-  # reports.
+  # Policy 1: whenever a new report is written, delete all older transient
+  # (dry-run and forced-error) reports.
   for old_report in "${dry_run_reports[@]}"; do
     [[ -f "$old_report" ]] || continue
     [[ "$(basename "$old_report")" == "$current_basename" ]] && continue
@@ -1378,7 +1409,7 @@ cleanup_old_reports() {
 
   # Policy 2: when writing a non-dry-run report, delete non-dry-run reports
   # older than 30 days. Deletion failures are non-fatal and reported by helper.
-  if [[ "$DRY_RUN" == false ]]; then
+  if [[ "$DRY_RUN" == false && "$ERROR_RUN" == false ]]; then
     cutoff=$(( $(date +%s) - (30 * 24 * 60 * 60) ))
     for old_report in "${non_dry_reports[@]}"; do
       [[ -f "$old_report" ]] || continue
@@ -1418,7 +1449,13 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -d)
+      [[ "$ERROR_RUN" == false ]] || usage_error "Cannot use both -d and -e"
       DRY_RUN=true
+      shift
+      ;;
+    -e)
+      [[ "$DRY_RUN" == false ]] || usage_error "Cannot use both -d and -e"
+      ERROR_RUN=true
       shift
       ;;
     -f)
@@ -1461,11 +1498,38 @@ if ! mkdir -p "$REPOSITORY_REPORTS_DIR"; then
 fi
 
 if [[ "$DRY_RUN" == true ]]; then
-  OUTPUT_FILE="$(bt_report_retained_path \
+  REPORT_TARGET_FILE="$(bt_report_retained_path \
     "$REPOSITORY_REPORTS_DIR" "repository-d" "$RUN_TS_FILE")"
+elif [[ "$ERROR_RUN" == true ]]; then
+  REPORT_TARGET_FILE="$(bt_report_retained_path \
+    "$REPOSITORY_REPORTS_DIR" "repository-e" "$RUN_TS_FILE")"
 else
-  OUTPUT_FILE="$(bt_report_retained_path \
+  REPORT_TARGET_FILE="$(bt_report_retained_path \
     "$REPOSITORY_REPORTS_DIR" "repository" "$RUN_TS_FILE")"
+fi
+
+staged_report_file=""
+if ! bt_report_create_staging_file "$REPORT_TARGET_FILE" staged_report_file; then
+  bt_error_exit "$EXIT_MISSING_DEPENDENCIES" \
+    "Unable to stage repository report: $REPORT_TARGET_FILE"
+fi
+OUTPUT_FILE="$staged_report_file"
+
+if [[ "$ERROR_RUN" == true ]]; then
+  skip_message="Local repository repair skipped due to -e option."
+  init_error_report "$skip_message"
+  cleanup_old_reports
+  if ! bt_report_publish_staged_file "$staged_report_file" \
+    "$REPORT_TARGET_FILE"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    bt_error_exit "$EXIT_MISSING_DEPENDENCIES" \
+      "Unable to publish repository report: $REPORT_TARGET_FILE"
+  fi
+  OUTPUT_FILE="$REPORT_TARGET_FILE"
+  bt_emit_error "$skip_message"
+  echo "Guidance: Run without -e option." >&2
+  echo "See ${OUTPUT_FILE#"${REPO_ROOT}"/} for details."
+  exit "$EXIT_WORKFLOW_SKIPPED"
 fi
 
 add_target_repo "This Repository" "$REPO_ROOT"
@@ -1478,8 +1542,15 @@ for target_path in "${TARGET_PATHS[@]}"; do
   index=$((index + 1))
 done
 
-finalize_report
 cleanup_old_reports
+finalize_report
+
+if ! bt_report_publish_staged_file "$staged_report_file" "$REPORT_TARGET_FILE"; then
+  bt_report_discard_staged_file "$staged_report_file"
+  bt_error_exit "$EXIT_MISSING_DEPENDENCIES" \
+    "Unable to publish repository report: $REPORT_TARGET_FILE"
+fi
+OUTPUT_FILE="$REPORT_TARGET_FILE"
 
 ISSUES_REMAINING=$((ISSUES_FOUND - REMEDIATIONS_VERIFIED))
 if [[ "$ISSUES_REMAINING" -lt 0 ]]; then

@@ -49,7 +49,8 @@ Options:
                        instead of completing configuration. Useful after crashes
                        or if manual changes broke the fork state.
   -v                   Output progress and diagnostics to stdout.
-  -d                   Dry-run (show what would be done without creating fork).
+  -d                   Dry-run. Validate the mkfork workflow without creating
+                       the fork.
   -t SEC               Remote operation timeout in seconds (default: 10).
                        SEC must be an integer greater than 0.
 
