@@ -1,0 +1,16 @@
+--- briteRepo workflow ---
+Workflow-Type: pushup
+Workflow-Time: 2026-09-02 18:51:35+00:00
+Workflow-Branch: v1.0.0
+Workflow-User: paulsinclair51 <test@example.com>
+Command-Line: pushup -o
+Summary: dev/release-v1.0.0 pushed up to v1.0.0 by paulsinclair51 (owner).
+Authority: owner
+Command-Source: user
+Source-Branch: dev/release-v1.0.0
+Source-Tip: c72acc0cf9a79441b7afff9a99655e6e45c9426b
+Target-Branch: v1.0.0
+PR: none
+Status: Current branch merged into parent branch
+Method: Squash merge created by pushup
+CI-CD: No associated PR; CI/CD checks were not queried.
