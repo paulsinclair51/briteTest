@@ -203,16 +203,6 @@ bt_collect_lsbranch_mode_branches() {
       ;;
     current)
       basis_branch="$current_branch"
-      if bt_lsbranch_has_local_branch "$basis_branch"; then
-        local_out="$basis_branch"
-      fi
-      if bt_lsbranch_has_remote_branch "$basis_branch"; then
-        remote_out="$basis_branch"
-        if ! bt_lsbranch_has_local_branch "$basis_branch"; then
-          remote_only_out="$basis_branch"
-        fi
-      fi
-      return 0
       ;;
     pattern)
       local_branches=$(get_local_branches "$branch_pattern")

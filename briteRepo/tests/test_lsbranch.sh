@@ -135,6 +135,9 @@ rc=$(run_capture "$TMPDIR/default.out" "$LSBRANCH")
 [[ "$rc" -eq 0 ]] || fail "lsbranch should exit 0"
 current_branch="$(source "$SCRIPT_DIR/../helpers/common.sh"; \
   bt_get_current_branch_or_empty)"
+parent_branch="$(source "$SCRIPT_DIR/../helpers/common.sh"; \
+  source "$SCRIPT_DIR/../helpers/git_helpers.sh"; \
+  bt_resolve_parent_branch "$current_branch" main)"
 grep -Eq "^${current_branch} \\[current\\]" \
   "$TMPDIR/default.out" || \
   fail "current branch should be marked with [current] in stdout"
@@ -142,9 +145,13 @@ default_branch_rows="$(grep -Ec "^${current_branch} \\[" \
   "$TMPDIR/default.out")"
 [[ "$default_branch_rows" -eq 2 ]] || \
   fail "default lsbranch should show current local and remote rows"
-if grep -Ev "^${current_branch} \\[|^Warning:" \
+if [[ -n "$parent_branch" ]]; then
+  grep -Fq "${parent_branch} [" "$TMPDIR/default.out" || \
+    fail "default lsbranch should show the parent branch"
+fi
+if grep -Ev "^${current_branch} \\[|^${parent_branch} \\[|^Warning:" \
   "$TMPDIR/default.out" | grep -q '[^[:space:]]'; then
-  fail "default lsbranch should not list the parent as a separate branch"
+  fail "default lsbranch should list only the current branch and its parent"
 fi
 if grep -q '^See .* for details\.$' "$TMPDIR/default.out"; then
   fail "lsbranch should not output a report path"
@@ -308,6 +315,12 @@ grep -Fq "[local ahead by 1]" "$TMPDIR/status-ahead.out" || \
   fail "remote row should report behind local"
 grep -Fq "[parent v1.0.0 behind by 1]" \
   "$TMPDIR/status-ahead.out" || fail "row should report parent identity"
+grep -Eq "^${status_parent} \\[local\\]" \
+  "$TMPDIR/status-ahead.out" || \
+  fail "explicit branch selection should show the parent local row"
+grep -Eq "^${status_parent} \\[remote\\]" \
+  "$TMPDIR/status-ahead.out" || \
+  fail "explicit branch selection should show the parent remote row"
 
 status_parent_remote_tip=$(git rev-parse refs/remotes/origin/v1.0.0)
 status_neutral_parent_tip=$(printf 'content-neutral parent fixture\n' | \
