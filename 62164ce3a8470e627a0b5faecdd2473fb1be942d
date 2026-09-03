@@ -1,0 +1,11 @@
+--- briteRepo workflow ---
+Workflow-Type: undo
+Workflow-Time: 2026-08-29 04:50:45+00:00
+Workflow-Branch: v1.0.0
+Workflow-User: paulsinclair51 <test@example.com>
+Command-Line: undo
+Summary: Undo uncommitted: Discarded tracked and untracked working tree changes
+Undo-Type: uncommitted
+Undone-Operation-ID: none
+Comment: none
+Details: Discarded tracked and untracked working tree changes
