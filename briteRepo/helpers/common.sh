@@ -216,7 +216,8 @@ bt_normalize_login() {
   local login="$1"
 
   login="${login#@}"
-  login="$(printf '%s' "$login" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+  login="${login,,}"
+  login="${login//[[:space:]]/}"
   printf '%s' "$login"
 }
 
@@ -285,51 +286,62 @@ bt_require_login() {
 }
 
 # Resolve role code for a login from contributors.md.
+# Memoized per (file, login) since callers may resolve the same login many
+# times in one run (e.g. rendering many commits by the same author).
+declare -gA BT_CONTRIBUTOR_ROLE_CACHE 2>/dev/null || true
 bt_contributors_get_role_or_empty() {
   local login="$1"
   local contributors_file="${2:-config/contributors.md}"
+  local target_login=""
+  local cache_key=""
+  local role_code=""
 
   [[ -f "$contributors_file" ]] || {
     printf ''
     return 0
   }
 
-  local target_login
   target_login="$(bt_normalize_login "$login")"
   [[ -n "$target_login" ]] || {
     printf ''
     return 0
   }
 
-  local line
-  local role_code
-  local parsed_login
+  cache_key="${contributors_file}|${target_login}"
+  if [[ -n "${BT_CONTRIBUTOR_ROLE_CACHE[$cache_key]+x}" ]]; then
+    printf '%s' "${BT_CONTRIBUTOR_ROLE_CACHE[$cache_key]}"
+    return 0
+  fi
 
-  while IFS= read -r line; do
-    local entry
-    entry="$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//')"
-    [[ -n "$entry" ]] || continue
-    [[ "$entry" =~ ^# ]] && continue
-    [[ "$entry" =~ ^## ]] && continue
+  # Single awk pass replaces per-line sed/tr forking: strips leading
+  # whitespace and a leading "- " bullet, splits on the first comma, then
+  # normalizes login (lowercase, no whitespace, no leading @) and role
+  # (uppercase, no whitespace) the same way bt_normalize_login does.
+  role_code="$(awk -F',' -v target="$target_login" '
+    {
+      line = $0
+      sub(/^[[:space:]]+/, "", line)
+      if (line == "" || line ~ /^#/) next
+      if (line ~ /^-[[:space:]]+/) { sub(/^-[[:space:]]+/, "", line) }
+      n = split(line, parts, ",")
+      raw_login = parts[1]
+      raw_role = (n >= 2) ? parts[2] : ""
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", raw_login)
+      sub(/^@/, "", raw_login)
+      parsed_login = tolower(raw_login)
+      gsub(/[[:space:]]/, "", parsed_login)
+      role = toupper(raw_role)
+      gsub(/[[:space:]]/, "", role)
+      if (role !~ /^[CRA]$/) next
+      if (parsed_login == target) {
+        print role
+        exit
+      }
+    }
+  ' "$contributors_file")"
 
-    if [[ "$entry" =~ ^-[[:space:]]+ ]]; then
-      entry="${entry#- }"
-    fi
-
-    local raw_login raw_role
-    IFS=',' read -r raw_login raw_role _ <<< "$entry"
-
-    parsed_login="$(bt_normalize_login "${raw_login:-}")"
-    role_code="$(printf '%s' "${raw_role:-}" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
-    [[ "$role_code" =~ ^[CRA]$ ]] || continue
-
-    if [[ "$parsed_login" == "$target_login" ]]; then
-      printf '%s' "$role_code"
-      return 0
-    fi
-  done < "$contributors_file"
-
-  printf ''
+  BT_CONTRIBUTOR_ROLE_CACHE["$cache_key"]="$role_code"
+  printf '%s' "$role_code"
 }
 
 bt_contributors_has_min_role() {

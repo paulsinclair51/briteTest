@@ -282,6 +282,7 @@ generate_repo_activity_entries() {
   local action_user_display=""
   local entry_text=""
   local repo_entries=()
+  declare -A affected_tables_cache=()
 
   local repo_log_target="--all"
   if [[ "$REMOTE_BRANCH_REPORT" == true ]]; then
@@ -314,7 +315,9 @@ generate_repo_activity_entries() {
     if [[ -n "$note" ]]; then
       while IFS= read -r -d $'\x1e' note_record; do
         [[ -n "$note_record" ]] || continue
-        missing_note_fields="$(workflow_record_missing_fields "$note_record")"
+        declare -A note_fields=()
+        bt_parse_record_fields "$note_record" note_fields
+        missing_note_fields="$(workflow_record_missing_fields note_fields)"
         if [[ -n "$missing_note_fields" ]]; then
           if [[ "$VERBOSE" == true ]]; then
             bt_warn "Skipping malformed workflow record on $short_hash; missing: $missing_note_fields"
@@ -322,27 +325,27 @@ generate_repo_activity_entries() {
           continue
         fi
 
-        note_type="$(recorded_field_value "$note_record" "Workflow-Type")"
-        note_date="$(normalize_report_datetime "$(recorded_field_value "$note_record" "Workflow-Time")")"
-        note_user="$(recorded_field_value "$note_record" "Workflow-User")"
-        note_command="$(recorded_field_value "$note_record" "Command-Line")"
+        note_type="${note_fields[Workflow-Type]:-}"
+        note_date="$(normalize_report_datetime "${note_fields[Workflow-Time]:-}")"
+        note_user="${note_fields[Workflow-User]:-}"
+        note_command="${note_fields[Command-Line]:-}"
         note_command="$(expand_command_line_placeholders "$note_command" "$note_record")"
-        note_summary="$(recorded_field_value "$note_record" "Summary")"
-        note_details="$(printf '%s\n' "$note_record" | workflow_event_details)"
-        note_authority="$(recorded_field_value "$note_record" "Authority")"
+        note_summary="${note_fields[Summary]:-}"
+        note_details="$(workflow_event_details <<< "$note_record")"
+        note_authority="${note_fields[Authority]:-}"
         note_user_display="$(format_user_with_role "$note_user" "" "" \
           "$note_authority")"
-        affected_tables="$(render_affected_tables "$full_hash")"
 
         if ! entry_matches_filters "$note_type" "$note_user" \
           "$note_summary $note_details $note_command"; then
           continue
         fi
+        render_affected_tables_cached "$full_hash" affected_tables
 
         action_number=$((action_number + 1))
         printf -v entry '## %d. %s: %s\n\n' "$action_number" "$note_type" "$note_date"
         if [[ "$note_type" == "push" ]]; then
-          printf -v line '**Pushed Branch Tip:** `%s`  \n' "$(recorded_field_value "$note_record" "Pushed-Tip")"
+          printf -v line '**Pushed Branch Tip:** `%s`  \n' "${note_fields[Pushed-Tip]:-}"
           entry+="$line"
         else
           printf -v line '**Commit:** `%s`  \n' "$full_hash"
@@ -362,7 +365,7 @@ generate_repo_activity_entries() {
           entry+=$'\n'
         fi
         if [[ "$note_type" == "push" ]]; then
-          entry+="$(render_push_summary_tables "$(recorded_field_value "$note_record" "Previous-Remote-Tip")" "$(recorded_field_value "$note_record" "Pushed-Tip")")"
+          entry+="$(render_push_summary_tables "${note_fields[Previous-Remote-Tip]:-}" "${note_fields[Pushed-Tip]:-}")"
         else
           entry+="$affected_tables"
         fi
@@ -374,9 +377,11 @@ generate_repo_activity_entries() {
       done < <(printf '%s\n' "$note" | workflow_note_records)
     fi
 
-    command_line="$(recorded_field_value "$body" "Command-Line")"
+    declare -A body_fields=()
+    bt_parse_record_fields "$body" body_fields
+    command_line="${body_fields[Command-Line]:-}"
     command_line="$(expand_command_line_placeholders "$command_line" "$body")"
-    entry_type="$(recorded_field_value "$body" "Workflow-Type")"
+    entry_type="${body_fields[Workflow-Type]:-}"
     [[ -n "$entry_type" ]] || entry_type="$(activity_type "$command_line")"
     command_line="$(resolve_pulldown_initiator "$command_line" "$full_hash" \
       "$body")"
@@ -385,11 +390,11 @@ generate_repo_activity_entries() {
       sanitized_body="${sanitized_body#$'\n'}"
     done
     action_user_display="$(format_user_with_role "$author_name" "$author_name" "$author_email")"
-    affected_tables="$(render_affected_tables "$full_hash")"
     if ! entry_matches_filters "$entry_type" "$author_name $author_email" \
       "$subject $body"; then
       continue
     fi
+    render_affected_tables_cached "$full_hash" affected_tables
 
     action_number=$((action_number + 1))
     printf -v entry '## %d. %s: %s\n\n' "$action_number" "$entry_type" "$(normalize_report_datetime "$date_text")"
@@ -670,7 +675,9 @@ workflow_event_details() {
 
 render_activity_context() {
   local activity_type="$1"
-  local record="$2"
+  # fields_map: nameref to an associative array already populated by
+  # bt_parse_record_fields for the same record/body.
+  local -n fields_map="$2"
   local scope="$3"
   local target_ref="$4"
   local affected_tables="$5"
@@ -684,9 +691,9 @@ render_activity_context() {
 
   # Target Branch is always this report's own branch for pulldown/pushup, so
   # it is never rendered; only the other, informative branch is shown.
-  source_branch="$(recorded_field_value "$record" "Source-Branch")"
-  pr_number="$(recorded_field_value "$record" "PR")"
-  ci_cd="$(recorded_field_value "$record" "CI-CD")"
+  source_branch="${fields_map[Source-Branch]:-}"
+  pr_number="${fields_map[PR]:-}"
+  ci_cd="${fields_map[CI-CD]:-}"
 
   case "$activity_type" in
     pulldown)
@@ -1552,6 +1559,21 @@ recorded_field_value() {
   printf '%s' "$value"
 }
 
+# Populates fields_out (nameref to an associative array) with every
+# "Key: Value" line found in record, in a single pass and without forking a
+# subshell. Callers reading several fields from the same record/body should
+# use this once instead of repeated recorded_field_value calls.
+bt_parse_record_fields() {
+  local record="$1"
+  local -n fields_out="$2"
+  local line=""
+
+  while IFS= read -r line; do
+    [[ "$line" =~ ^([A-Za-z][A-Za-z0-9-]*):[[:space:]]*(.*)$ ]] || continue
+    fields_out["${BASH_REMATCH[1]}"]="${BASH_REMATCH[2]}"
+  done <<< "$record"
+}
+
 normalize_report_datetime() {
   local value="${1:-}"
 
@@ -1640,16 +1662,16 @@ recorded_change_summary() {
   bt_format_change_summary
 }
 
+# fields_map must be a nameref to an associative array already populated by
+# bt_parse_record_fields for the same record.
 workflow_record_missing_fields() {
-  local record="$1"
+  local -n fields_map="$1"
   local field=""
   local missing_fields=""
-  local value=""
 
   for field in Workflow-Type Workflow-Time Workflow-Branch Workflow-User \
     Command-Line Summary; do
-    value="$(recorded_field_value "$record" "$field")"
-    [[ -n "$value" ]] && continue
+    [[ -n "${fields_map[$field]:-}" ]] && continue
     [[ -z "$missing_fields" ]] || missing_fields+=", "
     missing_fields+="$field"
   done
@@ -1657,12 +1679,13 @@ workflow_record_missing_fields() {
   printf '%s' "$missing_fields"
 }
 
+# fields_map must be a nameref to an associative array already populated by
+# bt_parse_record_fields for the same record.
 workflow_record_matches_branch() {
-  local record="$1"
+  local -n fields_map="$1"
   local target_branch="$2"
 
-  [[ "$(recorded_field_value "$record" "Workflow-Branch")" == \
-    "$target_branch" ]]
+  [[ "${fields_map[Workflow-Branch]:-}" == "$target_branch" ]]
 }
 
 REPORT_TYPE="branch"
@@ -1942,27 +1965,29 @@ while IFS= read -r -d $'\x1e' row; do
   note="$(git notes --ref="$WORKFLOW_NOTES_REF" show "$full_hash" 2>/dev/null || true)"
   if [[ -n "$note" ]]; then
     while IFS= read -r -d $'\x1e' note_record; do
-      missing_note_fields="$(workflow_record_missing_fields "$note_record")"
+      declare -A note_fields=()
+      bt_parse_record_fields "$note_record" note_fields
+      missing_note_fields="$(workflow_record_missing_fields note_fields)"
       if [[ -n "$missing_note_fields" ]]; then
         if [[ "$VERBOSE" == true ]]; then
           bt_warn "Skipping malformed workflow record on $short_hash; missing: $missing_note_fields"
         fi
         continue
       fi
-      note_type="$(recorded_field_value "$note_record" "Workflow-Type")"
-      note_date="$(normalize_report_datetime "$(recorded_field_value "$note_record" "Workflow-Time")")"
-      note_user="$(recorded_field_value "$note_record" "Workflow-User")"
-      note_command="$(recorded_field_value "$note_record" "Command-Line")"
+      note_type="${note_fields[Workflow-Type]:-}"
+      note_date="$(normalize_report_datetime "${note_fields[Workflow-Time]:-}")"
+      note_user="${note_fields[Workflow-User]:-}"
+      note_command="${note_fields[Command-Line]:-}"
       note_command="$(expand_command_line_placeholders "$note_command" "$note_record")"
-      note_summary="$(recorded_field_value "$note_record" "Summary")"
-      note_details="$(printf '%s\n' "$note_record" | workflow_event_details)"
-      note_authority="$(recorded_field_value "$note_record" "Authority")"
+      note_summary="${note_fields[Summary]:-}"
+      note_details="$(workflow_event_details <<< "$note_record")"
+      note_authority="${note_fields[Authority]:-}"
 
       previous_tip=""
       pushed_tip=""
       if [[ "$note_type" == "push" ]]; then
-        previous_tip="$(recorded_field_value "$note_record" "Previous-Remote-Tip")"
-        pushed_tip="$(recorded_field_value "$note_record" "Pushed-Tip")"
+        previous_tip="${note_fields[Previous-Remote-Tip]:-}"
+        pushed_tip="${note_fields[Pushed-Tip]:-}"
         [[ -n "$previous_tip" ]] || \
           previous_tip="$(workflow_detail_value "$note_details" "Previous-Remote-Tip")"
         [[ -n "$pushed_tip" ]] || \
@@ -1979,7 +2004,7 @@ while IFS= read -r -d $'\x1e' row; do
         fi
       fi
 
-      workflow_record_matches_branch "$note_record" "$TARGET_REF" || continue
+      workflow_record_matches_branch note_fields "$TARGET_REF" || continue
       if ! entry_matches_filters "$note_type" "$note_user" \
         "$note_summary $note_details $note_command"; then
         continue
@@ -2006,7 +2031,7 @@ while IFS= read -r -d $'\x1e' row; do
       printf -v line '**User:** %s  \n' "$note_user_display"
       entry+="$line"
       activity_context="$(render_activity_context "$note_type" \
-        "$note_record" "$BRANCH_SCOPE_LABEL" "$TARGET_REF" \
+        note_fields "$BRANCH_SCOPE_LABEL" "$TARGET_REF" \
         "$affected_tables")"
       if [[ -n "$activity_context" ]]; then
         entry+="$activity_context"
@@ -2054,7 +2079,7 @@ while IFS= read -r -d $'\x1e' row; do
           for push_field in Files-Modified Files-Deleted Files-Added \
             Files-Renamed Files-Renamed-Modified Directories-Deleted \
             Directories-Added Directories-Renamed; do
-            push_field_value="$(recorded_field_value "$note_record" "$push_field")"
+            push_field_value="${note_fields[$push_field]:-}"
             [[ -n "$push_field_value" ]] || \
               push_field_value="$(workflow_detail_value "$note_details" "$push_field")"
             if [[ -n "$push_field_value" ]] && [[ "$push_field_value" =~ ^[0-9]+$ ]]; then
@@ -2114,16 +2139,17 @@ while IFS= read -r -d $'\x1e' row; do
     break
   fi
 
-  command_line="$(recorded_field_value "$body" "Command-Line")"
+  declare -A body_fields=()
+  bt_parse_record_fields "$body" body_fields
+  command_line="${body_fields[Command-Line]:-}"
   [[ -n "${push_commit_hashes[$full_hash]+x}" ]] && continue
   command_line="$(expand_command_line_placeholders "$command_line" "$body")"
   display_command="$(resolve_pulldown_initiator "$command_line" "$full_hash" \
     "$body")"
-  entry_type="$(recorded_field_value "$body" "Workflow-Type")"
+  entry_type="${body_fields[Workflow-Type]:-}"
   [[ -n "$entry_type" ]] || entry_type="$(activity_type "$command_line")"
   context_type="$entry_type"
-  context_record="$body"
-  action_authority="$(recorded_field_value "$body" "Authority")"
+  action_authority="${body_fields[Authority]:-}"
   if ! entry_matches_filters "$entry_type" "$author_name $author_email" \
     "$subject $body"; then
     continue
@@ -2151,7 +2177,7 @@ while IFS= read -r -d $'\x1e' row; do
   printf -v line '**User:** %s  \n' "$action_user_display"
   entry+="$line"
   activity_context="$(render_activity_context "$context_type" \
-    "$context_record" "$BRANCH_SCOPE_LABEL" "$TARGET_REF" \
+    body_fields "$BRANCH_SCOPE_LABEL" "$TARGET_REF" \
     "$affected_tables")"
   entry+="$activity_context"
   [[ -z "$activity_context" ]] || entry+=$'\n'
