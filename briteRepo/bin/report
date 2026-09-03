@@ -343,18 +343,15 @@ generate_repo_activity_entries() {
         render_affected_tables_cached "$full_hash" affected_tables
 
         action_number=$((action_number + 1))
-        printf -v entry '## %d. %s: %s\n\n' "$action_number" "$note_type" "$note_date"
         if [[ "$note_type" == "push" ]]; then
-          printf -v line '**Pushed Branch Tip:** `%s`  \n' "${note_fields[Pushed-Tip]:-}"
-          entry+="$line"
+          bt_report_initialize_activity_entry entry "$action_number" \
+            "$note_type" "$note_date" "Pushed Branch Tip" \
+            "${note_fields[Pushed-Tip]:-}" "$note_command" "$note_user_display"
         else
-          printf -v line '**Commit:** `%s`  \n' "$full_hash"
-          entry+="$line"
+          bt_report_initialize_activity_entry entry "$action_number" \
+            "$note_type" "$note_date" "Commit" "$full_hash" \
+            "$note_command" "$note_user_display"
         fi
-        printf -v line '**Command:** `%s`  \n' "$note_command"
-        entry+="$line"
-        printf -v line '**User:** %s  \n' "$note_user_display"
-        entry+="$line"
         if [[ -n "$note_summary" && "$note_type" != "push" ]]; then
           printf -v line '\n%s\n' "$note_summary"
           entry+="$line"
@@ -397,15 +394,9 @@ generate_repo_activity_entries() {
     render_affected_tables_cached "$full_hash" affected_tables
 
     action_number=$((action_number + 1))
-    printf -v entry '## %d. %s: %s\n\n' "$action_number" "$entry_type" "$(normalize_report_datetime "$date_text")"
-    printf -v line '**Commit:** `%s`  \n' "$full_hash"
-    entry+="$line"
-    if [[ -n "$command_line" ]]; then
-      printf -v line '**Command:** `%s`  \n' "$command_line"
-      entry+="$line"
-    fi
-    printf -v line '**User:** %s  \n' "$action_user_display"
-    entry+="$line"
+    bt_report_initialize_activity_entry entry "$action_number" "$entry_type" \
+      "$(normalize_report_datetime "$date_text")" "Commit" "$full_hash" \
+      "$command_line" "$action_user_display"
     if [[ -n "$subject" ]] && ! is_redundant_commit_summary "$subject"; then
       printf -v line '\n%s\n' "$subject"
       entry+="$line"
@@ -579,6 +570,32 @@ entry_matches_filters() {
   [[ -z "$FILTER_USER" ]] || contains_ci "$entry_user" "$FILTER_USER" || \
     return 1
   [[ -z "$FILTER_TEXT" ]] || contains_ci "$entry_text" "$FILTER_TEXT"
+}
+
+bt_report_initialize_activity_entry() {
+  local output_name="$1"
+  local action_number="$2"
+  local activity_type="$3"
+  local activity_date="$4"
+  local reference_label="$5"
+  local reference_value="$6"
+  local command_line="$7"
+  local user_display="$8"
+  local -n output_ref="$output_name"
+  local line=""
+
+  printf -v output_ref '## %d. %s: %s\n\n' \
+    "$action_number" "$activity_type" "$activity_date"
+  if [[ -n "$reference_label" ]]; then
+    printf -v line '**%s:** `%s`  \n' "$reference_label" "$reference_value"
+    output_ref+="$line"
+  fi
+  if [[ -n "$command_line" ]]; then
+    printf -v line '**Command:** `%s`  \n' "$command_line"
+    output_ref+="$line"
+  fi
+  printf -v line '**User:** %s  \n' "$user_display"
+  output_ref+="$line"
 }
 
 activity_type() {
@@ -1303,19 +1320,28 @@ render_affected_tables() {
     files_order+=("$file_path")
     file_added["$file_path"]="$added"
     file_deleted["$file_path"]="$deleted"
-    file_lines["$file_path"]="$(git show "$commit_ref:$file_path" 2>/dev/null |
-      wc -l | tr -d ' ')"
-    [[ "${file_lines[$file_path]}" =~ ^[0-9]+$ ]] || \
-      file_lines["$file_path"]=0
 
     net=$((added - deleted))
     total_added=$((total_added + added))
     total_deleted=$((total_deleted + deleted))
     total_net=$((total_net + net))
-    total_lines=$((total_lines + file_lines[$file_path]))
 
     file_count=$((file_count + 1))
   done <<< "$numstat"
+
+  if [[ "${#files_order[@]}" -gt 0 ]]; then
+    while IFS= read -r -d '' file_path; do
+      IFS= read -r file_lines_value || true
+      file_path="${file_path#"$commit_ref:"}"
+      [[ "$file_lines_value" =~ ^[0-9]+$ ]] || file_lines_value=0
+      file_lines["$file_path"]="$file_lines_value"
+    done < <(git grep --text -z -c '^' "$commit_ref" -- "${files_order[@]}" \
+      2>/dev/null || true)
+  fi
+  for key in "${files_order[@]}"; do
+    file_lines["$key"]="${file_lines[$key]:-0}"
+    total_lines=$((total_lines + file_lines[$key]))
+  done
 
   bt_git_collect_ref_change_summary "$tree_ref_before" "$tree_ref_after"
   directories_summary="$(push_directory_summary \
@@ -2014,22 +2040,19 @@ while IFS= read -r -d $'\x1e' row; do
       render_affected_tables_cached "$full_hash" affected_tables
 
       action_number=$((action_number + 1))
-      printf -v entry '## %d. %s: %s\n\n' "$action_number" "$note_type" "$note_date"
-      line=""
       if [[ "$note_type" == "pulldown" ]]; then
-        printf -v line '**Branch Tip:** `%s`  \n' "$full_hash"
+        bt_report_initialize_activity_entry entry "$action_number" \
+          "$note_type" "$note_date" "Branch Tip" "$full_hash" \
+          "$note_command" "$note_user_display"
       elif [[ "$note_type" != "push" ]]; then
-        printf -v line '**Commit:** `%s`  \n' "$full_hash"
+        bt_report_initialize_activity_entry entry "$action_number" \
+          "$note_type" "$note_date" "Commit" "$full_hash" \
+          "$note_command" "$note_user_display"
+      else
+        bt_report_initialize_activity_entry entry "$action_number" \
+          "$note_type" "$note_date" "Pushed Branch Tip" "$pushed_tip" \
+          "$note_command" "$note_user_display"
       fi
-      entry+="$line"
-      if [[ "$note_type" == "push" ]]; then
-        printf -v line '**Pushed Branch Tip:** `%s`  \n' "$pushed_tip"
-        entry+="$line"
-      fi
-      printf -v line '**Command:** `%s`  \n' "$note_command"
-      entry+="$line"
-      printf -v line '**User:** %s  \n' "$note_user_display"
-      entry+="$line"
       activity_context="$(render_activity_context "$note_type" \
         note_fields "$BRANCH_SCOPE_LABEL" "$TARGET_REF" \
         "$affected_tables")"
@@ -2163,19 +2186,15 @@ while IFS= read -r -d $'\x1e' row; do
   render_affected_tables_cached "$full_hash" affected_tables
 
   action_number=$((action_number + 1))
-  printf -v entry '## %d. %s: %s\n\n' "$action_number" "$entry_type" "$date_text"
   if [[ "$entry_type" == "pulldown" ]]; then
-    printf -v line '**Branch Tip:** `%s`  \n' "$full_hash"
+    bt_report_initialize_activity_entry entry "$action_number" "$entry_type" \
+      "$date_text" "Branch Tip" "$full_hash" "$display_command" \
+      "$action_user_display"
   else
-    printf -v line '**Commit:** `%s`  \n' "$full_hash"
+    bt_report_initialize_activity_entry entry "$action_number" "$entry_type" \
+      "$date_text" "Commit" "$full_hash" "$display_command" \
+      "$action_user_display"
   fi
-  entry+="$line"
-  if [[ -n "$command_line" ]]; then
-      printf -v line '**Command:** `%s`  \n' "$display_command"
-    entry+="$line"
-  fi
-  printf -v line '**User:** %s  \n' "$action_user_display"
-  entry+="$line"
   activity_context="$(render_activity_context "$context_type" \
     body_fields "$BRANCH_SCOPE_LABEL" "$TARGET_REF" \
     "$affected_tables")"

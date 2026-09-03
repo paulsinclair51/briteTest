@@ -505,12 +505,18 @@ bt_resolve_repo_owner_login_or_empty() {
   bt_normalize_login "$owner"
 }
 
+# Memoized so repeated per-commit lookups (e.g. from report generation)
+# don't re-run "git remote get-url" every time.
+BT_REPO_OWNER_LOGIN_RESOLVED=false
+BT_REPO_OWNER_LOGIN_CACHED=""
 bt_is_repository_owner_login() {
   local login="$1"
-  local owner
 
-  owner="$(bt_resolve_repo_owner_login_or_empty)"
-  [[ -n "$owner" ]] || return 1
+  if [[ "$BT_REPO_OWNER_LOGIN_RESOLVED" != true ]]; then
+    BT_REPO_OWNER_LOGIN_CACHED="$(bt_resolve_repo_owner_login_or_empty)"
+    BT_REPO_OWNER_LOGIN_RESOLVED=true
+  fi
+  [[ -n "$BT_REPO_OWNER_LOGIN_CACHED" ]] || return 1
 
-  [[ "$(bt_normalize_login "$login")" == "$owner" ]]
+  [[ "$(bt_normalize_login "$login")" == "$BT_REPO_OWNER_LOGIN_CACHED" ]]
 }

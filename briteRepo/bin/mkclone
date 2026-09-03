@@ -17,17 +17,18 @@ Usage:
 
 Clone the repository to a local directory with automatic setup.
 
-Requirements:
-  - Must be run on a machine with bash, git, and curl installed
-  - Network access to GitHub (https://github.com)
-  - Can be run from ANY directory on your local machine
-  - NO prior clone or local repository needed
+Prerequisites:
+  - Must be run on a machine with bash, git, and curl installed.
+  - Network access to GitHub (https://github.com).
+  - The target directory must not already exist.
+
+Note: This script can be run from ANY directory on your local machine.
 
 This script:
-  - Clones the repository to a target directory
-  - Automatically installs scripts and Git hooks (no manual steps required)
-  - Git hooks protect against accidental direct git commands
-  - Sets up PATH so scripts are immediately available
+  - Clones the repository to a target directory.
+  - Automatically installs scripts and Git hooks (no manual steps required).
+  - Git hooks protect against accidental direct git commands.
+  - Sets up PATH so scripts are immediately available.
 
 Arguments:
   [directory]        Optional target directory name
