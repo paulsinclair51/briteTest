@@ -1,0 +1,20 @@
+--- briteRepo workflow ---
+Workflow-Type: push
+Workflow-Time: 2026-09-03 00:58:35+00:00
+Workflow-Branch: v1.0.0
+Workflow-User: paulsinclair51 <test@example.com>
+Command-Line: pushup -o
+Summary: Pushed 1 commit(s) to origin/v1.0.0
+Authority: owner
+Command-Source: user
+Previous-Remote-Tip: 7b51c9023b20c1ab229ade66a5d956ef0509c75b
+Pushed-Tip: HEAD
+Commits: 1
+Files-Modified: 3
+Files-Deleted: 0
+Files-Added: 0
+Files-Renamed: 0
+Files-Renamed-Modified: 0
+Directories-Deleted: 0
+Directories-Added: 0
+Directories-Renamed: 0
