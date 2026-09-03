@@ -6,8 +6,18 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Internal library: must be sourced by a briteRepo command or helper. Direct
+# execution by a user is not supported.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  echo "push_workflow.sh is a briteRepo internal library and must be sourced." >&2
+  exit 1
+fi
+
 # High-Level Flow:
-# - Provides a shared push workflow for both the push and pushup commands.
+# - Calculate the push range, validate remote state, and collect change summaries.
+# - Write locked transient dry-run/error reports when the workflow does not
+#   complete; publish remote workflow history after a successful push.
+# - Preserve the initiating public command and authority for pushup publication.
 
 bt_push_workflow() (
   set -euo pipefail
@@ -46,6 +56,7 @@ bt_push_workflow() (
   local pushed_renamed_directories=0
   local pushed_change_summary=""
   local -a original_args=("$@")
+  local -a authority_args=()
 
   bt_push_error_exit() {
     local code="$1"
@@ -264,7 +275,13 @@ bt_push_workflow() (
     command_text="$(bt_push_format_command_line)"
     bt_push_acquire_report_lock
     bt_push_enable_report_writes
-    report_file="$(bt_report_transient_path "$reports_dir" "push-e" "$run_ts_file")"
+    local target_report_file="" staged_report_file=""
+    target_report_file="$(bt_report_transient_path "$reports_dir" "push-e" "$run_ts_file")"
+    if ! bt_report_create_staging_file "$target_report_file" staged_report_file; then
+      bt_push_release_report_lock
+      return 1
+    fi
+    report_file="$staged_report_file"
 
     read -r push_lines_added push_lines_deleted < <(
       git diff --numstat --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null |
@@ -399,6 +416,12 @@ EOF
       } >> "$report_file"
     fi
 
+    if ! bt_report_publish_staged_file "$staged_report_file" "$target_report_file"; then
+      bt_report_discard_staged_file "$staged_report_file"
+      bt_push_release_report_lock
+      return 1
+    fi
+    report_file="$target_report_file"
     bt_push_cleanup_old_reports
     bt_push_release_report_lock
   }
@@ -438,9 +461,14 @@ EOF
     report_user="$(bt_resolve_login_or_empty)"
     bt_push_acquire_report_lock
     bt_push_enable_report_writes
-    report_file="$(bt_report_transient_path \
+    local target_report_file="" staged_report_file=""
+    target_report_file="$(bt_report_transient_path \
       "$reports_dir" "push-d" "$run_ts_file")"
-    [[ ! -f "$report_file" ]] || chmod u+w "$report_file" 2>/dev/null || true
+    if ! bt_report_create_staging_file "$target_report_file" staged_report_file; then
+      bt_push_release_report_lock
+      return 1
+    fi
+    report_file="$staged_report_file"
 
     files_count="$(git diff --name-only --find-renames "${remote_branch_tip}..${push_content_ref}" 2>/dev/null | sed '/^$/d' | wc -l | tr -d ' ')"
     [[ "$files_count" =~ ^[0-9]+$ ]] || files_count=0
@@ -595,6 +623,13 @@ EOF
         echo
       } >> "$report_file"
     fi
+
+    if ! bt_report_publish_staged_file "$staged_report_file" "$target_report_file"; then
+      bt_report_discard_staged_file "$staged_report_file"
+      bt_push_release_report_lock
+      return 1
+    fi
+    report_file="$target_report_file"
     bt_push_cleanup_old_reports
     bt_push_release_report_lock
   }
@@ -833,10 +868,15 @@ EOF
 
   bt_push_collect_stdout_summary_counts
   if declare -F bt_record_remote_workflow_event >/dev/null 2>&1; then
+    if [[ -n "${BT_PUSH_AUTHORITY:-}" ]]; then
+      authority_args=("Authority" "$BT_PUSH_AUTHORITY")
+    fi
     if ! bt_record_remote_workflow_event "push" "$current_branch" \
       "${BT_PUSH_COMMAND_LINE:-push}" \
       "Pushed ${commits_ahead} commit(s) to origin/$current_branch" \
       "$push_content_ref" \
+      "${authority_args[@]}" \
+      "Command-Source" "user" \
       "Previous-Remote-Tip" "$remote_branch_tip" \
       "Pushed-Tip" "$push_content_ref" \
       "Commits" "$commits_ahead" \

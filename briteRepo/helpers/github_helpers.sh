@@ -6,6 +6,13 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Internal library: must be sourced by a briteRepo command or helper. Direct
+# execution by a user is not supported.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  echo "github_helpers.sh is a briteRepo internal library and must be sourced." >&2
+  exit 1
+fi
+
 # High-Level Flow:
 # - Provides shared GitHub CLI helper functions for PR/repository interactions.
 # - Encapsulates repeated gh command patterns and argument validation.

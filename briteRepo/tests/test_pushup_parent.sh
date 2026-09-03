@@ -259,7 +259,8 @@ cp "$PUSH_SRC" "$WORK/briteRepo/bin/push"
 chmod +x "$WORK/briteRepo/helpers/pushup_parent.sh" "$WORK/briteRepo/bin/push"
 for helper in common.sh git_helpers.sh github_helpers.sh \
               validation_helpers.sh history_log.sh report_helpers.sh report_sync.sh rbac.sh \
-              push_workflow.sh ckrole.sh common_utils.sh ckbranchname.sh; do
+              push_command.sh push_workflow.sh ckrole.sh common_utils.sh \
+              ckbranchname.sh; do
   [[ -f "$HELPERS_DIR/$helper" ]] && \
     cp "$HELPERS_DIR/$helper" "$WORK/briteRepo/helpers/$helper"
 done
@@ -307,7 +308,7 @@ FORBIDDENPUSHEOF
 )
 
 # 0) Skip mode should emit an error report and summary line.
-rc=$(run_capture "$TMPDIR/skip-e.out" env PATH="$FAKEBIN:$PATH" GITHUB_ACTOR=testowner bash -lc "cd '$WORK' && bash ./briteRepo/helpers/pushup_parent.sh -e")
+rc=$(run_capture "$TMPDIR/skip-e.out" env PATH="$FAKEBIN:$PATH" GITHUB_ACTOR=testowner bash -lc "cd '$WORK' && bash ./briteRepo/helpers/pushup_parent.sh --pushup -e")
 [[ "$rc" -eq 36 ]] || fail "pushup -e should exit 36 (got $rc)"
 assert_contains "Error: Merge-up skipped due to -e option." "$TMPDIR/skip-e.out"
 assert_contains "Guidance: Run without -e option." "$TMPDIR/skip-e.out"
@@ -338,7 +339,7 @@ run_pushup() {
   (
     cd "$WORK"
     export PATH="$FAKEBIN:$PATH"
-    env "${envvars[@]}" bash ./briteRepo/helpers/pushup_parent.sh "${pushup_args[@]}"
+    env "${envvars[@]}" bash ./briteRepo/helpers/pushup_parent.sh --pushup "${pushup_args[@]}"
   ) >"$outfile" 2>&1
   local rc=$?
   set -e
@@ -349,7 +350,7 @@ run_pushup() {
 # Help output includes -o and owner-override text
 # ---------------------------------------------------------------------------
 rc=$(
-  set +e; bash "$PUSHUP_SRC" -h >"$TMPDIR/help.out" 2>&1; echo $?
+  set +e; bash "$PUSHUP_SRC" --pushup -h >"$TMPDIR/help.out" 2>&1; echo $?
 )
 [[ "$rc" -eq 0 ]] || fail "pushup -h should exit 0"
 assert_contains "Usage:" "$TMPDIR/help.out"
@@ -612,7 +613,7 @@ assert_not_contains "PR is not required" "$TMPDIR/owner-nopr.out"
 assert_not_contains "Using custom message:" "$TMPDIR/owner-nopr.out"
 assert_not_contains "is not approved" "$TMPDIR/owner-nopr.out"
 owner_report="$WORK/reports/$(cd "$WORK/reports" && ls -1t pushup-d-*.md | head -n 1)"
-assert_contains "**Commit Comment:** dev/feat-v1.0.0 merged to v1.0.0 by owner testowner." "$owner_report"
+assert_contains "**Commit Comment:** dev/feat-v1.0.0 pushed up to v1.0.0 by testowner (owner)." "$owner_report"
 pass "-o owner, no PR: owner default message is reported"
 
 # ---------------------------------------------------------------------------
@@ -948,6 +949,8 @@ merge_note="$(git -C "$WORK" notes --ref=briteRepo-workflow show v1.0.0)"
   fail "completed merge-up should record one final workflow event"
 [[ "$merge_note" == *"Command-Line: pushup -o -c verify\\ repair\\ path"* ]] || \
   fail "merge-up event should record its command line"
+[[ "$merge_note" == *"Authority: owner"* ]] || \
+  fail "owner-override merge-up should record owner authority"
 [[ "$merge_note" == *"Source-Branch: dev/feat-v1.0.0"* ]] || \
   fail "merge-up event should record its source branch"
 [[ "$merge_note" == *"Source-Tip: $owner_source_tip"* ]] || \
@@ -1040,7 +1043,7 @@ rc=$(run_pushup "$TMPDIR/version-main-default.out" \
 [[ "$rc" -eq 0 ]] || fail "version-to-main preview should succeed (got $rc)"
 version_report="$(cd "$WORK/reports" && ls -1t pushup-d-*.md | head -n 1)"
 assert_contains \
-  "**Commit Comment:** v1.0.0 merged to main branch by approver testowner." \
+  "**Commit Comment:** v1.0.0 pushed up to main branch by testowner (approver)." \
   "$WORK/reports/$version_report"
 pass "version-to-main preview uses the documented default comment"
 
@@ -1063,7 +1066,7 @@ rc=$(run_pushup "$TMPDIR/contributor-no-pr.out" \
 [[ "$rc" -eq 0 ]] || fail "contributor merge without PR should succeed (got $rc)"
 contributor_report="$(cd "$WORK/reports" && ls -1t pushup-d-*.md | head -n 1)"
 assert_contains \
-  "**Commit Comment:** contributor-work merged to dev/feat-v1.0.0 by contributor otheruser." \
+  "**Commit Comment:** contributor-work pushed up to dev/feat-v1.0.0 by otheruser (contributor)." \
   "$WORK/reports/$contributor_report"
 
 rc=$(run_pushup "$TMPDIR/contributor-outsider.out" \

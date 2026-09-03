@@ -20,7 +20,14 @@
 #   - check_file_size()          - Verify file size limits
 #   - validate_license_header()  - Check for MIT license header
 
-set -euo pipefail
+# Internal library: must be sourced by a briteRepo command or helper. Direct
+# execution by a user is not supported.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  echo "validation_helpers.sh is a briteRepo internal library and must be sourced." >&2
+  exit 1
+fi
+
+# Shell options are the sourcing command's responsibility; do not change them.
 
 # Source common utilities (must be done before using them)
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

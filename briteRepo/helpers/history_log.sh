@@ -6,6 +6,13 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Internal library: must be sourced by a briteRepo command or helper. Direct
+# execution by a user is not supported.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  echo "history_log.sh is a briteRepo internal library and must be sourced." >&2
+  exit 1
+fi
+
 # High-Level Flow:
 # - Record completed workflow activity as Git notes on the appropriate main ref.
 # - Keep note field validation and user/timestamp attribution consistent.

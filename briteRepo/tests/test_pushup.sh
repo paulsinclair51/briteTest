@@ -44,6 +44,7 @@ write_state() {
   git config --file "$state_file" pushup.verbose false
   git config --file "$state_file" pushup.owner-override false
   git config --file "$state_file" pushup.comment-mode none
+  git config --file "$state_file" pushup.command-line pushup
   git config --file "$state_file" pushup.source-has-remote true
   git config --file "$state_file" pushup.parent-has-remote true
   [[ -z "$prepared_tip" ]] || \
@@ -151,39 +152,59 @@ if [[ -f .fail-parent-finalize-once && "$branch" == main ]]; then
   exit 202
 fi
 EOF
+cat > "$WORK/briteRepo/helpers/push_command.sh" <<'EOF'
+#!/usr/bin/env bash
+bt_push_init() {
+  PUSH_WORKFLOW_ARGS=()
+  PUSH_TIMEOUT_SECONDS=""
+  PUSH_ENTRY_MODE="--public"
+}
+bt_push_run() {
+  local branch
+  branch="$(git branch --show-current)"
+  printf 'push-%s %s\n' "$branch" "$PUSH_TIMEOUT_SECONDS" >> .remote-timeouts
+  if [[ -f .fail-parent-push && "$branch" == main ]]; then
+    exit 80
+  fi
+  git push origin "$branch" >/dev/null
+  if [[ -f .fail-parent-finalize-once && "$branch" == main ]]; then
+    rm -f .fail-parent-finalize-once
+    exit 202
+  fi
+}
+EOF
 cat > "$WORK/briteRepo/bin/chbranch" <<'EOF'
 #!/usr/bin/env bash
 git checkout "${@: -1}" >/dev/null
 EOF
-cat > "$WORK/briteRepo/bin/pulldown" <<'EOF'
+cat > "$WORK/briteRepo/helpers/pulldown_workflow.sh" <<'EOF'
 #!/usr/bin/env bash
-set -e
-timeout_seconds=""
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    -t) timeout_seconds="$2"; shift 2 ;;
-    *) shift ;;
-  esac
-done
-if [[ -f .fail-sync-once ]]; then
-  rm -f .fail-sync-once
-  exit 81
-fi
-state_file="$(git rev-parse --git-path briteRepo/pushup.state)"
-parent_has_remote="$(git config --file "$state_file" --get pushup.parent-has-remote 2>/dev/null || true)"
-if [[ "$parent_has_remote" == false ]]; then
-  git merge --no-edit main >/dev/null
-else
-  printf 'pulldown %s\n' "$timeout_seconds" >> .remote-timeouts
-  git fetch origin main >/dev/null
-  git merge --no-edit origin/main >/dev/null
-fi
+bt_pulldown_init() {
+  REMOTE_TIMEOUT_SECONDS=""
+}
+bt_pulldown_run() {
+  if [[ -f .fail-sync-once ]]; then
+    rm -f .fail-sync-once
+    exit 81
+  fi
+  local state_file parent_has_remote
+  state_file="$(git rev-parse --git-path briteRepo/pushup.state)"
+  parent_has_remote="$(git config --file "$state_file" --get pushup.parent-has-remote 2>/dev/null || true)"
+  if [[ "$parent_has_remote" == false ]]; then
+    git merge --no-edit main >/dev/null
+  else
+    printf 'pulldown %s\n' "$REMOTE_TIMEOUT_SECONDS" >> .remote-timeouts
+    git fetch origin main >/dev/null
+    git merge --no-edit origin/main >/dev/null
+  fi
+}
 EOF
 cat > "$WORK/briteRepo/bin/pull" <<'EOF'
 #!/usr/bin/env bash
 git pull --rebase origin "$(git branch --show-current)" >/dev/null
 EOF
-chmod +x "$WORK/briteRepo/bin/"{push,chbranch,pulldown,pull} "$WORK/briteRepo/helpers/pushup_parent.sh"
+chmod +x "$WORK/briteRepo/bin/"{push,chbranch,pull} \
+  "$WORK/briteRepo/helpers/"{pulldown_workflow.sh,push_command.sh,pushup_parent.sh}
 
 source_tip="$(git -C "$WORK" rev-parse feature)"
 parent_tip="$(git -C "$WORK" rev-parse main)"
@@ -236,7 +257,7 @@ assert_contains "Pushed up 'feature' to 'main' (${local_only_parent_tip_short}) 
 if grep -Fq "and remotely" "$TMPDIR/local-only.out"; then
   fail "local-only pushup should not claim a remote update"
 fi
-assert_contains "Run report -p for local parent details." \
+assert_contains "Run report -pl for local parent details." \
   "$TMPDIR/local-only.out"
 if grep -Fq "remote parent details" "$TMPDIR/local-only.out"; then
   fail "local-only pushup should not suggest a remote parent report"
@@ -410,7 +431,7 @@ status="$(run_capture "$TMPDIR/continue.out" bash -c \
 published_parent_tip_short="$(git -C "$WORK" rev-parse --short=7 main)"
 assert_contains "Pushed up 'feature' to 'main' (${published_parent_tip_short}) locally and remotely." \
   "$TMPDIR/continue.out"
-assert_contains "Run report -p for local parent details; run report -p -r for remote parent details." \
+assert_contains "Run report -pl for local parent details; run report -pr for remote parent details." \
   "$TMPDIR/continue.out"
 if grep -Eq 'Local merge complete|^Pushed \(' \
   "$TMPDIR/continue.out"; then
@@ -465,12 +486,15 @@ prepared_tip="$(git -C "$WORK" rev-parse main)"
 git -C "$WORK" checkout feature >/dev/null
 git -C "$WORK" merge --no-edit main >/dev/null
 write_state source-selected "$source_tip" "$parent_tip" "$prepared_tip"
-cat > "$WORK/briteRepo/bin/pulldown" <<'EOF'
+cat > "$WORK/briteRepo/helpers/pulldown_workflow.sh" <<'EOF'
 #!/usr/bin/env bash
-echo "pulldown must not rerun after its commit is detected" >&2
-exit 91
+bt_pulldown_init() { :; }
+bt_pulldown_run() {
+  echo "pulldown must not rerun after its commit is detected" >&2
+  exit 91
+}
 EOF
-chmod +x "$WORK/briteRepo/bin/pulldown"
+chmod +x "$WORK/briteRepo/helpers/pulldown_workflow.sh"
 status="$(run_capture "$TMPDIR/sync-commit-continue.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 0 ]] || fail "committed synchronization should be inferred, got $status"
@@ -514,12 +538,16 @@ cat > "$WORK/briteRepo/bin/chbranch" <<'EOF'
 #!/usr/bin/env bash
 git checkout "${@: -1}" >/dev/null
 EOF
-cat > "$WORK/briteRepo/bin/pulldown" <<'EOF'
+cat > "$WORK/briteRepo/helpers/pulldown_workflow.sh" <<'EOF'
 #!/usr/bin/env bash
-git fetch origin main >/dev/null
-git merge --no-edit origin/main >/dev/null
+bt_pulldown_init() { :; }
+bt_pulldown_run() {
+  git fetch origin main >/dev/null
+  git merge --no-edit origin/main >/dev/null
+}
 EOF
-chmod +x "$WORK/briteRepo/bin/chbranch" "$WORK/briteRepo/bin/pulldown"
+chmod +x "$WORK/briteRepo/bin/chbranch" \
+  "$WORK/briteRepo/helpers/pulldown_workflow.sh"
 rm -rf "$WORK/.git/briteRepo/pushup-tools"
 status="$(run_capture "$TMPDIR/signal-continue.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup")"

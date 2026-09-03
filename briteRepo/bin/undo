@@ -38,12 +38,13 @@ Prerequisites:
 Options:
   -c TOKEN      undo comment from TOKEN.
   -- TOKEN...   undo comment from one or more tokens.
-  -d            Dry-run. Validates preconditions and reports what
-                would be undone, but does not perform the undo.
-  -e            Generates an error report but does not perform the undo.
-                Use this option to generate an error report without
-                actually performing the undo for diagnosing issues and
-                report formatting.
+  -d            Generate a dry-run report for the undo workflow without
+                running the undo workflow.
+  -e            Generate an error report for the undo workflow without
+                running the undo workflow. This option is intended for
+                testing and debugging the error report and is not typically
+                used in normal operation. This option is mutually exclusive
+                with the -d option.
   -h, --help    Output this help to stdout and exit (other options and
                 arguments are ignored).
   -t SEC        Remote operation timeout in seconds (default: 10)
@@ -295,6 +296,7 @@ write_undo_report() {
   local status="$2"
   local prefix="undo-${UNDO_TYPE}"
   local title="Undo Report"
+  local staged_report_file=""
 
   case "$mode" in
     success)
@@ -317,14 +319,21 @@ write_undo_report() {
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_REPORT_ERROR"
   REPORT_FILE="$(bt_report_transient_path \
     "$REPORTS_DIR" "$prefix" "$RUN_TS_FILE")"
-  cleanup_undo_reports "$mode"
-  if ! bt_report_write_header "$REPORT_FILE" "$title" \
+  if ! bt_report_create_staging_file "$REPORT_FILE" staged_report_file; then
+    bt_report_release_lock "$REPORT_LOCK_FD"
+    REPORT_LOCK_FD=""
+    bt_error_exit "$EXIT_REPORT_ERROR" "Failed to stage undo report: $REPORT_FILE"
+  fi
+  if ! bt_report_write_header "$staged_report_file" "$title" \
     "$RUN_TS_DISPLAY" \
     "$(bt_format_command_line "undo" "${ORIGINAL_ARGS[@]}")"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    bt_report_release_lock "$REPORT_LOCK_FD"
+    REPORT_LOCK_FD=""
     bt_error_exit "$EXIT_REPORT_ERROR" \
       "Failed to write undo report: $REPORT_FILE"
   fi
-  if ! cat >> "$REPORT_FILE" <<EOF
+  if ! cat >> "$staged_report_file" <<EOF
 **Branch:** \`${CURRENT_BRANCH}\`
 
 **Operation:** ${UNDO_TYPE}
@@ -350,9 +359,19 @@ write_undo_report() {
 **Details:** ${UNDO_DETAILS:-None}
 EOF
   then
+    bt_report_discard_staged_file "$staged_report_file"
+    bt_report_release_lock "$REPORT_LOCK_FD"
+    REPORT_LOCK_FD=""
     bt_error_exit "$EXIT_REPORT_ERROR" \
       "Failed to write undo report: $REPORT_FILE"
   fi
+  if ! bt_report_publish_staged_file "$staged_report_file" "$REPORT_FILE"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    bt_report_release_lock "$REPORT_LOCK_FD"
+    REPORT_LOCK_FD=""
+    bt_error_exit "$EXIT_REPORT_ERROR" "Failed to publish undo report: $REPORT_FILE"
+  fi
+  cleanup_undo_reports "$mode"
   bt_report_release_lock "$REPORT_LOCK_FD"
   REPORT_LOCK_FD=""
 }

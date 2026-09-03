@@ -2,6 +2,8 @@
 
 # pushup - Push the current branch up to its parent and resynchronize it.
 #
+# See usage below for details, or run: pushup -h
+#
 # Copyright (c) 2026 Paul Sinclair
 # SPDX-License-Identifier: MIT
 # For license details, see '<repo>/LICENSE'.
@@ -50,12 +52,13 @@ Crash and interruption recovery:
 Options:
   -c TOKEN      Commit comment for the parent push-up commit.
   -- TOKEN...   Commit comment built from one or more tokens.
-  -d            Dry-run. Validate and preview the parent preparation without
-                creating commits, updating remote branches, or saving pushup
-                state.
-  -e            Emit an error report for the merge-up workflow. This option is
-                intended for testing and debugging purposes and is not typically
-                used in normal operation. Mutually exclusive with -d.
+  -d            Generate a dry-run report for the pushup workflow without
+                running the pushup workflow.
+  -e            Generate an error report for the pushup workflow without
+                running the pushup workflow. This option is intended for
+                testing and debugging the error report and is not typically
+                used in normal operation. This option is mutually exclusive
+                with the -d option.
   -h, --help    Output this help and exit.
   -o            Repository-owner override for an eligible push-up workflow.
   -t SEC        Remote timeout in seconds (default: 10).
@@ -114,6 +117,8 @@ ERROR_RUN=false
 TIMEOUT_SECONDS=10
 COMMENT_MODE=""
 COMMENT=""
+ORIGINAL_ARGS=("$@")
+PUSHUP_COMMAND_LINE="$(bt_format_command_line "pushup" "${ORIGINAL_ARGS[@]}")"
 STATE_FILE=""
 LOCK_FILE=""
 LOCK_FD=""
@@ -176,7 +181,7 @@ state_is_complete() {
 
   [[ "$(state_get version)" == "$STATE_VERSION" ]] || return 1
   for key in phase source parent source-tip parent-tip timeout verbose \
-    owner-override comment-mode; do
+    owner-override comment-mode command-line; do
     [[ -n "$(state_get "$key")" ]] || return 1
   done
   phase="$(state_get phase)"
@@ -235,6 +240,7 @@ initialize_state() {
   git config --file "$state_tmp" pushup.verbose "$VERBOSE"
   git config --file "$state_tmp" pushup.owner-override "$OWNER_OVERRIDE"
   git config --file "$state_tmp" pushup.comment-mode "${COMMENT_MODE:-none}"
+  git config --file "$state_tmp" pushup.command-line "$PUSHUP_COMMAND_LINE"
   if git show-ref --verify --quiet "refs/remotes/origin/$source_branch"; then
     git config --file "$state_tmp" pushup.source-has-remote true
   else
@@ -256,7 +262,8 @@ ensure_tool_snapshot() {
 
   saved_tool_dir="$(state_get tool-dir)"
   if [[ -n "$saved_tool_dir" && -x "$saved_tool_dir/bin/push" && \
-    -x "$saved_tool_dir/bin/pulldown" && \
+    -f "$saved_tool_dir/helpers/push_command.sh" && \
+    -f "$saved_tool_dir/helpers/pulldown_workflow.sh" && \
     -f "$saved_tool_dir/helpers/pushup_parent.sh" && \
     $(grep -F -c -- '"$state_version" == 2' \
       "$saved_tool_dir/bin/push" 2>/dev/null) -gt 0 ]]; then
@@ -487,7 +494,7 @@ write_partial_report() {
   local reason="$1"
   local action="$2"
   local source_branch parent_branch source_version parent_version
-  local phase report_file timestamp
+  local phase report_file staged_report_file timestamp
   source_branch="$(state_get source)"
   parent_branch="$(state_get parent)"
   source_version="$(state_get source-tip)"
@@ -499,7 +506,11 @@ write_partial_report() {
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_INTERNAL"
   report_file="$(bt_report_retained_path \
     "$REPORTS_DIR" "pushup-e" "$timestamp")"
-  cat > "$report_file" <<EOF
+  if ! bt_report_create_staging_file "$report_file" staged_report_file; then
+    rm -f "$report_file"
+    bt_error_exit "$EXIT_INTERNAL" "Failed to stage pushup recovery report"
+  fi
+  if ! cat > "$staged_report_file" <<EOF
 # Pushup Error Report $(bt_datetime_display_now)
 
 **Source branch:** \`$source_branch\`  
@@ -533,6 +544,16 @@ $action
 
 After completing that action, rerun \`pushup\`.
 EOF
+  then
+    bt_report_discard_staged_file "$staged_report_file"
+    rm -f "$report_file"
+    bt_error_exit "$EXIT_INTERNAL" "Failed to write pushup recovery report"
+  fi
+  if ! bt_report_publish_staged_file "$staged_report_file" "$report_file"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    rm -f "$report_file"
+    bt_error_exit "$EXIT_INTERNAL" "Failed to publish pushup recovery report"
+  fi
   chmod a-w "$report_file" 2>/dev/null || true
   printf '%s\n' "Push-up in progress: $reason" >&2
   printf '%s\n' \
@@ -624,7 +645,7 @@ run_delegated() {
 }
 
 prepare_parent() {
-  local -a args=(-t "$(state_get timeout)")
+  local -a args=(--pushup -t "$(state_get timeout)")
   [[ "$(state_get verbose)" == true ]] && args+=(-v)
   [[ "$(state_get owner-override)" == true ]] && args+=(-o)
   case "$(state_get comment-mode)" in
@@ -635,7 +656,7 @@ prepare_parent() {
 }
 
 dry_run_parent() {
-  local -a args=(-d -t "$TIMEOUT_SECONDS")
+  local -a args=(--pushup -d -t "$TIMEOUT_SECONDS")
   [[ "$VERBOSE" == true ]] && args+=(-v)
   [[ "$OWNER_OVERRIDE" == true ]] && args+=(-o)
   case "$COMMENT_MODE" in
@@ -646,7 +667,7 @@ dry_run_parent() {
 }
 
 error_run_parent() {
-  local -a args=(-e -t "$TIMEOUT_SECONDS")
+  local -a args=(--pushup -e -t "$TIMEOUT_SECONDS")
   [[ "$VERBOSE" == true ]] && args+=(-v)
   [[ "$OWNER_OVERRIDE" == true ]] && args+=(-o)
   case "$COMMENT_MODE" in
@@ -656,25 +677,37 @@ error_run_parent() {
   bash "$SCRIPT_DIR/../helpers/pushup_parent.sh" "${args[@]}"
 }
 
+# Run the shared push library in a subshell so its function definitions do not
+# replace this command's own helpers.
+run_push_library() {
+  local entry_mode="$1"
+  local timeout_seconds="$2"
+  local verbose=""
+
+  verbose="$(state_get verbose)"
+  run_delegated bash -c '
+      set -euo pipefail
+      source "$1/helpers/push_command.sh"
+      bt_push_init
+      PUSH_ENTRY_MODE="$2"
+      PUSH_TIMEOUT_SECONDS="$3"
+      [[ "$4" != true ]] || PUSH_WORKFLOW_ARGS+=(-v)
+      ORIGINAL_ARGS=()
+      bt_push_run
+    ' bt-push "$TOOL_DIR" "$entry_mode" "$timeout_seconds" "$verbose"
+}
+
 run_push() {
-  local timeout_seconds="$1"
-  local -a args=(-t "$timeout_seconds")
-  [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  run_delegated "$TOOL_DIR/bin/push" "${args[@]}"
+  run_push_library --pushup-publish "$1"
 }
 
 run_push_source() {
-  local timeout_seconds="$1"
-  local -a args=(--pushup-source -t "$timeout_seconds")
-  [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  run_delegated "$TOOL_DIR/bin/push" "${args[@]}"
+  run_push_library --pushup-source "$1"
 }
 
 run_push_finalization_retry() {
-  local -a args=(-t "$(extended_remote_timeout)")
-  [[ "$(state_get verbose)" == true ]] && args+=(-v)
   BT_PUSHUP_FINALIZATION_RETRY=true \
-    run_delegated "$TOOL_DIR/bin/push" "${args[@]}"
+    run_push_library --pushup-publish "$(extended_remote_timeout)"
 }
 
 publish_parent() {
@@ -748,7 +781,6 @@ select_source() {
 
 synchronize_source() {
   local source_branch
-  local -a args=(--pushup -f -t "$(extended_remote_timeout)")
 
   source_branch="$(state_get source)"
   if [[ "$(bt_get_current_branch || true)" != "$source_branch" ]] && \
@@ -758,8 +790,19 @@ synchronize_source() {
     exit "$EXIT_PARTIAL"
   fi
 
-  [[ "$(state_get verbose)" == true ]] && args+=(-v)
-  if run_delegated "$TOOL_DIR/bin/pulldown" "${args[@]}"; then
+  # Run the shared merge-down library in a subshell so its function
+  # definitions do not replace this command's own helpers.
+  if run_delegated bash -c '
+      set -euo pipefail
+      source "$1/helpers/pulldown_workflow.sh"
+      bt_pulldown_init
+      PUSHUP_SYNC=true
+      REMOTE_TIMEOUT_SECONDS="$2"
+      VERBOSE="$3"
+      ORIGINAL_ARGS=()
+      bt_pulldown_run
+    ' bt-pulldown "$TOOL_DIR" "$(extended_remote_timeout)" \
+    "$(state_get verbose)"; then
     set_phase source-synchronized
     return 0
   fi
@@ -972,13 +1015,13 @@ if [[ "$(state_get phase)" == source-published ]]; then
   remove_tool_snapshot
   if [[ "$completed_publication_mode" == local ]]; then
     echo "Pushed up '$source_branch' to '$parent_branch' (${completed_parent_tip_short}) locally."
-    echo "Run report -p for local parent details."
+    echo "Run report -pl for local parent details."
   else
     echo "Pushed up '$source_branch' to '$parent_branch' (${completed_parent_tip_short}) locally and remotely."
     if [[ "$completed_parent_has_remote" == true ]]; then
-      echo "Run report -p for local parent details; run report -p -r for remote parent details."
+      echo "Run report -pl for local parent details; run report -pr for remote parent details."
     else
-      echo "Run report -p for local parent details."
+      echo "Run report -pl for local parent details."
     fi
   fi
   exit 0

@@ -203,6 +203,9 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 genpdf_script="$repo_root/briteRepo/helpers/genpdf.sh"
 gendocx_script="$repo_root/briteRepo/helpers/gendocx.sh"
 
+# Authorize delegation to the guarded genpdf/gendocx helpers.
+export BRITEREPO_INTERNAL=1
+
 docs_dir="$repo_root/docs/md"
 pdf_out_dir="$repo_root/docs/pdf"
 docx_out_dir="$repo_root/docs/docx"

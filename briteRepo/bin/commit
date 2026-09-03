@@ -355,6 +355,7 @@ EOF
     printf '</details>\n' >> "$REPORT_FILE"
   fi
 
+  publish_staged_report_file
   cleanup_old_transient_reports
   release_report_write_lock true
 
@@ -362,6 +363,16 @@ EOF
 
   ERROR_REPORT_IN_PROGRESS=false
   return 0
+}
+
+publish_staged_report_file() {
+  if [[ -n "${STAGED_REPORT_FILE:-}" && -n "${REPORT_TARGET_FILE:-}" && \
+    "$STAGED_REPORT_FILE" != "$REPORT_TARGET_FILE" && -f "$STAGED_REPORT_FILE" ]]; then
+    if bt_report_publish_staged_file "$STAGED_REPORT_FILE" "$REPORT_TARGET_FILE"; then
+      REPORT_FILE="$REPORT_TARGET_FILE"
+      STAGED_REPORT_FILE=""
+    fi
+  fi
 }
 
 initialize_report_file() {
@@ -376,8 +387,9 @@ initialize_report_file() {
     REPORT_NAME_LOCKED=true
   fi
 
-  REPORT_FILE="$(bt_report_transient_path \
+  REPORT_TARGET_FILE="$(bt_report_transient_path \
     "$REPORTS_DIR" "$report_prefix" "$RUN_TS_FILE")"
+  REPORT_FILE="$REPORT_TARGET_FILE"
   RUN_TS_DISPLAY="$(bt_datetime_display_now)"
 }
 
@@ -413,6 +425,9 @@ COMMIT_SUMMARY_TEXT=""
 COMMIT_CHANGE_SUMMARY=""
 
 cleanup_runtime_files() {
+  if [[ -n "${STAGED_REPORT_FILE:-}" && -f "$STAGED_REPORT_FILE" ]]; then
+    bt_report_discard_staged_file "$STAGED_REPORT_FILE"
+  fi
   if [[ "$REPORT_WRITE_LOCK_HELD" == true ]]; then
     release_report_write_lock || true
   fi
@@ -1078,6 +1093,12 @@ write_commit_report_header() {
   fi
   [[ -n "$status_tags" ]] || status_tags="[uncommitted] [local]"
 
+  if [[ -n "${REPORT_TARGET_FILE:-}" ]]; then
+    bt_report_create_staging_file "$REPORT_TARGET_FILE" STAGED_REPORT_FILE || \
+      STAGED_REPORT_FILE="$REPORT_TARGET_FILE"
+    REPORT_FILE="$STAGED_REPORT_FILE"
+  fi
+
   cat > "$REPORT_FILE" <<EOF
 # ${title}
 
@@ -1337,6 +1358,7 @@ generate_commit_report() {
     printf '</details>\n' >> "$REPORT_FILE"
   fi
 
+  publish_staged_report_file
   cleanup_transient_reports_locked
 
   if [[ "$DRY_RUN" == true ]]; then

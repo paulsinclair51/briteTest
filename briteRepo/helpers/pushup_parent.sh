@@ -244,6 +244,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Internal command implementation: only bin/pushup may invoke this helper, and
+# it must announce itself with the --pushup entry mode.
+[[ "${1:-}" == "--pushup" ]] || {
+  echo "pushup_parent.sh must be called by a briteRepo command." >&2
+  exit 1
+}
+shift
+
 # Shared helpers
 # shellcheck source=helpers/common.sh
 source "$SCRIPT_DIR/../helpers/common.sh"
@@ -382,6 +390,19 @@ bt_emit_guidance_joined() {
 }
 
 format_command_line() {
+  local state_file=""
+  local initiating_command=""
+
+  state_file="$(git rev-parse --git-path briteRepo/pushup.state \
+    2>/dev/null || true)"
+  if [[ -f "$state_file" ]]; then
+    initiating_command="$(git config --file "$state_file" \
+      --get pushup.command-line 2>/dev/null || true)"
+  fi
+  if [[ -n "$initiating_command" ]]; then
+    printf '%s\n' "$initiating_command"
+    return 0
+  fi
   bt_format_command_line "pushup" "${ORIGINAL_ARGS[@]}"
 }
 
@@ -420,12 +441,14 @@ release_report_lock() {
 skip_merge_up_and_exit() {
   local message="Merge-up skipped due to -e option."
   local guidance="Run without -e option."
+  local staged_report_file=""
 
   acquire_report_lock
   bt_report_dir_enable_writes "$REPORTS_DIR" "$EXIT_LOCAL_REPORT_FAILED" >/dev/null 2>&1 || true
   REPORT_FILE="$(bt_report_transient_path "$REPORTS_DIR" "pushup-e" "$RUN_TS_FILE")"
-  bt_report_write_header "$REPORT_FILE" "Merge-Up Error Report" "$RUN_TS_DISPLAY" "$(format_command_line)" >/dev/null 2>&1 || true
-  cat >> "$REPORT_FILE" <<EOF
+  if bt_report_create_staging_file "$REPORT_FILE" staged_report_file && {
+    bt_report_write_header "$staged_report_file" "Merge-Up Error Report" "$RUN_TS_DISPLAY" "$(format_command_line)"
+    cat >> "$staged_report_file" <<EOF
 **Branch:** \`${CURRENT_BRANCH:-unknown}\`
 
 **Exit Code:** ${EXIT_WORKFLOW_SKIPPED}
@@ -437,6 +460,13 @@ skip_merge_up_and_exit() {
 - ${guidance}
 
 EOF
+  } && bt_report_publish_staged_file "$staged_report_file" "$REPORT_FILE"; then
+    cleanup_old_transient_reports
+  else
+    bt_report_discard_staged_file "$staged_report_file"
+    release_report_lock
+    bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" "Failed to write pushup skip report"
+  fi
   release_report_lock
   bt_emit_error "$message"
   bt_emit_guidance "$guidance"
@@ -447,7 +477,7 @@ EOF
 cleanup_old_transient_reports() {
   bt_report_cleanup_transient_reports \
     "$REPORTS_DIR" \
-    "$CURRENT_BRANCH" \
+    "${CURRENT_BRANCH:-unknown}" \
     "$REPORT_FILE" \
     "pushup-d-*.md" \
     "pushup-e-*.md"
@@ -1191,21 +1221,21 @@ build_default_commit_message() {
 
   if bt_is_version_branch "$current_branch" && \
     [[ "$parent_branch" == "main" ]]; then
-    echo "$current_branch merged to main branch by approver $actor."
+    echo "$current_branch pushed up to main branch by $actor (approver)."
     return 0
   fi
 
   if [[ "$owner_override_active" == true ]] && \
     is_targeted_branch "$current_branch" && \
       bt_is_version_branch "$parent_branch"; then
-    echo "$current_branch merged to $parent_branch by owner $actor."
+    echo "$current_branch pushed up to $parent_branch by $actor (owner)."
     return 0
   fi
 
   if is_contributor_branch "$current_branch" && \
     (is_targeted_branch "$parent_branch" || \
       is_contributor_branch "$parent_branch"); then
-    echo "$current_branch merged to $parent_branch by contributor $actor."
+    echo "$current_branch pushed up to $parent_branch by $actor (contributor)."
     return 0
   fi
 
@@ -1258,6 +1288,7 @@ generate_dry_run_report() {
   local parent_branch="$2"
   local merge_message="$3"
   local command_text
+  local staged_report_file=""
 
   command_text="$(format_command_line)"
   acquire_report_lock
@@ -1265,15 +1296,20 @@ generate_dry_run_report() {
 
   REPORT_FILE="$(bt_report_transient_path \
     "$REPORTS_DIR" "pushup-d" "$RUN_TS_FILE")"
-  cleanup_old_transient_reports
+  if ! bt_report_create_staging_file "$REPORT_FILE" staged_report_file; then
+    release_report_lock
+    bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" "Failed to stage dry-run report '$REPORT_FILE'"
+  fi
 
-  if ! bt_report_write_header "$REPORT_FILE" "Merge-Up Report" \
+  if ! bt_report_write_header "$staged_report_file" "Merge-Up Report" \
     "$RUN_TS_DISPLAY" "$command_text"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    release_report_lock
     bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" \
       "Failed to write dry-run report '$REPORT_FILE'"
   fi
 
-  if ! cat >> "$REPORT_FILE" <<EOF
+  if ! cat >> "$staged_report_file" <<EOF
 **Source Branch:** ${current_branch}
 
 **Parent Branch:** ${parent_branch}
@@ -1294,8 +1330,16 @@ ${CI_CD_REPORT_DETAILS}
 
 EOF
   then
+    bt_report_discard_staged_file "$staged_report_file"
+    release_report_lock
     bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" "Failed to write dry-run report '$REPORT_FILE'"
   fi
+  if ! bt_report_publish_staged_file "$staged_report_file" "$REPORT_FILE"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    release_report_lock
+    bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" "Failed to publish dry-run report '$REPORT_FILE'"
+  fi
+  cleanup_old_transient_reports
   release_report_lock
 
 }
@@ -1303,6 +1347,7 @@ EOF
 generate_error_report() {
   local exit_code="$1"
   local command_text
+  local staged_report_file=""
 
   command_text="$(format_command_line)"
   acquire_report_lock
@@ -1310,15 +1355,20 @@ generate_error_report() {
 
   REPORT_FILE="$(bt_report_transient_path \
     "$REPORTS_DIR" "pushup-e" "$RUN_TS_FILE")"
-  cleanup_old_transient_reports
+  if ! bt_report_create_staging_file "$REPORT_FILE" staged_report_file; then
+    release_report_lock
+    bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" "Failed to stage error report '$REPORT_FILE'"
+  fi
 
-  if ! bt_report_write_header "$REPORT_FILE" "Merge-Up Error Report" \
+  if ! bt_report_write_header "$staged_report_file" "Merge-Up Error Report" \
     "$RUN_TS_DISPLAY" "$command_text"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    release_report_lock
     bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" \
       "Failed to write error report '$REPORT_FILE'"
   fi
 
-  if ! cat >> "$REPORT_FILE" <<EOF
+  if ! cat >> "$staged_report_file" <<EOF
 **Source Branch:** ${CURRENT_BRANCH}
 
 **Parent Branch:** ${PARENT_BRANCH:-unknown}
@@ -1340,8 +1390,16 @@ ${CI_CD_REPORT_DETAILS}
 
 EOF
   then
+    bt_report_discard_staged_file "$staged_report_file"
+    release_report_lock
     bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" "Failed to write error report '$REPORT_FILE'"
   fi
+  if ! bt_report_publish_staged_file "$staged_report_file" "$REPORT_FILE"; then
+    bt_report_discard_staged_file "$staged_report_file"
+    release_report_lock
+    bt_error_exit "$EXIT_LOCAL_REPORT_FAILED" "Failed to publish error report '$REPORT_FILE'"
+  fi
+  cleanup_old_transient_reports
   release_report_lock
 
 }
@@ -1900,9 +1958,15 @@ cleanup_old_transient_reports
 OPERATION_STARTED=false
 
 ci_history_details="$(printf '%s' "$CI_CD_REPORT_DETAILS" | tr '\n' ' ')"
+workflow_authority_args=()
+if [[ "$OWNER_OVERRIDE_ACTIVE" == true ]]; then
+  workflow_authority_args=("Authority" "owner")
+fi
 if ! bt_record_workflow_event "pushup" "$PARENT_BRANCH" \
   "$(format_command_line)" \
   "$COMMIT_MESSAGE" "$MERGE_COMMIT_SHA" \
+  "${workflow_authority_args[@]}" \
+  "Command-Source" "user" \
   "Source-Branch" "$CURRENT_BRANCH" \
   "Source-Tip" "$APPROVED_SOURCE_TIP" \
   "Target-Branch" "$PARENT_BRANCH" \

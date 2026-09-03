@@ -57,10 +57,9 @@ Options:
   -c TOKEN             PR description.
   -- TOKEN...          PR description (everything after -- is the
                        PR description).
-  -d                   Dry-run mode. Validate inputs and show planned
-                       actions without changing PR state. Dry-run still
-                       performs non-mutating checks and may query GitHub to
-                       determine the current PR state.
+  -d                   Dry-run. Validate the review workflow without changing
+                       PR state. Dry-run still performs non-mutating checks
+                       and may query GitHub to determine the current PR state.
   --delete             Delete the current draft PR.
                        This option is mutually exclusive with -b and -s,
                        and must not be used with -c, -- TOKEN..., -T,

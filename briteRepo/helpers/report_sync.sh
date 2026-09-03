@@ -6,6 +6,13 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 
+# Internal library: must be sourced by a briteRepo command or helper. Direct
+# execution by a user is not supported.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  echo "report_sync.sh is a briteRepo internal library and must be sourced." >&2
+  exit 1
+fi
+
 bt_report_remote_copy_supported() {
   local remote_url=""
 

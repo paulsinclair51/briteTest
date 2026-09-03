@@ -50,7 +50,7 @@ assert_matches() {
 report_path_from_output() {
   local output_file="$1"
 
-  sed -n "s/^See '\(reports\/branch-\(p-\)\{0,1\}\(l\|r\)-[0-9]\{8\}-[0-9]\{6\}[+-][0-9]\{4\}\.md\)'\.$/\1/p" \
+  sed -n "s/^See '\(reports\/branch-\(l\|r\|pl\|pr\)-[0-9]\{8\}-[0-9]\{6\}[+-][0-9]\{4\}\.md\)'\.$/\1/p" \
     "$output_file" | tail -n 1
 }
 
@@ -88,23 +88,25 @@ bt_ckstyle() {
   exit 0
 }
 EOF
-  cat > "$WORK/briteRepo/bin/lsbranch" <<'EOF'
+  cat > "$WORK/briteRepo/helpers/branch_status.sh" <<'EOF'
 #!/usr/bin/env bash
-report_dir="$2"
-report_prefix="$3"
-mkdir -p "$report_dir"
-report="$report_dir/$report_prefix-test.md"
-cat > "$report" <<'REPORT'
+bt_branch_status_init() {
+  :
+}
+bt_branch_status_run() {
+  mkdir -p "$branch_reports_dir"
+  report="$branch_reports_dir/$branch_report_prefix-test.md"
+  cat > "$report" <<'REPORT'
 # Branch Report
 
 | **Branch** | **Type** | **Status** |
 | --- | --- | --- |
 | dev/report-tests-v1.0.0 | local | clean |
 REPORT
-printf "See '%s'.\n" "${report#"$PWD"/}"
+  printf "See '%s'.\n" "${report#"$PWD"/}"
+}
 EOF
-  chmod +x "$WORK/briteRepo/bin/report" "$WORK/briteRepo/helpers/ckstyle.sh" \
-    "$WORK/briteRepo/bin/lsbranch"
+  chmod +x "$WORK/briteRepo/bin/report" "$WORK/briteRepo/helpers/ckstyle.sh"
 
   (
     cd "$WORK"
@@ -173,9 +175,6 @@ Details: Previous-Remote-Tip: $remote_push_tip; Pushed-Tip: $empty_push_tip; Com
       >/dev/null 2>&1
 
     pushup_source_tip="$(git rev-parse HEAD)"
-    git commit --allow-empty \
-      -m "pushup activity" \
-      >/dev/null 2>&1
     git notes --ref=briteRepo-workflow append -m \
       "--- briteRepo workflow ---
 Workflow-Type: pushup
@@ -183,7 +182,9 @@ Workflow-Time: 2026-08-16 12:00:01
 Workflow-Branch: v1.0.0
 Workflow-User: testuser <test@example.com>
 Command-Line: pushup -o
+Command-Source: user
 Summary: pushup activity
+Authority: owner
 Source-Branch: dev/report-tests-v1.0.0
 Source-Tip: $pushup_source_tip
 Target-Branch: v1.0.0
@@ -191,7 +192,7 @@ PR: 42
 Status: Current branch merged into parent branch
 Method: Squash merge created by pushup
 CI-CD: ci build SUCCESS" \
-      HEAD >/dev/null 2>&1
+  v1.0.0 >/dev/null 2>&1
 
     git commit --allow-empty \
       -m "copyfix activity" \
@@ -214,9 +215,14 @@ Status: Fix commits copied to target branch
 Method: Cherry-pick created by copyfix" \
       HEAD >/dev/null 2>&1
 
-    git commit --allow-empty \
+    git checkout v1.0.0 >/dev/null 2>&1
+    echo "parent update" > parent-update.txt
+    git add parent-update.txt
+    git commit -m "parent update" >/dev/null 2>&1
+    git checkout dev/report-tests-v1.0.0 >/dev/null 2>&1
+    git merge --no-ff v1.0.0 \
       -m "pulldown activity" \
-      -m $'## Workflow Metadata\n\nCommand-Line: pulldown -f\nSource-Branch: v1.0.0\nTarget-Branch: dev/report-tests-v1.0.0\nParent-Commits-Integrated: 2\nFiles-Modified: 1\nFiles-Added: 1\nFiles-Deleted: 0\nStatus: Parent branch merged into current branch\nMethod: Merge commit (--no-ff) created by pulldown' \
+      -m $'## Workflow Metadata\n\nCommand-Line: pushup -o\nCommand-Source: user\nWorkflow-Type: pulldown\nAuthority: owner\nPR: 42\nCI-CD: ci build SUCCESS\nSource-Branch: v1.0.0\nTarget-Branch: dev/report-tests-v1.0.0\nParent-Commits-Integrated: 1\nFiles-Modified: 1\nFiles-Added: 1\nFiles-Deleted: 0\nStatus: Parent branch merged into current branch\nMethod: Merge commit (--no-ff) created by pulldown' \
       >/dev/null 2>&1
 
     git notes --ref=briteRepo-workflow append -m \

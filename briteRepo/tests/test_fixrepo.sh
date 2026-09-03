@@ -193,6 +193,27 @@ assert_contains "This clone has no remote repository" "$plain_report"
 assert_contains "Repository structure checks skipped" "$plain_report"
 pass "non-API fixture skip path"
 
+# 3a) -e should write an error report and skip the repair workflow
+rc=$(run_capture "$TMPDIR/plain-e.out" bash "$PLAIN_REPO/briteRepo/bin/fixrepo" -e)
+[[ "$rc" -eq 5 ]] || fail "fixrepo -e should exit 5 (got $rc)"
+assert_contains "Repository repair skipped due to -e option." "$TMPDIR/plain-e.out"
+assert_contains "Guidance: Run without -e option." "$TMPDIR/plain-e.out"
+error_report="$(latest_report "$PLAIN_REPO")"
+[[ "$(basename "$error_report")" == repository-e-* ]] || \
+  fail "expected repository-e report, got $(basename "$error_report")"
+assert_contains "# Repository Repair Error Report" "$error_report"
+assert_contains "**Error:** Repository repair skipped due to -e option." "$error_report"
+assert_contains "## Guidance" "$error_report"
+assert_contains "- Run without -e option." "$error_report"
+rm -f "$error_report"
+pass "fixrepo -e writes an error report"
+
+# 3b) -d and -e are mutually exclusive
+rc=$(run_capture "$TMPDIR/plain-de.out" bash "$PLAIN_REPO/briteRepo/bin/fixrepo" -d -e)
+[[ "$rc" -eq 1 ]] || fail "fixrepo -d -e should exit 1 (got $rc)"
+assert_contains "Cannot use both -d and -e" "$TMPDIR/plain-de.out"
+pass "fixrepo -d and -e are mutually exclusive"
+
 # 4) A second clean repo can be checked as a clone-path target
 rc=$(run_capture "$TMPDIR/clone.out" bash "$PLAIN_REPO/briteRepo/bin/fixrepo" -d -q "$SECOND_PLAIN_REPO")
 [[ "$rc" -eq 0 ]] || fail "fixrepo -d -q with clone path should exit 0 on clean repos (got $rc)"

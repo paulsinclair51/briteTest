@@ -161,7 +161,8 @@ Arguments:
     mkbranch fix/login-bug-v1.0.0 v1.0.0
 
 Options:
-  -d                Dry-run (validate only), without creating branch.
+  -d                Dry-run. Validate the mkbranch workflow without creating
+                    the branch.
   -h, --help        Output this help to stdout and exit (other options
                     and arguments are ignored).
   -l                Create local branch only.

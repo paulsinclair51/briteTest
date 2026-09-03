@@ -210,6 +210,22 @@ Prerequisites for `override`:
 - The public document set is intentionally written for contributor-facing use.
 - The internal documents capture policy, enforcement, and repair details that are
   not meant to be treated as normal operations by all contributors.
+- User-facing commands may call another user-facing command only through its
+  documented public interface. Shared or privileged workflow behavior must be
+  implemented in a helper and called directly by each command that needs it.
+- Do not add undocumented options to a user-facing command for command-to-command
+  integration. Internal helper entry modes must validate the workflow state that
+  authorizes their behavior.
+- Helpers in `briteRepo/helpers/` are never directly executable by a user. They
+  carry no executable bit and must be reachable only from `briteRepo/bin/`
+  commands or from other helpers. Sourced libraries abort when executed instead
+  of sourced; delegated command implementations abort unless the caller supplies
+  an entry-mode argument (`pushup_parent.sh`) or sets `BRITEREPO_INTERNAL=1`
+  (`ckrole.sh`, `gendocx.sh`, `genpdf.sh`).
+- A user-facing command owns its usage text and argument validation. The shared
+  library it sources owns the work and reports failures back through exit codes.
+  A command must not be reduced to a pass-through wrapper, and a library must
+  not define a command's public options.
 - Server-side protections remain the final authority over branch deletion and
   history rewriting.
 - Project-command safeguards run locally. A dedicated GitHub App or bot would be

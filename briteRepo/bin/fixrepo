@@ -48,14 +48,19 @@ Features:
   - Distinguishes fixable vs non-fixable issues
 
 Options:
-  -h, --help  Output this help to stdout and exit (other options and
-              arguments are ignored).
-  -v                    Show report contents to stdout after completion.
-  -d                    Dry-run mode: report issues only, do not attempt
-                        repairs.
-  -q                    Faster checks using reduced-cost diagnostics.
-  -t SEC                Remote reachability timeout in seconds (default: 10).
-                        Use 0 to skip remote access and branch checks.
+  -h, --help   Output this help to stdout and exit (other options and
+               arguments are ignored).
+  -v           Show report contents to stdout after completion.
+  -d           Generate a dry-run report for the fixrepo workflow
+               without attempting repairs.
+  -e           Generate an error report for the fixrepo workflow
+               without running the fixrepo workflow. This option is
+               intended for testing and debugging the error report
+               and is not typically used in normal operation. This
+               option is mutually exclusive with the -d option.
+  -q           Faster checks using reduced-cost diagnostics.
+  -t SEC       Remote reachability timeout in seconds (default: 10).
+               Use 0 to skip remote access and branch checks.
 
 Common runs:
   fixrepo              Full checks with safe auto-fixes.
@@ -75,6 +80,7 @@ Exit codes:
   2   Issues detected - some may not be fixable.
   3   Reports directory does not exist.
   4   Critical repository error.
+  5   Repair skipped due to -e option.
 EOF
 }
 
@@ -122,6 +128,7 @@ readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NOT_FOUND=2
 readonly EXIT_OPERATION_FAILED=3
 readonly EXIT_CONFIG_ERROR=4
+readonly EXIT_WORKFLOW_SKIPPED=5
 
 usage_error() {
   local message="$1"
@@ -139,6 +146,7 @@ OUTPUT_FILE=""
 REPOSITORY_REPORT_DELETIONS=()
 VERBOSE=false
 DRY_RUN=false
+ERROR_RUN=false
 QUICK_MODE=false
 CLONE_PATH=""
 REMOTE_TIMEOUT_SECONDS=10
@@ -202,6 +210,19 @@ add_target_repo() {
 
   TARGET_NAMES+=("$target_name")
   TARGET_PATHS+=("$target_path")
+}
+
+init_error_report() {
+  local message="$1"
+
+  {
+    printf '# Repository Repair Error Report\n\n'
+    printf '**Timestamp:** %s  \n' "$RUN_TS_DISPLAY"
+    printf '**Report Source Repository:** %s  \n' "$REPO_ROOT"
+    printf '**Error:** %s\n\n' "$message"
+    printf '## Guidance\n\n'
+    printf -- '- Run without -e option.\n'
+  } > "$OUTPUT_FILE"
 }
 
 init_report() {
@@ -814,7 +835,13 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -d)
+      [[ "$ERROR_RUN" == false ]] || usage_error "Cannot use both -d and -e"
       DRY_RUN=true
+      shift
+      ;;
+    -e)
+      [[ "$DRY_RUN" == false ]] || usage_error "Cannot use both -d and -e"
+      ERROR_RUN=true
       shift
       ;;
     -q)
@@ -857,6 +884,17 @@ fi
 if ! mkdir -p "$REPOSITORY_REPORTS_DIR"; then
   bt_error_exit "$EXIT_OPERATION_FAILED" \
     "Unable to create reports directory: $REPOSITORY_REPORTS_DIR"
+fi
+
+if [[ "$ERROR_RUN" == true ]]; then
+  OUTPUT_FILE="$(bt_report_retained_path \
+    "$REPOSITORY_REPORTS_DIR" "repository-e" "$RUN_TS_FILE")"
+  skip_message="Repository repair skipped due to -e option."
+  init_error_report "$skip_message"
+  bt_emit_error "$skip_message"
+  echo "Guidance: Run without -e option." >&2
+  echo "See ${OUTPUT_FILE#"${REPO_ROOT}"/} for details."
+  exit "$EXIT_WORKFLOW_SKIPPED"
 fi
 
 OUTPUT_FILE="$(bt_report_retained_path \

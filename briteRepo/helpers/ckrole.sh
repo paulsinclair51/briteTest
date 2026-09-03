@@ -6,8 +6,8 @@
 # SPDX-License-Identifier: MIT
 # For license details, see LICENSE in the repository root.
 #
-# Usage:
-#   ./briteRepo/helpers/ckrole.sh <ROLE>
+# Usage (internal only, from a briteRepo/bin command or another helper):
+#   BRITEREPO_INTERNAL=1 bash briteRepo/helpers/ckrole.sh <ROLE>
 #
 # ROLE is case-insensitive and one of:
 #   contributor | reviewer | approver
@@ -31,6 +31,13 @@
 #   1 otherwise
 
 set -euo pipefail
+
+# Internal helper: only briteRepo commands and helpers may invoke this script.
+# Callers announce themselves by exporting BRITEREPO_INTERNAL=1.
+if [[ "${BRITEREPO_INTERNAL:-}" != "1" ]]; then
+  echo "ckrole.sh must be called by a briteRepo command." >&2
+  exit 1
+fi
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
