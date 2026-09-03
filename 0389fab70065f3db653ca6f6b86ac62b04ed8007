@@ -1,0 +1,10 @@
+--- briteRepo workflow ---
+Workflow-Type: pull
+Workflow-Time: 2026-08-28 20:58:37+00:00
+Workflow-Branch: dev/release-v1.0.0
+Workflow-User: paulsinclair51 <test@example.com>
+Command-Line: pull
+Summary: Synchronized 1 branch(es) from origin
+Synchronized: 1
+Skipped: 0
+Evaluated: 1
