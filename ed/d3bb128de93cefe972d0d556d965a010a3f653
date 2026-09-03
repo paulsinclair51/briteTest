@@ -1,0 +1,19 @@
+--- briteRepo workflow ---
+Workflow-Type: push
+Workflow-Time: 2026-09-03 02:07:22+00:00
+Workflow-Branch: dev/release-v1.0.0
+Workflow-User: paulsinclair51 <test@example.com>
+Command-Line: push
+Summary: Pushed 1 commit(s) to origin/dev/release-v1.0.0
+Command-Source: user
+Previous-Remote-Tip: 883cb5e9d66d4492ad642283844fc32f729dee59
+Pushed-Tip: HEAD
+Commits: 1
+Files-Modified: 2
+Files-Deleted: 0
+Files-Added: 0
+Files-Renamed: 0
+Files-Renamed-Modified: 0
+Directories-Deleted: 0
+Directories-Added: 0
+Directories-Renamed: 0
