@@ -600,7 +600,8 @@ rc=$(run_pushup "$TMPDIR/owner-nopr.out" \
 assert_not_contains "0 modified, 0 added, and 0 deleted files would be merged." "$TMPDIR/owner-nopr.out"
 assert_contains "Dry-run: merge to local v1.0.0:" "$TMPDIR/owner-nopr.out"
 assert_contains "See reports/pushup-d-" "$TMPDIR/owner-nopr.out"
-assert_not_contains "See reports/push-d-" "$TMPDIR/owner-nopr.out"
+assert_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/owner-nopr.out"
+assert_contains "See reports/push-d-" "$TMPDIR/owner-nopr.out"
 assert_not_contains "in remote for details" "$TMPDIR/owner-nopr.out"
 assert_not_contains "Dry run complete" "$TMPDIR/owner-nopr.out"
 assert_not_contains "no merge commit was created and no branch was pushed" "$TMPDIR/owner-nopr.out"
@@ -617,15 +618,16 @@ assert_contains "**Commit Comment:** dev/feat-v1.0.0 pushed up to v1.0.0 by test
 pass "-o owner, no PR: owner default message is reported"
 
 # ---------------------------------------------------------------------------
-# pushup does not invoke the shared push workflow
+# A failed follow-up push preview fails the complete pushup dry-run.
 # ---------------------------------------------------------------------------
 rc=$(run_pushup "$TMPDIR/parent-push-guidance.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
   "FAKE_PUSH_REMOTE_BRANCH_MISSING=1" "FAKE_GH_PR_NUMBER=" -- -o -d)
-[[ "$rc" -eq 0 ]] || fail "pushup dry-run should ignore push failures (got $rc)"
-assert_not_contains "Parent branch push workflow failed" \
+[[ "$rc" -eq 7 ]] || \
+  fail "pushup dry-run should return a missing parent remote failure (got $rc)"
+assert_contains "Remote branch 'v1.0.0' not found on origin" \
   "$TMPDIR/parent-push-guidance.out"
-pass "pushup does not invoke push workflow"
+pass "pushup propagates follow-up push preview failures"
 
 # ---------------------------------------------------------------------------
 # -o by owner with an unapproved PR fails
@@ -651,7 +653,7 @@ rc=$(run_pushup "$TMPDIR/owner-pr-approved.out" \
 }
 assert_not_contains "0 modified, 0 added, and 0 deleted files would be merged." "$TMPDIR/owner-pr-approved.out"
 assert_contains "Dry-run: merge to local v1.0.0:" "$TMPDIR/owner-pr-approved.out"
-assert_not_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/owner-pr-approved.out"
+assert_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/owner-pr-approved.out"
 assert_not_contains "Dry run complete" "$TMPDIR/owner-pr-approved.out"
 assert_not_contains "is approved" "$TMPDIR/owner-pr-approved.out"
 assert_not_contains "My approved PR" "$TMPDIR/owner-pr-approved.out"
@@ -789,7 +791,7 @@ assert_not_contains "Determining parent branch" "$TMPDIR/quiet-dryrun.out"
 assert_not_contains "Parent branch:" "$TMPDIR/quiet-dryrun.out"
 assert_not_contains "0 modified, 0 added, and 0 deleted files would be merged." "$TMPDIR/quiet-dryrun.out"
 assert_contains "Dry-run: merge to local v1.0.0:" "$TMPDIR/quiet-dryrun.out"
-assert_not_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/quiet-dryrun.out"
+assert_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/quiet-dryrun.out"
 pass "non-verbose dry-run output stays compact"
 
 # ---------------------------------------------------------------------------

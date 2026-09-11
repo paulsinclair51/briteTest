@@ -553,3 +553,78 @@ status="$(run_capture "$TMPDIR/signal-continue.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup")"
 [[ "$status" -eq 0 ]] || fail "continuation after signal should complete, got $status"
 echo "PASS: signal interruption retains state and resumes"
+
+# Exercise the complete command with the real parent, push, and pulldown
+# implementations. The transaction fixture above replaces those libraries to
+# target coordinator recovery behavior in isolation.
+INTEGRATION_ORIGIN="$TMPDIR/integration-origin.git"
+INTEGRATION_WORK="$TMPDIR/integration-work"
+INTEGRATION_BIN="$TMPDIR/integration-bin"
+mkdir -p "$INTEGRATION_BIN"
+git init --bare "$INTEGRATION_ORIGIN" >/dev/null
+git init -b main "$INTEGRATION_WORK" >/dev/null
+mkdir -p "$INTEGRATION_WORK/briteRepo" "$INTEGRATION_WORK/config" \
+  "$INTEGRATION_WORK/reports"
+cp -a "$REPO_ROOT/briteRepo/bin" "$INTEGRATION_WORK/briteRepo/bin"
+cp -a "$REPO_ROOT/briteRepo/helpers" "$INTEGRATION_WORK/briteRepo/helpers"
+cat > "$INTEGRATION_WORK/config/contributors.md" <<'EOF'
+## Contributors
+
+- testowner, A, testowner@example.com
+EOF
+cat > "$INTEGRATION_BIN/git" <<EOF
+#!/usr/bin/env bash
+if [[ "\$#" -eq 3 && "\$1" == remote && "\$2" == get-url && \
+  "\$3" == origin ]]; then
+  echo "https://github.com/testowner/integration.git"
+  exit 0
+fi
+exec "$(command -v git)" "\$@"
+EOF
+cat > "$INTEGRATION_BIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == *"api user"* ]]; then
+  echo testowner
+  exit 0
+fi
+if [[ "$*" == *"pr list"* ]]; then
+  exit 0
+fi
+echo "unexpected gh invocation: $*" >&2
+exit 1
+EOF
+chmod +x "$INTEGRATION_BIN/git" "$INTEGRATION_BIN/gh"
+git -C "$INTEGRATION_WORK" config user.name testowner
+git -C "$INTEGRATION_WORK" config user.email testowner@example.com
+git -C "$INTEGRATION_WORK" remote add origin "$INTEGRATION_ORIGIN"
+printf 'base\n' > "$INTEGRATION_WORK/content.txt"
+git -C "$INTEGRATION_WORK" add .
+git -C "$INTEGRATION_WORK" commit -m base >/dev/null
+git -C "$INTEGRATION_WORK" push -u origin main >/dev/null
+git -C "$INTEGRATION_WORK" checkout -b v1.0.0 >/dev/null
+git -C "$INTEGRATION_WORK" commit --allow-empty -m version >/dev/null
+git -C "$INTEGRATION_WORK" push -u origin v1.0.0 >/dev/null
+git -C "$INTEGRATION_WORK" checkout -b dev/feature-v1.0.0 >/dev/null
+printf 'feature\n' >> "$INTEGRATION_WORK/content.txt"
+git -C "$INTEGRATION_WORK" commit -am feature >/dev/null
+git -C "$INTEGRATION_WORK" push -u origin dev/feature-v1.0.0 >/dev/null
+
+status="$(run_capture "$TMPDIR/real-libraries.out" env \
+  GITHUB_ACTOR=testowner PATH="$INTEGRATION_BIN:$PATH" bash -c \
+  "cd '$INTEGRATION_WORK' && ./briteRepo/bin/pushup -o -t 7")"
+[[ "$status" -eq 0 ]] || \
+  fail "pushup with real workflow libraries should complete, got $status"
+[[ "$(git -C "$INTEGRATION_WORK" branch --show-current)" == \
+  dev/feature-v1.0.0 ]] || fail "real workflow should return to its source"
+git -C "$INTEGRATION_WORK" diff --quiet dev/feature-v1.0.0 v1.0.0 || \
+  fail "real workflow should synchronize source and parent files"
+[[ "$(git -C "$INTEGRATION_WORK" rev-parse v1.0.0)" == \
+  "$(git --git-dir="$INTEGRATION_ORIGIN" rev-parse v1.0.0)" ]] || \
+  fail "real workflow should publish the parent tip"
+[[ "$(git -C "$INTEGRATION_WORK" rev-parse dev/feature-v1.0.0)" == \
+  "$(git --git-dir="$INTEGRATION_ORIGIN" rev-parse dev/feature-v1.0.0)" ]] || \
+  fail "real workflow should publish the synchronized source tip"
+[[ ! -f "$INTEGRATION_WORK/.git/briteRepo/pushup.state" ]] || \
+  fail "real workflow should remove completed transaction state"
+assert_contains "locally and remotely" "$TMPDIR/real-libraries.out"
+echo "PASS: top-level pushup composes the real workflow libraries"

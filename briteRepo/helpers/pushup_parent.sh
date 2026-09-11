@@ -545,6 +545,20 @@ build_dry_run_push_preview_ref() {
   printf '%s\n' "$preview_commit"
 }
 
+generate_dry_run_push_report() {
+  local source_branch="$1"
+  local preview_ref="$2"
+
+  bash -c '
+      set -euo pipefail
+      source "$1/push_command.sh"
+      args=(--pushup "$2" --preview-ref "$3" -d)
+      [[ "$4" != true ]] || args+=(-v)
+      bt_push_workflow "${args[@]}"
+    ' bt-push-dry-run "$SCRIPT_DIR" "$source_branch" "$preview_ref" \
+    "$VERBOSE"
+}
+
 acquire_run_lock() {
   local lock_path=""
   local existing_pid=""
@@ -1911,6 +1925,10 @@ if [[ "$DRY_RUN" == true ]]; then
   if [[ -n "$REPORT_FILE" ]]; then
     report_rel="${REPORT_FILE#"${REPO_ROOT}"/}"
     bt_success "See ${report_rel} for details."
+  fi
+  if parent_has_remote_push_target "$PARENT_BRANCH"; then
+    generate_dry_run_push_report "$CURRENT_BRANCH" \
+      "$dry_run_push_preview_ref"
   fi
 
   if ! git switch "$CURRENT_BRANCH" >/dev/null 2>&1; then
