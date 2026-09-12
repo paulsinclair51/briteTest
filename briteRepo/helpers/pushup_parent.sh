@@ -494,7 +494,7 @@ print_merge_change_summary() {
     return 0
   fi
 
-  bt_success "Merged to local ${PARENT_BRANCH}: ${change_summary}."
+  bt_success "Pushed up to local ${PARENT_BRANCH}: ${change_summary}."
 }
 
 format_merge_preview_change_summary_from_commit() {
@@ -1919,7 +1919,7 @@ if [[ "$DRY_RUN" == true ]]; then
   checkout_parent_branch "$PARENT_BRANCH"
   dry_run_push_preview_ref="$(build_dry_run_push_preview_ref "$CURRENT_SOURCE_REF" "$PARENT_BRANCH")"
   merge_summary="$(format_merge_preview_change_summary_from_commit "$dry_run_push_preview_ref")"
-  bt_success "Dry-run: merge to local $PARENT_BRANCH: ${merge_summary}."
+  bt_success "Dry-run: push up to local $PARENT_BRANCH: ${merge_summary}."
 
   generate_dry_run_report "$CURRENT_BRANCH" "$PARENT_BRANCH" "$COMMIT_MESSAGE"
   if [[ -n "$REPORT_FILE" ]]; then

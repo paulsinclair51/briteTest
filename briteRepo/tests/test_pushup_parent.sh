@@ -547,7 +547,7 @@ rc=$(run_pushup "$TMPDIR/contributor-approved.out" \
   "FAKE_GH_PR_NUMBER=42" "FAKE_GH_REVIEW_DECISION=APPROVED" -- -d)
 [[ "$rc" -eq 0 ]] || \
   fail "approved contributor targeted merge should succeed (got $rc)"
-assert_contains "Dry-run: merge to local v1.0.0:" \
+assert_contains "Dry-run: push up to local v1.0.0:" \
   "$TMPDIR/contributor-approved.out"
 
 (
@@ -583,7 +583,7 @@ rc=$(run_pushup "$TMPDIR/identity-fallback.out" \
   "FAKE_REPO_OWNER=testowner" "FAKE_GH_PR_NUMBER=" -- -o -d)
 [[ "$rc" -eq 0 ]] || \
   fail "failed GitHub identity query should use Git login fallback (got $rc)"
-assert_contains "Dry-run: merge to local v1.0.0:" \
+assert_contains "Dry-run: push up to local v1.0.0:" \
   "$TMPDIR/identity-fallback.out"
 assert_not_contains "Unable to determine GitHub login identity" \
   "$TMPDIR/identity-fallback.out"
@@ -600,7 +600,7 @@ rc=$(run_pushup "$TMPDIR/owner-nopr.out" \
   fail "-o owner, no PR: dry-run should exit 0 (got $rc)"
 }
 assert_not_contains "0 modified, 0 added, and 0 deleted files would be merged." "$TMPDIR/owner-nopr.out"
-assert_contains "Dry-run: merge to local v1.0.0:" "$TMPDIR/owner-nopr.out"
+assert_contains "Dry-run: push up to local v1.0.0:" "$TMPDIR/owner-nopr.out"
 assert_contains "See reports/pushup-d-" "$TMPDIR/owner-nopr.out"
 assert_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/owner-nopr.out"
 assert_contains "See reports/push-d-" "$TMPDIR/owner-nopr.out"
@@ -608,7 +608,7 @@ assert_not_contains "in remote for details" "$TMPDIR/owner-nopr.out"
 assert_not_contains "Dry run complete" "$TMPDIR/owner-nopr.out"
 assert_not_contains "no merge commit was created and no branch was pushed" "$TMPDIR/owner-nopr.out"
 report_line_number="$(grep -n "See .*pushup-d-.* for details\." "$TMPDIR/owner-nopr.out" | head -n 1 | cut -d: -f1)"
-merge_line_number="$(grep -n "Dry-run: merge to local v1.0.0:" "$TMPDIR/owner-nopr.out" | head -n 1 | cut -d: -f1)"
+merge_line_number="$(grep -n "Dry-run: push up to local v1.0.0:" "$TMPDIR/owner-nopr.out" | head -n 1 | cut -d: -f1)"
 [[ -n "$report_line_number" ]] || fail "expected report line in dry-run output"
 [[ -n "$merge_line_number" ]] || fail "expected merge summary line in dry-run output"
 [[ "$report_line_number" -gt "$merge_line_number" ]] || fail "expected report line after the merge summary"
@@ -654,7 +654,7 @@ rc=$(run_pushup "$TMPDIR/owner-pr-approved.out" \
   fail "-o owner, approved PR: dry-run should exit 0 (got $rc)"
 }
 assert_not_contains "0 modified, 0 added, and 0 deleted files would be merged." "$TMPDIR/owner-pr-approved.out"
-assert_contains "Dry-run: merge to local v1.0.0:" "$TMPDIR/owner-pr-approved.out"
+assert_contains "Dry-run: push up to local v1.0.0:" "$TMPDIR/owner-pr-approved.out"
 assert_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/owner-pr-approved.out"
 assert_not_contains "Dry run complete" "$TMPDIR/owner-pr-approved.out"
 assert_not_contains "is approved" "$TMPDIR/owner-pr-approved.out"
@@ -792,7 +792,7 @@ assert_not_contains "Current branch:" "$TMPDIR/quiet-dryrun.out"
 assert_not_contains "Determining parent branch" "$TMPDIR/quiet-dryrun.out"
 assert_not_contains "Parent branch:" "$TMPDIR/quiet-dryrun.out"
 assert_not_contains "0 modified, 0 added, and 0 deleted files would be merged." "$TMPDIR/quiet-dryrun.out"
-assert_contains "Dry-run: merge to local v1.0.0:" "$TMPDIR/quiet-dryrun.out"
+assert_contains "Dry-run: push up to local v1.0.0:" "$TMPDIR/quiet-dryrun.out"
 assert_contains "Dry-run: push to remote v1.0.0:" "$TMPDIR/quiet-dryrun.out"
 pass "non-verbose dry-run output stays compact"
 
@@ -926,9 +926,9 @@ rc=$(run_pushup "$TMPDIR/verify-repair.out" \
   echo "--- output ---"; cat "$TMPDIR/verify-repair.out"
   fail "one-time verification mismatch should auto-repair and succeed (got $rc)"
 }
-merge_line_number="$(grep -n "Merged to local v1.0.0:" "$TMPDIR/verify-repair.out" | head -n 1 | cut -d: -f1)"
+merge_line_number="$(grep -n "Pushed up to local v1.0.0:" "$TMPDIR/verify-repair.out" | head -n 1 | cut -d: -f1)"
 [[ -n "$merge_line_number" ]] || fail "expected merge success line in verify-repair output"
-assert_contains "Merged to local v1.0.0:" "$TMPDIR/verify-repair.out"
+assert_contains "Pushed up to local v1.0.0:" "$TMPDIR/verify-repair.out"
 assert_not_contains "Pushed (" "$TMPDIR/verify-repair.out"
 assert_contains "Local merge complete on v1.0.0." \
   "$TMPDIR/verify-repair.out"

@@ -127,7 +127,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 if [[ "$dry_run" == true ]]; then
-  echo "Dry-run: merge to local main: 1 modified file."
+  echo "Dry-run: push up to local main: 1 modified file."
   exit 0
 fi
 if [[ "$error_run" == true ]]; then
@@ -219,7 +219,7 @@ parent_tip="$(git -C "$WORK" rev-parse main)"
 status="$(run_capture "$TMPDIR/dry-run.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup -d -t 7")"
 [[ "$status" -eq 0 ]] || fail "top-level pushup -d should exit 0, got $status"
-assert_contains "Dry-run: merge to local main" "$TMPDIR/dry-run.out"
+assert_contains "Dry-run: push up to local main" "$TMPDIR/dry-run.out"
 [[ "$(git -C "$WORK" branch --show-current)" == feature ]] || \
   fail "top-level pushup -d should leave source branch checked out"
 [[ "$(git -C "$WORK" rev-parse main)" == "$parent_tip" ]] || \
