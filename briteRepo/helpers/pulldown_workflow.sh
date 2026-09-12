@@ -51,7 +51,6 @@ source "$SCRIPT_DIR/git_helpers.sh"
 # shellcheck source=helpers/report_helpers.sh
 source "$SCRIPT_DIR/report_helpers.sh"
 
-readonly EXIT_INVALID_ARGUMENT=1
 readonly EXIT_NOT_FOUND=2
 readonly EXIT_OPERATION_FAILED=3
 readonly EXIT_CONFIG_ERROR=4

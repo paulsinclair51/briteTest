@@ -113,6 +113,7 @@ bt_report_copy_from_remote() {
     [[ "$remote_path" == *.git ]] && remote_path="${remote_path%.git}"
 
     # Copy reports from remote bare repo
+    # shellcheck disable=SC2086  # report_pattern must expand on the remote.
     if ! bt_run_remote_command scp -q \
       "git@${remote_host}:${remote_path}/reports"/$report_pattern \
       "$reports_dir/" 2>/dev/null; then
@@ -125,6 +126,7 @@ bt_report_copy_from_remote() {
   if [[ "$remote_url" =~ ^file://(.+) ]]; then
     remote_path="${BASH_REMATCH[1]}"
     if [[ -d "$remote_path/reports" ]]; then
+      # shellcheck disable=SC2086  # report_pattern is an intentional glob.
       cp -f "$remote_path/reports"/$report_pattern "$reports_dir/" 2>/dev/null || return 1
       return 0
     fi

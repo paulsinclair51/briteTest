@@ -418,7 +418,9 @@ validate_conversion_prerequisites() {
     exit_with "$EXIT_NOT_AUTHORIZED" \
       "Configuration file not found: $contributors_file"
 
-  login="$(cd "$repo_root" && bt_require_login || true)"
+  if ! login="$(cd "$repo_root" && bt_require_login)"; then
+    login=""
+  fi
   email="$(git -C "$repo_root" config user.email 2>/dev/null || true)"
   [[ -n "$login" ]] || \
     exit_with "$EXIT_NOT_AUTHORIZED" \
@@ -428,7 +430,9 @@ validate_conversion_prerequisites() {
     exit_with "$EXIT_NOT_AUTHORIZED" \
       "User '$login' is not a contributor, reviewer, or approver."
 
-  branch="$(cd "$repo_root" && bt_get_current_branch || true)"
+  if ! branch="$(cd "$repo_root" && bt_get_current_branch)"; then
+    branch=""
+  fi
   [[ -n "$branch" && "$branch" != HEAD ]] || \
     exit_with "$EXIT_NOT_LOCAL_BRANCH" \
       "Current checkout must be a local branch."

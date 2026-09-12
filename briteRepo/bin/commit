@@ -345,14 +345,14 @@ EOF
   append_commit_directories_section
 
   if [[ "$committed_only" -gt 0 ]]; then
-    printf '\n<details>\n<summary>Files</summary>\n\n' \
-      >> "$REPORT_FILE"
-    append_commit_table_header
-    cat "$commit_only_rows_tmp" >> "$REPORT_FILE"
-    printf '| **Total** | %s | %s | %+d | %s |  |\n' \
-      "$total_added" "$total_removed" "$total_net" "$total_lines_sum" \
-      >> "$REPORT_FILE"
-    printf '</details>\n' >> "$REPORT_FILE"
+    {
+      printf '\n<details>\n<summary>Files</summary>\n\n'
+      append_commit_table_header
+      cat "$commit_only_rows_tmp"
+      printf '| **Total** | %s | %s | %+d | %s |  |\n' \
+        "$total_added" "$total_removed" "$total_net" "$total_lines_sum"
+      printf '</details>\n'
+    } >> "$REPORT_FILE"
   fi
 
   publish_staged_report_file
@@ -1348,14 +1348,14 @@ generate_commit_report() {
   append_commit_directories_section
 
   if [[ "$committed_only" -gt 0 ]]; then
-    printf '\n<details>\n<summary>Files</summary>\n\n' \
-      >> "$REPORT_FILE"
-    append_commit_table_header
-    cat "$commit_only_rows_tmp" >> "$REPORT_FILE"
-    printf '| **Total** | %s | %s | %+d | %s |  |\n' \
-      "$total_added" "$total_removed" "$total_net" "$total_lines_sum" \
-      >> "$REPORT_FILE"
-    printf '</details>\n' >> "$REPORT_FILE"
+    {
+      printf '\n<details>\n<summary>Files</summary>\n\n'
+      append_commit_table_header
+      cat "$commit_only_rows_tmp"
+      printf '| **Total** | %s | %s | %+d | %s |  |\n' \
+        "$total_added" "$total_removed" "$total_net" "$total_lines_sum"
+      printf '</details>\n'
+    } >> "$REPORT_FILE"
   fi
 
   publish_staged_report_file

@@ -181,5 +181,6 @@ fixlocal_test_init() {
   }
   trap cleanup EXIT
 
+  # shellcheck disable=SC2034  # Consumed by sourced fixlocal test shards.
   REAL_GIT="$(command -v git)"
 }

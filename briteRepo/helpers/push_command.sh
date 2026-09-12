@@ -368,6 +368,7 @@ push_validate_prerequisites() {
 bt_push_run() {
   [[ "$PUSH_ENTRY_MODE" != "--pushup-source" ]] || PUSHUP_SOURCE_SYNC=true
   if [[ "$PUSH_ENTRY_MODE" == "--public" ]]; then
+    # shellcheck disable=SC2153  # ORIGINAL_ARGS is owned by the calling command.
     BT_PUSH_COMMAND_LINE="$(bt_format_command_line "push" "${ORIGINAL_ARGS[@]}")"
     BT_PUSH_AUTHORITY=""
   else

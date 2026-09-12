@@ -178,7 +178,10 @@ rc=$(run_capture "$TMPDIR/log-target.out" env GITHUB_ACTOR=testuser bash -lc "cd
 if (cd "$WORK" && git ls-remote --heads origin log-target-check | grep -q 'log-target-check'); then
   fail "log-target-check should be deleted from origin"
 fi
-main_note="$(cd "$WORK" && git notes --ref=briteRepo-workflow show refs/heads/main 2>/dev/null || true)"
+if ! main_note="$(cd "$WORK" && \
+  git notes --ref=briteRepo-workflow show refs/heads/main 2>/dev/null)"; then
+  main_note=""
+fi
 if [[ -z "$main_note" ]]; then
   fail "rmbranch should record deletion history as a Git note on main"
 fi

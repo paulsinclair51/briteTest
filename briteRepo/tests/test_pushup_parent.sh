@@ -58,7 +58,9 @@ run_capture() {
 
 latest_report() {
   local repo_root="$1"
-  find "$repo_root/reports" -maxdepth 1 -type f -name 'pushup-e-*.md' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
+  local pattern="${2:-pushup-e-*.md}"
+  find "$repo_root/reports" -maxdepth 1 -type f -name "$pattern" \
+    -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-
 }
 
 for dep in bash git grep mktemp; do
@@ -613,7 +615,7 @@ merge_line_number="$(grep -n "Dry-run: merge to local v1.0.0:" "$TMPDIR/owner-no
 assert_not_contains "PR is not required" "$TMPDIR/owner-nopr.out"
 assert_not_contains "Using custom message:" "$TMPDIR/owner-nopr.out"
 assert_not_contains "is not approved" "$TMPDIR/owner-nopr.out"
-owner_report="$WORK/reports/$(cd "$WORK/reports" && ls -1t pushup-d-*.md | head -n 1)"
+owner_report="$(latest_report "$WORK" 'pushup-d-*.md')"
 assert_contains "**Commit Comment:** dev/feat-v1.0.0 pushed up to v1.0.0 by testowner (owner)." "$owner_report"
 pass "-o owner, no PR: owner default message is reported"
 
@@ -740,9 +742,9 @@ rc=$(run_pushup "$TMPDIR/github-query-failed.out" \
   "FAKE_GH_PR_NUMBER=42" "FAKE_GH_REVIEW_DECISION=APPROVED" \
   "FAKE_GH_FAIL_QUERY=statusCheckRollup" -- -d)
 [[ "$rc" -eq 0 ]] || fail "unavailable CI/CD results should not block preview (got $rc)"
-query_report="$(cd "$WORK/reports" && ls -1t pushup-d-*.md | head -n 1)"
+query_report="$(latest_report "$WORK" 'pushup-d-*.md')"
 assert_contains "CI/CD results were unavailable for PR #42." \
-  "$WORK/reports/$query_report"
+  "$query_report"
 pass "unavailable CI/CD results are report-only"
 
 # ---------------------------------------------------------------------------
@@ -760,9 +762,9 @@ for i in "${!ci_cd_checks[@]}"; do
     "FAKE_GH_PR_NUMBER=42" "FAKE_GH_REVIEW_DECISION=APPROVED" \
     "FAKE_GH_STATUS_CHECKS=${ci_cd_checks[$i]}" -- -d)
   [[ "$rc" -eq 0 ]] || fail "CI/CD results should not block preview (got $rc)"
-  ci_cd_dry_report="$(cd "$WORK/reports" && ls -1t pushup-d-*.md | head -n 1)"
-  assert_contains "| Check | State |" "$WORK/reports/$ci_cd_dry_report"
-  assert_contains "FAILURE" "$WORK/reports/$ci_cd_dry_report"
+  ci_cd_dry_report="$(latest_report "$WORK" 'pushup-d-*.md')"
+  assert_contains "| Check | State |" "$ci_cd_dry_report"
+  assert_contains "FAILURE" "$ci_cd_dry_report"
 done
 pass "CI/CD results are included without blocking"
 
@@ -774,7 +776,7 @@ rc=$(run_pushup "$TMPDIR/normal-pr-approved.out" \
   "FAKE_GH_PR_NUMBER=42" "FAKE_GH_REVIEW_DECISION=APPROVED" \
   "FAKE_GH_STATUS_CHECKS=SUCCESS" "FAKE_GH_PR_TITLE=Approved release title" -- -d)
 [[ "$rc" -eq 0 ]] || fail "normal approved PR dry-run should succeed (got $rc)"
-pr_report="$WORK/reports/$(cd "$WORK/reports" && ls -1t pushup-d-*.md | head -n 1)"
+pr_report="$(latest_report "$WORK" 'pushup-d-*.md')"
 assert_contains "**Commit Comment:** Approved release title" "$pr_report"
 assert_contains "| unlabeled | SUCCESS |" "$pr_report"
 pass "approved PR title is used as the commit comment"
@@ -884,9 +886,9 @@ rc=$(run_pushup "$TMPDIR/parent-checkout.out" \
   "FAKE_GH_PR_NUMBER=" "FAKE_FAIL_PARENT_SWITCH=1" -- -o -c "checkout failure")
 [[ "$rc" -eq 15 ]] || fail "parent checkout failure should exit 15 (got $rc)"
 assert_contains "cannot be checked out" "$TMPDIR/parent-checkout.out"
-checkout_error_report="$(cd "$WORK/reports" && ls -1t pushup-e-*.md | head -n 1)"
+checkout_error_report="$(latest_report "$WORK")"
 assert_contains "**Error:** Parent branch 'v1.0.0' cannot be checked out" \
-  "$WORK/reports/$checkout_error_report"
+  "$checkout_error_report"
 pass "parent checkout failure returns exit 15 with actionable report"
 
 # ---------------------------------------------------------------------------
@@ -1043,10 +1045,10 @@ rc=$(run_pushup "$TMPDIR/version-main-default.out" \
   "GITHUB_ACTOR=testowner" "FAKE_REPO_OWNER=testowner" \
   "FAKE_GH_PR_NUMBER=" -- -d)
 [[ "$rc" -eq 0 ]] || fail "version-to-main preview should succeed (got $rc)"
-version_report="$(cd "$WORK/reports" && ls -1t pushup-d-*.md | head -n 1)"
+version_report="$(latest_report "$WORK" 'pushup-d-*.md')"
 assert_contains \
   "**Commit Comment:** v1.0.0 pushed up to main branch by testowner (approver)." \
-  "$WORK/reports/$version_report"
+  "$version_report"
 pass "version-to-main preview uses the documented default comment"
 
 # ---------------------------------------------------------------------------
@@ -1066,10 +1068,10 @@ rc=$(run_pushup "$TMPDIR/contributor-no-pr.out" \
   "GITHUB_ACTOR=otheruser" "FAKE_REPO_OWNER=testowner" \
   "FAKE_GH_PR_NUMBER=" -- -d)
 [[ "$rc" -eq 0 ]] || fail "contributor merge without PR should succeed (got $rc)"
-contributor_report="$(cd "$WORK/reports" && ls -1t pushup-d-*.md | head -n 1)"
+contributor_report="$(latest_report "$WORK" 'pushup-d-*.md')"
 assert_contains \
   "**Commit Comment:** contributor-work pushed up to dev/feat-v1.0.0 by otheruser (contributor)." \
-  "$WORK/reports/$contributor_report"
+  "$contributor_report"
 
 rc=$(run_pushup "$TMPDIR/contributor-outsider.out" \
   "GITHUB_ACTOR=outsider" "FAKE_REPO_OWNER=testowner" \

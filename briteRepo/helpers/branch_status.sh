@@ -42,8 +42,10 @@ bt_branch_status_init() {
   EXCLUDE_PATTERN=""
   TARGET_BRANCH=""
   VERBOSE=false
+  # shellcheck disable=SC2034  # Public state consumed by sourcing commands.
   REMOTE_TIMEOUT_SECONDS=10
   INVALID_BRANCHES_FOUND=0
+  # shellcheck disable=SC2034  # Public state consumed by sourcing commands.
   ALL_BRANCHES=false
   INCLUDE_LOCAL_FLAG=false
   INCLUDE_REMOTE_FLAG=false

@@ -83,6 +83,7 @@ commit_test_init() {
 
   ORIGIN="$TMPDIR/origin.git"
   WORK="$TMPDIR/work"
+  # shellcheck disable=SC2034  # Consumed by sourced commit test shards.
   PEER="$TMPDIR/peer"
 
   git init --bare "$ORIGIN" >/dev/null 2>&1

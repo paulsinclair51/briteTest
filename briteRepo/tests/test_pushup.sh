@@ -26,6 +26,14 @@ run_capture() {
   printf '%s\n' "$status"
 }
 
+status="$(run_capture "$TMPDIR/invalid-option.out" \
+  "$REPO_ROOT/briteRepo/bin/pushup" -a)"
+[[ "$status" -eq 1 ]] || fail "unknown pushup option should exit 1, got $status"
+assert_contains "Usage:" "$TMPDIR/invalid-option.out"
+assert_contains "Unknown option: -a. See usage above for details." \
+  "$TMPDIR/invalid-option.out"
+echo "PASS: unknown option prints an error after usage"
+
 write_state() {
   local phase="$1"
   local source_tip="$2"
@@ -406,7 +414,9 @@ saved_source_version="$(git config --file "$WORK/.git/briteRepo/pushup.state" \
 saved_parent_version="$(git config --file "$WORK/.git/briteRepo/pushup.state" \
   --get pushup.parent-tip)"
 # Earlier scenarios leave their own error reports, so take the newest one.
-report="$(ls -t "$WORK/reports"/pushup-e-*.md 2>/dev/null | head -n 1)"
+report="$(find "$WORK/reports" -maxdepth 1 -type f \
+  -name 'pushup-e-*.md' -printf '%T@ %p\n' | sort -n | tail -n 1 | \
+  cut -d' ' -f2-)"
 [[ -n "$report" ]] || fail "partial run should write a pushup error report"
 assert_contains '| Update parent on remote | Completed |' "$report"
 assert_contains '| Synchronize source from parent | Pending |' "$report"

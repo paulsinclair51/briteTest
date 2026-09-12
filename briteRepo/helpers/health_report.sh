@@ -17,9 +17,11 @@ bt_hr_append_section() {
   local report_file="$1"
   local section_title="$2"
 
-  echo "" >> "$report_file"
-  echo "### $section_title" >> "$report_file"
-  echo "" >> "$report_file"
+  {
+    echo ""
+    echo "### $section_title"
+    echo ""
+  } >> "$report_file"
 }
 
 # bt_hr_append_check

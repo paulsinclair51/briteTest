@@ -134,7 +134,7 @@ hook_name() {
 git_command_in_progress() {
   local cmd="$1"
   git rev-parse --git-dir >/dev/null 2>&1 || return 1
-  [[ -n "$(git config hooks.$cmd 2>/dev/null || true)" ]] || return 1
+  [[ -n "$(git config "hooks.$cmd" 2>/dev/null || true)" ]] || return 1
 }
 
 export -f check_bypass

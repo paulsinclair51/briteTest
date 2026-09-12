@@ -59,18 +59,14 @@ split-new-a/one.txt
 split-new-b/two.txt
 new-dir/file.txt
 EOF
-printf 'M\0same.txt\0D\0deleted-root.txt\0A\0added-root.txt\0' \
-  > "$TMPDIR/status"
-printf 'R100\0rename-old/pure.txt\0rename-new/pure.txt\0' \
-  >> "$TMPDIR/status"
-printf 'R075\0rename-mod-old/changed.txt\0rename-mod-new/changed.txt\0' \
-  >> "$TMPDIR/status"
-printf 'R100\0split-old/one.txt\0split-new-a/one.txt\0' \
-  >> "$TMPDIR/status"
-printf 'R100\0split-old/two.txt\0split-new-b/two.txt\0' \
-  >> "$TMPDIR/status"
-printf 'D\0gone-dir/file.txt\0A\0new-dir/file.txt\0' \
-  >> "$TMPDIR/status"
+{
+  printf 'M\0same.txt\0D\0deleted-root.txt\0A\0added-root.txt\0'
+  printf 'R100\0rename-old/pure.txt\0rename-new/pure.txt\0'
+  printf 'R075\0rename-mod-old/changed.txt\0rename-mod-new/changed.txt\0'
+  printf 'R100\0split-old/one.txt\0split-new-a/one.txt\0'
+  printf 'R100\0split-old/two.txt\0split-new-b/two.txt\0'
+  printf 'D\0gone-dir/file.txt\0A\0new-dir/file.txt\0'
+} > "$TMPDIR/status"
 
 bt_git_collect_change_summary_from_files \
   "$TMPDIR/status" "$TMPDIR/old-files" "$TMPDIR/new-files"

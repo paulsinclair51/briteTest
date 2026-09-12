@@ -464,13 +464,11 @@ generate_repository_report() {
     bt_branch_status_init
     GENERATE_REPORT=true
     branch_reports_dir="$branch_report_dir"
-    branch_report_prefix=repo-branches
+    branch_report_prefix="repo-branches"
+    # shellcheck disable=SC2100  # branch_status consumes this as a glob string.
     BRANCH_PATTERN='*'
-    ALL_BRANCHES=true
     INCLUDE_LOCAL=true
     INCLUDE_REMOTE=true
-    REMOTE_TIMEOUT_SECONDS="$REMOTE_TIMEOUT"
-    VERBOSE="$VERBOSE"
     ORIGINAL_ARGS=()
     bt_branch_status_run
   )"; then
@@ -1242,10 +1240,7 @@ render_affected_tables() {
   declare -A directories_renamed_to=()
 
   parent_info="$(git rev-list --parents -n 1 "$commit_ref" 2>/dev/null || true)"
-  set -- $parent_info
-  if [[ "$#" -ge 2 ]]; then
-    parent_ref="$2"
-  fi
+  read -r _commit_ref parent_ref _other_parents <<< "$parent_info"
   tree_ref_before="${parent_ref:-$empty_tree_ref}"
 
   if ! numstat="$(git diff --numstat --find-renames \
@@ -1596,6 +1591,7 @@ bt_parse_record_fields() {
 
   while IFS= read -r line; do
     [[ "$line" =~ ^([A-Za-z][A-Za-z0-9-]*):[[:space:]]*(.*)$ ]] || continue
+    # shellcheck disable=SC2034  # Assignment writes through the caller's nameref.
     fields_out["${BASH_REMATCH[1]}"]="${BASH_REMATCH[2]}"
   done <<< "$record"
 }
