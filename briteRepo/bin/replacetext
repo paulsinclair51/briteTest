@@ -186,6 +186,8 @@ if [[ -f "$HISTORY_HELPER" ]]; then
 fi
 # shellcheck disable=SC1090  # Repository-relative helper path.
 source "$GIT_HELPER"
+# shellcheck source=../helpers/common.sh
+source "$SCRIPT_DIR/../helpers/common.sh"
 
 usage_error() {
   local message="$1"

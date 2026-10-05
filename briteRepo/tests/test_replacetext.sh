@@ -58,6 +58,7 @@ WORK="$TMPDIR/work"
 mkdir -p "$WORK/briteRepo/bin" "$WORK/briteRepo/helpers"
 cp "$REPLACETEXT_SRC" "$WORK/briteRepo/bin/replacetext"
 cp "$REPO_ROOT/briteRepo/helpers/git_helpers.sh" "$WORK/briteRepo/helpers/git_helpers.sh"
+cp "$REPO_ROOT/briteRepo/helpers/common.sh" "$WORK/briteRepo/helpers/common.sh"
 
 cat > "$WORK/README.md" <<'EOF'
 This line includes -foo and plain text.

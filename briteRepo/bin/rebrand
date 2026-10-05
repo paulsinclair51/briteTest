@@ -595,6 +595,9 @@ for arg in "$@"; do
 done
 
 # Parse remaining arguments
+GROUPED_ARGS=("$@")
+bt_expand_short_option_groups GROUPED_ARGS "de"
+set -- "${GROUPED_ARGS[@]}"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -d)

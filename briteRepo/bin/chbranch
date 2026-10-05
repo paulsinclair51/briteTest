@@ -754,6 +754,10 @@ parse_args() {
   USE_UP=false
   BRANCH_ARG=""
 
+  local -a grouped_args=("$@")
+  bt_expand_short_option_groups grouped_args "lrpbuv"
+  set -- "${grouped_args[@]}"
+
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -l)

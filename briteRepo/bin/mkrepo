@@ -725,6 +725,10 @@ write_report() {
 
 parse_options() {
   local positional=()
+  local -a grouped_args=("$@")
+
+  bt_expand_short_option_groups grouped_args "dev"
+  set -- "${grouped_args[@]}"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in

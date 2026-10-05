@@ -121,6 +121,9 @@ for argument in "${ORIGINAL_ARGS[@]}"; do
 done
 
 set -- "${ORIGINAL_ARGS[@]}"
+GROUPED_ARGS=("$@")
+bt_expand_short_option_groups GROUPED_ARGS "dev"
+set -- "${GROUPED_ARGS[@]}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -d)

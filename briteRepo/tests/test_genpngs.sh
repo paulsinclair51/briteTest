@@ -105,6 +105,13 @@ trap cleanup EXIT
 
 WORK="$(make_fixture_repo)"
 
+# Grouped argument-free options should be accepted, with help taking precedence.
+rc=$(run_capture "$TMPDIR/grouped-help.out" bash -lc \
+  "cd '$WORK' && bash ./briteRepo/bin/genpngs -vh")
+[[ "$rc" -eq 0 ]] || fail "grouped genpngs options should exit 0 (got $rc)"
+assert_contains "Usage:" "$TMPDIR/grouped-help.out"
+pass "grouped short options"
+
 # 1) Initial run should create document-derived and source-derived PNG files.
 rc=$(run_capture "$TMPDIR/first.out" bash -lc "cd '$WORK' && bash ./briteRepo/bin/genpngs")
 [[ "$rc" -eq 0 ]] || fail "first genpngs run should exit 0 (got $rc)"

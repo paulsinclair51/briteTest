@@ -573,6 +573,9 @@ set_branch_existence_flags() {
 
 # Parse options and arguments
 POSITIONAL_ARGS=()
+GROUPED_ARGS=("$@")
+bt_expand_short_option_groups GROUPED_ARGS "dhlrv"
+set -- "${GROUPED_ARGS[@]}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -d)

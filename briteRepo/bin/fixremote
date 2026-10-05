@@ -475,6 +475,9 @@ EOF
 }
 
 POSITIONAL=()
+GROUPED_ARGS=("$@")
+bt_expand_short_option_groups GROUPED_ARGS "devx"
+set -- "${GROUPED_ARGS[@]}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -d)

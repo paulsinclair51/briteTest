@@ -116,12 +116,14 @@ cat > "$WORK/briteRepo/helpers/pushup_parent.sh" <<'EOF'
 set -e
 dry_run=false
 error_run=false
+owner_override=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -d) dry_run=true; shift ;;
     -e) error_run=true; shift ;;
     -t|-c) shift 2 ;;
-    -o|-v) shift ;;
+    -o) owner_override=true; shift ;;
+    -v) shift ;;
     --) shift; break ;;
     *) shift ;;
   esac
@@ -229,6 +231,14 @@ assert_contains "Dry-run: push up to local main" "$TMPDIR/dry-run.out"
 [[ ! -f "$WORK/.git/briteRepo/pushup.state" ]] || \
   fail "top-level pushup -d should not write pushup state"
 echo "PASS: top-level dry-run delegates without state"
+
+status="$(run_capture "$TMPDIR/grouped-dry-run.out" bash -c \
+  "cd '$WORK' && ./briteRepo/bin/pushup -do -t 7")"
+[[ "$status" -eq 0 ]] || \
+  fail "top-level pushup -do should exit 0, got $status"
+assert_contains "Dry-run: push up to local main" "$TMPDIR/grouped-dry-run.out"
+assert_contains "Owner override: true" "$TMPDIR/grouped-dry-run.out"
+echo "PASS: grouped pushup options"
 
 status="$(run_capture "$TMPDIR/error-run.out" bash -c \
   "cd '$WORK' && ./briteRepo/bin/pushup -e -t 7")"

@@ -226,6 +226,9 @@ for arg in "$@"; do
 done
 
 # Parse options and arguments
+GROUPED_ARGS=("$@")
+bt_expand_short_option_groups GROUPED_ARGS "avilr"
+set -- "${GROUPED_ARGS[@]}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -a)

@@ -1442,6 +1442,9 @@ cleanup_old_reports() {
 
 
 POSITIONAL=()
+GROUPED_ARGS=("$@")
+bt_expand_short_option_groups GROUPED_ARGS "vdef"
+set -- "${GROUPED_ARGS[@]}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -v)

@@ -68,6 +68,43 @@ bt_format_command_line() {
   printf '%s\n' "$formatted"
 }
 
+bt_expand_short_option_groups() {
+  local args_name="$1"
+  local allowed_options="$2"
+  local -n args_ref="$args_name"
+  local -a original_args=("${args_ref[@]}")
+  local argument option_letters option_letter
+  local index
+  local is_group
+  local options_ended=false
+
+  args_ref=()
+  for argument in "${original_args[@]}"; do
+    is_group=false
+    if [[ "$options_ended" == false && "$argument" == -- ]]; then
+      options_ended=true
+    elif [[ "$options_ended" == false && "$argument" == -[^-]?* ]]; then
+      option_letters="${argument#-}"
+      is_group=true
+      for ((index = 0; index < ${#option_letters}; index++)); do
+        option_letter="${option_letters:index:1}"
+        if [[ "$allowed_options" != *"$option_letter"* ]]; then
+          is_group=false
+          break
+        fi
+      done
+    fi
+
+    if [[ "$is_group" == true ]]; then
+      for ((index = 0; index < ${#option_letters}; index++)); do
+        args_ref+=("-${option_letters:index:1}")
+      done
+    else
+      args_ref+=("$argument")
+    fi
+  done
+}
+
 bt_datetime_display_now() {
   date '+%Y-%m-%d %H:%M:%S%z' | \
     sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/'

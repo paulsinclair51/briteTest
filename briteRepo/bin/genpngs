@@ -120,6 +120,10 @@ log_verbose() {
 
 parse_args() {
   local arg
+  local -a grouped_args=("$@")
+
+  bt_expand_short_option_groups grouped_args "hv"
+  set -- "${grouped_args[@]}"
 
   for arg in "$@"; do
     if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then

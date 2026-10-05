@@ -139,6 +139,9 @@ for argument in "${ORIGINAL_ARGS[@]}"; do
 done
 
 # Parse options and arguments
+GROUPED_ARGS=("$@")
+bt_expand_short_option_groups GROUPED_ARGS "hdeov"
+set -- "${GROUPED_ARGS[@]}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help)

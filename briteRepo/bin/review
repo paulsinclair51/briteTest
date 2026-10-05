@@ -482,6 +482,11 @@ delete_draft_pr() {
 }
 
 parse_args() {
+  local -a grouped_args=("$@")
+
+  bt_expand_short_option_groups grouped_args "hdsbv"
+  set -- "${grouped_args[@]}"
+
   while [[ $# -gt 0 ]]; do
     case "$1" in
     -h | --help)

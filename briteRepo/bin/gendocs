@@ -588,6 +588,9 @@ convert_markdown_to_docx() {
     -o "$target_docx"
 }
 
+GROUPED_ARGS=("$@")
+bt_expand_short_option_groups GROUPED_ARGS "hfpdnqvrkgcT"
+set -- "${GROUPED_ARGS[@]}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit_with "$EXIT_SUCCESS" ;;

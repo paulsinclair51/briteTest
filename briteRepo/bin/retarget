@@ -274,6 +274,9 @@ version_window_status() {
 
 # Parse args
 POSITIONAL_ARGS=()
+GROUPED_ARGS=("$@")
+bt_expand_short_option_groups GROUPED_ARGS "hdevr"
+set -- "${GROUPED_ARGS[@]}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help)

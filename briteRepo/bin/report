@@ -1756,6 +1756,9 @@ for ((index=0; index < ${#ORIGINAL_ARGS[@]}; index++)); do
   esac
 done
 
+GROUPED_ARGS=("$@")
+bt_expand_short_option_groups GROUPED_ARGS "imslrv"
+set -- "${GROUPED_ARGS[@]}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     repo|branch|style)

@@ -367,6 +367,9 @@ record_release_workflow_event() {
 }
 
 # Parse options and arguments
+GROUPED_ARGS=("$@")
+bt_expand_short_option_groups GROUPED_ARGS "hdev"
+set -- "${GROUPED_ARGS[@]}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help)

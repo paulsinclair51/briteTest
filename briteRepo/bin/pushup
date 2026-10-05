@@ -119,6 +119,9 @@ COMMENT_MODE=""
 COMMENT=""
 ORIGINAL_ARGS=("$@")
 PUSHUP_COMMAND_LINE="$(bt_format_command_line "pushup" "${ORIGINAL_ARGS[@]}")"
+PARSED_ARGS=("$@")
+bt_expand_short_option_groups PARSED_ARGS "dehov"
+set -- "${PARSED_ARGS[@]}"
 STATE_FILE=""
 LOCK_FILE=""
 LOCK_FD=""

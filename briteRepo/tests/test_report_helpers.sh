@@ -99,6 +99,14 @@ pass "delete-and-record helper"
   fail "expected command-line formatter to shell-escape arguments"
 [[ "$(bt_trim_whitespace "  keep this  ")" == "keep this" ]] || \
   fail "expected whitespace trimming helper to normalize surrounding whitespace"
+grouped_args=(-dv -t 7 -- -de)
+bt_expand_short_option_groups grouped_args "dev"
+[[ "${grouped_args[*]}" == "-d -v -t 7 -- -de" ]] || \
+  fail "expected valid boolean groups to expand only before --"
+unchanged_args=(-t7 -unknown)
+bt_expand_short_option_groups unchanged_args "dev"
+[[ "${unchanged_args[*]}" == "-t7 -unknown" ]] || \
+  fail "expected value and unknown option tokens to remain unchanged"
 
 # 3) Shared transient report cleanup should remove only matching branch reports.
 cleanup_repo="$TMPDIR/cleanup-repo"

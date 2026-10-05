@@ -161,11 +161,15 @@ set_override_value() {
 
 main() {
   local arg=""
+  local -a grouped_args=("$@")
   local remote_timeout_seconds=10
   local state=""
   local remote_repair=false
   local target_key=""
   local verbose=false
+
+  bt_expand_short_option_groups grouped_args "hrv"
+  set -- "${grouped_args[@]}"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in

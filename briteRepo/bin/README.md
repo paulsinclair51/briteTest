@@ -179,6 +179,10 @@ For a script's usage information, execute the script using the
   lsbranch -h
   ```
 
+Argument-free short options may be grouped. For example, `pushup -do` is
+equivalent to `pushup -d -o`. Options that require a value must remain
+separate from the value.
+
 ## Troubleshooting
 
 ### Scripts not executable
